@@ -1369,6 +1369,263 @@ function showInjectTargetSubModal(options) {
 }
 
 
+// ── ONBOARD A NEW REPO ──
+// In-flight onboarding requests keyed by lowercased repo. Each value is
+// `{ repo, startedAt, failed }`. renderTargets renders a transient pending
+// (or failed) placeholder row for any repo here that isn't yet a real
+// target; the completion poll clears it once the server-side registry row
+// appears. Module-level so it survives the settings modal closing and
+// reopening mid-flight.
+const pendingOnboards = new Map();
+
+// Set by showInjectSettingsModal to its refreshTargets closure while the
+// panel is mounted, cleared on close. The completion poll calls it (through
+// refreshOnboardPanel) to swap a pending placeholder for the real row
+// without reaching into the modal closure.
+let onboardRefreshHook = null;
+
+const ONBOARD_POLL_INTERVAL_MS = 4000;
+const ONBOARD_POLL_MAX_ATTEMPTS = 15; // ~60s total
+
+// Rocket glyph reused by the onboard card and the Onboard button. Inline SVG
+// (no icon library, per CLAUDE.md) drawn to match the sub-modal's stroke look.
+function onboardRocketSvg() {
+    return '<svg viewBox="0 0 16 16" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 1.5c2.2 1.3 3.3 3.6 3.3 6.2 0 1.4-.4 2.7-1 3.8H5.7c-.6-1.1-1-2.4-1-3.8 0-2.6 1.1-4.9 3.3-6.2z"/><circle cx="8" cy="6.4" r="1.2"/><path d="M5.7 11.5l-1.8 1.1.6-2.7M10.3 11.5l1.8 1.1-.6-2.7M6.9 11.5v2.2M9.1 11.5v2.2"/></svg>';
+}
+
+// Normalize a repo string for case-insensitive comparison against the
+// registry (`cachedTargets[i].repo`) and the pendingOnboards keys.
+function normalizeOnboardRepo(repo) {
+    return String(repo || '').trim().toLowerCase();
+}
+
+// Fire the Worker's onboard route for a new repo. Mirrors dispatchRun exactly:
+// gates on isInjectConfigured() via postToWorker (Bearer-secret POST), spreads
+// the Worker payload onto `{ ok: true }` on success — the onboard branch
+// returns `{ ok: true, dispatched: true, ... }` — and returns `{ ok: false,
+// reason }` via describeError on any failure, matching the inject button's
+// error vocabulary. `shape` defaults to 'auto' (Worker auto-detects the repo
+// shape) when omitted.
+export async function onboardRepo(targetRepo, shape) {
+    try {
+        const res = await postToWorker({
+            onboard: true,
+            target_repo: targetRepo,
+            shape: shape || 'auto',
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+// Re-render the settings panel's target rows if it's still mounted, so a
+// resolved/failed onboard placeholder is replaced without reaching into the
+// modal closure. No-op when the panel is closed — pendingOnboards still holds
+// the state, so reopening the panel re-renders the in-flight row.
+function refreshOnboardPanel() {
+    if (typeof document === 'undefined') return;
+    if (!document.getElementById('injectTargetsBody')) return;
+    if (typeof onboardRefreshHook === 'function') onboardRefreshHook();
+}
+
+// After a successful onboard dispatch, poll the inject-targets registry until
+// the server-side row for `repo` appears. onboard.sh inserts that row in CI
+// (Supabase), so the client's injectTargetsChanged event never fires and the
+// row won't show on its own — hence the poll. On appearance, drop the pending
+// entry and refresh the panel so the real row replaces the placeholder; on
+// timeout (~60s), flip the pending entry to a failed state. Updates module
+// state regardless of panel visibility; only touches the DOM through
+// refreshOnboardPanel when the targets body is still mounted.
+function startOnboardPoll(repo) {
+    const key = normalizeOnboardRepo(repo);
+    let attempts = 0;
+    async function tick() {
+        // Stop if the pending entry was dismissed/cleared meanwhile.
+        if (!pendingOnboards.has(key)) return;
+        attempts += 1;
+        const targets = await loadInjectTargets();
+        const present = Array.isArray(targets) && targets.some(function(t) {
+            return t && normalizeOnboardRepo(t.repo) === key;
+        });
+        if (present) {
+            pendingOnboards.delete(key);
+            refreshOnboardPanel();
+            return;
+        }
+        if (attempts >= ONBOARD_POLL_MAX_ATTEMPTS) {
+            const entry = pendingOnboards.get(key);
+            if (entry) entry.failed = true;
+            refreshOnboardPanel();
+            return;
+        }
+        setTimeout(tick, ONBOARD_POLL_INTERVAL_MS);
+    }
+    setTimeout(tick, ONBOARD_POLL_INTERVAL_MS);
+}
+
+
+// ── ONBOARD SUB-MODAL ──
+// Sub-modal for onboarding a new repo into the pipeline, mounted on top of the
+// settings modal. Structurally modeled on showInjectTargetSubModal: same
+// backdrop/dialog/header-with-×/body/footer, and the same three close
+// affordances (× / backdrop / capture-phase Escape) so Escape closes only this
+// sub-modal, not the parent settings modal. `options.onDispatched` is invoked
+// after a successful dispatch so the caller can render the pending placeholder.
+function showOnboardModal(options) {
+    const opts = options || {};
+
+    const prior = document.getElementById('injectOnboardBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'injectOnboardBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'injectOnboardModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'injectOnboardTitle');
+
+    const header = document.createElement('div');
+    header.id = 'injectOnboardHeader';
+    const title = document.createElement('div');
+    title.id = 'injectOnboardTitle';
+    title.textContent = 'Onboard a new repo';
+    const closeX = document.createElement('button');
+    closeX.id = 'injectOnboardClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close onboard dialog');
+    closeX.textContent = '×';
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'injectOnboardBody';
+
+    // Repo field (required).
+    const repoWrap = document.createElement('label');
+    repoWrap.className = 'injectFieldLabel';
+    repoWrap.textContent = 'Repository (owner/name)';
+    const repoInput = document.createElement('input');
+    repoInput.id = 'injectOnboardRepoInput';
+    repoInput.className = 'injectTargetSubInput';
+    repoInput.type = 'text';
+    repoInput.autocomplete = 'off';
+    repoInput.spellcheck = false;
+    repoInput.placeholder = 'rsterenchak/my-repo';
+    const repoErr = document.createElement('div');
+    repoErr.className = 'injectTargetSubError';
+    repoErr.id = 'injectOnboardRepoError';
+    repoErr.setAttribute('aria-live', 'polite');
+    repoWrap.appendChild(repoInput);
+    repoWrap.appendChild(repoErr);
+    body.appendChild(repoWrap);
+
+    // Shape field (optional — auto-detected).
+    const shapeWrap = document.createElement('label');
+    shapeWrap.className = 'injectFieldLabel';
+    shapeWrap.textContent = 'Shape (optional — auto-detected)';
+    const shapeSelect = document.createElement('select');
+    shapeSelect.id = 'injectOnboardShapeSelect';
+    shapeSelect.className = 'injectOnboardShapeSelect';
+    ['auto', 'build', 'served', 'console', 'desktop', 'maui', 'sql', 'repo']
+        .forEach(function(value) {
+            const opt = document.createElement('option');
+            opt.value = value;
+            opt.textContent = value;
+            shapeSelect.appendChild(opt);
+        });
+    shapeSelect.value = 'auto';
+    shapeWrap.appendChild(shapeSelect);
+    body.appendChild(shapeWrap);
+
+    const actions = document.createElement('div');
+    actions.id = 'injectOnboardActions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'injectOnboardCancel';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'injectSettingsBtn';
+    cancelBtn.textContent = 'Cancel';
+
+    const onboardBtn = document.createElement('button');
+    onboardBtn.id = 'injectOnboardSubmit';
+    onboardBtn.type = 'button';
+    onboardBtn.className = 'injectSettingsBtn injectSettingsBtn--primary';
+    onboardBtn.innerHTML = onboardRocketSvg() + '<span>Onboard</span>';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(onboardBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    }
+
+    // Capture-phase Escape so it closes only this sub-modal — the parent
+    // settings modal's handler never fires for the same event.
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            event.preventDefault();
+            close();
+        }
+    }
+
+    closeX.addEventListener('click', close);
+    cancelBtn.addEventListener('click', close);
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+
+    // Validate → dispatch. Trim, strip a trailing `.git`, require `owner/name`
+    // (one slash, no spaces). On invalid, show the inline error and don't
+    // dispatch.
+    async function onSubmit() {
+        repoErr.textContent = '';
+        const repo = repoInput.value.trim().replace(/\.git$/i, '');
+        if (!repo) {
+            repoErr.textContent = 'Repository is required';
+            return;
+        }
+        if (!/^[^\s/]+\/[^\s/]+$/.test(repo)) {
+            repoErr.textContent = 'Use the format owner/name';
+            return;
+        }
+        onboardBtn.disabled = true;
+        const res = await onboardRepo(repo, shapeSelect.value);
+        if (res && res.ok && res.dispatched) {
+            close();
+            showInjectToast("Onboarding started — it'll appear here when ready (~30s).");
+            const key = normalizeOnboardRepo(repo);
+            pendingOnboards.set(key, { repo: repo, startedAt: Date.now(), failed: false });
+            startOnboardPoll(repo);
+            if (typeof opts.onDispatched === 'function') opts.onDispatched();
+            return;
+        }
+        onboardBtn.disabled = false;
+        showInjectToast((res && res.reason) || 'Onboarding failed', 'error');
+    }
+
+    onboardBtn.addEventListener('click', onSubmit);
+
+    setTimeout(function() {
+        try { repoInput.focus(); } catch (e) { /* defensive */ }
+    }, 0);
+}
+
+
 // ── SETTINGS MODAL ──
 // Opens the per-device Inject settings dialog. Reads / writes the four
 // localStorage keys above; Save and Clear both refresh every visible
@@ -1597,6 +1854,60 @@ export function showInjectSettingsModal(options) {
     targetsSection.appendChild(targetsHeader);
     targetsSection.appendChild(targetsBody);
 
+    // Transient pending / failed onboard placeholder row, built from a
+    // pendingOnboards entry. Rendered only for repos not yet in the registry
+    // (a real row always wins). Failed rows carry a dismiss (×) that clears
+    // the entry from pendingOnboards.
+    function buildOnboardPlaceholderRow(entry, key) {
+        const row = document.createElement('div');
+        row.className = 'injectTargetRow injectTargetRow--pending';
+        row.dataset.onboardRepo = entry.repo;
+
+        const marker = document.createElement('span');
+        if (entry.failed) {
+            row.classList.add('injectTargetRow--onboard-failed');
+            marker.className = 'injectOnboardFailGlyph';
+            marker.setAttribute('aria-hidden', 'true');
+            marker.textContent = '!';
+        } else {
+            marker.className = 'injectOnboardSpinner';
+            marker.setAttribute('aria-hidden', 'true');
+        }
+        row.appendChild(marker);
+
+        const info = document.createElement('div');
+        info.className = 'injectTargetInfo';
+        const nick = document.createElement('div');
+        nick.className = 'injectTargetNickname';
+        const detail = document.createElement('div');
+        detail.className = 'injectTargetDetail';
+        if (entry.failed) {
+            nick.textContent = 'Onboarding didn’t complete — check the Actions run';
+            detail.textContent = entry.repo;
+        } else {
+            nick.textContent = 'Onboarding ' + entry.repo + '…';
+            detail.textContent = 'scaffolding + configuring · ~30s';
+        }
+        info.appendChild(nick);
+        info.appendChild(detail);
+        row.appendChild(info);
+
+        if (entry.failed) {
+            const dismiss = document.createElement('button');
+            dismiss.type = 'button';
+            dismiss.className = 'injectTargetIconBtn';
+            dismiss.setAttribute('aria-label', 'Dismiss onboarding for ' + entry.repo);
+            dismiss.title = 'Dismiss';
+            dismiss.textContent = '×';
+            dismiss.addEventListener('click', function() {
+                pendingOnboards.delete(key);
+                renderTargets();
+            });
+            row.appendChild(dismiss);
+        }
+        return row;
+    }
+
     function renderTargets() {
         targetsBody.innerHTML = '';
         if (!cachedTargets || cachedTargets.length === 0) {
@@ -1614,6 +1925,17 @@ export function showInjectSettingsModal(options) {
             });
             targetsBody.appendChild(list);
         }
+        // Pending / failed onboard placeholders, after the real rows and before
+        // the Add button + onboard card. Skip any repo that's already a real
+        // target (the registry row won the race).
+        const presentRepos = new Set();
+        (cachedTargets || []).forEach(function(t) {
+            if (t && t.repo) presentRepos.add(normalizeOnboardRepo(t.repo));
+        });
+        pendingOnboards.forEach(function(entry, key) {
+            if (presentRepos.has(key)) return;
+            targetsBody.appendChild(buildOnboardPlaceholderRow(entry, key));
+        });
         const addBtn = document.createElement('button');
         addBtn.id = 'injectAddTargetBtn';
         addBtn.type = 'button';
@@ -1626,6 +1948,34 @@ export function showInjectSettingsModal(options) {
             });
         });
         targetsBody.appendChild(addBtn);
+
+        // Distinct, heavier onboard action — scaffolds, configures & registers
+        // a brand-new repo through the Worker's onboard route, versus the
+        // instant "+ Add target" row insert.
+        const onboardCard = document.createElement('button');
+        onboardCard.id = 'injectOnboardCard';
+        onboardCard.type = 'button';
+        onboardCard.className = 'injectOnboardCard';
+        const cardIcon = document.createElement('span');
+        cardIcon.className = 'injectOnboardCardIcon';
+        cardIcon.setAttribute('aria-hidden', 'true');
+        cardIcon.innerHTML = onboardRocketSvg();
+        const cardText = document.createElement('span');
+        cardText.className = 'injectOnboardCardText';
+        const cardTitle = document.createElement('span');
+        cardTitle.className = 'injectOnboardCardTitle';
+        cardTitle.textContent = 'Onboard a new repo';
+        const cardSub = document.createElement('span');
+        cardSub.className = 'injectOnboardCardSub';
+        cardSub.textContent = 'scaffold, configure & register — one tap';
+        cardText.appendChild(cardTitle);
+        cardText.appendChild(cardSub);
+        onboardCard.appendChild(cardIcon);
+        onboardCard.appendChild(cardText);
+        onboardCard.addEventListener('click', function() {
+            showOnboardModal({ onDispatched: renderTargets });
+        });
+        targetsBody.appendChild(onboardCard);
     }
 
     function renderTargetRow(target) {
@@ -1746,6 +2096,11 @@ export function showInjectSettingsModal(options) {
         renderTargets();
         renderProjectRouting();
     }
+
+    // Expose this panel's refresh to the module-level onboard completion poll
+    // while the modal is mounted; cleared in close() so a late poll tick after
+    // the panel closes only updates module state, never a stale DOM.
+    onboardRefreshHook = refreshTargets;
 
     // ── Project routing section ──
     // One row per project the user owns; each row shows the project name
@@ -1896,6 +2251,7 @@ export function showInjectSettingsModal(options) {
     function close() {
         if (closed) return;
         closed = true;
+        onboardRefreshHook = null;
         document.removeEventListener('keydown', onKeydown, true);
         if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         if (previouslyFocused &&

@@ -15119,6 +15119,165 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 
 
+/* ── ONBOARD A NEW REPO ──
+   The onboard card reads as a distinct, heavier action beneath the instant
+   "+ Add target" row insert: a dashed accent border on a faint accent-tinted
+   fill. The pending/failed placeholder rows reuse .injectTargetRow with a
+   spinner (or a danger-tinted fail glyph). The sub-modal mirrors the target
+   sub-modal's surface. No inline JS style writes — everything driven here. */
+.injectOnboardCard {
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+  padding: 10px 12px;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  color: var(--text-primary);
+  border: 1px dashed #6C5DF5;
+  border-radius: var(--radius-md);
+  background: rgba(139, 123, 255, 0.06);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.injectOnboardCard:hover { background: rgba(139, 123, 255, 0.12); border-color: var(--accent); }
+.injectOnboardCard:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+.injectOnboardCardIcon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b7bff;
+}
+.injectOnboardCardText {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.injectOnboardCardTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.injectOnboardCardSub {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Pending / failed placeholder rows. Pending mirrors the onboard card's dashed
+   accent look; failed switches to a danger tint. */
+.injectTargetRow--pending {
+  border: 1px dashed #6C5DF5;
+  background: rgba(139, 123, 255, 0.06);
+}
+.injectTargetRow--onboard-failed {
+  border-color: var(--text-danger);
+  background: rgba(255, 90, 90, 0.06);
+}
+.injectOnboardSpinner {
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-dim);
+  border-top-color: #8b7bff;
+  animation: spin 0.7s linear infinite;
+}
+.injectOnboardFailGlyph {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-danger);
+  border: 1px solid var(--text-danger);
+}
+
+/* Onboard sub-modal — same surface as the target sub-modal. */
+#injectOnboardBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 230;
+}
+#injectOnboardModal {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  width: min(380px, 92vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+}
+#injectOnboardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#injectOnboardTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+#injectOnboardClose {
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+#injectOnboardClose:hover { background: var(--bg-hover); color: var(--text-primary); }
+#injectOnboardClose:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+#injectOnboardBody {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.injectOnboardShapeSelect {
+  font-family: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  width: 100%;
+}
+.injectOnboardShapeSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+#injectOnboardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+#injectOnboardSubmit {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
 /* ── INJECT PROJECT ROUTING ──
    One row per project with a target dropdown. Autosaves on change with
    an inline "Saved" confirmation that fades after 1.5s. Empty-state copy
