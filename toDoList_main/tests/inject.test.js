@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -130,6 +130,54 @@ describe('rewriteTodoMd — worker rewrite payload', () => {
 // linked repo (or the Worker default when no target is passed). Fire-and-forget:
 // the caller polls nothing, so the result is just the spread Worker payload on
 // success.
+// onboardRepo fires the Worker's `{ onboard: true, target_repo, shape }` branch
+// through the same Bearer-secret transport dispatchRun uses, spreading the
+// Worker payload onto `{ ok: true }` on success and funneling failures through
+// describeError. `shape` defaults to 'auto' when omitted.
+describe('onboardRepo — worker onboard payload', () => {
+    function lastOnboardBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).onboard; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('POSTs { onboard, target_repo, shape } and spreads the payload', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        const res = await onboardRepo('rsterenchak/new-repo', 'build');
+        const body = lastOnboardBody();
+        expect(body).toBeTruthy();
+        expect(body.onboard).toBe(true);
+        expect(body.target_repo).toBe('rsterenchak/new-repo');
+        expect(body.shape).toBe('build');
+        expect(res.ok).toBe(true);
+        expect(res.dispatched).toBe(true);
+    });
+
+    it('defaults shape to "auto" when omitted or falsy', async () => {
+        await onboardRepo('rsterenchak/new-repo');
+        expect(lastOnboardBody().shape).toBe('auto');
+    });
+
+    it('returns { ok: false, reason } via describeError on a transport failure', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
+        const res = await onboardRepo('rsterenchak/new-repo', 'auto');
+        expect(res.ok).toBe(false);
+        expect(res.reason).toBe('Server error 500');
+    });
+
+    it('returns { ok: false } without POSTing when inject is not configured', async () => {
+        localStorage.clear();
+        initInjectConfig();
+        const res = await onboardRepo('rsterenchak/new-repo', 'auto');
+        expect(res.ok).toBe(false);
+        expect(lastOnboardBody()).toBeNull();
+    });
+});
+
 describe('dispatchTriage — worker dispatch_triage payload', () => {
     it('POSTs { dispatch_triage, project_id, correlation_id } and spreads the payload', async () => {
         fetchSpy.mockImplementationOnce(() => Promise.resolve({

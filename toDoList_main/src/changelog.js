@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-12',
+        date: '2026-07-13',
         added: [
-            "Each inject target now has an on/off switch to enable or disable it in place, dimming disabled targets, with no database edit needed.",
+            "Onboard a brand-new repository into the pipeline from Inject settings — scaffold, configure, and register it with a single tap.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-12',
         fixed: [
             "The per-project Due dates toggle is now reachable from the desktop project dropdown menu, not just the mobile drawer.",
             "The per-project Due dates toggle now sticks across devices and syncs instead of reverting after the project reloads from the server.",
