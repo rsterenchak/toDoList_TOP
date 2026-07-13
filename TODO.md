@@ -521,7 +521,7 @@
   - File: `toDoList_main/src/agentView.js`
   <!-- id: 0fe51bf8-e78e-4e4c-9fef-eb6ec289cdd8 -->
 
-- [ ] **[MEDIUM]** Sort in-progress items to top of Agent tab's Not-assigned bucket with visual marker
+- [x] **[MEDIUM]** Sort in-progress items to top of Agent tab's Not-assigned bucket with visual marker — Completed: 2026-07-13
   - Type: feature
   - Description: In `computeNotAssigned()`, sort the filtered items so those with `item.status === 'in_progress'` appear first, preserving existing relative order otherwise (stable sort). In `buildGiveToAgentCard()`, add class `agentCard--in-progress` to the card when `item.status === 'in_progress'`, add a left stripe element (`.stripe`, 3px wide, `background:#9D93EE` when in-progress else transparent) as the first child inside the card, and render a small uppercase pill/badge (e.g. `.pill` with text "In progress", color `#9D93EE`, background `rgba(157,147,238,0.12)`) beneath the title in an `.agentCardBody` wrapper when in-progress. Update `buildNotAssignedBucket()` markup/CSS in `style.css` to support the new `.agentCard--in-progress` (background `var(--bg-hover)`), `.stripe`, `.agentCardBody`, and `.pill` classes, matching the existing `#toDoChild.todo-row--in_progress` visual language (purple stripe + `bg-hover` lift) adapted for this card layout.
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
