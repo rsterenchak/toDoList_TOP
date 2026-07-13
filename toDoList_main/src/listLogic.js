@@ -2726,6 +2726,7 @@ export const listLogic = (function () {
                         target_id: payload.target_id || null,
                         stages: payload.stages || null,
                         lifecycle: payload.lifecycle || DEFAULT_LIFECYCLE,
+                        hide_dates: !!payload.hide_dates,
                     };
                 } else if (table === 'todos') {
                     // DO NOT add user_id to todos queries or payloads —
@@ -2796,6 +2797,7 @@ export const listLogic = (function () {
                         target_id: payload.target_id || null,
                         stages: payload.stages || null,
                         lifecycle: payload.lifecycle || DEFAULT_LIFECYCLE,
+                        hide_dates: !!payload.hide_dates,
                     };
                 } else if (table === 'todos') {
                     // DO NOT add user_id to todos queries or payloads —
