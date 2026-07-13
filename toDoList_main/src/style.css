@@ -3123,6 +3123,34 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   opacity: 0.85;
 }
 
+/* AGENT nav "working" dot — a small filled green dot leading the AGENT label
+   ("● AGENT"), revealed only while the agent is actively working (a triage
+   sweep or a ship run in flight). The persistent, mount-independent working
+   watch toggles the single `agentWorking` body flag; this mirrors the
+   `.agentNoRepoMarker` conditional-marker pattern and reuses the working color
+   (#2ea043) from the header status pill. Hidden by default so it costs nothing
+   when idle. */
+.agentWorkingDot {
+  display: none;
+}
+body.agentWorking #viewPillAgent .agentWorkingDot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #2ea043;
+  vertical-align: middle;
+}
+/* Breathing pulse so a live agent reads as alive; gated behind
+   prefers-reduced-motion so opted-out users get a static dot. Reuses the
+   agentDotBreathe keyframes defined with the header status pill below. */
+@media (prefers-reduced-motion: no-preference) {
+  body.agentWorking #viewPillAgent .agentWorkingDot {
+    animation: agentDotBreathe 1.8s ease-in-out infinite;
+  }
+}
+
 /* ── AGENT VIEW ──
    The per-project agent-queue board: the selected project's name + an
    "Agent queue" chip, followed by grouped buckets (Needs you, Stuck, In
@@ -14334,6 +14362,26 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     border-radius: 50%;
     background: transparent;
     opacity: 0.85;
+  }
+
+  /* AGENT tab "working" dot on mobile — same filled green working indicator as
+     the desktop pill, revealed only while body.agentWorking is set. The tab is a
+     vertical icon/label stack, so the dot is pinned to the top-left corner
+     (mirroring the top-right no-repo marker) rather than placed inline. */
+  body.agentWorking #mobileTabAgent .agentWorkingDot {
+    display: block;
+    position: absolute;
+    top: 6px;
+    left: 22%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #2ea043;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    body.agentWorking #mobileTabAgent .agentWorkingDot {
+      animation: agentDotBreathe 1.8s ease-in-out infinite;
+    }
   }
 
   .mobileTab:focus-visible {
