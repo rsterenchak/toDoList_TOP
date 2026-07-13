@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "The per-project Due dates toggle is now reachable from the desktop project dropdown menu, not just the mobile drawer.",
+            "The per-project Due dates toggle now sticks across devices and syncs instead of reverting after the project reloads from the server.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-11',
         fixed: [
-            "The shipped-run status dot on a todo now turns green reliably and shows the same state on every device, reading whether the run merged from the shared TODO.md instead of local run history.",
             "A task's pending status icon now clears when its entry is removed from TODO.md, instead of staying stuck forever.",
             "Todos handed to the Agent tab now show the run-status dot on their task row — amber once dispatched, green once the run ships — matching tasks injected directly.",
         ],

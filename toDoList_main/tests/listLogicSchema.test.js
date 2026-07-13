@@ -155,3 +155,43 @@ describe('listLogic.js — toTodoRowPayload carries the injected entry_id column
         expect(SRC).toMatch(/entryId:\s*t\.entry_id[\s\S]{0,120}\|\|\s*undefined/);
     });
 });
+
+
+describe('listLogic.js — persistMutation forwards hide_dates on the projects payload', () => {
+    // toProjectRowPayload packs hide_dates, but persistMutation does NOT forward
+    // the payload as-is for the projects table — it hand-rebuilds a fixed column
+    // whitelist in BOTH the insert and update branches. hide_dates was dropped
+    // from both whitelists, so the per-project dates toggle never reached the
+    // server: it updated localStorage (showing immediately) but the UPDATE
+    // omitted the column, so hydrateFromSupabase read the false default back and
+    // the pills reappeared ("worked then came back"). This whitelist has now
+    // silently dropped a new column more than once, so pin both branches by test.
+    const body = functionBody(SRC, 'persistMutation');
+
+    it('persistMutation exists as a declared function', () => {
+        expect(body).toBeTruthy();
+    });
+
+    // Split the funnel into its op branches so each projects row object can be
+    // asserted independently — a column present in insert but missing from
+    // update (or vice versa) is exactly the drift this guard exists to catch.
+    const insertIdx = body.indexOf("op === 'insert'");
+    const updateIdx = body.indexOf("op === 'update'");
+    const insertBranch = body.slice(insertIdx, updateIdx);
+    const updateBranch = body.slice(updateIdx);
+
+    it('locates both the insert and update branches', () => {
+        expect(insertIdx).toBeGreaterThanOrEqual(0);
+        expect(updateIdx).toBeGreaterThan(insertIdx);
+    });
+
+    it('forwards hide_dates unconditionally in the insert branch', () => {
+        // `!!payload.hide_dates`, not a truthy-only guard: un-hiding a project
+        // must persist `false`, or the off state is stranded server-side.
+        expect(insertBranch).toMatch(/hide_dates:\s*!!\s*payload\.hide_dates/);
+    });
+
+    it('forwards hide_dates unconditionally in the update branch', () => {
+        expect(updateBranch).toMatch(/hide_dates:\s*!!\s*payload\.hide_dates/);
+    });
+});
