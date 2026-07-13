@@ -13,7 +13,8 @@
 // component() and passed in; it lives on document.body and is positioned off the
 // pill's bounding rect each time it opens.
 import { listLogic } from './listLogic.js';
-import { syncProjectRowInjectBolt, deleteProjectFlow } from './projectRow.js';
+import { syncProjectRowInjectBolt, deleteProjectFlow, toggleProjectDates } from './projectRow.js';
+import { buildDatesToggleRow } from './projectMenu.js';
 import { isInjectConfigured, findTargetById, fetchActiveRuns } from './inject.js';
 
 export function createProjectPicker(deps) {
@@ -608,6 +609,20 @@ export function createProjectPicker(deps) {
             if (row) enterRowEditMode(row, projectName);
         });
         menu.appendChild(rename);
+
+        // "Due dates" switch between Rename and Delete — the same control the
+        // sidebar drawer menu uses, reading the project's current hideDates flag.
+        // stopPropagation keeps the click from reaching the dropdown's outside-
+        // click handler (which would close the picker); the context menu is torn
+        // down but the picker stays open, mirroring Rename's in-place behavior.
+        menu.appendChild(buildDatesToggleRow(
+            listLogic.getProjectHideDates(projectName),
+            function(event) {
+                if (event) event.stopPropagation();
+                hideProjectRowContextMenu();
+                toggleProjectDates(projectName);
+            }
+        ));
 
         const del = document.createElement('div');
         del.className = 'projContextMenuItem danger';
