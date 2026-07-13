@@ -485,7 +485,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5b05ecea-0d35-4229-aad9-12de94544f39 -->
 
-- [ ] **[MEDIUM]** Force-refresh the shipped-marker cache when a run reaches SHIPPED so the todo row's shipped dot updates promptly
+- [x] **[MEDIUM]** Force-refresh the shipped-marker cache when a run reaches SHIPPED so the todo row's shipped dot updates promptly — Completed: 2026-07-13
   - Type: bug
   - Description: The description-status dot on todo rows (`applyRunStatusGlyph`/`resolveEntryRunState` in `toDoList_main/src/toDoRow.js`) resolves shipped/pending state from `shippedMarkerCache` in `toDoList_main/src/inject.js`, which `refreshShippedMarkers()` only re-reads from TODO.md at most once per `SHIPPED_MARKERS_TTL_MS` (60s) unless called with `force: true`. When `claudeSheet.js`'s `setRunRecordStatus()` reconciles a polled run to SHIPPED (poll interval 5s), it calls `saveRunRecords()`, which emits `TODO_RUN_STATUS_EVENT`; `refreshDescStatusDots()` handles that by calling `refreshShippedMarkersForProject(name)` -> `refreshShippedMarkers(target)` with `force` omitted, so the real TODO.md re-read is skipped if the 60s TTL window hasn't elapsed yet, leaving the row stuck on the amber pending glyph for up to a minute after the run actually shipped.
   - Implementation notes: Add a `force` passthrough parameter to `refreshShippedMarkersForProject` in `toDoList_main/src/inject.js` (it currently calls `refreshShippedMarkers(target)` with no second argument), and call it with `force: true` from the `status === 'SHIPPED'` branch of `setRunRecordStatus` in `toDoList_main/src/claudeSheet.js` (~line 2651), using the run record's existing `project` field to target the right project.
