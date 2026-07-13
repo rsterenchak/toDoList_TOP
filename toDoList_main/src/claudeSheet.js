@@ -1515,7 +1515,8 @@ function loadWorkspaceRepos() {
     const seen = {};
     const names = [];
     targets.forEach(function(t) {
-        const repo = t && t.repo;
+        if (!t || t.enabled === false) return;
+        const repo = t.repo;
         if (repo && !seen[repo]) { seen[repo] = true; names.push(repo); }
     });
     attachRepos = names.length ? names : [DEFAULT_ATTACH_REPO];

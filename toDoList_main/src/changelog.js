@@ -13,13 +13,7 @@ export const changelog = [
         fixed: [
             "The per-project Due dates toggle is now reachable from the desktop project dropdown menu, not just the mobile drawer.",
             "The per-project Due dates toggle now sticks across devices and syncs instead of reverting after the project reloads from the server.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-11',
-        fixed: [
-            "Todos handed to the Agent tab now show the run-status dot on their task row — amber once dispatched, green once the run ships — matching tasks injected directly.",
+            "Inject targets you've turned off no longer appear as selectable repos in the chat workspace pill or the Structure view's repo picker.",
         ],
     },
 ];

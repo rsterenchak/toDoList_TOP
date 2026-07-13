@@ -2984,6 +2984,61 @@ describe('Claude sheet — chat-level workspace pill (retired control)', () => {
     });
 });
 
+// The workspace repo projection excludes disabled inject targets: a target
+// toggled off in Inject settings (`enabled === false`) must not be selectable in
+// the chat workspace pill (or, by extension, the Structure repo picker), because
+// the Worker's allowlist drops disabled repos and a chat framed on one would 400
+// at inject/dispatch. A legacy row with no `enabled` column still shows (the
+// filter is `enabled !== false`, not `enabled === true`), and if every target is
+// disabled the default-repo fallback keeps the chat usable.
+describe('Claude sheet — disabled inject targets excluded from workspace repos', () => {
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    const ENABLED_REPO = 'rsterenchak/matchingGame-test';
+    const DISABLED_REPO = 'rsterenchak/BookHavenBookstore_Sophia';
+    let realFetch;
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        // Manifest fetches 404 so no async workspace override races the projection.
+        globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) }));
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    it('drops an enabled:false target while keeping enabled and legacy (undefined) rows', async () => {
+        supaState.injectTargets = [
+            { id: 'tgt-0', nickname: DEFAULT_REPO, repo: DEFAULT_REPO, file_path: 'TODO.md', enabled: true },
+            { id: 'tgt-1', nickname: ENABLED_REPO, repo: ENABLED_REPO, file_path: 'TODO.md' },
+            { id: 'tgt-2', nickname: DISABLED_REPO, repo: DISABLED_REPO, file_path: 'TODO.md', enabled: false },
+        ];
+        mountClaudeSheet(document.body);
+        await flush();
+        const repos = getAttachRepos();
+        expect(repos).toContain(DEFAULT_REPO);
+        expect(repos).toContain(ENABLED_REPO);
+        expect(repos).not.toContain(DISABLED_REPO);
+    });
+
+    it('falls back to the default repo when every target is disabled', async () => {
+        supaState.injectTargets = [
+            { id: 'tgt-0', nickname: ENABLED_REPO, repo: ENABLED_REPO, file_path: 'TODO.md', enabled: false },
+            { id: 'tgt-1', nickname: DISABLED_REPO, repo: DISABLED_REPO, file_path: 'TODO.md', enabled: false },
+        ];
+        mountClaudeSheet(document.body);
+        await flush();
+        expect(getAttachRepos()).toEqual([DEFAULT_REPO]);
+    });
+});
+
 // The "Clear chat" control in the tab row: a text-only button, right of the
 // CHAT / RUNS selector, that wipes the current conversation — the in-memory
 // messages, their persisted copy, and the rendered bubbles — while leaving the
