@@ -159,9 +159,11 @@ function buildColorPicker(currentColorKey, onSelect) {
 // Build the "Due dates" toggle-switch row that sits between Edit and the color
 // picker. The switch reads ON (accent track) when dates are shown — the default
 // — and OFF (muted track) when the project hides them, so it flips the project's
-// hideDates flag. Tapping it closes the menu and calls onToggle, matching how
-// Edit / color swatches / Delete already close on select.
-function buildDatesToggleRow(hidden, onToggle) {
+// hideDates flag. Tapping it calls onToggle (forwarding the event so a caller
+// can stopPropagation); closing the menu is left to onToggle so each surface
+// tears down its own menu — the drawer's #projContextMenu or the dropdown
+// picker's #projRowContextMenu. Exported so the dropdown picker reuses it.
+export function buildDatesToggleRow(hidden, onToggle) {
     const row = document.createElement('div');
     row.className = 'projContextMenuItem projContextDatesItem';
     row.setAttribute('role', 'menuitemcheckbox');
@@ -182,9 +184,8 @@ function buildDatesToggleRow(hidden, onToggle) {
 
     row.appendChild(label);
     row.appendChild(sw);
-    row.addEventListener('click', function() {
-        hideProjectContextMenu();
-        onToggle();
+    row.addEventListener('click', function(event) {
+        onToggle(event);
     });
     return row;
 }
@@ -223,7 +224,10 @@ export function showProjectContextMenu(x, y, onEdit, onDelete, colorContext, dat
 
     menu.appendChild(editOpt);
     if (datesContext && typeof datesContext.onToggle === 'function') {
-        menu.appendChild(buildDatesToggleRow(!!datesContext.hidden, datesContext.onToggle));
+        menu.appendChild(buildDatesToggleRow(!!datesContext.hidden, function() {
+            hideProjectContextMenu();
+            datesContext.onToggle();
+        }));
     }
     if (colorContext && typeof colorContext.onSelect === 'function') {
         menu.appendChild(buildColorPicker(colorContext.currentColor || null, colorContext.onSelect));

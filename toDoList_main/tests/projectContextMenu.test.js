@@ -233,7 +233,7 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         'document', 'window', 'listLogic', 'projectPickerDropdown', 'mobileProjName',
         'mobileProjHeader', 'mobileProjChevron', 'sideMain', 'navigateToProjectByIndex',
         'deleteProjectFlow', 'updateFooterCounts', 'applyProjectInitial',
-        'syncProjectRowInjectBolt',
+        'syncProjectRowInjectBolt', 'buildDatesToggleRow', 'toggleProjectDates',
         region +
         '\n; return { buildProjectPickerRows: buildProjectPickerRows,' +
         ' enterRowEditMode: enterRowEditMode,' +
@@ -241,7 +241,7 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         ' closeProjectPicker: closeProjectPicker };'
     );
 
-    let api, dropdown, listLogic, navSpy, editSpy, reorderSpy, mobileProjName;
+    let api, dropdown, listLogic, navSpy, editSpy, reorderSpy, mobileProjName, datesToggleSpy;
 
     // Stateful listLogic mock mirroring the real contract: editProject re-keys
     // the project (object insertion order moves the rename to the end), so the
@@ -267,6 +267,7 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
             getProjectIncompleteCount: function (n) { return (counts && counts[n]) || 0; },
             editProject: editSpy,
             reorderProject: reorderSpy,
+            getProjectHideDates: function () { return false; },
         };
     }
 
@@ -306,10 +307,23 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         navSpy = vi.fn();
         listLogic = makeListLogic(['Alpha', 'Beta', 'Gamma'], { Alpha: 2, Beta: 0, Gamma: 5 });
 
+        // buildDatesToggleRow / toggleProjectDates are new externals the sliced
+        // showProjectRowContextMenu now references (the Due-dates switch between
+        // Rename and Delete). Stub the row builder to a real menuitem node and the
+        // toggle to a spy — the rename tests don't exercise them, they just need
+        // the references resolved so the slice runs.
         api = makeApi(
             document, window, listLogic, dropdown, mobileProjName,
             mobileProjHeader, mobileProjChevron, sideMain, navSpy,
-            vi.fn(), vi.fn(), vi.fn(), vi.fn()
+            vi.fn(), vi.fn(), vi.fn(), vi.fn(),
+            function (hidden, onToggle) {
+                const el = document.createElement('div');
+                el.className = 'projContextMenuItem';
+                el.textContent = 'Due dates';
+                el.addEventListener('click', function (event) { onToggle(event); });
+                return el;
+            },
+            (datesToggleSpy = vi.fn())
         );
         api.buildProjectPickerRows();
     });
@@ -393,6 +407,38 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         clickRenameFromMenu(row);
 
         expect(row.querySelector('input')).not.toBeNull();
+        expect(dropdown.classList.contains('open')).toBe(true);
+    });
+
+    it('the context menu carries a Due dates row between Rename and Delete', () => {
+        const row = rowAt(1); // Beta
+        row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+        const menu = document.getElementById('projRowContextMenu');
+        const labels = Array.prototype.slice
+            .call(menu.querySelectorAll('.projContextMenuItem'))
+            .map(function (it) { return it.textContent; });
+        expect(labels).toEqual(['Rename', 'Due dates', 'Delete project…']);
+    });
+
+    it('clicking Due dates flips the project and closes the menu but keeps the picker open', () => {
+        dropdown.classList.add('open');
+        document.addEventListener('click', function (e) {
+            if (!api.projectPickerIsOpen()) return;
+            if (dropdown.contains(e.target)) return;
+            api.closeProjectPicker();
+        });
+
+        const row = rowAt(1); // Beta
+        row.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }));
+        const menu = document.getElementById('projRowContextMenu');
+        let datesRow = null;
+        menu.querySelectorAll('.projContextMenuItem').forEach(function (it) {
+            if (it.textContent === 'Due dates') datesRow = it;
+        });
+        datesRow.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+
+        expect(datesToggleSpy).toHaveBeenCalledWith('Beta');
+        expect(document.getElementById('projRowContextMenu')).toBeNull();
         expect(dropdown.classList.contains('open')).toBe(true);
     });
 });

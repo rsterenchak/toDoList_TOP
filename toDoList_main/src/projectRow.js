@@ -29,6 +29,34 @@ import {
 // CSS `color` (amber accent) instead of falling back to a platform emoji.
 const INJECT_BOLT_CHAR = '⚡︎';
 
+
+// Flip a project's `hideDates` flag and, when that project is the one currently
+// shown in the main list, re-render it so the due-date pills appear/disappear
+// immediately. Shared by both the sidebar drawer context menu (via
+// `onDatesToggle`) and the dropdown project-picker context menu, so the two
+// surfaces run identical logic. The currently-shown project is resolved from
+// the DOM (`#projChild.selectedProject` → its `#projInput` value) rather than a
+// row closure, so the dropdown menu — which has no sidebar-row reference — can
+// call it too.
+export function toggleProjectDates(projectName) {
+    if (!projectName || !listLogic.listProjectsArray().includes(projectName)) return;
+    listLogic.setProjectHideDates(projectName, !listLogic.getProjectHideDates(projectName));
+    const selected = document.querySelector('#projChild.selectedProject');
+    const selectedInput = selected && selected.querySelector('#projInput');
+    const selectedName = selectedInput && selectedInput.value;
+    if (selectedName !== projectName) return;
+    const items = listLogic.listItems(projectName);
+    const mainDiv = document.getElementById('mainList');
+    if (!mainDiv) return;
+    while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
+    const hasReal = items && items.some(function(i){ return i.tit !== ''; });
+    if (hasReal) {
+        addToDos_restore(items, projectName);
+    } else if (items) {
+        addAllToDo_DOM(items, projectName);
+    }
+}
+
 // Attach (once per row) the inject-target thunderbolt indicator. The bolt
 // lives in its own leading grid cell, surfaced by toggling `hasInjectBolt` on
 // the row — so it never disturbs the title input's ellipsis truncation, and
@@ -347,24 +375,7 @@ export function attachProjectContextMenu(projChild, titleInput) {
     }
 
     function onDatesToggle() {
-        const name = titleInput.value;
-        if (!name || !listLogic.listProjectsArray().includes(name)) return;
-        listLogic.setProjectHideDates(name, !listLogic.getProjectHideDates(name));
-        // If this project is selected, re-render its task list so the due-date
-        // pills appear/disappear immediately without a manual refresh.
-        if (projChild.classList.contains('selectedProject')) {
-            const items = listLogic.listItems(name);
-            const mainDiv = document.getElementById('mainList');
-            if (mainDiv) {
-                while (mainDiv.firstChild) mainDiv.removeChild(mainDiv.firstChild);
-                const hasReal = items && items.some(function(i){ return i.tit !== ''; });
-                if (hasReal) {
-                    addToDos_restore(items, name);
-                } else if (items) {
-                    addAllToDo_DOM(items, name);
-                }
-            }
-        }
+        toggleProjectDates(titleInput.value);
     }
 
     function buildDatesContext() {
