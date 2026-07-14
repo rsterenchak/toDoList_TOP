@@ -242,6 +242,27 @@ describe('Claude sheet shell + launcher', () => {
             .toBeTruthy();
     });
 
+    it('renders the attach glyph as a simplified single-stroke currentColor SVG', () => {
+        const attach = document.getElementById('claudeComposerAttach');
+        // Emoji glyphs paint in their own fixed colors and ignore the button's
+        // `color`/hover styling; an inline SVG stroked with currentColor picks up
+        // the void-theme text color at rest and the purple accent on hover, the
+        // same treatment the mic and image buttons use.
+        const svg = attach.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.getAttribute('viewBox')).toBe('0 0 24 24');
+        expect(svg.getAttribute('stroke')).toBe('currentColor');
+        expect(svg.getAttribute('fill')).toBe('none');
+        expect(svg.getAttribute('stroke-width')).toBe('2');
+        // The simplified single-stroke clip path (one <path>, no double loop).
+        const paths = svg.querySelectorAll('path');
+        expect(paths.length).toBe(1);
+        expect(paths[0].getAttribute('d'))
+            .toBe('M17 6v10a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10a1 1 0 0 1-2 0V7');
+        // No leftover emoji glyph in the button's text.
+        expect(attach.textContent).not.toContain('📎');
+    });
+
     it('hides the file-picker button on the Runs tab and restores it on Chat', () => {
         const attach = document.getElementById('claudeComposerAttach');
         expect(attach.hidden).toBe(false);

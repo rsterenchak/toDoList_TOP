@@ -807,6 +807,19 @@ function clearChatConversation() {
 // above the button (the composer lives at the bottom of the sheet) and overlays
 // the chat surface rather than displacing it, so tapping it drops the picker
 // open right where it lives.
+// Clip glyph — a simplified single-stroke paperclip stroked with currentColor
+// and fill:none, mirroring the image button's IMAGE_SVG and voiceInput's
+// MIC_SVG. An inline SVG (rather than the 📎 emoji, which paints in its own
+// fixed colors) lets the button's void-theme color variable tint the glyph at
+// rest and the purple accent on hover, so the attach control reads identically
+// to the mic and image controls.
+const CLIP_SVG =
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M17 6v10a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10a1 1 0 0 1-2 0V7">' +
+    '</path></svg>';
+
 function buildAttach() {
     const wrap = document.createElement('div');
     wrap.className = 'claudeAttach';
@@ -818,7 +831,7 @@ function buildAttach() {
     attach.id = 'claudeComposerAttach';
     attach.type = 'button';
     attach.className = 'claudeComposerAttach';
-    attach.textContent = '📎';
+    attach.innerHTML = CLIP_SVG;
     attach.setAttribute('aria-label', 'Attach files');
     attach.setAttribute('aria-haspopup', 'menu');
     attach.setAttribute('aria-expanded', 'false');

@@ -10,6 +10,9 @@ export const changelog = [
             "Attach images to a Claude chat message — pick screenshots or design references, preview them as thumbnails, and send them with your turn.",
             "Paste a screenshot straight into the Claude chat composer (Ctrl+V) to attach it as a thumbnail, alongside the image picker.",
         ],
+        changed: [
+            "The Claude chat composer's attach button now uses a simplified single-stroke paperclip icon.",
+        ],
         fixed: [
             "The image-attach icon in the Claude chat composer now matches the mic icon's theme color and hover highlight.",
         ],
@@ -18,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-13',
         fixed: [
-            "The agent-working nav dot no longer stays lit after you switch to a project that has no triage sweep of its own running.",
             "The agent-working nav dot now updates the instant you switch projects, instead of briefly showing the previous project's state.",
         ],
     },
