@@ -489,6 +489,38 @@ describe('AGENT view — Not-assigned bucket', () => {
         expect(idle.querySelector('.agentCardBody')).toBeFalsy();
         expect(idle.querySelector('.pill')).toBeFalsy();
     });
+
+    // Regression guard for the tab-switch refresh: a status change is only ever
+    // made from the Task view (the status control doesn't exist on Agent cards,
+    // and the two views are mutually exclusive), so the Agent tab reflects it on
+    // the next renderAgentView() — which fires on every switch back to the tab.
+    // This pins that the re-render re-sorts from the task's LIVE status rather
+    // than a value snapshotted at first paint, so an item promoted to in-progress
+    // while off the tab floats to the top the moment the tab is reopened.
+    it('re-sorts the bucket on re-render after a status change made off-tab', async () => {
+        const ids = seedTodos('EtaResort', ['Alpha', 'Bravo', 'Charlie']);
+        const items = listLogic.listItems('EtaResort') || [];
+        const byId = (id) => items.find((it) => it.id === id);
+        mountDom('EtaResort');
+        queueRows = [];
+        await loadBoard();
+
+        // Initial paint: all active, so the seed order is preserved.
+        let cards = [...document.querySelectorAll('.agentCard--unassigned .agentCardTitle')].map((n) => n.textContent);
+        expect(cards).toEqual(['Alpha', 'Bravo', 'Charlie']);
+
+        // Simulate the Task-view popover promoting a middle task while the Agent
+        // tab is not the rendered view, then the user switching back to it.
+        listLogic.setToDoStatus('EtaResort', byId(ids['Charlie']), 'in_progress');
+        renderAgentView();
+        await flush();
+
+        cards = [...document.querySelectorAll('.agentCard--unassigned .agentCardTitle')].map((n) => n.textContent);
+        expect(cards).toEqual(['Charlie', 'Alpha', 'Bravo']);
+        const promoted = [...document.querySelectorAll('.agentCard--unassigned')]
+            .find((c) => c.querySelector('.agentCardTitle').textContent === 'Charlie');
+        expect(promoted.classList.contains('agentCard--in-progress')).toBe(true);
+    });
 });
 
 describe('AGENT view — Give to agent action', () => {
