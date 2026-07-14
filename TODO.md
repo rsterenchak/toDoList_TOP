@@ -584,8 +584,14 @@
   - Completed: 2026-07-14
   <!-- id: c0b1757b-31a8-4385-9caf-233de10d2c54 -->
 
-- [ ] **[LOW]** Replace attach-button paperclip icon with simplified single-stroke variant
+- [x] **[LOW]** Replace attach-button paperclip icon with simplified single-stroke variant
   - Type: feature
   - Description: The composer's attach (📎) button in the Claude sheet currently uses a classic double-loop paperclip SVG. Replace it with a simplified single-stroke clip path (`M17 6v10a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10a1 1 0 0 1-2 0V7`), keeping the same viewBox (0 0 24 24), stroke-width 2, fill none, and currentColor stroke so it still inherits the button's grey/purple hover states. No change to button size, position, or click behavior — this is a pure icon-asset swap.
   - File: `toDoList_main/src/claudeSheet.js`
+  - Completed: 2026-07-14
   <!-- id: 1a5da20c-5975-47a8-a74d-6bef9329ecf0 -->
+
+- [ ] **[LOW]** Stabilize flaky image-attachment composer tests
+  - Type: bug
+  - Description: Two tests in `toDoList_main/tests/claudeSheet.test.js` under "Claude sheet — image attachments (composer)" — "caps staged images at four per turn" and "ignores files whose type is not an allowed image format" — intermittently fail in the full `npm run test:run` suite (observed "expected 4 to be 3" and "expected 2 to be 0" on the staged-tile counts) while passing in isolation and on repeat full runs. This points to async timing or leaked state between image-staging tests (e.g. an un-awaited `pickImages`/`flush` or module-level image state not reset per test). Make the staged-image count assertions deterministic without weakening what they verify.
+  - File: `toDoList_main/tests/claudeSheet.test.js`, `toDoList_main/src/claudeSheet.js`
