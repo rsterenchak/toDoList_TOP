@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-07-14',
         added: [
             "Attach images to a Claude chat message — pick screenshots or design references, preview them as thumbnails, and send them with your turn.",
+            "Paste a screenshot straight into the Claude chat composer (Ctrl+V) to attach it as a thumbnail, alongside the image picker.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-13',
         fixed: [
-            "The shipped dot on a todo row now turns green as soon as its run ships, instead of lagging up to a minute behind.",
             "The agent-working nav dot now lights the instant a triage sweep is dispatched, instead of lagging 30-45 seconds behind.",
             "The agent-working nav dot no longer stays lit after you switch to a project that has no triage sweep of its own running.",
             "The agent-working nav dot now updates the instant you switch projects, instead of briefly showing the previous project's state.",

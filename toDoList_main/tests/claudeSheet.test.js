@@ -4457,6 +4457,62 @@ describe('Claude sheet — image attachments (composer)', () => {
         expect(btn.hidden).toBe(false);
         expect(rail.hidden).toBe(false);
     });
+
+    // Dispatch a synthetic paste on the composer. jsdom's ClipboardEvent doesn't
+    // carry a populated clipboardData, so we attach a minimal one whose items
+    // mimic the browser DataTransferItem shape (kind/type/getAsFile).
+    function pasteItems(input, items) {
+        const event = new Event('paste', { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'clipboardData', {
+            value: { items: items },
+            configurable: true,
+        });
+        input.dispatchEvent(event);
+        return event;
+    }
+
+    function imageItem(file) {
+        return { kind: 'file', type: file.type, getAsFile: () => file };
+    }
+
+    it('stages a pasted image as a thumbnail and preventDefaults the paste', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        const event = pasteItems(input, [imageItem(imageFile('shot.png', 'image/png'))]);
+        await flush();
+        const tiles = document.querySelectorAll('#claudeImageRail .claudeImageTile');
+        expect(tiles.length).toBe(1);
+        expect(tiles[0].querySelector('.claudeImageTileThumb').src.startsWith('data:image/png;base64,')).toBe(true);
+        // Raw bitmap must not also fall through into the textarea.
+        expect(event.defaultPrevented).toBe(true);
+    });
+
+    it('leaves a text-only paste untouched (no tile, not preventDefaulted)', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        const event = pasteItems(input, [{ kind: 'string', type: 'text/plain', getAsFile: () => null }]);
+        await flush();
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(0);
+        expect(event.defaultPrevented).toBe(false);
+    });
+
+    it('routes a pasted image through the shared caps (non-image items ignored)', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        pasteItems(input, [
+            { kind: 'string', type: 'text/plain', getAsFile: () => null },
+            imageItem(imageFile('vec.svg', 'image/svg+xml')),
+            imageItem(imageFile('shot.png', 'image/png')),
+        ]);
+        await flush();
+        // The text item is skipped by the paste listener; the svg is an image but
+        // outside IMAGE_ALLOWED_TYPES, so handleImagePick's shared filter drops it.
+        // Only the png stages.
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(1);
+    });
 });
 
 // The Structure view's UI lens hands regions to the chat via two exports:

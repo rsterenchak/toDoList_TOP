@@ -558,7 +558,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: edf791a0-89aa-4adf-9ceb-1d1f607eba32 -->
 
-- [ ] **[MEDIUM]** Add clipboard paste (Ctrl+V) as an image-attach path in the chat composer
+- [x] **[MEDIUM]** Add clipboard paste (Ctrl+V) as an image-attach path in the chat composer — Completed: 2026-07-14
   - Type: feature
   - Description: On desktop, pasting an image into the chat composer (Ctrl+V after a screenshot) does nothing — image attach currently only works via the 🖼 file-picker button. Add a `paste` listener on the composer textarea that extracts image blobs from the clipboard and funnels them into the existing `handleImagePick` pipeline, so pasted screenshots stage as thumbnail tiles in the same rail and ride the next turn identically to picked files. Purely additive wiring — reuses the shipped staging/encode/downscale/thumbnail path, no new UI and no change to the send or persistence flow.
   - Behavior:

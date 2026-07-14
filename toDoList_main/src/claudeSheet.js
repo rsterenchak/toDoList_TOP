@@ -1266,6 +1266,31 @@ function buildChatView() {
         }
     });
 
+    // Paste-to-attach: pasting an image (e.g. a screenshot via Ctrl+V) with the
+    // composer focused stages it as a thumbnail just like the 🖼 picker. We pull
+    // every image `file` item off the clipboard and hand the File array to
+    // handleImagePick, so caps/encode/downscale/render stay single-sourced. When
+    // at least one image is present we preventDefault so the raw bitmap doesn't
+    // also fall through as noise into the textarea; a plain-text paste carries no
+    // image item and is left completely untouched (so extractDraftedEntry still
+    // works). Scoped to the textarea, not the document, so it never intercepts
+    // pastes meant for other inputs.
+    input.addEventListener('paste', function(event) {
+        const clip = event.clipboardData;
+        if (!clip || !clip.items) return;
+        const files = [];
+        for (let i = 0; i < clip.items.length; i++) {
+            const item = clip.items[i];
+            if (item && item.kind === 'file' && item.type && item.type.indexOf('image/') === 0) {
+                const file = item.getAsFile();
+                if (file) files.push(file);
+            }
+        }
+        if (files.length === 0) return;
+        event.preventDefault();
+        handleImagePick(files);
+    });
+
     // Paint the initial label / accent / ★ from the hydrated default. Scoped to
     // the split control itself because contentEl isn't assigned until the sheet
     // body is built, and the composer isn't appended to `view` yet here.
