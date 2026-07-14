@@ -88,9 +88,18 @@ describe('mobile Sort trigger — main.js wiring', () => {
     });
 
     it('closes the sheet three ways — close button, backdrop tap, Escape', () => {
-        expect(main).toMatch(/closeX\.addEventListener\(\s*['"]click['"]\s*,\s*hideTaskSortSheet\)/);
-        expect(main).toMatch(/if \(event\.target === backdrop\) hideTaskSortSheet\(\)/);
-        expect(main).toMatch(/event\.key === ['"]Escape['"]/);
+        // The three-way close is wired through the shared wireDismissable helper
+        // rather than hand-rolled per-affordance listeners. Verify the sheet
+        // passes its close control, backdrop, and teardown to the helper (with
+        // Escape defaulting prevented), and that the helper implements Escape.
+        const call = main.match(/taskSortSheetDismiss\s*=\s*wireDismissable\(\{[\s\S]*?\}\)/);
+        expect(call).not.toBeNull();
+        const opts = call[0];
+        expect(opts).toMatch(/onClose:\s*hideTaskSortSheet/);
+        expect(opts).toMatch(/closeBtn:\s*closeX/);
+        expect(opts).toMatch(/backdrop:\s*backdrop/);
+        expect(opts).toMatch(/preventDefaultOnEscape:\s*true/);
+        expect(main).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
     });
 
     it('renders the trigger icon-only: a ⇅ sort glyph, active state tinting the glyph (no corner dot)', () => {

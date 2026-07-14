@@ -144,20 +144,34 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
     describe('Settings modal three-way close vocabulary (CLAUDE.md modal rule)', () => {
         const showFnIdx = main.indexOf('function showSettingsModal()');
         const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 15000) : '';
+        // The three-way close is now wired through the shared wireDismissable
+        // helper rather than hand-rolled listeners inside showSettingsModal;
+        // pull that call's options object out to assert what the modal delegates.
+        const dismissCall = fnSlice.match(/wireDismissable\(\{[\s\S]*?\}\)/);
+        const dismissOpts = dismissCall ? dismissCall[0] : '';
 
         it('explicit close (×) button is mounted and closes the modal', () => {
             expect(fnSlice).toMatch(/closeX\.id\s*=\s*['"]settingsModalClose['"]/);
-            expect(fnSlice).toMatch(/closeX\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+            expect(dismissOpts).toMatch(/closeBtn:\s*closeX/);
         });
 
         it('backdrop click closes the modal', () => {
-            expect(fnSlice).toMatch(/backdrop\.addEventListener\(\s*['"]click['"]/);
-            expect(fnSlice).toMatch(/event\.target\s*===\s*backdrop[\s\S]*?close\(\s*\)/);
+            expect(dismissOpts).toMatch(/backdrop:\s*backdrop/);
+            // The helper implements the backdrop-target guard that closes only
+            // on a click landing on the backdrop itself.
+            expect(main).toMatch(/event\.target\s*===\s*backdrop[\s\S]*?close\(\s*\)/);
         });
 
         it('Escape closes the modal', () => {
-            expect(fnSlice).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
-            expect(fnSlice).toMatch(/document\.addEventListener\(\s*['"]keydown['"]/);
+            // Escape is implemented once in the shared helper; the modal opts in
+            // by wiring itself through wireDismissable.
+            expect(dismissOpts).not.toBe('');
+            expect(main).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
+            expect(main).toMatch(/document\.addEventListener\(\s*['"]keydown['"]/);
+        });
+
+        it('restores focus to the pre-open element on close', () => {
+            expect(dismissOpts).toMatch(/restoreFocusTo:\s*previouslyFocused/);
         });
 
         it('settingsModalBackdrop participates in the global modal-open check', () => {
