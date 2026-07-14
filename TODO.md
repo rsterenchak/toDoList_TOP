@@ -534,7 +534,7 @@
   - File: `toDoList_main/src/agentView.js`
   <!-- id: a18f49a1-6e2a-41e9-91f1-b2111984f184 -->
 
-- [ ] **[MEDIUM]** Add image attachments (button + thumbnail previews) to the Claude chat composer
+- [x] **[MEDIUM]** Add image attachments (button + thumbnail previews) to the Claude chat composer — Completed: 2026-07-14
   - Type: feature
   - Description: Let the user attach images to a chat turn so Sonnet/Opus can see a bug/UI screenshot or a design reference (the design-ref → Void-mockup flow rides this same path — attach a reference, ask for mockups). Add a dedicated image button to the composer, base64-encode picked images client-side, preview them as thumbnail tiles above the input, and attach them to the outgoing user turn as a per-message `images` field. The Worker already ships turn-pinned multimodal support, so this is client-only. v1 is session-scoped: images live in memory and are stripped from persisted history, so they never survive a reload or bloat localStorage.
   - Behavior:
