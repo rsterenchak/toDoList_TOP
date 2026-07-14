@@ -2308,6 +2308,67 @@ function component() {
         addAllToDo_DOM(listLogic.listItems(activeName), activeName);
     }
 
+    // Shared three-affordance dismiss wiring for CLAUDE.md's modal rule (close
+    // on Escape, backdrop click, and an explicit close control) plus focus
+    // restoration on close. Consolidates the previously hand-rolled copies for
+    // the task-sort dropdown, the task-sort bottom sheet, and the settings modal
+    // so the three-way-dismiss contract can't silently drift between them. Every
+    // affordance is optional: backdrop-style sheets/modals pass closeBtn +
+    // backdrop, while the anchored dropdown passes only onClose + restoreFocusTo
+    // and keeps its own outside-click / resize / scroll dismissal alongside.
+    // onClose runs the caller's teardown at most once; restoreFocusTo (an
+    // element or a function returning one) is focused afterwards when it is
+    // still focusable and in the document. Returns { close, removeKeydown }:
+    // close() is the guarded close the wired affordances share (call it from an
+    // extra affordance such as a menu item), and removeKeydown() detaches the
+    // capture-phase Escape listener from a caller's own teardown path, for hide
+    // functions (the dropdown/sheet) that are also reachable without close().
+    function wireDismissable(options) {
+        const onClose = options.onClose;
+        const closeBtn = options.closeBtn;
+        const backdrop = options.backdrop;
+        const restoreFocusTo = options.restoreFocusTo;
+        const preventDefaultOnEscape = options.preventDefaultOnEscape;
+        let closed = false;
+
+        function removeKeydown() {
+            document.removeEventListener('keydown', onKeydown, true);
+        }
+
+        function close() {
+            if (closed) return;
+            closed = true;
+            removeKeydown();
+            onClose();
+            if (restoreFocusTo) {
+                const target = typeof restoreFocusTo === 'function'
+                    ? restoreFocusTo()
+                    : restoreFocusTo;
+                if (target && typeof target.focus === 'function' && document.contains(target)) {
+                    try { target.focus(); } catch (_) { /* focus is best-effort */ }
+                }
+            }
+        }
+
+        function onKeydown(event) {
+            if (event.key === 'Escape') {
+                if (preventDefaultOnEscape) event.preventDefault();
+                event.stopPropagation();
+                close();
+            }
+        }
+
+        document.addEventListener('keydown', onKeydown, true);
+        if (closeBtn) closeBtn.addEventListener('click', close);
+        if (backdrop) {
+            backdrop.addEventListener('click', function(event) {
+                if (event.target === backdrop) close();
+            });
+        }
+
+        return { close: close, removeKeydown: removeKeydown };
+    }
+
     // Whichever Sort trigger is currently on-screen anchors the menu and is
     // exempted from the outside-click dismissal. offsetParent is null for a
     // display:none element, so this resolves to the desktop overlay button on
@@ -2316,6 +2377,13 @@ function component() {
         if (mobileSortBtn.offsetParent !== null) return mobileSortBtn;
         return taskSortBtn;
     }
+
+    // Holds the wireDismissable handle for the open dropdown so hideTaskSortMenu
+    // — which the outside-click / resize / scroll / menu-item paths also reach
+    // directly — can detach the shared Escape listener. Only Escape restores
+    // focus to the trigger (via restoreFocusTo below); the other dismiss paths
+    // deliberately leave focus where it is, exactly as before.
+    let taskSortDismiss = null;
 
     function onTaskSortOutsideClick(event) {
         const menu = document.getElementById('taskSortMenu');
@@ -2326,22 +2394,13 @@ function component() {
         hideTaskSortMenu();
     }
 
-    function onTaskSortKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            const trigger = activeSortTrigger();
-            hideTaskSortMenu();
-            trigger.focus();
-        }
-    }
-
     function hideTaskSortMenu() {
         const existing = document.getElementById('taskSortMenu');
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
         taskSortBtn.setAttribute('aria-expanded', 'false');
         mobileSortBtn.setAttribute('aria-expanded', 'false');
         document.removeEventListener('click', onTaskSortOutsideClick, true);
-        document.removeEventListener('keydown', onTaskSortKeydown, true);
+        if (taskSortDismiss) { taskSortDismiss.removeKeydown(); taskSortDismiss = null; }
         window.removeEventListener('resize', hideTaskSortMenu);
         window.removeEventListener('scroll', hideTaskSortMenu, true);
     }
@@ -2402,7 +2461,10 @@ function component() {
         taskSortBtn.setAttribute('aria-expanded', 'true');
         mobileSortBtn.setAttribute('aria-expanded', 'true');
         document.addEventListener('click', onTaskSortOutsideClick, true);
-        document.addEventListener('keydown', onTaskSortKeydown, true);
+        taskSortDismiss = wireDismissable({
+            onClose: hideTaskSortMenu,
+            restoreFocusTo: activeSortTrigger,
+        });
         window.addEventListener('resize', hideTaskSortMenu);
         window.addEventListener('scroll', hideTaskSortMenu, true);
     }
@@ -2423,15 +2485,15 @@ function component() {
     // applyTaskSortChoice machinery as the desktop dropdown, so both surfaces
     // drive one persisted sort state. Three-affordance close per CLAUDE.md — X
     // button, backdrop tap, Escape — reusing the .completedMobileSheet* chrome.
-    let taskSortSheetKeydownHandler = null;
+    let taskSortSheetDismiss = null;
 
     function hideTaskSortSheet() {
         const backdrop = document.getElementById('taskSortSheetBackdrop');
         if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         mobileSortBtn.setAttribute('aria-expanded', 'false');
-        if (taskSortSheetKeydownHandler) {
-            document.removeEventListener('keydown', taskSortSheetKeydownHandler, true);
-            taskSortSheetKeydownHandler = null;
+        if (taskSortSheetDismiss) {
+            taskSortSheetDismiss.removeKeydown();
+            taskSortSheetDismiss = null;
         }
         try { mobileSortBtn.focus(); } catch (_) { /* defensive */ }
     }
@@ -2501,18 +2563,16 @@ function component() {
         backdrop.appendChild(sheet);
         document.body.appendChild(backdrop);
 
-        closeX.addEventListener('click', hideTaskSortSheet);
-        backdrop.addEventListener('click', function(event) {
-            if (event.target === backdrop) hideTaskSortSheet();
+        // Three-way close (X / backdrop / Escape) plus mobileSortBtn focus
+        // restore, wired through the shared helper. Focus restoration stays in
+        // hideTaskSortSheet so the chip-select and toggle-close paths — which
+        // call it directly, not through the helper — also restore focus.
+        taskSortSheetDismiss = wireDismissable({
+            onClose: hideTaskSortSheet,
+            closeBtn: closeX,
+            backdrop: backdrop,
+            preventDefaultOnEscape: true,
         });
-        taskSortSheetKeydownHandler = function(event) {
-            if (event.key === 'Escape') {
-                event.preventDefault();
-                event.stopPropagation();
-                hideTaskSortSheet();
-            }
-        };
-        document.addEventListener('keydown', taskSortSheetKeydownHandler, true);
 
         mobileSortBtn.setAttribute('aria-expanded', 'true');
         requestAnimationFrame(function() { backdrop.classList.add('is-open'); });
@@ -2945,6 +3005,7 @@ function component() {
     function showSettingsModal() {
         const prior = document.getElementById('settingsModalBackdrop');
         if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+        let close; // assigned below via wireDismissable; action rows close over it
 
         const backdrop = document.createElement('div');
         backdrop.id = 'settingsModalBackdrop';
@@ -3161,33 +3222,22 @@ function component() {
         }
         document.addEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
 
-        let closed = false;
-        function close() {
-            if (closed) return;
-            closed = true;
-            document.removeEventListener('keydown', onKeydown, true);
-            document.removeEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
-            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-            drawerSettingsBtn.setAttribute('aria-expanded', 'false');
-            if (previouslyFocused &&
-                typeof previouslyFocused.focus === 'function' &&
-                document.contains(previouslyFocused)) {
-                previouslyFocused.focus();
-            }
-        }
-
-        function onKeydown(event) {
-            if (event.key === 'Escape') {
-                event.stopPropagation();
-                close();
-            }
-        }
-
-        closeX.addEventListener('click', close);
-        backdrop.addEventListener('click', function(event) {
-            if (event.target === backdrop) close();
+        // Three-way close (× / backdrop / Escape) plus focus restore to the
+        // element that was focused before the modal opened, wired through the
+        // shared helper. The helper's guarded close() is also invoked directly
+        // by the action rows above (Export, Import, Sign out, …) so they dismiss
+        // the modal before running.
+        const settingsDismiss = wireDismissable({
+            onClose: function() {
+                document.removeEventListener('appUpdateAvailable', onAppUpdateAvailableForModal);
+                if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+                drawerSettingsBtn.setAttribute('aria-expanded', 'false');
+            },
+            closeBtn: closeX,
+            backdrop: backdrop,
+            restoreFocusTo: previouslyFocused,
         });
-        document.addEventListener('keydown', onKeydown, true);
+        close = settingsDismiss.close;
     }
 
     drawerSettingsBtn.addEventListener('click', function() {
