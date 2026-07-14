@@ -576,3 +576,10 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3308ef72-2d0f-410f-a730-00b33bb46218 -->
+
+- [ ] **[LOW]** Restyle attach-image icon to match mic icon's void theme styling
+  - Type: bug
+  - Description: The image/attach icon in the Claude sheet composer renders with its own colors instead of matching the void theme treatment applied to the mic icon (fill/stroke color, opacity, hover state). Update the image icon's styling to use the same color variables and hover/active states as the mic icon so both appear visually consistent, without changing their size or layout. Likely in the composer icon rules in `toDoList_main/src/style.css`, with the icon markup in `toDoList_main/src/claudeSheet.js`.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: c0b1757b-31a8-4385-9caf-233de10d2c54 -->
