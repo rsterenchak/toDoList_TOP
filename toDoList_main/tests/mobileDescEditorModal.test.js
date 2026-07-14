@@ -99,41 +99,57 @@ describe('mobile desc editor modal — close affordances (X / backdrop / Escape)
 
     const modals = read('modals.js');
 
-    it('the close X button is wired to close()', () => {
+    it('the close X button is wired through the shared dismiss helper', () => {
         expect(modals).toMatch(/['"]descEditorModalClose['"]/);
-        expect(modals).toMatch(/closeX\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+        // Close wiring is centralized in the shared wireModalDismiss helper
+        // rather than a hand-rolled closeX listener; the editor hands it closeX.
+        const fnIdx = modals.indexOf('function showDescEditorModal(');
+        const fn = modals.slice(fnIdx);
+        const call = fn.match(/wireModalDismiss\(\{[\s\S]*?\}\)/);
+        expect(call).not.toBeNull();
+        expect(call[0]).toMatch(/closeButtons:\s*\[\s*closeX\s*\]/);
+        // The helper wires each supplied close control's click to close().
+        expect(modals).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
     });
 
     it('clicks on the backdrop close the modal (but inside-dialog clicks do not)', () => {
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = modals.slice(fnIdx);
-        expect(fn).toMatch(
+        // The editor hands its backdrop to the shared helper, which closes only
+        // on a click that lands on the backdrop itself.
+        const call = fn.match(/wireModalDismiss\(\{[\s\S]*?\}\)/);
+        expect(call).not.toBeNull();
+        expect(call[0]).toMatch(/backdrop:\s*backdrop/);
+        expect(modals).toMatch(
             /backdrop\.addEventListener\(\s*['"]click['"]\s*,\s*function\s*\(\s*event\s*\)\s*\{\s*if\s*\(\s*event\.target\s*===\s*backdrop\s*\)\s*close\(\)/
         );
     });
 
     it('the document keydown listener closes on Escape', () => {
+        // Escape is implemented once in the shared wireModalDismiss helper; the
+        // editor opts in by routing its close wiring through it.
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         const fn = modals.slice(fnIdx);
-        expect(fn).toMatch(
+        expect(fn).toMatch(/wireModalDismiss\(\{/);
+        expect(modals).toMatch(
             /event\.key\s*===\s*['"]Escape['"][\s\S]{0,80}close\(\)/
         );
     });
 
     it('every close path persists the textarea value back to item.desc', () => {
-        // Save is implicit on any close — no separate Save button. The
-        // close() helper must call the persist routine before tearing
-        // down the DOM, otherwise backdrop / Escape close paths lose the
-        // user\'s edits.
+        // Save is implicit on any close — no separate Save button. The editor
+        // hands wireModalDismiss an onClose hook that persists, so backdrop /
+        // Escape / X close paths all save the user's edits.
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         const fn = modals.slice(fnIdx);
         // Persist routine assigns item.desc and saves.
         expect(fn).toMatch(/item\.desc\s*=\s*textarea\.value/);
-        // The close handler invokes the persist routine before DOM teardown.
-        const closeDecl = fn.match(/function\s+close\s*\(\s*\)\s*\{([\s\S]{0,400}?)backdrop\.parentNode\.removeChild/);
-        expect(closeDecl).toBeTruthy();
-        expect(closeDecl[1]).toMatch(/persist\s*\(\s*\)|item\.desc\s*=\s*textarea\.value/);
+        // The close hook passed to the shared helper invokes persist().
+        const call = fn.match(/wireModalDismiss\(\{[\s\S]*?\}\)/);
+        expect(call).not.toBeNull();
+        expect(call[0]).toMatch(/onClose:\s*onDescEditorClose/);
+        expect(fn).toMatch(/function\s+onDescEditorClose\s*\(\s*\)\s*\{[\s\S]*?persist\s*\(\s*\)/);
     });
 });
 

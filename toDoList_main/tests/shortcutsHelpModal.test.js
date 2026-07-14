@@ -166,11 +166,17 @@ describe('help modal + triggers', () => {
         const after = modals.slice(fnIdx);
         const nextFn = after.indexOf('\nexport function ', 1);
         const body = nextFn === -1 ? after : after.slice(0, nextFn);
-        expect(body).toMatch(/closeX\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
-        expect(body).toMatch(/closeBtn\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
-        expect(body).toMatch(/backdrop\.addEventListener\(\s*['"]click['"]/);
-        expect(body).toMatch(/event\.target\s*===\s*backdrop/);
-        expect(body).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
+        // The three-way close is wired through the shared wireModalDismiss
+        // helper rather than hand-rolled per-affordance listeners. The modal
+        // hands it both close controls and its backdrop; the helper implements
+        // the close-button clicks, the backdrop-target guard, and Escape once.
+        const call = body.match(/wireModalDismiss\(\{[\s\S]*?\}\)/);
+        expect(call).not.toBeNull();
+        expect(call[0]).toMatch(/closeButtons:\s*\[\s*closeX\s*,\s*closeBtn\s*\]/);
+        expect(call[0]).toMatch(/backdrop:\s*backdrop/);
+        expect(modals).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+        expect(modals).toMatch(/event\.target\s*===\s*backdrop/);
+        expect(modals).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
     });
 
     it('removes any prior help modal backdrop before mounting a new one', () => {

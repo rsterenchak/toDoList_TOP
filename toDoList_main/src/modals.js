@@ -20,6 +20,49 @@ import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI } from 
 import { reorderToDoDOM } from './toDoRow.js';
 
 
+// ── SHARED MODAL DISMISS WIRING ──
+// The dismissible modals in this file all close the same three ways — an
+// explicit close control, a backdrop click, and Escape — guarded so the close
+// runs only once, tearing down the keydown listener and detaching the backdrop
+// on the way out (CLAUDE.md: "modals must close on close-button, backdrop
+// click, and Escape"). This helper centralizes that contract so the modals
+// can't drift apart. Callers pass the backdrop, their close control(s) via
+// `closeButtons`, and an optional `onClose` hook for the modal-specific tail
+// (focus restoration, persistence) that runs after teardown. Returns the
+// guarded close function so callers can invoke it from other handlers.
+function wireModalDismiss(options) {
+    const backdrop = options.backdrop;
+    const closeButtons = options.closeButtons || [];
+    const onClose = options.onClose;
+
+    let closed = false;
+    function close() {
+        if (closed) return;
+        closed = true;
+        document.removeEventListener('keydown', onKeydown, true);
+        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+        if (typeof onClose === 'function') onClose();
+    }
+
+    function onKeydown(event) {
+        if (event.key === 'Escape') {
+            event.stopPropagation();
+            close();
+        }
+    }
+
+    for (let i = 0; i < closeButtons.length; i++) {
+        if (closeButtons[i]) closeButtons[i].addEventListener('click', close);
+    }
+    backdrop.addEventListener('click', function(event) {
+        if (event.target === backdrop) close();
+    });
+    document.addEventListener('keydown', onKeydown, true);
+
+    return close;
+}
+
+
 // ── CONFIRM MODAL ──
 // Async, themed replacement for window.confirm. Destructive actions (delete
 // project, delete todo) require a confirmation step per CLAUDE.md; the native
@@ -388,7 +431,6 @@ export function showDescEditorModal(item, options) {
 
     const previouslyFocused = document.activeElement;
 
-    let closed = false;
     function persist() {
         // Preserve markdown formatting (backticks, indentation, multi-line)
         // by storing the raw textarea value — no trim, no normalization.
@@ -399,12 +441,10 @@ export function showDescEditorModal(item, options) {
         if (typeof opts.onSave === 'function') opts.onSave();
     }
 
-    function close() {
-        if (closed) return;
-        closed = true;
+    // Save is implicit on any close — no separate Save button — then focus
+    // returns to whatever opened the editor.
+    function onDescEditorClose() {
         persist();
-        document.removeEventListener('keydown', onKeydown, true);
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
         if (previouslyFocused &&
             typeof previouslyFocused.focus === 'function' &&
             document.contains(previouslyFocused)) {
@@ -412,18 +452,11 @@ export function showDescEditorModal(item, options) {
         }
     }
 
-    function onKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-        }
-    }
-
-    closeX.addEventListener('click', close);
-    backdrop.addEventListener('click', function(event) {
-        if (event.target === backdrop) close();
+    wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX],
+        onClose: onDescEditorClose
     });
-    document.addEventListener('keydown', onKeydown, true);
 
     copyBtn.addEventListener('click', function() {
         const text = textarea.value;
@@ -636,12 +669,7 @@ export function showChangelogModal() {
     if (newest) writeChangelogLastSeen(newest);
     updateChangelogDot();
 
-    let closed = false;
-    function close() {
-        if (closed) return;
-        closed = true;
-        document.removeEventListener('keydown', onKeydown, true);
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    function onChangelogClose() {
         // When the no-projects empty state is showing, its Create button is
         // the single keyboard affordance on the page (Enter creates the
         // first project). Prefer it over `previouslyFocused`, which is
@@ -660,19 +688,11 @@ export function showChangelogModal() {
         }
     }
 
-    function onKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-        }
-    }
-
-    closeX.addEventListener('click', close);
-    closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', function(event) {
-        if (event.target === backdrop) close();
+    wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, closeBtn],
+        onClose: onChangelogClose
     });
-    document.addEventListener('keydown', onKeydown, true);
 }
 
 
@@ -885,12 +905,7 @@ export function showHelpModal() {
 
     closeBtn.focus();
 
-    let closed = false;
-    function close() {
-        if (closed) return;
-        closed = true;
-        document.removeEventListener('keydown', onKeydown, true);
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    function onHelpClose() {
         // Prefer the empty-state Create button when present — it's the
         // single keyboard affordance on that screen and Enter has to
         // route to it for the no-projects flow to work.
@@ -906,19 +921,11 @@ export function showHelpModal() {
         }
     }
 
-    function onKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-        }
-    }
-
-    closeX.addEventListener('click', close);
-    closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', function(event) {
-        if (event.target === backdrop) close();
+    wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, closeBtn],
+        onClose: onHelpClose
     });
-    document.addEventListener('keydown', onKeydown, true);
 }
 
 
@@ -1058,12 +1065,7 @@ export function showMissedDatesModal(taskTitle, misses) {
     const previouslyFocused = document.activeElement;
     closeBtn.focus();
 
-    let closed = false;
-    function close() {
-        if (closed) return;
-        closed = true;
-        document.removeEventListener('keydown', onKeydown, true);
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    function onMissedDatesClose() {
         if (previouslyFocused &&
             typeof previouslyFocused.focus === 'function' &&
             document.contains(previouslyFocused)) {
@@ -1071,19 +1073,11 @@ export function showMissedDatesModal(taskTitle, misses) {
         }
     }
 
-    function onKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-        }
-    }
-
-    closeX.addEventListener('click', close);
-    closeBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', function(event) {
-        if (event.target === backdrop) close();
+    wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, closeBtn],
+        onClose: onMissedDatesClose
     });
-    document.addEventListener('keydown', onKeydown, true);
 }
 
 const MISSED_MODAL_MONTH_SHORT = [
