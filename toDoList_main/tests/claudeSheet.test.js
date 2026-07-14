@@ -4318,12 +4318,19 @@ describe('Claude sheet — image attachments (composer)', () => {
         return new File([new Uint8Array(bytes || [1, 2, 3, 4])], name, { type });
     }
 
-    function pickImages(files) {
+    async function pickImages(files) {
         const input = document.getElementById('claudeImageInput');
         // jsdom's input.files is read-only, so define it directly; handleImagePick
         // treats the value as an array-like, so a plain array is enough.
         Object.defineProperty(input, 'files', { value: files, configurable: true });
         input.dispatchEvent(new Event('change'));
+        // Await the exact staging work the change handler kicked off (FileReader +
+        // downscale per file) rather than a fixed tick count. Under full-suite
+        // scheduling this async work could otherwise settle after the test's
+        // flush() returned — under-counting tiles or leaking a late push into the
+        // next test — so awaiting the real promise makes the tile count settle
+        // deterministically before any assertion runs.
+        await input.imagePickPromise;
     }
 
     function lastChatMessages() {
@@ -4367,7 +4374,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('stages a picked image as a thumbnail tile with a remove control', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([imageFile('shot.png', 'image/png')]);
+        await pickImages([imageFile('shot.png', 'image/png')]);
         await flush();
         const tiles = document.querySelectorAll('#claudeImageRail .claudeImageTile');
         expect(tiles.length).toBe(1);
@@ -4379,7 +4386,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('removes a staged image from the rail', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([imageFile('a.png', 'image/png'), imageFile('b.png', 'image/png')]);
+        await pickImages([imageFile('a.png', 'image/png'), imageFile('b.png', 'image/png')]);
         await flush();
         expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(2);
         document.querySelector('#claudeImageRail .claudeImageTileRemove').click();
@@ -4389,7 +4396,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('caps staged images at four per turn', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([
+        await pickImages([
             imageFile('1.png', 'image/png'), imageFile('2.png', 'image/png'),
             imageFile('3.png', 'image/png'), imageFile('4.png', 'image/png'),
             imageFile('5.png', 'image/png'),
@@ -4401,7 +4408,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('ignores files whose type is not an allowed image format', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([imageFile('doc.pdf', 'application/pdf'), imageFile('vec.svg', 'image/svg+xml')]);
+        await pickImages([imageFile('doc.pdf', 'application/pdf'), imageFile('vec.svg', 'image/svg+xml')]);
         await flush();
         expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(0);
     });
@@ -4409,7 +4416,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('attaches pending images to the outgoing user turn and clears the rail on send', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([imageFile('shot.png', 'image/png')]);
+        await pickImages([imageFile('shot.png', 'image/png')]);
         await flush();
         const input = document.getElementById('claudeComposerInput');
         input.value = 'see this';
@@ -4431,7 +4438,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('lets an image-only turn (empty text) send', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([imageFile('shot.png', 'image/png')]);
+        await pickImages([imageFile('shot.png', 'image/png')]);
         await flush();
         // Empty composer, but a pending image makes the send go through.
         document.getElementById('claudeComposerSend').click();
@@ -4455,7 +4462,7 @@ describe('Claude sheet — image attachments (composer)', () => {
     it('strips image data from persisted history and replays prior image turns text-only', async () => {
         mountClaudeSheet(document.body);
         await flush();
-        pickImages([imageFile('shot.png', 'image/png')]);
+        await pickImages([imageFile('shot.png', 'image/png')]);
         await flush();
         const input = document.getElementById('claudeComposerInput');
         input.value = 'has an image';
