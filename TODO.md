@@ -583,3 +583,9 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/claudeSheet.js`
   - Completed: 2026-07-14
   <!-- id: c0b1757b-31a8-4385-9caf-233de10d2c54 -->
+
+- [ ] **[LOW]** Replace attach-button paperclip icon with simplified single-stroke variant
+  - Type: feature
+  - Description: The composer's attach (📎) button in the Claude sheet currently uses a classic double-loop paperclip SVG. Replace it with a simplified single-stroke clip path (`M17 6v10a4 4 0 0 1-8 0V5a2.5 2.5 0 0 1 5 0v10a1 1 0 0 1-2 0V7`), keeping the same viewBox (0 0 24 24), stroke-width 2, fill none, and currentColor stroke so it still inherits the button's grey/purple hover states. No change to button size, position, or click behavior — this is a pure icon-asset swap.
+  - File: `toDoList_main/src/claudeSheet.js`
+  <!-- id: 1a5da20c-5975-47a8-a74d-6bef9329ecf0 -->
