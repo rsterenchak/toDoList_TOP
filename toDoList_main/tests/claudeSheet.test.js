@@ -4249,6 +4249,216 @@ describe('Claude sheet — chat history persisted per repo', () => {
     });
 });
 
+// Image attachments: a dedicated composer image button stages picked images as
+// thumbnail tiles above the composer, attaches them to the next user turn as a
+// per-message `images` field, and is session-scoped — base64 is stripped before
+// chat history is persisted, so a reload replays those turns text-only.
+describe('Claude sheet — image attachments (composer)', () => {
+    const CHAT_KEY = 'todoapp_claudeChat';
+    const DEFAULT_REPO = 'rsterenchak/toDoList_TOP';
+    let realFetch;
+    let chatBodies;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            if (typeof url === 'string' && url.indexOf('src-manifest.json') !== -1) {
+                return Promise.resolve({ ok: false, status: 404, json: () => Promise.resolve(null) });
+            }
+            const body = JSON.parse(opts.body);
+            if (body.repos) {
+                return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({
+                    ok: true, default: DEFAULT_REPO, repos: [{ repo: DEFAULT_REPO, srcPrefix: 'toDoList_main/src/' }],
+                }) });
+            }
+            if (body.chat) chatBodies.push(body);
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve({ reply: 'assistant reply' }) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        setInjectTargets([DEFAULT_REPO]);
+        realFetch = globalThis.fetch;
+        globalThis.fetch = makeFetch();
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    function imageFile(name, type, bytes) {
+        return new File([new Uint8Array(bytes || [1, 2, 3, 4])], name, { type });
+    }
+
+    function pickImages(files) {
+        const input = document.getElementById('claudeImageInput');
+        // jsdom's input.files is read-only, so define it directly; handleImagePick
+        // treats the value as an array-like, so a plain array is enough.
+        Object.defineProperty(input, 'files', { value: files, configurable: true });
+        input.dispatchEvent(new Event('change'));
+    }
+
+    function lastChatMessages() {
+        return chatBodies[chatBodies.length - 1].messages;
+    }
+
+    it('adds a dedicated image button + hidden multi-file input, after the attach button', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const btn = document.getElementById('claudeComposerImage');
+        const input = document.getElementById('claudeImageInput');
+        const attach = document.getElementById('claudeComposerAttach');
+        expect(btn).toBeTruthy();
+        expect(btn.getAttribute('aria-label')).toBe('Attach images');
+        expect(input).toBeTruthy();
+        expect(input.type).toBe('file');
+        expect(input.multiple).toBe(true);
+        expect(input.getAttribute('accept')).toContain('image/png');
+        expect(input.hidden).toBe(true);
+        // It's a separate control from the 📎 repo-file picker, sitting after it.
+        expect(btn.id).not.toBe(attach.id);
+        expect(attach.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('stages a picked image as a thumbnail tile with a remove control', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([imageFile('shot.png', 'image/png')]);
+        await flush();
+        const tiles = document.querySelectorAll('#claudeImageRail .claudeImageTile');
+        expect(tiles.length).toBe(1);
+        const thumb = tiles[0].querySelector('.claudeImageTileThumb');
+        expect(thumb.src.startsWith('data:image/png;base64,')).toBe(true);
+        expect(tiles[0].querySelector('.claudeImageTileRemove')).toBeTruthy();
+    });
+
+    it('removes a staged image from the rail', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([imageFile('a.png', 'image/png'), imageFile('b.png', 'image/png')]);
+        await flush();
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(2);
+        document.querySelector('#claudeImageRail .claudeImageTileRemove').click();
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(1);
+    });
+
+    it('caps staged images at four per turn', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([
+            imageFile('1.png', 'image/png'), imageFile('2.png', 'image/png'),
+            imageFile('3.png', 'image/png'), imageFile('4.png', 'image/png'),
+            imageFile('5.png', 'image/png'),
+        ]);
+        await flush();
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(4);
+    });
+
+    it('ignores files whose type is not an allowed image format', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([imageFile('doc.pdf', 'application/pdf'), imageFile('vec.svg', 'image/svg+xml')]);
+        await flush();
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(0);
+    });
+
+    it('attaches pending images to the outgoing user turn and clears the rail on send', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([imageFile('shot.png', 'image/png')]);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'see this';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        const messages = lastChatMessages();
+        const userTurn = messages[messages.length - 1];
+        expect(userTurn.role).toBe('user');
+        expect(userTurn.content).toBe('see this');
+        expect(userTurn.images).toEqual([{ media_type: 'image/png', data: 'AQIDBA==' }]);
+        // The rail clears and the sent bubble carries the thumbnail.
+        expect(document.querySelectorAll('#claudeImageRail .claudeImageTile').length).toBe(0);
+        const sent = document.querySelector('.claudeMsg--user .claudeMsgImageThumb');
+        expect(sent).toBeTruthy();
+        expect(sent.src.startsWith('data:image/png;base64,')).toBe(true);
+    });
+
+    it('lets an image-only turn (empty text) send', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([imageFile('shot.png', 'image/png')]);
+        await flush();
+        // Empty composer, but a pending image makes the send go through.
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        const messages = lastChatMessages();
+        const userTurn = messages[messages.length - 1];
+        expect(userTurn.role).toBe('user');
+        expect(userTurn.content).toBe('');
+        expect(userTurn.images.length).toBe(1);
+    });
+
+    it('does not send when there is neither text nor a pending image', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+        expect(chatBodies.length).toBe(0);
+    });
+
+    it('strips image data from persisted history and replays prior image turns text-only', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        pickImages([imageFile('shot.png', 'image/png')]);
+        await flush();
+        const input = document.getElementById('claudeComposerInput');
+        input.value = 'has an image';
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+
+        // localStorage must never carry base64: the user turn keeps its text but
+        // no `images` field.
+        const thread = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}')[DEFAULT_REPO];
+        const savedUser = thread.find((t) => t.role === 'user');
+        expect(savedUser.content).toBe('has an image');
+        expect('images' in savedUser).toBe(false);
+        expect(localStorage.getItem(CHAT_KEY)).not.toContain('AQIDBA==');
+
+        // A reload hydrates from that stripped history, so the replay is
+        // text-only. Clear the body first so the remount is the only sheet.
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.textContent).toContain('has an image');
+        expect(surface.querySelector('.claudeMsgImageThumb')).toBeNull();
+    });
+
+    it('hides the image button and rail on the Runs tab, then restores them on Chat', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const btn = document.getElementById('claudeComposerImage');
+        const rail = document.getElementById('claudeImageRail');
+        expect(btn.hidden).toBe(false);
+        expect(rail.hidden).toBe(false);
+        document.getElementById('claudeTabRuns').click();
+        expect(btn.hidden).toBe(true);
+        expect(rail.hidden).toBe(true);
+        document.getElementById('claudeTabChat').click();
+        expect(btn.hidden).toBe(false);
+        expect(rail.hidden).toBe(false);
+    });
+});
+
 // The Structure view's UI lens hands regions to the chat via two exports:
 // insertReference (drop a backticked selector + label into the composer) and
 // setChatWorkspaceRepo (reframe the conversation on a repo, the workspace-pill
