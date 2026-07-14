@@ -141,6 +141,22 @@ let pendingSuggestedFiles = [];
 // null while the attachment set is empty. Sent as `repo` alongside
 // `attach_files` on each turn.
 let attachedRepo = null;
+// Images the user has picked for the NEXT chat turn, each { media_type, data }
+// (data = raw base64, no `data:` prefix — the shape the Worker's multimodal turn
+// expects). Rendered as thumbnail tiles in the rail above the composer; moved
+// onto the outgoing user turn on send and then cleared. Session-scoped and
+// in-memory only — never persisted (saveChatHistory strips `images` before it
+// writes), so a reload or workspace swap loses them and localStorage never holds
+// base64. Bounded by IMAGE_MAX_COUNT.
+let pendingImages = [];
+// Image-attachment limits, mirrored on the Worker as a backstop. At most four
+// images per turn; each downscaled client-side (canvas) to stay under the
+// Worker's 5MB/image cap so a phone screenshot never trips its 400; only the
+// four still-image formats the model accepts are allowed.
+const IMAGE_MAX_COUNT = 4;
+const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+const IMAGE_MAX_DIMENSION = 1568;
+const IMAGE_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 // The chat-level "workspace": the repo the whole conversation is framed
 // around. Sent as `repo` on every turn so the Worker reframes its system
 // prompt, and it's the single source of truth the picker reads from. Switching
@@ -217,6 +233,12 @@ function setActiveTab(tab) {
     const attachBtn = sheetQuery('#claudeComposerAttach');
     if (attachBtn) attachBtn.hidden = tab !== 'chat';
     if (tab !== 'chat') setAttachPanelHidden(true);
+    // The image button and its pending-thumbnail rail are chat-only too — same
+    // gate as the attach button, so a Runs-tab view never shows either.
+    const imageBtn = sheetQuery('#claudeComposerImage');
+    if (imageBtn) imageBtn.hidden = tab !== 'chat';
+    const imageRail = sheetQuery('#claudeImageRail');
+    if (imageRail) imageRail.hidden = tab !== 'chat';
     // Clear chat acts on the conversation, so it's chat-only — hide it on Runs.
     const clearChatBtn = sheetQuery('#claudeClearChat');
     if (clearChatBtn) clearChatBtn.hidden = tab !== 'chat';
@@ -530,11 +552,27 @@ function writeChatMap(map) {
 }
 
 // Persist the active workspace's thread, capped to the last CHAT_HISTORY_CAP
-// turns so a long conversation can't grow the key without bound.
+// turns so a long conversation can't grow the key without bound. Any per-turn
+// `images` field is stripped before writing: attached images are session-scoped
+// and in-memory only, so base64 never lands in localStorage (a reload replays
+// those turns text-only) and can't bloat the key.
 function saveChatHistory() {
     const map = readChatMap();
-    map[activeChatRepo] = chatHistory.slice(-CHAT_HISTORY_CAP);
+    map[activeChatRepo] = chatHistory.slice(-CHAT_HISTORY_CAP).map(stripTurnImages);
     writeChatMap(map);
+}
+
+// Return a copy of a chat turn without its `images` field, or the turn itself
+// when it carries none. Used only on the persistence path so the in-memory
+// chatHistory keeps its images (the Worker still sees them on later turns within
+// the session) while localStorage never does.
+function stripTurnImages(turn) {
+    if (turn && turn.images) {
+        const copy = Object.assign({}, turn);
+        delete copy.images;
+        return copy;
+    }
+    return turn;
 }
 
 // The stored thread for `repo`, or [] when none is saved. Returns a copy so the
@@ -611,7 +649,10 @@ function replayChatHistory() {
     for (let i = 0; i < chatHistory.length; i++) {
         const turn = chatHistory[i];
         if (!turn || (turn.role !== 'user' && turn.role !== 'assistant')) continue;
-        const bubble = appendMessageBubble(turn.role, turn.content);
+        // turn.images is present only while a turn is still in the in-memory
+        // session (auto-swap replays from live chatHistory); after a reload it was
+        // stripped on save, so the replay is text-only.
+        const bubble = appendMessageBubble(turn.role, turn.content, turn.images);
         if (turn.role === 'assistant' && bubble) renderAssistantContent(bubble, turn.content);
     }
     // An empty (per-repo) thread carries a persistent capabilities note at the
@@ -852,6 +893,182 @@ function buildAttach() {
     return wrap;
 }
 
+// ── IMAGE ATTACHMENTS ──
+// A dedicated image button, distinct from the 📎 repo-file picker: it opens a
+// hidden <input type="file" accept="image/*" multiple> and the picked images are
+// read, downscaled, and staged as thumbnails in a rail above the composer, then
+// attached to the next user turn as a per-message `images` field. Everything here
+// is session-scoped and vanilla (FileReader + Canvas, no new deps).
+
+// The image button + its hidden file input, sitting between the 📎 and the mic
+// in the composer row. The wrapper is a bare flex item (mirrors .claudeAttach)
+// so the button aligns with the other 36×36 composer controls.
+function buildImageAttach() {
+    const wrap = document.createElement('div');
+    wrap.className = 'claudeImageAttach';
+
+    const btn = document.createElement('button');
+    btn.id = 'claudeComposerImage';
+    btn.type = 'button';
+    btn.className = 'claudeComposerImage';
+    btn.textContent = '🖼️';
+    btn.setAttribute('aria-label', 'Attach images');
+
+    const fileInput = document.createElement('input');
+    fileInput.id = 'claudeImageInput';
+    fileInput.className = 'claudeImageInput';
+    fileInput.type = 'file';
+    fileInput.setAttribute('accept', 'image/png,image/jpeg,image/webp,image/gif');
+    fileInput.multiple = true;
+    fileInput.hidden = true;
+
+    btn.addEventListener('click', function() {
+        // Reset the value first so re-picking the same file still fires `change`.
+        try { fileInput.value = ''; } catch (e) { /* defensive */ }
+        fileInput.click();
+    });
+    fileInput.addEventListener('change', function() {
+        handleImagePick(fileInput.files);
+    });
+
+    wrap.appendChild(btn);
+    wrap.appendChild(fileInput);
+    return wrap;
+}
+
+// Read a File to a `data:` URL via FileReader, resolving the URL string.
+function readFileAsDataURL(file) {
+    return new Promise(function(resolve, reject) {
+        const reader = new FileReader();
+        reader.onload = function() { resolve(String(reader.result || '')); };
+        reader.onerror = function() { reject(reader.error || new Error('read failed')); };
+        try { reader.readAsDataURL(file); } catch (e) { reject(e); }
+    });
+}
+
+// Split a base64 `data:` URL into { media_type, data }, or null if it isn't one.
+function parseImageDataUrl(url) {
+    const m = /^data:([^;,]+);base64,([\s\S]+)$/.exec(String(url || ''));
+    if (!m) return null;
+    return { media_type: m[1], data: m[2] };
+}
+
+// Approximate decoded byte length of a base64 string (used to compare against
+// the 5MB cap without decoding).
+function base64ByteLength(b64) {
+    const s = String(b64 || '');
+    if (!s) return 0;
+    let padding = 0;
+    if (s.charAt(s.length - 1) === '=') padding = s.charAt(s.length - 2) === '=' ? 2 : 1;
+    return Math.floor(s.length * 3 / 4) - padding;
+}
+
+// Downscale + re-encode an image so its base64 payload lands under the 5MB cap.
+// Loads the source into an <img>, draws it into a <canvas> at a reduced size, and
+// re-encodes as JPEG (much smaller than PNG for photos/screenshots, which are
+// the only things that exceed 5MB), shrinking further across a bounded set of
+// attempts until under budget. Resolves { media_type, data } or null when the
+// canvas isn't usable (e.g. no 2d context) so the caller can fall back to the
+// original bytes; the Worker enforces the same cap as a backstop.
+function downscaleImage(dataUrl) {
+    return new Promise(function(resolve) {
+        let img;
+        try { img = new Image(); } catch (e) { resolve(null); return; }
+        img.onload = function() {
+            try {
+                const canvas = document.createElement('canvas');
+                const ctx = canvas.getContext && canvas.getContext('2d');
+                const width = img.naturalWidth || img.width;
+                const height = img.naturalHeight || img.height;
+                if (!ctx || !width || !height) { resolve(null); return; }
+                let scale = Math.min(1, IMAGE_MAX_DIMENSION / Math.max(width, height));
+                let quality = 0.85;
+                for (let attempt = 0; attempt < 6; attempt++) {
+                    const w = Math.max(1, Math.round(width * scale));
+                    const h = Math.max(1, Math.round(height * scale));
+                    canvas.width = w;
+                    canvas.height = h;
+                    ctx.clearRect(0, 0, w, h);
+                    ctx.drawImage(img, 0, 0, w, h);
+                    const out = canvas.toDataURL('image/jpeg', quality);
+                    const parsed = parseImageDataUrl(out);
+                    if (parsed && base64ByteLength(parsed.data) <= IMAGE_MAX_BYTES) {
+                        resolve(parsed);
+                        return;
+                    }
+                    scale *= 0.75;
+                    quality = Math.max(0.5, quality - 0.1);
+                }
+                resolve(null);
+            } catch (e) { resolve(null); }
+        };
+        img.onerror = function() { resolve(null); };
+        img.src = dataUrl;
+    });
+}
+
+// Read one picked File into a staged image { media_type, data }. Images already
+// under the cap keep their original bytes (preserves animated GIFs and avoids a
+// needless re-encode); oversized ones are downscaled, falling back to the raw
+// bytes if the canvas path can't run. Returns null for an unreadable/unparsable
+// file.
+async function prepareImage(file) {
+    const dataUrl = await readFileAsDataURL(file);
+    const parsed = parseImageDataUrl(dataUrl);
+    if (!parsed) return null;
+    if (base64ByteLength(parsed.data) <= IMAGE_MAX_BYTES) return parsed;
+    const shrunk = await downscaleImage(dataUrl);
+    return shrunk || parsed;
+}
+
+// Handle a batch of picked files: filter to the allowed still-image types, prep
+// each (read + downscale), and stage it — capped at IMAGE_MAX_COUNT total. Any
+// single file that fails to read is skipped without aborting the batch.
+async function handleImagePick(fileList) {
+    const files = fileList ? Array.prototype.slice.call(fileList) : [];
+    for (let i = 0; i < files.length; i++) {
+        if (pendingImages.length >= IMAGE_MAX_COUNT) break;
+        const file = files[i];
+        if (!file || IMAGE_ALLOWED_TYPES.indexOf(file.type) === -1) continue;
+        try {
+            const image = await prepareImage(file);
+            if (image && pendingImages.length < IMAGE_MAX_COUNT) {
+                pendingImages.push(image);
+                renderPendingImages();
+            }
+        } catch (e) { /* skip an unreadable image */ }
+    }
+}
+
+// Repaint the pending-image rail above the composer from `pendingImages`: one
+// ~48px thumbnail tile per staged image, each with a corner × to remove it. An
+// empty rail collapses via CSS (:empty), so nothing extra is needed to hide it.
+function renderPendingImages() {
+    const rail = sheetQuery('#claudeImageRail');
+    if (!rail) return;
+    rail.innerHTML = '';
+    pendingImages.forEach(function(image, index) {
+        const tile = document.createElement('div');
+        tile.className = 'claudeImageTile';
+        const thumb = document.createElement('img');
+        thumb.className = 'claudeImageTileThumb';
+        thumb.src = imageDataUrl(image);
+        thumb.alt = 'Pending image';
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'claudeImageTileRemove';
+        remove.textContent = '×';
+        remove.setAttribute('aria-label', 'Remove image');
+        remove.addEventListener('click', function() {
+            pendingImages.splice(index, 1);
+            renderPendingImages();
+        });
+        tile.appendChild(thumb);
+        tile.appendChild(remove);
+        rail.appendChild(tile);
+    });
+}
+
 // ── SEND MODE (split button: persistent Fast/Deep default) ──
 // Hydrate chatMode from localStorage, tolerating a missing/garbage value by
 // falling back to 'fast'. Called on mount so a reload resumes the saved default.
@@ -937,6 +1154,13 @@ function buildChatView() {
     const chips = document.createElement('div');
     chips.id = 'claudeAttachChips';
     chips.className = 'claudeAttachChips';
+
+    // Pending-image rail — thumbnail tiles for images staged for the next turn,
+    // a separate rail from the file-attach chips. Sits directly above the
+    // composer; collapses when empty via CSS.
+    const imageRail = document.createElement('div');
+    imageRail.id = 'claudeImageRail';
+    imageRail.className = 'claudeImageRail';
 
     const composer = document.createElement('div');
     composer.id = 'claudeComposer';
@@ -1025,6 +1249,7 @@ function buildChatView() {
     // returns null on browsers without speech recognition, so the affordance is
     // hidden entirely rather than shown broken).
     composer.appendChild(buildAttach());
+    composer.appendChild(buildImageAttach());
     const mic = buildMicButton();
     if (mic) composer.appendChild(mic);
     composer.appendChild(input);
@@ -1075,6 +1300,7 @@ function buildChatView() {
 
     view.appendChild(surface);
     view.appendChild(chips);
+    view.appendChild(imageRail);
     view.appendChild(composer);
     return view;
 }
@@ -1335,6 +1561,10 @@ function clearAttachments() {
     renderAttachIntro();
     setAttachPanelHidden(true);
     renderAttachList('');
+    // Staged images are part of the pending turn too, so a fresh conversation
+    // (new chat / workspace swap) drops them alongside the file attachments.
+    pendingImages = [];
+    renderPendingImages();
 }
 
 // The single composer-area chip renderer. Every chip source flows through here
@@ -1604,12 +1834,36 @@ function renderWorkspacePill() {
 }
 
 // ── CHAT ──
-function appendMessageBubble(role, text) {
+// Reconstruct a displayable `data:` URL from a stored image ({ media_type, data }
+// with raw base64), used both for the pending rail and the sent-bubble thumbs.
+function imageDataUrl(image) {
+    return 'data:' + image.media_type + ';base64,' + image.data;
+}
+
+function appendMessageBubble(role, text, images) {
     const surface = sheetQuery('#claudeChatSurface');
     if (!surface) return null;
     const bubble = document.createElement('div');
     bubble.className = 'claudeMsg claudeMsg--' + role;
     bubble.textContent = text;
+    // An optional images arg renders the turn's attached images as a thumbnail
+    // gallery beneath the text (image-only turns carry an empty text node). Only
+    // the live send path and an in-session replay pass images; a post-reload
+    // replay passes undefined (they were stripped on save), so bubbles are
+    // text-only there.
+    if (Array.isArray(images) && images.length) {
+        const gallery = document.createElement('div');
+        gallery.className = 'claudeMsgImages';
+        images.forEach(function(image) {
+            if (!image || !image.media_type || !image.data) return;
+            const thumb = document.createElement('img');
+            thumb.className = 'claudeMsgImageThumb';
+            thumb.src = imageDataUrl(image);
+            thumb.alt = 'Attached image';
+            gallery.appendChild(thumb);
+        });
+        bubble.appendChild(gallery);
+    }
     surface.appendChild(bubble);
     surface.scrollTop = surface.scrollHeight;
     return bubble;
@@ -1754,14 +2008,24 @@ async function sendChatTurn(deep) {
     const send = sheetQuery('#claudeComposerSend');
     if (!input) return;
     const text = (input.value || '').trim();
-    if (!text) return;
+    // Pending images make an otherwise-empty turn sendable, so an image-only send
+    // (screenshot with no words) still goes through.
+    const images = pendingImages.map(function(image) {
+        return { media_type: image.media_type, data: image.data };
+    });
+    if (!text && !images.length) return;
     if (send && send.disabled) return;
 
     removeChatIntro();
-    chatHistory.push({ role: 'user', content: text });
+    const turn = { role: 'user', content: text };
+    if (images.length) turn.images = images;
+    chatHistory.push(turn);
     saveChatHistory();
-    appendMessageBubble('user', text);
+    appendMessageBubble('user', text, turn.images);
     input.value = '';
+    // The images now live on the sent turn; clear the pending rail.
+    pendingImages = [];
+    renderPendingImages();
 
     // A user can paste a pre-drafted entry straight into the composer; surface
     // its Inject & run card directly rather than forcing a re-prompt for Sonnet
@@ -3241,6 +3505,7 @@ export function mountClaudeSheet(parent) {
     attachedFiles = [];
     suggestedAttachedFiles = [];
     pendingSuggestedFiles = [];
+    pendingImages = [];
     attachedRepo = null;
     activeChatRepo = DEFAULT_ATTACH_REPO;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;

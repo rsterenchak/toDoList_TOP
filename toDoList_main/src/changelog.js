@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-13',
+        date: '2026-07-14',
         added: [
-            "In-progress tasks now sort to the top of the Agent tab's Not-assigned list, marked with a purple stripe and an \"In progress\" badge.",
+            "Attach images to a Claude chat message — pick screenshots or design references, preview them as thumbnails, and send them with your turn.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-13',
         fixed: [
             "The shipped dot on a todo row now turns green as soon as its run ships, instead of lagging up to a minute behind.",
             "The agent-working nav dot now lights the instant a triage sweep is dispatched, instead of lagging 30-45 seconds behind.",
