@@ -533,3 +533,27 @@
   - Description: PR #745 added `computeNotAssigned()` in `toDoList_main/src/agentView.js` (lines ~2270-2287), which stable-sorts the Not-assigned bucket so items with `item.status === 'in_progress'` render above the rest; that status is set via the Task-view status popover (`toDoList_main/src/modals.js` calling `listLogic.setToDoStatus`, defined in `toDoList_main/src/listLogic.js`). Robert re-flagged this exact request, describing the same desired behavior in his own words after the fix already shipped, without confirming whether it now works for him — this needs a real-behavior check in the live app rather than another source-only read. Mark a task in-progress via the Task-view status popover, switch to the Agent tab, and confirm it renders above non-in-progress items in the Not-assigned section (purple stripe + "In progress" pill per `buildGiveToAgentCard()`). Also check the case where a task is marked in-progress while the Agent tab is already open: `renderAgentView()` is currently invoked on tab switch (`toDoList_main/src/main.js` around line 5345) but not obviously on every status change, so the sort may not refresh until the next tab switch — if so, add a refresh trigger. If live behavior already matches the requirement, make no code change.
   - File: `toDoList_main/src/agentView.js`
   <!-- id: a18f49a1-6e2a-41e9-91f1-b2111984f184 -->
+
+- [ ] **[MEDIUM]** Add image attachments (button + thumbnail previews) to the Claude chat composer
+  - Type: feature
+  - Description: Let the user attach images to a chat turn so Sonnet/Opus can see a bug/UI screenshot or a design reference (the design-ref → Void-mockup flow rides this same path — attach a reference, ask for mockups). Add a dedicated image button to the composer, base64-encode picked images client-side, preview them as thumbnail tiles above the input, and attach them to the outgoing user turn as a per-message `images` field. The Worker already ships turn-pinned multimodal support, so this is client-only. v1 is session-scoped: images live in memory and are stripped from persisted history, so they never survive a reload or bloat localStorage.
+  - Behavior:
+    1. A dedicated image button (photo icon, 36×36 round, matching `.claudeComposerAttach`) sits in the composer row between the paperclip and the mic, opening a hidden `<input type="file" accept="image/*" multiple>`. It is separate from the existing 📎, which opens the repo-file picker — the two are distinct interactions.
+    2. On pick, each image is read to base64 and downscaled client-side (canvas) to fit under the Worker's 5MB/image cap, then shown as a ~48px thumbnail tile with a corner × to remove, in a rail directly above the composer.
+    3. On send, pending images attach to the outgoing user turn as `images: [{ media_type, data }]` (data = raw base64, no `data:` prefix; `content` stays a string, `""` for an image-only turn). They flow through the existing `chatWithWorker(chatHistory, …)` call unchanged, so the model sees them; the sent user bubble renders the thumbnails and the pending rail clears.
+    4. Session-scoped: images live only on the in-memory `chatHistory` turn. `saveChatHistory` (~line 534, key `todoapp_claudeChat`) strips the `images` field before writing to localStorage, so a reload or workspace-swap loses the images (bubbles replay text-only) and base64 never persists.
+  - Acceptance criteria:
+    - An image-only turn (images attached, empty text) is sendable — the `if (!text) return;` guard in `sendChatTurn` (~1757) must also allow send when pending images exist.
+    - Client enforces ≤4 images per turn, png/jpeg/webp/gif only, each downscaled to stay under 5MB so a phone screenshot never trips the Worker's 400 (Worker enforces the same caps as a backstop).
+    - The image button and the pending-thumbnail rail hide on non-chat tabs, same gate as `#claudeComposerAttach` (~line 217).
+    - The existing 📎 repo-file flow, its chips, and the `attach_files` payload are unaffected — image thumbs are a separate rail from the file-attach chips.
+    - Persisted chat history in localStorage never contains base64 image data; prior image turns replay as text-only after reload. Add coverage for this in `claudeSheet.test.js`.
+  - Implementation notes:
+    - No new dependencies — use native `FileReader` + `Canvas` for read/downscale/re-encode (CLAUDE.md forbids unannounced deps; image handling stays vanilla).
+    - `inject.js` needs NO change: `chatWithWorker` passes the messages array through verbatim (`payload.messages = messages`), so the per-message `images` field survives to the Worker.
+    - `appendMessageBubble` (~1607) takes an optional images arg to render thumbnails; both the live send path and `replayChatHistory` (~611) pass the turn's images when present (undefined after reload, since stripped — so replay stays text-only there).
+    - Match Void tokens for the new control (36×36 round, `--bg-elevated` fill, `#23242e` hairline, the accent-halo hover the other composer buttons use); thumbnail tiles ~48px, `8px` radius.
+  - Out of scope: Worker-side image caching (separate direct deploy); durable/persistent design references that survive reload or pin to a conceive shape; feeding images into the agent/structure mockup-gen call sites (those are programmatic, not composer-originated).
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: edf791a0-89aa-4adf-9ceb-1d1f607eba32 -->
