@@ -557,3 +557,22 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: edf791a0-89aa-4adf-9ceb-1d1f607eba32 -->
+
+- [ ] **[MEDIUM]** Add clipboard paste (Ctrl+V) as an image-attach path in the chat composer
+  - Type: feature
+  - Description: On desktop, pasting an image into the chat composer (Ctrl+V after a screenshot) does nothing — image attach currently only works via the 🖼 file-picker button. Add a `paste` listener on the composer textarea that extracts image blobs from the clipboard and funnels them into the existing `handleImagePick` pipeline, so pasted screenshots stage as thumbnail tiles in the same rail and ride the next turn identically to picked files. Purely additive wiring — reuses the shipped staging/encode/downscale/thumbnail path, no new UI and no change to the send or persistence flow.
+  - Behavior:
+    1. A `paste` listener on `#claudeComposerInput` reads `event.clipboardData.items`, collects every item with `kind === 'file'` and an `image/*` type via `getAsFile()`, and passes the resulting File array to `handleImagePick(...)` — which already filters to `IMAGE_ALLOWED_TYPES`, downscales past `IMAGE_MAX_BYTES`, caps at `IMAGE_MAX_COUNT`, and repaints the rail via `renderPendingImages`.
+    2. When at least one image is extracted, call `event.preventDefault()` so the raw bitmap doesn't also fall through as a file-path/noise insert into the textarea. When no image item is present, return early and do nothing — a normal text paste is untouched.
+  - Acceptance criteria:
+    - Pasting a screenshot with the composer focused stages a thumbnail in `#claudeImageRail`, removable via its corner ×, and it sends on the next turn exactly like a file-picked image (same per-message `images` field, same session-scoped strip).
+    - Pasting plain text (including a pre-drafted TODO entry) is completely unaffected — the listener only acts on image `file` items and never preventDefaults a text paste, so the existing paste-a-drafted-entry-at-send flow (`extractDraftedEntry`) still works.
+    - Paste respects the same caps as the picker (≤4 total, png/jpeg/webp/gif, ≤5MB via the shared downscale) because it routes through `handleImagePick` rather than staging directly.
+    - Add coverage in `claudeSheet.test.js`: a synthesized `paste` event carrying an image `file` item populates `pendingImages` / renders a tile; a text-only paste does not.
+  - Implementation notes:
+    - Wire the listener in the composer build alongside the textarea's existing `keydown` handler; do not stage into `pendingImages` directly — call `handleImagePick` so caps/encode/downscale/render stay single-sourced.
+    - No new dependencies and no `style.css` change — the thumbnail rail and tiles already exist and render identically to the file-picker path.
+    - Scoped to the textarea (not a document-level listener) so it can't intercept pastes meant for other inputs; works on both desktop and mobile keyboards, though it's a desktop-primary flow.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3308ef72-2d0f-410f-a730-00b33bb46218 -->
