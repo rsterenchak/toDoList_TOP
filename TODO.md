@@ -528,7 +528,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6c950913-11bd-43cf-8e63-9537d7efcaea -->
 
-- [ ] **[LOW]** Verify in-progress Task-view items float to the top of the Agent tab's Not-assigned bucket, and fix any drift if a mismatch is found
+- [x] **[LOW]** Verify in-progress Task-view items float to the top of the Agent tab's Not-assigned bucket, and fix any drift if a mismatch is found — Completed: 2026-07-14
   - Type: bug
   - Description: PR #745 added `computeNotAssigned()` in `toDoList_main/src/agentView.js` (lines ~2270-2287), which stable-sorts the Not-assigned bucket so items with `item.status === 'in_progress'` render above the rest; that status is set via the Task-view status popover (`toDoList_main/src/modals.js` calling `listLogic.setToDoStatus`, defined in `toDoList_main/src/listLogic.js`). Robert re-flagged this exact request, describing the same desired behavior in his own words after the fix already shipped, without confirming whether it now works for him — this needs a real-behavior check in the live app rather than another source-only read. Mark a task in-progress via the Task-view status popover, switch to the Agent tab, and confirm it renders above non-in-progress items in the Not-assigned section (purple stripe + "In progress" pill per `buildGiveToAgentCard()`). Also check the case where a task is marked in-progress while the Agent tab is already open: `renderAgentView()` is currently invoked on tab switch (`toDoList_main/src/main.js` around line 5345) but not obviously on every status change, so the sort may not refresh until the next tab switch — if so, add a refresh trigger. If live behavior already matches the requirement, make no code change.
   - File: `toDoList_main/src/agentView.js`
