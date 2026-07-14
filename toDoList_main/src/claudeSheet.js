@@ -900,6 +900,19 @@ function buildAttach() {
 // attached to the next user turn as a per-message `images` field. Everything here
 // is session-scoped and vanilla (FileReader + Canvas, no new deps).
 
+// Image glyph — a framed-picture icon (frame, sun, mountain) stroked with
+// currentColor and fill:none, mirroring voiceInput's MIC_SVG. Using an inline
+// SVG rather than the 🖼️ emoji lets the button's void-theme color variables and
+// its purple hover color actually paint the glyph (an emoji renders in its own
+// fixed colors), so the image control reads identically to the mic.
+const IMAGE_SVG =
+    '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    '<rect x="3" y="3" width="18" height="18" rx="2"></rect>' +
+    '<circle cx="8.5" cy="8.5" r="1.5"></circle>' +
+    '<path d="M21 15l-5-5L5 21"></path></svg>';
+
 // The image button + its hidden file input, sitting between the 📎 and the mic
 // in the composer row. The wrapper is a bare flex item (mirrors .claudeAttach)
 // so the button aligns with the other 36×36 composer controls.
@@ -911,7 +924,7 @@ function buildImageAttach() {
     btn.id = 'claudeComposerImage';
     btn.type = 'button';
     btn.className = 'claudeComposerImage';
-    btn.textContent = '🖼️';
+    btn.innerHTML = IMAGE_SVG;
     btn.setAttribute('aria-label', 'Attach images');
 
     const fileInput = document.createElement('input');
