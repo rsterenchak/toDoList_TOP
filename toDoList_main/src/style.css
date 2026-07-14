@@ -2006,10 +2006,12 @@ body:has(#settingsMenu) #claudeLauncher {
   transition: color 0.15s ease, box-shadow 0.15s ease;
 }
 .claudeComposerAttach[hidden] { display: none; }
-/* Image attach (🖼️) — a dedicated composer button, distinct from the 📎 repo
-   picker, that opens a hidden file input. Shares the attach button's round
-   neutral surface so the two read as siblings. Its wrapper is a bare flex item
-   (like .claudeAttach) so the button aligns in the composer row. */
+/* Image attach — a dedicated composer button, distinct from the 📎 repo
+   picker, that opens a hidden file input. Its glyph is a currentColor SVG (like
+   the mic's), so it shares the void-theme neutral surface, resting glyph color,
+   and hover/active treatment of the mic button and reads as its sibling. Its
+   wrapper is a bare flex item (like .claudeAttach) so the button aligns in the
+   composer row. */
 .claudeImageAttach {
   position: relative;
   display: flex;
@@ -2027,8 +2029,7 @@ body:has(#settingsMenu) #claudeLauncher {
   color: var(--text-secondary);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
-  font-size: 16px;
-  transition: color 0.15s ease, box-shadow 0.15s ease;
+  transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
 .claudeComposerImage[hidden] { display: none; }
 .claudeComposerImage:hover {

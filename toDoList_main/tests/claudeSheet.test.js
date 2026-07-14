@@ -4327,6 +4327,22 @@ describe('Claude sheet — image attachments (composer)', () => {
         expect(attach.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
+    it('renders the image glyph as a currentColor SVG so it tracks the void theme like the mic', async () => {
+        mountClaudeSheet(document.body);
+        await flush();
+        const btn = document.getElementById('claudeComposerImage');
+        // Emoji glyphs render in their own fixed colors and ignore the button's
+        // `color`/hover styling; an inline SVG stroked with currentColor picks up
+        // the void-theme text color at rest and the purple accent on hover, the
+        // same treatment the mic button (MIC_SVG) uses.
+        const svg = btn.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.getAttribute('stroke')).toBe('currentColor');
+        expect(svg.getAttribute('fill')).toBe('none');
+        // No leftover emoji glyph in the button's text.
+        expect(btn.textContent).not.toContain('🖼');
+    });
+
     it('stages a picked image as a thumbnail tile with a remove control', async () => {
         mountClaudeSheet(document.body);
         await flush();
