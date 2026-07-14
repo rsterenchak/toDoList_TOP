@@ -591,7 +591,7 @@
   - Completed: 2026-07-14
   <!-- id: 1a5da20c-5975-47a8-a74d-6bef9329ecf0 -->
 
-- [ ] **[LOW]** Stabilize flaky image-attachment composer tests
+- [x] **[LOW]** Stabilize flaky image-attachment composer tests — Completed: 2026-07-14
   - Type: bug
   - Description: Two tests in `toDoList_main/tests/claudeSheet.test.js` under "Claude sheet — image attachments (composer)" — "caps staged images at four per turn" and "ignores files whose type is not an allowed image format" — intermittently fail in the full `npm run test:run` suite (observed "expected 4 to be 3" and "expected 2 to be 0" on the staged-tile counts) while passing in isolation and on repeat full runs. This points to async timing or leaked state between image-staging tests (e.g. an un-awaited `pickImages`/`flush` or module-level image state not reset per test). Make the staged-image count assertions deterministic without weakening what they verify.
   - File: `toDoList_main/tests/claudeSheet.test.js`, `toDoList_main/src/claudeSheet.js`

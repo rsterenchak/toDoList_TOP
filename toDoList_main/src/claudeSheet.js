@@ -954,7 +954,10 @@ function buildImageAttach() {
         fileInput.click();
     });
     fileInput.addEventListener('change', function() {
-        handleImagePick(fileInput.files);
+        // Staging is async (FileReader + optional downscale per file). Expose the
+        // in-flight promise on the input so callers can await the work settling —
+        // the `change` event itself resolves before any tile renders.
+        fileInput.imagePickPromise = handleImagePick(fileInput.files);
     });
 
     wrap.appendChild(btn);
