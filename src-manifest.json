@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-15T07:35:06.130Z",
-  "sha": "317b9658d868d20685e67d10f3978d8a03826e2a",
+  "generatedAt": "2026-07-15T07:57:29.466Z",
+  "sha": "e75aba28155e22066016d21729d09517f81e08ec",
   "files": [
     "agentView.js",
     "auth.js",
@@ -3823,11 +3823,11 @@
       "selector": "#projRowContextMenu",
       "label": "Proj Row Context Menu",
       "file": "projectPicker.js",
-      "line": 587,
+      "line": 611,
       "files": [
         {
           "file": "projectPicker.js",
-          "line": 587
+          "line": 611
         },
         {
           "file": "style.css",
