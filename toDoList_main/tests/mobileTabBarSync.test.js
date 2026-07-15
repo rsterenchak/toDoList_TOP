@@ -23,6 +23,10 @@ function read(relative) {
 // instantiate end-to-end in jsdom (per CLAUDE.md guidance).
 describe('mobile tab bar / #mainBar[data-view] sync', () => {
     const main = read('main.js');
+    // The mobile tab bar (buildMobileTab + the tab elements) was extracted
+    // into mobileUtilitySheet.js; applyActiveView and the #mainBar creation
+    // seed stay in main.js. Assertions about the builder read the module.
+    const sheet = read('mobileUtilitySheet.js');
 
     describe('element creation site', () => {
         it('seeds #mainBar.dataset.view = "projects" at the DOM build site', () => {
@@ -96,9 +100,9 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         it('each mobile tab click handler calls applyActiveView(viewKey)', () => {
             // buildMobileTab wires every button to applyActiveView so
             // taps cannot bypass the canonical writer.
-            const builderIdx = main.indexOf('function buildMobileTab');
+            const builderIdx = sheet.indexOf('function buildMobileTab');
             expect(builderIdx).toBeGreaterThan(-1);
-            const builderBody = main.slice(builderIdx, builderIdx + 1500);
+            const builderBody = sheet.slice(builderIdx, builderIdx + 1500);
             // The click handler routes to applyActiveView(viewKey) after an
             // AGENT-tab unavailable-repo guard, so the window is wider than the
             // bare wiring it used to hold.
@@ -258,7 +262,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         // Decoupling the visible string from the aria-label is what keeps
         // the rename purely cosmetic.
         it('builds the projects tab with a "Tasks View" visible label', () => {
-            expect(main).toMatch(
+            expect(sheet).toMatch(
                 /buildMobileTab\(\s*['"]projects['"]\s*,\s*['"]Projects['"]\s*,\s*ICON_LIST\s*,\s*['"]Tasks View['"]\s*\)/
             );
         });
@@ -267,7 +271,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             // The third call argument supplies the accessible name; the
             // fourth (displayLabel) supplies only the visible text. The
             // 'projects' first argument is the viewKey used everywhere.
-            const m = main.match(
+            const m = sheet.match(
                 /buildMobileTab\(\s*['"]projects['"]\s*,\s*['"]([^'"]+)['"]/
             );
             expect(m).not.toBeNull();
@@ -275,9 +279,9 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         });
 
         it('buildMobileTab sets aria-label from `label`, visible text from `displayLabel`', () => {
-            const builderIdx = main.indexOf('function buildMobileTab');
+            const builderIdx = sheet.indexOf('function buildMobileTab');
             expect(builderIdx).toBeGreaterThan(-1);
-            const builderBody = main.slice(builderIdx, builderIdx + 1500);
+            const builderBody = sheet.slice(builderIdx, builderIdx + 1500);
             // aria-label is wired to `label`, the accessible name.
             expect(builderBody).toMatch(
                 /setAttribute\(\s*['"]aria-label['"]\s*,\s*label\s*\)/
@@ -291,15 +295,15 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         it('renders "Tasks View" text and "Projects" aria-label at runtime', () => {
             // Lift the buildMobileTab body and run it against a real DOM to
             // pin the BEHAVIOR, not just the source shape.
-            const builderIdx = main.indexOf('function buildMobileTab');
-            const braceStart = main.indexOf('{', builderIdx);
+            const builderIdx = sheet.indexOf('function buildMobileTab');
+            const braceStart = sheet.indexOf('{', builderIdx);
             let depth = 0;
             let body = '';
-            for (let i = braceStart; i < main.length; i++) {
-                if (main[i] === '{') depth++;
-                else if (main[i] === '}') {
+            for (let i = braceStart; i < sheet.length; i++) {
+                if (sheet[i] === '{') depth++;
+                else if (sheet[i] === '}') {
                     depth--;
-                    if (depth === 0) { body = main.slice(braceStart, i + 1); break; }
+                    if (depth === 0) { body = sheet.slice(braceStart, i + 1); break; }
                 }
             }
             expect(body).not.toBe('');

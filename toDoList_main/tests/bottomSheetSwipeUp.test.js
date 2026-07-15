@@ -17,10 +17,11 @@ function read(relative) {
 // physical, and commits on a 40px distance / short upward velocity.
 // While the sheet is expanded the reverse gesture (swipe-down anywhere
 // on the drawer container) dismisses. Verified through source inspection
-// because main.js is too large to instantiate end-to-end in jsdom (per
-// CLAUDE.md).
+// (per CLAUDE.md's file-size guidance). The sheet's DOM/logic now lives in
+// mobileUtilitySheet.js (extracted from main.js's component()), so the JS
+// assertions read that module.
 describe('Mobile bottom sheet swipe-up gesture', () => {
-    const main = read('main.js');
+    const main = read('mobileUtilitySheet.js');
     const css  = read('style.css');
 
     it('mounts the bottom-edge swipe hit zone inside #bottomSheet', () => {

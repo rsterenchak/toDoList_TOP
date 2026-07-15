@@ -27,8 +27,10 @@ function clearMusicStorage() {
 }
 
 
+// The sheet's DOM/logic now lives in mobileUtilitySheet.js (extracted from
+// main.js's component()), so the JS assertions read that module.
 describe('mobile music picker — volume row beneath the paste button', () => {
-    const main = read('main.js');
+    const main = read('mobileUtilitySheet.js');
     const css  = read('style.css');
 
     it('appends a sheetVolumeRow to the picker view directly after sheetPasteRow', () => {

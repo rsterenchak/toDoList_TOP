@@ -15,10 +15,12 @@ function read(relative) {
 // visible states (IDLE → PEEK → EXPANDED), reuses the existing pomodoro.js /
 // music.js controllers without changing their logic, and follows the
 // CLAUDE.md three-way modal close vocabulary when expanded. Source
-// inspection (rather than full jsdom instantiation) is used because main.js
-// is too large to load end-to-end (see CLAUDE.md note on file size).
+// inspection (rather than full jsdom instantiation) is used because the
+// source is large (see CLAUDE.md note on file size). The sheet's DOM/logic
+// now lives in mobileUtilitySheet.js (extracted from main.js's component()),
+// so the JS assertions read that module.
 describe('STACK mobile bottom sheet utility surface', () => {
-    const main   = read('main.js');
+    const main   = read('mobileUtilitySheet.js');
     const css    = read('style.css');
     const modals = read('modals.js');
 
