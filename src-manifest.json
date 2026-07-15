@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-15T07:57:29.466Z",
-  "sha": "e75aba28155e22066016d21729d09517f81e08ec",
+  "generatedAt": "2026-07-15T09:04:14.708Z",
+  "sha": "09432b49bd1b526fc7213bd8c898db6683858368",
   "files": [
     "agentView.js",
     "auth.js",
@@ -1043,11 +1043,11 @@
       "selector": "#claudeSheet",
       "label": "Claude Sheet",
       "file": "claudeSheet.js",
-      "line": 3300,
+      "line": 3328,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3300
+          "line": 3328
         },
         {
           "file": "style.css",
@@ -1059,11 +1059,11 @@
       "selector": "#claudeSheetBackdrop",
       "label": "Claude Sheet Backdrop",
       "file": "claudeSheet.js",
-      "line": 3455,
+      "line": 3483,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3455
+          "line": 3483
         },
         {
           "file": "style.css",
@@ -1075,11 +1075,11 @@
       "selector": "#claudeSheetBody",
       "label": "Claude Sheet Body",
       "file": "claudeSheet.js",
-      "line": 3360,
+      "line": 3388,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3360
+          "line": 3388
         },
         {
           "file": "style.css",
@@ -1091,11 +1091,11 @@
       "selector": "#claudeSheetClose",
       "label": "Claude Sheet Close",
       "file": "claudeSheet.js",
-      "line": 3319,
+      "line": 3347,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3319
+          "line": 3347
         },
         {
           "file": "style.css",
@@ -1107,11 +1107,11 @@
       "selector": "#claudeSheetCloseRow",
       "label": "Claude Sheet Close Row",
       "file": "claudeSheet.js",
-      "line": 3328,
+      "line": 3356,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3328
+          "line": 3356
         }
       ]
     },
@@ -1119,11 +1119,11 @@
       "selector": "#claudeSheetHandle",
       "label": "Claude Sheet Handle",
       "file": "claudeSheet.js",
-      "line": 3310,
+      "line": 3338,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3310
+          "line": 3338
         },
         {
           "file": "style.css",
@@ -1135,11 +1135,11 @@
       "selector": "#claudeSheetTabs",
       "label": "Claude Sheet Tabs",
       "file": "claudeSheet.js",
-      "line": 3333,
+      "line": 3361,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3333
+          "line": 3361
         },
         {
           "file": "style.css",
