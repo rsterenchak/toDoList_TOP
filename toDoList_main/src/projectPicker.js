@@ -102,7 +102,27 @@ export function createProjectPicker(deps) {
         const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
         const activeName = mobileProjName.textContent || '';
 
-        projects.forEach(function(name, idx) {
+        // Stable-partition routed (inject-target) projects ahead of unrouted
+        // ones so the amber ⚡ rows surface at the top of the dropdown; relative
+        // order within each group is preserved. Same per-project gate as the ⚡
+        // bolt (syncProjectRowInjectBolt): inject configured AND a resolvable
+        // target id. The row click handler below still resolves each row back to
+        // its slot in the ORIGINAL unsorted array (projects.indexOf(name)),
+        // because navigateToProjectByIndex indexes into that same unsorted
+        // listLogic order — indexing by the sorted position would navigate to
+        // the wrong project.
+        const injectConfigured = isInjectConfigured();
+        const isRouted = function(name) {
+            return injectConfigured && !!listLogic.getProjectTargetId(name);
+        };
+        const routed = [];
+        const unrouted = [];
+        projects.forEach(function(name) {
+            (isRouted(name) ? routed : unrouted).push(name);
+        });
+        const displayProjects = routed.concat(unrouted);
+
+        displayProjects.forEach(function(name) {
             const row = document.createElement('div');
             row.className = 'projectPickerRow';
             row.setAttribute('role', 'menuitem');
@@ -144,7 +164,11 @@ export function createProjectPicker(deps) {
             row.addEventListener('click', function() {
                 // Active row: just dismiss (no project change). Otherwise
                 // route through the shared selection path, then dismiss.
-                if (!isActive) navigateToProjectByIndex(idx);
+                // Resolve the row's index against the ORIGINAL unsorted array
+                // (not its position in the sorted display list) so the shared
+                // selection path lands on the right project after routed rows
+                // are hoisted to the top.
+                if (!isActive) navigateToProjectByIndex(projects.indexOf(name));
                 closeProjectPicker();
             });
 
