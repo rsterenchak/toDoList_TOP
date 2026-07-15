@@ -611,3 +611,10 @@
   - Out of scope: The dismiss-wiring implementations in other files (`main.js` — already deduped in PR #752, `toDoRow.js`, `claudeSheet.js`, `inject.js`, `mobileSheets.js`, `projectPicker.js`, `seedTasksModal.js`, `welcomeCarousel.js`) — this entry is scoped to the five duplicated instances within `modals.js` only.
   - File: `toDoList_main/src/modals.js`
   <!-- id: 95b131fa-df7e-48b6-b46d-432572635e28 -->
+
+- [ ] **[LOW]** Dedupe `seedTasksModal.js`'s modal-dismiss wiring into the shared `wireModalDismiss` helper
+  - Type: feature
+  - Description: `toDoList_main/src/modals.js` (lines 33-63) already centralizes the three-way modal-dismiss contract (close button, backdrop click, Escape) as a private `wireModalDismiss` helper, and PR #753 moved `showDescEditorModal`, `showChangelogModal`, `showHelpModal`, and `showMissedDatesModal` onto it. `toDoList_main/src/seedTasksModal.js` (lines 253-278) still hand-rolls the identical pattern — a guarded `close()`, an `onKeydown` Escape handler registered with `document.addEventListener('keydown', onKeydown, true)`, `closeX`/`cancelBtn` click listeners, and a backdrop-click check — plus a focus-restore tail (`previouslyFocused.focus()`) that maps directly onto `wireModalDismiss`'s existing `onClose` hook.
+  - Implementation notes: Export `wireModalDismiss` from `modals.js` and call it from `openSeedTasksModal` with `closeButtons: [closeX, cancelBtn]` and `onClose` doing the focus restore, removing the duplicated `close`/`onKeydown`/listener wiring in `seedTasksModal.js`. Pure internal refactor — no visible or behavioral change, so no mockup needed.
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/seedTasksModal.js`
+  <!-- id: a675c9f3-8e75-445b-96b9-2fe08284323f -->
