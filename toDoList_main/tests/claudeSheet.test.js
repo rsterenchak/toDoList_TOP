@@ -1194,6 +1194,60 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].unconfirmed).not.toBe(true);
     });
 
+    it('keeps watching a run dispatched past the window while a recent poll confirmed it alive', async () => {
+        // A long Opus build (implement, test, PR, merge) can genuinely run past
+        // 20 minutes while healthy. Because a recent poll confirmed it alive
+        // (lastAliveAt is recent), the give-up window measures idle time from
+        // that signal — not from dispatch — so the row must stay RUNNING even
+        // though dispatchedAt is 25 minutes old. The poll reports in_progress.
+        statusJson = { found: true, status: 'in_progress' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Slow but alive', status: 'RUNNING', dispatchedAt: Date.now() - 25 * 60 * 1000, lastAliveAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        // Not aged out: the recent alive signal holds the window open.
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Running');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].unconfirmed).not.toBe(true);
+        // A confirmed-alive poll refreshes lastAliveAt so the window keeps sliding.
+        expect(typeof stored[0].lastAliveAt).toBe('number');
+        expect(stored[0].lastAliveAt).toBeGreaterThanOrEqual(Date.now() - 25 * 60 * 1000);
+    });
+
+    it('records lastAliveAt when a fresh poll confirms the run in_progress', async () => {
+        // Even a run within the window stamps lastAliveAt on the confirming poll,
+        // so the give-up window can slide off it once dispatch time recedes.
+        statusJson = { found: true, status: 'in_progress' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Fresh alive', status: 'RUNNING', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(typeof stored[0].lastAliveAt).toBe('number');
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Running');
+    });
+
+    it('still gives up on a stale run past the window that has no recent alive signal', async () => {
+        // Guardrail for the lastAliveAt change: a run whose last confirmed-alive
+        // signal is itself older than the window (here, never confirmed alive at
+        // all — no lastAliveAt, dispatched 21 minutes ago) must still age out to
+        // "Unknown" rather than watch forever.
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Truly stale', status: 'RUNNING', dispatchedAt: Date.now() - 21 * 60 * 1000 },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Unknown');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).not.toBe('FAILED');
+        expect(stored[0].unconfirmed).toBe(true);
+    });
+
     it('marks the run unconfirmed when the poll reports completed with a non-failure conclusion', async () => {
         statusJson = { found: true, status: 'completed', conclusion: 'neutral' };
         await sendMessage('draft me an entry');

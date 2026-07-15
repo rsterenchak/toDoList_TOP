@@ -3029,6 +3029,23 @@ function markRunRecordUnconfirmed(correlationId) {
     }
 }
 
+// Record that a poll just confirmed this run is still alive (status queued or
+// in_progress). The give-up window measures idle time from this timestamp, so a
+// healthy long build that keeps reporting progress never ages out mid-flight.
+// Persisted (but not re-rendered — lastAliveAt is invisible) so the window
+// survives a reload: dispatchedAt alone would age a 20-minute-plus build out the
+// instant its Runs tab remounts.
+function markRunRecordAlive(correlationId) {
+    let changed = false;
+    for (let i = 0; i < runRecords.length; i++) {
+        if (runRecords[i].correlationId === correlationId) {
+            runRecords[i].lastAliveAt = Date.now();
+            changed = true;
+        }
+    }
+    if (changed) saveRunRecords();
+}
+
 // ── RUN POLLING ──
 // Reuses inject.js's pollRunStatus — the same path the TODO.md viewer's
 // header pill drives — to flip a run record QUEUED → RUNNING → SHIPPED
@@ -3072,7 +3089,16 @@ function stopRunPoller(correlationId) {
 }
 
 async function pollRunRecordOnce(correlationId, startedAt, target, project) {
-    if (Date.now() - startedAt >= RUN_GIVE_UP_MS) {
+    // Give up only after RUN_GIVE_UP_MS elapses with NO confirmed-alive signal.
+    // A healthy long build (implement, test, open PR, merge) can genuinely run
+    // past the window while still reporting queued/in_progress, so measure the
+    // idle time from the most recent alive confirmation (lastAliveAt) when we
+    // have one, falling back to dispatch time for records never confirmed alive
+    // (or persisted before lastAliveAt existed). Measuring purely from dispatch
+    // would flip an actively-running row to "Unknown" at the 20-minute mark.
+    const rec = findRunRecord(correlationId);
+    const lastAlive = rec && typeof rec.lastAliveAt === 'number' ? rec.lastAliveAt : startedAt;
+    if (Date.now() - lastAlive >= RUN_GIVE_UP_MS) {
         // Past the give-up window the run can no longer be reconciled. We can't
         // see a positive outcome either way, so "couldn't confirm" is NOT
         // "failed" — flag it unconfirmed (keeping its last-known status) and
@@ -3109,8 +3135,10 @@ async function pollRunRecordOnce(correlationId, startedAt, target, project) {
         return;
     }
     if (res.status === 'queued') {
+        markRunRecordAlive(correlationId);
         setRunRecordStatus(correlationId, 'QUEUED');
     } else {
+        markRunRecordAlive(correlationId);
         setRunRecordStatus(correlationId, 'RUNNING');
     }
 }

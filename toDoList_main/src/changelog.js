@@ -8,14 +8,12 @@ export const changelog = [
         date: '2026-07-15',
         fixed: [
             "Projects with a routed inject target now sort to the top of the desktop project-picker dropdown.",
+            "A run's status no longer flips to “Unknown” while its build is still actively working, even when the build runs longer than 20 minutes.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-14',
-        added: [
-            "Paste a screenshot straight into the Claude chat composer (Ctrl+V) to attach it as a thumbnail, alongside the image picker.",
-        ],
         changed: [
             "The Claude chat composer's attach button now uses a simplified single-stroke paperclip icon.",
         ],
