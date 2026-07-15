@@ -618,3 +618,9 @@
   - Implementation notes: Export `wireModalDismiss` from `modals.js` and call it from `openSeedTasksModal` with `closeButtons: [closeX, cancelBtn]` and `onClose` doing the focus restore, removing the duplicated `close`/`onKeydown`/listener wiring in `seedTasksModal.js`. Pure internal refactor — no visible or behavioral change, so no mockup needed.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/seedTasksModal.js`
   <!-- id: a675c9f3-8e75-445b-96b9-2fe08284323f -->
+
+- [ ] **[HIGH]** Fix expanded todo editor overlapping the next todo item when a project has many items
+  - Type: bug
+  - Description: When a todo is expanded (showing the description input and the "Set inject target" row), that editor area overlaps/bleeds into the following todo row instead of displacing it, so rows collide when several items are listed. The expanded editor should occupy its own vertical space and push subsequent rows down, keeping every row fully separated. Likely caused by absolute/fixed positioning or a missing height contribution on the expanded container — check the expanded-row markup in `toDoList_main/src/toDo.js` / `toDoList_main/src/toDoRow.js` and the corresponding layout rules (positioning, height, overflow, z-index) in `toDoList_main/src/style.css`.
+  - File: `toDoList_main/src/toDo.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  <!-- id: b0844620-503c-4b48-96b3-5ee4bd89dbeb -->
