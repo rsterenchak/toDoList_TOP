@@ -638,3 +638,10 @@
   - File: `toDoList_main/src/projectPicker.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ac206463-3905-46b8-a67c-4c137ebac654 -->
+
+- [ ] **[MEDIUM]** Stop the run poller from marking an actively-running workflow "Unknown"
+  - Type: bug
+  - Description: `pollRunRecordOnce` in `toDoList_main/src/claudeSheet.js` (~line 3074) checks `Date.now() - startedAt >= RUN_GIVE_UP_MS` (20 minutes, `RUN_GIVE_UP_MS` at line 66) before it polls, and unconditionally calls `markRunRecordUnconfirmed` once that time elapses since `dispatchedAt` — regardless of whether the most recent poll already confirmed the run is actively `in_progress` (the `else` branch at line 3114 sets status `RUNNING` on exactly that signal). A long Opus build (implement, test, open PR, merge) can genuinely run past 20 minutes while healthy, so the row flips to the dimmed "Unknown" badge (`buildRunRow`, claudeSheet.js ~line 2701-2713) even though the workflow is still running. Track the last time a poll actually confirmed the run alive (status `queued` or `in_progress`) — e.g. a `lastAliveAt` field on the run record, updated alongside `setRunRecordStatus` — and only give up when there has been no confirmed-alive signal for `RUN_GIVE_UP_MS`, instead of measuring purely from `dispatchedAt`.
+  - File: `toDoList_main/src/claudeSheet.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0bfa2a96-20c7-4e54-852e-87fab5158d98 -->
