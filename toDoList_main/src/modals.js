@@ -30,7 +30,7 @@ import { reorderToDoDOM } from './toDoRow.js';
 // `closeButtons`, and an optional `onClose` hook for the modal-specific tail
 // (focus restoration, persistence) that runs after teardown. Returns the
 // guarded close function so callers can invoke it from other handlers.
-function wireModalDismiss(options) {
+export function wireModalDismiss(options) {
     const backdrop = options.backdrop;
     const closeButtons = options.closeButtons || [];
     const onClose = options.onClose;

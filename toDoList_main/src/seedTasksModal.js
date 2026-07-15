@@ -30,6 +30,7 @@
 // CLAUDE.md. All persistence routes through listLogic.js.
 
 import { listLogic } from './listLogic.js';
+import { wireModalDismiss } from './modals.js';
 import { chatWithWorker, findTargetById } from './inject.js';
 import { actionableStageLabelForStages } from './conceiveShapes.js';
 import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
@@ -250,32 +251,23 @@ export function openSeedTasksModal(projectName) {
 
     const previouslyFocused = document.activeElement;
 
+    // Close the same three ways as the shared modals in modals.js (close
+    // button, backdrop, Escape) via wireModalDismiss. The async guard below
+    // reads `closed`, set from the onClose tail so the deferred worker replies
+    // don't render into a detached DOM; onClose also restores focus.
     let closed = false;
-    function close() {
-        if (closed) return;
-        closed = true;
-        document.removeEventListener('keydown', onKeydown, true);
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-        if (previouslyFocused &&
-            typeof previouslyFocused.focus === 'function' &&
-            document.contains(previouslyFocused)) {
-            try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+    const close = wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, cancelBtn],
+        onClose: function () {
+            closed = true;
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
         }
-    }
-
-    function onKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-        }
-    }
-
-    closeX.addEventListener('click', close);
-    cancelBtn.addEventListener('click', close);
-    backdrop.addEventListener('click', function (event) {
-        if (event.target === backdrop) close();
     });
-    document.addEventListener('keydown', onKeydown, true);
 
     // The set of existing todo titles for duplicate detection — trimmed,
     // lower-cased, blank placeholder excluded.
