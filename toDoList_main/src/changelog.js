@@ -15,13 +15,7 @@ export const changelog = [
         ],
         fixed: [
             "The image-attach icon in the Claude chat composer now matches the mic icon's theme color and hover highlight.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-13',
-        fixed: [
-            "The agent-working nav dot now updates the instant you switch projects, instead of briefly showing the previous project's state.",
+            "An expanded todo's description editor no longer overlaps the next task when a project has many items.",
         ],
     },
 ];

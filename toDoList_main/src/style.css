@@ -6153,11 +6153,16 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
 /* TODO LIST */
 #mainList {
   display: grid;
-  /* `minmax(54px, auto)` preserves the 54px minimum for normal todo rows
-     while letting drawer rows (#descSibling, #statsSibling) grow to fit
-     their content. A fixed clamp here previously cropped the stats drawer's
-     stat strip + grid + missed-dates list to the top ~54px. */
-  grid-auto-rows: minmax(54px, auto);
+  /* `min-content` sizes each row to its own content: a normal todo row's
+     margin-box is already 54px (44px row + 5px+5px margin), so the list
+     pitch is unchanged, while drawer rows (#descSibling, #statsSibling)
+     grow to fit their real height. The previous `minmax(54px, auto)` looked
+     equivalent but the `auto` maximum silently STOPS growing once the grid
+     overflows its fixed-height scroll container (no free space left to
+     distribute), so an open description panel — its textarea plus the
+     "Set inject target" row — was pinned to the 54px floor and bled over
+     the next todo whenever the project had enough items to scroll. */
+  grid-auto-rows: min-content;
   /* Pin the list to a single full-width column. With no explicit column the
      implicit `auto` track sizes to the widest row's max-content, so a long
      todo title would push rows past the viewport and `overflow-x: hidden`
@@ -7732,7 +7737,11 @@ body.row-dragging * { cursor: grabbing !important; }
   display: flex;
   align-items: center;
   gap: 8px;
-  margin: 6px 8px 4px;
+  /* The 16px bottom margin (12px more than the 4px top/side inset) keeps the
+     gap to the first completed row unchanged now that #mainList sizes rows by
+     `min-content`: the divider no longer inherits the old 54px row floor that
+     used to pad this space out for it. */
+  margin: 6px 8px 16px;
   padding: 8px 12px;
   height: 32px;
   box-sizing: border-box;
@@ -8066,12 +8075,12 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* Keep the inline #mainList card sized to its content even when the project
-   has many completed rows. #mainList uses grid-auto-rows: minmax(54px, auto);
-   with `min-height: 0` + `overflow: hidden` the card's grid-track minimum
-   contribution is 0, so once the grid overflows (no free space to maximize
-   tracks) the track collapses to the 54px floor and overflow:hidden crops the
-   card to a sliver. An explicit `min-height: max-content` makes the minimum
-   contribution the card's real content height (the auto-min override that
+   has many completed rows. #mainList uses grid-auto-rows: min-content, which
+   sizes each row's track to its content; but `overflow: hidden` on the card
+   triggers the CSS automatic-minimum override that pins its min-content
+   contribution to 0, so the track would collapse and crop the card to a
+   sliver. An explicit `min-height: max-content` restores the minimum
+   contribution to the card's real content height (the auto-min override that
    overflow:hidden triggers only applies when min-height is `auto`), so the
    track always grows to fit. Scoped to the inline card — the mobile bottom
    sheet (#todoMdViewerMobileSheet) keeps its own flex:1 1 auto / min-height:0
@@ -10175,16 +10184,17 @@ body.row-dragging * { cursor: grabbing !important; }
     max-height: 240px;
   }
 
-  /* Mobile density pass: tighten the row pitch so list rows sit closer.
-     The base rule sets grid-auto-rows: minmax(54px, auto) for desktop; floor
-     the mobile track to 50px instead (44px row + 3px + 3px margin = 50px), so
-     the pitch drops in lockstep with the tighter #toDoChild margins above. */
-  #mainList { grid-auto-rows: minmax(50px, auto); }
+  /* Mobile density pass: the tighter #toDoChild margins above already give a
+     44px row + 3px + 3px margin = 50px margin-box, so `min-content` keeps the
+     compact mobile pitch while — like the desktop base rule — letting an open
+     description/stats drawer grow past that floor instead of being frozen at
+     it by the overflowing scroll container. */
+  #mainList { grid-auto-rows: min-content; }
 
   /* COMPLETED divider: shorter and tighter on mobile, pulled to the shared
      10px inset so its edges line up with the rows and the inline launcher.
      The base #completedHeader rule governs desktop and is left untouched. */
-  #completedHeader { margin: 4px 10px 2px; padding: 6px 12px; height: 28px; }
+  #completedHeader { margin: 4px 10px 18px; padding: 6px 12px; height: 28px; }
 
   /* Inline-card launcher mode. The inline #mainList card is redundant on
      mobile — tapping it opens the full-screen bottom sheet that holds the
@@ -11691,7 +11701,7 @@ body.row-dragging * { cursor: grabbing !important; }
      but if the inline drawer ever does render here (e.g. a browser without
      matchMedia support), these constraints keep it from clipping its own
      children. The drawer is a flex column whose grid track inside #mainList
-     uses grid-auto-rows: minmax(54px, auto) — `min-height: 0` lets the
+     uses grid-auto-rows: min-content — `min-height: 0` lets the
      flex column shrink-then-grow in response to a re-render, and `overflow:
      visible` defeats any cascade quirk that might sneak in an overflow clip. */
   #statsSibling {
