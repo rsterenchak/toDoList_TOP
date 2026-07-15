@@ -17,8 +17,10 @@ function read(relative) {
 // needs to yield to native scrolling when the touch begins inside a
 // scrollable region that's already scrolled — otherwise scroll-up-through-
 // content would be hijacked into a dismiss commit.
+// The sheet's DOM/logic now lives in mobileUtilitySheet.js (extracted from
+// main.js's component()), so these source assertions read that module.
 describe('Mobile bottom drawer swipe-down close gesture (container-bound)', () => {
-    const main = read('main.js');
+    const main = read('mobileUtilitySheet.js');
 
     it('attaches the close-direction handler to the drawer container, not just the drag handle', () => {
         // Container-bound binding so swipe-down anywhere on the drawer
