@@ -631,3 +631,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/mobileUtilitySheet.js`
   - Out of scope: any other section of main.js's component() (the pomodoro/music/focus-mode toggle buttons above it already delegate to pomodoro.js/music.js/focusMode.js and are not part of this task); changing the sheet's markup, styling, or behavior.
   <!-- id: f9d77b1f-5d1d-49c1-a579-74657505e6e8 -->
+
+- [ ] **[MEDIUM]** Sort injected (routed) projects to the top of the desktop project-picker dropdown
+  - Type: bug
+  - Description: `buildProjectPickerRows()` in `toDoList_main/src/projectPicker.js` renders `listLogic.listProjectsArray()` in plain insertion order, so projects with a routed inject target (the ones showing the amber ⚡ bolt via `syncProjectRowInjectBolt`, gated by `isInjectConfigured() && listLogic.getProjectTargetId(name)`) are scattered wherever they happen to sit instead of surfacing first. Build a display copy of the array stable-partitioned so routed projects render before unrouted ones, preserving relative order within each group. The row click handler currently calls `navigateToProjectByIndex(idx)` using the forEach index into that same array (projectPicker.js ~line 147); `navigateToProjectByIndex` in `toDoList_main/src/main.js` (~line 3266) resolves `targetIdx` against the UNSORTED `listLogic.listProjectsArray()`, so once the display array is reordered, the click handler must resolve each row's index via `projects.indexOf(name)` against the original unsorted array rather than its position in the sorted display list — otherwise clicking a row navigates to the wrong project.
+  - File: `toDoList_main/src/projectPicker.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: ac206463-3905-46b8-a67c-4c137ebac654 -->
