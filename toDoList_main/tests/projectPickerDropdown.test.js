@@ -65,6 +65,28 @@ describe('desktop project-picker dropdown', () => {
         expect(body).toMatch(/closeProjectPicker\(\)/);
     });
 
+    it('stable-partitions routed (inject-target) projects to the top of the list', () => {
+        const body = fnBody(picker, 'buildProjectPickerRows');
+        // Routed rows are gated by the SAME per-project check the ⚡ bolt uses:
+        // inject configured AND a resolvable target id.
+        expect(body).toMatch(/isInjectConfigured\(\)/);
+        expect(body).toMatch(/listLogic\.getProjectTargetId\(/);
+        // A display copy partitioned routed-first, unrouted-second, then
+        // concatenated — so relative order within each group is preserved.
+        expect(body).toMatch(/routed\s*\)\s*\.push\(|routed\s*:\s*unrouted/);
+        expect(body).toMatch(/routed\.concat\(unrouted\)/);
+        // Rows render from the sorted display copy, not the raw list.
+        expect(body).toMatch(/displayProjects\.forEach\(/);
+    });
+
+    it('click handler resolves the row index against the UNSORTED array', () => {
+        const body = fnBody(picker, 'buildProjectPickerRows');
+        // Once rows are hoisted, the forEach position no longer matches
+        // navigateToProjectByIndex's unsorted listLogic order — the handler
+        // must look the name up in the original `projects` array instead.
+        expect(body).toMatch(/navigateToProjectByIndex\(projects\.indexOf\(name\)\)/);
+    });
+
     it('reuses listLogic project data + counts (no duplicated project list)', () => {
         const body = fnBody(picker, 'buildProjectPickerRows');
         expect(body).toMatch(/listLogic\.listProjectsArray\(\)/);

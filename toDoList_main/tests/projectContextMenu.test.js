@@ -234,6 +234,7 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
         'mobileProjHeader', 'mobileProjChevron', 'sideMain', 'navigateToProjectByIndex',
         'deleteProjectFlow', 'updateFooterCounts', 'applyProjectInitial',
         'syncProjectRowInjectBolt', 'buildDatesToggleRow', 'toggleProjectDates',
+        'isInjectConfigured',
         region +
         '\n; return { buildProjectPickerRows: buildProjectPickerRows,' +
         ' enterRowEditMode: enterRowEditMode,' +
@@ -323,7 +324,11 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
                 el.addEventListener('click', function (event) { onToggle(event); });
                 return el;
             },
-            (datesToggleSpy = vi.fn())
+            (datesToggleSpy = vi.fn()),
+            // buildProjectPickerRows now partitions routed projects to the top;
+            // these rename tests don't route any project, so stub inject as
+            // unconfigured (every project unrouted → insertion order preserved).
+            function () { return false; }
         );
         api.buildProjectPickerRows();
     });
@@ -342,6 +347,49 @@ describe('desktop project-picker inline rename — runtime behavior', () => {
     it('clicking Rename does NOT switch projects (the original bug)', () => {
         clickRenameFromMenu(rowAt(2)); // Gamma
         expect(navSpy).not.toHaveBeenCalled();
+    });
+
+    // Regression guard against a silent no-op: routed (inject-target) projects
+    // must be hoisted to the top of the list, and a hoisted row's click must
+    // still resolve to the project's slot in the UNSORTED listLogic order (not
+    // its display position), or navigation lands on the wrong project.
+    it('hoists routed projects to the top and navigates by unsorted index', () => {
+        const dd = document.createElement('div');
+        dd.id = 'projectPickerDropdown';
+        document.body.appendChild(dd);
+        const nameEl = document.createElement('span');
+        nameEl.textContent = 'Alpha'; // active
+        const header = document.createElement('div');
+        const chevron = document.createElement('span');
+        const side = document.createElement('div');
+        document.body.append(header, chevron, side);
+
+        const nav = vi.fn();
+        // Only Gamma (unsorted index 2) is routed.
+        const ll = {
+            listProjectsArray: function () { return ['Alpha', 'Beta', 'Gamma']; },
+            getProjectIncompleteCount: function () { return 0; },
+            getProjectTargetId: function (n) { return n === 'Gamma' ? 't1' : null; },
+            getProjectHideDates: function () { return false; },
+        };
+        const localApi = makeApi(
+            document, window, ll, dd, nameEl, header, chevron, side, nav,
+            vi.fn(), vi.fn(), vi.fn(), vi.fn(),
+            function () { return document.createElement('div'); }, vi.fn(),
+            function () { return true; } // inject configured
+        );
+        localApi.buildProjectPickerRows();
+
+        const rows = dd.querySelectorAll('.projectPickerRow');
+        const names = Array.prototype.map.call(rows, function (r) {
+            return r.querySelector('.projectPickerName').textContent;
+        });
+        // Routed Gamma hoisted first; Alpha/Beta keep their relative order.
+        expect(names).toEqual(['Gamma', 'Alpha', 'Beta']);
+
+        // Clicking hoisted Gamma navigates to unsorted index 2, not display 0.
+        rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }));
+        expect(nav).toHaveBeenCalledWith(2);
     });
 
     it('Enter commits through listLogic.editProject and repaints the row in place', () => {

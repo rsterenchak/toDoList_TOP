@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-15',
+        fixed: [
+            "Projects with a routed inject target now sort to the top of the desktop project-picker dropdown.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-14',
         added: [
-            "Attach images to a Claude chat message — pick screenshots or design references, preview them as thumbnails, and send them with your turn.",
             "Paste a screenshot straight into the Claude chat composer (Ctrl+V) to attach it as a thumbnail, alongside the image picker.",
         ],
         changed: [
