@@ -147,6 +147,40 @@ describe('Push entry — hand-off', () => {
         expect(addToDos_restore).toHaveBeenCalledTimes(1);
     });
 
+    it('resolves a bare suggested_module against the target file dir, keeping src/', async () => {
+        // Regression: the scan reports `suggested_module` as a bare filename
+        // (`dismissable.js`) while `target_file` arrives already prefixed
+        // (`toDoList_main/src/main.js`). The destination must land inside the
+        // target file's directory — `toDoList_main/src/dismissable.js` — not one
+        // level up outside webpack's tree.
+        scanResult = {
+            ok: true,
+            found: true,
+            target_file: 'toDoList_main/src/main.js',
+            target_sha: 'sha-2',
+            candidates: [
+                {
+                    name: 'makeDismissable',
+                    lines: 60,
+                    closure_refs: [],
+                    suggested_module: 'dismissable.js',
+                    cluster_with: [],
+                    rationale: 'Reusable dismiss helper.',
+                },
+            ],
+        };
+        const card = renderRefactorCard('o/r', 'My Project');
+        await flush();
+        card.querySelector('.refactorCardPush').click();
+        await flush();
+
+        const edited = editToDoItem.mock.calls[0][1];
+        expect(edited.desc).toContain('toDoList_main/src/dismissable.js');
+        expect(edited.desc).not.toContain('toDoList_main/dismissable.js');
+        // Source path stays correct too.
+        expect(edited.desc).toContain('toDoList_main/src/main.js');
+    });
+
     it('surfaces an inline error and does not dismiss when the hand-off fails', async () => {
         flagResult = { ok: false, error: 'Insert failed.' };
         const card = renderRefactorCard('o/r', 'My Project');
