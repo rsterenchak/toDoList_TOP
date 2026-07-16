@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-16',
         added: [
             "The Structure tab now shows a “next refactor” card at the top, surfacing the cheapest extraction candidate for the project's repo.",
+            "The next-refactor card now has a “Push entry” button that turns the shown candidate into a todo and hands it to the agent.",
         ],
         fixed: [
             "The Generate mockups button no longer needs a second click when the agent board refreshes while mockups are still generating.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-15',
         fixed: [
-            "Projects with a routed inject target now sort to the top of the desktop project-picker dropdown.",
             "A run's status no longer flips to “Unknown” while its build is still actively working, even when the build runs longer than 20 minutes.",
         ],
     },

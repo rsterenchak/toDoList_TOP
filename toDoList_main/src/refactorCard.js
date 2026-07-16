@@ -7,8 +7,10 @@
 // path resolves the repo's last stored scan, asks the Worker's `scan` route for
 // the next candidate (passing the stored blob sha so an unchanged file
 // short-circuits for free), persists a fresh scan when new bytes are found, and
-// renders the top not-yet-dismissed candidate. The card is read-only apart from a
-// "Skip" control that dismisses the shown candidate and advances to the next.
+// renders the top not-yet-dismissed candidate. A "Skip" control dismisses the
+// shown candidate and advances to the next; a "Push entry" control turns the
+// shown candidate into a real todo and hands it to the agent loop (via
+// listLogic.flagTaskForAgent), then dismisses it and advances.
 //
 // A scan costs ~100k input tokens, so concurrent scans for the same repo are
 // deduped through a module-scoped in-flight map keyed by repo: a render that
@@ -17,11 +19,16 @@
 
 import { scanRefactor, getCachedTargets } from './inject.js';
 import { listLogic } from './listLogic.js';
+import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
 
 // repo -> Promise resolving to a normalized render descriptor. Cleared when the
 // scan settles, so a later render (after the file rolled over, say) can scan
 // again — while an in-flight render reuses the pending promise.
 const _inFlight = new Map();
+
+// How long the "Pushed — triaging" confirmation lingers before the card
+// re-renders to the next candidate.
+const PUSHED_ADVANCE_MS = 2000;
 
 function clearEl(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -57,6 +64,64 @@ function basename(path) {
     if (!path) return '';
     const parts = String(path).split('/');
     return parts[parts.length - 1] || String(path);
+}
+
+// The scan reports paths repo-relative (e.g. `src/agentView.js`); todos and
+// triage expect the full `toDoList_main/src/…` path, so normalize to that.
+function srcPath(path) {
+    const s = String(path || '');
+    if (!s) return '';
+    if (s.indexOf('toDoList_main/') === 0) return s;
+    return 'toDoList_main/' + s.replace(/^\/+/, '');
+}
+
+// An imperative extraction instruction for the pushed candidate's todo title.
+function buildPushTitle(cand, row) {
+    const from = basename(row.target_file) || 'the source file';
+    const into = cand.suggested_module || 'a new module';
+    return 'Extract ' + (cand.name || 'the function') + ' from ' + from + ' into ' + into;
+}
+
+// The pushed candidate's todo description — everything triage needs without
+// re-deriving it from the scan.
+function buildPushDescription(cand, row) {
+    const lines = [];
+    lines.push('Mechanical, behaviour-preserving extraction only — no logic may change.');
+    lines.push('');
+    let span = '';
+    if (cand.start_line != null && cand.end_line != null) {
+        span = ' The scan located it around lines ' + cand.start_line + '–' + cand.end_line
+            + '; that span is from the scan and may have drifted, so locate the function by'
+            + ' name and treat the span as a hint only.';
+    }
+    lines.push('Extract the function `' + (cand.name || '') + '` from `' + srcPath(row.target_file)
+        + '` into a new module `' + srcPath(cand.suggested_module) + '`.' + span);
+    if (cand.rationale) {
+        lines.push('');
+        lines.push('Rationale: ' + cand.rationale);
+    }
+    if (Array.isArray(cand.cluster_with) && cand.cluster_with.length) {
+        lines.push('');
+        lines.push('Move these sibling functions in the same entry so the file isn’t touched by'
+            + ' two runs: ' + cand.cluster_with.join(', ') + '.');
+    }
+    return lines.join('\n');
+}
+
+// Rebuild #mainList so the Projects view isn't stale when the user returns from
+// the Structure tab after a push. Mirrors seedTasksModal's post-add rebuild —
+// but never switches views (the user stays on Structure).
+function rebuildMainList(projectName) {
+    const mainList = document.getElementById('mainList');
+    if (!mainList) return;
+    clearEl(mainList);
+    const items = listLogic.listItems(projectName);
+    const hasRealItems = items && items.some(function (i) { return i.tit !== ''; });
+    if (hasRealItems) {
+        addToDos_restore(items, projectName);
+    } else if (items) {
+        addAllToDo_DOM(items, projectName);
+    }
 }
 
 // The top candidate whose `name` isn't in the row's `dismissed` array, keeping
@@ -123,9 +188,74 @@ function buildChip(text, extraClass) {
     return chip;
 }
 
+// Show a quiet inline error inside the candidate card (reusing the card's error
+// treatment) without disturbing the rest of the candidate content.
+function showPushError(card, reason) {
+    const existing = card.querySelector('.refactorCardPushError');
+    if (existing) existing.remove();
+    const err = document.createElement('div');
+    err.className = 'refactorCardError refactorCardPushError';
+    err.textContent = reason || 'Couldn’t hand the task to the agent.';
+    const actions = card.querySelector('.refactorCardActions');
+    if (actions) card.insertBefore(err, actions);
+    else card.appendChild(err);
+}
+
+// Create the shown candidate as a real todo, backfill its description, and hand
+// it to the agent loop via flagTaskForAgent. On success, dismiss the candidate,
+// rebuild the Projects list, confirm briefly, then advance to the next.
+async function pushCandidate(card, repo, row, cand, projectName, pushBtn, skipBtn) {
+    const title = buildPushTitle(cand, row);
+    const desc = buildPushDescription(cand, row);
+    // The add path takes only a title, so create then backfill the description
+    // through the existing edit path — mirroring the proven seed hand-off.
+    listLogic.addToDo(projectName, title);
+    const items = listLogic.listItems(projectName) || [];
+    const created = items.filter(function (it) { return it && it.tit === title; }).pop();
+    if (created) {
+        created.desc = desc;
+        listLogic.editToDoItem(projectName, created);
+    }
+    let flagRes = { ok: false, error: 'Couldn’t create the task.' };
+    if (created) {
+        flagRes = await Promise.resolve(listLogic.flagTaskForAgent(created.id));
+    }
+    if (!flagRes || flagRes.ok === false) {
+        // The todo was already created; only the hand-off to the agent failed —
+        // don't dismiss the candidate, and re-enable so the user can retry.
+        pushBtn.disabled = false;
+        skipBtn.disabled = false;
+        showPushError(card, (flagRes && flagRes.error)
+            ? ('Couldn’t hand the task to the agent — ' + flagRes.error)
+            : 'Couldn’t hand the task to the agent.');
+        return;
+    }
+    // A pushed candidate is no longer a suggestion — dismiss it (reusing the
+    // `dismissed` array, so no schema change). Persist in the background.
+    Promise.resolve(
+        listLogic.dismissRefactorCandidate(repo, row.target_file, cand.name)
+    ).catch(function () { /* background write; the card already advanced */ });
+    const dismissed = Array.isArray(row.dismissed) ? row.dismissed : [];
+    if (dismissed.indexOf(cand.name) === -1) dismissed.push(cand.name);
+    row.dismissed = dismissed;
+    // A new todo landed while Structure is showing — rebuild the Projects list
+    // so it isn't stale, but stay on Structure (no view switch).
+    rebuildMainList(projectName);
+    // Confirm, then advance to the next candidate.
+    const actions = card.querySelector('.refactorCardActions');
+    const pushed = document.createElement('div');
+    pushed.className = 'refactorCardPushed';
+    pushed.textContent = 'Pushed — triaging';
+    if (actions) actions.replaceWith(pushed);
+    else card.appendChild(pushed);
+    setTimeout(function () {
+        renderCandidate(card, repo, row, projectName);
+    }, PUSHED_ADVANCE_MS);
+}
+
 // Render the active candidate (or a terminal "all skipped" note). Re-callable
 // with the same `row` so "Skip" advances without another scan.
-function renderCandidate(card, repo, row) {
+function renderCandidate(card, repo, row, projectName) {
     clearEl(card);
     const cand = activeCandidate(row);
     if (!cand) {
@@ -178,6 +308,18 @@ function renderCandidate(card, repo, row) {
 
     const actions = document.createElement('div');
     actions.className = 'refactorCardActions';
+
+    // Push entry — the primary action: turn the shown candidate into a real
+    // todo and hand it to the agent loop. Disabled when no project is linked.
+    const push = document.createElement('button');
+    push.type = 'button';
+    push.className = 'refactorCardPush';
+    push.textContent = 'Push entry';
+    if (!projectName) {
+        push.disabled = true;
+        push.title = 'No project linked to this repo.';
+    }
+
     const skip = document.createElement('button');
     skip.type = 'button';
     skip.className = 'refactorCardSkip';
@@ -188,11 +330,23 @@ function renderCandidate(card, repo, row) {
         const dismissed = Array.isArray(row.dismissed) ? row.dismissed : [];
         if (dismissed.indexOf(cand.name) === -1) dismissed.push(cand.name);
         row.dismissed = dismissed;
-        renderCandidate(card, repo, row);
+        renderCandidate(card, repo, row, projectName);
         Promise.resolve(
             listLogic.dismissRefactorCandidate(repo, row.target_file, cand.name)
         ).catch(function () { /* background write; card already advanced */ });
     });
+
+    push.addEventListener('click', function () {
+        if (push.disabled || !projectName) return;
+        // Disable both so a double-tap can't create two todos.
+        push.disabled = true;
+        skip.disabled = true;
+        const prevErr = card.querySelector('.refactorCardPushError');
+        if (prevErr) prevErr.remove();
+        pushCandidate(card, repo, row, cand, projectName, push, skip);
+    });
+
+    actions.appendChild(push);
     actions.appendChild(skip);
     card.appendChild(actions);
 }
@@ -257,7 +411,7 @@ function runScan(repo) {
     return p;
 }
 
-async function fillCard(card, repo) {
+async function fillCard(card, repo, projectName) {
     let desc;
     try {
         desc = await runScan(repo);
@@ -267,7 +421,7 @@ async function fillCard(card, repo) {
     }
     if (!desc) { renderError(card, ''); return; }
     if (desc.kind === 'candidate') {
-        renderCandidate(card, repo, desc.row);
+        renderCandidate(card, repo, desc.row, projectName);
     } else if (desc.kind === 'note') {
         renderNote(card, desc.text);
     } else {
@@ -278,7 +432,7 @@ async function fillCard(card, repo) {
 // Public entry: a container element filled asynchronously. Hidden entirely when
 // there's no repo (structureView already early-returns before this in that case,
 // but the guard keeps the card inert if ever called without one).
-export function renderRefactorCard(repo) {
+export function renderRefactorCard(repo, projectName) {
     const card = document.createElement('div');
     card.className = 'refactorCard';
     if (!repo) {
@@ -286,7 +440,7 @@ export function renderRefactorCard(repo) {
         return card;
     }
     renderScanning(card);
-    fillCard(card, repo);
+    fillCard(card, repo, projectName);
     return card;
 }
 
