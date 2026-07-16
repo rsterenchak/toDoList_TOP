@@ -1,23 +1,34 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Tests for the "Push entry" control on the NEXT REFACTOR card (refactorCard.js):
-// turning the shown candidate into a real todo and handing it to the agent loop.
-// inject.js, listLogic.js, and toDoRow.js are fully mocked so the create →
-// backfill → flag → dismiss hand-off can be scripted without network/Supabase.
+// turning the shown candidate into a real todo, then shipping its entry and
+// dispatching a run for it directly (via shipEntryForTodo), gated first by an
+// in-flight run probe (fetchActiveRuns) that fails closed. inject.js,
+// shipEntry.js, listLogic.js, and toDoRow.js are fully mocked so the
+// gate → create → backfill → ship → dismiss hand-off can be scripted without
+// network/Supabase.
 
 let scanResult;
 const scanRefactor = vi.fn(function () { return Promise.resolve(scanResult); });
 
+// The one-tap push safety rail: probe for an in-flight run before creating
+// anything. Fails closed, so ok:false blocks the push.
+let activeRunsResult;
+const fetchActiveRuns = vi.fn(function () { return Promise.resolve(activeRunsResult); });
+
+// The shared ship-and-dispatch core, mocked so the create → backfill → ship
+// path can be scripted.
+let shipResult;
+const shipEntryForTodo = vi.fn(function () { return Promise.resolve(shipResult); });
+
 // A tiny in-memory todo store so addToDo/listItems behave end-to-end.
 let store;
 let nextId;
-let flagResult;
 const addToDo = vi.fn(function (project, title) {
     store.push({ id: 'id-' + (nextId++), tit: title, desc: '' });
 });
 const listItems = vi.fn(function () { return store; });
 const editToDoItem = vi.fn(function () {});
-const flagTaskForAgent = vi.fn(function () { return Promise.resolve(flagResult); });
 const dismissRefactorCandidate = vi.fn(function () { return Promise.resolve({ ok: true }); });
 const saveRefactorScan = vi.fn(function () { return Promise.resolve({ ok: true }); });
 const loadLatestRefactorScan = vi.fn(function () { return Promise.resolve({ ok: true, row: null }); });
@@ -28,6 +39,11 @@ const addAllToDo_DOM = vi.fn(function () {});
 vi.mock('../src/inject.js', () => ({
     scanRefactor: (...a) => scanRefactor(...a),
     getCachedTargets: () => [],
+    fetchActiveRuns: (...a) => fetchActiveRuns(...a),
+}));
+
+vi.mock('../src/shipEntry.js', () => ({
+    shipEntryForTodo: (...a) => shipEntryForTodo(...a),
 }));
 
 vi.mock('../src/listLogic.js', () => ({
@@ -38,7 +54,6 @@ vi.mock('../src/listLogic.js', () => ({
         addToDo: (...a) => addToDo(...a),
         listItems: (...a) => listItems(...a),
         editToDoItem: (...a) => editToDoItem(...a),
-        flagTaskForAgent: (...a) => flagTaskForAgent(...a),
     },
 }));
 
@@ -85,12 +100,14 @@ beforeEach(() => {
     scanResult = FOUND;
     store = [];
     nextId = 1;
-    flagResult = { ok: true };
+    activeRunsResult = { ok: true, active: false };
+    shipResult = { ok: true, entryId: 'entry-1', correlationId: 'corr-1' };
     scanRefactor.mockClear();
+    fetchActiveRuns.mockClear();
+    shipEntryForTodo.mockClear();
     addToDo.mockClear();
     listItems.mockClear();
     editToDoItem.mockClear();
-    flagTaskForAgent.mockClear();
     dismissRefactorCandidate.mockClear();
     addToDos_restore.mockClear();
     addAllToDo_DOM.mockClear();
@@ -116,12 +133,18 @@ describe('Push entry — rendering', () => {
     });
 });
 
-describe('Push entry — hand-off', () => {
-    it('creates the todo, backfills its description, flags it, and dismisses', async () => {
+describe('Push entry — ship and dispatch', () => {
+    it('probes for an in-flight run, creates the todo, backfills, ships, and dismisses', async () => {
         const card = renderRefactorCard('o/r', 'My Project');
         await flush();
         card.querySelector('.refactorCardPush').click();
         await flush();
+
+        // The safety gate ran first, against the resolved target.
+        expect(fetchActiveRuns).toHaveBeenCalledTimes(1);
+        expect(fetchActiveRuns.mock.calls[0][0]).toEqual({ repo: 'o/r' });
+        // No workflow argument — the probe hits claude-run.yml, not triage.
+        expect(fetchActiveRuns.mock.calls[0][1]).toBeUndefined();
 
         // Title is an imperative extraction instruction.
         expect(addToDo).toHaveBeenCalledWith(
@@ -136,13 +159,20 @@ describe('Push entry — hand-off', () => {
         expect(edited.desc).toContain('toDoList_main/src/agentMockup.js');
         expect(edited.desc).toContain('renderMockupPreviews');
         expect(edited.desc).toContain('1222');
-        // Handed to the agent loop with the created id.
-        expect(flagTaskForAgent).toHaveBeenCalledWith('id-1');
+        // Shipped through the shared core with the created id, the entry text,
+        // and the resolved target — and NO existingEntryId (fresh id minted).
+        expect(shipEntryForTodo).toHaveBeenCalledTimes(1);
+        const shipArg = shipEntryForTodo.mock.calls[0][0];
+        expect(shipArg.todoId).toBe('id-1');
+        expect(shipArg.entryText).toBe(edited.desc);
+        expect(shipArg.target).toEqual({ repo: 'o/r' });
+        expect(shipArg.existingEntryId).toBeUndefined();
         // Pushed candidate is dismissed.
         expect(dismissRefactorCandidate).toHaveBeenCalledWith('o/r', 'src/agentView.js', 'buildMockupSecondary');
-        // Confirmation replaces the actions row.
+        // Confirmation replaces the actions row and reflects a shipped run.
         expect(card.querySelector('.refactorCardActions')).toBeFalsy();
-        expect(card.querySelector('.refactorCardPushed').textContent).toMatch(/triaging/i);
+        expect(card.querySelector('.refactorCardPushed').textContent).toMatch(/shipped/i);
+        expect(card.querySelector('.refactorCardPushed').textContent).not.toMatch(/triaging/i);
         // Projects list rebuilt (real items exist post-add).
         expect(addToDos_restore).toHaveBeenCalledTimes(1);
     });
@@ -214,23 +244,25 @@ describe('Push entry — hand-off', () => {
         // Must state the module is imported back and call sites stay unchanged.
         expect(descLine.toLowerCase()).toContain('import');
         expect(descLine.toLowerCase()).toContain('call site');
-        // No id marker — injectDescription mints and embeds that itself.
+        // No id marker — shipEntryForTodo mints and embeds that itself.
         expect(desc).not.toContain('<!-- id:');
     });
 
-    it('surfaces an inline error and does not dismiss when the hand-off fails', async () => {
-        flagResult = { ok: false, error: 'Insert failed.' };
+    it('surfaces an inline error and does not dismiss when the ship fails', async () => {
+        shipResult = { ok: false, error: 'Inject failed — error' };
         const card = renderRefactorCard('o/r', 'My Project');
         await flush();
         const push = card.querySelector('.refactorCardPush');
         push.click();
         await flush();
 
-        expect(flagTaskForAgent).toHaveBeenCalledTimes(1);
+        expect(shipEntryForTodo).toHaveBeenCalledTimes(1);
         expect(dismissRefactorCandidate).not.toHaveBeenCalled();
         const err = card.querySelector('.refactorCardPushError');
         expect(err).toBeTruthy();
-        expect(err.textContent).toContain('Insert failed.');
+        expect(err.textContent).toContain('Inject failed');
+        // The failure is worded as a ship failure, not a push failure.
+        expect(err.textContent.toLowerCase()).toContain('ship');
         // Buttons re-enabled for a retry; candidate unchanged.
         expect(push.disabled).toBe(false);
         expect(card.querySelector('.refactorCardSkip').disabled).toBe(false);
@@ -238,9 +270,9 @@ describe('Push entry — hand-off', () => {
     });
 
     it('ignores repeat clicks while a push is in flight (no double-create)', async () => {
-        let resolveFlag;
-        flagTaskForAgent.mockImplementationOnce(function () {
-            return new Promise(function (r) { resolveFlag = r; });
+        let resolveShip;
+        shipEntryForTodo.mockImplementationOnce(function () {
+            return new Promise(function (r) { resolveShip = r; });
         });
         const card = renderRefactorCard('o/r', 'My Project');
         await flush();
@@ -249,9 +281,52 @@ describe('Push entry — hand-off', () => {
         await flush(1);
         // Second tap while the first is pending is a no-op.
         push.click();
-        resolveFlag({ ok: true });
+        resolveShip({ ok: true, entryId: 'entry-1' });
         await flush();
         expect(addToDo).toHaveBeenCalledTimes(1);
-        expect(flagTaskForAgent).toHaveBeenCalledTimes(1);
+        expect(shipEntryForTodo).toHaveBeenCalledTimes(1);
+    });
+});
+
+describe('Push entry — in-flight run gate', () => {
+    it('fails closed and creates nothing when the run probe errors', async () => {
+        activeRunsResult = { ok: false, reason: 'network' };
+        const card = renderRefactorCard('o/r', 'My Project');
+        await flush();
+        const push = card.querySelector('.refactorCardPush');
+        push.click();
+        await flush();
+
+        // Probed, then refused before creating anything.
+        expect(fetchActiveRuns).toHaveBeenCalledTimes(1);
+        expect(addToDo).not.toHaveBeenCalled();
+        expect(shipEntryForTodo).not.toHaveBeenCalled();
+        expect(dismissRefactorCandidate).not.toHaveBeenCalled();
+        const err = card.querySelector('.refactorCardPushError');
+        expect(err).toBeTruthy();
+        expect(err.textContent).toMatch(/in-flight run/i);
+        // Buttons re-enabled; candidate still shown.
+        expect(push.disabled).toBe(false);
+        expect(card.querySelector('.refactorCardSkip').disabled).toBe(false);
+        expect(card.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
+    });
+
+    it('blocks and creates nothing when a run is already in flight', async () => {
+        activeRunsResult = { ok: true, active: true };
+        const card = renderRefactorCard('o/r', 'My Project');
+        await flush();
+        const push = card.querySelector('.refactorCardPush');
+        push.click();
+        await flush();
+
+        expect(fetchActiveRuns).toHaveBeenCalledTimes(1);
+        expect(addToDo).not.toHaveBeenCalled();
+        expect(shipEntryForTodo).not.toHaveBeenCalled();
+        expect(dismissRefactorCandidate).not.toHaveBeenCalled();
+        const err = card.querySelector('.refactorCardPushError');
+        expect(err).toBeTruthy();
+        expect(err.textContent).toMatch(/already in flight/i);
+        expect(push.disabled).toBe(false);
+        expect(card.querySelector('.refactorCardSkip').disabled).toBe(false);
     });
 });
