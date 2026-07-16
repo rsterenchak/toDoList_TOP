@@ -7,11 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-16',
         fixed: [
-            "The Generate mockups button no longer needs a second click when the agent board refreshes while mockups are still generating.",
             "Your in-progress answer to an agent's question is no longer wiped when the agent board refreshes while you're typing.",
             "Pushing a next-refactor candidate now points the new module inside the project's source folder instead of one directory above it.",
             "Pushing a next-refactor candidate now writes a properly formatted TODO.md entry, so it can be injected and run.",
             "Pushed next-refactor entries now use a task type the automated run recognizes, so they get built instead of being silently skipped.",
+        ],
+        changed: [
+            "The next-refactor card's Push entry now ships the entry and starts a run directly, guarding against a run already in progress, instead of handing it off to triage.",
         ],
     },
 ];

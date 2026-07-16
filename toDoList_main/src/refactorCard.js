@@ -9,15 +9,16 @@
 // short-circuits for free), persists a fresh scan when new bytes are found, and
 // renders the top not-yet-dismissed candidate. A "Skip" control dismisses the
 // shown candidate and advances to the next; a "Push entry" control turns the
-// shown candidate into a real todo and hands it to the agent loop (via
-// listLogic.flagTaskForAgent), then dismisses it and advances.
+// shown candidate into a real todo, ships its entry and dispatches a run
+// directly (via shipEntryForTodo), then dismisses it and advances.
 //
 // A scan costs ~100k input tokens, so concurrent scans for the same repo are
 // deduped through a module-scoped in-flight map keyed by repo: a render that
 // lands while a scan is already running reuses the pending promise rather than
 // starting a second one.
 
-import { scanRefactor, getCachedTargets } from './inject.js';
+import { scanRefactor, getCachedTargets, fetchActiveRuns } from './inject.js';
+import { shipEntryForTodo } from './shipEntry.js';
 import { listLogic } from './listLogic.js';
 import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
 
@@ -26,8 +27,8 @@ import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
 // again — while an in-flight render reuses the pending promise.
 const _inFlight = new Map();
 
-// How long the "Pushed — triaging" confirmation lingers before the card
-// re-renders to the next candidate.
+// How long the "Entry shipped — run dispatched" confirmation lingers before the
+// card re-renders to the next candidate.
 const PUSHED_ADVANCE_MS = 2000;
 
 function clearEl(el) {
@@ -242,10 +243,36 @@ function showPushError(card, reason) {
     else card.appendChild(err);
 }
 
-// Create the shown candidate as a real todo, backfill its description, and hand
-// it to the agent loop via flagTaskForAgent. On success, dismiss the candidate,
-// rebuild the Projects list, confirm briefly, then advance to the next.
+// Create the shown candidate as a real todo, backfill its description, then ship
+// its entry and dispatch a run via shipEntryForTodo. Gated first by an in-flight
+// run probe that fails CLOSED, so a refusal leaves no orphaned todo behind. On
+// success, dismiss the candidate, rebuild the Projects list, confirm briefly,
+// then advance to the next.
 async function pushCandidate(card, repo, row, cand, projectName, pushBtn, skipBtn) {
+    // Resolve the ship target BEFORE anything is created, so the entry lands in
+    // the right repo's TODO.md and the run dispatches against that same repo.
+    const target = resolveTarget(repo);
+
+    // Safety gate: every refactor candidate extracts from the same source file,
+    // so two concurrent runs would edit it simultaneously. Probe claude-run.yml
+    // (no workflow arg) for any in-flight run and fail CLOSED — unlike the
+    // ambient callers of fetchActiveRuns, an ok:false here blocks the push
+    // rather than reading as "not active". This runs BEFORE addToDo so a refusal
+    // leaves no orphaned todo behind, which is what makes the one-tap push safe.
+    const active = await fetchActiveRuns(target);
+    if (!active || active.ok === false) {
+        pushBtn.disabled = false;
+        skipBtn.disabled = false;
+        showPushError(card, 'Couldn’t check for an in-flight run — the push was not attempted. Try again in a moment.');
+        return;
+    }
+    if (active.active) {
+        pushBtn.disabled = false;
+        skipBtn.disabled = false;
+        showPushError(card, 'A run is already in flight — try again once it lands.');
+        return;
+    }
+
     const title = buildPushTitle(cand, row);
     const desc = buildPushDescription(cand, row);
     // The add path takes only a title, so create then backfill the description
@@ -253,22 +280,33 @@ async function pushCandidate(card, repo, row, cand, projectName, pushBtn, skipBt
     listLogic.addToDo(projectName, title);
     const items = listLogic.listItems(projectName) || [];
     const created = items.filter(function (it) { return it && it.tit === title; }).pop();
-    if (created) {
-        created.desc = desc;
-        listLogic.editToDoItem(projectName, created);
-    }
-    let flagRes = { ok: false, error: 'Couldn’t create the task.' };
-    if (created) {
-        flagRes = await Promise.resolve(listLogic.flagTaskForAgent(created.id));
-    }
-    if (!flagRes || flagRes.ok === false) {
-        // The todo was already created; only the hand-off to the agent failed —
-        // don't dismiss the candidate, and re-enable so the user can retry.
+    if (!created) {
         pushBtn.disabled = false;
         skipBtn.disabled = false;
-        showPushError(card, (flagRes && flagRes.error)
-            ? ('Couldn’t hand the task to the agent — ' + flagRes.error)
-            : 'Couldn’t hand the task to the agent.');
+        showPushError(card, 'Couldn’t create the task.');
+        return;
+    }
+    created.desc = desc;
+    listLogic.editToDoItem(projectName, created);
+
+    // Ship the entry and dispatch a run for it. shipEntryForTodo mints the id
+    // and embeds the marker itself, so don't call embedEntryMarker here; omit
+    // existingEntryId so a fresh id is minted.
+    const shipRes = await shipEntryForTodo({
+        todoId: created.id,
+        entryText: created.desc,
+        target: target,
+    });
+    if (!shipRes || shipRes.ok === false) {
+        // The todo was already created and carries the entry — only the ship
+        // failed. Don't dismiss the candidate; the user can retry from the row's
+        // own Inject button. Re-enable both buttons and word this as a ship
+        // failure, not a push failure.
+        pushBtn.disabled = false;
+        skipBtn.disabled = false;
+        showPushError(card, (shipRes && shipRes.error)
+            ? ('Couldn’t ship the entry — ' + shipRes.error)
+            : 'Couldn’t ship the entry.');
         return;
     }
     // A pushed candidate is no longer a suggestion — dismiss it (reusing the
@@ -286,7 +324,7 @@ async function pushCandidate(card, repo, row, cand, projectName, pushBtn, skipBt
     const actions = card.querySelector('.refactorCardActions');
     const pushed = document.createElement('div');
     pushed.className = 'refactorCardPushed';
-    pushed.textContent = 'Pushed — triaging';
+    pushed.textContent = 'Entry shipped — run dispatched';
     if (actions) actions.replaceWith(pushed);
     else card.appendChild(pushed);
     setTimeout(function () {
