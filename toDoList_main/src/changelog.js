@@ -13,13 +13,7 @@ export const changelog = [
         fixed: [
             "The Generate mockups button no longer needs a second click when the agent board refreshes while mockups are still generating.",
             "Your in-progress answer to an agent's question is no longer wiped when the agent board refreshes while you're typing.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-15',
-        fixed: [
-            "A run's status no longer flips to “Unknown” while its build is still actively working, even when the build runs longer than 20 minutes.",
+            "Pushing a next-refactor candidate now points the new module inside the project's source folder instead of one directory above it.",
         ],
     },
 ];

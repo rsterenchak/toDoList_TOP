@@ -75,6 +75,23 @@ function srcPath(path) {
     return 'toDoList_main/' + s.replace(/^\/+/, '');
 }
 
+// Resolve the destination module path for a pushed candidate. The scan reports
+// `suggested_module` as a bare filename (e.g. `dismissable.js`), so passing it
+// through srcPath alone would join it straight onto `toDoList_main/` and drop
+// the `src/` segment — landing the module one directory above every other
+// source file, outside webpack's tree. Instead resolve it against the directory
+// of the (normalized) target file, which IS the repo's src prefix by
+// construction — so it stays correct for any repo whose registry row carries a
+// different `src_prefix`. `basename()` first so a bare filename, a repo-relative
+// `src/dismissable.js`, and an already-full path all normalize identically.
+// Falls back to srcPath's behaviour when the target file has no directory part.
+function destModulePath(targetFile, suggestedModule) {
+    const src = srcPath(targetFile);
+    const slash = src.lastIndexOf('/');
+    if (slash === -1) return srcPath(suggestedModule);
+    return src.slice(0, slash + 1) + basename(suggestedModule);
+}
+
 // An imperative extraction instruction for the pushed candidate's todo title.
 function buildPushTitle(cand, row) {
     const from = basename(row.target_file) || 'the source file';
@@ -95,7 +112,7 @@ function buildPushDescription(cand, row) {
             + ' name and treat the span as a hint only.';
     }
     lines.push('Extract the function `' + (cand.name || '') + '` from `' + srcPath(row.target_file)
-        + '` into a new module `' + srcPath(cand.suggested_module) + '`.' + span);
+        + '` into a new module `' + destModulePath(row.target_file, cand.suggested_module) + '`.' + span);
     if (cand.rationale) {
         lines.push('');
         lines.push('Rationale: ' + cand.rationale);
