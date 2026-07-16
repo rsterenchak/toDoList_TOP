@@ -707,3 +707,10 @@
   - File: `toDoList_main/src/refactorCard.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 862cbb67-e507-4094-b4f1-4e2d7c7a978b -->
+
+- [ ] **[MEDIUM]** Extract paintAboutVersionUpdateCue from main.js into aboutVersionCue.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `paintAboutVersionUpdateCue` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/aboutVersionCue.js`. The scan located it around lines 1690–1715; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Operates on a passed-in row using only imported hasPendingUpdate/applyPendingUpdate; no enclosing state.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/aboutVersionCue.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a2057089-0f33-4a73-8938-89d28ca6d85e -->
