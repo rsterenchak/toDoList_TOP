@@ -152,6 +152,16 @@ const _pendingRevertPrUrls = new Map();
 // repaint them immediately instead of an empty "Generate mockups" button.
 // Session-scoped only; resets on reload.
 const _mockupVariants = new Map();
+// Row ids with a mockup generation currently in flight, keyed by agent_queue row
+// id. Mirrors _mockupVariants: a realtime push repaint (paint() rebuilds the whole
+// board from _rows for ANY row change) tears down the just-clicked "Generating…"
+// button and rebuilds a fresh idle one, so the original request finishes against a
+// detached node and the user sees an inert "Generate mockups" they must click
+// again. Recording the in-flight row here (set on click, cleared in both the
+// success and failure paths) lets buildMockupSecondary re-render the button as
+// disabled/"Generating…" after a repaint instead of resetting it to idle.
+// Session-scoped only; resets on reload.
+const _mockupPending = new Set();
 // Short in-flight guard shared by the header Run button and the answer-submit
 // auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
 // redundant triage sweeps in the same tick. The workflow's concurrency group and
@@ -1304,7 +1314,25 @@ function buildMockupSecondary(row) {
         genBtn.textContent = 'Regenerate';
     }
 
+    // A generation kicked off before this render is still in flight (a realtime
+    // repaint tore down the button that started it). Re-render as the disabled
+    // "Generating…" state rather than a bare idle button so the user doesn't
+    // click again and fire a redundant generation against a detached node.
+    if (_mockupPending.has(row.id)) {
+        genBtn.disabled = true;
+        genBtn.classList.add('is-pending');
+        genBtn.textContent = 'Generating…';
+    }
+
     function genFail(message) {
+        _mockupPending.delete(row.id);
+        // A repaint detached this card while the request was in flight; the
+        // visible button is a fresh node still showing "Generating…". Repaint so
+        // it leaves that state (the error surfaces on the next attempt).
+        if (!genBtn.isConnected) {
+            paint();
+            return;
+        }
         genBtn.disabled = false;
         genBtn.classList.remove('is-pending');
         genBtn.textContent = previews.childNodes.length ? 'Regenerate' : 'Generate mockups';
@@ -1319,6 +1347,7 @@ function buildMockupSecondary(row) {
         genBtn.disabled = true;
         genBtn.classList.add('is-pending');
         genBtn.textContent = 'Generating…';
+        _mockupPending.add(row.id);
         const repo = mockupChatRepo(getSelectedProjectName());
         Promise.resolve().then(function () {
             return chatWithWorker([{ role: 'user', content: buildMockupGenPrompt(ctx, repo) }], null, null, repo);
@@ -1331,6 +1360,14 @@ function buildMockupSecondary(row) {
             }
             // Cache the parsed variants so a realtime repaint restores them.
             _mockupVariants.set(row.id, variants);
+            _mockupPending.delete(row.id);
+            // If a repaint detached this card mid-flight, its button is elsewhere
+            // stuck on "Generating…"; repaint so the visible card renders the new
+            // previews from cache. Otherwise update this (still-connected) node.
+            if (!genBtn.isConnected) {
+                paint();
+                return;
+            }
             renderMockupPreviews(previews, variants, row);
             genBtn.disabled = false;
             genBtn.classList.remove('is-pending');

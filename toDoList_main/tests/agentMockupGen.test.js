@@ -295,6 +295,35 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         expect(document.querySelector('.agentMockupGenerate').textContent).toBe('Regenerate');
     });
 
+    it('keeps the button in the disabled "Generating…" state after a repaint fires mid-generation', async () => {
+        queueRows = [{ id: 'g4c', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        // Kick off a generation. The request is in flight (not yet flushed).
+        document.querySelector('.agentMockupGenerate').click();
+
+        // A realtime push (any row change in the project) rebuilds the whole board
+        // from _rows while the request is still pending — regression: this used to
+        // tear down the "Generating…" button and rebuild a fresh idle one, so the
+        // user saw an inert "Generate mockups" and had to click a second time.
+        renderAgentView();
+
+        // The rebuilt button must reflect the in-flight generation, not reset to idle.
+        const midBtn = document.querySelector('.agentMockupGenerate');
+        expect(midBtn.textContent).toBe('Generating…');
+        expect(midBtn.disabled).toBe(true);
+
+        // Clicking the still-disabled button must NOT fire a second generation.
+        midBtn.click();
+
+        // Let the original in-flight request settle; the visible card renders the
+        // previews and offers Regenerate, from a single generation call.
+        await flush();
+        expect(chatCalls.length).toBe(1);
+        expect(document.querySelectorAll('.agentMockupFrame').length).toBe(3);
+        expect(document.querySelector('.agentMockupGenerate').textContent).toBe('Regenerate');
+    });
+
     it('shows a non-blocking error and keeps the fallback usable when the reply is unparseable', async () => {
         chatReply = 'Sorry, here are some ideas but no JSON at all.';
         queueRows = [{ id: 'g5', state: 'needs_mockup', context: { title: 'T' } }];
