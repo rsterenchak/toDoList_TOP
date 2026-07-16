@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-16',
         added: [
-            "The Structure tab now shows a “next refactor” card at the top, surfacing the cheapest extraction candidate for the project's repo.",
             "The next-refactor card now has a “Push entry” button that turns the shown candidate into a todo and hands it to the agent.",
         ],
         fixed: [
             "The Generate mockups button no longer needs a second click when the agent board refreshes while mockups are still generating.",
             "Your in-progress answer to an agent's question is no longer wiped when the agent board refreshes while you're typing.",
             "Pushing a next-refactor candidate now points the new module inside the project's source folder instead of one directory above it.",
+            "Pushing a next-refactor candidate now writes a properly formatted TODO.md entry, so it can be injected and run.",
         ],
     },
 ];

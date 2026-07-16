@@ -181,6 +181,40 @@ describe('Push entry — hand-off', () => {
         expect(edited.desc).toContain('toDoList_main/src/main.js');
     });
 
+    it('backfills a complete TODO.md entry, not free prose', async () => {
+        // Regression: a pushed refactor's description IS its TODO.md entry
+        // (injectDescription posts item.desc verbatim), so it must be a full,
+        // parseable entry — a `- [ ]` checkbox line, a literal-bracket priority,
+        // and Type/Description/File/Completed sub-bullets — not prose.
+        const card = renderRefactorCard('o/r', 'My Project');
+        await flush();
+        card.querySelector('.refactorCardPush').click();
+        await flush();
+
+        const desc = editToDoItem.mock.calls[0][1].desc;
+        const lines = desc.split('\n');
+        // First line: checkbox + literal-bracket MEDIUM priority + the title.
+        expect(lines[0]).toBe(
+            '- [ ] **[MEDIUM]** Extract buildMockupSecondary from agentView.js into src/agentMockup.js'
+        );
+        // Two-space-indented sub-bullets in the repo's exact shape.
+        expect(desc).toContain('\n  - Type: refactor');
+        expect(desc).toContain('\n  - Description: ');
+        expect(desc).toContain(
+            '\n  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/agentMockup.js`'
+        );
+        expect(desc).toContain('\n  - Completed: YYYY-MM-DD (PR #<number>)');
+        // The Description body is a single line (no bare newlines inside it).
+        const descLine = lines.find((l) => l.startsWith('  - Description: '));
+        expect(descLine).toBeTruthy();
+        expect(descLine).toMatch(/behaviour-preserving/i);
+        // Must state the module is imported back and call sites stay unchanged.
+        expect(descLine.toLowerCase()).toContain('import');
+        expect(descLine.toLowerCase()).toContain('call site');
+        // No id marker — injectDescription mints and embeds that itself.
+        expect(desc).not.toContain('<!-- id:');
+    });
+
     it('surfaces an inline error and does not dismiss when the hand-off fails', async () => {
         flagResult = { ok: false, error: 'Insert failed.' };
         const card = renderRefactorCard('o/r', 'My Project');
