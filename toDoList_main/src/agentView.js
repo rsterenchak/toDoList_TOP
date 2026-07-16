@@ -2,9 +2,6 @@ import { supabase } from './supabaseClient.js';
 import { listLogic } from './listLogic.js';
 import {
     mintEntryId,
-    embedEntryMarker,
-    injectEntry,
-    dispatchRun,
     dispatchTriage,
     pollRunStatus,
     resolveEntryByMarker,
@@ -16,11 +13,10 @@ import {
     isInjectConfigured,
     chatWithWorker,
     revertEntry,
-    markEntryPresentLocally,
-    refreshShippedMarkers,
 } from './inject.js';
 import { openChatWithSeed } from './claudeSheet.js';
 import { showConfirmModal } from './modals.js';
+import { shipEntryForTodo } from './shipEntry.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
 // replaces the old Conceive incubator surface. For the currently selected
@@ -87,20 +83,6 @@ const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 // any dispatched/running row that still carries its correlation + entry ids).
 const DISPATCH_POLL_MS = 5000;
 const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
-
-// Before dispatching a freshly-injected entry we make a best-effort confirmation
-// that it's visible on main: GitHub's workflow_dispatch can resolve `main` to a
-// tip that predates the inject commit (dispatch-after-push race), so a run fired
-// the instant inject returns can check out a stale TODO.md, miss the marker, and
-// no-op. Poll the on-main read for the entry's id marker with a short backoff —
-// up to ~8 attempts ~1s apart — as a head start, dispatching immediately once
-// the marker appears. This is NOT a gate: GitHub's write→read propagation is
-// variable and can lag past the window even though inject committed, and the
-// run's own runner-boot latency (tens of seconds) reliably exceeds propagation,
-// so if the marker doesn't surface in time we dispatch anyway rather than block
-// a legitimate run. A rare genuine race then no-changes and self-heals on Retry.
-const ENTRY_VISIBLE_ATTEMPTS = 8;
-const ENTRY_VISIBLE_DELAY_MS = 1000;
 
 // Triage-sweep tracking cadence and windows. Tapping Run fires a
 // `claude-triage.yml` sweep — a GitHub Actions workflow that isn't represented
@@ -1585,83 +1567,26 @@ function currentRowState(rowId) {
 async function dispatchDraft(row, draftText, existingEntryId) {
     const rowId = row.id;
     const target = resolveDispatchTarget();
-    const entryId = existingEntryId || mintEntryId();
-    const entry = embedEntryMarker(draftText, entryId);
 
-    const injectResult = await injectEntry({ entry: entry, id: entryId, target: target });
-    if (!injectResult || !injectResult.ok) {
-        return { ok: false, error: 'Inject failed — ' + ((injectResult && injectResult.reason) || 'error') };
-    }
-
-    // Write the entry id back to the source task so its tasks-view row shows the
-    // run-status glyph — amber now (the marker is in TODO.md, unshipped), flipping
-    // to green once the run merges and the entry's checkbox goes `[x]`. The glyph
-    // resolves from `item.entryId` against the shared TODO.md marker cache, so
-    // stamping the id is all that's needed for both edges: greenness is driven by
-    // the checkbox the run itself sets, exactly as for inject-button tasks. The
-    // stamp routes through listLogic (data-model writes must), keyed by the row's
-    // `todo_id` (= the item's id); markEntryPresentLocally + a forced marker
-    // refresh light the amber immediately, mirroring injectDescription.
-    if (row.todo_id != null) {
-        Promise.resolve(listLogic.stampTodoEntryId(row.todo_id, entryId)).catch(function () {});
-        if (target && target.repo) {
-            markEntryPresentLocally(target.repo, entryId);
-            refreshShippedMarkers(target, true);
-        }
-    }
-
-    // Best-effort head start: poll the same on-main read the reconcile path uses
-    // for the entry's id marker, dispatching immediately once it appears so a run
-    // doesn't race ahead of the push and no-op against a stale TODO.md. A
-    // transient read error counts as a miss and is retried until the attempt
-    // budget is spent. This is a head start, not a gate — if the marker never
-    // surfaces we dispatch anyway below rather than block a legitimate run.
-    const marker = '<!-- id: ' + entryId + ' -->';
-    let visible = false;
-    for (let i = 0; i < ENTRY_VISIBLE_ATTEMPTS; i++) {
-        let read = null;
-        try {
-            read = await readTodoMdFromWorker(target);
-        } catch (e) { read = null; }
-        if (read && read.ok !== false && typeof read.content === 'string'
-            && read.content.indexOf(marker) !== -1) {
-            visible = true;
-            break;
-        }
-        if (i < ENTRY_VISIBLE_ATTEMPTS - 1) {
-            await new Promise(function (res) { setTimeout(res, ENTRY_VISIBLE_DELAY_MS); });
-        }
-    }
-    if (!visible) {
-        // The entry was injected (marker appended) but hasn't propagated to the
-        // on-main read within the window. Don't block: the run's boot latency
-        // covers the remaining propagation, so dispatch anyway. A rare genuine
-        // race then no-changes and self-heals on Retry, which reuses this
-        // entry_id (persisted below alongside the dispatched state).
-        console.warn('dispatchDraft: entry ' + entryId
-            + ' not confirmed on main within the visibility window; dispatching anyway');
-    }
-
-    const correlationId = mintEntryId();
-    const dispatchResult = await dispatchRun({
-        mode: 'entry',
-        entryId: entryId,
-        correlationId: correlationId,
+    const res = await shipEntryForTodo({
+        todoId: row.todo_id,
+        entryText: draftText,
         target: target,
+        existingEntryId: existingEntryId,
     });
-    if (!dispatchResult || !dispatchResult.ok) {
-        return { ok: false, error: 'Run failed — ' + ((dispatchResult && dispatchResult.reason) || 'error') };
+    if (!res || !res.ok) {
+        return { ok: false, error: res.error };
     }
 
     const patch = {
         state: 'dispatched',
-        entry_id: entryId,
-        correlation_id: correlationId,
+        entry_id: res.entryId,
+        correlation_id: res.correlationId,
     };
-    if (dispatchResult.runId != null) patch.run_id = dispatchResult.runId;
+    if (res.runId != null) patch.run_id = res.runId;
     await listLogic.setAgentRunState(rowId, patch);
 
-    startDispatchPoller(rowId, entryId, correlationId, target);
+    startDispatchPoller(rowId, res.entryId, res.correlationId, target);
     // Refresh so the card leaves Drafted even where realtime isn't observed.
     refreshAgentQueue(getSelectedProjectName());
     return { ok: true };
