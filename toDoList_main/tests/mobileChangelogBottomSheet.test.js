@@ -123,6 +123,7 @@ describe('Mobile changelog bottom sheet', () => {
 
 describe('Mobile changelog sheet — source + style pins', () => {
     const main = read('main.js');
+    const aboutVersionCue = read('aboutVersionCue.js');
     const sheets = read('mobileSheets.js');
     const css = read('style.css');
 
@@ -164,9 +165,9 @@ describe('Mobile changelog sheet — source + style pins', () => {
     });
 
     it('stops the update pill click from also opening the changelog', () => {
-        const idx = main.indexOf('updatePill.addEventListener');
+        const idx = aboutVersionCue.indexOf('updatePill.addEventListener');
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 600);
+        const slice = aboutVersionCue.slice(idx, idx + 600);
         expect(slice).toMatch(/updatePill\.addEventListener\(\s*['"]click['"][\s\S]{0,400}stopPropagation\(\s*\)/);
     });
 
