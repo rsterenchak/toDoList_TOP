@@ -664,6 +664,67 @@ describe('AGENT view — needs_words answer action', () => {
     });
 });
 
+describe('AGENT view — needs_words answer survives a realtime repaint', () => {
+    it('preserves an unsent draft when the board repaints (paint rebuilds from cache)', async () => {
+        listLogic.addProject('Surv');
+        mountDom('Surv');
+        queueRows = [{ id: 'sv1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentAnswerInput');
+        input.value = 'a long half-typed answer';
+        input.dispatchEvent(new window.Event('input', { bubbles: true }));
+
+        // A realtime push on any row triggers a full board rebuild from cache.
+        renderAgentView();
+
+        const rebuilt = document.querySelector('.agentAnswerInput');
+        // A fresh textarea node, but the unsent draft carried across the rebuild.
+        expect(rebuilt).not.toBe(input);
+        expect(rebuilt.value).toBe('a long half-typed answer');
+    });
+
+    it('restores focus and caret to the answer input across a repaint', async () => {
+        listLogic.addProject('Caret');
+        mountDom('Caret');
+        queueRows = [{ id: 'cr1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentAnswerInput');
+        input.value = 'hello there';
+        input.dispatchEvent(new window.Event('input', { bubbles: true }));
+        input.focus();
+        input.setSelectionRange(5, 5);
+
+        renderAgentView();
+
+        const rebuilt = document.querySelector('.agentAnswerInput');
+        expect(document.activeElement).toBe(rebuilt);
+        expect(rebuilt.selectionStart).toBe(5);
+        expect(rebuilt.selectionEnd).toBe(5);
+    });
+
+    it('clears the preserved draft once the answer is sent', async () => {
+        listLogic.addProject('Sent');
+        mountDom('Sent');
+        queueRows = [{ id: 'st1', state: 'needs_words', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+
+        const input = document.querySelector('.agentAnswerInput');
+        input.value = 'my answer';
+        input.dispatchEvent(new window.Event('input', { bubbles: true }));
+        document.querySelector('.agentAnswerSend').click();
+        await flush();
+
+        // The row is still needs_words in the stub (no realtime state flip), so a
+        // repaint rebuilds the same card — its textarea must now be empty, not
+        // repopulated from a stale draft.
+        renderAgentView();
+        const rebuilt = document.querySelector('.agentAnswerInput');
+        expect(rebuilt.value).toBe('');
+    });
+});
+
 describe('AGENT view — needs_words "Discuss in chat" hand-off', () => {
     it('renders a Discuss-in-chat link alongside Send on a needs_words card', async () => {
         listLogic.addProject('Disc1');
