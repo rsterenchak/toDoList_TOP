@@ -55,6 +55,13 @@ vi.mock('../src/inject.js', () => ({
         if (state.explainError) return Promise.reject(state.explainError);
         return Promise.resolve({ reply: state.explainReply });
     }),
+    // Consumed by the NEXT REFACTOR card (refactorCard.js) mounted in the
+    // structure view. Default to a quiet no-candidate response so the card's
+    // async fill is inert during these structure-tree tests.
+    scanRefactor: vi.fn(function () {
+        return Promise.resolve({ ok: true, found: false, all_under_budget: true });
+    }),
+    getCachedTargets: vi.fn(function () { return []; }),
 }));
 
 // The deployed-site capture is stubbed so the capture-button flow can be exercised

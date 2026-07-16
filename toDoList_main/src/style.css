@@ -3312,6 +3312,113 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   display: none;
 }
 
+/* NEXT REFACTOR card — a panel above the Structure tree surfacing the single
+   cheapest extraction candidate for the repo. Mirrors .todoMdViewerCard's panel
+   treatment (surface fill, dim border, md radius). */
+.refactorCard {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.refactorCardEyebrow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.refactorCardEyebrowLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+.refactorCardEyebrowMeta {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.refactorCardTitle {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 15px;
+  color: var(--text-primary);
+  word-break: break-word;
+}
+
+.refactorCardChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.refactorCardChip {
+  display: inline-flex;
+  align-items: center;
+  /* 36px touch-target standard for tappable-height parity across the app. */
+  min-height: 36px;
+  padding: 4px 10px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: var(--bg-hover);
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+}
+
+/* Zero closure refs is the clean, trivially-extractable case. */
+.refactorCardChip--clean {
+  color: var(--text-warning);
+}
+
+.refactorCardModule,
+.refactorCardCluster {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
+
+.refactorCardRationale {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.refactorCardNote,
+.refactorCardError {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.refactorCardActions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.refactorCardSkip {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: none;
+  padding: 8px 4px;
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.refactorCardSkip:hover {
+  color: var(--text-primary);
+}
+
 .structureHeader {
   display: flex;
   flex-direction: row;
