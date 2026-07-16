@@ -99,29 +99,49 @@ function buildPushTitle(cand, row) {
     return 'Extract ' + (cand.name || 'the function') + ' from ' + from + ' into ' + into;
 }
 
-// The pushed candidate's todo description — everything triage needs without
-// re-deriving it from the scan.
+// The pushed candidate's todo description — a complete, single TODO.md entry in
+// the repo's exact existing format, because a todo's description IS its TODO.md
+// entry: injectDescription posts item.desc verbatim (wrapped only by
+// embedEntryMarker), so free prose here would land unparseable in TODO.md. The
+// entry uses `Type: refactor` (a value not otherwise present in TODO.md, and
+// parsed by nothing in the run/triage workflows) so machine-pushed refactors are
+// distinguishable from hand-written entries at a glance. No id marker is embedded
+// — injectDescription mints the id and calls embedEntryMarker itself.
 function buildPushDescription(cand, row) {
-    const lines = [];
-    lines.push('Mechanical, behaviour-preserving extraction only — no logic may change.');
-    lines.push('');
+    const srcFile = srcPath(row.target_file);
+    const destFile = destModulePath(row.target_file, cand.suggested_module);
+
+    // The Description body must be a single line: a TODO.md sub-bullet can't
+    // carry embedded newlines without breaking the entry's list structure, so
+    // the sentences are space-joined rather than paragraph-separated.
+    const body = [];
+    body.push('Mechanical, behaviour-preserving extraction only — no logic may change.');
     let span = '';
     if (cand.start_line != null && cand.end_line != null) {
         span = ' The scan located it around lines ' + cand.start_line + '–' + cand.end_line
             + '; that span is from the scan and may have drifted, so locate the function by'
             + ' name and treat the span as a hint only.';
     }
-    lines.push('Extract the function `' + (cand.name || '') + '` from `' + srcPath(row.target_file)
-        + '` into a new module `' + destModulePath(row.target_file, cand.suggested_module) + '`.' + span);
+    body.push('Extract the function `' + (cand.name || '') + '` from `' + srcFile
+        + '` into a new module `' + destFile + '`.' + span);
+    // An extraction that doesn't say this invites a rewrite — state that the new
+    // module is imported back and that every call site is left unchanged.
+    body.push('Import the extracted module back into `' + srcFile
+        + '` and keep every call site unchanged.');
     if (cand.rationale) {
-        lines.push('');
-        lines.push('Rationale: ' + cand.rationale);
+        body.push('Rationale: ' + cand.rationale);
     }
     if (Array.isArray(cand.cluster_with) && cand.cluster_with.length) {
-        lines.push('');
-        lines.push('Move these sibling functions in the same entry so the file isn’t touched by'
+        body.push('Move these sibling functions in the same entry so the file isn’t touched by'
             + ' two runs: ' + cand.cluster_with.join(', ') + '.');
     }
+
+    const lines = [];
+    lines.push('- [ ] **[MEDIUM]** ' + buildPushTitle(cand, row));
+    lines.push('  - Type: refactor');
+    lines.push('  - Description: ' + body.join(' '));
+    lines.push('  - File: `' + srcFile + '`, `' + destFile + '`');
+    lines.push('  - Completed: YYYY-MM-DD (PR #<number>)');
     return lines.join('\n');
 }
 
