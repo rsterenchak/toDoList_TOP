@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-16',
         fixed: [
             "The Generate mockups button no longer needs a second click when the agent board refreshes while mockups are still generating.",
+            "Your in-progress answer to an agent's question is no longer wiped when the agent board refreshes while you're typing.",
         ],
     },
     {
@@ -22,7 +23,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-14',
         fixed: [
-            "The image-attach icon in the Claude chat composer now matches the mic icon's theme color and hover highlight.",
             "An expanded todo's description editor no longer overlaps the next task when a project has many items.",
         ],
     },

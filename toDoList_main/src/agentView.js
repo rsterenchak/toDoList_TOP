@@ -162,6 +162,15 @@ const _mockupVariants = new Map();
 // disabled/"Generating…" after a repaint instead of resetting it to idle.
 // Session-scoped only; resets on reload.
 const _mockupPending = new Set();
+// In-progress, unsent needs_words answers, keyed by agent_queue row id → the
+// current textarea text. A realtime push repaint (paint() rebuilds the whole
+// board from _rows for ANY row change) tears down the answer textarea and builds
+// a fresh empty one, silently dropping whatever the user had typed but not yet
+// sent. Mirroring _mockupVariants/_mockupPending, the draft is mirrored here on
+// every keystroke and re-applied in buildSecondary after a repaint, so an unsent
+// answer survives the rebuild. The focused input's caret is separately preserved
+// across the rebuild in paint(). Cleared on a successful send. Session-scoped only.
+const _pendingAnswers = new Map();
 // Short in-flight guard shared by the header Run button and the answer-submit
 // auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
 // redundant triage sweeps in the same tick. The workflow's concurrency group and
@@ -515,6 +524,17 @@ function buildSecondary(row) {
         input.rows = 2;
         input.placeholder = 'Answer to continue…';
         input.setAttribute('aria-label', 'Answer');
+        // Tag the row so paint() can find this exact input again to restore the
+        // caret after a realtime-push rebuild.
+        input.setAttribute('data-answer-row', String(row.id));
+        // Re-apply any unsent draft the user typed before an intervening repaint
+        // tore the old textarea down, and keep the cache in step on every keystroke.
+        if (_pendingAnswers.has(row.id)) {
+            input.value = _pendingAnswers.get(row.id);
+        }
+        input.addEventListener('input', function () {
+            _pendingAnswers.set(row.id, input.value);
+        });
         wrap.appendChild(input);
 
         const actions = document.createElement('div');
@@ -557,6 +577,7 @@ function buildSecondary(row) {
             Promise.resolve(listLogic.answerAgentTask(row.id, text, row.thread)).then(function (res) {
                 if (res && res.ok) {
                     input.value = '';
+                    _pendingAnswers.delete(row.id);
                     // The realtime subscription re-renders as the state flips;
                     // refresh explicitly too so the card leaves Needs you even
                     // where realtime isn't observed (e.g. offline stubs).
@@ -2546,6 +2567,24 @@ function buildBucket(bucket, rows) {
 function paint() {
     const view = document.getElementById('agentView');
     if (!view) return;
+
+    // Preserve the focused needs_words answer input's caret across the rebuild.
+    // The draft text itself is mirrored into _pendingAnswers on each keystroke and
+    // re-applied in buildSecondary, but clear(view) drops focus and selection, so
+    // capture the focused input's row + caret here and restore them after the new
+    // board is in the document below.
+    let focusedAnswer = null;
+    const activeEl = document.activeElement;
+    if (activeEl && activeEl.classList
+        && activeEl.classList.contains('agentAnswerInput')
+        && view.contains(activeEl)) {
+        focusedAnswer = {
+            rowId: activeEl.getAttribute('data-answer-row'),
+            start: activeEl.selectionStart,
+            end: activeEl.selectionEnd,
+        };
+    }
+
     clear(view);
 
     const projectName = getSelectedProjectName();
@@ -2693,6 +2732,22 @@ function paint() {
         return;
     }
     view.appendChild(board);
+
+    // Restore focus + caret to the answer input that had them before the rebuild.
+    // Scan by data-answer-row rather than a selector so an arbitrary row id can't
+    // break the lookup; the draft value is already back in place from buildSecondary.
+    if (focusedAnswer && focusedAnswer.rowId != null) {
+        const inputs = view.querySelectorAll('.agentAnswerInput');
+        for (let i = 0; i < inputs.length; i++) {
+            if (inputs[i].getAttribute('data-answer-row') === focusedAnswer.rowId) {
+                inputs[i].focus();
+                try {
+                    inputs[i].setSelectionRange(focusedAnswer.start, focusedAnswer.end);
+                } catch (e) { /* selection API unavailable — focus alone suffices */ }
+                break;
+            }
+        }
+    }
 }
 
 // ── AGENT-TAB AVAILABILITY GATE ──
