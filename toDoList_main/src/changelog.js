@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-16',
+        fixed: [
+            "The Generate mockups button no longer needs a second click when the agent board refreshes while mockups are still generating.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-15',
         fixed: [
             "Projects with a routed inject target now sort to the top of the desktop project-picker dropdown.",
@@ -14,9 +21,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-14',
-        changed: [
-            "The Claude chat composer's attach button now uses a simplified single-stroke paperclip icon.",
-        ],
         fixed: [
             "The image-attach icon in the Claude chat composer now matches the mic icon's theme color and hover highlight.",
             "An expanded todo's description editor no longer overlaps the next task when a project has many items.",
