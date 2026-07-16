@@ -2970,7 +2970,7 @@ export function renderStructureView() {
     // this repo, sourced from the Worker's scan route. Mounted here as a
     // persistent sibling of the tree (like the filter box below), so a lens
     // repaint — which only clears `tree` — can't wipe it.
-    view.appendChild(renderRefactorCard(repo));
+    view.appendChild(renderRefactorCard(repo, projectName));
 
     // The filter box lives in the view (a persistent sibling of the tree), so a
     // lens render — which only clears `tree` — never wipes it.
