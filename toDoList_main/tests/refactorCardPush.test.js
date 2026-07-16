@@ -197,8 +197,11 @@ describe('Push entry — hand-off', () => {
         expect(lines[0]).toBe(
             '- [ ] **[MEDIUM]** Extract buildMockupSecondary from agentView.js into src/agentMockup.js'
         );
-        // Two-space-indented sub-bullets in the repo's exact shape.
-        expect(desc).toContain('\n  - Type: refactor');
+        // Two-space-indented sub-bullets in the repo's exact shape. Type must be
+        // `feature` — the routine only accepts bug/feature, so `refactor` would
+        // render the pushed entry ineligible and silently unrunnable.
+        expect(desc).toContain('\n  - Type: feature');
+        expect(desc).not.toContain('\n  - Type: refactor');
         expect(desc).toContain('\n  - Description: ');
         expect(desc).toContain(
             '\n  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/agentMockup.js`'
