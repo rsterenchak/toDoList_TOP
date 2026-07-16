@@ -79,7 +79,14 @@ describe('renderRefactorCard — synchronous shell', () => {
         expect(card).toBeInstanceOf(HTMLElement);
         expect(card.className).toBe('refactorCard');
         expect(card.querySelector('.refactorCardEyebrowLabel').textContent).toBe('NEXT REFACTOR');
-        expect(card.querySelector('.refactorCardEyebrowMeta').textContent).toBe('scanning…');
+        // The bare "scanning…" meta read as hung; the scanning state now sets an
+        // honest expectation (~90s, keep the tab open) instead.
+        expect(card.querySelector('.refactorCardEyebrowMeta')).toBeNull();
+        const note = card.querySelector('.refactorCardNote');
+        expect(note).not.toBeNull();
+        expect(note.textContent).toContain('minute and a half');
+        expect(note.textContent).toContain('leave this tab open');
+        expect(card.textContent).not.toContain('scanning…');
     });
 
     it('hides the card entirely when there is no repo', () => {
