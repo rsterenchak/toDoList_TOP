@@ -652,3 +652,9 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9fe2c382-b3fa-401e-bada-32411e37d10e -->
+
+- [ ] **[HIGH]** Fix Agent-board needs_words answer textarea losing typed text on realtime repaint
+  - Type: bug
+  - Description: The needs_words answer textarea (built in `buildSecondary()` in `toDoList_main/src/agentView.js`, ~line 513, class `agentAnswerInput`) is destroyed and recreated every time the board repaints, because `paint()` (~line 2546) does `clear(view)` and rebuilds the whole board from scratch. `subscribeAgentView()` (~line 2764) opens a `postgres_changes` subscription on the ENTIRE `agent_queue` table with `event: '*'` and no per-row/per-project filter (RLS only narrows it to the signed-in user's rows), and on every push calls `refreshAgentQueue()` (~line 444), which fetches and calls `paint()` again. So any agent_queue change anywhere for that user — a background triage sweep writing a verdict on a different task, another project's row updating, the SWEEP_POLL_MS/WORKING_WATCH_POLL_MS pollers — triggers a full repaint that wipes out whatever the user has typed into an open `agentAnswerInput` but not yet sent, mid-keystroke, with no warning. The longer the answer (more time typing = more time exposed to an intervening push), the more likely a repaint lands mid-entry and drops it, matching the "spans longer than a line" / "randomly deleted" report. Expected behavior: an in-progress, unsent answer in a needs_words textarea must survive a realtime-triggered repaint — either by preserving/restoring the focused textarea's value (and caret) across `paint()`, or by not tearing down and rebuilding a card whose answer input currently has focus and unsaved text.
+  - File: `toDoList_main/src/agentView.js`
+  <!-- id: bce0cc59-de64-4f53-a74c-8369861ca43e -->
