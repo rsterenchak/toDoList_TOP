@@ -630,6 +630,10 @@ describe('mobile update cue — src/modals.js', () => {
 
 describe('mobile update cue — src/main.js wiring', () => {
     const main = read('main.js');
+    // paintAboutVersionUpdateCue was extracted into its own module; the
+    // helper's body and existence pins read from there, while the call-site
+    // and import pins below still read from main.js.
+    const aboutVersionCue = read('aboutVersionCue.js');
 
     describe('imports', () => {
         it('imports hasPendingUpdate from modals.js so the gear-button dot can render initial state', () => {
@@ -679,17 +683,17 @@ describe('mobile update cue — src/main.js wiring', () => {
 
     describe('Settings modal About → Version row update pill', () => {
         it('paintAboutVersionUpdateCue helper exists at top level', () => {
-            // Lifted out of showSettingsModal so the function body stays
-            // small and the helper can be re-invoked by both the initial
-            // render and the appUpdateAvailable listener while the modal
-            // is open.
-            expect(main).toMatch(/function\s+paintAboutVersionUpdateCue\s*\(/);
+            // Extracted into its own module (aboutVersionCue.js) so the
+            // function body stays out of main.js and the helper can be
+            // re-invoked by both the initial render and the
+            // appUpdateAvailable listener while the modal is open.
+            expect(aboutVersionCue).toMatch(/function\s+paintAboutVersionUpdateCue\s*\(/);
         });
 
         it('paintAboutVersionUpdateCue mounts a .settingsAboutUpdatePill when hasPendingUpdate() is true', () => {
-            const fnIdx = main.indexOf('function paintAboutVersionUpdateCue');
+            const fnIdx = aboutVersionCue.indexOf('function paintAboutVersionUpdateCue');
             expect(fnIdx).toBeGreaterThan(-1);
-            const fnSlice = main.slice(fnIdx, fnIdx + 2000);
+            const fnSlice = aboutVersionCue.slice(fnIdx, fnIdx + 2000);
             expect(fnSlice).toMatch(/hasPendingUpdate\(\s*\)/);
             expect(fnSlice).toMatch(/['"]settingsAboutUpdatePill['"]/);
             // The pill must call applyPendingUpdate on click (the same
@@ -724,18 +728,18 @@ describe('mobile update cue — src/main.js wiring', () => {
         it('adds the update pill when hasPendingUpdate returns true and removes it when false', () => {
             // Lift just the paintAboutVersionUpdateCue body so we can
             // exercise it against a real DOM. Mirrors the slice pattern
-            // other tests in this directory use against main.js.
-            const idx = main.indexOf('function paintAboutVersionUpdateCue');
+            // other tests in this directory use against source modules.
+            const idx = aboutVersionCue.indexOf('function paintAboutVersionUpdateCue');
             expect(idx).toBeGreaterThan(-1);
-            const braceStart = main.indexOf('{', idx);
+            const braceStart = aboutVersionCue.indexOf('{', idx);
             let depth = 0;
             let body;
-            for (let i = braceStart; i < main.length; i++) {
-                if (main[i] === '{') depth++;
-                else if (main[i] === '}') {
+            for (let i = braceStart; i < aboutVersionCue.length; i++) {
+                if (aboutVersionCue[i] === '{') depth++;
+                else if (aboutVersionCue[i] === '}') {
                     depth--;
                     if (depth === 0) {
-                        body = main.slice(braceStart + 1, i);
+                        body = aboutVersionCue.slice(braceStart + 1, i);
                         break;
                     }
                 }
@@ -784,16 +788,16 @@ describe('mobile update cue — src/main.js wiring', () => {
             // Defensive guard: paintAboutVersionUpdateCue may run before
             // the About section has mounted (the modal isn't yet open),
             // so it has to tolerate a null/undefined row.
-            const idx = main.indexOf('function paintAboutVersionUpdateCue');
-            const braceStart = main.indexOf('{', idx);
+            const idx = aboutVersionCue.indexOf('function paintAboutVersionUpdateCue');
+            const braceStart = aboutVersionCue.indexOf('{', idx);
             let depth = 0;
             let body;
-            for (let i = braceStart; i < main.length; i++) {
-                if (main[i] === '{') depth++;
-                else if (main[i] === '}') {
+            for (let i = braceStart; i < aboutVersionCue.length; i++) {
+                if (aboutVersionCue[i] === '{') depth++;
+                else if (aboutVersionCue[i] === '}') {
                     depth--;
                     if (depth === 0) {
-                        body = main.slice(braceStart + 1, i);
+                        body = aboutVersionCue.slice(braceStart + 1, i);
                         break;
                     }
                 }
