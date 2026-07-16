@@ -103,10 +103,14 @@ function buildPushTitle(cand, row) {
 // the repo's exact existing format, because a todo's description IS its TODO.md
 // entry: injectDescription posts item.desc verbatim (wrapped only by
 // embedEntryMarker), so free prose here would land unparseable in TODO.md. The
-// entry uses `Type: refactor` (a value not otherwise present in TODO.md, and
-// parsed by nothing in the run/triage workflows) so machine-pushed refactors are
-// distinguishable from hand-written entries at a glance. No id marker is embedded
-// — injectDescription mints the id and calls embedEntryMarker itself.
+// entry uses `Type: feature` because the routine only accepts `bug` or `feature`
+// (routine-base.md's <todo_format>) — any other value renders the entry
+// ineligible and silently unrunnable. An extraction isn't fixing broken
+// behaviour, so `feature` (not `bug`) is correct; it maps to the changelog's
+// `added` category, but a behaviour-preserving extraction has no user-visible
+// effect, so the routine's own skip clause fires and no changelog bullet is
+// written. No id marker is embedded — injectDescription mints the id and calls
+// embedEntryMarker itself.
 function buildPushDescription(cand, row) {
     const srcFile = srcPath(row.target_file);
     const destFile = destModulePath(row.target_file, cand.suggested_module);
@@ -138,7 +142,7 @@ function buildPushDescription(cand, row) {
 
     const lines = [];
     lines.push('- [ ] **[MEDIUM]** ' + buildPushTitle(cand, row));
-    lines.push('  - Type: refactor');
+    lines.push('  - Type: feature');
     lines.push('  - Description: ' + body.join(' '));
     lines.push('  - File: `' + srcFile + '`, `' + destFile + '`');
     lines.push('  - Completed: YYYY-MM-DD (PR #<number>)');
