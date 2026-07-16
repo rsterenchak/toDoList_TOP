@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-16T13:06:34.265Z",
-  "sha": "a20cd6b0bb943a9dc1a67939a4666fa031cbd8dd",
+  "generatedAt": "2026-07-16T13:19:24.586Z",
+  "sha": "05009f43ab172609b885ccdf85a751c1e0cc2a79",
   "files": [
     "agentView.js",
     "auth.js",
@@ -37,6 +37,7 @@
     "runState.js",
     "seedTasksModal.js",
     "settingsMenu.js",
+    "shipEntry.js",
     "structureCanvas.js",
     "structureRemoteCapture.js",
     "structureView.js",
@@ -116,11 +117,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 2656,
+      "line": 2581,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2656
+          "line": 2581
         }
       ]
     },
@@ -144,11 +145,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 211,
+      "line": 193,
       "files": [
         {
           "file": "agentView.js",
-          "line": 211
+          "line": 193
         }
       ]
     },
