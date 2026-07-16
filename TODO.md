@@ -708,7 +708,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 862cbb67-e507-4094-b4f1-4e2d7c7a978b -->
 
-- [ ] **[MEDIUM]** Extract paintAboutVersionUpdateCue from main.js into aboutVersionCue.js
+- [x] **[MEDIUM]** Extract paintAboutVersionUpdateCue from main.js into aboutVersionCue.js — Completed: 2026-07-16
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `paintAboutVersionUpdateCue` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/aboutVersionCue.js`. The scan located it around lines 1690–1715; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Operates on a passed-in row using only imported hasPendingUpdate/applyPendingUpdate; no enclosing state.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/aboutVersionCue.js`
