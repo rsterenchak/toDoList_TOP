@@ -198,9 +198,16 @@ function buildEyebrow(rightText, rightMuted) {
 
 function renderScanning(card) {
     clearEl(card);
-    // A scan takes ~30s, so surface a "scanning…" label in place of the
-    // timestamp rather than an empty header that could read as hung.
-    card.appendChild(buildEyebrow('scanning…'));
+    // A scan takes ~90s (Opus runs with high thinking effort over the whole
+    // target file), so set an honest expectation instead of a bare "scanning…"
+    // label that reads as hung. This state is normal after every shipped
+    // refactor and on a repo's first scan. Reloading or switching away kills the
+    // in-flight fetch and loses the scan, so tell the user to keep the tab open.
+    card.appendChild(buildEyebrow(''));
+    const note = document.createElement('div');
+    note.className = 'refactorCardNote';
+    note.textContent = 'Scanning for a refactor — this takes about a minute and a half, so leave this tab open.';
+    card.appendChild(note);
 }
 
 function renderNote(card, text) {
