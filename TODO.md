@@ -714,3 +714,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/aboutVersionCue.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a2057089-0f33-4a73-8938-89d28ca6d85e -->
+
+- [ ] **[MEDIUM]** Fix the NEXT REFACTOR card implying a scan is hung
+  - Type: bug
+  - Description: The NEXT REFACTOR card shows a bare "scanning…" label with no indication of how long a scan takes, and a scan takes roughly 90 seconds — the Worker's `scan` route runs Opus with high thinking effort over the whole target file (a real scan measured ~99k input tokens and ~5.8k output, of which ~5k were thinking). The comment above `renderScanning` in `refactorCard.js` claims "A scan takes ~30s", which is wrong and is the source of the misleading copy. In practice the card reads as hung, and a user who reloads or switches away kills the in-flight fetch — which also loses the scan, because the row is only persisted once the response lands, so the next visit starts another full 90-second scan and another ~100k tokens. Update the scanning state so it sets an honest expectation: keep the "NEXT REFACTOR" eyebrow, and replace the bare "scanning…" meta text with copy that states this takes about a minute and a half and to leave the tab open. Correct the `~30s` claim in the comment above `renderScanning` to ~90s. This state is only reached on a genuine cache miss — a first scan for a repo, or the first Structure render after a shipped run changed the target file's bytes — so it is expected to be seen after every refactor lands and should read as normal progress rather than an error. Do not add a spinner, progress bar, or elapsed-time counter; the fix is honest copy, not motion. Do not change the timeout behaviour or add one — the fetch has no timeout today and must not gain one, since a scan legitimately runs this long.
+  - File: `toDoList_main/src/refactorCard.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: c1237203-5aa6-4dc5-a73c-c9223e5d1557 -->
