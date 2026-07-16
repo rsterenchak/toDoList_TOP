@@ -1294,6 +1294,150 @@ export const listLogic = (function () {
     }
 
 
+    // Read the most recent stored refactor-scan row for a repo. The Structure
+    // tab's NEXT REFACTOR card calls this on render to recover the last scan's
+    // target file + sha (so it can short-circuit the Worker scan) and its
+    // per-candidate `dismissed` skips. The `refactor_scans` table is keyed on
+    // `user_id` directly (the inject_targets pattern, NOT the todos table), so
+    // `user_id` is filtered explicitly here. Returns { ok, row } where `row` is
+    // the newest row for the repo or null when none exists; { ok:false, error }
+    // on failure so the card can show a quiet inline error and never a toast.
+    // @category: user-mutation-only
+    async function loadLatestRefactorScan(repo) {
+        if (!repo) return { ok: false, error: 'Missing repo.' };
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const result = await Promise.resolve(
+                supabase
+                    .from('refactor_scans')
+                    .select()
+                    .eq('user_id', session.user.id)
+                    .eq('repo', repo)
+                    .order('scanned_at', { ascending: false })
+                    .limit(1)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Load failed.',
+                };
+            }
+            const rows = (result && result.data) || [];
+            return { ok: true, row: rows.length ? rows[0] : null };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Load failed.' };
+        }
+    }
+
+    // Persist a fresh refactor scan for a repo/file. Upserts on the
+    // (user_id, repo, target_file) conflict target and writes ONLY
+    // user_id/repo/target_file/target_sha/candidates/scanned_at — deliberately
+    // never `dismissed`, so re-scanning a file leaves the user's prior skips on
+    // that row intact. `refactor_scans` is keyed on `user_id` directly (the
+    // inject_targets pattern), so user_id is required on the write. All scan
+    // writes route through here, matching the "all data-model mutations live in
+    // listLogic" convention. Returns { ok, error? }.
+    // @category: user-mutation-only
+    async function saveRefactorScan(scan) {
+        const s = (scan && typeof scan === 'object') ? scan : {};
+        if (!s.repo || !s.target_file) {
+            return { ok: false, error: 'Missing repo or file.' };
+        }
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const row = {
+                user_id: session.user.id,
+                repo: s.repo,
+                target_file: s.target_file,
+                target_sha: s.target_sha,
+                candidates: s.candidates,
+                scanned_at: new Date().toISOString(),
+            };
+            const result = await Promise.resolve(
+                supabase
+                    .from('refactor_scans')
+                    .upsert(row, { onConflict: 'user_id,repo,target_file' })
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Save failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Save failed.' };
+        }
+    }
+
+    // Append a candidate `name` to a stored scan row's `dismissed` array — the
+    // NEXT REFACTOR card's "Skip" action, which permanently hides that candidate
+    // so the card advances to the next-cheapest one. Reads the row's current
+    // `dismissed` (keyed on user_id/repo/target_file, the inject_targets pattern)
+    // and writes it back with the name appended, non-destructively and only once.
+    // All scan writes route through here. Returns { ok, error? }.
+    // @category: user-mutation-only
+    async function dismissRefactorCandidate(repo, targetFile, name) {
+        if (!repo || !targetFile || !name) {
+            return { ok: false, error: 'Missing argument.' };
+        }
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const userId = session.user.id;
+            const readResult = await Promise.resolve(
+                supabase
+                    .from('refactor_scans')
+                    .select('dismissed')
+                    .eq('user_id', userId)
+                    .eq('repo', repo)
+                    .eq('target_file', targetFile)
+                    .limit(1)
+            );
+            if (readResult && readResult.error) {
+                return {
+                    ok: false,
+                    error: (readResult.error && readResult.error.message) || 'Update failed.',
+                };
+            }
+            const rows = (readResult && readResult.data) || [];
+            const current = rows.length && Array.isArray(rows[0].dismissed)
+                ? rows[0].dismissed
+                : [];
+            if (current.indexOf(name) !== -1) return { ok: true };
+            const next = current.concat([name]);
+            const result = await Promise.resolve(
+                supabase
+                    .from('refactor_scans')
+                    .update({ dismissed: next })
+                    .eq('user_id', userId)
+                    .eq('repo', repo)
+                    .eq('target_file', targetFile)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Update failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Update failed.' };
+        }
+    }
+
+
     // Stamp an injected entry's id onto the source todo so its row's run-status
     // glyph lights. The Agent board's dispatch path injects a drafted entry into
     // the routed TODO.md but tracks state only on the agent_queue row; without
@@ -3378,6 +3522,9 @@ export const listLogic = (function () {
         flagTaskForAgent,
         answerAgentTask,
         setAgentRunState,
+        loadLatestRefactorScan,
+        saveRefactorScan,
+        dismissRefactorCandidate,
         stampTodoEntryId,
         unflagAgentTask,
         setProjectColor,

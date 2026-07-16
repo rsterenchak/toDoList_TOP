@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, scanRefactor, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -256,5 +256,49 @@ describe('fetchActiveRuns — optional workflow scope', () => {
         expect(body.workflow).toBe('triage');
         expect(res.ok).toBe(true);
         expect(res.active).toBe(true);
+    });
+});
+
+describe('scanRefactor — worker scan payload', () => {
+    function lastScanBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).scan; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('POSTs { scan, repo, filePath, target_sha } and spreads the response', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ found: true, target_file: 'src/big.js', candidates: [] }),
+        }));
+        const res = await scanRefactor({ repo: 'owner/repo', file_path: 'TODO.md' }, 'sha-9');
+        const body = lastScanBody();
+        expect(body).toBeTruthy();
+        expect(body.scan).toBe(true);
+        expect(body.repo).toBe('owner/repo');
+        expect(body.filePath).toBe('TODO.md');
+        expect(body.target_sha).toBe('sha-9');
+        expect(res.ok).toBe(true);
+        expect(res.found).toBe(true);
+        expect(res.target_file).toBe('src/big.js');
+    });
+
+    it('omits target_sha when no prior sha is passed (first scan)', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ found: false, all_under_budget: true }),
+        }));
+        await scanRefactor({ repo: 'owner/repo' });
+        const body = lastScanBody();
+        expect(body).toBeTruthy();
+        expect(body.target_sha).toBeUndefined();
+    });
+
+    it('funnels a transport failure through describeError as a quiet ok:false', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
+        const res = await scanRefactor({ repo: 'owner/repo' }, 'sha-1');
+        expect(res.ok).toBe(false);
+        expect(res.reason).toBe('Server error 500');
     });
 });
