@@ -68,11 +68,11 @@ import {
     attachProjectDrag,
     attachProjectInjectIndicator,
     attachProjectRunSpinner,
-    setProjectRunSpinnerActive,
     deleteProjectFlow,
 } from './projectRow.js';
 import { createProjectPicker } from './projectPicker.js';
 import { createProjectByName } from './projectCreate.js';
+import { createProjRunSpinner } from './projRunSpinner.js';
 import { createSettingsMenu } from './settingsMenu.js';
 import { createMobileUtilitySheet } from './mobileUtilitySheet.js';
 import {
@@ -109,9 +109,6 @@ import {
     initInjectConfig,
     initInjectTargets,
     showInjectSettingsModal,
-    isInjectConfigured,
-    findTargetById,
-    fetchActiveRuns,
 } from './inject.js';
 import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
@@ -3128,40 +3125,20 @@ function component() {
         }
     }
 
-    // ── Cross-device run spinner on the project trigger ──
-    // Resolve the active project's routed inject target (repo). Same gate as
-    // the ⚡ inject bolt: inject must be configured AND the project must route
-    // to a target id. A project with no routed target has no repo, so it is
-    // never polled and never spins.
+    // ── Cross-device run spinners ──
+    // The active-project trigger spinner and the per-project drawer-row spinners
+    // both live in projRunSpinner.js; the factory closes over the three DOM refs
+    // it paints (mobileProjName, mobileProjRunSpinner, sideMain) and keeps its
+    // own request-token / interval state. Only the entry points the rest of
+    // main.js wires up are destructured back out here.
     let projRunSpinnerLastProject = null;
-    let projRunSpinnerReqToken = 0;
     const PROJ_RUN_SPINNER_INTERVAL_MS = 10000;
 
-    function resolveActiveProjectTarget(name) {
-        if (!name || !isInjectConfigured()) return null;
-        const targetId = listLogic.getProjectTargetId(name);
-        if (!targetId) return null;
-        const target = findTargetById(targetId);
-        return (target && target.repo) ? target : null;
-    }
-
-    // Probe the active project's repo and spin the trigger glyph while a run is
-    // in flight. Fire-and-forget: an `ok:false` probe (or no routed repo) reads
-    // as "not active" and clears the spinner — never an error toast. A request
-    // token drops a stale response if the active project changed mid-flight.
-    async function refreshProjRunSpinner() {
-        const name = (mobileProjName.textContent || '').trim();
-        const target = resolveActiveProjectTarget(name);
-        if (!target) {
-            mobileProjRunSpinner.classList.remove('mobileProjRunSpinner--active');
-            return;
-        }
-        const token = ++projRunSpinnerReqToken;
-        const res = await fetchActiveRuns({ repo: target.repo, file_path: target.file_path });
-        if (token !== projRunSpinnerReqToken) return; // superseded by a newer poll
-        const active = !!(res && res.ok && res.active === true);
-        mobileProjRunSpinner.classList.toggle('mobileProjRunSpinner--active', active);
-    }
+    const {
+        refreshProjRunSpinner,
+        startDrawerSpinnerPoll,
+        stopDrawerSpinnerPoll,
+    } = createProjRunSpinner({ mobileProjName, mobileProjRunSpinner, sideMain });
 
     // Light background cadence (~10s), and only while the tab is visible so it
     // never polls in the background; a fresh poll also fires the moment the tab
@@ -3173,71 +3150,6 @@ function component() {
         if (document.visibilityState === 'visible') refreshProjRunSpinner();
     });
     setTimeout(refreshProjRunSpinner, 0);
-
-    // ── Per-project run spinners in the sidebar drawer (#projChild rows) ──
-    // While the drawer is open, probe every routed project's repo and spin the
-    // row whose repo has an in-flight run. Same routed-repo gate as the ⚡ bolt
-    // (resolveActiveProjectTarget). The probe set is deduped by repo — several
-    // projects can share one repo — so it calls fetchActiveRuns once per
-    // distinct repo, then maps each result back to every row that routes there.
-    // Open-gated: the poll runs only while `main1.sidebar-open` is set, so the
-    // extra chatter is bounded to when the switcher is actually on screen.
-    let drawerSpinnerInterval = null;
-    let drawerSpinnerReqToken = 0;
-    const DRAWER_SPINNER_INTERVAL_MS = 10000;
-
-    async function refreshDrawerRunSpinners() {
-        const rows = Array.prototype.slice.call(sideMain.querySelectorAll('#projChild'));
-        if (rows.length === 0) return;
-        // Group rows by their resolved repo; rows with no routed repo are
-        // cleared immediately and never contribute a probe.
-        const rowsByRepo = new Map();
-        rows.forEach(function(row) {
-            const input = row.querySelector('#projInput');
-            const name = input ? (input.value || '').trim() : '';
-            const target = resolveActiveProjectTarget(name);
-            if (!target || !target.repo) {
-                setProjectRunSpinnerActive(row, input, false);
-                return;
-            }
-            let bucket = rowsByRepo.get(target.repo);
-            if (!bucket) {
-                bucket = { target: target, rows: [] };
-                rowsByRepo.set(target.repo, bucket);
-            }
-            bucket.rows.push({ row: row, input: input });
-        });
-        if (rowsByRepo.size === 0) return;
-
-        const token = ++drawerSpinnerReqToken;
-        rowsByRepo.forEach(function(bucket) {
-            fetchActiveRuns({ repo: bucket.target.repo, file_path: bucket.target.file_path })
-                .then(function(res) {
-                    if (token !== drawerSpinnerReqToken) return; // superseded
-                    const active = !!(res && res.ok && res.active === true);
-                    bucket.rows.forEach(function(entry) {
-                        setProjectRunSpinnerActive(entry.row, entry.input, active);
-                    });
-                });
-        });
-    }
-
-    function startDrawerSpinnerPoll() {
-        refreshDrawerRunSpinners();
-        if (drawerSpinnerInterval === null) {
-            drawerSpinnerInterval = setInterval(refreshDrawerRunSpinners, DRAWER_SPINNER_INTERVAL_MS);
-        }
-    }
-
-    function stopDrawerSpinnerPoll() {
-        if (drawerSpinnerInterval !== null) {
-            clearInterval(drawerSpinnerInterval);
-            drawerSpinnerInterval = null;
-        }
-        // Drop the request token so a late in-flight probe never paints a row
-        // after the drawer has closed.
-        drawerSpinnerReqToken++;
-    }
 
     const footObserver = new MutationObserver(updateFooterCounts);
     footObserver.observe(mainList, {

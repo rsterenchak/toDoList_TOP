@@ -85,6 +85,9 @@ describe('project-switcher run spinners — desktop dropdown (projectPicker.js)'
 describe('project-switcher run spinners — mobile drawer (projectRow.js + main.js)', () => {
     const row = read('projectRow.js');
     const main = read('main.js');
+    // The drawer-spinner poll logic lives in projRunSpinner.js (extracted from
+    // main.js); main.js only builds the rows and wires open/close start+stop.
+    const spinner = read('projRunSpinner.js');
 
     it('exports a drawer spinner mount + toggle modeled on the inject bolt', () => {
         expect(row).toMatch(/export\s+function\s+attachProjectRunSpinner\s*\(/);
@@ -119,9 +122,9 @@ describe('project-switcher run spinners — mobile drawer (projectRow.js + main.
     });
 
     it('drives + dedupes the drawer poll by repo, dropping stale responses', () => {
-        const start = main.indexOf('async function refreshDrawerRunSpinners');
+        const start = spinner.indexOf('async function refreshDrawerRunSpinners');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 2000);
+        const block = spinner.slice(start, start + 2000);
         expect(block).toMatch(/sideMain\.querySelectorAll\(\s*['"]#projChild['"]\s*\)/);
         expect(block).toMatch(/resolveActiveProjectTarget\(\s*name\s*\)/);
         expect(block).toMatch(/rowsByRepo\s*=\s*new Map\(\)/);
@@ -131,12 +134,13 @@ describe('project-switcher run spinners — mobile drawer (projectRow.js + main.
     });
 
     it('runs the drawer poll ONLY while the sidebar drawer is open', () => {
-        expect(main).toMatch(/DRAWER_SPINNER_INTERVAL_MS\s*=\s*10000/);
+        expect(spinner).toMatch(/DRAWER_SPINNER_INTERVAL_MS\s*=\s*10000/);
+        // Wiring stays in main.js: opened via openSidebar, stopped via closeSidebar.
         const open = main.slice(main.indexOf('function openSidebar'), main.indexOf('function openSidebar') + 700);
         expect(open).toMatch(/startDrawerSpinnerPoll\(\)/);
         const close = main.slice(main.indexOf('function closeSidebar'), main.indexOf('function closeSidebar') + 500);
         expect(close).toMatch(/stopDrawerSpinnerPoll\(\)/);
-        const stop = main.slice(main.indexOf('function stopDrawerSpinnerPoll'), main.indexOf('function stopDrawerSpinnerPoll') + 400);
+        const stop = spinner.slice(spinner.indexOf('function stopDrawerSpinnerPoll'), spinner.indexOf('function stopDrawerSpinnerPoll') + 400);
         expect(stop).toMatch(/clearInterval\(\s*drawerSpinnerInterval\s*\)/);
         expect(stop).toMatch(/drawerSpinnerReqToken\+\+/);
     });
