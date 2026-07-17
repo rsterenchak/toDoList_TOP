@@ -137,6 +137,9 @@ describe('D1c — desktop project pill', () => {
 describe('desktop header consolidation', () => {
     const css  = read('style.css');
     const main = read('main.js');
+    // placeDesktopHeader was extracted into its own module; the function-body
+    // assertions read it there, while the resize wiring stays in main.js.
+    const dhp  = read('desktopHeaderPlacement.js');
 
     // Slice the dedicated consolidation block so assertions read its rules and
     // not similarly-named rules elsewhere.
@@ -162,9 +165,9 @@ describe('desktop header consolidation', () => {
         // placeDesktopHeader() re-parents #mobileProjHeader into #navBar at
         // desktop widths (and back into #mainBar at mobile). The pill is MOVED,
         // not duplicated, so its drawer/swipe wiring survives.
-        const fnIdx = main.indexOf('function placeDesktopHeader(');
+        const fnIdx = dhp.indexOf('function placeDesktopHeader(');
         expect(fnIdx).toBeGreaterThan(-1);
-        const fn = main.slice(fnIdx, main.indexOf('placeDesktopHeader();', fnIdx));
+        const fn = dhp.slice(fnIdx, dhp.indexOf('return {', fnIdx));
         expect(fn).toMatch(/window\.innerWidth\s*>=\s*1024/);
         expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjHeader\s*,\s*pomodoroToggle\s*\)/);
         // Mobile branch returns it to the task pane (#mainBar / main2).
@@ -194,8 +197,8 @@ describe('desktop header consolidation', () => {
         // left column (#mobileProjMain) as the bottom counts line.
         const block = consolidationBlock();
         expect(block).toMatch(/#navBar\s+#mobileProjStats\s*\{[^}]*display:\s*none/);
-        const fnIdx = main.indexOf('function placeDesktopHeader(');
-        const fn = main.slice(fnIdx, main.indexOf('placeDesktopHeader();', fnIdx));
+        const fnIdx = dhp.indexOf('function placeDesktopHeader(');
+        const fn = dhp.slice(fnIdx, dhp.indexOf('return {', fnIdx));
         expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjStats\s*,\s*pomodoroToggle\s*\)/);
         expect(fn).toMatch(/mobileProjMain\.appendChild\(\s*mobileProjStats\s*\)/);
     });
