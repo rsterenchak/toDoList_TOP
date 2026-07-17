@@ -762,3 +762,25 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b2a9f9b5-5943-4896-8881-52de3498666d -->
+
+- [ ] **[MEDIUM]** Pair the Structure filter box and Expand-all pill on one row
+  - Type: feature
+  - Description: The Structure view's control zone stacks three full-width siblings — the filter box, a strip holding only the Collapse/Expand-all pill, and the selection toolbar — each separated by `#structureView`'s `gap: 16px`. The middle strip is a full flex row carrying one right-aligned pill, so it costs roughly 40px of vertical rhythm (its own ~24px plus one 16px gap) to present a single control. Pair the filter box and the pill as siblings on one row: the filter box flexes to fill, the pill sits to its right at its natural width. This also aligns the filter box's `border-radius` with the 10px used by `.structureActionToolbar` directly below it, and lifts the pill to the same rendered height as the filter box so the two read as one control strip.
+  - Behavior:
+    1. Filter box and pill share one row, `8px` apart; the filter box flexes to fill the remaining width.
+    2. When `refreshCollapseAllPill` hides the strip (lens has no collapsible sections), the pill disappears and the filter box expands to the full row width.
+    3. The pill's label toggle (`Collapse all` ⇄ `Expand all`) does not resize the filter box.
+  - Implementation notes:
+    - `structureView.js` ~2977–2988: build a `div.structureControlRow`, append `buildFilterBox()` and `buildCollapseToolbar()` into it, and append that row to `view` where the filter box currently goes (after `renderRefactorCard`, before the action toolbar). Leave `buildFilterBox`, `buildCollapseToolbar`, `refreshCollapseAllPill`, and `onCollapseAllToggle` untouched — `collapseToolbarEl` must stay the `.structureToolbar` element so its `hidden` toggle keeps working. Keep the `updateFilterPlaceholder()` call in its current position relative to the filter box.
+    - New rule: `.structureControlRow { display: flex; align-items: center; gap: 8px; }`.
+    - `.structureFilterBox` (`style.css:3567`): add `flex: 1 1 auto; min-width: 0;` and change `border-radius: 8px` to `10px`. Do not touch `.structureFilterInput`'s `font-size: 16px` (`3588`) — it's the iOS Safari auto-zoom guard.
+    - `.structureToolbar` (`3656`): drop `justify-content: flex-end` (meaningless once it's a shrink-wrapped flex item) and add `flex: 0 0 auto`. Keep `.structureToolbar[hidden] { display: none; }` (`3663`) — it is load-bearing here; it's what lets the filter box reclaim the full width when the strip hides.
+    - `.structureCollapseAllPill` (`3665`): replace `padding: 5px 14px` with `display: inline-flex; align-items: center; justify-content: center; min-height: 36px; min-width: 11ch; white-space: nowrap; padding: 0 14px;`. `min-height: 36px` matches the filter box's rendered height and the app's 36px chip standard; `min-width: 11ch` reserves the wider `Collapse all` label so the row doesn't jump on relabel, and scales with `font-size` so it needs no per-breakpoint duplicate.
+    - Mobile override (`~10592`): drop `padding: 3px 10px`, keep `font-size: 12px`, use `padding: 0 10px`. Height is governed by `min-height` at both breakpoints now. The existing comment there explaining why a button may drop below 16px stays accurate.
+    - Verify `Collapse all` neither wraps nor clips inside `min-width: 11ch` at the 12px mobile size; raise the `ch` value if it does.
+    - The 36px height is a deliberate landing spot matching the adjacent filter box and the app's chip standard, not the ~44px touch-target guideline — it's a meaningful improvement over the current ~24px pill without breaking the zone's density.
+    - Existing tests at `tests/structureView.test.js:2109–2130` reach the strip via `document.querySelector('.structureToolbar')` and assert `.hidden`, so nesting it in the wrapper doesn't break them — don't rewrite those assertions.
+  - Out of scope: the action toolbar's idle presentation (the bordered box around `Select a handle to reference it`) — separate entry. No change to filter, fold, or selection logic; this is layout and geometry only.
+  - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 59770f6c-70d5-4977-b4c3-c92aff9e2eaf -->
