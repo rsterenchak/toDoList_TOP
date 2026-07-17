@@ -1,115 +1,97 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
-// Tests for the NEXT REFACTOR card (refactorCard.js). The card returns a
-// container synchronously and fills it asynchronously: resolve the repo's last
-// scan, probe the Worker's scan route, persist on new bytes, and render the top
-// not-yet-dismissed candidate. inject.js (scanRefactor) and listLogic.js (the
-// three refactor_scans functions) are fully mocked so each branch and the
-// in-flight dedup can be scripted without network or Supabase.
+// Tests for the NEXT REFACTOR card (refactorCard.js). The card is a pure reader:
+// it returns a container synchronously and fills it asynchronously by reading the
+// repo's last stored scan (listLogic.loadLatestRefactorScan) and rendering the
+// top not-yet-dismissed candidate. The Worker owns the scan and writes the row
+// now, so the client never posts a scan and never saves a row. listLogic.js is
+// fully mocked so each branch can be scripted without Supabase.
 
-let scanResult = { ok: true, found: false, all_under_budget: true };
-let scanImpl = null; // when set, called instead of returning scanResult
 let loadResult = { ok: true, row: null };
 
-const scanRefactor = vi.fn(function () {
-    if (scanImpl) return scanImpl();
-    return Promise.resolve(scanResult);
-});
-const saveRefactorScan = vi.fn(function () { return Promise.resolve({ ok: true }); });
 const dismissRefactorCandidate = vi.fn(function () { return Promise.resolve({ ok: true }); });
 const loadLatestRefactorScan = vi.fn(function () { return Promise.resolve(loadResult); });
 
 vi.mock('../src/inject.js', () => ({
-    scanRefactor: (...a) => scanRefactor(...a),
     getCachedTargets: () => [],
 }));
 
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         loadLatestRefactorScan: (...a) => loadLatestRefactorScan(...a),
-        saveRefactorScan: (...a) => saveRefactorScan(...a),
         dismissRefactorCandidate: (...a) => dismissRefactorCandidate(...a),
     },
 }));
 
-import { renderRefactorCard, _resetRefactorCard } from '../src/refactorCard.js';
+import { renderRefactorCard } from '../src/refactorCard.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 6) { for (let i = 0; i < n; i++) await tick(); }
 
 beforeEach(() => {
-    _resetRefactorCard();
-    scanResult = { ok: true, found: false, all_under_budget: true };
-    scanImpl = null;
     loadResult = { ok: true, row: null };
-    scanRefactor.mockClear();
-    saveRefactorScan.mockClear();
     dismissRefactorCandidate.mockClear();
     loadLatestRefactorScan.mockClear();
 });
 
-const FOUND = {
-    ok: true,
-    found: true,
-    target_file: 'src/agentView.js',
-    target_sha: 'sha-1',
-    candidates: [
-        {
-            name: 'buildMockupSecondary',
-            lines: 120,
-            closure_refs: ['ctx', 'row'],
-            suggested_module: 'src/agentMockup.js',
-            cluster_with: ['renderMockupPreviews'],
-            rationale: 'Self-contained mockup rendering.',
-        },
-        {
-            name: 'buildDiscussSeed',
-            lines: 40,
-            closure_refs: [],
-            suggested_module: 'src/agentHandoff.js',
-            cluster_with: [],
-            rationale: 'Pure seed assembly.',
-        },
-    ],
-};
+const CANDIDATES = [
+    {
+        name: 'buildMockupSecondary',
+        lines: 120,
+        closure_refs: ['ctx', 'row'],
+        suggested_module: 'src/agentMockup.js',
+        cluster_with: ['renderMockupPreviews'],
+        rationale: 'Self-contained mockup rendering.',
+    },
+    {
+        name: 'buildDiscussSeed',
+        lines: 40,
+        closure_refs: [],
+        suggested_module: 'src/agentHandoff.js',
+        cluster_with: [],
+        rationale: 'Pure seed assembly.',
+    },
+];
+
+// A stored refactor_scans row — the shape loadLatestRefactorScan returns and the
+// card reads directly (no scan, no save).
+function makeRow(candidates) {
+    return {
+        repo: 'o/r',
+        target_file: 'src/agentView.js',
+        target_sha: 'sha-1',
+        candidates: candidates || CANDIDATES,
+        dismissed: [],
+        scanned_at: new Date().toISOString(),
+    };
+}
 
 describe('renderRefactorCard — synchronous shell', () => {
-    it('returns an element immediately showing the scanning state', () => {
+    it('returns an empty element immediately with no scanning label', () => {
         const card = renderRefactorCard('o/r');
         expect(card).toBeInstanceOf(HTMLElement);
         expect(card.className).toBe('refactorCard');
-        expect(card.querySelector('.refactorCardEyebrowLabel').textContent).toBe('NEXT REFACTOR');
-        // The bare "scanning…" meta read as hung; the scanning state now sets an
-        // honest expectation (~90s, keep the tab open) instead.
-        expect(card.querySelector('.refactorCardEyebrowMeta')).toBeNull();
-        const note = card.querySelector('.refactorCardNote');
-        expect(note).not.toBeNull();
-        expect(note.textContent).toContain('minute and a half');
-        expect(note.textContent).toContain('leave this tab open');
-        expect(card.textContent).not.toContain('scanning…');
+        // The card no longer scans from the browser, so there is no scanning
+        // state — it renders nothing until the stored row resolves.
+        expect(card.querySelector('.refactorCardNote')).toBeNull();
+        expect(card.querySelector('.refactorCardEyebrowLabel')).toBeNull();
+        expect(card.textContent).not.toContain('scanning');
+        expect(card.textContent).not.toContain('minute and a half');
     });
 
     it('hides the card entirely when there is no repo', () => {
         const card = renderRefactorCard('');
         expect(card.style.display).toBe('none');
-        expect(scanRefactor).not.toHaveBeenCalled();
+        expect(loadLatestRefactorScan).not.toHaveBeenCalled();
     });
 });
 
-describe('renderRefactorCard — found candidates', () => {
-    it('persists the fresh scan and renders the top candidate', async () => {
-        scanResult = FOUND;
+describe('renderRefactorCard — stored candidates', () => {
+    it('renders the top candidate from the stored row (no save)', async () => {
+        loadResult = { ok: true, row: makeRow() };
         const card = renderRefactorCard('o/r');
         await flush();
-        // Saved only the allowed fields.
-        expect(saveRefactorScan).toHaveBeenCalledTimes(1);
-        const saved = saveRefactorScan.mock.calls[0][0];
-        expect(saved).toEqual({
-            repo: 'o/r',
-            target_file: 'src/agentView.js',
-            target_sha: 'sha-1',
-            candidates: FOUND.candidates,
-        });
+        expect(loadLatestRefactorScan).toHaveBeenCalledWith('o/r');
         // Top candidate is rendered.
         expect(card.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
         const chips = Array.from(card.querySelectorAll('.refactorCardChip')).map((c) => c.textContent);
@@ -123,7 +105,7 @@ describe('renderRefactorCard — found candidates', () => {
     });
 
     it('flags a zero-closure-ref candidate with the clean chip class', async () => {
-        scanResult = { ...FOUND, candidates: [FOUND.candidates[1]] };
+        loadResult = { ok: true, row: makeRow([CANDIDATES[1]]) };
         const card = renderRefactorCard('o/r');
         await flush();
         const clean = card.querySelector('.refactorCardChip--clean');
@@ -132,7 +114,7 @@ describe('renderRefactorCard — found candidates', () => {
     });
 
     it('Skip dismisses the shown candidate and advances to the next', async () => {
-        scanResult = FOUND;
+        loadResult = { ok: true, row: makeRow() };
         const card = renderRefactorCard('o/r');
         await flush();
         expect(card.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
@@ -143,7 +125,7 @@ describe('renderRefactorCard — found candidates', () => {
     });
 
     it('shows the all-skipped note once every candidate is dismissed', async () => {
-        scanResult = { ...FOUND, candidates: [FOUND.candidates[0]] };
+        loadResult = { ok: true, row: makeRow([CANDIDATES[0]]) };
         const card = renderRefactorCard('o/r');
         await flush();
         card.querySelector('.refactorCardSkip').click();
@@ -153,57 +135,24 @@ describe('renderRefactorCard — found candidates', () => {
     });
 });
 
-describe('renderRefactorCard — unchanged / terminal / error', () => {
-    it('renders the stored candidates without a save when unchanged', async () => {
-        loadResult = {
-            ok: true,
-            row: {
-                repo: 'o/r',
-                target_file: 'src/x.js',
-                target_sha: 'sha-old',
-                candidates: [{ name: 'stored', lines: 10, closure_refs: [], rationale: 'r' }],
-                dismissed: [],
-                scanned_at: new Date().toISOString(),
-            },
-        };
-        scanResult = { ok: true, unchanged: true };
+describe('renderRefactorCard — no row / error', () => {
+    it('renders the no-scan-yet note when the repo has no stored row', async () => {
+        loadResult = { ok: true, row: null };
         const card = renderRefactorCard('o/r');
         await flush();
-        // The stored sha was forwarded to the Worker.
-        expect(scanRefactor.mock.calls[0][1]).toBe('sha-old');
-        expect(saveRefactorScan).not.toHaveBeenCalled();
-        expect(card.querySelector('.refactorCardTitle').textContent).toBe('stored');
+        expect(card.querySelector('.refactorCardTitle')).toBeFalsy();
+        const note = card.querySelector('.refactorCardNote');
+        expect(note).toBeTruthy();
+        expect(note.textContent).toMatch(/no refactor scan yet/i);
+        expect(note.textContent).toMatch(/after the next shipped run/i);
     });
 
-    it('renders the under-budget note as a terminal state', async () => {
-        scanResult = { ok: true, found: false, all_under_budget: true };
-        const card = renderRefactorCard('o/r');
-        await flush();
-        expect(card.querySelector('.refactorCardNote').textContent).toMatch(/under budget/i);
-    });
-
-    it('renders a quiet inline error on ok:false', async () => {
-        scanResult = { ok: false, reason: 'Server error 500' };
+    it('renders a quiet inline error when the read fails', async () => {
+        loadResult = { ok: false, error: 'Server error 500' };
         const card = renderRefactorCard('o/r');
         await flush();
         const err = card.querySelector('.refactorCardError');
         expect(err).toBeTruthy();
         expect(err.textContent).toContain('Server error 500');
-    });
-});
-
-describe('renderRefactorCard — in-flight dedup', () => {
-    it('reuses the pending scan when a second render lands mid-flight', async () => {
-        let resolveScan;
-        scanImpl = () => new Promise((r) => { resolveScan = r; });
-        const cardA = renderRefactorCard('o/r');
-        const cardB = renderRefactorCard('o/r');
-        await flush(2);
-        // Both renders share one Worker scan.
-        expect(scanRefactor).toHaveBeenCalledTimes(1);
-        resolveScan(FOUND);
-        await flush();
-        expect(cardA.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
-        expect(cardB.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
     });
 });

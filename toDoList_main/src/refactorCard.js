@@ -1,31 +1,27 @@
 // NEXT REFACTOR card — the Structure tab's top-of-view suggestion of the single
 // cheapest extraction-refactor candidate for the selected project's repo.
 //
-// `renderRefactorCard(repo)` returns a container element synchronously and fills
-// it asynchronously, so structureView can mount it as a persistent sibling of the
-// tree (a lens repaint, which only clears the tree, never wipes it). The fill
-// path resolves the repo's last stored scan, asks the Worker's `scan` route for
-// the next candidate (passing the stored blob sha so an unchanged file
-// short-circuits for free), persists a fresh scan when new bytes are found, and
-// renders the top not-yet-dismissed candidate. A "Skip" control dismisses the
-// shown candidate and advances to the next; a "Push entry" control turns the
-// shown candidate into a real todo, ships its entry and dispatches a run
-// directly (via shipEntryForTodo), then dismisses it and advances.
+// The card is a pure reader. The Worker owns the scan entirely: after each
+// merged run `claude-run.yml` calls the Worker's scan route, which reads the
+// stored `refactor_scans` row, does the sha check server-side, and writes the
+// result with the service_role key (owner taken from `inject_targets.user_id`).
+// So the browser never scans — it only reads the repo's last stored scan
+// (`loadLatestRefactorScan`) and renders the top not-yet-dismissed candidate.
+// This matters on mobile Safari, which dropped the ~90s scan request every time
+// the browser held that connection open.
 //
-// A scan costs ~100k input tokens, so concurrent scans for the same repo are
-// deduped through a module-scoped in-flight map keyed by repo: a render that
-// lands while a scan is already running reuses the pending promise rather than
-// starting a second one.
+// `renderRefactorCard(repo)` returns a container element synchronously and fills
+// it asynchronously (a sub-second Supabase read), so structureView can mount it
+// as a persistent sibling of the tree (a lens repaint, which only clears the
+// tree, never wipes it). A "Skip" control dismisses the shown candidate and
+// advances to the next; a "Push entry" control turns the shown candidate into a
+// real todo, ships its entry and dispatches a run directly (via shipEntryForTodo),
+// then dismisses it and advances.
 
-import { scanRefactor, getCachedTargets, fetchActiveRuns } from './inject.js';
+import { getCachedTargets, fetchActiveRuns } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
 import { listLogic } from './listLogic.js';
 import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
-
-// repo -> Promise resolving to a normalized render descriptor. Cleared when the
-// scan settles, so a later render (after the file rolled over, say) can scan
-// again — while an in-flight render reuses the pending promise.
-const _inFlight = new Map();
 
 // How long the "Entry shipped — run dispatched" confirmation lingers before the
 // card re-renders to the next candidate.
@@ -36,8 +32,9 @@ function clearEl(el) {
 }
 
 // Resolve the full inject target (repo + file_path) for a repo string so the
-// scan POST carries the same shape fetchPagesStatus uses. Falls back to a
-// repo-only target when the cache has no match (the Worker resolves the rest).
+// "Push entry" ship and its in-flight-run probe carry the same shape the other
+// Worker calls use. Falls back to a repo-only target when the cache has no match
+// (the Worker resolves the rest).
 function resolveTarget(repo) {
     const targets = getCachedTargets();
     for (let i = 0; i < targets.length; i++) {
@@ -196,20 +193,6 @@ function buildEyebrow(rightText, rightMuted) {
     return eyebrow;
 }
 
-function renderScanning(card) {
-    clearEl(card);
-    // A scan takes ~90s (Opus runs with high thinking effort over the whole
-    // target file), so set an honest expectation instead of a bare "scanning…"
-    // label that reads as hung. This state is normal after every shipped
-    // refactor and on a repo's first scan. Reloading or switching away kills the
-    // in-flight fetch and loses the scan, so tell the user to keep the tab open.
-    card.appendChild(buildEyebrow(''));
-    const note = document.createElement('div');
-    note.className = 'refactorCardNote';
-    note.textContent = 'Scanning for a refactor — this takes about a minute and a half, so leave this tab open.';
-    card.appendChild(note);
-}
-
 function renderNote(card, text) {
     clearEl(card);
     card.appendChild(buildEyebrow(''));
@@ -225,8 +208,8 @@ function renderError(card, reason) {
     const err = document.createElement('div');
     err.className = 'refactorCardError';
     err.textContent = reason
-        ? ('Couldn’t scan for a refactor — ' + reason)
-        : 'Couldn’t scan for a refactor.';
+        ? ('Couldn’t load the latest refactor scan — ' + reason)
+        : 'Couldn’t load the latest refactor scan.';
     card.appendChild(err);
 }
 
@@ -437,87 +420,42 @@ function renderCandidate(card, repo, row, projectName) {
     card.appendChild(actions);
 }
 
-// ── Scan orchestration ───────────────────────────────────────────────
+// ── Reader ───────────────────────────────────────────────────────────
 
-// Resolve the repo's last scan, probe the Worker, persist on new bytes, and
-// return a normalized descriptor the renderer consumes. Deduped per repo.
-function runScan(repo) {
-    if (_inFlight.has(repo)) return _inFlight.get(repo);
-    const p = (async function () {
-        const target = resolveTarget(repo);
-        const loaded = await listLogic.loadLatestRefactorScan(repo);
-        const storedRow = (loaded && loaded.ok) ? (loaded.row || null) : null;
-        const storedSha = storedRow ? storedRow.target_sha : undefined;
-        const res = await scanRefactor(target, storedSha);
-        if (!res || res.ok === false) {
-            return { kind: 'error', reason: (res && res.reason) || '' };
-        }
-        // Same file at the same sha — render the stored row untouched (no write).
-        if (res.unchanged) {
-            if (storedRow) return { kind: 'candidate', row: storedRow };
-            // Worker says unchanged but we have nothing stored — treat as terminal.
-            return { kind: 'note', text: 'No refactor candidate yet.' };
-        }
-        // New bytes — persist and render the returned candidates.
-        if (res.found) {
-            const candidates = Array.isArray(res.candidates) ? res.candidates : [];
-            await listLogic.saveRefactorScan({
-                repo: repo,
-                target_file: res.target_file,
-                target_sha: res.target_sha,
-                candidates: candidates,
-            });
-            // Preserve prior skips only when the target file is the same one.
-            const dismissed = (storedRow
-                && storedRow.target_file === res.target_file
-                && Array.isArray(storedRow.dismissed))
-                ? storedRow.dismissed.slice()
-                : [];
-            return {
-                kind: 'candidate',
-                row: {
-                    repo: repo,
-                    target_file: res.target_file,
-                    target_sha: res.target_sha,
-                    candidates: candidates,
-                    dismissed: dismissed,
-                    scanned_at: new Date().toISOString(),
-                },
-            };
-        }
-        // Terminal: nothing over budget anywhere.
-        if (res.all_under_budget) {
-            return { kind: 'note', text: 'Every file is under budget — nothing to extract.' };
-        }
-        // Defensive: an unrecognized response reads as the terminal state.
-        return { kind: 'note', text: 'No refactor candidate right now.' };
-    })();
-    _inFlight.set(repo, p);
-    p.then(function () { _inFlight.delete(repo); }, function () { _inFlight.delete(repo); });
-    return p;
-}
-
+// Read the repo's last stored scan and render the top not-yet-dismissed
+// candidate. The Worker owns the scan and the sha check now, so the client never
+// posts anything — it just reads the row it wrote. A failed read shows a quiet
+// inline error; a repo with no row yet shows the no-scan-yet note (the first
+// scan runs after the next shipped run). The `unchanged`, `all_under_budget`,
+// and cold-scan states no longer exist client-side: the sha check is server-side
+// (the client never sees "unchanged"), and a Worker that writes no row because
+// everything is under budget is indistinguishable from a cold start — both
+// collapse into the no-row note.
 async function fillCard(card, repo, projectName) {
-    let desc;
+    let loaded;
     try {
-        desc = await runScan(repo);
+        loaded = await listLogic.loadLatestRefactorScan(repo);
     } catch (e) {
         renderError(card, (e && e.message) || '');
         return;
     }
-    if (!desc) { renderError(card, ''); return; }
-    if (desc.kind === 'candidate') {
-        renderCandidate(card, repo, desc.row, projectName);
-    } else if (desc.kind === 'note') {
-        renderNote(card, desc.text);
-    } else {
-        renderError(card, desc.reason);
+    if (!loaded || loaded.ok === false) {
+        renderError(card, (loaded && loaded.error) || '');
+        return;
     }
+    const row = loaded.row || null;
+    if (!row) {
+        renderNote(card, 'No refactor scan yet — one runs automatically after the next shipped run.');
+        return;
+    }
+    renderCandidate(card, repo, row, projectName);
 }
 
 // Public entry: a container element filled asynchronously. Hidden entirely when
 // there's no repo (structureView already early-returns before this in that case,
-// but the guard keeps the card inert if ever called without one).
+// but the guard keeps the card inert if ever called without one). Renders
+// nothing until the stored row resolves — the read is sub-second, so a loading
+// state would only flash.
 export function renderRefactorCard(repo, projectName) {
     const card = document.createElement('div');
     card.className = 'refactorCard';
@@ -525,12 +463,6 @@ export function renderRefactorCard(repo, projectName) {
         card.style.display = 'none';
         return card;
     }
-    renderScanning(card);
     fillCard(card, repo, projectName);
     return card;
-}
-
-// Test-only reset of the in-flight dedup map.
-export function _resetRefactorCard() {
-    _inFlight.clear();
 }

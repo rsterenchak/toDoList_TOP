@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Runtime tests for the refactor_scans data-model functions in listLogic.js —
-// loadLatestRefactorScan / saveRefactorScan / dismissRefactorCandidate — driven
-// through a controllable fake Supabase client. The `refactor_scans` table is
-// keyed on user_id directly (the inject_targets pattern), so these pins verify
-// user_id is threaded onto every query and write, the upsert never writes
-// `dismissed`, and dismiss appends non-destructively.
+// loadLatestRefactorScan / dismissRefactorCandidate — driven through a
+// controllable fake Supabase client. The `refactor_scans` table is keyed on
+// user_id directly (the inject_targets pattern), so these pins verify user_id is
+// threaded onto every query and write, and dismiss appends non-destructively.
+// (The Worker owns writing scan rows now; the client no longer saves them.)
 
 let sessionUser = { id: 'u1' };
 let selectResult = { data: [], error: null };
@@ -97,35 +97,6 @@ describe('listLogic.loadLatestRefactorScan', () => {
         expect((await listLogic.loadLatestRefactorScan('')).ok).toBe(false);
         sessionUser = null;
         expect((await listLogic.loadLatestRefactorScan('o/r')).ok).toBe(false);
-    });
-});
-
-describe('listLogic.saveRefactorScan', () => {
-    it('upserts only the allowed fields + user_id + scanned_at, never dismissed', async () => {
-        const res = await listLogic.saveRefactorScan({
-            repo: 'o/r',
-            target_file: 'a.js',
-            target_sha: 's2',
-            candidates: [{ name: 'x' }],
-            dismissed: ['should-be-ignored'],
-        });
-        expect(res.ok).toBe(true);
-        expect(capturedUpsert.user_id).toBe('u1');
-        expect(capturedUpsert.repo).toBe('o/r');
-        expect(capturedUpsert.target_file).toBe('a.js');
-        expect(capturedUpsert.target_sha).toBe('s2');
-        expect(capturedUpsert.candidates).toEqual([{ name: 'x' }]);
-        expect(typeof capturedUpsert.scanned_at).toBe('string');
-        expect('dismissed' in capturedUpsert).toBe(false);
-        expect(capturedUpsertOpts).toEqual({ onConflict: 'user_id,repo,target_file' });
-    });
-
-    it('rejects a missing repo/file and surfaces an upsert error', async () => {
-        expect((await listLogic.saveRefactorScan({ target_file: 'a.js' })).ok).toBe(false);
-        upsertResult = { data: null, error: { message: 'dup' } };
-        const res = await listLogic.saveRefactorScan({ repo: 'o/r', target_file: 'a.js' });
-        expect(res.ok).toBe(false);
-        expect(res.error).toBe('dup');
     });
 });
 

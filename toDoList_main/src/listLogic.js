@@ -1333,51 +1333,6 @@ export const listLogic = (function () {
         }
     }
 
-    // Persist a fresh refactor scan for a repo/file. Upserts on the
-    // (user_id, repo, target_file) conflict target and writes ONLY
-    // user_id/repo/target_file/target_sha/candidates/scanned_at — deliberately
-    // never `dismissed`, so re-scanning a file leaves the user's prior skips on
-    // that row intact. `refactor_scans` is keyed on `user_id` directly (the
-    // inject_targets pattern), so user_id is required on the write. All scan
-    // writes route through here, matching the "all data-model mutations live in
-    // listLogic" convention. Returns { ok, error? }.
-    // @category: user-mutation-only
-    async function saveRefactorScan(scan) {
-        const s = (scan && typeof scan === 'object') ? scan : {};
-        if (!s.repo || !s.target_file) {
-            return { ok: false, error: 'Missing repo or file.' };
-        }
-        try {
-            const sessionResult = await supabase.auth.getSession();
-            const session = sessionResult
-                && sessionResult.data
-                && sessionResult.data.session;
-            if (!session) return { ok: false, error: 'Not signed in.' };
-            const row = {
-                user_id: session.user.id,
-                repo: s.repo,
-                target_file: s.target_file,
-                target_sha: s.target_sha,
-                candidates: s.candidates,
-                scanned_at: new Date().toISOString(),
-            };
-            const result = await Promise.resolve(
-                supabase
-                    .from('refactor_scans')
-                    .upsert(row, { onConflict: 'user_id,repo,target_file' })
-            );
-            if (result && result.error) {
-                return {
-                    ok: false,
-                    error: (result.error && result.error.message) || 'Save failed.',
-                };
-            }
-            return { ok: true };
-        } catch (e) {
-            return { ok: false, error: (e && e.message) || 'Save failed.' };
-        }
-    }
-
     // Append a candidate `name` to a stored scan row's `dismissed` array — the
     // NEXT REFACTOR card's "Skip" action, which permanently hides that candidate
     // so the card advances to the next-cheapest one. Reads the row's current
@@ -3523,7 +3478,6 @@ export const listLogic = (function () {
         answerAgentTask,
         setAgentRunState,
         loadLatestRefactorScan,
-        saveRefactorScan,
         dismissRefactorCandidate,
         stampTodoEntryId,
         unflagAgentTask,

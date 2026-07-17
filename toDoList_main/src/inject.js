@@ -694,34 +694,6 @@ export async function fetchPagesStatus(target) {
 }
 
 
-// Ambient, fire-and-forget probe that asks the Worker's `scan` route for the
-// single next extraction-refactor candidate in the target repo, through the
-// same Worker + Bearer secret every other call here uses. POSTs
-// `{ scan: true, repo, filePath, target_sha }`; passing the most-recently
-// scanned blob sha lets the Worker short-circuit (`unchanged: true`) when it
-// would re-pick the same file at the same sha, keeping repeated renders cheap.
-// The parsed response — `{ unchanged }` | `{ found, target_file, target_sha,
-// candidates }` | `{ found: false, all_under_budget }` — is spread onto an
-// `{ ok: true }` envelope, mirroring fetchPagesStatus. Returns
-// `{ ok: false, reason }` via describeError on any failure; like fetchPagesStatus
-// this is a background probe, so callers treat `ok:false` as a quiet inline
-// error and never raise a toast.
-export async function scanRefactor(target, targetSha) {
-    const t = target || null;
-    try {
-        const res = await postToWorker({
-            scan: true,
-            repo: t ? t.repo : undefined,
-            filePath: t ? t.file_path : undefined,
-            target_sha: targetSha || undefined,
-        });
-        return Object.assign({ ok: true }, res || {});
-    } catch (e) {
-        return { ok: false, reason: describeError(e) };
-    }
-}
-
-
 // Kick off a fresh GitHub Pages publish for the target repo through the same
 // Worker every other call here uses (same URL + Bearer secret). POSTs
 // `{ pages_rebuild: true, repo, filePath }` so the Worker re-triggers the
