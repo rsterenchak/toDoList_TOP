@@ -763,7 +763,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b2a9f9b5-5943-4896-8881-52de3498666d -->
 
-- [ ] **[MEDIUM]** Pair the Structure filter box and Expand-all pill on one row
+- [x] **[MEDIUM]** Pair the Structure filter box and Expand-all pill on one row — Completed: 2026-07-16
   - Type: feature
   - Description: The Structure view's control zone stacks three full-width siblings — the filter box, a strip holding only the Collapse/Expand-all pill, and the selection toolbar — each separated by `#structureView`'s `gap: 16px`. The middle strip is a full flex row carrying one right-aligned pill, so it costs roughly 40px of vertical rhythm (its own ~24px plus one 16px gap) to present a single control. Pair the filter box and the pill as siblings on one row: the filter box flexes to fill, the pill sits to its right at its natural width. This also aligns the filter box's `border-radius` with the 10px used by `.structureActionToolbar` directly below it, and lifts the pill to the same rendered height as the filter box so the two read as one control strip.
   - Behavior:
