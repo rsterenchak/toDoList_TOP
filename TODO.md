@@ -791,3 +791,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/mobileUpdatePill.js`
   - Completed: 2026-07-17
   <!-- id: 3cbefea0-fae8-45ce-9c51-515651779c53 -->
+
+- [ ] **[MEDIUM]** Extract createProjectByName from main.js into projectCreate.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `createProjectByName` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/projectCreate.js`. The scan located it around lines 810–825; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Only one enclosing reference (projButton), resolvable via getElementById; otherwise pure DOM + listLogic import.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/projectCreate.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d82859d4-7b66-4d9e-994e-cc5f12b3e55b -->
