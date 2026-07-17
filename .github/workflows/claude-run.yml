@@ -67,3 +67,42 @@ jobs:
             repository, then execute the routine exactly as those files
             describe, for the run mode above. Complete exactly one task, then
             exit with the one-paragraph summary the routine specifies.
+
+      # Refresh the NEXT REFACTOR scan against the post-merge tree. The routine
+      # merges its own PR inside the step above, so main has already moved by the
+      # time this runs. The Worker does the sha check itself, so a run that did
+      # not touch the target file costs one directory listing and no tokens —
+      # only a run that actually changed it pays for a scan.
+      #
+      # Why CI and not the browser: a scan takes ~90s (Opus, high thinking
+      # effort, ~100k input tokens). The card used to hold that connection open
+      # from the client, which mobile Safari drops — losing the result and the
+      # tokens that produced it. A runner holds it without complaint.
+      #
+      # continue-on-error: the scan is a convenience. A stale card is not worth
+      # failing a run that already shipped its PR successfully.
+      - name: Refresh refactor scan
+        continue-on-error: true
+        env:
+          INJECTOR_URL: ${{ secrets.TODO_INJECTOR_URL }}
+          INJECTOR_SECRET: ${{ secrets.TODO_INJECTOR_SECRET }}
+          REPO: ${{ github.repository }}
+        run: |
+          if [ -z "$INJECTOR_URL" ] || [ -z "$INJECTOR_SECRET" ]; then
+            echo "Injector not configured — skipping refactor scan."
+            exit 0
+          fi
+          # --max-time 180 gives the ~90s scan real headroom without hanging the
+          # job if the Worker never answers.
+          curl -sS --max-time 180 -X POST "$INJECTOR_URL" \
+            -H "Authorization: Bearer $INJECTOR_SECRET" \
+            -H "Content-Type: application/json" \
+            -d "{\"scan\":true,\"repo\":\"$REPO\"}" \
+            -o /tmp/scan.json || { echo "Scan request failed."; exit 0; }
+          jq -r '
+            if .unchanged then "Target file unchanged — no scan needed."
+            elif .all_under_budget then "Every file under budget — nothing to refactor."
+            elif .persisted then "Scan persisted: \(.target_file) — \(.candidates|length) candidates."
+            else "SCAN NOT PERSISTED: \(.persist_error // .error // "unknown")"
+            end
+          ' /tmp/scan.json || { echo "Could not read scan response:"; cat /tmp/scan.json; }
