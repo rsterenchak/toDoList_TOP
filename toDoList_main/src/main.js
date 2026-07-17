@@ -49,6 +49,14 @@ import {
     hasPendingUpdate,
     isAnyModalOrPopoverOpen,
 } from './modals.js';
+import {
+    createDrawerToggleRow,
+    createDrawerInfoRow,
+    createDrawerActionRow,
+    buildShowCompletedToggle,
+    buildDarkThemeToggle,
+    buildCompanionToggle as buildCompanionToggleRow,
+} from './drawerRows.js';
 import { paintAboutVersionUpdateCue } from './aboutVersionCue.js';
 import { mountClaudeSheet } from './claudeSheet.js';
 import { syncClaudeSheetForProject } from './claudeSheet.js';
@@ -1629,105 +1637,13 @@ function component() {
     // state source, and click handler — only the rendering location
     // moves. The drawer footer (version label + project count) remains
     // visible in the sidebar, sitting beneath the Settings button.
-    function createDrawerToggleRow(labelText, getState, onToggle) {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'drawerToggleRow';
-        row.setAttribute('role', 'switch');
-        const labelEl = document.createElement('span');
-        labelEl.className = 'drawerToggleLabel';
-        labelEl.textContent = labelText;
-        const pill = document.createElement('span');
-        pill.className = 'drawerTogglePill';
-        function refresh() {
-            const on = !!getState();
-            row.classList.toggle('on', on);
-            row.setAttribute('aria-checked', on ? 'true' : 'false');
-            pill.textContent = on ? 'ON' : 'OFF';
-        }
-        row.appendChild(labelEl);
-        row.appendChild(pill);
-        row.addEventListener('click', function() {
-            onToggle();
-            refresh();
-        });
-        refresh();
-        return { row: row, refresh: refresh };
-    }
-
-    // Drawer-styled row that surfaces a display-only label/value pair.
-    // Mirrors createDrawerToggleRow's shape (returns { row, refresh })
-    // so callers can re-read the value from valueGetter whenever they
-    // re-show the surface — used by the Settings modal's About section
-    // so the live project count reflects every add/remove without
-    // remounting the row. The right-side value sits in a muted pill
-    // matching the OFF state of .drawerTogglePill; the row itself is a
-    // <div> (not a button) since there's nothing to tap.
-    function createDrawerInfoRow(labelText, valueGetter) {
-        const row = document.createElement('div');
-        row.className = 'drawerInfoRow';
-        const labelEl = document.createElement('span');
-        labelEl.className = 'drawerInfoLabel';
-        labelEl.textContent = labelText;
-        const pill = document.createElement('span');
-        pill.className = 'settingsInfoPill';
-        function refresh() {
-            pill.textContent = String(valueGetter());
-        }
-        row.appendChild(labelEl);
-        row.appendChild(pill);
-        refresh();
-        return { row: row, refresh: refresh };
-    }
-
-    // Drawer-styled row that triggers a one-shot flow instead of toggling
-    // a setting. Same 44px tap target and label typography as
-    // createDrawerToggleRow, but the right-aligned slot holds a static
-    // chevron glyph instead of an ON/OFF pill — the chevron tells the
-    // user "tap me to go somewhere" while the pill says "tap me to flip".
-    function createDrawerActionRow(labelText, onActivate) {
-        const row = document.createElement('button');
-        row.type = 'button';
-        row.className = 'drawerActionRow';
-        const labelEl = document.createElement('span');
-        labelEl.className = 'drawerToggleLabel';
-        labelEl.textContent = labelText;
-        const chev = document.createElement('span');
-        chev.className = 'drawerActionChevron';
-        chev.setAttribute('aria-hidden', 'true');
-        chev.textContent = '›';
-        row.appendChild(labelEl);
-        row.appendChild(chev);
-        row.addEventListener('click', onActivate);
-        return row;
-    }
-
-    // Show completed — mirrors the in-list #completedHeader caret. When the
-    // caret is mounted (project has at least one completed row) we route
-    // through its click so its own caret/aria-expanded flip in lockstep;
-    // when the caret isn't mounted yet we still write the pref so the
-    // setting takes effect the moment the first task is completed.
-    function buildShowCompletedToggle() {
-        return createDrawerToggleRow(
-            'Show completed',
-            function() { return isCompletedSectionOpen(); },
-            function() {
-                const header = document.getElementById('completedHeader');
-                if (header) {
-                    header.click();
-                    return;
-                }
-                const next = !isCompletedSectionOpen();
-                setCompletedSectionOpen(next);
-                const list = document.getElementById('mainList');
-                if (list) list.classList.toggle('completedCollapsed', !next);
-            }
-        );
-    }
-
     // Expand all descriptions — mirrors the bulk desc toggle in the main
     // column header. Routing through the button's click keeps the
-    // .expanded class + Expand/Collapse label flip in one place.
+    // .expanded class + Expand/Collapse label flip in one place. The
+    // drawer-row factories (createDrawerToggleRow / createDrawerInfoRow /
+    // createDrawerActionRow) and the other three toggle builders now live
+    // in drawerRows.js; this builder stays here because it closes over the
+    // main-local isBulkDescExpanded / toggleBulkDescriptions helpers.
     function buildExpandAllToggle() {
         return createDrawerToggleRow(
             'Expand all descriptions',
@@ -1736,38 +1652,12 @@ function component() {
         );
     }
 
-    // Dark theme — mirrors the settings-menu Theme item. Same
-    // theme-transitioning class + applyTheme + localStorage write so the
-    // 220ms cross-fade is identical to the menu path.
-    function buildDarkThemeToggle() {
-        return createDrawerToggleRow(
-            'Dark theme',
-            function() { return getCurrentTheme() === 'dark'; },
-            function() {
-                const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
-                document.documentElement.classList.add('theme-transitioning');
-                applyTheme(next);
-                try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
-                setTimeout(function() {
-                    document.documentElement.classList.remove('theme-transitioning');
-                }, 220);
-            }
-        );
-    }
-
-    // Companion ghost — mirrors the settings-menu Toggle floating ghost.
+    // Companion ghost — the builder lives in drawerRows.js; it needs the
+    // main-local applyCompanionGhostPreference (which mirrors the enabled
+    // flag onto the body class), so we supply it here while keeping the
+    // zero-arg call site unchanged.
     function buildCompanionToggle() {
-        return createDrawerToggleRow(
-            'Companion ghost',
-            function() { return isCompanionEnabled(); },
-            function() {
-                const next = !isCompanionEnabled();
-                setCompanionEnabled(next);
-                if (next) ensureCompanion();
-                else      destroyCompanion();
-                applyCompanionGhostPreference();
-            }
-        );
+        return buildCompanionToggleRow(applyCompanionGhostPreference);
     }
 
     const drawerSettingsBtn = document.createElement('button');

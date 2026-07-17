@@ -21,6 +21,12 @@ function read(relative) {
 describe('mobile Settings modal — About section', () => {
     const main = read('main.js');
     const css  = read('style.css');
+    // The drawer-row factory helpers (createDrawerInfoRow /
+    // createDrawerToggleRow / createDrawerActionRow) were extracted into
+    // drawerRows.js; their definitions are pinned there now. The About
+    // section markup and its createDrawerInfoRow call sites still live in
+    // main.js's showSettingsModal.
+    const drawerRows = read('drawerRows.js');
 
     function showSettingsModalSlice() {
         const idx = main.indexOf('function showSettingsModal()');
@@ -32,10 +38,10 @@ describe('mobile Settings modal — About section', () => {
 
     describe('createDrawerInfoRow helper', () => {
         it('declares createDrawerInfoRow next to the other drawer-row helpers', () => {
-            expect(main).toMatch(/function\s+createDrawerInfoRow\s*\(/);
-            const infoIdx   = main.indexOf('function createDrawerInfoRow');
-            const toggleIdx = main.indexOf('function createDrawerToggleRow');
-            const actionIdx = main.indexOf('function createDrawerActionRow');
+            expect(drawerRows).toMatch(/function\s+createDrawerInfoRow\s*\(/);
+            const infoIdx   = drawerRows.indexOf('function createDrawerInfoRow');
+            const toggleIdx = drawerRows.indexOf('function createDrawerToggleRow');
+            const actionIdx = drawerRows.indexOf('function createDrawerActionRow');
             expect(toggleIdx).toBeGreaterThan(-1);
             expect(actionIdx).toBeGreaterThan(-1);
             // All four drawer-row helpers cluster in one neighborhood so
@@ -46,21 +52,21 @@ describe('mobile Settings modal — About section', () => {
         });
 
         it('returns { row, refresh } mirroring createDrawerToggleRow', () => {
-            const idx = main.indexOf('function createDrawerInfoRow');
+            const idx = drawerRows.indexOf('function createDrawerInfoRow');
             expect(idx).toBeGreaterThan(-1);
-            const fn = main.slice(idx, idx + 1200);
+            const fn = drawerRows.slice(idx, idx + 1200);
             expect(fn).toMatch(/return\s*\{\s*row:\s*row\s*,\s*refresh:\s*refresh\s*\}/);
         });
 
         it('paints the value into a .settingsInfoPill element', () => {
-            const idx = main.indexOf('function createDrawerInfoRow');
-            const fn = main.slice(idx, idx + 1200);
+            const idx = drawerRows.indexOf('function createDrawerInfoRow');
+            const fn = drawerRows.slice(idx, idx + 1200);
             expect(fn).toMatch(/pill\.className\s*=\s*['"]settingsInfoPill['"]/);
         });
 
         it('refresh() reads the value from the passed valueGetter', () => {
-            const idx = main.indexOf('function createDrawerInfoRow');
-            const fn = main.slice(idx, idx + 1200);
+            const idx = drawerRows.indexOf('function createDrawerInfoRow');
+            const fn = drawerRows.slice(idx, idx + 1200);
             // The pill text comes from valueGetter() — no hardcoded string.
             expect(fn).toMatch(/pill\.textContent\s*=\s*String\(\s*valueGetter\(\)\s*\)/);
         });
@@ -157,19 +163,19 @@ describe('mobile Settings modal — About section', () => {
         it('refresh() re-reads the value getter so the row stays live across calls', () => {
             // Lift just the createDrawerInfoRow function body and run it
             // in jsdom. The slice approach mirrors the pattern other
-            // tests in this suite use against main.js (which is too
+            // tests in this suite use against the source (which is too
             // large to instantiate end-to-end).
-            const idx = main.indexOf('function createDrawerInfoRow');
+            const idx = drawerRows.indexOf('function createDrawerInfoRow');
             expect(idx).toBeGreaterThan(-1);
-            const braceStart = main.indexOf('{', idx);
+            const braceStart = drawerRows.indexOf('{', idx);
             let depth = 0;
             let body;
-            for (let i = braceStart; i < main.length; i++) {
-                if (main[i] === '{') depth++;
-                else if (main[i] === '}') {
+            for (let i = braceStart; i < drawerRows.length; i++) {
+                if (drawerRows[i] === '{') depth++;
+                else if (drawerRows[i] === '}') {
                     depth--;
                     if (depth === 0) {
-                        body = main.slice(braceStart + 1, i);
+                        body = drawerRows.slice(braceStart + 1, i);
                         break;
                     }
                 }
