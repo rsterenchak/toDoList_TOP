@@ -749,3 +749,16 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/projectBadges.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 92654534-4aba-44a6-b5de-fcaa1f8ac0bb -->
+
+- [ ] **[HIGH]** Fix Structure view elements ignoring the hidden attribute
+  - Type: bug
+  - Description: Four Structure-view elements declare `display` in their class rule while also toggling `hidden` from JS, so every `.hidden = true` on them is a no-op — an author-level `display` declaration outranks the UA stylesheet's `[hidden] { display: none }`. Symptoms: the × clear button paints on an empty filter input, the Collapse/Expand-all strip stays in flow on lenses with no collapsible sections, the selection toolbar renders on the Code lens where it has nothing to act on, and an empty Find-in-code result area stays in flow. The fix is CSS-only — every `hidden` assignment in `structureView.js` is already correct. Add explicit `[hidden] { display: none; }` guards mirroring the existing `claude*` precedent at `style.css:1917`, whose comment at 1916 documents this exact trap; the `structure*` family currently has zero such guards.
+  - Implementation notes:
+    - Add one guard beside each base rule: `.structureFilterClear[hidden]` (base at `style.css:3610`, `display: inline-flex`), `.structureToolbar[hidden]` (3653, `display: flex`), `.structureActionToolbar[hidden]` (3688, `display: flex`), `.structureFindResult[hidden]` (4587, `display: flex`) — each `{ display: none; }`.
+    - Do not modify `structureView.js`. `buildFilterBox` already sets `clear.hidden = true`, `applyStructureFilter` re-asserts `filterClearEl.hidden = filterQuery.length === 0`, `refreshCollapseAllPill` hides the strip when `structureSections()` is empty, and `refreshActionToolbar` hides the toolbar when `lens === 'code'`. All four are already right and blocked only by CSS.
+    - No guard needed for `.structureExplainResult` (base at 3839) or the tree's `.structureFolderChildren` / `.structureRegionChildren` — none declare `display`, so the UA rule already applies. This is why tree fold/unfold works today and is the reference for correct behavior.
+  - Behavior: after the fix, the × appears only once the filter has text; the collapse strip disappears on lenses with no collapsible sections; the selection toolbar disappears on the Code lens; the Find result area stays out of flow until a Find has run. These are intended visual changes, not regressions.
+  - Out of scope: the filter box / Expand-all pill layout restructure — separate entry.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b2a9f9b5-5943-4896-8881-52de3498666d -->
