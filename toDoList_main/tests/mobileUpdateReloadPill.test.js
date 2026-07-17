@@ -1,4 +1,6 @@
-// Tests for the lower-center mobile update-reload pill in src/main.js.
+// Tests for the lower-center mobile update-reload pill. Its controller lives
+// in src/mobileUpdatePill.js (createMobileUpdatePill); src/main.js owns the
+// event wiring that drives it.
 //
 // On mobile the only way to apply a waiting service-worker update used to
 // be spotting the gear-button dot and digging through Settings → About.
@@ -12,6 +14,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createMobileUpdatePill } from '../src/mobileUpdatePill.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -21,37 +24,25 @@ function read(relative) {
 }
 
 const main = read('main.js');
+const pillSrc = read('mobileUpdatePill.js');
 const css = read('style.css');
 
-// Lift the contiguous mobile-update-pill block (its closure-shared state +
-// the three functions + the listener wiring) so it can run against a real
-// jsdom document with injected deps. Mirrors the slice pattern other
-// main.js tests use.
+// Build a fresh controller against the real module with injected deps, so
+// each test gets isolated single-instance state and can stub isMobile /
+// hasPendingUpdate / applyPendingUpdate.
 function liftPillFactory() {
-    const startMarker = 'let mobileUpdatePill = null;';
-    const endMarker = 'showMobileUpdatePill();';
-    const start = main.indexOf(startMarker);
-    expect(start).toBeGreaterThan(-1);
-    const end = main.indexOf(endMarker, start);
-    expect(end).toBeGreaterThan(-1);
-    const block = main.slice(start, end + endMarker.length);
-
     return function build(deps) {
-        const factory = new Function(
-            'document', 'isMobile', 'hasPendingUpdate', 'applyPendingUpdate',
-            block +
-            '\nreturn {' +
-            '  show: showMobileUpdatePill,' +
-            '  remove: removeMobileUpdatePill,' +
-            '  getPill: () => mobileUpdatePill,' +
-            '};'
-        );
-        return factory(
-            deps.document,
-            deps.isMobile,
-            deps.hasPendingUpdate,
-            deps.applyPendingUpdate
-        );
+        const api = createMobileUpdatePill({
+            isMobile: deps.isMobile,
+            hasPendingUpdate: deps.hasPendingUpdate,
+            applyPendingUpdate: deps.applyPendingUpdate,
+        });
+        // Mirror the boot-time mount main.js performs after wiring.
+        api.showMobileUpdatePill();
+        return {
+            show: api.showMobileUpdatePill,
+            remove: api.removeMobileUpdatePill,
+        };
     };
 }
 
@@ -65,21 +56,35 @@ describe('mobile update-reload pill — src/main.js source wiring', () => {
         );
     });
 
-    it('checks hasPendingUpdate() once at mount for the boot-time case', () => {
-        // An update detected during boot (before the pill is wired) must
-        // still surface, so the wiring calls showMobileUpdatePill() once
-        // directly after attaching the listeners.
-        const fnIdx = main.indexOf('function showMobileUpdatePill');
+    it('imports the controller from mobileUpdatePill.js and mounts once at boot', () => {
+        // The controller is injected its collaborators, and main.js calls
+        // showMobileUpdatePill() once directly after attaching the listeners
+        // so a boot-time pending update still surfaces.
+        expect(main).toMatch(
+            /import\s*\{\s*createMobileUpdatePill\s*\}\s*from\s*['"]\.\/mobileUpdatePill\.js['"]/
+        );
+        expect(main).toMatch(/createMobileUpdatePill\(\s*\{/);
+        const wireIdx = main.indexOf('createMobileUpdatePill({');
+        expect(wireIdx).toBeGreaterThan(-1);
+        const wireSlice = main.slice(wireIdx, wireIdx + 800);
+        expect(wireSlice).toMatch(/isMobile/);
+        expect(wireSlice).toMatch(/hasPendingUpdate/);
+        expect(wireSlice).toMatch(/applyPendingUpdate/);
+        expect(wireSlice).toMatch(/showMobileUpdatePill\(\s*\)/);
+    });
+
+    it('checks hasPendingUpdate() at show time for the boot-time case', () => {
+        const fnIdx = pillSrc.indexOf('function showMobileUpdatePill');
         expect(fnIdx).toBeGreaterThan(-1);
-        const fnSlice = main.slice(fnIdx, fnIdx + 600);
+        const fnSlice = pillSrc.slice(fnIdx, fnIdx + 600);
         expect(fnSlice).toMatch(/hasPendingUpdate\(\s*\)/);
         expect(fnSlice).toMatch(/isMobile\(\s*\)/);
     });
 
     it('routes Reload through applyPendingUpdate(), not a direct reload/postMessage', () => {
-        const fnIdx = main.indexOf('function buildMobileUpdatePill');
+        const fnIdx = pillSrc.indexOf('function buildMobileUpdatePill');
         expect(fnIdx).toBeGreaterThan(-1);
-        const fnSlice = main.slice(fnIdx, fnIdx + 2600);
+        const fnSlice = pillSrc.slice(fnIdx, fnIdx + 2600);
         expect(fnSlice).toMatch(/applyPendingUpdate\(\s*\)/);
         // The pill must NOT reload or message the worker itself.
         expect(fnSlice).not.toMatch(/location\.reload/);
