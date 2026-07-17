@@ -118,7 +118,12 @@ describe('controls band — Expand All retired, Sort dropdown wired', () => {
 
     it('builds the Sort dropdown trigger and menu', () => {
         expect(main).toMatch(/id\s*=\s*['"]taskSortBtn['"]/);
-        expect(main).toMatch(/id\s*=\s*['"]taskSortMenu['"]/);
+        // The menu markup (show/hideTaskSortMenu et al.) was extracted into
+        // taskSort.js — a behaviour-preserving move — while the trigger and the
+        // setTaskSort pref write stay in main.js.
+        const taskSortModule = read('taskSort.js');
+        expect(taskSortModule).toMatch(/id\s*=\s*['"]taskSortMenu['"]/);
+        expect(main).toMatch(/createTaskSort\(/);
         // The dropdown persists the choice via the global pref.
         expect(main).toMatch(/setTaskSort\(/);
     });
@@ -129,5 +134,34 @@ describe('controls band — Expand All retired, Sort dropdown wired', () => {
         // drawer toggle both call.
         expect(main).toMatch(/function toggleBulkDescriptions\(/);
         expect(main).toMatch(/function isBulkDescExpanded\(/);
+    });
+});
+
+
+describe('taskSort.js — extracted sort-surface controller', () => {
+    const main = read('main.js');
+    const taskSortModule = read('taskSort.js');
+
+    it('exports the createTaskSort factory holding the five sort functions', () => {
+        expect(taskSortModule).toMatch(/export function createTaskSort\(/);
+        ['syncTaskSortButton', 'hideTaskSortMenu', 'showTaskSortMenu',
+         'hideTaskSortSheet', 'showTaskSortSheet'].forEach(function(name) {
+            expect(taskSortModule).toMatch(new RegExp('function ' + name + '\\('));
+        });
+    });
+
+    it('main.js no longer defines the moved functions inline', () => {
+        // A future re-inline would reintroduce the giant sort block into main.js;
+        // these guards keep the single owner in taskSort.js.
+        ['syncTaskSortButton', 'hideTaskSortMenu', 'showTaskSortMenu',
+         'hideTaskSortSheet', 'showTaskSortSheet'].forEach(function(name) {
+            expect(main).not.toMatch(new RegExp('function ' + name + '\\('));
+        });
+    });
+
+    it('main.js imports and instantiates the factory, wiring the callbacks back in', () => {
+        expect(main).toMatch(/import \{ createTaskSort \} from '\.\/taskSort\.js'/);
+        expect(main).toMatch(/applyTaskSortChoice,/);
+        expect(main).toMatch(/onTaskSortOutsideClick,/);
     });
 });
