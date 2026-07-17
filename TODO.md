@@ -822,7 +822,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 632e87b1-1937-4888-9a28-4fbe16073a57 -->
 
-- [ ] **[MEDIUM]** Extract hideTaskSortSheet from main.js into taskSort.js
+- [x] **[MEDIUM]** Extract hideTaskSortSheet from main.js into taskSort.js — Completed: 2026-07-17
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `hideTaskSortSheet` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/taskSort.js`. The scan located it around lines 1395–1404; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Two enclosing refs (one DOM node resolvable by id, one shared dismiss handle) and no sibling calls. Move these sibling functions in the same entry so the file isn’t touched by two runs: syncTaskSortButton, hideTaskSortMenu, showTaskSortSheet, showTaskSortMenu.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/taskSort.js`

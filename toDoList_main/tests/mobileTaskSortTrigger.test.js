@@ -47,6 +47,11 @@ function extractMobileRule(css, selector) {
 
 describe('mobile Sort trigger — main.js wiring', () => {
     const main = read('main.js');
+    // The five sort-surface functions (syncTaskSortButton, the dropdown, and the
+    // bottom sheet) were extracted into taskSort.js — a behaviour-preserving
+    // move. Their markup/wiring is asserted against that module; the trigger
+    // creation, event listeners, and pref write stay in main.js.
+    const taskSortModule = read('taskSort.js');
 
     it('builds the mobile Sort trigger #taskSortBtnMobile', () => {
         expect(main).toMatch(/id\s*=\s*['"]taskSortBtnMobile['"]/);
@@ -65,11 +70,11 @@ describe('mobile Sort trigger — main.js wiring', () => {
         // syncTaskSortButton updates the desktop text label and BOTH triggers'
         // data-sort; the mobile trigger carries an aria-label (kept current here)
         // plus a painted current-sort label.
-        expect(main).toMatch(/taskSortBtnLabel\.textContent\s*=/);
-        expect(main).toMatch(/mobileSortBtn\.setAttribute\(\s*['"]data-sort['"]/);
-        expect(main).toMatch(/mobileSortBtn\.setAttribute\(\s*['"]aria-label['"]/);
+        expect(taskSortModule).toMatch(/taskSortBtnLabel\.textContent\s*=/);
+        expect(taskSortModule).toMatch(/mobileSortBtn\.setAttribute\(\s*['"]data-sort['"]/);
+        expect(taskSortModule).toMatch(/mobileSortBtn\.setAttribute\(\s*['"]aria-label['"]/);
         // The mobile trigger persists the choice through the global pref setter
-        // (via applyTaskSortChoice → setTaskSort).
+        // (via applyTaskSortChoice → setTaskSort), which stays in main.js.
         expect(main).toMatch(/setTaskSort\(/);
     });
 
@@ -81,10 +86,10 @@ describe('mobile Sort trigger — main.js wiring', () => {
     });
 
     it('builds the sort bottom sheet with three chips from the shared options', () => {
-        expect(main).toMatch(/id\s*=\s*['"]taskSortSheet['"]/);
-        expect(main).toMatch(/taskSortSheetChip/);
+        expect(taskSortModule).toMatch(/id\s*=\s*['"]taskSortSheet['"]/);
+        expect(taskSortModule).toMatch(/taskSortSheetChip/);
         // Chips are generated from the same TASK_SORT_OPTIONS the dropdown uses.
-        expect(main).toMatch(/TASK_SORT_OPTIONS\.forEach/);
+        expect(taskSortModule).toMatch(/TASK_SORT_OPTIONS\.forEach/);
     });
 
     it('closes the sheet three ways — close button, backdrop tap, Escape', () => {
@@ -92,13 +97,15 @@ describe('mobile Sort trigger — main.js wiring', () => {
         // rather than hand-rolled per-affordance listeners. Verify the sheet
         // passes its close control, backdrop, and teardown to the helper (with
         // Escape defaulting prevented), and that the helper implements Escape.
-        const call = main.match(/taskSortSheetDismiss\s*=\s*wireDismissable\(\{[\s\S]*?\}\)/);
+        const call = taskSortModule.match(/taskSortSheetDismiss\s*=\s*wireDismissable\(\{[\s\S]*?\}\)/);
         expect(call).not.toBeNull();
         const opts = call[0];
         expect(opts).toMatch(/onClose:\s*hideTaskSortSheet/);
         expect(opts).toMatch(/closeBtn:\s*closeX/);
         expect(opts).toMatch(/backdrop:\s*backdrop/);
         expect(opts).toMatch(/preventDefaultOnEscape:\s*true/);
+        // The shared wireDismissable helper (which implements Escape) stays in
+        // main.js and is passed into the extracted controller.
         expect(main).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
     });
 
