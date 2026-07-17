@@ -135,6 +135,98 @@ describe('renderRefactorCard — stored candidates', () => {
     });
 });
 
+describe('renderRefactorCard — quiet scan states', () => {
+    it('renders the clean note with a three-chip summary', async () => {
+        loadResult = {
+            ok: true,
+            row: {
+                repo: 'o/r',
+                status: 'clean',
+                largest_file: 'src/agentView.js',
+                largest_bytes: 12800,
+                budget_bytes: 61440,
+                eligible_count: 42,
+                scanned_at: new Date().toISOString(),
+            },
+        };
+        const card = renderRefactorCard('o/r');
+        await flush();
+        // No candidate is shown — the terminal "every suggestion skipped" lie
+        // must not appear on a repo that produced no candidates.
+        expect(card.querySelector('.refactorCardTitle')).toBeFalsy();
+        const note = card.querySelector('.refactorCardNote');
+        expect(note.textContent).toMatch(/clean/i);
+        expect(note.textContent).not.toMatch(/skipped/i);
+        const chips = Array.from(card.querySelectorAll('.refactorCardChip')).map((c) => c.textContent);
+        expect(chips).toEqual(['agentView.js', '12.5KB of 60KB', '42 files']);
+        // The largest-file chip carries the amber clean modifier.
+        expect(card.querySelector('.refactorCardChip--clean').textContent).toBe('agentView.js');
+    });
+
+    it('uses the singular "file" when eligible_count is 1', async () => {
+        loadResult = {
+            ok: true,
+            row: {
+                repo: 'o/r',
+                status: 'clean',
+                largest_file: 'src/only.js',
+                largest_bytes: 1024,
+                budget_bytes: 61440,
+                eligible_count: 1,
+                scanned_at: new Date().toISOString(),
+            },
+        };
+        const card = renderRefactorCard('o/r');
+        await flush();
+        const chips = Array.from(card.querySelectorAll('.refactorCardChip')).map((c) => c.textContent);
+        expect(chips).toContain('1 file');
+    });
+
+    it('renders the clean note alone (no chips) when largest_file is null', async () => {
+        loadResult = {
+            ok: true,
+            row: {
+                repo: 'o/r',
+                status: 'clean',
+                largest_file: null,
+                budget_bytes: 61440,
+                eligible_count: 0,
+                scanned_at: new Date().toISOString(),
+            },
+        };
+        const card = renderRefactorCard('o/r');
+        await flush();
+        expect(card.querySelector('.refactorCardNote').textContent).toMatch(/clean/i);
+        expect(card.querySelector('.refactorCardChips')).toBeFalsy();
+        expect(card.textContent).not.toContain('null');
+    });
+
+    it('renders the unreadable note with no chips', async () => {
+        loadResult = {
+            ok: true,
+            row: {
+                repo: 'o/r',
+                status: 'unreadable',
+                scanned_at: new Date().toISOString(),
+            },
+        };
+        const card = renderRefactorCard('o/r');
+        await flush();
+        expect(card.querySelector('.refactorCardTitle')).toBeFalsy();
+        const note = card.querySelector('.refactorCardNote');
+        expect(note.textContent).toMatch(/only analyses JavaScript and TypeScript/i);
+        expect(card.querySelector('.refactorCardChips')).toBeFalsy();
+    });
+
+    it('falls through to renderCandidate for a status-less legacy row', async () => {
+        loadResult = { ok: true, row: makeRow() };
+        const card = renderRefactorCard('o/r');
+        await flush();
+        // No status field on the row — the candidate card still renders.
+        expect(card.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
+    });
+});
+
 describe('renderRefactorCard — no row / error', () => {
     it('renders the no-scan-yet note when the repo has no stored row', async () => {
         loadResult = { ok: true, row: null };
