@@ -3561,6 +3561,15 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   display: inline-flex;
 }
 
+/* Pairs the filter box and the collapse/expand-all pill on one row: the filter
+   box flexes to fill, the pill sits to its right at its natural width and
+   reclaims the space when the strip hides. */
+.structureControlRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Live filter box — narrows whichever lens is showing. Styled like the chat
    attach-file picker's search, with a purple focus ring. A persistent sibling
    of the tree so a lens render never wipes it. */
@@ -3568,9 +3577,11 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex: 1 1 auto;
+  min-width: 0;
   background: var(--bg-surface);
   border: 0.5px solid var(--border-dim);
-  border-radius: 8px;
+  border-radius: 10px;
   padding: 6px 10px;
 }
 
@@ -3656,7 +3667,7 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
 .structureToolbar {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  flex: 0 0 auto;
 }
 /* Base rule sets display: flex, which would otherwise win over the UA
    [hidden] { display: none }, so re-assert the hidden state explicitly. */
@@ -3671,7 +3682,13 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   background: var(--bg-elevated);
   border: 0.5px solid var(--border-dim);
   border-radius: 999px;
-  padding: 5px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  min-width: 11ch;
+  white-space: nowrap;
+  padding: 0 14px;
   cursor: pointer;
   transition: background 0.15s ease, color 0.15s ease;
 }
@@ -10592,7 +10609,7 @@ body.row-dragging * { cursor: grabbing !important; }
 @media (max-width: 1023px) {
   .structureCollapseAllPill {
     font-size: 12px;
-    padding: 3px 10px;
+    padding: 0 10px;
   }
 }
 

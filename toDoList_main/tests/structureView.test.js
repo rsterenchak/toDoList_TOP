@@ -2119,6 +2119,23 @@ describe('renderStructureView — collapse / expand all toolbar pill', () => {
         expect(pill().textContent).toBe('Expand all');
     });
 
+    it('pairs the filter box and the collapse pill as siblings in one control row', async () => {
+        setStructureLens('code');
+        state.manifests[TOP] = { ok: true, files: ['src/main.js', 'lib/x.js'] };
+        await renderFor('My Project');
+
+        const row = document.querySelector('.structureControlRow');
+        expect(row).toBeTruthy();
+        const filterBox = row.querySelector('.structureFilterBox');
+        const toolbar = row.querySelector('.structureToolbar');
+        expect(filterBox).toBeTruthy();
+        expect(toolbar).toBeTruthy();
+        // Both are direct children of the shared row, filter box first.
+        expect(filterBox.parentElement).toBe(row);
+        expect(toolbar.parentElement).toBe(row);
+        expect(filterBox.compareDocumentPosition(toolbar) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
     it('hides the toolbar when the lens has no collapsible sections', async () => {
         setStructureLens('code');
         // A flat list of top-level files — no folders, so nothing to fold.
