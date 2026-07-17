@@ -64,6 +64,16 @@ function basename(path) {
     return parts[parts.length - 1] || String(path);
 }
 
+// Bytes → KB at one decimal, dropping a trailing ".0" so a round value reads
+// "60KB" rather than "60.0KB". Used for both the largest-file and budget sizes
+// on the clean-scan chip row.
+function formatKB(bytes) {
+    const kb = (Number(bytes) || 0) / 1024;
+    let s = kb.toFixed(1);
+    if (s.slice(-2) === '.0') s = s.slice(0, -2);
+    return s + 'KB';
+}
+
 // The scan reports paths repo-relative (e.g. `src/agentView.js`); todos and
 // triage expect the full `toDoList_main/src/…` path, so normalize to that.
 function srcPath(path) {
@@ -420,6 +430,38 @@ function renderCandidate(card, repo, row, projectName) {
     card.appendChild(actions);
 }
 
+// The scan looked and found nothing over budget. Show the "clean" note plus a
+// three-chip summary of the biggest file it saw against the budget. Defensive:
+// if `largest_file` is null (nothing measured), render the note alone rather
+// than a chip row of "null".
+function renderClean(card, row) {
+    clearEl(card);
+    card.appendChild(buildEyebrow(relativeTime(row.scanned_at) ? 'scanned ' + relativeTime(row.scanned_at) : ''));
+    const note = document.createElement('div');
+    note.className = 'refactorCardNote';
+    note.textContent = 'Nothing over budget — this repo is clean.';
+    card.appendChild(note);
+    if (row.largest_file == null) return;
+    const chips = document.createElement('div');
+    chips.className = 'refactorCardChips';
+    chips.appendChild(buildChip(basename(row.largest_file), 'refactorCardChip--clean'));
+    chips.appendChild(buildChip(formatKB(row.largest_bytes) + ' of ' + formatKB(row.budget_bytes)));
+    const count = (row.eligible_count != null) ? row.eligible_count : 0;
+    chips.appendChild(buildChip(count + (count === 1 ? ' file' : ' files')));
+    card.appendChild(chips);
+}
+
+// The scan found no files it can read (it only analyses JS/TS). Note only, no
+// chips — there's nothing measured to summarise.
+function renderUnreadable(card, row) {
+    clearEl(card);
+    card.appendChild(buildEyebrow(relativeTime(row.scanned_at) ? 'scanned ' + relativeTime(row.scanned_at) : ''));
+    const note = document.createElement('div');
+    note.className = 'refactorCardNote';
+    note.textContent = 'No files here the scan can read — it only analyses JavaScript and TypeScript.';
+    card.appendChild(note);
+}
+
 // ── Reader ───────────────────────────────────────────────────────────
 
 // Read the repo's last stored scan and render the top not-yet-dismissed
@@ -446,6 +488,17 @@ async function fillCard(card, repo, projectName) {
     const row = loaded.row || null;
     if (!row) {
         renderNote(card, 'No refactor scan yet — one runs automatically after the next shipped run.');
+        return;
+    }
+    // The Worker now writes rows for the states where it looked and found
+    // nothing. Branch on `status` so each reads truthfully; `candidates` and any
+    // missing/unrecognised status (a legacy row) fall through to renderCandidate.
+    if (row.status === 'clean') {
+        renderClean(card, row);
+        return;
+    }
+    if (row.status === 'unreadable') {
+        renderUnreadable(card, row);
         return;
     }
     renderCandidate(card, repo, row, projectName);
