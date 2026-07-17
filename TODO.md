@@ -729,7 +729,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5951de2a-523b-4258-8e4c-ca009b734d82 -->
 
-- [ ] **[MEDIUM]** Extract createDrawerToggleRow from main.js into drawerRows.js
+- [x] **[MEDIUM]** Extract createDrawerToggleRow from main.js into drawerRows.js — Completed: 2026-07-17
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `createDrawerToggleRow` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/drawerRows.js`. The scan located it around lines 1632–1656; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Pure DOM factory with no enclosing references; clean cut. Move these sibling functions in the same entry so the file isn’t touched by two runs: createDrawerInfoRow, createDrawerActionRow, buildShowCompletedToggle, buildDarkThemeToggle, buildCompanionToggle.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/drawerRows.js`
