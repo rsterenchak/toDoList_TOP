@@ -805,3 +805,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/projRunSpinner.js`
   - Completed: 2026-07-17
   <!-- id: bd414266-81d6-4b02-ade8-eeacd57d6905 -->
+
+- [ ] **[MEDIUM]** Extract viewSwitcherArrowNav from main.js into viewSwitcher.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `viewSwitcherArrowNav` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/viewSwitcher.js`. The scan located it around lines 993–1005; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Small handler with one closed-over array plus one sibling call; move together with focusViewPillAt. Move these sibling functions in the same entry so the file isn’t touched by two runs: focusViewPillAt.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/viewSwitcher.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4e449a1f-4b0c-40f8-af7c-da84c6335415 -->
