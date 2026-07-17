@@ -2972,17 +2972,22 @@ export function renderStructureView() {
     // repaint — which only clears `tree` — can't wipe it.
     view.appendChild(renderRefactorCard(repo, projectName));
 
-    // The filter box lives in the view (a persistent sibling of the tree), so a
-    // lens render — which only clears `tree` — never wipes it.
+    // The filter box and the collapse/expand-all pill share one row (a persistent
+    // sibling of the tree), so a lens render — which only clears `tree` — never
+    // wipes them. The filter box flexes to fill; the pill sits to its right at its
+    // natural width, and reclaims the space when the strip hides.
+    const controlRow = document.createElement('div');
+    controlRow.className = 'structureControlRow';
     const filterBox = buildFilterBox();
-    view.appendChild(filterBox);
+    controlRow.appendChild(filterBox);
     updateFilterPlaceholder();
 
-    // Thin toolbar strip between the filter and the tree, carrying the
-    // collapse/expand-all pill. Also a persistent sibling of the tree; it stays
-    // hidden until the first paint confirms the lens has sections.
+    // Thin toolbar strip carrying the collapse/expand-all pill. It stays hidden
+    // until the first paint confirms the lens has sections; when hidden, the
+    // filter box expands to the full row width.
     const toolbar = buildCollapseToolbar();
-    view.appendChild(toolbar);
+    controlRow.appendChild(toolbar);
+    view.appendChild(controlRow);
 
     // The shared selection toolbar sits directly above the tree (UI/Types lenses
     // only — hidden on the Code lens). A persistent sibling of the tree like the
