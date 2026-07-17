@@ -784,3 +784,10 @@
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 59770f6c-70d5-4977-b4c3-c92aff9e2eaf -->
+
+- [ ] **[MEDIUM]** Extract buildMobileUpdatePill from main.js into mobileUpdatePill.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `buildMobileUpdatePill` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/mobileUpdatePill.js`. The scan located it around lines 1696–1747; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Large DOM builder but couples to one shared flag and a sibling remover, so it must move with the pill trio. Move these sibling functions in the same entry so the file isn’t touched by two runs: removeMobileUpdatePill, showMobileUpdatePill.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/mobileUpdatePill.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3cbefea0-fae8-45ce-9c51-515651779c53 -->
