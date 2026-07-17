@@ -742,3 +742,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/viewFocusNav.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1022ac42-ace9-489f-882b-7caa7e71f9ac -->
+
+- [ ] **[MEDIUM]** Extract updateAllProjectBadges from main.js into projectBadges.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `updateAllProjectBadges` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/projectBadges.js`. The scan located it around lines 3045–3067; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Only closes over the sideMain node, resolvable via getElementById('sideMa'); no sibling calls. Move these sibling functions in the same entry so the file isn’t touched by two runs: navigateToProjectByIndex.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/projectBadges.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 92654534-4aba-44a6-b5de-fcaa1f8ac0bb -->
