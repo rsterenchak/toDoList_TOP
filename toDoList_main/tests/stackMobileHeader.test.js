@@ -21,6 +21,9 @@ function read(relative) {
 describe('STACK mobile project header', () => {
     const main = read('main.js');
     const css  = read('style.css');
+    // navigateToProjectByIndex was extracted verbatim from main.js into
+    // projectBadges.js; the source-inspection assertions below follow it there.
+    const projectBadges = read('projectBadges.js');
 
     it('mounts the mobile project header inside the main column', () => {
         expect(main).toMatch(/mobileProjHeader\.id\s*=\s*['"]mobileProjHeader['"]/);
@@ -73,9 +76,9 @@ describe('STACK mobile project header', () => {
         // aligned with the full selection / accent / addAllToDo_DOM dance
         // that the sidebar already runs — no parallel selection path to
         // drift out of sync.
-        const navStart = main.indexOf('function navigateToProjectByIndex(');
+        const navStart = projectBadges.indexOf('function navigateToProjectByIndex(');
         expect(navStart).toBeGreaterThan(-1);
-        const navSlice = main.slice(navStart, navStart + 800);
+        const navSlice = projectBadges.slice(navStart, navStart + 800);
         expect(navSlice).toMatch(/sideMain\.querySelectorAll\(\s*['"]#projChild['"]\s*\)/);
         expect(navSlice).toMatch(/rows\[i\]\.click\(\s*\)/);
     });
@@ -111,8 +114,8 @@ describe('STACK mobile project header', () => {
     it('fires navigator.vibrate(10) on each successful chevron/swipe commit', () => {
         // Matches the haptic pattern wireCheckbox already uses for the
         // celebratory micro-interaction.
-        const navStart = main.indexOf('function navigateToProjectByIndex(');
-        const navSlice = main.slice(navStart, navStart + 800);
+        const navStart = projectBadges.indexOf('function navigateToProjectByIndex(');
+        const navSlice = projectBadges.slice(navStart, navStart + 800);
         expect(navSlice).toMatch(/navigator\.vibrate\(\s*10\s*\)/);
     });
 
