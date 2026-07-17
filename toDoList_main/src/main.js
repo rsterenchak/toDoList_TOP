@@ -73,6 +73,7 @@ import {
 import { createProjectPicker } from './projectPicker.js';
 import { createProjectByName } from './projectCreate.js';
 import { createProjRunSpinner } from './projRunSpinner.js';
+import { createViewSwitcher } from './viewSwitcher.js';
 import { createSettingsMenu } from './settingsMenu.js';
 import { createMobileUtilitySheet } from './mobileUtilitySheet.js';
 import {
@@ -982,27 +983,7 @@ function component() {
     viewPillProjects.setAttribute('tabindex', '0');
     viewPillAgent.setAttribute('tabindex', '-1');
     viewPillStructure.setAttribute('tabindex', '-1');
-    function focusViewPillAt(index) {
-        const pill = viewSwitcherPills[index];
-        if (!pill) return;
-        viewSwitcherPills.forEach(function(p) {
-            p.setAttribute('tabindex', p === pill ? '0' : '-1');
-        });
-        pill.focus();
-    }
-    function viewSwitcherArrowNav(e) {
-        if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
-        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-        if (isAnyModalOrPopoverOpen()) return;
-        const idx = viewSwitcherPills.indexOf(e.target);
-        if (idx === -1) return;
-        const len = viewSwitcherPills.length;
-        const delta = e.key === 'ArrowRight' ? 1 : -1;
-        const nextIdx = (idx + delta + len) % len;
-        e.preventDefault();
-        e.stopPropagation();
-        focusViewPillAt(nextIdx);
-    }
+    const { viewSwitcherArrowNav } = createViewSwitcher({ viewSwitcherPills });
     viewPillProjects.addEventListener('keydown', viewSwitcherArrowNav);
     viewPillAgent.addEventListener('keydown', viewSwitcherArrowNav);
     viewPillStructure.addEventListener('keydown', viewSwitcherArrowNav);

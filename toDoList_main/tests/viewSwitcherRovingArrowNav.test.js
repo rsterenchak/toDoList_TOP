@@ -18,19 +18,23 @@ function read(relative) {
 // propagation. Enter/Space activation is left to native <button> behaviour.
 describe('view-switcher roving-tabindex arrow-key navigation', () => {
     const main = read('main.js');
+    // viewSwitcherArrowNav / focusViewPillAt were extracted into viewSwitcher.js
+    // (a behaviour-preserving move); the roving-tab wiring and applyActiveView
+    // still live in main.js.
+    const viewSwitcher = read('viewSwitcher.js');
 
-    function extractNamedFn(name) {
+    function extractNamedFn(name, source = main) {
         const sig = 'function ' + name + '(';
-        const start = main.indexOf(sig);
+        const start = source.indexOf(sig);
         if (start === -1) throw new Error('function not found: ' + name);
-        const bodyStart = main.indexOf('{', start);
+        const bodyStart = source.indexOf('{', start);
         let depth = 0;
-        for (let i = bodyStart; i < main.length; i++) {
-            const c = main[i];
+        for (let i = bodyStart; i < source.length; i++) {
+            const c = source[i];
             if (c === '{') depth++;
             else if (c === '}') {
                 depth--;
-                if (depth === 0) return main.slice(bodyStart, i + 1);
+                if (depth === 0) return source.slice(bodyStart, i + 1);
             }
         }
         throw new Error('unterminated body for: ' + name);
@@ -61,7 +65,7 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
     });
 
     it('the arrow-nav handler only acts on unmodified Left/Right and bails on modal/popover', () => {
-        const body = extractNamedFn('viewSwitcherArrowNav');
+        const body = extractNamedFn('viewSwitcherArrowNav', viewSwitcher);
         expect(body).toMatch(/['"]ArrowLeft['"]/);
         expect(body).toMatch(/['"]ArrowRight['"]/);
         // Shift/Ctrl/Meta/Alt + Arrow are reserved for native selection and
@@ -74,14 +78,14 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
     });
 
     it('the arrow-nav handler bails when focus is not on a switcher pill', () => {
-        const body = extractNamedFn('viewSwitcherArrowNav');
+        const body = extractNamedFn('viewSwitcherArrowNav', viewSwitcher);
         // indexOf(e.target) === -1 keeps the handler scoped to the three pills.
         expect(body).toMatch(/indexOf\(\s*e\.target\s*\)/);
         expect(body).toMatch(/===\s*-1/);
     });
 
     it('the arrow-nav handler wraps around both ends via modulo of the pill count', () => {
-        const body = extractNamedFn('viewSwitcherArrowNav');
+        const body = extractNamedFn('viewSwitcherArrowNav', viewSwitcher);
         // Wraparound is the defining behavior: Right on the last pill returns to
         // the first and Left on the first jumps to the last. A modulo over the
         // pill-count length (guarded with + len so a -1 index normalises) is the
@@ -95,7 +99,7 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
     });
 
     it('the arrow-nav handler takes priority over the header walk by stopping propagation', () => {
-        const body = extractNamedFn('viewSwitcherArrowNav');
+        const body = extractNamedFn('viewSwitcherArrowNav', viewSwitcher);
         // Without stopPropagation the document-level cross-pane ArrowLeft/Right
         // handler would also fire in Projects view and yank focus into the task
         // pane. preventDefault suppresses native caret/scroll side effects.
@@ -104,7 +108,7 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
     });
 
     it('moving focus hands the roving tabindex 0 to the target and -1 to the rest', () => {
-        const body = extractNamedFn('focusViewPillAt');
+        const body = extractNamedFn('focusViewPillAt', viewSwitcher);
         // Exactly one pill tabbable at a time is what makes this a roving
         // tablist rather than three independent tab stops.
         expect(body).toMatch(/setAttribute\(\s*['"]tabindex['"]\s*,\s*p === pill \? '0' : '-1'\s*\)/);
