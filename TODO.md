@@ -836,7 +836,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b00c328e-58ab-4abe-a488-09a97f1b338d -->
 
-- [ ] **[MEDIUM]** Extract updateFooterCounts from main.js into footerCounts.js
+- [x] **[MEDIUM]** Extract updateFooterCounts from main.js into footerCounts.js — Completed: 2026-07-17
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `updateFooterCounts` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/footerCounts.js`. The scan located it around lines 2749–2767; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Small but its three DOM refs must be resolved by id and it calls a sibling header writer, adding modest cost.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/footerCounts.js`
