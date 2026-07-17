@@ -20,6 +20,13 @@ function read(relative) {
 //     #mainList escapes back up to the active view pill.
 describe('view-pill arrow-key navigation into and out of the main pane', () => {
     const main = read('main.js');
+    // dropFocusIntoMainView was extracted into viewFocusNav.js; the pill
+    // drop-in handler's body now lives there, while its wiring (the
+    // addEventListener call sites) and firstFocusableInActiveMainView stay
+    // in main.js. Search both sources so the behaviour contract holds
+    // regardless of which file each piece lives in.
+    const viewFocusNav = read('viewFocusNav.js');
+    const mainAndViewFocusNav = main + '\n' + viewFocusNav;
 
     function extractBlock(signature) {
         const start = main.indexOf(signature);
@@ -43,7 +50,7 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         // isAnyModalOrPopoverOpen (both are required guards).
         const re = /function\s+([a-zA-Z_$][\w$]*)\s*\([^)]*\)\s*\{[\s\S]*?ArrowDown[\s\S]*?isAnyModalOrPopoverOpen[\s\S]*?\}/g;
         let match;
-        while ((match = re.exec(main)) !== null) {
+        while ((match = re.exec(mainAndViewFocusNav)) !== null) {
             const candidate = match[0];
             if (/preventDefault/.test(candidate) && /stopPropagation/.test(candidate)) {
                 return { name: match[1], body: candidate };
