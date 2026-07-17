@@ -84,6 +84,7 @@ import {
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { wireStatusLabelDelegation } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from './taskFilter.js';
+import { dropFocusIntoMainView } from './viewFocusNav.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
@@ -980,35 +981,9 @@ function component() {
         applyActiveView('structure');
     });
 
-    // ArrowDown drop-in from the view pills into the visible main pane.
-    // Mirrors the sidebarToggle → first project row transition for the
-    // spatially-adjacent content directly beneath the pills. The
-    // destination depends on the currently active view so the keystroke
-    // lands on rendered items rather than a hidden node:
-    //   • PROJECTS — the blank-placeholder #toDoInput in #mainList (or
-    //     #emptyStateInput when the project is empty, or the first
-    //     committed #toDoChild row as a last resort).
-    // Without these handlers the document-level todo arrow-nav handler at
-    // best lands focus on a stale .todo-active row and at worst silently
-    // no-ops — leaving the rendered items unreachable from the header
-    // chrome. stopPropagation keeps that document handler from also firing
-    // and clobbering the focus we just placed.
-    function dropFocusIntoMainView(e) {
-        if (e.key !== 'ArrowDown') return;
-        if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
-        if (isAnyModalOrPopoverOpen()) return;
-        // In PROJECTS view the status/sort filter bar sits directly between the
-        // pills and the list, so ArrowDown lands there first — a second
-        // ArrowDown (handled on the bar's controls) drops into the list. The
-        // bar is display:none outside PROJECTS, so firstFocusableInTaskFilterBar
-        // returns null in Agent/Structure and focus falls straight into the
-        // pane, preserving those views' behaviour.
-        const target = firstFocusableInTaskFilterBar() || firstFocusableInActiveMainView();
-        if (!target) return;
-        e.preventDefault();
-        e.stopPropagation();
-        target.focus();
-    }
+    // ArrowDown drop-in from the view pills into the visible main pane lives in
+    // viewFocusNav.js (dropFocusIntoMainView); it mirrors the sidebarToggle →
+    // first project row transition for the content directly beneath the pills.
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
     viewPillAgent.addEventListener('keydown', dropFocusIntoMainView);
 
@@ -4124,7 +4099,7 @@ function restoreFromStorage(opts) {
 // hidden node when the user is on a different view than the pill they
 // pressed from. Returns null when no suitable target is found (e.g.,
 // before component() finishes wiring).
-function firstFocusableInActiveMainView() {
+export function firstFocusableInActiveMainView() {
     // PROJECTS view (default) — prefer the empty-state input when the
     // project has no todos, then the blank-placeholder row's #toDoInput,
     // then the first committed row's tabindex="-1" focus target.

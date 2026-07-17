@@ -736,7 +736,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1c6c6bce-2662-42cb-b44c-0ea7c3f9282e -->
 
-- [ ] **[MEDIUM]** Extract dropFocusIntoMainView from main.js into viewFocusNav.js
+- [x] **[MEDIUM]** Extract dropFocusIntoMainView from main.js into viewFocusNav.js — Completed: 2026-07-17
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `dropFocusIntoMainView` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/viewFocusNav.js`. The scan located it around lines 996–1011; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Reads only module imports and top-level functions, no component() locals, so it moves as-is.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/viewFocusNav.js`

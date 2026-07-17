@@ -175,18 +175,22 @@ describe('taskFilterArrowTarget — Left/Right roving between filter and Sort', 
 
 describe('filter-bar arrow-key wiring in main.js', () => {
     const main = read('main.js');
+    // dropFocusIntoMainView was extracted into viewFocusNav.js; the filter-bar
+    // handlers and their wiring stay in main.js. Point the drop-in extraction
+    // at the module that now owns that function.
+    const viewFocusNav = read('viewFocusNav.js');
 
-    function extractFn(signature) {
-        const start = main.indexOf(signature);
+    function extractFn(signature, source = main) {
+        const start = source.indexOf(signature);
         if (start === -1) throw new Error('signature not found: ' + signature);
-        const bodyStart = main.indexOf('{', start);
+        const bodyStart = source.indexOf('{', start);
         let depth = 0;
-        for (let i = bodyStart; i < main.length; i++) {
-            const c = main[i];
+        for (let i = bodyStart; i < source.length; i++) {
+            const c = source[i];
             if (c === '{') depth++;
             else if (c === '}') {
                 depth--;
-                if (depth === 0) return main.slice(bodyStart, i + 1);
+                if (depth === 0) return source.slice(bodyStart, i + 1);
             }
         }
         throw new Error('unterminated block for: ' + signature);
@@ -228,7 +232,7 @@ describe('filter-bar arrow-key wiring in main.js', () => {
     });
 
     it('the pill drop-in (ArrowDown) tries the filter bar before falling into the list', () => {
-        const body = extractFn('function dropFocusIntoMainView');
+        const body = extractFn('function dropFocusIntoMainView', viewFocusNav);
         // The filter bar is the first stop below a view pill; the list is the
         // fallback. Ordering the OR this way makes the bar the first landing
         // and the list the second ArrowDown target.
