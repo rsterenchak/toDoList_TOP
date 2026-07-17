@@ -750,7 +750,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 92654534-4aba-44a6-b5de-fcaa1f8ac0bb -->
 
-- [ ] **[HIGH]** Fix Structure view elements ignoring the hidden attribute
+- [x] **[HIGH]** Fix Structure view elements ignoring the hidden attribute — Completed: 2026-07-16
   - Type: bug
   - Description: Four Structure-view elements declare `display` in their class rule while also toggling `hidden` from JS, so every `.hidden = true` on them is a no-op — an author-level `display` declaration outranks the UA stylesheet's `[hidden] { display: none }`. Symptoms: the × clear button paints on an empty filter input, the Collapse/Expand-all strip stays in flow on lenses with no collapsible sections, the selection toolbar renders on the Code lens where it has nothing to act on, and an empty Find-in-code result area stays in flow. The fix is CSS-only — every `hidden` assignment in `structureView.js` is already correct. Add explicit `[hidden] { display: none; }` guards mirroring the existing `claude*` precedent at `style.css:1917`, whose comment at 1916 documents this exact trap; the `structure*` family currently has zero such guards.
   - Implementation notes:
