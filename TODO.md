@@ -799,9 +799,9 @@
   - Completed: 2026-07-17
   <!-- id: d82859d4-7b66-4d9e-994e-cc5f12b3e55b -->
 
-- [ ] **[MEDIUM]** Extract refreshProjRunSpinner from main.js into projRunSpinner.js
+- [x] **[MEDIUM]** Extract refreshProjRunSpinner from main.js into projRunSpinner.js
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `refreshProjRunSpinner` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/projRunSpinner.js`. The scan located it around lines 3152–3164; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Small but needs three closed-over DOM/counter refs resolved plus one sibling to move with it. Move these sibling functions in the same entry so the file isn’t touched by two runs: resolveActiveProjectTarget, refreshDrawerRunSpinners, startDrawerSpinnerPoll, stopDrawerSpinnerPoll.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/projRunSpinner.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-17
   <!-- id: bd414266-81d6-4b02-ade8-eeacd57d6905 -->

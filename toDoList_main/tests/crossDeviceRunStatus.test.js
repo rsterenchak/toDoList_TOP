@@ -44,9 +44,13 @@ describe('cross-device run status — fetchActiveRuns helper', () => {
 describe('cross-device run status — project-trigger spinner (main.js)', () => {
     const main = read('main.js');
     const css = read('style.css');
+    // The repo-resolve + probe logic lives in projRunSpinner.js (extracted from
+    // main.js); main.js still creates the spinner element and drives the header
+    // re-poll and the visibility/interval cadence.
+    const spinner = read('projRunSpinner.js');
 
     it('imports fetchActiveRuns, findTargetById and isInjectConfigured from inject.js', () => {
-        expect(main).toMatch(
+        expect(spinner).toMatch(
             /import\s*\{[\s\S]*?\bisInjectConfigured\b[\s\S]*?\bfindTargetById\b[\s\S]*?\bfetchActiveRuns\b[\s\S]*?\}\s*from\s*['"]\.\/inject\.js['"]/
         );
     });
@@ -61,9 +65,9 @@ describe('cross-device run status — project-trigger spinner (main.js)', () => 
     });
 
     it('only resolves a repo when inject is configured AND the project routes to a target', () => {
-        const start = main.indexOf('function resolveActiveProjectTarget');
+        const start = spinner.indexOf('function resolveActiveProjectTarget');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 400);
+        const block = spinner.slice(start, start + 400);
         expect(block).toMatch(/!isInjectConfigured\(\)/);
         expect(block).toMatch(/listLogic\.getProjectTargetId\(\s*name\s*\)/);
         expect(block).toMatch(/findTargetById\(\s*targetId\s*\)/);
@@ -71,9 +75,9 @@ describe('cross-device run status — project-trigger spinner (main.js)', () => 
     });
 
     it('toggles the --active class only on a successful probe reporting active===true', () => {
-        const start = main.indexOf('async function refreshProjRunSpinner');
+        const start = spinner.indexOf('async function refreshProjRunSpinner');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 800);
+        const block = spinner.slice(start, start + 800);
         expect(block).toMatch(/fetchActiveRuns\(/);
         // No routed repo → clear the spinner, never poll.
         expect(block).toMatch(/if\s*\(\s*!target\s*\)[\s\S]{0,120}remove\(\s*['"]mobileProjRunSpinner--active['"]\s*\)/);
