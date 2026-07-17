@@ -75,6 +75,7 @@ import { createProjectByName } from './projectCreate.js';
 import { createProjRunSpinner } from './projRunSpinner.js';
 import { createViewSwitcher } from './viewSwitcher.js';
 import { createTaskSort } from './taskSort.js';
+import { createDesktopHeaderPlacement } from './desktopHeaderPlacement.js';
 import { createSettingsMenu } from './settingsMenu.js';
 import { createMobileUtilitySheet } from './mobileUtilitySheet.js';
 import {
@@ -1363,30 +1364,15 @@ function component() {
     // is safe to call on every resize. The view tabs already have a permanent
     // home in the desktop sub-band; only the pill + counts shuttle across the
     // 1024px boundary.
-    function placeDesktopHeader() {
-        const desktop = window.innerWidth >= 1024;
-        if (desktop) {
-            if (mobileProjHeader.parentNode !== nav) {
-                nav.insertBefore(mobileProjHeader, pomodoroToggle);
-            }
-            // Counts sit inline to the right of the pill, ahead of the chip
-            // cluster — lifted out of the pill so they read as header text
-            // rather than part of the clickable drawer trigger.
-            if (mobileProjStats.parentNode !== nav) {
-                nav.insertBefore(mobileProjStats, pomodoroToggle);
-            }
-        } else {
-            if (mobileProjHeader.parentNode !== main2) {
-                main2.insertBefore(mobileProjHeader, taskFilterBar);
-            }
-            // Variant C: the counts are the bottom line of the header's left
-            // column (#mobileProjMain), not a direct child of the header, so
-            // return them there when shuttling back from the desktop navBar.
-            if (mobileProjStats.parentNode !== mobileProjMain) {
-                mobileProjMain.appendChild(mobileProjStats);
-            }
-        }
-    }
+    const { placeDesktopHeader } = createDesktopHeaderPlacement({
+        nav,
+        main2,
+        pomodoroToggle,
+        mobileProjHeader,
+        mobileProjStats,
+        mobileProjMain,
+        taskFilterBar,
+    });
     placeDesktopHeader();
     window.addEventListener('resize', placeDesktopHeader);
 
