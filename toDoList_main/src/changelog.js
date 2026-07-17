@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-16',
         fixed: [
-            "Your in-progress answer to an agent's question is no longer wiped when the agent board refreshes while you're typing.",
             "Pushing a next-refactor candidate now points the new module inside the project's source folder instead of one directory above it.",
             "Pushing a next-refactor candidate now writes a properly formatted TODO.md entry, so it can be injected and run.",
             "Pushed next-refactor entries now use a task type the automated run recognizes, so they get built instead of being silently skipped.",
             "The next-refactor card's scanning state now says the scan takes about a minute and a half and to keep the tab open, so it no longer looks like it has hung.",
+            "The next-refactor suggestion now loads instantly and no longer fails with a network error on mobile, since scanning moved off the browser.",
         ],
     },
 ];

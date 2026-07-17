@@ -8,8 +8,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 // gate → create → backfill → ship → dismiss hand-off can be scripted without
 // network/Supabase.
 
-let scanResult;
-const scanRefactor = vi.fn(function () { return Promise.resolve(scanResult); });
+// The card reads its candidate from the stored scan row now (the Worker owns the
+// scan), so tests drive the shown candidate through loadLatestRefactorScan.
+let loadResult;
 
 // The one-tap push safety rail: probe for an in-flight run before creating
 // anything. Fails closed, so ok:false blocks the push.
@@ -30,14 +31,12 @@ const addToDo = vi.fn(function (project, title) {
 const listItems = vi.fn(function () { return store; });
 const editToDoItem = vi.fn(function () {});
 const dismissRefactorCandidate = vi.fn(function () { return Promise.resolve({ ok: true }); });
-const saveRefactorScan = vi.fn(function () { return Promise.resolve({ ok: true }); });
-const loadLatestRefactorScan = vi.fn(function () { return Promise.resolve({ ok: true, row: null }); });
+const loadLatestRefactorScan = vi.fn(function () { return Promise.resolve(loadResult); });
 
 const addToDos_restore = vi.fn(function () {});
 const addAllToDo_DOM = vi.fn(function () {});
 
 vi.mock('../src/inject.js', () => ({
-    scanRefactor: (...a) => scanRefactor(...a),
     getCachedTargets: () => [],
     fetchActiveRuns: (...a) => fetchActiveRuns(...a),
 }));
@@ -49,7 +48,6 @@ vi.mock('../src/shipEntry.js', () => ({
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         loadLatestRefactorScan: (...a) => loadLatestRefactorScan(...a),
-        saveRefactorScan: (...a) => saveRefactorScan(...a),
         dismissRefactorCandidate: (...a) => dismissRefactorCandidate(...a),
         addToDo: (...a) => addToDo(...a),
         listItems: (...a) => listItems(...a),
@@ -62,47 +60,53 @@ vi.mock('../src/toDoRow.js', () => ({
     addAllToDo_DOM: (...a) => addAllToDo_DOM(...a),
 }));
 
-import { renderRefactorCard, _resetRefactorCard } from '../src/refactorCard.js';
+import { renderRefactorCard } from '../src/refactorCard.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 6) { for (let i = 0; i < n; i++) await tick(); }
 
-const FOUND = {
-    ok: true,
-    found: true,
-    target_file: 'src/agentView.js',
-    target_sha: 'sha-1',
-    candidates: [
-        {
-            name: 'buildMockupSecondary',
-            lines: 120,
-            start_line: 1222,
-            end_line: 1342,
-            closure_refs: ['ctx', 'row'],
-            suggested_module: 'src/agentMockup.js',
-            cluster_with: ['renderMockupPreviews'],
-            rationale: 'Self-contained mockup rendering.',
-        },
-        {
-            name: 'buildDiscussSeed',
-            lines: 40,
-            closure_refs: [],
-            suggested_module: 'src/agentHandoff.js',
-            cluster_with: [],
-            rationale: 'Pure seed assembly.',
-        },
-    ],
-};
+const CANDIDATES = [
+    {
+        name: 'buildMockupSecondary',
+        lines: 120,
+        start_line: 1222,
+        end_line: 1342,
+        closure_refs: ['ctx', 'row'],
+        suggested_module: 'src/agentMockup.js',
+        cluster_with: ['renderMockupPreviews'],
+        rationale: 'Self-contained mockup rendering.',
+    },
+    {
+        name: 'buildDiscussSeed',
+        lines: 40,
+        closure_refs: [],
+        suggested_module: 'src/agentHandoff.js',
+        cluster_with: [],
+        rationale: 'Pure seed assembly.',
+    },
+];
+
+// A stored refactor_scans row — the shape loadLatestRefactorScan returns and the
+// card reads directly to render the candidate a push then acts on.
+function makeRow(candidates, targetFile) {
+    return {
+        repo: 'o/r',
+        target_file: targetFile || 'src/agentView.js',
+        target_sha: 'sha-1',
+        candidates: candidates || CANDIDATES,
+        dismissed: [],
+        scanned_at: new Date().toISOString(),
+    };
+}
 
 beforeEach(() => {
-    _resetRefactorCard();
     document.body.innerHTML = '<div id="mainList"></div>';
-    scanResult = FOUND;
+    loadResult = { ok: true, row: makeRow() };
     store = [];
     nextId = 1;
     activeRunsResult = { ok: true, active: false };
     shipResult = { ok: true, entryId: 'entry-1', correlationId: 'corr-1' };
-    scanRefactor.mockClear();
+    loadLatestRefactorScan.mockClear();
     fetchActiveRuns.mockClear();
     shipEntryForTodo.mockClear();
     addToDo.mockClear();
@@ -183,22 +187,16 @@ describe('Push entry — ship and dispatch', () => {
         // (`toDoList_main/src/main.js`). The destination must land inside the
         // target file's directory — `toDoList_main/src/dismissable.js` — not one
         // level up outside webpack's tree.
-        scanResult = {
-            ok: true,
-            found: true,
-            target_file: 'toDoList_main/src/main.js',
-            target_sha: 'sha-2',
-            candidates: [
-                {
-                    name: 'makeDismissable',
-                    lines: 60,
-                    closure_refs: [],
-                    suggested_module: 'dismissable.js',
-                    cluster_with: [],
-                    rationale: 'Reusable dismiss helper.',
-                },
-            ],
-        };
+        loadResult = { ok: true, row: makeRow([
+            {
+                name: 'makeDismissable',
+                lines: 60,
+                closure_refs: [],
+                suggested_module: 'dismissable.js',
+                cluster_with: [],
+                rationale: 'Reusable dismiss helper.',
+            },
+        ], 'toDoList_main/src/main.js') };
         const card = renderRefactorCard('o/r', 'My Project');
         await flush();
         card.querySelector('.refactorCardPush').click();
