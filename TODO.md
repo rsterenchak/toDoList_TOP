@@ -829,7 +829,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8ac89574-0611-414a-ba63-36868789aa18 -->
 
-- [ ] **[MEDIUM]** Extract placeDesktopHeader from main.js into desktopHeaderPlacement.js
+- [x] **[MEDIUM]** Extract placeDesktopHeader from main.js into desktopHeaderPlacement.js — Completed: 2026-07-17
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `placeDesktopHeader` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/desktopHeaderPlacement.js`. The scan located it around lines 1366–1389; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: No sibling calls but seven closed-over DOM nodes must each be resolved by id before it can move.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/desktopHeaderPlacement.js`
