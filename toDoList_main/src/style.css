@@ -3622,6 +3622,9 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   line-height: 1;
   cursor: pointer;
 }
+/* Base rule sets display: inline-flex, which would otherwise win over the UA
+   [hidden] { display: none }, so re-assert the hidden state explicitly. */
+.structureFilterClear[hidden] { display: none; }
 
 .structureFilterClear:hover {
   color: var(--text-primary);
@@ -3655,6 +3658,9 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   align-items: center;
   justify-content: flex-end;
 }
+/* Base rule sets display: flex, which would otherwise win over the UA
+   [hidden] { display: none }, so re-assert the hidden state explicitly. */
+.structureToolbar[hidden] { display: none; }
 
 .structureCollapseAllPill {
   font-family: inherit;
@@ -3694,6 +3700,9 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   border-radius: 10px;
   background: var(--bg-elevated);
 }
+/* Base rule sets display: flex, which would otherwise win over the UA
+   [hidden] { display: none }, so re-assert the hidden state explicitly. */
+.structureActionToolbar[hidden] { display: none; }
 
 /* Idle state — nothing selected: muted hint, no actions (cleared in JS). */
 .structureActionToolbar--idle .structureActionToolbarLabel {
@@ -4590,6 +4599,9 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   gap: 4px;
   margin-top: 2px;
 }
+/* Base rule sets display: flex, which would otherwise win over the UA
+   [hidden] { display: none }, so re-assert the hidden state explicitly. */
+.structureFindResult[hidden] { display: none; }
 
 .structureFindLoading,
 .structureFindNone {
