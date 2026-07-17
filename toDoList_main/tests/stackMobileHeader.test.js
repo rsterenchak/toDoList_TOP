@@ -49,11 +49,17 @@ describe('STACK mobile project header', () => {
         // updateFooterCounts already runs on every #mainList childList /
         // class change and #sideMa class / value change — extending it to
         // also call updateMobileProjHeader keeps the new chrome reactive
-        // without needing a second observer.
-        const fnIdx = main.indexOf('function updateFooterCounts(');
+        // without needing a second observer. The function was extracted
+        // verbatim from main.js into footerCounts.js; the assertions follow
+        // it there, while main.js keeps driving it off the MutationObserver.
+        const footerCounts = read('footerCounts.js');
+        const fnIdx = footerCounts.indexOf('function updateFooterCounts(');
         expect(fnIdx).toBeGreaterThan(-1);
-        const closeIdx = main.indexOf('updateMobileProjHeader', fnIdx);
+        const closeIdx = footerCounts.indexOf('updateMobileProjHeader', fnIdx);
         expect(closeIdx).toBeGreaterThan(fnIdx);
+        // The observer that keeps the counts (and now the header) reactive
+        // still lives in main.js and drives the extracted function.
+        expect(main).toMatch(/new MutationObserver\(updateFooterCounts\)/);
     });
 
     it('groups the ‹ › chevrons into a vertical column and the name pill in the title row', () => {

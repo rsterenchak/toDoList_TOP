@@ -76,6 +76,7 @@ import { createProjRunSpinner } from './projRunSpinner.js';
 import { createViewSwitcher } from './viewSwitcher.js';
 import { createTaskSort } from './taskSort.js';
 import { createDesktopHeaderPlacement } from './desktopHeaderPlacement.js';
+import { createFooterCounts } from './footerCounts.js';
 import { createSettingsMenu } from './settingsMenu.js';
 import { createMobileUtilitySheet } from './mobileUtilitySheet.js';
 import {
@@ -792,6 +793,18 @@ function component() {
     projectPickerDropdown.setAttribute('role', 'menu');
     projectPickerDropdown.setAttribute('aria-hidden', 'true');
     document.body.appendChild(projectPickerDropdown);
+
+    // Footer/header count writer — behaviour-preserving extraction into
+    // footerCounts.js. Instantiated here (ahead of the project picker below)
+    // because updateFooterCounts is injected into that subsystem; the three DOM
+    // refs it reads are already built above and updateMobileProjHeader is a
+    // hoisted declaration defined later in this scope.
+    const { updateFooterCounts } = createFooterCounts({
+        sideMain,
+        footOpen,
+        footDone,
+        updateMobileProjHeader,
+    });
 
     // Construct the desktop project-picker dropdown subsystem. The picker's
     // DOM nodes are built above and injected here, along with the component()
@@ -2745,26 +2758,6 @@ function component() {
 
 
 
-
-    function updateFooterCounts() {
-        updateAllProjectBadges();
-        const selected = sideMain.querySelector('.selectedProject');
-        let open = 0, done = 0;
-        let name = '';
-        if (selected) {
-            const input = selected.querySelector('#projInput');
-            name = input ? input.value.trim() : '';
-            const items = listLogic.listItems(name) || [];
-            items.forEach(function(i) {
-                if (!i.tit) return;
-                if (i.completed) done++; else open++;
-            });
-        }
-        footOpen.textContent = open + ' OPEN';
-        footDone.textContent = done + ' DONE';
-
-        updateMobileProjHeader(name, open, done);
-    }
 
     mobileProjPrev.addEventListener('click', function() {
         const projects = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
