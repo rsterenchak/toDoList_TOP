@@ -19,6 +19,7 @@ function read(relative) {
 describe('desktop project-picker dropdown', () => {
     const main = read('main.js');
     const picker = read('projectPicker.js');
+    const projectCreate = read('projectCreate.js');
     const css = read('style.css');
 
     // Slice a named function declaration's body from a source string.
@@ -175,10 +176,11 @@ describe('desktop project-picker dropdown', () => {
 
     it('main.js wires onCreateProjectNamed to the SAME #projButton create+select path', () => {
         // The picker is constructed with an onCreateProjectNamed callback bound
-        // to createProjectByName, which drives the #projButton row-build and a
-        // synthetic Enter commit (no parallel create path).
+        // to createProjectByName (extracted to projectCreate.js), which drives
+        // the #projButton row-build and a synthetic Enter commit (no parallel
+        // create path).
         expect(main).toMatch(/onCreateProjectNamed:\s*createProjectByName/);
-        const body = fnBody(main, 'createProjectByName');
+        const body = fnBody(projectCreate, 'createProjectByName');
         expect(body).toMatch(/projButton\.click\(\)/);
         expect(body).toMatch(/#projInput/);
         expect(body).toMatch(/KeyboardEvent\(['"]keydown['"][\s\S]{0,60}?Enter/);
