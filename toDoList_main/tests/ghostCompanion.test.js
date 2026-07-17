@@ -116,6 +116,11 @@ describe('ghost companion — main.js wiring', () => {
     // settingsMenu.js (closure-to-factory carve-out); main.js still imports
     // ensure/destroyCompanion for the mobile settings modal + boot wiring.
     const settingsMenu = read('settingsMenu.js');
+    // The mobile Settings-modal companion toggle builder (buildCompanionToggle)
+    // was extracted into drawerRows.js, so its ensureCompanion/destroyCompanion
+    // wiring is pinned there now; main.js supplies the toggle via
+    // buildCompanionToggleRow and still calls ensureCompanion at boot.
+    const drawerRows = read('drawerRows.js');
 
     it('imports ensureCompanion and destroyCompanion from ./companion.js', () => {
         expect(js).toMatch(/import\s*\{[^}]*ensureCompanion[^}]*\}\s*from\s*['"]\.\/companion\.js['"]/);
@@ -128,9 +133,10 @@ describe('ghost companion — main.js wiring', () => {
         // helper memoizes a single createCompanion(document) instance.
         expect(companion).toMatch(/export\s+function\s+ensureCompanion\s*\(/);
         expect(companion).toMatch(/createCompanion\s*\(\s*document\s*\)/);
-        // main.js wires the toggle to ensureCompanion / destroyCompanion.
-        expect(js).toMatch(/ensureCompanion\s*\(\s*\)/);
-        expect(js).toMatch(/destroyCompanion\s*\(\s*\)/);
+        // The mobile Settings-modal companion toggle handler now lives in
+        // drawerRows.js, where it wires ensureCompanion / destroyCompanion.
+        expect(drawerRows).toMatch(/ensureCompanion\s*\(\s*\)/);
+        expect(drawerRows).toMatch(/destroyCompanion\s*\(\s*\)/);
     });
 
     it('calls companion.cheer() from inside the checkbox change handler', () => {

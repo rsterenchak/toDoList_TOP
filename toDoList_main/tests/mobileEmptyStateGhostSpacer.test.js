@@ -122,11 +122,14 @@ describe('Empty-state ghost spacer — main.js companion-ghost wiring', () => {
         expect(js).toMatch(/function\s+applyCompanionGhostPreference\s*\(/);
         // Initial boot reads the pref onto body once the body exists.
         expect(js).toMatch(/setTimeout\(\s*applyCompanionGhostPreference/);
-        // Both toggle handlers (desktop settings menu + mobile drawer) call
-        // applyCompanionGhostPreference after flipping the pref so the mobile
-        // ghosts hide/show without waiting for a re-render.
-        const occurrences = js.match(/applyCompanionGhostPreference\s*\(\s*\)/g) || [];
-        expect(occurrences.length).toBeGreaterThanOrEqual(2);
+        // The mobile drawer companion toggle builder was extracted into
+        // drawerRows.js; main.js supplies the main-local
+        // applyCompanionGhostPreference to it, and the builder calls it after
+        // flipping the pref so the mobile ghosts hide/show without waiting for
+        // a re-render.
+        expect(js).toMatch(/buildCompanionToggleRow\(\s*applyCompanionGhostPreference\s*\)/);
+        const drawerRows = read('drawerRows.js');
+        expect(drawerRows).toMatch(/applyCompanionGhostPreference\s*\(\s*\)/);
     });
 });
 

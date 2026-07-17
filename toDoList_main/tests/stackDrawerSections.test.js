@@ -21,6 +21,12 @@ function read(relative) {
 describe('STACK mobile drawer — Settings entry + modal', () => {
     const main = read('main.js');
     const css  = read('style.css');
+    // The drawer-row factories and the Show completed / Dark theme /
+    // Companion ghost toggle builders were extracted into drawerRows.js;
+    // their bodies are pinned there now. buildExpandAllToggle stays in
+    // main.js (it closes over main-local bulk-description helpers), and
+    // every call site (showSettingsModal) still lives in main.js.
+    const drawerRows = read('drawerRows.js');
 
     describe('drawer slide direction and width', () => {
         it('mobile drawer slides in from the right via translateX(100%)', () => {
@@ -86,10 +92,10 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
             // The label is the user-facing copy; the underlying state
             // routes through isCompletedSectionOpen / setCompletedSectionOpen
             // so the modal toggle and the in-list caret stay in lockstep.
-            expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Show completed['"]/);
+            expect(drawerRows).toMatch(/createDrawerToggleRow\(\s*['"]Show completed['"]/);
             // Prefer the in-list caret's click when mounted so its caret
             // glyph + aria-expanded flip alongside the pref write.
-            expect(main).toMatch(/getElementById\(['"]completedHeader['"]\)/);
+            expect(drawerRows).toMatch(/getElementById\(['"]completedHeader['"]\)/);
         });
 
         it('Expand all descriptions toggle dispatches through the shared bulk-description toggle', () => {
@@ -101,20 +107,20 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         });
 
         it('Dark theme toggle uses the same applyTheme + localStorage write as the settings menu', () => {
-            expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Dark theme['"]/);
-            const themeBlockStart = main.indexOf("'Dark theme'");
+            expect(drawerRows).toMatch(/createDrawerToggleRow\(\s*['"]Dark theme['"]/);
+            const themeBlockStart = drawerRows.indexOf("'Dark theme'");
             expect(themeBlockStart).toBeGreaterThan(-1);
-            const slice = main.slice(themeBlockStart, themeBlockStart + 600);
+            const slice = drawerRows.slice(themeBlockStart, themeBlockStart + 600);
             expect(slice).toMatch(/applyTheme\(/);
             expect(slice).toMatch(/THEME_KEY/);
             expect(slice).toMatch(/theme-transitioning/);
         });
 
         it('Companion ghost toggle dispatches setCompanionEnabled + ensure/destroy', () => {
-            expect(main).toMatch(/createDrawerToggleRow\(\s*['"]Companion ghost['"]/);
-            const compBlockStart = main.indexOf("'Companion ghost'");
+            expect(drawerRows).toMatch(/createDrawerToggleRow\(\s*['"]Companion ghost['"]/);
+            const compBlockStart = drawerRows.indexOf("'Companion ghost'");
             expect(compBlockStart).toBeGreaterThan(-1);
-            const slice = main.slice(compBlockStart, compBlockStart + 500);
+            const slice = drawerRows.slice(compBlockStart, compBlockStart + 500);
             expect(slice).toMatch(/setCompanionEnabled\(/);
             expect(slice).toMatch(/ensureCompanion\(\s*\)/);
             expect(slice).toMatch(/destroyCompanion\(\s*\)/);
