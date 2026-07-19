@@ -864,7 +864,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e28f2fdb-d0ba-49da-ba1d-a32ab4c10e2c -->
 
-- [ ] **[MEDIUM]** Extract endSwipe from main.js into mobileProjSwipeNav.js
+- [x] **[MEDIUM]** Extract endSwipe from main.js into mobileProjSwipeNav.js — Completed: 2026-07-19
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `endSwipe` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/mobileProjSwipeNav.js`. The scan located it around lines 2574–2594; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Needs the three swipe-state locals and two sibling helpers resolved/passed in, but is otherwise a self-contained gesture handler worth moving as a unit.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/mobileProjSwipeNav.js`
