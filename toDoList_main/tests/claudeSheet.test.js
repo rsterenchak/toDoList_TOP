@@ -10,6 +10,7 @@ import {
     syncClaudeSheetForProject,
     extractDraftedEntry,
     extractInspectDirective,
+    extractAskDirective,
     splitRenderableBlocks,
     renderAssistantContent,
     insertReference,
@@ -3646,6 +3647,50 @@ describe('Claude sheet — INSPECT directive detection', () => {
     });
 });
 
+// The `ASK:` directive: an assistant reply may carry a single
+// `ASK: <question> :: <opt> | <opt>` line that renders as question prose plus a
+// row of tap chips. Parsing is defensive — a malformed line stays plain text.
+describe('Claude sheet — ASK directive detection', () => {
+    it('parses the question and options from an ASK line', () => {
+        expect(extractAskDirective('Sure.\nASK: Which breakpoint? :: 420px | 768px | 1024px'))
+            .toEqual({ question: 'Which breakpoint?', options: ['420px', '768px', '1024px'] });
+    });
+
+    it('trims the question and each option', () => {
+        expect(extractAskDirective('ASK:   Size?   ::  small |  large '))
+            .toEqual({ question: 'Size?', options: ['small', 'large'] });
+    });
+
+    it('drops empty options rather than emitting blanks', () => {
+        expect(extractAskDirective('ASK: Pick :: a |  | b'))
+            .toEqual({ question: 'Pick', options: ['a', 'b'] });
+    });
+
+    it('returns null when the line has no ` :: ` separator', () => {
+        expect(extractAskDirective('ASK: just a question with no options')).toBe(null);
+    });
+
+    it('returns null when there are zero options after trimming', () => {
+        expect(extractAskDirective('ASK: Which? ::   ')).toBe(null);
+    });
+
+    it('returns null when no directive line is present', () => {
+        expect(extractAskDirective('Just prose, no directive.')).toBe(null);
+        expect(extractAskDirective('')).toBe(null);
+    });
+
+    it('captures only the first ASK line when several appear', () => {
+        expect(extractAskDirective('ASK: A? :: x | y\nASK: B? :: p | q'))
+            .toEqual({ question: 'A?', options: ['x', 'y'] });
+    });
+
+    it('is independent of an INSPECT directive in the same reply', () => {
+        const reply = 'ASK: Which? :: one | two\nINSPECT: #target';
+        expect(extractAskDirective(reply)).toEqual({ question: 'Which?', options: ['one', 'two'] });
+        expect(extractInspectDirective(reply)).toBe('#target');
+    });
+});
+
 describe('Claude sheet — layout inspector attach flow', () => {
     let realFetch;
     let fetchSpy;
@@ -3740,6 +3785,110 @@ describe('Claude sheet — layout inspector attach flow', () => {
         // The composed turn is visible in the thread.
         const userBubbles = document.querySelectorAll('.claudeMsg--user');
         expect(userBubbles[userBubbles.length - 1].textContent).toContain('Live layout for');
+    });
+});
+
+// The `ASK:` chip flow: an assistant reply carrying an ASK directive strips the
+// raw line to question prose, renders a chip per option, and a tapped chip sends
+// its exact label as the next user turn — then the row settles.
+describe('Claude sheet — ASK directive chip flow', () => {
+    let realFetch;
+    let fetchSpy;
+    let chatBodies;
+    let replyText;
+
+    function makeFetch() {
+        chatBodies = [];
+        return vi.fn((url, opts) => {
+            const body = JSON.parse(opts.body);
+            let json = { ok: true };
+            if (body.chat) {
+                chatBodies.push(body);
+                json = { reply: replyText };
+            }
+            return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(json) });
+        });
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example.com');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret-token');
+        initInjectConfig();
+        replyText = 'Happy to — one thing first.\nASK: Which breakpoint? :: 420px | 768px | 1024px';
+        realFetch = globalThis.fetch;
+        fetchSpy = makeFetch();
+        globalThis.fetch = fetchSpy;
+        mountClaudeSheet(document.body);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        mountClaudeSheet(document.createElement('div'));
+        globalThis.fetch = realFetch;
+    });
+
+    async function sendMessage(text) {
+        const input = document.getElementById('claudeComposerInput');
+        input.value = text;
+        document.getElementById('claudeComposerSend').click();
+        await flush();
+    }
+
+    it('strips the raw ASK line to question prose and renders a chip per option', async () => {
+        await sendMessage('make the sidebar responsive');
+        const assistant = document.querySelector('.claudeMsg--assistant');
+        expect(assistant.textContent).toContain('Which breakpoint?');
+        expect(assistant.textContent).not.toContain('ASK:');
+        const chips = document.querySelectorAll('.claudeAskChip');
+        expect(chips.length).toBe(3);
+        expect(Array.from(chips).map((c) => c.textContent)).toEqual(['420px', '768px', '1024px']);
+    });
+
+    it('sends the tapped chip label as the next user turn and settles the row', async () => {
+        await sendMessage('make the sidebar responsive');
+        const before = chatBodies.length;
+        // Clean follow-up so the chip turn doesn't re-trigger the ASK renderer.
+        replyText = 'Got it, using 768px.';
+        const chips = document.querySelectorAll('.claudeAskChip');
+        chips[1].click();
+        await flush();
+
+        expect(chatBodies.length).toBe(before + 1);
+        const sent = chatBodies[chatBodies.length - 1];
+        const lastUser = sent.messages[sent.messages.length - 1];
+        expect(lastUser.role).toBe('user');
+        expect(lastUser.content).toBe('768px');
+        // The chosen chip is marked and the row is settled + disabled.
+        expect(chips[1].classList.contains('claudeAskChip--chosen')).toBe(true);
+        const row = document.querySelector('.claudeAskChips');
+        expect(row.classList.contains('claudeAskChips--answered')).toBe(true);
+        expect(Array.from(chips).every((c) => c.disabled)).toBe(true);
+        // The tapped label shows as a user bubble.
+        const userBubbles = document.querySelectorAll('.claudeMsg--user');
+        expect(userBubbles[userBubbles.length - 1].textContent).toBe('768px');
+    });
+
+    it('ignores a second tap once the question is answered', async () => {
+        await sendMessage('make the sidebar responsive');
+        replyText = 'Got it.';
+        const chips = document.querySelectorAll('.claudeAskChip');
+        chips[0].click();
+        await flush();
+        const after = chatBodies.length;
+        chips[2].click();
+        await flush();
+        expect(chatBodies.length).toBe(after);
+        expect(chips[2].classList.contains('claudeAskChip--chosen')).toBe(false);
+    });
+
+    it('leaves a malformed ASK line as plain text with no chips', async () => {
+        replyText = 'ASK: no options here';
+        await sendMessage('help');
+        const assistant = document.querySelector('.claudeMsg--assistant');
+        expect(assistant.textContent).toContain('ASK: no options here');
+        expect(document.querySelector('.claudeAskChip')).toBe(null);
     });
 });
 

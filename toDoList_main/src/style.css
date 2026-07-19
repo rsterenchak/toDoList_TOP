@@ -2725,6 +2725,51 @@ button.claudeAttachChipLabel { cursor: pointer; }
   cursor: pointer;
 }
 
+/* Tap chips beneath an assistant reply carrying an `ASK:` directive: one chip
+   per enumerable option, wrapping to new rows as needed. */
+.claudeAskChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -2px 0 12px;
+}
+.claudeAskChip {
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-bright);
+  font-family: inherit;
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.claudeAskChip:hover {
+  border-color: #6C5DF5;
+  color: #9D93EE;
+}
+/* The tapped chip takes the accent; the settled row can't be re-answered. */
+.claudeAskChip--chosen {
+  background: #6C5DF5;
+  color: #fff;
+  border-color: #6C5DF5;
+}
+.claudeAskChips--answered .claudeAskChip {
+  cursor: default;
+}
+.claudeAskChips--answered .claudeAskChip:not(.claudeAskChip--chosen) {
+  opacity: 0.55;
+}
+.claudeAskChips--answered .claudeAskChip:hover {
+  border-color: var(--border-bright);
+  color: var(--text-primary);
+}
+.claudeAskChips--answered .claudeAskChip--chosen:hover {
+  border-color: #6C5DF5;
+  color: #fff;
+}
+
 /* Reload nudge above the Runs list when a newer build is waiting. */
 .claudeUpdateNudge {
   display: flex;

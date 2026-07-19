@@ -2057,6 +2057,37 @@ function stripInspectDirective(reply) {
         .trim();
 }
 
+// Detect an `ASK: <question> :: <opt> | <opt> | <opt>` directive line the Worker
+// emits when it needs a quick, enumerable answer before drafting. Returns
+// { question, options } parsed from the FIRST such line — the question is the
+// text before the first ` :: `, options are the ` | `-separated list after,
+// each trimmed and non-empty. Parses defensively: a line with no ` :: `, an
+// empty question, or zero options after trimming yields null so it falls back to
+// plain text rather than throwing. Independent of INSPECT detection.
+export function extractAskDirective(reply) {
+    const m = String(reply || '').match(/^ASK:\s*(.+)$/m);
+    if (!m) return null;
+    const body = m[1];
+    const sep = body.indexOf(' :: ');
+    if (sep === -1) return null;
+    const question = body.slice(0, sep).trim();
+    const options = body.slice(sep + 4).split(' | ')
+        .map(function(o) { return o.trim(); })
+        .filter(function(o) { return o.length > 0; });
+    if (!question || !options.length) return null;
+    return { question: question, options: options };
+}
+
+// Replace the `ASK:` directive line with just its question text so the visible
+// bubble reads as prose (the options render as tap chips beneath, not inline),
+// collapsing the blank gap it leaves — mirroring stripInspectDirective.
+function stripAskDirective(reply, ask) {
+    return String(reply || '')
+        .replace(/^ASK:\s*.+$/m, ask.question)
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+}
+
 async function sendChatTurn(deep) {
     const input = sheetQuery('#claudeComposerInput');
     const send = sheetQuery('#claudeComposerSend');
@@ -2130,11 +2161,19 @@ async function requestAssistantReply(entryId, deep) {
             saveIterateEntry();
         }
         const inspectSelector = extractInspectDirective(reply);
+        const ask = extractAskDirective(reply);
+        // Strip each directive line from the visible prose independently so the
+        // two coexist — an ASK reply keeps its question text, an INSPECT reply
+        // drops its line, and a reply carrying both is cleaned of both.
+        let visible = reply;
+        if (inspectSelector) visible = stripInspectDirective(visible);
+        if (ask) visible = stripAskDirective(visible, ask);
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
-            renderAssistantContent(pending, inspectSelector ? stripInspectDirective(reply) : reply);
+            renderAssistantContent(pending, visible);
         }
         if (inspectSelector) renderAttachLayoutButton(inspectSelector);
+        if (ask) renderAskChips(ask);
         const draft = extractDraftedEntry(reply);
         if (draft) renderDraftedEntryCard(draft);
         if (suggestedFiles.length) addSuggestedFiles(suggestedFiles);
@@ -2239,6 +2278,54 @@ async function sendInspectTurn(content) {
     saveChatHistory();
     appendMessageBubble('user', content);
     await requestAssistantReply(activeIterateEntry);
+}
+
+// ── ASK CHIPS ──
+// Beneath an assistant reply that carried an `ASK:` directive, render a wrapping
+// row of tap chips — one per option. Tapping a chip sends that option's exact
+// label as the next user turn through the same send path a typed message takes,
+// marks the chosen chip with the accent, and disables the whole row so a
+// resolved question can't be re-answered (mirroring the INSPECT button settling
+// after capture).
+function renderAskChips(ask) {
+    const surface = sheetQuery('#claudeChatSurface');
+    if (!surface) return null;
+
+    const row = document.createElement('div');
+    row.className = 'claudeAskChips';
+
+    ask.options.forEach(function(label) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'claudeAskChip';
+        chip.textContent = label;
+        chip.addEventListener('click', function() {
+            if (row.classList.contains('claudeAskChips--answered')) return;
+            row.classList.add('claudeAskChips--answered');
+            chip.classList.add('claudeAskChip--chosen');
+            Array.prototype.forEach.call(row.querySelectorAll('.claudeAskChip'), function(c) {
+                c.disabled = true;
+            });
+            sendAskAnswer(label);
+        });
+        row.appendChild(chip);
+    });
+
+    surface.appendChild(row);
+    surface.scrollTop = surface.scrollHeight;
+    return row;
+}
+
+// Send a tapped ASK chip's label as the next user turn — same path a typed
+// message takes, so it carries the active iterate entry id and the current
+// deep-think mode exactly as the composer would (attachments/active repo ride
+// through chatWithWorker from module state as usual).
+async function sendAskAnswer(label) {
+    removeChatIntro();
+    chatHistory.push({ role: 'user', content: label });
+    saveChatHistory();
+    appendMessageBubble('user', label);
+    await requestAssistantReply(activeIterateEntry, chatMode === 'deep');
 }
 
 // Seed an iterate chat from a SHIPPED run: switch to the Chat tab, reset the

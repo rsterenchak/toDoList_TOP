@@ -871,7 +871,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e74b1267-b30d-4bc9-8e24-70987dfaee0a -->
 
-- [ ] **[MEDIUM]** Render `ASK:` clarifying-question directives as tappable option chips in the assistant chat
+- [x] **[MEDIUM]** Render `ASK:` clarifying-question directives as tappable option chips in the assistant chat — Completed: 2026-07-19
   - Type: feature
   - Description: The in-app assistant is getting a new `ASK:` directive — a single line, `ASK: <question> :: <option> | <option> | <option>` (2–4 options) — that it emits when it needs a quick, enumerable answer (e.g. a breakpoint or a size) before drafting. The chat currently only recognizes `INSPECT:`, so an `ASK:` line renders as raw text. Add detection and rendering so an `ASK:` line becomes the question text followed by a row of tappable chips, and tapping a chip sends that option's label as the user's next turn — the same one-tap-to-next-turn mechanism the existing `INSPECT:` button already uses.
   - Behavior: When an assistant reply contains a line starting with `ASK: `, parse it into a question (text before ` :: `) and options (the ` | `-separated list after), render the question as message text and each option as a tap chip in a wrapping row, and on tap send that chip's exact label as a new user message through the normal chat send path — so active repo, entry_id, deep-think state, and any attachments carry exactly as a typed message would. The raw `ASK:` line must NOT appear as literal text in the bubble (strip/replace it, exactly as the `INSPECT:` directive line is handled today). `ASK:` and `INSPECT:` must coexist — adding one must not change detection or rendering of the other.
