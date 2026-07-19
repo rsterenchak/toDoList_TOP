@@ -74,6 +74,7 @@ import { createDesktopHeaderPlacement } from './desktopHeaderPlacement.js';
 import { createFooterCounts } from './footerCounts.js';
 import { createSettingsModal } from './settingsModal.js';
 import { createSidebarDrawer } from './sidebarDrawer.js';
+import { createMobileProjSwipeNav } from './mobileProjSwipeNav.js';
 import { createSettingsMenu } from './settingsMenu.js';
 import { createMobileUtilitySheet } from './mobileUtilitySheet.js';
 import {
@@ -2515,10 +2516,11 @@ function component() {
     // and past a small intent threshold. Scoped to the title row only;
     // row swipe-to-delete already owns horizontal gestures over
     // #mainList below.
-    let swipeStartX = 0;
-    let swipeStartY = 0;
-    let swipeActive = false;
-    let swipeHorizontal = false;
+    // Swipe gesture state shared between the touchstart/move/cancel handlers
+    // below and the extracted endSwipe (mobileProjSwipeNav.js); held in one
+    // object so endSwipe's active/horizontal resets stay visible to the inline
+    // handlers.
+    const swipeState = { startX: 0, startY: 0, active: false, horizontal: false };
     const SWIPE_COMMIT_PX = 40;
     const SWIPE_INTENT_PX = 10;
     const RUBBER_BAND = 0.25;
@@ -2540,25 +2542,25 @@ function component() {
     mobileProjTitleRow.addEventListener('touchstart', function(event) {
         if (event.touches.length !== 1) return;
         const t = event.touches[0];
-        swipeStartX = t.clientX;
-        swipeStartY = t.clientY;
-        swipeActive = true;
-        swipeHorizontal = false;
+        swipeState.startX = t.clientX;
+        swipeState.startY = t.clientY;
+        swipeState.active = true;
+        swipeState.horizontal = false;
         mobileProjTitleRow.style.transition = '';
     }, { passive: true });
 
     mobileProjTitleRow.addEventListener('touchmove', function(event) {
-        if (!swipeActive || event.touches.length !== 1) return;
+        if (!swipeState.active || event.touches.length !== 1) return;
         const t = event.touches[0];
-        const dx = t.clientX - swipeStartX;
-        const dy = t.clientY - swipeStartY;
-        if (!swipeHorizontal) {
+        const dx = t.clientX - swipeState.startX;
+        const dy = t.clientY - swipeState.startY;
+        if (!swipeState.horizontal) {
             if (Math.abs(dx) < SWIPE_INTENT_PX && Math.abs(dy) < SWIPE_INTENT_PX) return;
             if (Math.abs(dy) > Math.abs(dx)) {
-                swipeActive = false;
+                swipeState.active = false;
                 return;
             }
-            swipeHorizontal = true;
+            swipeState.horizontal = true;
         }
         const state = activeProjectIndex();
         const atStart = state.idx <= 0;
@@ -2571,33 +2573,21 @@ function component() {
         if (event.cancelable) event.preventDefault();
     }, { passive: false });
 
-    function endSwipe(event) {
-        if (!swipeActive) return;
-        const wasHorizontal = swipeHorizontal;
-        swipeActive = false;
-        swipeHorizontal = false;
-        if (!wasHorizontal) {
-            clearSwipeTransform();
-            return;
-        }
-        const touch = (event.changedTouches && event.changedTouches[0]) || null;
-        const dx = touch ? (touch.clientX - swipeStartX) : 0;
-        clearSwipeTransform();
-        if (Math.abs(dx) < SWIPE_COMMIT_PX) return;
-        const state = activeProjectIndex();
-        if (state.idx < 0) return;
-        if (dx < 0 && state.idx < state.projects.length - 1) {
-            navigateToProjectByIndex(state.idx + 1);
-        } else if (dx > 0 && state.idx > 0) {
-            navigateToProjectByIndex(state.idx - 1);
-        }
-    }
+    // endSwipe (the touchend arm) extracted to mobileProjSwipeNav.js; the
+    // shared swipeState, commit threshold, and two main-local helpers are
+    // passed in so the touchend call site below stays unchanged.
+    const { endSwipe } = createMobileProjSwipeNav({
+        swipeState,
+        SWIPE_COMMIT_PX,
+        clearSwipeTransform,
+        activeProjectIndex,
+    });
 
     mobileProjTitleRow.addEventListener('touchend', endSwipe);
     mobileProjTitleRow.addEventListener('touchcancel', function() {
-        if (swipeActive) {
-            swipeActive = false;
-            swipeHorizontal = false;
+        if (swipeState.active) {
+            swipeState.active = false;
+            swipeState.horizontal = false;
             clearSwipeTransform();
         }
     });
