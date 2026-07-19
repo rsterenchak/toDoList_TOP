@@ -1,4 +1,5 @@
 import { listLogic } from './listLogic.js';
+import { applyProjectAccent } from './projectMenu.js';
 
 // Programmatic project-create used by the desktop project-picker dropdown's
 // inline "+ new project" input. Rather than inventing a parallel create path,
@@ -27,4 +28,38 @@ export function createProjectByName(name) {
     input.value = trimmed;
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     return true;
+}
+
+// changes an element's selection — behaviour-preserving extraction of the
+// per-row selectProject helper from main.js's #projButton create/rename commit
+// path. The three DOM nodes it reads (the previously selected row, the row
+// being selected, and that row's title input) were closures over the row-build
+// scope in main.js, so they arrive here as params; applyProjectAccent and
+// listLogic are imported directly. main.js keeps a thin local selectProject()
+// wrapper so its call sites stay unchanged.
+export function selectProjectRow(projOnChild, projChild, titleInput) {
+
+    if (projOnChild != null) {
+
+        // console.log("selectedProject exists");
+
+        projOnChild.classList.remove("selectedProject");
+        projOnChild.classList.add("unselectedProject");
+
+    }
+    // changing ONLY the selected project
+    if (projChild.classList.contains("unselectedProject")) {
+
+        projChild.classList.remove("unselectedProject");
+        projChild.classList.add("selectedProject");
+
+
+        // console.log("Class changed to selectedProject");
+
+    }
+
+    // Newly-committed projects default to null color; also
+    // covers editProject renames by re-reading current color.
+    applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(titleInput.value));
+
 }
