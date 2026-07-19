@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-19',
+        added: [
+            "The assistant chat now renders a clarifying question as tappable option chips, so one tap sends your choice.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-17',
         added: [
             "The next-refactor card now shows a clean summary or an unreadable note when a scan finds nothing to extract, instead of a misleading \"every suggestion skipped\" message.",
@@ -14,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-16',
         fixed: [
-            "Pushed next-refactor entries now use a task type the automated run recognizes, so they get built instead of being silently skipped.",
             "The next-refactor card's scanning state now says the scan takes about a minute and a half and to keep the tab open, so it no longer looks like it has hung.",
             "The next-refactor suggestion now loads instantly and no longer fails with a network error on mobile, since scanning moved off the browser.",
             "Structure view now hides its clear button, collapse/expand-all strip, selection toolbar, and empty find-results area when they have nothing to show.",
