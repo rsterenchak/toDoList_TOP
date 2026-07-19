@@ -849,3 +849,10 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/settingsModal.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 2c1b3abc-0888-4887-8122-20db3ab91b60 -->
+
+- [ ] **[MEDIUM]** Extract closeSidebar from main.js into sidebarDrawer.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `closeSidebar` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/sidebarDrawer.js`. The scan located it around lines 1557–1565; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Only two DOM-node closures (resolvable via getElementById) and one sibling call keep this cheap despite its small size. Move these sibling functions in the same entry so the file isn’t touched by two runs: openSidebar.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/sidebarDrawer.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 367a0db3-eeab-4d40-971c-b9dc203453b3 -->
