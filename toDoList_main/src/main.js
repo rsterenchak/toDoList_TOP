@@ -66,7 +66,7 @@ import {
     deleteProjectFlow,
 } from './projectRow.js';
 import { createProjectPicker } from './projectPicker.js';
-import { createProjectByName } from './projectCreate.js';
+import { createProjectByName, selectProjectRow } from './projectCreate.js';
 import { createProjRunSpinner } from './projRunSpinner.js';
 import { createViewSwitcher } from './viewSwitcher.js';
 import { createTaskSort } from './taskSort.js';
@@ -2355,32 +2355,12 @@ function component() {
 
                 // *** FUNCTIONS ***
 
-                // changes an elements selection
+                // changes an elements selection — thin wrapper over the
+                // selectProjectRow helper extracted to projectCreate.js; the
+                // three DOM-node closures from this row-build scope are passed
+                // as params so the call sites below stay unchanged.
                 function selectProject(){
-
-                    if(projOnChild != null){
-
-                        // console.log("selectedProject exists");
-
-                        projOnChild.classList.remove("selectedProject");
-                        projOnChild.classList.add("unselectedProject");
-
-                    }
-                    // changing ONLY the selected project
-                    if(projChild.classList.contains("unselectedProject")){
-
-                        projChild.classList.remove("unselectedProject");
-                        projChild.classList.add("selectedProject");
-
-
-                        // console.log("Class changed to selectedProject");
-
-                    }
-
-                    // Newly-committed projects default to null color; also
-                    // covers editProject renames by re-reading current color.
-                    applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(titleInput.value));
-
+                    selectProjectRow(projOnChild, projChild, titleInput);
                 }
 
                 function clearToDos(){

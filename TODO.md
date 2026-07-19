@@ -857,7 +857,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 367a0db3-eeab-4d40-971c-b9dc203453b3 -->
 
-- [ ] **[MEDIUM]** Extract selectProject from main.js into projectCreate.js
+- [x] **[MEDIUM]** Extract selectProject from main.js into projectCreate.js — Completed: 2026-07-19
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `selectProject` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/projectCreate.js`. The scan located it around lines 2359–2384; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Only reads three DOM-node closures from the new-project click handler and calls no sibling helpers, so it moves cheaply once those nodes are passed as params.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/projectCreate.js`
