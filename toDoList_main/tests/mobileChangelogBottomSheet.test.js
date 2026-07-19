@@ -122,7 +122,9 @@ describe('Mobile changelog bottom sheet', () => {
 });
 
 describe('Mobile changelog sheet — source + style pins', () => {
-    const main = read('main.js');
+    // The mobile Settings modal's About → Version row wiring was extracted
+    // into settingsModal.js (out of main.js), so pin it from there.
+    const settingsModal = read('settingsModal.js');
     const aboutVersionCue = read('aboutVersionCue.js');
     const sheets = read('mobileSheets.js');
     const css = read('style.css');
@@ -146,10 +148,10 @@ describe('Mobile changelog sheet — source + style pins', () => {
         expect(slice).toMatch(/renderChangelogEntries\(\s*body\s*\)/);
     });
 
-    it('makes the About → Version row a tappable changelog affordance in main.js', () => {
-        const idx = main.indexOf("aboutSection.querySelector('.drawerInfoRow')");
+    it('makes the About → Version row a tappable changelog affordance in settingsModal.js', () => {
+        const idx = settingsModal.indexOf("aboutSection.querySelector('.drawerInfoRow')");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 2200);
+        const slice = settingsModal.slice(idx, idx + 2200);
         expect(slice).toMatch(/versionRow\.classList\.add\(\s*['"]drawerInfoRow--tappable['"]\s*\)/);
         expect(slice).toMatch(/versionRow\.setAttribute\(\s*['"]role['"]\s*,\s*['"]button['"]\s*\)/);
         expect(slice).toMatch(/versionRow\.setAttribute\(\s*['"]aria-haspopup['"]\s*,\s*['"]dialog['"]\s*\)/);
@@ -159,7 +161,7 @@ describe('Mobile changelog sheet — source + style pins', () => {
     });
 
     it('keeps the Version row pinned to createDrawerInfoRow with the v1.1 value (unchanged contract)', () => {
-        expect(main).toMatch(
+        expect(settingsModal).toMatch(
             /aboutSection\.appendChild\(\s*createDrawerInfoRow\(\s*['"]Version['"][\s\S]{0,120}return\s*['"]v1\.1['"]/
         );
     });

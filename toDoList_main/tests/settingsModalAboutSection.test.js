@@ -19,21 +19,21 @@ function read(relative) {
 }
 
 describe('mobile Settings modal — About section', () => {
-    const main = read('main.js');
+    const settingsModal = read('settingsModal.js');
     const css  = read('style.css');
     // The drawer-row factory helpers (createDrawerInfoRow /
     // createDrawerToggleRow / createDrawerActionRow) were extracted into
     // drawerRows.js; their definitions are pinned there now. The About
-    // section markup and its createDrawerInfoRow call sites still live in
-    // main.js's showSettingsModal.
+    // section markup and its createDrawerInfoRow call sites live in
+    // settingsModal.js's showSettingsModal.
     const drawerRows = read('drawerRows.js');
 
     function showSettingsModalSlice() {
-        const idx = main.indexOf('function showSettingsModal()');
+        const idx = settingsModal.indexOf('function showSettingsModal()');
         expect(idx).toBeGreaterThan(-1);
         // Wide enough to cover the whole modal body, including the new
         // About section + the body.appendChild ordering at the bottom.
-        return main.slice(idx, idx + 10000);
+        return settingsModal.slice(idx, idx + 10000);
     }
 
     describe('createDrawerInfoRow helper', () => {

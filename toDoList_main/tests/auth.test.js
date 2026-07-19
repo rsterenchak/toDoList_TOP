@@ -204,13 +204,13 @@ describe('Sign-out row — desktop ghost menu (showSettingsMenu in settingsMenu.
 });
 
 
-describe('Sign-out row — mobile settings modal (showSettingsModal in main.js)', () => {
-    const main = read('main.js');
+describe('Sign-out row — mobile settings modal (showSettingsModal in settingsModal.js)', () => {
+    const settingsModal = read('settingsModal.js');
 
     it('renders an Account section in showSettingsModal', () => {
-        const idx = main.indexOf('function showSettingsModal');
+        const idx = settingsModal.indexOf('function showSettingsModal');
         expect(idx).toBeGreaterThan(-1);
-        const fn = main.slice(idx, idx + 20000);
+        const fn = settingsModal.slice(idx, idx + 20000);
         expect(fn).toMatch(/Account/);
         // Account section follows the same section chrome the other
         // modal sections (Data / View / Appearance / About / Help) use.
@@ -218,9 +218,9 @@ describe('Sign-out row — mobile settings modal (showSettingsModal in main.js)'
     });
 
     it('renders a Sign out action row that calls supabase.auth.signOut()', () => {
-        const idx = main.indexOf('function showSettingsModal');
+        const idx = settingsModal.indexOf('function showSettingsModal');
         expect(idx).toBeGreaterThan(-1);
-        const fn = main.slice(idx, idx + 20000);
+        const fn = settingsModal.slice(idx, idx + 20000);
         expect(fn).toMatch(/Sign out/);
         expect(fn).toMatch(/createDrawerActionRow\s*\(\s*['"]Sign out['"]/);
         expect(fn).toMatch(/supabase\.auth\.signOut\s*\(/);

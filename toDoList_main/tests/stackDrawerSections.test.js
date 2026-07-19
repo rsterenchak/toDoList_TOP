@@ -20,12 +20,14 @@ function read(relative) {
 // drawer still keeps it open (browse-and-decide).
 describe('STACK mobile drawer — Settings entry + modal', () => {
     const main = read('main.js');
+    const settingsModal = read('settingsModal.js');
     const css  = read('style.css');
     // The drawer-row factories and the Show completed / Dark theme /
     // Companion ghost toggle builders were extracted into drawerRows.js;
     // their bodies are pinned there now. buildExpandAllToggle stays in
-    // main.js (it closes over main-local bulk-description helpers), and
-    // every call site (showSettingsModal) still lives in main.js.
+    // main.js (it closes over main-local bulk-description helpers). The
+    // Settings button + its click wiring stay in main.js; showSettingsModal
+    // itself was extracted into settingsModal.js.
     const drawerRows = read('drawerRows.js');
 
     describe('drawer slide direction and width', () => {
@@ -127,9 +129,9 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
         });
 
         it('Settings modal groups toggles under View and Appearance sub-headers', () => {
-            const showFnIdx = main.indexOf('function showSettingsModal()');
+            const showFnIdx = settingsModal.indexOf('function showSettingsModal()');
             expect(showFnIdx).toBeGreaterThan(-1);
-            const slice = main.slice(showFnIdx, showFnIdx + 8000);
+            const slice = settingsModal.slice(showFnIdx, showFnIdx + 8000);
             expect(slice).toMatch(/viewHeading\.textContent\s*=\s*['"]View['"]/);
             expect(slice).toMatch(/appearanceHeading\.textContent\s*=\s*['"]Appearance['"]/);
             // All four toggle builders mount into the modal body.
@@ -148,8 +150,8 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
     });
 
     describe('Settings modal three-way close vocabulary (CLAUDE.md modal rule)', () => {
-        const showFnIdx = main.indexOf('function showSettingsModal()');
-        const fnSlice   = showFnIdx > -1 ? main.slice(showFnIdx, showFnIdx + 15000) : '';
+        const showFnIdx = settingsModal.indexOf('function showSettingsModal()');
+        const fnSlice   = showFnIdx > -1 ? settingsModal.slice(showFnIdx, showFnIdx + 15000) : '';
         // The three-way close is now wired through the shared wireDismissable
         // helper rather than hand-rolled listeners inside showSettingsModal;
         // pull that call's options object out to assert what the modal delegates.

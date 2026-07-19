@@ -425,12 +425,17 @@ describe('inject feature — wired into mobile edit modal', () => {
 describe('inject feature — ghost menu Configure inject row', () => {
 
     const main = read('main.js');
+    // The desktop ghost-menu Configure inject row lives in settingsMenu.js;
+    // the mobile Settings modal's Configure inject row (and its
+    // showInjectSettingsModal import) was extracted into settingsModal.js.
+    const settingsMenu = read('settingsMenu.js');
+    const settingsModal = read('settingsModal.js');
 
-    it('main.js imports initInjectConfig and showInjectSettingsModal from inject.js', () => {
+    it('main.js imports initInjectConfig from inject.js; settingsModal.js imports showInjectSettingsModal from inject.js', () => {
         expect(main).toMatch(
             /import\s*\{[^}]*initInjectConfig[^}]*\}\s*from\s*['"]\.\/inject\.js['"]/
         );
-        expect(main).toMatch(
+        expect(settingsModal).toMatch(
             /import\s*\{[^}]*showInjectSettingsModal[^}]*\}\s*from\s*['"]\.\/inject\.js['"]/
         );
     });
@@ -442,11 +447,11 @@ describe('inject feature — ghost menu Configure inject row', () => {
     });
 
     it('the ghost menu contains a "Configure inject" row that opens the settings modal', () => {
-        expect(main).toMatch(/['"]Configure inject['"]/);
+        expect(settingsMenu).toMatch(/['"]Configure inject['"]/);
         // The row's click handler invokes showInjectSettingsModal.
-        const rowIdx = main.indexOf("'Configure inject'");
+        const rowIdx = settingsMenu.indexOf("'Configure inject'");
         expect(rowIdx).toBeGreaterThan(-1);
-        const tail = main.slice(rowIdx);
+        const tail = settingsMenu.slice(rowIdx);
         expect(tail).toMatch(/showInjectSettingsModal\s*\(\s*\)/);
     });
 
@@ -455,9 +460,9 @@ describe('inject feature — ghost menu Configure inject row', () => {
         // modal is built by showSettingsModal() and Configure inject must
         // live in its Data section (next to Export/Import) so the inject
         // config is reachable from a phone.
-        const fnIdx = main.indexOf('function showSettingsModal()');
+        const fnIdx = settingsModal.indexOf('function showSettingsModal()');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 15000);
+        const slice = settingsModal.slice(fnIdx, fnIdx + 15000);
         // The Configure inject row is built via createDrawerActionRow, the
         // same helper the Export/Import rows in the Data section use.
         expect(slice).toMatch(/createDrawerActionRow\(\s*['"]Configure inject['"]/);
