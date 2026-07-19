@@ -843,7 +843,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 73c5ef7f-3013-4edf-a539-4e427aaeb581 -->
 
-- [ ] **[MEDIUM]** Extract showSettingsModal from main.js into settingsModal.js
+- [x] **[MEDIUM]** Extract showSettingsModal from main.js into settingsModal.js — Completed: 2026-07-19
   - Type: feature
   - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `showSettingsModal` from `toDoList_main/src/main.js` into a new module `toDoList_main/src/settingsModal.js`. The scan located it around lines 1525–1761; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/main.js` and keep every call site unchanged. Rationale: Huge payoff but couples to one DOM ref (resolvable by id) and three inner helpers it must move with.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/settingsModal.js`
