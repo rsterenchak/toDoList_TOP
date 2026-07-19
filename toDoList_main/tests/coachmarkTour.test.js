@@ -301,13 +301,16 @@ describe('coachmark tour — wired into the app', () => {
     const css = read('style.css');
     const prefs = read('prefs.js');
     // The desktop ghost-menu "Replay welcome tour" item was extracted into
-    // settingsMenu.js; the mobile settings modal's replay handler stays in main.
+    // settingsMenu.js; the mobile settings modal (showSettingsModal, incl. its
+    // replay handler) was extracted into settingsModal.js.
     const settingsMenu = read('settingsMenu.js');
+    const settingsModal = read('settingsModal.js');
 
-    it('main.js imports the coachmark module', () => {
+    it('main.js imports maybeStartFirstRunTour; settingsModal.js imports startCoachmarkTour from coachmark', () => {
         expect(main).toMatch(/from\s+['"]\.\/coachmark\.js['"]/);
         expect(main).toMatch(/maybeStartFirstRunTour/);
-        expect(main).toMatch(/startCoachmarkTour/);
+        expect(settingsModal).toMatch(/from\s+['"]\.\/coachmark\.js['"]/);
+        expect(settingsModal).toMatch(/startCoachmarkTour/);
     });
 
     it('restoreFromStorage triggers the first-run tour when no projects exist', () => {
@@ -392,9 +395,9 @@ describe('coachmark tour — wired into the app', () => {
         // todo-row chrome, and the right-side icon cluster. Replaying
         // from Today or Calendar would leave those targets hidden, so
         // the handler flips to PROJECTS first.
-        const idx = main.indexOf("'Replay welcome tour'");
+        const idx = settingsModal.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1500);
+        const slice = settingsModal.slice(idx, idx + 1500);
         expect(slice).toMatch(/applyActiveView\(\s*['"]projects['"]\s*\)/);
         const applyIdx = slice.indexOf("applyActiveView('projects')");
         const startIdx = slice.indexOf('startCoachmarkTour');
@@ -409,9 +412,9 @@ describe('coachmark tour — wired into the app', () => {
         // so the replay path passes { force: true } to bypass that gate.
         // The seed is skipped when the user already has projects so a
         // sample can't surprise-appear on a populated install.
-        const idx = main.indexOf("'Replay welcome tour'");
+        const idx = settingsModal.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1500);
+        const slice = settingsModal.slice(idx, idx + 1500);
         expect(slice).toMatch(/listProjectsArray\(\s*\)\.length\s*===\s*0/);
         expect(slice).toMatch(/seedSampleProject\(\s*\{\s*force:\s*true\s*\}\s*\)/);
     });
@@ -422,9 +425,9 @@ describe('coachmark tour — wired into the app', () => {
         // #duePill and #descToggle would otherwise anchor against
         // nothing. The handler invokes the in-between seeder so the
         // tour always has live row chrome to point at.
-        const idx = main.indexOf("'Replay welcome tour'");
+        const idx = settingsModal.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1500);
+        const slice = settingsModal.slice(idx, idx + 1500);
         expect(slice).toMatch(/seedSampleTodosIntoActiveProjectIfEmpty\s*\(/);
     });
 
@@ -448,9 +451,9 @@ describe('coachmark tour — wired into the app', () => {
         // project sidebar / main list), the tour needs a frame to let
         // the now-visible targets compute their bounding rects before
         // the spotlight cut-out reads them.
-        const idx = main.indexOf("'Replay welcome tour'");
+        const idx = settingsModal.indexOf("'Replay welcome tour'");
         expect(idx).toBeGreaterThan(-1);
-        const slice = main.slice(idx, idx + 1500);
+        const slice = settingsModal.slice(idx, idx + 1500);
         expect(slice).toMatch(/requestAnimationFrame/);
         const rafIdx = slice.indexOf('requestAnimationFrame');
         const startIdx = slice.indexOf('startCoachmarkTour');

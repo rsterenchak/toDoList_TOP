@@ -295,17 +295,18 @@ describe('welcome carousel — wired into the app', () => {
     const css = read('style.css');
     // The desktop ghost-menu (incl. its Replay welcome tour row + HELP
     // heading) was extracted into settingsMenu.js; the mobile settings
-    // modal's Replay row + #settingsHelpSection stay in main.js.
+    // modal's Replay row + #settingsHelpSection live in settingsModal.js.
     const settingsMenu = read('settingsMenu.js');
+    const settingsModal = read('settingsModal.js');
 
     it('index.js imports and triggers the welcome carousel on mount', () => {
         expect(index).toMatch(/from\s+['"]\.\/welcomeCarousel\.js['"]/);
         expect(index).toMatch(/maybeStartFirstRunCarousel\s*\(\s*\)/);
     });
 
-    it('main.js exposes the carousel module for the Replay entry', () => {
-        expect(main).toMatch(/from\s+['"]\.\/welcomeCarousel\.js['"]/);
-        expect(main).toMatch(/startWelcomeCarousel/);
+    it('settingsModal.js exposes the carousel module for the Replay entry', () => {
+        expect(settingsModal).toMatch(/from\s+['"]\.\/welcomeCarousel\.js['"]/);
+        expect(settingsModal).toMatch(/startWelcomeCarousel/);
     });
 
     it('settings menu Replay welcome tour row dispatches to the carousel on mobile viewports', () => {
@@ -331,7 +332,7 @@ describe('welcome carousel — wired into the app', () => {
         // settingsSectionHeading class the View / Appearance sections use,
         // wrapped in a section with id #settingsHelpSection.
         expect(settingsMenu).toMatch(/className\s*=\s*['"]settingsMenuSectionHeading['"]/);
-        expect(main).toMatch(/settingsHelpSection/);
+        expect(settingsModal).toMatch(/settingsHelpSection/);
         // The desktop popover HELP heading is the one bound to the
         // `helpHeading` local. Match against the helpHeading-specific
         // wiring so this test stays scoped to HELP.
@@ -344,9 +345,9 @@ describe('welcome carousel — wired into the app', () => {
         // createDrawerActionRow (chevron state, not ON/OFF pill). Tapping
         // closes the modal before starting the chosen flow so the carousel
         // / coachmark land on a clean surface, not on top of an open modal.
-        const fnIdx = main.indexOf('function showSettingsModal');
+        const fnIdx = settingsModal.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 10000);
+        const slice = settingsModal.slice(fnIdx, fnIdx + 10000);
         expect(slice).toMatch(/createDrawerActionRow\(\s*['"]Replay welcome tour['"]/);
         expect(slice).toMatch(/isMobileCarouselViewport\s*\(\s*\)/);
         expect(slice).toMatch(/startWelcomeCarousel\s*\(\s*\)/);
@@ -414,9 +415,9 @@ describe('welcome carousel — wired into the app', () => {
         // seed-when-empty fix lands symmetrically. Replaying from Today
         // or Calendar would otherwise leave the project sidebar hidden
         // behind the carousel backdrop.
-        const fnIdx = main.indexOf('function showSettingsModal');
+        const fnIdx = settingsModal.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 10000);
+        const slice = settingsModal.slice(fnIdx, fnIdx + 10000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
         const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
@@ -427,9 +428,9 @@ describe('welcome carousel — wired into the app', () => {
     });
 
     it('mobile modal Replay handler force-seeds the sample project when the user has none', () => {
-        const fnIdx = main.indexOf('function showSettingsModal');
+        const fnIdx = settingsModal.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 10000);
+        const slice = settingsModal.slice(fnIdx, fnIdx + 10000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
         const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);
@@ -438,9 +439,9 @@ describe('welcome carousel — wired into the app', () => {
     });
 
     it('mobile modal Replay handler defers the tour kickoff so layout settles first', () => {
-        const fnIdx = main.indexOf('function showSettingsModal');
+        const fnIdx = settingsModal.indexOf('function showSettingsModal');
         expect(fnIdx).toBeGreaterThan(-1);
-        const slice = main.slice(fnIdx, fnIdx + 10000);
+        const slice = settingsModal.slice(fnIdx, fnIdx + 10000);
         const replayIdx = slice.indexOf("createDrawerActionRow('Replay welcome tour'");
         expect(replayIdx).toBeGreaterThan(-1);
         const handlerSlice = slice.slice(replayIdx, replayIdx + 1500);

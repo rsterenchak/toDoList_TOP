@@ -630,9 +630,13 @@ describe('mobile update cue — src/modals.js', () => {
 
 describe('mobile update cue — src/main.js wiring', () => {
     const main = read('main.js');
+    // The mobile Settings modal (showSettingsModal) was extracted into
+    // settingsModal.js, so its paintAboutVersionUpdateCue render + teardown
+    // pins read from there; the #drawerSettingsBtn dot wiring stays in main.js.
+    const settingsModal = read('settingsModal.js');
     // paintAboutVersionUpdateCue was extracted into its own module; the
-    // helper's body and existence pins read from there, while the call-site
-    // and import pins below still read from main.js.
+    // helper's body and existence pins read from there, while the import
+    // pins below still read from main.js.
     const aboutVersionCue = read('aboutVersionCue.js');
 
     describe('imports', () => {
@@ -702,9 +706,9 @@ describe('mobile update cue — src/main.js wiring', () => {
         });
 
         it('Settings modal calls paintAboutVersionUpdateCue on render', () => {
-            const showIdx = main.indexOf('function showSettingsModal()');
+            const showIdx = settingsModal.indexOf('function showSettingsModal()');
             expect(showIdx).toBeGreaterThan(-1);
-            const fnSlice = main.slice(showIdx, showIdx + 12000);
+            const fnSlice = settingsModal.slice(showIdx, showIdx + 12000);
             expect(fnSlice).toMatch(/paintAboutVersionUpdateCue\s*\(/);
         });
 
@@ -712,9 +716,9 @@ describe('mobile update cue — src/main.js wiring', () => {
             // The listener has to land before the close() definition so
             // close() can remove it — pin both the add and the remove
             // on the same named handler so future edits can't drop one.
-            const showIdx = main.indexOf('function showSettingsModal()');
+            const showIdx = settingsModal.indexOf('function showSettingsModal()');
             expect(showIdx).toBeGreaterThan(-1);
-            const fnSlice = main.slice(showIdx, showIdx + 12000);
+            const fnSlice = settingsModal.slice(showIdx, showIdx + 12000);
             expect(fnSlice).toMatch(
                 /document\.addEventListener\(\s*['"]appUpdateAvailable['"]\s*,\s*onAppUpdateAvailableForModal\s*\)/
             );
