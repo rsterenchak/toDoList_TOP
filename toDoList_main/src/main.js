@@ -73,6 +73,7 @@ import { createTaskSort } from './taskSort.js';
 import { createDesktopHeaderPlacement } from './desktopHeaderPlacement.js';
 import { createFooterCounts } from './footerCounts.js';
 import { createSettingsModal } from './settingsModal.js';
+import { createSidebarDrawer } from './sidebarDrawer.js';
 import { createSettingsMenu } from './settingsMenu.js';
 import { createMobileUtilitySheet } from './mobileUtilitySheet.js';
 import {
@@ -1538,31 +1539,17 @@ function component() {
     // close / state all key off the `sidebar-open` class on #sideBar plus the
     // #sidebarOverlay backdrop — the same mechanism the mobile drawer has
     // always used, now unified across desktop too (no more persistent rail /
-    // full column).
-    function openSidebar() {
-        // Drawer state could have drifted while it was closed (theme toggled
-        // via settings menu, Expand All toggled by Ctrl+Enter, a project
-        // added/removed). Re-sync the drawer mirrors so the ON/OFF pills and
-        // footer count match reality on every open.
-        refreshDrawerSections();
-        main1.classList.add('sidebar-open');
-        sidebarOverlay.classList.add('visible');
-        // Drive the per-project run spinners only while the drawer is open.
-        startDrawerSpinnerPoll();
-        if (typeof window.bottomSheetRefreshVisibility === 'function') {
-            window.bottomSheetRefreshVisibility();
-        }
-    }
-
-    function closeSidebar() {
-        main1.classList.remove('sidebar-open');
-        sidebarOverlay.classList.remove('visible');
-        // Stop the open-gated run-spinner poll when the drawer closes.
-        stopDrawerSpinnerPoll();
-        if (typeof window.bottomSheetRefreshVisibility === 'function') {
-            window.bottomSheetRefreshVisibility();
-        }
-    }
+    // full column). Behaviour-preserving extraction into sidebarDrawer.js: the
+    // two DOM nodes and refreshDrawerSections are passed directly; the
+    // spinner-poll helpers are created later in this scope, so they are passed
+    // as thunks and resolved lazily at open/close time (as the originals were).
+    const { openSidebar, closeSidebar } = createSidebarDrawer({
+        main1,
+        sidebarOverlay,
+        refreshDrawerSections,
+        startDrawerSpinnerPoll: () => startDrawerSpinnerPoll(),
+        stopDrawerSpinnerPoll: () => stopDrawerSpinnerPoll(),
+    });
 
     function sidebarIsOpen() {
         return main1.classList.contains('sidebar-open');

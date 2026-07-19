@@ -21,6 +21,9 @@ function read(relative) {
 describe('STACK mobile drawer — Settings entry + modal', () => {
     const main = read('main.js');
     const settingsModal = read('settingsModal.js');
+    // The sidebar open/close pair was extracted into sidebarDrawer.js;
+    // openSidebar's mirror-refresh body is pinned there now.
+    const sidebarDrawer = read('sidebarDrawer.js');
     const css  = read('style.css');
     // The drawer-row factories and the Show completed / Dark theme /
     // Companion ghost toggle builders were extracted into drawerRows.js;
@@ -192,10 +195,10 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
 
     describe('drawer state stays in sync with the rest of the chrome', () => {
         it('openSidebar refreshes the drawer mirrors before it slides in', () => {
-            const openIdx = main.indexOf('function openSidebar()');
+            const openIdx = sidebarDrawer.indexOf('function openSidebar()');
             expect(openIdx).toBeGreaterThan(-1);
             // Match the function body up to the next top-level closing brace.
-            const slice = main.slice(openIdx, openIdx + 800);
+            const slice = sidebarDrawer.slice(openIdx, openIdx + 800);
             expect(slice).toMatch(/refreshDrawerSections\(\s*\)/);
             expect(slice).toMatch(/sidebar-open/);
         });
