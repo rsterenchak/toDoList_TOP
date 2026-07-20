@@ -1107,3 +1107,22 @@
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b31c41f4-2902-42eb-8554-6fc607a0e4d8 -->
+
+- [ ] **[MEDIUM]** Add per-file copy-content buttons to the coverage commit manifest
+  - Type: feature
+  - Description: GitLab lane, part 3 — copy file contents from the modal. Each file in a shipped aspect's manifest (built in part 1) gets a copy button that fetches the file's current content from the repo and puts it on the clipboard, so you can paste it straight into the matching file in your GitLab clone. Full current content (not a diff), since the transfer overwrites the file. Per-file, matching the file-copy transfer directly — copy `main.js`, paste into `main.js`. Depends on the Worker read-widening (reads now allowed for any path in a registered repo).
+  - Behavior:
+    1. In a shipped aspect's expanded manifest, each file-path row gains a "Copy" button.
+    2. Tapping it fetches that file's current content through the Worker read, writes it to the clipboard, and confirms via toast ("main.js copied" / an error toast on failure).
+    3. The commit-message copy from part 1 is unchanged; this adds copy alongside each manifest file.
+  - Implementation notes:
+    - New client reader in `inject.js`: `readRepoFile(target, filePath)` posting `{ read: true, repo: target.repo, filePath }`, returning `{ ok, content, sha }` — mirroring `readAssignmentFromWorker` (inject.js:430) but taking the path directly rather than deriving the assignment sibling.
+    - `agentView.js`: in the manifest render (the `coverageCommitManifestItem` `<li>`s, ~agentView.js:3005), give each file a Copy button. On click: `readRepoFile(resolveReadTarget(), path)` → on ok, `navigator.clipboard.writeText(res.content)` + `showInjectToast(path + ' copied.')`; on read failure or a clipboard failure, `showInjectToast(..., 'error')` — mirroring the commit-message copy pattern (agentView.js:2974) plus the read step.
+    - Disable the button briefly during the fetch (the read is a network round-trip, unlike the commit-message copy which is instant) so a double-tap doesn't fire two reads.
+    - Prerequisite (Worker, out of band): the `registry.js` read-widening above, deployed — without it, reading a source file 400s as `!allowed`. Write stays hard-scoped to `assignment.md`.
+    - `style.css`: the per-file Copy button and the manifest-item layout (path plus button on a row). Void tokens, no inline styles.
+    - No new deps.
+  - Out of scope: copying all files at once (per-file only); showing a diff rather than full content; caching fetched content; and any change to derive, the rows, the tick, or the commit-message copy.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b551fbc5-6258-4e44-b3dd-913ad5643345 -->
