@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-20T05:41:20.742Z",
-  "sha": "439e9d15fa1c3b3f9cce68f2e5bf841de462ea50",
+  "generatedAt": "2026-07-20T05:58:33.988Z",
+  "sha": "e0ad3247fd172ded29c55a660d1f003ca367c7a0",
   "files": [
     "aboutVersionCue.js",
     "agentView.js",
@@ -131,11 +131,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 2928,
+      "line": 3027,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2928
+          "line": 3027
         }
       ]
     },
@@ -159,11 +159,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 209,
+      "line": 224,
       "files": [
         {
           "file": "agentView.js",
-          "line": 209
+          "line": 224
         }
       ]
     },
