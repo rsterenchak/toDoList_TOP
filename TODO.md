@@ -954,7 +954,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d2f6a896-7590-41a6-b38b-5f1d7ab931f7 -->
 
-- [ ] **[MEDIUM]** Add a Proposed bucket that renders derive's proposal rows with their aspect tags
+- [x] **[MEDIUM]** Add a Proposed bucket that renders derive's proposal rows with their aspect tags — Completed: 2026-07-19
   - Type: feature
   - Description: Render-only slice that makes derive's output visible. Derive writes rows with `state='proposed'`, `source='derive'`, and an `aspect` tag (A1/B1), but nothing renders them today — the board has no bucket for the `'proposed'` state. Add a Proposed bucket to the AGENT board that lists these rows through the existing card machinery, each showing its aspect badge. Derive's clarifying questions (`state='needs_words'`) already route to the existing "Needs you" bucket; this entry adds the aspect badge there too. This slice is display-only — promoting a proposal's draft into TODO.md (Accept) is entry 5, and the existing × remove control already lets you drop a proposal.
   - Behavior:
