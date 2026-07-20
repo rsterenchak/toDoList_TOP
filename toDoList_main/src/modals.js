@@ -1289,6 +1289,7 @@ export function isAnyModalOrPopoverOpen() {
         document.getElementById('authModalBackdrop')      ||
         document.getElementById('injectSettingsBackdrop') ||
         document.getElementById('injectTargetSubBackdrop') ||
+        document.getElementById('coverageDetailModalBackdrop') ||
         document.getElementById('dueDatePopover')         ||
         document.getElementById('projContextMenu')        ||
         document.getElementById('settingsMenu')           ||
