@@ -1031,7 +1031,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a2485a6f-2036-41fa-a61c-effe26451798 -->
 
-- [ ] **[MEDIUM]** Add tap-to-expand coverage detail with per-aspect status and blocked-jump
+- [x] **[MEDIUM]** Add tap-to-expand coverage detail with per-aspect status and blocked-jump — Completed: 2026-07-20
   - Type: feature
   - Description: Coverage v1, part 2 — the drillable detail behind the summary. Tapping the coverage summary opens a detail view listing every rubric aspect with its live lifecycle status (shipped / in-flight / proposed / blocked / not-started), color-coded, so you see not just how many are outstanding but exactly which and where each stands. Blocked aspects (a derive `needs_words` question is waiting on you) render in amber and, tapped, jump to that question in the board. Reuses part 1's `computeCoverage` for status; adds aspect labels (part 1 parsed IDs only) so each row reads "A1 — Menu-driven interface" rather than a bare ID.
   - Behavior:
