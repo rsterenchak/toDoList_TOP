@@ -991,3 +991,22 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e5dcfa7e-3dd2-4b2a-969e-ad8a87e45966 -->
+
+- [ ] **[MEDIUM]** Show derive progress in the status pill while a Draft run is in flight
+  - Type: feature
+  - Description: `fireDeriveRun` (agentView.js:2554) currently flips the Draft button to "Drafting…" for 700ms, so there's no durable signal that the derive run is working — and the run takes minutes. Drive the header status pill to Working for the actual run duration, mirroring the triage sweep tracker (`startSweepTracking`/`pollSweepOnce`/`stopSweepTracking`, agentView.js:273/310/293), and tie the Draft button's disabled/"Drafting…" state to the run rather than a fixed timer. The Worker's `handleActiveRuns` already has the `'derive'` workflow selector deployed, so the poller can probe `claude-derive.yml` runs — no prerequisite remaining.
+  - Behavior:
+    1. On Draft tap — set a derive-active state, flip the pill to Working immediately (optimistic), and start a poller that tracks the real `claude-derive.yml` run to completion.
+    2. While active — the pill shows Working and the Draft button stays disabled with "Drafting…", both derived from the derive-active flag so a repaint mid-run keeps them in sync.
+    3. On completion — the poller sees the run finished (active:false after it was seen active, or the grace/hard-cap elapses), clears the derive-active state, and settles the pill to Idle, re-enabling the button.
+    4. On dispatch failure — clear the optimistic Working state so the pill doesn't falsely report a run that never registers.
+  - Implementation notes:
+    - Mirror the triage sweep tracker as a derive-scoped parallel: a `_deriveActive` flag plus `_derivePoller` (alongside `_sweepActive`/`_sweepPoller`, agentView.js:185-186), polling `fetchActiveRuns(resolveDispatchTarget(), 'derive')` (inject.js:751 — the `workflow` param already exists). Keep the grace-window and hard-cap logic (registration lag + wedged-run safety), but OMIT the `finishSweep` row reconciliation — derive rows leave `proposed` via Accept, not a stuck `triaging` state, so there's nothing to reconcile.
+    - Add `_deriveActive` to BOTH `working` conditions: `refreshStatusPill` (agentView.js:396) and the header-build in `paint` (agentView.js:2926) — `_sweepActive || _deriveActive || shipInFlight` in each, or the pill won't show Working on the paint that first renders it.
+    - `fireDeriveRun` (agentView.js:2554): keep the immediate inline button disable for instant feedback, start the derive tracker on dispatch, and stop it on dispatch failure (`res.ok === false` or the catch). Remove the 700ms `setTimeout` re-enable — the button's disabled state now comes from `_deriveActive` on repaint.
+    - `buildAssignmentCard` (agentView.js:2474): render the Draft button disabled with "Drafting…" when `_deriveActive`, so a repaint mid-run keeps the button in its working state (the button is rebuilt on each paint).
+    - Vanilla, no new deps.
+  - Out of scope: cross-device seeding of the derive-working state (the nav "● Agent" dot and mount-time seed that triage has — derive's tracker is local-dispatch only for now); and any change to the derive routine, its workflow, or its dispatch.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4094cd3f-7c95-4163-99f7-0d0802037a37 -->
