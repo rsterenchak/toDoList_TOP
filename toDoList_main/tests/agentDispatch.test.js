@@ -410,6 +410,65 @@ describe('AGENT view — Dispatch action', () => {
     });
 });
 
+describe('AGENT view — Accept action on a proposed card', () => {
+    beforeEach(() => {
+        listLogic.addProject('Proposely');
+        mountDom('Proposely');
+    });
+
+    it('injects the proposal draft with a fresh minted id and persists dispatched', async () => {
+        // A fresh derive proposal: draft present, entry_id null, no todo_id.
+        queueRows = [{
+            id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1',
+            context: { title: 'Proposed thing' }, draft: 'The proposal entry',
+        }];
+        // Keep the run unresolved so this test focuses on the kickoff.
+        pollResult = { ok: true, found: false };
+        readTodoResult = { ok: true, content: todoBody('mint-0', false) };
+        await loadBoard();
+
+        document.querySelector('.agentAcceptButton').click();
+        await flush();
+
+        // The proposal's draft was injected under a freshly minted marker.
+        expect(injectCalls.length).toBe(1);
+        expect(injectCalls[0].id).toBe('mint-0');
+        expect(injectCalls[0].entry).toContain('<!-- id: mint-0 -->');
+        expect(injectCalls[0].entry).toContain('The proposal entry');
+
+        // The run fired in entry mode against the minted id.
+        expect(dispatchCalls.length).toBe(1);
+        expect(dispatchCalls[0]).toMatchObject({ mode: 'entry', entryId: 'mint-0' });
+
+        // The row transitions proposed → dispatched, carrying the ids.
+        const dispatched = updateCalls.find((c) => c.patch.state === 'dispatched');
+        expect(dispatched).toBeTruthy();
+        expect(dispatched.id).toBe('p1');
+        expect(dispatched.patch.entry_id).toBe('mint-0');
+        // The dispatch PATCH never touches aspect, so the tag survives.
+        expect(dispatched.patch).not.toHaveProperty('aspect');
+    });
+
+    it('re-enables Accept and surfaces an error when inject fails, without dispatching', async () => {
+        queueRows = [{
+            id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1',
+            context: { title: 'Proposed thing' }, draft: 'The proposal entry',
+        }];
+        injectResult = { ok: false, reason: 'worker 500' };
+        await loadBoard();
+
+        const btn = document.querySelector('.agentAcceptButton');
+        btn.click();
+        await flush();
+
+        expect(dispatchCalls.length).toBe(0);
+        expect(btn.disabled).toBe(false);
+        const err = document.querySelector('.agentProposedError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toMatch(/worker 500/);
+    });
+});
+
 describe('AGENT view — Stuck bucket includes no_change', () => {
     it('renders a no_change row in the Stuck bucket with its summary', async () => {
         listLogic.addProject('Stuckly');

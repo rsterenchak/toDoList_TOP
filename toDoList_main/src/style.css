@@ -5853,6 +5853,65 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   color: var(--accent-text, var(--accent));
 }
 
+/* Proposed card (derive output): an optional description preview above an actions
+   row with an Accept (tinted-accent) button; dismissal is the header × control. */
+.agentProposedPreview {
+  margin: 0 0 8px;
+}
+
+.agentProposedActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.agentProposedError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.agentAcceptButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentAcceptButton:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentAcceptButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentAcceptButton:disabled,
+.agentAcceptButton.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.agentAcceptButton.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
+
 /* Stuck card (failed / no_change): the run's reason paragraph above an actions
    row with a Retry (accent) button; removal is the header × control. */
 .agentStuck {

@@ -395,6 +395,41 @@ describe('AGENT view — derive Proposed bucket + aspect badge', () => {
         const labels = [...document.querySelectorAll('.agentBucketLabel')].map((n) => n.textContent);
         expect(labels).not.toContain('Proposed');
     });
+
+    it('renders an Accept button on a proposed card', async () => {
+        queueRows = [{
+            id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1',
+            context: { title: 'X' }, draft: '- [ ] **[MEDIUM]** X',
+        }];
+        await loadBoard();
+        const accept = document.querySelector('.agentAcceptButton');
+        expect(accept).toBeTruthy();
+        expect(accept.textContent).toBe('Accept');
+        expect(accept.disabled).toBe(false);
+    });
+
+    it('shows the proposal description as a preview line on a proposed card', async () => {
+        queueRows = [{
+            id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1',
+            context: { title: 'X', description: 'A grounded change to make.' },
+            draft: '- [ ] **[MEDIUM]** X',
+        }];
+        await loadBoard();
+        const preview = document.querySelector('.agentProposedPreview');
+        expect(preview).toBeTruthy();
+        expect(preview.textContent).toBe('A grounded change to make.');
+    });
+
+    it('omits the preview line when the proposal has no description', async () => {
+        queueRows = [{
+            id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1',
+            context: { title: 'X' }, draft: '- [ ] **[MEDIUM]** X',
+        }];
+        await loadBoard();
+        expect(document.querySelector('.agentProposedPreview')).toBeFalsy();
+        // The Accept button is still present without a description.
+        expect(document.querySelector('.agentAcceptButton')).toBeTruthy();
+    });
 });
 
 describe('AGENT view — card remove (×) control', () => {
