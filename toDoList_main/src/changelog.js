@@ -10,16 +10,10 @@ export const changelog = [
             "Tapping the assignment card's coverage summary now opens a detail view of every rubric aspect with its live status, and jumps to any blocked question.",
             "Shipped rubric aspects in the coverage detail view now expand to a copy-ready commit message and the list of files to transfer.",
             "Coverage detail rows now carry a \"Committed to GitLab\" tick — persisted across devices — with a header count of how many aspects have been committed.",
+            "Each file in a shipped aspect's commit manifest now has a Copy button that copies the file's current content, ready to paste into your GitLab clone.",
         ],
         fixed: [
             "Coverage detail rows now read each aspect's requirement text instead of leftover rubric grading text with stray markdown.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-19',
-        added: [
-            "The filled assignment card now shows a rubric coverage summary — how many aspects are still outstanding, with a progress bar of shipped, in-flight, and outstanding criteria.",
         ],
     },
 ];

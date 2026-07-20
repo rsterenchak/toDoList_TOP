@@ -348,10 +348,12 @@ describe('AGENT coverage detail modal — shipped commit helper', () => {
         await loadBoard();
         openDetail();
         document.querySelector('.coverageDetailRow--shipped').click();
-        const files = Array.from(document.querySelectorAll('.coverageCommitManifestItem'))
+        const files = Array.from(document.querySelectorAll('.coverageCommitManifestPath'))
             .map((el) => el.textContent);
         expect(files).toEqual(['src/a.js', 'src/b.js', 'src/c.js']);
         expect(document.querySelector('.coverageCommitManifestLabel').textContent).toBe('3 files');
+        // Each manifest row carries a per-file Copy button.
+        expect(document.querySelectorAll('.coverageCommitFileCopy').length).toBe(3);
     });
 
     it('shows an empty-manifest note when no file_paths are recorded', async () => {

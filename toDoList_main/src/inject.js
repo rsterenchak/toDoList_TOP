@@ -418,6 +418,32 @@ export async function readTodoMdFromWorker(target) {
     }
 }
 
+// Read an arbitrary repo-relative file from the configured Worker. Mirrors
+// readTodoMdFromWorker's wiring exactly (same `{ read: true, repo, filePath }`
+// shape and `{ ok, content, sha }` return) but takes the path directly rather
+// than reusing `target.file_path` or deriving a sibling, so the coverage-commit
+// manifest can pull any shipped file's full current content for a paste-into-
+// GitLab transfer. Depends on the Worker's read handler allowing any path in a
+// registered repo; a path outside the registry 400s and returns not-ok.
+export async function readRepoFile(target, filePath) {
+    if (!target || !target.repo || typeof filePath !== 'string' || !filePath) {
+        return { ok: false, reason: 'No target' };
+    }
+    try {
+        const res = await postToWorker({
+            read: true,
+            repo: target.repo,
+            filePath: filePath,
+        });
+        if (!res || typeof res.content !== 'string') {
+            return { ok: false, reason: 'Empty response' };
+        }
+        return { ok: true, content: res.content, sha: res.sha };
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
 // Read the `assignment.md` sibling of the routed repo's TODO.md through the
 // Worker. Mirrors readTodoMdFromWorker's wiring exactly (same `{ read: true,
 // repo, filePath }` shape, same `{ ok, content, sha }` return), differing only
