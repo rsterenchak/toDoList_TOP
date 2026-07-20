@@ -973,7 +973,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d5d7c882-305a-4650-bfe4-e3962925666d -->
 
-- [ ] **[MEDIUM]** Add an Accept action to proposed cards that ships the proposal's draft
+- [x] **[MEDIUM]** Add an Accept action to proposed cards that ships the proposal's draft — Completed: 2026-07-19
   - Type: feature
   - Description: Entry 4 renders proposals but the only action is removing them (×). Add an Accept action to each proposed card that promotes the proposal into TODO.md and dispatches a run to build it, reusing the existing drafted-dispatch flow. On Accept, the proposal's `draft` (the full TODO.md entry derive wrote) is injected and a run fires; the row transitions `proposed` → `dispatched`, leaving the Proposed bucket for In progress and following the normal run lifecycle to Shipped, with its aspect tag preserved so it feeds coverage later. Dismiss already works via the existing × remove control — this entry adds only Accept.
   - Behavior:

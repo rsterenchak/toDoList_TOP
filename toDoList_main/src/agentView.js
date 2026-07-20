@@ -651,6 +651,12 @@ function buildSecondary(row) {
     if (state === 'drafted') {
         return buildDraftedSecondary(row);
     }
+    // A derive-proposed card: an Accept action that ships the proposal's draft
+    // through the same drafted-dispatch flow (inject + dispatch a run). Dismiss
+    // stays the header × remove control.
+    if (state === 'proposed') {
+        return buildProposedSecondary(row);
+    }
     // In-progress triaging: a short status line.
     if (state === 'triaging') {
         const p = document.createElement('p');
@@ -836,6 +842,80 @@ function buildDraftedSecondary(row) {
             fail(res && res.error);
         }).catch(function () {
             fail('Could not dispatch. Try again.');
+        });
+    });
+
+    return wrap;
+}
+
+// Secondary content for a `proposed` card (derive output): an optional preview of
+// the proposal's description plus an Accept button that ships the proposal's draft
+// through the run pipeline. Accept reuses the drafted-dispatch flow
+// (dispatchDraft → shipEntryForTodo → inject → dispatch → poll): the proposal's
+// `draft` is the full TODO.md entry derive wrote, and `entry_id` is null on a
+// fresh proposal, so shipEntryForTodo mints one and — since todo_id is null —
+// injects and dispatches without stamping a source todo, leaving `aspect` intact.
+// The row transitions proposed → dispatched and leaves the Proposed bucket for
+// In progress. Dismiss is the header × remove control (unchanged). The button
+// disables during the in-flight inject/dispatch sequence (double-accept guard);
+// on failure it re-enables and a non-blocking error is surfaced beneath it.
+function buildProposedSecondary(row) {
+    const wrap = document.createElement('div');
+    wrap.className = 'agentSecondary agentProposed';
+
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const description = (ctx.description || '').trim();
+    if (description) {
+        const preview = document.createElement('p');
+        preview.className = 'agentSecondaryMuted agentProposedPreview';
+        preview.textContent = description;
+        wrap.appendChild(preview);
+    }
+
+    const actions = document.createElement('div');
+    actions.className = 'agentProposedActions';
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'agentProposedError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const accept = document.createElement('button');
+    accept.type = 'button';
+    accept.className = 'agentAcceptButton';
+    accept.textContent = 'Accept';
+    actions.appendChild(accept);
+    wrap.appendChild(actions);
+
+    const draftText = (row.draft || '').trim();
+
+    function fail(message) {
+        accept.disabled = false;
+        accept.classList.remove('is-pending');
+        accept.textContent = 'Accept';
+        errorEl.textContent = message || 'Could not accept. Try again.';
+        errorEl.hidden = false;
+    }
+
+    accept.addEventListener('click', function () {
+        if (accept.disabled) return;
+        if (!draftText) { fail('No proposal to accept.'); return; }
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        accept.disabled = true;
+        accept.classList.add('is-pending');
+        accept.textContent = 'Accepting…';
+        dispatchDraft(row, draftText, row.entry_id).then(function (res) {
+            if (res && res.ok) {
+                // The realtime subscription (plus the explicit refresh started by
+                // dispatchDraft) moves the card into In progress; nothing to do
+                // here on success.
+                return;
+            }
+            fail(res && res.error);
+        }).catch(function () {
+            fail('Could not accept. Try again.');
         });
     });
 
