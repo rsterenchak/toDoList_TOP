@@ -11,12 +11,16 @@ import { vi } from 'vitest';
 // ── Supabase stub ────────────────────────────────────────────────────
 let queueRows = [];
 let queueError = null;
+let queueSelectCalls = 0;
 
 vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
         from: () => ({
             select: () => ({
-                eq: () => Promise.resolve({ data: queueRows, error: queueError }),
+                eq: () => {
+                    queueSelectCalls++;
+                    return Promise.resolve({ data: queueRows, error: queueError });
+                },
             }),
             insert: (row) => Promise.resolve({ data: [row], error: null }),
             update: (patch) => ({
@@ -42,6 +46,9 @@ let deriveCalls = [];
 let deriveResult = { ok: true };
 let activeRunsResult = { ok: true, active: false };
 let activeRunsCalls = [];
+let pollRunStatusResult = { ok: true, found: false };
+let pollRunStatusCalls = [];
+let toastCalls = [];
 
 vi.mock('../src/inject.js', () => ({
     mintEntryId: () => 'mint-0',
@@ -53,7 +60,10 @@ vi.mock('../src/inject.js', () => ({
         deriveCalls.push({ projectId, correlationId, target });
         return Promise.resolve(deriveResult);
     },
-    pollRunStatus: () => Promise.resolve({ ok: true, found: false }),
+    pollRunStatus: (opts) => {
+        pollRunStatusCalls.push(opts);
+        return Promise.resolve(pollRunStatusResult);
+    },
     resolveEntryByMarker: () => Promise.resolve({ ok: true, found: false }),
     fetchRunResult: () => Promise.resolve({ ok: true, result: '' }),
     fetchActiveRuns: (target, workflow) => {
@@ -66,7 +76,7 @@ vi.mock('../src/inject.js', () => ({
         return Promise.resolve(assignmentResult);
     },
     findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
-    showInjectToast: () => {},
+    showInjectToast: (msg, kind) => { toastCalls.push({ msg, kind }); },
     isInjectConfigured: () => true,
     chatWithWorker: () => Promise.resolve({ ok: true, reply: '' }),
     revertEntry: () => Promise.resolve({ ok: true }),
@@ -112,6 +122,10 @@ beforeEach(() => {
     deriveResult = { ok: true };
     activeRunsResult = { ok: true, active: false };
     activeRunsCalls = [];
+    pollRunStatusResult = { ok: true, found: false };
+    pollRunStatusCalls = [];
+    toastCalls = [];
+    queueSelectCalls = 0;
     document.body.classList.remove('agentUnavailable');
     document.body.innerHTML = '';
 });
@@ -455,5 +469,84 @@ describe('AGENT status pill — derive run progress', () => {
         const btn = document.querySelector('.agentAssignmentDeriveBtn');
         expect(btn.disabled).toBe(true);
         expect(btn.textContent).toBe('Drafting…');
+    });
+});
+
+describe('AGENT status pill — derive run completion outcome', () => {
+    const FILLED = { ok: true, content: '## Requirements\n- Users can add tasks\n' };
+    // Matches SWEEP_POLL_MS in agentView.js — the interval between derive polls.
+    const POLL_MS = 5000;
+
+    // Drives a confirmed derive run to genuine completion: the one-shot poll
+    // confirms it in flight, then the next interval tick reports it finished.
+    // Fake timers are armed BEFORE the click so the poller's setInterval is a
+    // fake timer this run can advance.
+    async function runToCompletion() {
+        activeRunsResult = { ok: true, active: true };
+        vi.useFakeTimers();
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await vi.advanceTimersByTimeAsync(0); // one-shot poll confirms active
+
+        activeRunsResult = { ok: true, active: false };
+        await vi.advanceTimersByTimeAsync(POLL_MS + 100); // interval tick → finished
+        vi.useRealTimers();
+        await flush();
+    }
+
+    it('surfaces a failure toast when a completed derive run reports a failure conclusion', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        pollRunStatusResult = { ok: true, status: 'completed', conclusion: 'failure' };
+        await runToCompletion();
+
+        // The confirmed run's conclusion was fetched, and a genuine failure
+        // raised an error toast instead of settling the pill silently.
+        expect(pollRunStatusCalls.length).toBeGreaterThan(0);
+        expect(toastCalls.some((t) => /failed/i.test(t.msg) && t.kind === 'error')).toBe(true);
+        // The pill still settles to Idle after a failure.
+        const pill = document.getElementById('agentStatusPill');
+        expect(pill.className).toContain('agentStatusPill--idle');
+    });
+
+    it('does not toast on a successful completion, but refreshes the queue', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        pollRunStatusResult = { ok: true, status: 'completed', conclusion: 'success' };
+        const before = queueSelectCalls;
+        await runToCompletion();
+
+        // Success is quiet (no error toast) but the queue is re-read so proposals
+        // appear even if the realtime push lagged.
+        expect(toastCalls.some((t) => t.kind === 'error')).toBe(false);
+        expect(queueSelectCalls).toBeGreaterThan(before);
+    });
+
+    it('does not fetch a conclusion when the derive run never registers (grace-elapsed)', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        // The probe never reports the run active — it never registers, so the
+        // grace window elapses and the pill settles silently.
+        activeRunsResult = { ok: true, active: false };
+        pollRunStatusResult = { ok: true, status: 'completed', conclusion: 'failure' };
+        pollRunStatusCalls = [];
+        toastCalls = [];
+
+        vi.useFakeTimers();
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await vi.advanceTimersByTimeAsync(30 * 1000 + POLL_MS + 100);
+        vi.useRealTimers();
+        await flush();
+
+        // No genuine run outcome to report → conclusion never fetched, no toast.
+        expect(pollRunStatusCalls.length).toBe(0);
+        expect(toastCalls.length).toBe(0);
+        const pill = document.getElementById('agentStatusPill');
+        expect(pill.className).toContain('agentStatusPill--idle');
     });
 });
