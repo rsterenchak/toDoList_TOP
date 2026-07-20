@@ -1050,3 +1050,19 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4468bb9a-c928-48c6-b749-3a9198a70fe1 -->
+
+- [ ] **[LOW]** Fix coverage aspect labels showing rubric bar text instead of the requirement
+  - Type: bug
+  - Description: In the coverage detail modal, every aspect row shows the rubric's Competent-bar text with leftover `**` markdown (e.g. "Competent:** The program prese…") instead of a readable label. `parseAspectLabels` (agentView.js ~1876) sources the label from the `## Rubric` section, whose rows are formatted `**A1 — Competent:** <bar>`, so the text after the ID tag is the grading criteria, not a label — and the leading-separator strip doesn't remove `*`, so the bold markers leak through too. Source the label from `## Requirements` instead — its rows (`**A1** — <what to build>`) carry the short task phrase — and extend the strip to remove markdown emphasis. Keep `parseAspects` (the aspect ID list) on the rubric, since that's the canonical graded-aspect set; only the labels move.
+  - Behavior:
+    1. Coverage detail rows read "A1 — Present a menu-driven interface…" (the requirement text, truncated) instead of "Competent:** The program prese…".
+    2. No stray `**`/`*` remains in any label.
+    3. An aspect with a rubric row but no matching requirement row falls back to a bare ID (no label) — acceptable, and the aspect still appears, since `parseAspects` lists it from the rubric.
+  - Implementation notes:
+    - `parseAspectLabels` (agentView.js ~1876): replace `extractRubricSection(content)` with `extractRequirementsSection(content)` (agentView.js:1815), so the label comes from the requirement's "what to build" text rather than the rubric bar.
+    - Extend the leading-strip character class to also remove markdown emphasis — add `*` and the backtick character to the existing `/^[\s:.)\]\-–—]+/` — so `**A1** — Present…` yields `Present…` rather than `** — Present…`.
+    - Leave `parseAspects` (agentView.js ~1857) on the rubric unchanged — the aspect ID list stays sourced from the canonical grading rows.
+    - No style or structural change; the coverage modal (agentView.js ~2869) already reads `aspectLabels`.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a5743703-c6c3-4539-8a1d-a2442f312aba -->
