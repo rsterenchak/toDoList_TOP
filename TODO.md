@@ -1108,7 +1108,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b31c41f4-2902-42eb-8554-6fc607a0e4d8 -->
 
-- [ ] **[MEDIUM]** Add per-file copy-content buttons to the coverage commit manifest
+- [x] **[MEDIUM]** Add per-file copy-content buttons to the coverage commit manifest — Completed: 2026-07-20
   - Type: feature
   - Description: GitLab lane, part 3 — copy file contents from the modal. Each file in a shipped aspect's manifest (built in part 1) gets a copy button that fetches the file's current content from the repo and puts it on the clipboard, so you can paste it straight into the matching file in your GitLab clone. Full current content (not a diff), since the transfer overwrites the file. Per-file, matching the file-copy transfer directly — copy `main.js`, paste into `main.js`. Depends on the Worker read-widening (reads now allowed for any path in a registered repo).
   - Behavior:
