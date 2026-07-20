@@ -953,3 +953,22 @@
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d2f6a896-7590-41a6-b38b-5f1d7ab931f7 -->
+
+- [ ] **[MEDIUM]** Add a Proposed bucket that renders derive's proposal rows with their aspect tags
+  - Type: feature
+  - Description: Render-only slice that makes derive's output visible. Derive writes rows with `state='proposed'`, `source='derive'`, and an `aspect` tag (A1/B1), but nothing renders them today — the board has no bucket for the `'proposed'` state. Add a Proposed bucket to the AGENT board that lists these rows through the existing card machinery, each showing its aspect badge. Derive's clarifying questions (`state='needs_words'`) already route to the existing "Needs you" bucket; this entry adds the aspect badge there too. This slice is display-only — promoting a proposal's draft into TODO.md (Accept) is entry 5, and the existing × remove control already lets you drop a proposal.
+  - Behavior:
+    1. A Proposed bucket appears (at the top of the board) listing every `state='proposed'` row for the project, rendered through the standard card path — title from `context.title`, a "Proposed" chip, and the existing × remove control.
+    2. Each proposed card shows its aspect as a small badge (e.g. "A1") when `row.aspect` is present.
+    3. Derive-generated clarifying questions (`state='needs_words'`, `source='derive'`) continue to appear in the existing "Needs you" bucket, now also carrying the aspect badge.
+    4. An empty Proposed bucket is omitted (existing behavior — empty buckets don't render).
+  - Implementation notes:
+    - `BUCKETS` (agentView.js:41): add `{ key: 'proposed', label: 'Proposed', states: ['proposed'] }`, placed first so fresh derive output surfaces at the top of the board. `'proposed'` is produced only by derive, so filtering by state alone is sufficient — no `source` check needed for the bucket. (Placement is a design choice — after "Needs you" is also reasonable if blocked-items-first is preferred.)
+    - The state→label map used by `buildChip` (~agentView.js:68, alongside `drafted: 'Drafted'`): add `proposed: 'Proposed'` so the chip reads correctly.
+    - `buildCard` (agentView.js:1924): render the aspect tag when `row.aspect` is a non-empty string — a small mono badge in the card head, near the chip. Applies to proposed and needs_words derive rows alike (both carry `aspect`); rows without an aspect (all existing triage rows) render unchanged.
+    - The row load already uses `select('*')` (agentView.js:428), so `aspect`/`source` are present on the row objects — no load-query change.
+    - `style.css`: a Proposed chip class (accent-tinted per the mockup — `accent-dim` background, accent text) and the aspect-badge style (small SpaceMono mono tag). No inline styles.
+  - Out of scope: Accept (promoting a proposal into TODO.md via the inject path) and a dedicated styled Dismiss action — entry 5; the pill "Working" signal (entry 3b); and any change to the derive routine.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d5d7c882-305a-4650-bfe4-e3962925666d -->
