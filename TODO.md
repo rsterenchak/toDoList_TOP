@@ -919,7 +919,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: af12fac8-de21-4c59-8f55-00aa0b39543a -->
 
-- [ ] **[HIGH]** Add Personal/Assignment purpose toggle to the onboard modal
+- [x] **[HIGH]** Add Personal/Assignment purpose toggle to the onboard modal — Completed: 2026-07-19
   - Type: feature
   - Description: Add a segmented Personal | Assignment control to the "Onboard a new repo" modal, between the Repository field and Shape, defaulting to Personal. This exposes the `purpose` parameter the Worker's `handleOnboard` already reads and forwards to `onboard.yml` but which the PWA never sends — today every onboard is silently `personal`. Selecting Assignment is what will make the onboarder scaffold the repo as coursework (stub `assignment.md` + CLAUDE.md pointer, handled separately in `onboard.sh`). Unlike Shape, purpose has no "auto" option: Shape is auto-detected from the repo's files, but whether a repo is coursework isn't inferable from its contents, so purpose is a declared choice with Personal as the default.
   - Behavior:

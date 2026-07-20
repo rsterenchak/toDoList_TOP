@@ -1438,13 +1438,15 @@ function normalizeOnboardRepo(repo) {
 // returns `{ ok: true, dispatched: true, ... }` — and returns `{ ok: false,
 // reason }` via describeError on any failure, matching the inject button's
 // error vocabulary. `shape` defaults to 'auto' (Worker auto-detects the repo
-// shape) when omitted.
-export async function onboardRepo(targetRepo, shape) {
+// shape) when omitted. `purpose` is a declared choice (not auto-detectable) —
+// normalized to 'personal' | 'assignment', defaulting to 'personal'.
+export async function onboardRepo(targetRepo, shape, purpose) {
     try {
         const res = await postToWorker({
             onboard: true,
             target_repo: targetRepo,
             shape: shape || 'auto',
+            purpose: purpose === 'assignment' ? 'assignment' : 'personal',
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {
@@ -1555,6 +1557,50 @@ function showOnboardModal(options) {
     repoWrap.appendChild(repoErr);
     body.appendChild(repoWrap);
 
+    // Purpose field (declared — Personal by default). Unlike Shape, purpose
+    // isn't inferable from the repo's files, so it's a segmented radio choice.
+    // The selected value is held in the closure and forwarded to onboardRepo.
+    let selectedPurpose = 'personal';
+    const purposeWrap = document.createElement('div');
+    purposeWrap.className = 'injectFieldLabel';
+    const purposeLabel = document.createElement('span');
+    purposeLabel.id = 'injectOnboardPurposeLabel';
+    purposeLabel.textContent = 'Purpose';
+    const purposeControl = document.createElement('div');
+    purposeControl.id = 'injectOnboardPurposeControl';
+    purposeControl.setAttribute('role', 'radiogroup');
+    purposeControl.setAttribute('aria-labelledby', 'injectOnboardPurposeLabel');
+    const purposeSegs = [
+        { value: 'personal', text: 'Personal' },
+        { value: 'assignment', text: 'Assignment' },
+    ].map(function(spec) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'injectOnboardPurposeSeg';
+        seg.dataset.purpose = spec.value;
+        seg.textContent = spec.text;
+        seg.setAttribute('role', 'radio');
+        purposeControl.appendChild(seg);
+        return seg;
+    });
+    function applyPurpose(value) {
+        selectedPurpose = value;
+        purposeSegs.forEach(function(seg) {
+            const on = seg.dataset.purpose === value;
+            seg.classList.toggle('selected', on);
+            seg.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+    }
+    purposeSegs.forEach(function(seg) {
+        seg.addEventListener('click', function() {
+            applyPurpose(seg.dataset.purpose);
+        });
+    });
+    applyPurpose('personal');
+    purposeWrap.appendChild(purposeLabel);
+    purposeWrap.appendChild(purposeControl);
+    body.appendChild(purposeWrap);
+
     // Shape field (optional — auto-detected).
     const shapeWrap = document.createElement('label');
     shapeWrap.className = 'injectFieldLabel';
@@ -1637,7 +1683,7 @@ function showOnboardModal(options) {
             return;
         }
         onboardBtn.disabled = true;
-        const res = await onboardRepo(repo, shapeSelect.value);
+        const res = await onboardRepo(repo, shapeSelect.value, selectedPurpose);
         if (res && res.ok && res.dispatched) {
             close();
             showInjectToast("Onboarding started — it'll appear here when ready (~30s).");
