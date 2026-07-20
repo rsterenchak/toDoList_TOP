@@ -338,6 +338,65 @@ describe('AGENT view — bucket rendering', () => {
     });
 });
 
+// Derive writes rows with state='proposed', source='derive', and an aspect tag
+// (A1/B1). The Proposed bucket surfaces them at the top of the board, and the
+// aspect badge renders on proposed and needs_words derive rows alike.
+describe('AGENT view — derive Proposed bucket + aspect badge', () => {
+    beforeEach(() => {
+        listLogic.addProject('Deriva');
+        mountDom('Deriva');
+    });
+
+    it('renders a Proposed bucket at the top of the board for proposed rows', async () => {
+        queueRows = [
+            { id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1', context: { title: 'Proposed thing' } },
+            { id: 'r1', state: 'running', context: { title: 'Running thing' } },
+        ];
+        await loadBoard();
+
+        const labels = [...document.querySelectorAll('.agentBucketLabel')].map((n) => n.textContent);
+        expect(labels[0]).toBe('Proposed');
+        expect(labels).toContain('In progress');
+    });
+
+    it('labels the proposed chip "Proposed"', async () => {
+        queueRows = [{ id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1', context: { title: 'X' } }];
+        await loadBoard();
+        const chip = document.querySelector('.agentChip');
+        expect(chip.textContent).toBe('Proposed');
+        expect(chip.classList.contains('agentChip--proposed')).toBe(true);
+    });
+
+    it('shows the aspect badge on a proposed card', async () => {
+        queueRows = [{ id: 'p1', state: 'proposed', source: 'derive', aspect: 'A1', context: { title: 'X' } }];
+        await loadBoard();
+        const badge = document.querySelector('.agentAspectBadge');
+        expect(badge).toBeTruthy();
+        expect(badge.textContent).toBe('A1');
+    });
+
+    it('shows the aspect badge on a needs_words derive card in the Needs you bucket', async () => {
+        queueRows = [{ id: 'nwd1', state: 'needs_words', source: 'derive', aspect: 'B1', context: { title: 'X' }, question: 'Q?' }];
+        await loadBoard();
+        const labels = [...document.querySelectorAll('.agentBucketLabel')].map((n) => n.textContent);
+        expect(labels).toContain('Needs you');
+        expect(document.querySelector('.agentAspectBadge').textContent).toBe('B1');
+    });
+
+    it('renders no aspect badge on a row without an aspect (existing triage rows)', async () => {
+        queueRows = [{ id: 't1', state: 'triaging', context: { title: 'Triage thing' } }];
+        await loadBoard();
+        expect(document.querySelector('.agentAspectBadge')).toBeFalsy();
+    });
+
+    it('omits the Proposed bucket when there are no proposed rows', async () => {
+        queueRows = [{ id: 'r1', state: 'running', context: { title: 'Running thing' } }];
+        await loadBoard();
+        const labels = [...document.querySelectorAll('.agentBucketLabel')].map((n) => n.textContent);
+        expect(labels).not.toContain('Proposed');
+    });
+});
+
 describe('AGENT view — card remove (×) control', () => {
     beforeEach(() => {
         listLogic.addProject('Removely');

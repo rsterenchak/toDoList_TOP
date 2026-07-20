@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-19',
         added: [
-            "The assistant chat now renders a clarifying question as tappable option chips, so one tap sends your choice.",
             "The Agent view now shows an assignment-context card at the top, summarizing the linked repo's assignment spec or inviting you to add one.",
             "Onboarding a repo now lets you mark it as a Personal project or an Assignment.",
             "The Agent view's assignment card is now tappable, opening an editor to write and save the linked repo's assignment spec.",
             "The filled assignment card now has a \"Draft tasks from this\" button that asks the agent to turn the linked spec into candidate tasks.",
+            "The Agent view now shows a Proposed bucket at the top listing the agent's freshly proposed tasks, each tagged with its aspect.",
         ],
     },
 ];
