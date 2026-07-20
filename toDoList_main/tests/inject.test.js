@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -290,6 +290,73 @@ describe('readAssignmentFromWorker — sibling path derivation', () => {
         }));
         const res = await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'TODO.md' });
         expect(res.ok).toBe(false);
+    });
+});
+
+// writeAssignmentToWorker posts `{ write: true, repo, filePath, content, sha }`
+// to the same `assignment.md` sibling path readAssignmentFromWorker derives,
+// with the open-time sha as the concurrency token. Success returns
+// `{ ok: true, sha }`; an HTTP 409 maps to `{ ok: false, conflict: true }`; any
+// other failure to `{ ok: false, reason }`.
+describe('writeAssignmentToWorker — write branch', () => {
+    function lastWriteBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).write; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('posts the derived assignment.md path, content, and sha', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ sha: 'new-sha' }),
+        }));
+        const res = await writeAssignmentToWorker(
+            { repo: 'owner/repo', file_path: 'docs/TODO.md' },
+            '## Requirements\nDo the thing.\n',
+            'old-sha',
+        );
+        const body = lastWriteBody();
+        expect(body).toBeTruthy();
+        expect(body.write).toBe(true);
+        expect(body.repo).toBe('owner/repo');
+        expect(body.filePath).toBe('docs/assignment.md');
+        expect(body.content).toBe('## Requirements\nDo the thing.\n');
+        expect(body.sha).toBe('old-sha');
+        expect(res).toEqual({ ok: true, sha: 'new-sha' });
+    });
+
+    it('returns ok:false without a Worker call when no target is passed', async () => {
+        const res = await writeAssignmentToWorker(null, 'x', 's');
+        expect(res.ok).toBe(false);
+        expect(lastWriteBody()).toBeNull();
+    });
+
+    it('maps an HTTP 409 to a conflict result', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false,
+            status: 409,
+            json: () => Promise.resolve({}),
+        }));
+        const res = await writeAssignmentToWorker(
+            { repo: 'owner/repo', file_path: 'TODO.md' }, 'x', 'stale',
+        );
+        expect(res.ok).toBe(false);
+        expect(res.conflict).toBe(true);
+    });
+
+    it('maps a non-409 failure to a plain error result', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false,
+            status: 500,
+            json: () => Promise.resolve({}),
+        }));
+        const res = await writeAssignmentToWorker(
+            { repo: 'owner/repo', file_path: 'TODO.md' }, 'x', 's',
+        );
+        expect(res.ok).toBe(false);
+        expect(res.conflict).toBeFalsy();
+        expect(typeof res.reason).toBe('string');
     });
 });
 

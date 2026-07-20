@@ -16,7 +16,7 @@ import {
     revertEntry,
 } from './inject.js';
 import { openChatWithSeed } from './claudeSheet.js';
-import { showConfirmModal } from './modals.js';
+import { showConfirmModal, showAssignmentEditorModal } from './modals.js';
 import { shipEntryForTodo } from './shipEntry.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
@@ -2335,17 +2335,56 @@ function buildFileTextIcon() {
 }
 
 // The assignment-context card mounted at the top of the AGENT board, rendered
-// from the `_assignment` cache. Display-only in this slice — no click handlers,
-// no tap-to-edit. Returns null for the absent state (no file / empty), so the
-// caller appends nothing; the unfilled state renders an amber "add assignment
-// context" invite, and the filled state renders a one-line summary with word +
-// section counts.
+// Tap handler for the assignment card. Re-reads assignment.md at tap time for
+// fresh content + sha (the `_assignment` cache holds only the classified
+// descriptor, never raw content/sha), then opens the editor modal preloaded with
+// that content. On a failed re-read it surfaces a toast and does not open —
+// creating the file on a repo that lacks one is a separate future entry, and the
+// card is only shown when the file already exists. On Save the modal re-reads and
+// repaints the card via refreshAssignment.
+function openAssignmentEditor() {
+    const target = resolveReadTarget();
+    if (!target) {
+        showInjectToast('No repo linked — cannot edit the assignment.', 'error');
+        return;
+    }
+    readAssignmentFromWorker(target).then(function (res) {
+        if (!res || !res.ok) {
+            showInjectToast(
+                'Could not load assignment.md: ' + ((res && res.reason) || 'Unknown error'),
+                'error'
+            );
+            return;
+        }
+        showAssignmentEditorModal(target, res.content, res.sha, {
+            onSaved: function () { refreshAssignment(resolveReadTarget()); },
+        });
+    });
+}
+
+// from the `_assignment` cache. Returns null for the absent state (no file /
+// empty), so the caller appends nothing; the unfilled state renders an amber
+// "add assignment context" invite, and the filled state renders a one-line
+// summary with word + section counts. Tapping either state re-reads the file for
+// fresh content + sha and opens the assignment editor modal (openAssignmentEditor).
 function buildAssignmentCard() {
     const a = _assignment;
     if (!a || a.state === 'absent') return null;
 
     const card = document.createElement('div');
     card.className = 'agentAssignmentCard agentAssignmentCard--' + a.state;
+    // The card is now an interactive editor entry point (both unfilled invite
+    // and filled summary), so give it button semantics and keyboard activation.
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-label', 'Edit assignment context');
+    card.addEventListener('click', openAssignmentEditor);
+    card.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            openAssignmentEditor();
+        }
+    });
 
     const glyph = document.createElement('span');
     glyph.className = 'agentAssignmentGlyph';

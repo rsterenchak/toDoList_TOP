@@ -10,6 +10,7 @@ export const changelog = [
             "The assistant chat now renders a clarifying question as tappable option chips, so one tap sends your choice.",
             "The Agent view now shows an assignment-context card at the top, summarizing the linked repo's assignment spec or inviting you to add one.",
             "Onboarding a repo now lets you mark it as a Personal project or an Assignment.",
+            "The Agent view's assignment card is now tappable, opening an editor to write and save the linked repo's assignment spec.",
         ],
     },
     {
@@ -17,13 +18,6 @@ export const changelog = [
         date: '2026-07-17',
         added: [
             "The next-refactor card now shows a clean summary or an unreadable note when a scan finds nothing to extract, instead of a misleading \"every suggestion skipped\" message.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-16',
-        fixed: [
-            "Structure view now hides its clear button, collapse/expand-all strip, selection toolbar, and empty find-results area when they have nothing to show.",
         ],
     },
 ];

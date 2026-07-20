@@ -451,6 +451,42 @@ export async function readAssignmentFromWorker(target) {
 }
 
 
+// Write the routed repo's `assignment.md` back through the Worker's `write`
+// branch. Derives the sibling path exactly as readAssignmentFromWorker does
+// (the directory of `target.file_path` with `assignment.md` appended) and posts
+// `{ write: true, repo, filePath, content, sha }`, passing the open-time `sha`
+// as the optimistic-concurrency token so a change landed since the read is
+// caught by the Worker rather than silently overwritten. Returns `{ ok: true,
+// sha }` on success (the Worker echoes the new blob sha); maps the Worker's HTTP
+// 409 to `{ ok: false, conflict: true, reason }` so the caller can reload and
+// reapply, and any other failure to `{ ok: false, reason }` via describeError —
+// matching the vocabulary of the other Worker calls.
+export async function writeAssignmentToWorker(target, content, sha) {
+    if (!target || !target.repo || !target.file_path) {
+        return { ok: false, reason: 'No target' };
+    }
+    const fp = target.file_path;
+    const slash = fp.lastIndexOf('/');
+    const dir = slash === -1 ? '' : fp.slice(0, slash + 1);
+    const assignmentPath = dir + 'assignment.md';
+    try {
+        const res = await postToWorker({
+            write: true,
+            repo: target.repo,
+            filePath: assignmentPath,
+            content: content,
+            sha: sha,
+        });
+        return { ok: true, sha: res && res.sha };
+    } catch (e) {
+        if (e && e.status === 409) {
+            return { ok: false, conflict: true, reason: describeError(e) };
+        }
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Exact form of the entry-id marker the inject Worker stamps onto each entry.
 // Replicated here (rather than imported from todoMdViewer.js) so the row layer's
 // toDoRow → inject dependency stays acyclic — importing todoMdViewer would form

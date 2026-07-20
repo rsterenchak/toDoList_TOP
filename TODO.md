@@ -917,7 +917,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 11551e78-5ed6-4b5c-9ab0-707ba2bff07c -->
 
-- [ ] **[MEDIUM]** Add assignment editor modal wired to the card, saving to assignment.md
+- [x] **[MEDIUM]** Add assignment editor modal wired to the card, saving to assignment.md — Completed: 2026-07-19
   - Type: feature
   - Description: Second slice of the assignment-context feature — a full-screen editor modal that turns the assignment card (built display-only by `buildAssignmentCard`, agentView.js:2343) into an actual edit of `assignment.md`. Tapping the card re-reads the file for fresh content and sha, opens a modal mirroring `showDescEditorModal` (modals.js:173) preloaded with that content, and Save writes the whole file back through the Worker's deployed `write` branch, then re-reads so the card re-renders (unfilled → filled). The Worker write branch is live and hard-scoped to assignment.md, so this is fully functional on merge — no dependency to wait on. The editor edits existing content only; the onboarder writes the stub `assignment.md`, so no seed template is embedded here.
   - Behavior:

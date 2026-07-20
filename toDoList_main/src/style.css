@@ -1421,6 +1421,169 @@ body {
 .descEditorModalStatusSeg.selected[data-status="in_progress"] { background: var(--text-warning); }
 .descEditorModalStatusSeg.selected[data-status="idea"]        { background: var(--text-muted); }
 
+/* ── ASSIGNMENT EDITOR MODAL ──
+   Full editor for a routed repo's assignment.md, opened from the AGENT board's
+   assignment card. Reuses the desc editor's surface shell (backdrop, panel,
+   textarea, action buttons) with an explicit Cancel + Save footer instead of
+   save-on-close. */
+#assignmentEditorModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#assignmentEditorModal {
+  width: 100%;
+  max-width: 520px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(108, 93, 245, 0.18);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+
+#assignmentEditorModalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 10px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+#assignmentEditorModalTitle {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#assignmentEditorModalEyebrow {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#assignmentEditorModalTitleText {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--text-primary);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#assignmentEditorModalClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+}
+#assignmentEditorModalClose:hover { color: var(--text-primary); }
+#assignmentEditorModalClose:focus { outline: none; color: var(--accent-text); }
+
+#assignmentEditorModalBody {
+  padding: 12px 14px;
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+}
+
+#assignmentEditorModalTextarea {
+  flex: 1 1 auto;
+  width: 100%;
+  min-height: 220px;
+  resize: vertical;
+  /* 16px floor against iOS Safari auto-zoom (CLAUDE.md mobile-input rule). */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow: auto;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  outline: none;
+}
+#assignmentEditorModalTextarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+#assignmentEditorModalStatus {
+  padding: 0 14px 4px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-warning);
+}
+
+#assignmentEditorModalActions {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+
+.assignmentEditorModalBtn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  min-height: 36px;
+  white-space: nowrap;
+  min-width: 0;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.assignmentEditorModalBtn:hover { background: var(--bg-hover); }
+.assignmentEditorModalBtn:focus { outline: none; border-color: var(--accent-text); box-shadow: 0 0 0 2px var(--accent-dim); }
+.assignmentEditorModalBtn:disabled { opacity: 0.6; cursor: default; }
+
+/* Cancel sits compact on the left; Save is the full-width primary action. */
+#assignmentEditorModalCancel { flex: 0 0 auto; }
+.assignmentEditorModalBtnPrimary {
+  flex: 1 1 auto;
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.assignmentEditorModalBtnPrimary:hover { background: var(--accent-strong, var(--accent)); }
+
 @media (max-width: 480px) {
   #descEditorModal {
     max-height: 92vh;
@@ -1429,6 +1592,13 @@ body {
     min-height: 220px;
   }
   .descEditorModalBtn {
+    font-size: 14px;
+    padding: 10px 10px;
+  }
+  #assignmentEditorModal {
+    max-height: 92vh;
+  }
+  .assignmentEditorModalBtn {
     font-size: 14px;
     padding: 10px 10px;
   }
@@ -1735,6 +1905,7 @@ body.claudeUnavailable #claudeLauncher:hover {
 body:has(#confirmModalBackdrop) #claudeLauncher,
 body:has(#changelogModalBackdrop) #claudeLauncher,
 body:has(#descEditorModalBackdrop) #claudeLauncher,
+body:has(#assignmentEditorModalBackdrop) #claudeLauncher,
 body:has(#seedTasksModalBackdrop) #claudeLauncher,
 body:has(#helpModalBackdrop) #claudeLauncher,
 body:has(#missedDatesModalBackdrop) #claudeLauncher,
@@ -4995,6 +5166,22 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   background: var(--bg-surface);
   border: 0.5px solid var(--border-mid);
   border-radius: var(--radius-md, 10px);
+  /* The card is a tap-to-edit entry point for assignment.md, so it reads as
+     interactive: pointer cursor plus a subtle border/background hover lift. */
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.agentAssignmentCard:hover {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+}
+.agentAssignmentCard--unfilled:hover {
+  border-color: var(--text-warning);
+}
+.agentAssignmentCard:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 .agentAssignmentCard--unfilled {
