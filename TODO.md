@@ -918,3 +918,21 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: af12fac8-de21-4c59-8f55-00aa0b39543a -->
+
+- [ ] **[HIGH]** Add Personal/Assignment purpose toggle to the onboard modal
+  - Type: feature
+  - Description: Add a segmented Personal | Assignment control to the "Onboard a new repo" modal, between the Repository field and Shape, defaulting to Personal. This exposes the `purpose` parameter the Worker's `handleOnboard` already reads and forwards to `onboard.yml` but which the PWA never sends — today every onboard is silently `personal`. Selecting Assignment is what will make the onboarder scaffold the repo as coursework (stub `assignment.md` + CLAUDE.md pointer, handled separately in `onboard.sh`). Unlike Shape, purpose has no "auto" option: Shape is auto-detected from the repo's files, but whether a repo is coursework isn't inferable from its contents, so purpose is a declared choice with Personal as the default.
+  - Behavior:
+    1. Renders between Repository and Shape as two segments, Personal | Assignment, with Personal active on open.
+    2. Tapping a segment makes it the active one (accent-tinted); the modal tracks the current value in its closure.
+    3. Onboard passes the selected purpose into the payload; Cancel / close / Escape discard it with the rest of the modal state as they do now.
+  - Implementation notes:
+    - Insert the control in the onboard modal body (`injectOnboardBody`, inject.js ~1505) between the repo field (~1508) and the shape field (~1527). Hold the selected value in the modal closure, default `'personal'`.
+    - Add a third `purpose` param to `onboardRepo` (inject.js:1410), normalize it to `'personal' | 'assignment'`, and include `purpose` in the `postToWorker` payload alongside `onboard` / `target_repo` / `shape`. Update the call site (inject.js:1608) — `onboardRepo(repo, shapeSelect.value)` — to pass the selected purpose.
+    - No Worker change: `handleOnboard` already reads `body.purpose` and defaults it to `personal`, so this is purely the client sending what the Worker awaits.
+    - Style the segmented control in `style.css` with Void tokens — the active segment uses `accent-dim` background, accent text, and a `var(--accent)` border; the inactive segment is muted text on transparent. Match the modal's field height (~36–38px) and use an 8px container radius. No inline style writes.
+    - Give the control radio-group semantics (a `role="radiogroup"` wrapper with `role="radio"` segments, or `aria-pressed` toggle buttons) so it's keyboard- and screen-reader-navigable, matching the aria usage already on the onboard modal.
+  - Out of scope: the `onboard.sh` stub `assignment.md` write and CLAUDE.md pointer (the other half of Phase 1, a template edit, not this entry); the nickname field (`handleOnboard` reads `body.nickname`, but wiring that control is separate); and any change to how assignment repos render (the card entries).
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 11551e78-5ed6-4b5c-9ab0-707ba2bff07c -->
