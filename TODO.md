@@ -1066,3 +1066,23 @@
   - File: `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a5743703-c6c3-4539-8a1d-a2442f312aba -->
+
+- [ ] **[MEDIUM]** Add tap-to-expand commit helper to shipped coverage aspects
+  - Type: feature
+  - Description: GitLab lane, part 1 — the commit helper. In the coverage detail modal, shipped aspects become tap-to-expand, revealing a lane with a copy-ready commit message and the file manifest for that aspect — the two things that make the GitHub → GitLab transfer mechanical. Derived entirely from existing data (the aspect's shipped rows: their titles for the message, their `file_paths` for the manifest), so no storage and no backend. The committed-to-GitLab tick that tracks what you've transferred is part 2 (Supabase-backed) and slots into this same expansion.
+  - Behavior:
+    1. In the coverage detail modal, shipped aspect rows gain a chevron and become tap-to-expand; tapping toggles a lane panel below the row. Proposed / in-flight / not-started / manual aspects don't expand — nothing to commit yet.
+    2. The expanded lane shows a copy-ready commit message — the aspect's shipped-row title plus the aspect ID, e.g. "Add a menu-driven console loop that runs until the user exits (A1)" — with a copy button; and the file manifest — the deduped union of `file_paths` across the aspect's shipped rows (which files to copy into the GitLab clone).
+    3. Copy writes the message to the clipboard.
+    4. Expansion state is per-row, local to the open modal (no persistence).
+  - Implementation notes:
+    - `showCoverageDetailModal` (agentView.js:2866): the `items` map already groups rows by aspect (`byAspect`). Attach each aspect's rows to its item (e.g. `rows: byAspect[id] || []`) so the row builder can derive the helper content.
+    - `buildCoverageDetailRow` (agentView.js:2785): for non-process aspects with `status === 'shipped'`, make the row a tap-to-expand toggle — add a chevron and toggle an expansion panel's visibility on click. Keep blocked rows as jump buttons (unchanged); leave proposed / in-flight / not-started / manual rows non-expandable.
+    - Commit message: from the aspect's shipped rows — the first shipped row's `context.title` + " (" + aspect id + ")". Copy via `navigator.clipboard.writeText`. Fall back to the aspect label if a title is somehow missing. (One commit per aspect: message from the representative shipped task, manifest spanning all of them.)
+    - File manifest: dedupe the union of `row.file_paths` across the aspect's shipped rows; render as a mono list. `file_paths` is already on the rows (`select('*')`).
+    - `style.css`: the expansion panel, the commit-message pill plus copy button (tinted-accent), the manifest list, and the shipped-row chevron. Void tokens; no inline style writes beyond any dynamic values.
+    - No new deps.
+  - Out of scope: the committed-to-GitLab tick and C1's manual tick (part 2 — Supabase `aspect_submissions` table, listLogic read/write, and the header "N committed" count); auto-ticking C1; and any change to derive or the rows.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: f6b3108d-d60e-45a7-8dff-44612a57382b -->
