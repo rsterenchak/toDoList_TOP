@@ -935,3 +935,21 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: af12fac8-de21-4c59-8f55-00aa0b39543a -->
+
+- [ ] **[MEDIUM]** Add Draft-tasks-from-this button to the filled assignment card, dispatching derive
+  - Type: feature
+  - Description: Third slice of the assignment-context feature — a "Draft tasks from this" button on the filled assignment card that triggers the derive run. Mirrors the header Run button → `dispatchTriage` pattern (`fireTriageSweep`, agentView.js:219), but scoped to the assignment card and dispatching derive instead of triage. Renders on the filled state only. On tap it sends `dispatch_derive` to the Worker, which — once its route and the `.claude/derive.md` routine exist — reads `assignment.md`, enumerates the rubric aspects, and writes candidate tasks plus clarifying questions to `agent_queue`. NOTE: this is the trigger only. The Worker `dispatch_derive` route, the `.claude/derive.md` routine, and the `agent_queue` `source`/`aspect` columns are prerequisites (out-of-band work); the Proposed bucket that renders derive's output is the next PWA entry. Until those exist, the button dispatches cleanly but nothing visible appears.
+  - Behavior:
+    1. Renders on the filled card only — a full-width footer button "Draft tasks from this", appended after the meta line in `buildAssignmentCard`'s filled branch. Deliberately NOT the header Run's inline chip shape: header Run is project triage, card Draft is spec-derived, so different geometry signals different scope. Absent on the unfilled and absent states.
+    2. On tap — calls `dispatchDerive(projectId, mintEntryId(), resolveDispatchTarget())`, fire-and-forget like `fireTriageSweep`. Gives immediate local feedback (disable the button with a "Drafting…" label for a beat, then re-enable) and guards against double-fire.
+    3. Results (proposals + clarifying questions) land asynchronously in `agent_queue` and surface via realtime once the Proposed bucket entry ships — out of scope here.
+  - Implementation notes:
+    - New client dispatcher in `inject.js`: `dispatchDerive(projectId, correlationId, target)` mirroring `dispatchTriage` (inject.js:631), posting `{ dispatch_derive: true, project_id, correlation_id, repo, filePath }`. Fire-and-forget, same shape and error handling.
+    - Button in `agentView.js`: add the footer button to `buildAssignmentCard`'s filled branch only (agentView.js:2343, after the meta line). On click, mirror `fireTriageSweep`'s dispatch call — resolve the project id, mint an entry id via `mintEntryId`, and call `dispatchDerive(..., resolveDispatchTarget())`. Reuse the existing in-flight guard (or a local disable) so a double-tap can't fire two derive runs.
+    - Prerequisites, out of band and gating (flag, don't build here): (a) `agent_queue.source` (default 'user'; derive writes 'derive') and `agent_queue.aspect` columns via Studio SQL — AND both added to `persistMutation`'s insert and update whitelist, or they're silently dropped; (b) the Worker `dispatch_derive` route via `wrangler deploy`; (c) the `.claude/derive.md` routine via template commit + drift. The button dispatches without them but produces no rows until (b) and (c) exist, and no visible rows until the Proposed bucket entry.
+    - Reuse the header Run button's tinted-accent treatment (accent text, `accent-dim` background, `var(--accent)` border, 10px radius) but full-width as a card footer rather than the inline chip. Style in `style.css`; no inline style writes.
+    - Vanilla only, no new deps.
+  - Out of scope: the Proposed bucket rendering and aspect tags (the immediate next PWA entry); Accept→TODO promotion and Dismiss; rubric coverage; a dedicated derive status-pill integration (the button's local disable is the only feedback in this slice — the Proposed bucket plus realtime surface the actual results); and all backend prerequisites listed above.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d2f6a896-7590-41a6-b38b-5f1d7ab931f7 -->
