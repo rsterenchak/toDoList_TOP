@@ -1293,6 +1293,80 @@ export const listLogic = (function () {
         }
     }
 
+    // Read the set of aspect IDs a project has marked "committed to GitLab" from
+    // the `aspect_submissions` table (row-presence = committed). The coverage
+    // detail modal calls this before/while opening so each shipped aspect's
+    // "Committed to GitLab" checkbox and the manual aspect's "mark done" tick
+    // reflect stored state, and the header's "N committed to GitLab" count is
+    // accurate. RLS scopes the table to the user's projects via the
+    // project-ownership sub-select (no user_id column, like agent_queue/todos),
+    // so the query filters on project_id only. Returns a Set of committed aspect
+    // IDs — empty on a missing id or any failure, so the modal degrades to
+    // all-unchecked rather than erroring.
+    // @category: user-mutation-only
+    async function getAspectSubmissions(projectId) {
+        if (!projectId) return new Set();
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('aspect_submissions')
+                    .select('aspect')
+                    .eq('project_id', projectId)
+            );
+            if (result && result.error) return new Set();
+            const rows = (result && result.data) || [];
+            const set = new Set();
+            rows.forEach(function (r) {
+                const a = r && typeof r.aspect === 'string' ? r.aspect.trim() : '';
+                if (a) set.add(a);
+            });
+            return set;
+        } catch (e) {
+            return new Set();
+        }
+    }
+
+    // Toggle a project+aspect's "committed to GitLab" tick in `aspect_submissions`
+    // (row-presence = committed): upsert the (project_id, aspect) row when
+    // `committed` is true, delete it when false. The coverage detail modal calls
+    // this after optimistically flipping the tick, reverting on a non-ok result.
+    // Returns a { ok, error? } result matching setAgentRunState / unflagAgentTask
+    // so the caller can surface a non-blocking failure and revert.
+    // @category: user-mutation-only
+    async function setAspectSubmitted(projectId, aspect, committed) {
+        const asp = typeof aspect === 'string' ? aspect.trim() : '';
+        if (!projectId || !asp) {
+            return { ok: false, error: 'Missing project or aspect.' };
+        }
+        try {
+            const result = committed
+                ? await Promise.resolve(
+                    supabase
+                        .from('aspect_submissions')
+                        .upsert(
+                            { project_id: projectId, aspect: asp },
+                            { onConflict: 'project_id,aspect' }
+                        )
+                )
+                : await Promise.resolve(
+                    supabase
+                        .from('aspect_submissions')
+                        .delete()
+                        .eq('project_id', projectId)
+                        .eq('aspect', asp)
+                );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Update failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Update failed.' };
+        }
+    }
+
 
     // Read the most recent stored refactor-scan row for a repo. The Structure
     // tab's NEXT REFACTOR card calls this on render to recover the last scan's
@@ -3477,6 +3551,8 @@ export const listLogic = (function () {
         flagTaskForAgent,
         answerAgentTask,
         setAgentRunState,
+        getAspectSubmissions,
+        setAspectSubmitted,
         loadLatestRefactorScan,
         dismissRefactorCandidate,
         stampTodoEntryId,
