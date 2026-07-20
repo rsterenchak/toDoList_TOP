@@ -15,7 +15,7 @@
 import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
-import { makeInjectButton, refreshInjectButton } from './inject.js';
+import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker } from './inject.js';
 import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI } from './todoStatus.js';
 import { reorderToDoDOM } from './toDoRow.js';
 
@@ -531,6 +531,176 @@ function flashCopyFeedback(btn) {
         btn.removeAttribute('data-copied');
         btn.__copyResetTimer = null;
     }, 1200);
+}
+
+
+// ── ASSIGNMENT EDITOR MODAL ──
+// Full editor for a routed repo's `assignment.md`, opened by tapping the AGENT
+// board's assignment card. Mirrors showDescEditorModal's header/textarea/actions
+// shell and reuses wireModalDismiss for the three-way close (close X, backdrop,
+// Escape — CLAUDE.md modal contract). Unlike the desc editor (save-on-close),
+// this modal saves explicitly: Save writes the whole file back through the
+// Worker's `write` branch, using the open-time `sha` as the concurrency token.
+// On success it closes and calls `options.onSaved` so the caller can re-read and
+// repaint the card (unfilled → filled). On a 409 conflict it reloads the latest
+// content + sha into the textarea and asks the user to reapply; on any other
+// error it surfaces the reason and stays open. The textarea keeps a 16px font
+// (CLAUDE.md mobile-input rule) and `pre-wrap` so the seeded stub's sections and
+// HTML-comment hints load verbatim.
+export function showAssignmentEditorModal(target, content, sha, options) {
+    const opts = options || {};
+    let currentSha = sha;
+
+    const prior = document.getElementById('assignmentEditorModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'assignmentEditorModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'assignmentEditorModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'assignmentEditorModalTitleText');
+
+    const header = document.createElement('div');
+    header.id = 'assignmentEditorModalHeader';
+
+    const title = document.createElement('div');
+    title.id = 'assignmentEditorModalTitle';
+
+    const eyebrow = document.createElement('span');
+    eyebrow.id = 'assignmentEditorModalEyebrow';
+    eyebrow.textContent = 'ASSIGNMENT';
+
+    const titleText = document.createElement('span');
+    titleText.id = 'assignmentEditorModalTitleText';
+    titleText.textContent = (target && target.repo) ? target.repo : 'assignment.md';
+
+    title.appendChild(eyebrow);
+    title.appendChild(titleText);
+
+    const closeX = document.createElement('button');
+    closeX.id = 'assignmentEditorModalClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close assignment editor');
+    closeX.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'assignmentEditorModalBody';
+
+    const textarea = document.createElement('textarea');
+    textarea.id = 'assignmentEditorModalTextarea';
+    textarea.setAttribute('aria-label', 'Assignment text');
+    textarea.spellcheck = false;
+    textarea.autocapitalize = 'off';
+    textarea.autocomplete = 'off';
+    // As with the desc editor, keep iOS smart-substitution off so the markdown
+    // the user is editing isn't rewritten (`--` → em-dash, straight → curly
+    // quotes, etc.).
+    textarea.setAttribute('autocorrect', 'off');
+    textarea.value = typeof content === 'string' ? content : '';
+    body.appendChild(textarea);
+
+    // Inline status line for conflict / error feedback, so the message lives in
+    // the modal (which stays open on failure) rather than only in a transient
+    // toast. Hidden until something needs saying.
+    const status = document.createElement('div');
+    status.id = 'assignmentEditorModalStatus';
+    status.setAttribute('role', 'status');
+    status.hidden = true;
+
+    const actions = document.createElement('div');
+    actions.id = 'assignmentEditorModalActions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.id = 'assignmentEditorModalCancel';
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'assignmentEditorModalBtn';
+    cancelBtn.textContent = 'Cancel';
+
+    const saveBtn = document.createElement('button');
+    saveBtn.id = 'assignmentEditorModalSave';
+    saveBtn.type = 'button';
+    saveBtn.className = 'assignmentEditorModalBtn assignmentEditorModalBtnPrimary';
+    saveBtn.textContent = 'Save';
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(saveBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(status);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const previouslyFocused = document.activeElement;
+
+    const close = wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, cancelBtn],
+        onClose: function() {
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
+        }
+    });
+
+    function showStatus(message) {
+        status.hidden = false;
+        status.textContent = message;
+    }
+
+    let saving = false;
+    saveBtn.addEventListener('click', function() {
+        if (saving) return;
+        saving = true;
+        saveBtn.disabled = true;
+        cancelBtn.disabled = true;
+        const prevLabel = saveBtn.textContent;
+        saveBtn.textContent = 'Saving…';
+        status.hidden = true;
+        writeAssignmentToWorker(target, textarea.value, currentSha).then(function(res) {
+            if (res && res.ok) {
+                close();
+                if (typeof opts.onSaved === 'function') opts.onSaved();
+                return;
+            }
+            // Failure — re-enable the controls and keep the modal open so the
+            // user's edit isn't lost.
+            saving = false;
+            saveBtn.disabled = false;
+            cancelBtn.disabled = false;
+            saveBtn.textContent = prevLabel;
+            if (res && res.conflict) {
+                // Reload the latest content + sha so the user can reapply their
+                // edit against the newer base rather than clobbering it.
+                readAssignmentFromWorker(target).then(function(fresh) {
+                    if (fresh && fresh.ok) {
+                        textarea.value = fresh.content;
+                        currentSha = fresh.sha;
+                        showStatus('assignment.md changed since you opened it — the latest version is loaded. Reapply your changes and Save again.');
+                    } else {
+                        showStatus('assignment.md changed since you opened it, and reloading the latest failed. Close and reopen the editor.');
+                    }
+                });
+                return;
+            }
+            showStatus('Save failed: ' + ((res && res.reason) || 'Unknown error') + '.');
+        });
+    });
+
+    // Defer focus a tick so the textarea is paint-ready before mobile keyboards
+    // land on it (same rationale as the desc editor).
+    setTimeout(function() {
+        try { textarea.focus(); } catch (e) { /* defensive */ }
+    }, 0);
 }
 
 
