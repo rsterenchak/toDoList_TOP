@@ -5594,6 +5594,73 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   color: var(--text-secondary);
 }
 
+/* GitLab submission count in the modal header — the built-vs-submitted tally,
+   sitting under the coverage line in the title's flex column. */
+#coverageDetailModalCommitted {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* GitLab submission tick — the "Committed to GitLab" checkbox on a shipped
+   aspect's commit lane and the "mark done" tick on a manual aspect's row.
+   Row-presence in aspect_submissions = committed: amber-outlined until ticked,
+   accent-filled with a check once committed. */
+.coverageCommitTickRow {
+  display: flex;
+}
+.coverageCommitTick {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  color: var(--text-warning);
+  background: transparent;
+  border: none;
+  padding: 4px 2px;
+  cursor: pointer;
+  min-height: 28px;
+  transition: color 0.12s ease;
+}
+.coverageCommitTick.is-committed { color: var(--accent-text); }
+.coverageCommitTick:disabled { cursor: default; opacity: 0.7; }
+.coverageCommitTick:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+  border-radius: var(--radius-sm);
+}
+.coverageCommitTickBox {
+  flex: 0 0 auto;
+  width: 15px;
+  height: 15px;
+  border-radius: 3px;
+  border: 1.5px solid var(--text-warning);
+  position: relative;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.coverageCommitTick.is-committed .coverageCommitTickBox {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+/* Checkmark, revealed only when committed. */
+.coverageCommitTick.is-committed .coverageCommitTickBox::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 1px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.coverageCommitTickLabel { white-space: nowrap; }
+
 #coverageDetailModalActions {
   display: flex;
   justify-content: flex-end;

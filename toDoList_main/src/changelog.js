@@ -9,6 +9,7 @@ export const changelog = [
         added: [
             "Tapping the assignment card's coverage summary now opens a detail view of every rubric aspect with its live status, and jumps to any blocked question.",
             "Shipped rubric aspects in the coverage detail view now expand to a copy-ready commit message and the list of files to transfer.",
+            "Coverage detail rows now carry a \"Committed to GitLab\" tick — persisted across devices — with a header count of how many aspects have been committed.",
         ],
         fixed: [
             "Coverage detail rows now read each aspect's requirement text instead of leftover rubric grading text with stray markdown.",
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-19',
         added: [
-            "The Agent view's status pill now stays Working for the whole time a \"Draft tasks\" run is generating tasks.",
             "The filled assignment card now shows a rubric coverage summary — how many aspects are still outstanding, with a progress bar of shipped, in-flight, and outstanding criteria.",
         ],
     },

@@ -2778,13 +2778,81 @@ function isProcessAspect(label) {
     return PROCESS_ASPECT_RE.test(label || '');
 }
 
+// Build one control for a project+aspect's "committed to GitLab" tick: a
+// checkbox-role button whose accent-filled / amber-outlined state reflects the
+// shared `ctx.committed` Set. Toggling optimistically flips the UI + header
+// count, persists via listLogic.setAspectSubmitted, and reverts on failure.
+// Used both in a shipped aspect's expansion ("Committed to GitLab") and on the
+// manual aspect's row ("mark done"). Registers itself in `ctx.ticks` so the
+// modal's async submission-hydrate can refresh it once stored state loads.
+function buildCommitTick(item, ctx, labelText) {
+    const committed = (ctx && ctx.committed instanceof Set) ? ctx.committed : new Set();
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'coverageCommitTick';
+    btn.setAttribute('role', 'checkbox');
+
+    const box = document.createElement('span');
+    box.className = 'coverageCommitTickBox';
+    box.setAttribute('aria-hidden', 'true');
+    btn.appendChild(box);
+
+    const label = document.createElement('span');
+    label.className = 'coverageCommitTickLabel';
+    label.textContent = labelText;
+    btn.appendChild(label);
+
+    const setState = function (on) {
+        btn.setAttribute('aria-checked', on ? 'true' : 'false');
+        btn.classList.toggle('is-committed', on);
+    };
+    setState(committed.has(item.id));
+    // Let the async submission-hydrate re-sync this tick to stored state.
+    if (ctx && Array.isArray(ctx.ticks)) {
+        ctx.ticks.push({ id: item.id, refresh: function () { setState(committed.has(item.id)); } });
+    }
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        const wasOn = committed.has(item.id);
+        const nextOn = !wasOn;
+        // Optimistic: flip the tick + header count before the write resolves.
+        if (nextOn) committed.add(item.id); else committed.delete(item.id);
+        setState(nextOn);
+        if (ctx && typeof ctx.onCountChange === 'function') ctx.onCountChange();
+        btn.disabled = true;
+        const revert = function (msg) {
+            if (wasOn) committed.add(item.id); else committed.delete(item.id);
+            setState(wasOn);
+            if (ctx && typeof ctx.onCountChange === 'function') ctx.onCountChange();
+            showInjectToast(msg || 'Couldn’t update the tick — try again.', 'error');
+        };
+        Promise.resolve(
+            (ctx && ctx.projectId)
+                ? listLogic.setAspectSubmitted(ctx.projectId, item.id, nextOn)
+                : { ok: false, error: 'No project linked.' }
+        ).then(function (res) {
+            btn.disabled = false;
+            if (!res || !res.ok) revert(res && res.error);
+        }, function () {
+            btn.disabled = false;
+            revert();
+        });
+    });
+    return btn;
+}
+
 // Build one row of the coverage detail modal: a status dot, the aspect ID, its
 // rubric label, and a status word. Blocked aspects (a needs_words question is
 // waiting) render as a jump button that closes the modal and scrolls that
 // question into view. Shipped aspects render as a tap-to-expand toggle that
 // reveals a commit-helper lane (copy-ready commit message + file manifest for
-// the GitHub → GitLab transfer). Every other status renders as a static row.
-function buildCoverageDetailRow(item, closeFn) {
+// the GitHub → GitLab transfer, plus a "Committed to GitLab" tick). Manual
+// Git/process aspects render a static row with a "mark done" tick. Every other
+// status renders as a static row. `ctx` carries the shared committed-tick state
+// (see buildCommitTick); absent for callers that don't wire ticks.
+function buildCoverageDetailRow(item, closeFn, ctx) {
     const isBlocked = item.status === 'blocked';
     // Shipped, non-process aspects expand to a commit helper derived from their
     // shipped rows; nothing to commit for any other status, so they stay static.
@@ -2835,6 +2903,13 @@ function buildCoverageDetailRow(item, closeFn) {
         : (COVERAGE_STATUS_LABEL[item.status] || item.status);
     row.appendChild(status);
 
+    // Manual Git/process aspects can't be shipped by the agent, so in place of a
+    // commit helper they get a "mark done" tick that persists to the same
+    // aspect_submissions store as the shipped checkboxes.
+    if (item.process && ctx) {
+        row.appendChild(buildCommitTick(item, ctx, 'mark done'));
+    }
+
     if (!isExpandable) return row;
 
     // Tap-to-expand: chevron + a commit-helper panel toggled below the row.
@@ -2849,7 +2924,7 @@ function buildCoverageDetailRow(item, closeFn) {
     const wrap = document.createElement('div');
     wrap.className = 'coverageDetailItem';
     wrap.appendChild(row);
-    const panel = buildCommitHelperPanel(item, shippedRows);
+    const panel = buildCommitHelperPanel(item, shippedRows, ctx);
     wrap.appendChild(panel);
 
     row.addEventListener('click', function () {
@@ -2864,10 +2939,21 @@ function buildCoverageDetailRow(item, closeFn) {
 // copy-ready commit message (the aspect's shipped-row title + the aspect ID)
 // and the file manifest (the deduped union of `file_paths` across the aspect's
 // shipped rows — which files to copy into the GitLab clone). Derived entirely
-// from the shipped rows, so no storage and no backend.
-function buildCommitHelperPanel(item, shippedRows) {
+// from the shipped rows, so no storage and no backend. `ctx`, when present,
+// adds a "Committed to GitLab" tick (the built-vs-submitted distinction) that
+// persists to aspect_submissions via buildCommitTick.
+function buildCommitHelperPanel(item, shippedRows, ctx) {
     const panel = document.createElement('div');
     panel.className = 'coverageCommitLane';
+
+    // The submission tick: whether this shipped aspect has been copied into the
+    // GitLab clone yet. Amber until ticked, accent once committed.
+    if (ctx) {
+        const tickRow = document.createElement('div');
+        tickRow.className = 'coverageCommitTickRow';
+        tickRow.appendChild(buildCommitTick(item, ctx, 'Committed to GitLab'));
+        panel.appendChild(tickRow);
+    }
 
     const first = shippedRows[0];
     const title = (first && first.context && first.context.title) ||
@@ -2974,7 +3060,7 @@ function jumpToBlockedAspect(aspectId, closeFn) {
 // lane. Reads `_assignment` (aspects + labels) and `_rows`, reusing computeCoverage's
 // per-aspect status logic. Mirrors the assignment editor's chrome and the shared
 // three-way dismiss (close X, backdrop, Escape — CLAUDE.md modal contract).
-function showCoverageDetailModal() {
+function showCoverageDetailModal(preloadedCommitted) {
     const a = _assignment;
     if (!a || a.state !== 'filled' ||
         !Array.isArray(a.aspects) || !a.aspects.length) {
@@ -3011,6 +3097,21 @@ function showCoverageDetailModal() {
         return !it.process && it.status !== 'blocked';
     });
 
+    // Shared committed-tick state for this modal. `committed` starts from any
+    // preloaded Set (else empty) and is hydrated async from aspect_submissions
+    // below; buildCommitTick mutates it optimistically and registers each tick in
+    // `ctx.ticks` so the hydrate can re-sync them. `projectId` scopes the writes.
+    const projectName = getSelectedProjectName();
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    const committed = (preloadedCommitted instanceof Set)
+        ? preloadedCommitted : new Set();
+    const ctx = { committed: committed, projectId: projectId, ticks: [], onCountChange: null };
+    function committedCount() {
+        let n = 0;
+        items.forEach(function (it) { if (committed.has(it.id)) n++; });
+        return n;
+    }
+
     const prior = document.getElementById('coverageDetailModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
 
@@ -3039,8 +3140,20 @@ function showCoverageDetailModal() {
     titleText.textContent = (cov.total - cov.shipped) + ' outstanding · ' +
         cov.shipped + ' of ' + cov.total + ' covered';
 
+    // The built-vs-submitted distinction: how many aspects are ticked as copied
+    // into GitLab. Recomputed in place as ticks toggle (ctx.onCountChange) and
+    // refreshed once stored submissions hydrate.
+    const committedCountEl = document.createElement('span');
+    committedCountEl.id = 'coverageDetailModalCommitted';
+    function updateCommittedCount() {
+        committedCountEl.textContent = committedCount() + ' committed to GitLab';
+    }
+    updateCommittedCount();
+    ctx.onCountChange = updateCommittedCount;
+
     title.appendChild(eyebrow);
     title.appendChild(titleText);
+    title.appendChild(committedCountEl);
 
     const closeX = document.createElement('button');
     closeX.id = 'coverageDetailModalClose';
@@ -3069,7 +3182,7 @@ function showCoverageDetailModal() {
             group.appendChild(heading);
         }
         list.forEach(function (it) {
-            group.appendChild(buildCoverageDetailRow(it, closeFn));
+            group.appendChild(buildCoverageDetailRow(it, closeFn, ctx));
         });
         body.appendChild(group);
     }
@@ -3094,6 +3207,20 @@ function showCoverageDetailModal() {
     dialog.appendChild(actions);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
+
+    // Hydrate the committed ticks from stored aspect_submissions unless a Set was
+    // preloaded by the caller. The modal opens synchronously (ticks default to
+    // unchecked); when the read resolves, merge its ids into the shared set,
+    // refresh every registered tick, and recompute the header count in place.
+    if (!(preloadedCommitted instanceof Set) && projectId &&
+        typeof listLogic.getAspectSubmissions === 'function') {
+        Promise.resolve(listLogic.getAspectSubmissions(projectId)).then(function (set) {
+            if (!(set instanceof Set)) return;
+            set.forEach(function (id) { committed.add(id); });
+            ctx.ticks.forEach(function (t) { t.refresh(); });
+            updateCommittedCount();
+        }, function () { /* leave ticks unchecked on read failure */ });
+    }
 
     const previouslyFocused = document.activeElement;
     closeBtn.focus();
