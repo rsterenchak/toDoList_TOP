@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-20T08:38:58.373Z",
-  "sha": "2c0f55f24e764396ce19be26ab4c88099892b70d",
+  "generatedAt": "2026-07-20T09:21:56.963Z",
+  "sha": "8f5778cf2ac9676c492e2ae0d2c71a5f6f3fedd8",
   "files": [
     "aboutVersionCue.js",
     "agentView.js",
@@ -131,11 +131,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 3768,
+      "line": 3807,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3768
+          "line": 3807
         }
       ]
     },
@@ -159,11 +159,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 225,
+      "line": 229,
       "files": [
         {
           "file": "agentView.js",
-          "line": 225
+          "line": 229
         }
       ]
     },
@@ -1627,11 +1627,11 @@
       "selector": "#coverageDetailModal",
       "label": "Coverage Detail Modal",
       "file": "agentView.js",
-      "line": 3165,
+      "line": 3201,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3165
+          "line": 3201
         },
         {
           "file": "style.css",
@@ -1643,11 +1643,11 @@
       "selector": "#coverageDetailModalActions",
       "label": "Coverage Detail Modal Actions",
       "file": "agentView.js",
-      "line": 3240,
+      "line": 3276,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3240
+          "line": 3276
         },
         {
           "file": "style.css",
@@ -1659,11 +1659,11 @@
       "selector": "#coverageDetailModalBackdrop",
       "label": "Coverage Detail Modal Backdrop",
       "file": "agentView.js",
-      "line": 3162,
+      "line": 3198,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3162
+          "line": 3198
         },
         {
           "file": "style.css",
@@ -1675,11 +1675,11 @@
       "selector": "#coverageDetailModalBody",
       "label": "Coverage Detail Modal Body",
       "file": "agentView.js",
-      "line": 3211,
+      "line": 3247,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3211
+          "line": 3247
         },
         {
           "file": "style.css",
@@ -1691,11 +1691,11 @@
       "selector": "#coverageDetailModalClose",
       "label": "Coverage Detail Modal Close",
       "file": "agentView.js",
-      "line": 3202,
+      "line": 3238,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3202
+          "line": 3238
         },
         {
           "file": "style.css",
@@ -1707,11 +1707,11 @@
       "selector": "#coverageDetailModalCloseBtn",
       "label": "Coverage Detail Modal Close Btn",
       "file": "agentView.js",
-      "line": 3243,
+      "line": 3279,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3243
+          "line": 3279
         },
         {
           "file": "style.css",
@@ -1723,11 +1723,11 @@
       "selector": "#coverageDetailModalCommitted",
       "label": "Coverage Detail Modal Committed",
       "file": "agentView.js",
-      "line": 3190,
+      "line": 3226,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3190
+          "line": 3226
         },
         {
           "file": "style.css",
@@ -1739,11 +1739,11 @@
       "selector": "#coverageDetailModalEyebrow",
       "label": "Coverage Detail Modal Eyebrow",
       "file": "agentView.js",
-      "line": 3177,
+      "line": 3213,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3177
+          "line": 3213
         },
         {
           "file": "style.css",
@@ -1755,11 +1755,11 @@
       "selector": "#coverageDetailModalHeader",
       "label": "Coverage Detail Modal Header",
       "file": "agentView.js",
-      "line": 3171,
+      "line": 3207,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3171
+          "line": 3207
         },
         {
           "file": "style.css",
@@ -1771,11 +1771,11 @@
       "selector": "#coverageDetailModalTitle",
       "label": "Coverage Detail Modal Title",
       "file": "agentView.js",
-      "line": 3174,
+      "line": 3210,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3174
+          "line": 3210
         },
         {
           "file": "style.css",
@@ -1787,11 +1787,11 @@
       "selector": "#coverageDetailModalTitleText",
       "label": "Coverage Detail Modal Title Text",
       "file": "agentView.js",
-      "line": 3181,
+      "line": 3217,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3181
+          "line": 3217
         },
         {
           "file": "style.css",
