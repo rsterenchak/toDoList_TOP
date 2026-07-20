@@ -1086,3 +1086,24 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f6b3108d-d60e-45a7-8dff-44612a57382b -->
+
+- [ ] **[MEDIUM]** Add committed-to-GitLab tick to coverage aspects, Supabase-backed
+  - Type: feature
+  - Description: GitLab lane, part 2 — the submission tick, the last piece of the arc. Each shipped aspect's expansion (from part 1) gains a "Committed to GitLab" checkbox, and the manual aspect (C1) gets its own "mark done" tick; both persist to a new `aspect_submissions` Supabase table keyed by project + aspect, so ticking on one device shows ticked on another. The modal header gains a "N committed to GitLab" count — the built-vs-submitted distinction made trackable. C1 stays fully manual (no auto-tick from other aspects).
+  - Behavior:
+    1. In a shipped aspect's expanded lane, a "Committed to GitLab" checkbox reflects its stored state — amber "not yet" when unchecked, accent "in GitLab" when checked.
+    2. The manual aspect (C1) gets a "mark done" tick on its row (no expansion), using the same storage.
+    3. Toggling a tick optimistically updates the UI, writes via listLogic, and reverts on failure.
+    4. The modal header shows "N committed to GitLab" alongside the coverage count, recomputed as ticks change.
+    5. State persists across devices (Supabase-backed), so the count and ticks survive a reload and show on another device.
+  - Implementation notes:
+    - Prerequisite (Studio SQL, out of band): the `aspect_submissions` table above, RLS scoped to the user's projects like `agent_queue`/`todos` (no `user_id` column — the project-ownership sub-select). Row-presence = committed.
+    - listLogic (data-model writes route through here): `getAspectSubmissions(projectId)` — `supabase.from('aspect_submissions').select('aspect').eq('project_id', projectId)` → a Set of committed aspect IDs; `setAspectSubmitted(projectId, aspect, committed)` — upsert the `(project_id, aspect)` row when committed, delete it when not. Mirror the async `{ ok }`-returning shape of `setAgentRunState` / `unflagAgentTask` (listLogic.js:1266 / 1231).
+    - agentView: on the coverage summary tap (the `stopPropagation` handler that opens the modal), first `getAspectSubmissions(projectId)` and pass the committed Set into `showCoverageDetailModal`. In `showCoverageDetailModal` (agentView.js:2866): render the committed count in the header title, and pass the Set to `buildCoverageDetailRow`.
+    - `buildCoverageDetailRow` (agentView.js:2785): in a shipped aspect's expansion (built in part 1), add the "Committed to GitLab" checkbox bound to the committed state; on the manual-aspect row, add a "mark done" tick. Toggle handler: optimistic class flip + `setAspectSubmitted(...)` + revert on failure + update the header count in place.
+    - `style.css`: the tick checkbox states (unchecked = amber `var(--text-warning)` border, checked = accent fill with check) and the header committed count. No inline style writes.
+    - No new deps. C1 stays manual — nothing auto-ticks it from other aspects' state.
+  - Out of scope: showing the committed count on the card summary (modal-only for now); a bulk "commit all shipped" action; auto-ticking C1; and any change to derive, the rows, or v2a's commit helper.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b31c41f4-2902-42eb-8554-6fc607a0e4d8 -->
