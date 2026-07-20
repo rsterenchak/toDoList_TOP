@@ -17,7 +17,7 @@ import {
     revertEntry,
 } from './inject.js';
 import { openChatWithSeed } from './claudeSheet.js';
-import { showConfirmModal, showAssignmentEditorModal } from './modals.js';
+import { showConfirmModal, showAssignmentEditorModal, wireModalDismiss } from './modals.js';
 import { shipEntryForTodo } from './shipEntry.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
@@ -1865,6 +1865,27 @@ function parseAspects(content) {
     return aspects;
 }
 
+// Parse a `{ id: label }` map of each rubric aspect's human-readable label — the
+// rubric row text after its `A1`/`B2` tag, with any leading separator (`:`, `-`,
+// `—`, `.`, `)`, `]`) stripped. Additive to parseAspects (which returns the IDs
+// alone): the coverage detail modal reads this so a row can read "A1 — Menu-driven
+// interface" rather than a bare ID. Returns an empty map when there's no rubric
+// section, and omits IDs whose row carries no trailing text.
+function parseAspectLabels(content) {
+    const labels = Object.create(null);
+    const rubric = extractRubricSection(content);
+    if (rubric === null) return labels;
+    rubric.split('\n').forEach(function (line) {
+        const m = line.match(/\b([A-Z]{1,2}\d+)\b/);
+        if (!m || labels[m[1]]) return;
+        const after = line.slice(m.index + m[1].length)
+            .replace(/^[\s:.)\]\-–—]+/, '')
+            .trim();
+        if (after) labels[m[1]] = after;
+    });
+    return labels;
+}
+
 // Classify assignment.md content into the card's three states:
 //   'absent'   — no file / empty content: render no card.
 //   'unfilled' — no `## Requirements` header, or the section holds only HTML
@@ -1902,6 +1923,7 @@ function describeAssignment(content) {
         words: words,
         sections: sections,
         aspects: parseAspects(content),
+        aspectLabels: parseAspectLabels(content),
     };
 }
 
@@ -2652,13 +2674,41 @@ function buildCoverageSummary(aspects, rows) {
     const cov = computeCoverage(aspects, rows);
     const wrap = document.createElement('div');
     wrap.className = 'agentCoverage';
+    // The summary is a drill-in affordance: tapping it opens the coverage detail
+    // modal. Give it button semantics + keyboard activation, and stop the event
+    // from bubbling to the card's openAssignmentEditor handler (mirroring the
+    // Draft button's stopPropagation guard so the editor doesn't also open).
+    wrap.setAttribute('role', 'button');
+    wrap.setAttribute('tabindex', '0');
+    wrap.setAttribute('aria-label', 'View coverage detail');
+    wrap.addEventListener('click', function (e) {
+        e.stopPropagation();
+        showCoverageDetailModal();
+    });
+    wrap.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            e.stopPropagation();
+            showCoverageDetailModal();
+        }
+    });
+
+    const head = document.createElement('div');
+    head.className = 'agentCoverageHead';
 
     const headline = document.createElement('div');
     headline.className = 'agentCoverageHeadline';
     const outstanding = cov.total - cov.shipped;
     headline.textContent = outstanding + ' outstanding · ' +
         cov.shipped + ' of ' + cov.total + ' covered';
-    wrap.appendChild(headline);
+    head.appendChild(headline);
+
+    const chevron = document.createElement('span');
+    chevron.className = 'agentCoverageChevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.appendChild(buildChevronRightIcon());
+    head.appendChild(chevron);
+    wrap.appendChild(head);
 
     // The bar is decorative — the headline text is the accessible summary — so
     // hide it from assistive tech. Three proportional segments sized by aspect
@@ -2680,6 +2730,269 @@ function buildCoverageSummary(aspects, rows) {
     });
     wrap.appendChild(bar);
     return wrap;
+}
+
+// A small right-pointing chevron for the tappable coverage summary. DOM-built
+// like the other glyphs (no new asset, no icon library) and theme-correct via
+// currentColor.
+function buildChevronRightIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.8');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M9 6l6 6l-6 6');
+    svg.appendChild(path);
+    return svg;
+}
+
+// The human-readable status label for each aspect lifecycle, shown in the
+// coverage detail modal's per-aspect rows. Keys match aspectStatus()'s return
+// values; process/manual aspects render their own "manual · outstanding" copy.
+const COVERAGE_STATUS_LABEL = {
+    shipped: 'Shipped',
+    'in-flight': 'In progress',
+    blocked: 'Blocked',
+    proposed: 'Proposed',
+    'not-started': 'Not started',
+};
+
+// Rubric aspects the agent can't ship — Git / process work (commit history,
+// branching, repository hygiene) — matched by keyword against the aspect label.
+// These carry no agent-driven done-state, so the detail modal sets them apart in
+// a manual lane reading "manual · outstanding" rather than a lifecycle status.
+const PROCESS_ASPECT_RE = /commit|branch|repositor|version control|\bgit\b|\bhistory\b/i;
+
+function isProcessAspect(label) {
+    return PROCESS_ASPECT_RE.test(label || '');
+}
+
+// Build one row of the coverage detail modal: a status dot, the aspect ID, its
+// rubric label, and a status word. Blocked aspects (a needs_words question is
+// waiting) render as a jump button that closes the modal and scrolls that
+// question into view; every other status renders as a static row.
+function buildCoverageDetailRow(item, closeFn) {
+    const isBlocked = item.status === 'blocked';
+    const row = document.createElement(isBlocked ? 'button' : 'div');
+    row.className = 'coverageDetailRow coverageDetailRow--' +
+        (item.process ? 'manual' : item.status);
+    if (isBlocked) {
+        row.type = 'button';
+        row.classList.add('coverageDetailRow--jump');
+        row.addEventListener('click', function () {
+            jumpToBlockedAspect(item.id, closeFn);
+        });
+    }
+
+    const dot = document.createElement('span');
+    dot.className = 'coverageDetailDot';
+    dot.setAttribute('aria-hidden', 'true');
+    row.appendChild(dot);
+
+    const id = document.createElement('span');
+    id.className = 'coverageDetailId';
+    id.textContent = item.id;
+    row.appendChild(id);
+
+    if (item.label) {
+        const sep = document.createElement('span');
+        sep.className = 'coverageDetailSep';
+        sep.setAttribute('aria-hidden', 'true');
+        sep.textContent = '—';
+        row.appendChild(sep);
+    }
+
+    const label = document.createElement('span');
+    label.className = 'coverageDetailLabel';
+    label.textContent = item.label || '(no label)';
+    row.appendChild(label);
+
+    const status = document.createElement('span');
+    status.className = 'coverageDetailStatus';
+    status.textContent = item.process
+        ? 'manual · outstanding'
+        : (COVERAGE_STATUS_LABEL[item.status] || item.status);
+    row.appendChild(status);
+
+    return row;
+}
+
+// Jump from a blocked aspect in the coverage detail modal to its waiting
+// needs_words question on the board: close the modal, expand the Needs-you
+// bucket if it's collapsed (so the answer input is mounted and visible), then
+// scroll that input into view and focus it. A no-op past the close when the
+// aspect has no needs_words row (or its card was handed off to chat, so no
+// answer input exists).
+function jumpToBlockedAspect(aspectId, closeFn) {
+    const rows = Array.isArray(_rows) ? _rows : [];
+    const target = rows.find(function (r) {
+        return r && r.state === 'needs_words' &&
+            typeof r.aspect === 'string' && r.aspect.trim() === aspectId;
+    });
+    if (typeof closeFn === 'function') closeFn();
+    if (!target) return;
+    // Expand the Needs-you bucket if collapsed so the answer input is in the DOM
+    // and not display:none; paint() rebuilds the board in the expanded layout.
+    if (isBucketCollapsed('needs-you')) {
+        setBucketCollapsed('needs-you', false);
+        paint();
+    }
+    const input = document.querySelector('[data-answer-row="' + String(target.id) + '"]');
+    if (!input) return;
+    try { input.scrollIntoView({ block: 'center' }); } catch (e) { /* jsdom / no layout */ }
+    try { input.focus(); } catch (e) { /* defensive */ }
+}
+
+// The coverage detail modal: the drillable view behind the assignment card's
+// coverage summary. Lists every rubric aspect with its live lifecycle status
+// (shipped / in-flight / proposed / blocked / not-started), color-coded, reading
+// its ID + rubric label. Blocked aspects (a needs_words question is waiting) are
+// grouped and emphasized at the top in amber and jump to that question when
+// tapped; Git / process aspects the agent can't ship are set apart in a manual
+// lane. Reads `_assignment` (aspects + labels) and `_rows`, reusing computeCoverage's
+// per-aspect status logic. Mirrors the assignment editor's chrome and the shared
+// three-way dismiss (close X, backdrop, Escape — CLAUDE.md modal contract).
+function showCoverageDetailModal() {
+    const a = _assignment;
+    if (!a || a.state !== 'filled' ||
+        !Array.isArray(a.aspects) || !a.aspects.length) {
+        return;
+    }
+    const aspects = a.aspects;
+    const labels = (a.aspectLabels && typeof a.aspectLabels === 'object')
+        ? a.aspectLabels : {};
+    const rows = Array.isArray(_rows) ? _rows : [];
+
+    // Group rows by aspect tag, then classify each rubric aspect. Process aspects
+    // short-circuit to 'manual' (no agent-shippable state); everything else
+    // derives its lifecycle from its rows exactly as computeCoverage does.
+    const byAspect = Object.create(null);
+    rows.forEach(function (r) {
+        const tag = r && typeof r.aspect === 'string' ? r.aspect.trim() : '';
+        if (!tag) return;
+        (byAspect[tag] || (byAspect[tag] = [])).push(r);
+    });
+    const items = aspects.map(function (id) {
+        const label = labels[id] || '';
+        const process = isProcessAspect(label);
+        return {
+            id: id,
+            label: label,
+            process: process,
+            status: process ? 'manual' : aspectStatus(byAspect[id] || []),
+        };
+    });
+    const blocked = items.filter(function (it) { return it.status === 'blocked'; });
+    const manual = items.filter(function (it) { return it.process; });
+    const regular = items.filter(function (it) {
+        return !it.process && it.status !== 'blocked';
+    });
+
+    const prior = document.getElementById('coverageDetailModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'coverageDetailModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'coverageDetailModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'coverageDetailModalTitleText');
+
+    const header = document.createElement('div');
+    header.id = 'coverageDetailModalHeader';
+
+    const title = document.createElement('div');
+    title.id = 'coverageDetailModalTitle';
+
+    const eyebrow = document.createElement('span');
+    eyebrow.id = 'coverageDetailModalEyebrow';
+    eyebrow.textContent = 'COVERAGE';
+
+    const titleText = document.createElement('span');
+    titleText.id = 'coverageDetailModalTitleText';
+    const cov = computeCoverage(aspects, rows);
+    titleText.textContent = (cov.total - cov.shipped) + ' outstanding · ' +
+        cov.shipped + ' of ' + cov.total + ' covered';
+
+    title.appendChild(eyebrow);
+    title.appendChild(titleText);
+
+    const closeX = document.createElement('button');
+    closeX.id = 'coverageDetailModalClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close coverage detail');
+    closeX.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'coverageDetailModalBody';
+
+    let closeRef = null;
+    const closeFn = function () { if (closeRef) closeRef(); };
+
+    function appendGroup(labelText, list, modifier) {
+        if (!list.length) return;
+        const group = document.createElement('div');
+        group.className = 'coverageDetailGroup' +
+            (modifier ? ' coverageDetailGroup--' + modifier : '');
+        if (labelText) {
+            const heading = document.createElement('div');
+            heading.className = 'coverageDetailGroupLabel';
+            heading.textContent = labelText;
+            group.appendChild(heading);
+        }
+        list.forEach(function (it) {
+            group.appendChild(buildCoverageDetailRow(it, closeFn));
+        });
+        body.appendChild(group);
+    }
+
+    // Blocked at the top (amber, jump), then the regular lifecycle list, then the
+    // manual Git/process lane set apart at the bottom.
+    appendGroup('Waiting on you', blocked, 'blocked');
+    appendGroup(blocked.length || manual.length ? 'Rubric aspects' : '', regular, null);
+    appendGroup('Manual · Git & process', manual, 'manual');
+
+    const actions = document.createElement('div');
+    actions.id = 'coverageDetailModalActions';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'coverageDetailModalCloseBtn';
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Close';
+    actions.appendChild(closeBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const previouslyFocused = document.activeElement;
+    closeBtn.focus();
+
+    closeRef = wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, closeBtn],
+        onClose: function () {
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
+        },
+    });
 }
 
 // from the `_assignment` cache. Returns null for the absent state (no file /
