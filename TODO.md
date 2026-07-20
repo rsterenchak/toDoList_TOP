@@ -1127,7 +1127,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b551fbc5-6258-4e44-b3dd-913ad5643345 -->
 
-- [ ] **[MEDIUM]** Surface derive run failure instead of settling the pill silently
+- [x] **[MEDIUM]** Surface derive run failure instead of settling the pill silently — Completed: 2026-07-20
   - Type: bug
   - Description: When a derive run fails (a malformed rubric, a routine error, a Worker hiccup), it fails silently — the pill settles Working → Idle exactly as a successful run does, with no proposals and no explanation, because `pollDeriveOnce` (agentView.js:445) only polls `active_runs` for active/not-active and never checks the run's conclusion. Worse, the correlation_id is minted inline in `fireDeriveRun` and not retained, so nothing can look up the run's outcome. And `stopDeriveTracking` only `paint()`s from `_rows` with no queue refresh, so even a successful run is silent if the realtime push lagged. Fix: stash the derive run's correlation_id, and on genuine completion fetch the run's conclusion — surface a failure toast when it failed (reusing the `FAILED_CONCLUSIONS` / `pollRunStatus` machinery the ship flow already uses) and refresh the queue so proposals appear reliably.
   - Behavior:
