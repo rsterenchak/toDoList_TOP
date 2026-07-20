@@ -992,7 +992,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e5dcfa7e-3dd2-4b2a-969e-ad8a87e45966 -->
 
-- [ ] **[MEDIUM]** Show derive progress in the status pill while a Draft run is in flight
+- [x] **[MEDIUM]** Show derive progress in the status pill while a Draft run is in flight — Completed: 2026-07-19
   - Type: feature
   - Description: `fireDeriveRun` (agentView.js:2554) currently flips the Draft button to "Drafting…" for 700ms, so there's no durable signal that the derive run is working — and the run takes minutes. Drive the header status pill to Working for the actual run duration, mirroring the triage sweep tracker (`startSweepTracking`/`pollSweepOnce`/`stopSweepTracking`, agentView.js:273/310/293), and tie the Draft button's disabled/"Drafting…" state to the run rather than a fixed timer. The Worker's `handleActiveRuns` already has the `'derive'` workflow selector deployed, so the poller can probe `claude-derive.yml` runs — no prerequisite remaining.
   - Behavior:
