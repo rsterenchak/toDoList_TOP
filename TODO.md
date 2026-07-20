@@ -1126,3 +1126,23 @@
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b551fbc5-6258-4e44-b3dd-913ad5643345 -->
+
+- [ ] **[MEDIUM]** Surface derive run failure instead of settling the pill silently
+  - Type: bug
+  - Description: When a derive run fails (a malformed rubric, a routine error, a Worker hiccup), it fails silently — the pill settles Working → Idle exactly as a successful run does, with no proposals and no explanation, because `pollDeriveOnce` (agentView.js:445) only polls `active_runs` for active/not-active and never checks the run's conclusion. Worse, the correlation_id is minted inline in `fireDeriveRun` and not retained, so nothing can look up the run's outcome. And `stopDeriveTracking` only `paint()`s from `_rows` with no queue refresh, so even a successful run is silent if the realtime push lagged. Fix: stash the derive run's correlation_id, and on genuine completion fetch the run's conclusion — surface a failure toast when it failed (reusing the `FAILED_CONCLUSIONS` / `pollRunStatus` machinery the ship flow already uses) and refresh the queue so proposals appear reliably.
+  - Behavior:
+    1. On dispatch, capture the derive run's correlation_id.
+    2. When the tracked derive run completes (was seen running, then reports not-active), fetch its conclusion by that correlation_id.
+    3. If the conclusion is a failure, show an error toast ("Derive run failed — check the run.") — optionally with the run link.
+    4. On completion (success or fail), refresh the queue so newly written proposals appear even if realtime missed them.
+    5. A successful run with proposals continues to show them (now reliably via the refresh); the pill still settles to Idle.
+  - Implementation notes:
+    - `fireDeriveRun` (agentView.js:3387): replace the inline `mintEntryId()` at the `dispatchDerive` call (agentView.js:3404) with an id captured into a module var (e.g. `_deriveCorrelationId`) and passed to `dispatchDerive`. Clear it on dispatch failure.
+    - `pollDeriveOnce` (agentView.js:445): in the genuine-completion branch only (`_deriveSeenActive` true and `active === false`, which calls `stopDeriveTracking`), after stopping, fetch the run's conclusion via `pollRunStatus` (inject.js:746) keyed by `_deriveCorrelationId`; if the conclusion is in `FAILED_CONCLUSIONS` (agentView.js:82), `showInjectToast('Derive run failed — check the run.', 'error')`. Do NOT fetch on the grace-elapsed (never-registered) or hard-cap branches — there's no genuine run outcome to report there.
+    - Refresh the queue on completion — `refreshAgentQueue(getSelectedProjectName())` — so proposals land even if the realtime push was missed (currently `stopDeriveTracking` only `paint()`s from `_rows`).
+    - Optional, subtle: a success toast ("Proposals updated" / "Derive finished — no new proposals" when the row count is unchanged) so a successful no-op isn't silent either.
+    - Reuse the existing toast and status-fetch patterns; no new deps.
+  - Out of scope: automatically retrying a failed derive; surfacing the full failure summary inline on the card (a toast plus the run link is enough); and any change to the derive routine or its workflow.
+  - File: `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0c008fc3-0eb1-4f4e-a41e-aafafec96cc7 -->
