@@ -8,6 +8,7 @@ import {
     fetchRunResult,
     fetchActiveRuns,
     readTodoMdFromWorker,
+    readAssignmentFromWorker,
     findTargetById,
     showInjectToast,
     isInjectConfigured,
@@ -103,6 +104,15 @@ const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
 let _rows = [];
 let _loadedProjectName = null;
 let _channel = null;
+// The active project's assignment-context state — the classified result of
+// reading `assignment.md` (the sibling of the routed repo's TODO.md). Shaped
+// `{ state: 'absent' | 'unfilled' | 'filled', ... }` (filled also carries the
+// summary title + word/section counts), or null before the first read resolves.
+// Module-level (mirroring _rows) so a realtime-push repaint renders the card
+// from cache — paint() must NOT re-fetch. `_assignmentProject` records which
+// project the cache belongs to so mount/project-switch fetch exactly once.
+let _assignment = null;
+let _assignmentProject = null;
 // Active dispatch-status pollers, keyed by agent_queue row id → interval handle.
 // Module-level so a poller survives re-renders (a realtime push repaints the
 // board without tearing down an in-flight poll) and so paint() can re-arm one
@@ -1616,6 +1626,77 @@ function resolveReadTarget() {
     return targetId ? findTargetById(targetId) : null;
 }
 
+// Return the raw text under the first top-level `## Requirements` header, up to
+// the next `## ` header or EOF, or null when there's no such header. Level-3+
+// sub-headers (`### …`) inside the section are kept (the `^## ` boundary only
+// matches level-2 headers). Used to classify assignment.md content.
+function extractRequirementsSection(content) {
+    const lines = content.split('\n');
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (/^##\s+requirements\s*$/i.test(lines[i].trim())) { start = i + 1; break; }
+    }
+    if (start === -1) return null;
+    const out = [];
+    for (let i = start; i < lines.length; i++) {
+        if (/^##\s+/.test(lines[i])) break;
+        out.push(lines[i]);
+    }
+    return out.join('\n');
+}
+
+// Classify assignment.md content into the card's three states:
+//   'absent'   — no file / empty content: render no card.
+//   'unfilled' — no `## Requirements` header, or the section holds only HTML
+//                comments / whitespace (the seeded hint): render the invite.
+//   'filled'   — `## Requirements` has real content: render the summary.
+function classifyAssignment(content) {
+    if (typeof content !== 'string' || !content.trim()) return 'absent';
+    const req = extractRequirementsSection(content);
+    if (req === null) return 'unfilled';
+    const stripped = req.replace(/<!--[\s\S]*?-->/g, '').trim();
+    return stripped ? 'filled' : 'unfilled';
+}
+
+// Build the assignment descriptor the card renders from: `{ state }` for absent
+// / unfilled, and for filled the summary — the first non-comment requirement
+// line as the title, plus a word count over the comment-stripped document and a
+// section count of its `## ` headers.
+function describeAssignment(content) {
+    const state = classifyAssignment(content);
+    if (state !== 'filled') return { state: state };
+    const req = extractRequirementsSection(content) || '';
+    const firstLine = req.replace(/<!--[\s\S]*?-->/g, '')
+        .split('\n').map(function (l) { return l.trim(); })
+        .find(function (l) { return l.length > 0; }) || 'Assignment';
+    const cleaned = content.replace(/<!--[\s\S]*?-->/g, '');
+    const words = (cleaned.match(/\S+/g) || []).length;
+    const sections = cleaned.split('\n').filter(function (l) {
+        return /^##\s+/.test(l);
+    }).length;
+    return { state: 'filled', title: firstLine, words: words, sections: sections };
+}
+
+// Fetch the active project's assignment.md once and repaint the board with the
+// classified result. Records `_assignmentProject` so mount + project switch
+// don't double-fetch (see subscribeAgentView / renderAgentView). A no-target
+// project resolves synchronously to absent (no card) without a Worker call.
+function refreshAssignment(target) {
+    const projectName = getSelectedProjectName();
+    _assignmentProject = projectName;
+    if (!target) {
+        _assignment = { state: 'absent' };
+        return;
+    }
+    readAssignmentFromWorker(target).then(function (res) {
+        // Guard against a project switch mid-fetch: only the still-selected
+        // project's read may populate the cache and repaint.
+        if (getSelectedProjectName() !== projectName) return;
+        _assignment = describeAssignment(res && res.ok ? res.content : null);
+        paint();
+    });
+}
+
 // The entry's checkbox state within a TODO.md body, keyed off its id marker:
 // 'checked' when the task line is `- [x]`, 'unchecked' when `- [ ]`, or null
 // when the marker isn't present. Mirrors the block walk extractEntryBlock (and
@@ -2226,6 +2307,78 @@ function buildLinkOffIcon() {
     return svg;
 }
 
+// A file-text glyph for the assignment card. DOM-built like the other glyphs
+// (no new asset, no icon library) and theme-correct via currentColor.
+function buildFileTextIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '1.6');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    [
+        ['path', { d: 'M14 3H7a2 2 0 0 0 -2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2V8z' }],
+        ['path', { d: 'M14 3v5h5' }],
+        ['line', { x1: '9', y1: '13', x2: '15', y2: '13' }],
+        ['line', { x1: '9', y1: '17', x2: '13', y2: '17' }],
+    ].forEach(function (spec) {
+        const el = document.createElementNS(ns, spec[0]);
+        Object.keys(spec[1]).forEach(function (k) { el.setAttribute(k, spec[1][k]); });
+        svg.appendChild(el);
+    });
+    return svg;
+}
+
+// The assignment-context card mounted at the top of the AGENT board, rendered
+// from the `_assignment` cache. Display-only in this slice — no click handlers,
+// no tap-to-edit. Returns null for the absent state (no file / empty), so the
+// caller appends nothing; the unfilled state renders an amber "add assignment
+// context" invite, and the filled state renders a one-line summary with word +
+// section counts.
+function buildAssignmentCard() {
+    const a = _assignment;
+    if (!a || a.state === 'absent') return null;
+
+    const card = document.createElement('div');
+    card.className = 'agentAssignmentCard agentAssignmentCard--' + a.state;
+
+    const glyph = document.createElement('span');
+    glyph.className = 'agentAssignmentGlyph';
+    glyph.setAttribute('aria-hidden', 'true');
+    glyph.appendChild(buildFileTextIcon());
+    card.appendChild(glyph);
+
+    const body = document.createElement('div');
+    body.className = 'agentAssignmentBody';
+
+    const eyebrow = document.createElement('div');
+    eyebrow.className = 'agentAssignmentEyebrow';
+    eyebrow.textContent = 'ASSIGNMENT';
+    body.appendChild(eyebrow);
+
+    const title = document.createElement('div');
+    title.className = 'agentAssignmentTitle';
+    title.textContent = a.state === 'filled'
+        ? a.title
+        : 'No spec — add assignment context';
+    body.appendChild(title);
+
+    const meta = document.createElement('div');
+    meta.className = 'agentAssignmentMeta';
+    meta.textContent = a.state === 'filled'
+        ? a.words + ' words · ' + a.sections + ' sections'
+        : 'Tap to add';
+    body.appendChild(meta);
+
+    card.appendChild(body);
+    return card;
+}
+
 // Header count segments derived from the loaded queue rows. flagged = every
 // queue row for the project; running = rows in an in-flight workflow state;
 // shippedToday = shipped rows whose `updated_at` falls on today's local date.
@@ -2615,6 +2768,11 @@ function paint() {
     header.appendChild(controls);
     view.appendChild(header);
 
+    // Assignment-context card, mounted directly under the header and rendered
+    // from the `_assignment` cache (never re-fetched here). Absent → no card.
+    const assignmentCard = buildAssignmentCard();
+    if (assignmentCard) view.appendChild(assignmentCard);
+
     // Counts subline: "N flagged · N running · N shipped today" (mono). All three
     // segments show even at 0. Recomputed from _rows each paint(), so realtime
     // pushes keep it live.
@@ -2729,6 +2887,10 @@ export function renderAgentView() {
     const projectName = getSelectedProjectName();
     if (projectName !== _loadedProjectName) {
         _rows = [];
+        // Reset the assignment cache alongside _rows and re-read it for the new
+        // project (fetches once; a no-target project resolves to absent).
+        _assignment = null;
+        refreshAssignment(resolveReadTarget());
         // Project switch: settle any dispatched/running rows against main once
         // the new project's queue loads (a run may have shipped while away).
         refreshAgentQueue(projectName, { settle: true });
@@ -2757,6 +2919,11 @@ export function subscribeAgentView() {
     // Mount: load the queue and settle any dispatched/running rows that already
     // shipped on main while the tab was closed (resume-poll the rest via paint).
     refreshAgentQueue(getSelectedProjectName(), { settle: true });
+    // Read the assignment card once for this project unless renderAgentView's
+    // project-switch path already fetched it (guarded so we don't double-read).
+    if (_assignmentProject !== getSelectedProjectName()) {
+        refreshAssignment(resolveReadTarget());
+    }
     // Seed the status pill from the real triage-run state: a one-shot check so a
     // sweep already running (e.g. started on another device) shows Working here.
     seedSweepState();

@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -223,6 +223,58 @@ describe('dispatchTriage — worker dispatch_triage payload', () => {
         const res = await dispatchTriage('proj-2', 'corr-10');
         expect(res.ok).toBe(false);
         expect(res.reason).toBe('Server error 500');
+    });
+});
+
+// readAssignmentFromWorker reads the `assignment.md` sibling of the routed
+// repo's TODO.md through the Worker's `{ read: true, repo, filePath }` handler.
+// The focus here is the derived path: the directory portion of `file_path` with
+// `assignment.md` appended, so a repo-root TODO.md reads `assignment.md` and a
+// nested one reads `<dir>/assignment.md`.
+describe('readAssignmentFromWorker — sibling path derivation', () => {
+    function lastReadBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).read; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('reads assignment.md at the repo root when TODO.md is at the root', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: '# Assignment', sha: 'abc' }),
+        }));
+        const res = await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'TODO.md' });
+        const body = lastReadBody();
+        expect(body).toBeTruthy();
+        expect(body.repo).toBe('owner/repo');
+        expect(body.filePath).toBe('assignment.md');
+        expect(res).toEqual({ ok: true, content: '# Assignment', sha: 'abc' });
+    });
+
+    it('reads the assignment.md sibling in the same directory as a nested TODO.md', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: 'x', sha: 's' }),
+        }));
+        await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'docs/plans/TODO.md' });
+        const body = lastReadBody();
+        expect(body.filePath).toBe('docs/plans/assignment.md');
+    });
+
+    it('returns ok:false without a Worker call when no target is passed', async () => {
+        const res = await readAssignmentFromWorker(null);
+        expect(res.ok).toBe(false);
+        expect(lastReadBody()).toBeNull();
+    });
+
+    it('returns ok:false when the Worker response carries no content', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ sha: 's' }),
+        }));
+        const res = await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'TODO.md' });
+        expect(res.ok).toBe(false);
     });
 });
 
