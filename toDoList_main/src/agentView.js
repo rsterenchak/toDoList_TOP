@@ -2781,14 +2781,24 @@ function isProcessAspect(label) {
 // Build one row of the coverage detail modal: a status dot, the aspect ID, its
 // rubric label, and a status word. Blocked aspects (a needs_words question is
 // waiting) render as a jump button that closes the modal and scrolls that
-// question into view; every other status renders as a static row.
+// question into view. Shipped aspects render as a tap-to-expand toggle that
+// reveals a commit-helper lane (copy-ready commit message + file manifest for
+// the GitHub → GitLab transfer). Every other status renders as a static row.
 function buildCoverageDetailRow(item, closeFn) {
     const isBlocked = item.status === 'blocked';
-    const row = document.createElement(isBlocked ? 'button' : 'div');
+    // Shipped, non-process aspects expand to a commit helper derived from their
+    // shipped rows; nothing to commit for any other status, so they stay static.
+    const shippedRows = (!item.process && item.status === 'shipped' &&
+        Array.isArray(item.rows))
+        ? item.rows.filter(function (r) { return r && r.state === 'shipped'; })
+        : [];
+    const isExpandable = shippedRows.length > 0;
+    const interactive = isBlocked || isExpandable;
+    const row = document.createElement(interactive ? 'button' : 'div');
     row.className = 'coverageDetailRow coverageDetailRow--' +
         (item.process ? 'manual' : item.status);
+    if (interactive) row.type = 'button';
     if (isBlocked) {
-        row.type = 'button';
         row.classList.add('coverageDetailRow--jump');
         row.addEventListener('click', function () {
             jumpToBlockedAspect(item.id, closeFn);
@@ -2825,7 +2835,108 @@ function buildCoverageDetailRow(item, closeFn) {
         : (COVERAGE_STATUS_LABEL[item.status] || item.status);
     row.appendChild(status);
 
-    return row;
+    if (!isExpandable) return row;
+
+    // Tap-to-expand: chevron + a commit-helper panel toggled below the row.
+    row.classList.add('coverageDetailRow--expandable');
+    row.setAttribute('aria-expanded', 'false');
+    const chevron = document.createElement('span');
+    chevron.className = 'coverageDetailChevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.appendChild(buildChevronRightIcon());
+    row.appendChild(chevron);
+
+    const wrap = document.createElement('div');
+    wrap.className = 'coverageDetailItem';
+    wrap.appendChild(row);
+    const panel = buildCommitHelperPanel(item, shippedRows);
+    wrap.appendChild(panel);
+
+    row.addEventListener('click', function () {
+        const open = wrap.classList.toggle('is-expanded');
+        row.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    return wrap;
+}
+
+// Build the commit-helper lane revealed when a shipped aspect is expanded: a
+// copy-ready commit message (the aspect's shipped-row title + the aspect ID)
+// and the file manifest (the deduped union of `file_paths` across the aspect's
+// shipped rows — which files to copy into the GitLab clone). Derived entirely
+// from the shipped rows, so no storage and no backend.
+function buildCommitHelperPanel(item, shippedRows) {
+    const panel = document.createElement('div');
+    panel.className = 'coverageCommitLane';
+
+    const first = shippedRows[0];
+    const title = (first && first.context && first.context.title) ||
+        item.label || item.id;
+    const message = title + ' (' + item.id + ')';
+
+    const msgRow = document.createElement('div');
+    msgRow.className = 'coverageCommitMsgRow';
+
+    const msg = document.createElement('span');
+    msg.className = 'coverageCommitMsg';
+    msg.textContent = message;
+    msgRow.appendChild(msg);
+
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'coverageCommitCopy';
+    copyBtn.textContent = 'Copy';
+    copyBtn.addEventListener('click', function () {
+        let copied;
+        try {
+            copied = navigator.clipboard.writeText(message);
+        } catch (e) {
+            copied = Promise.reject(e);
+        }
+        Promise.resolve(copied).then(function () {
+            showInjectToast('Commit message copied.');
+        }, function () {
+            showInjectToast('Couldn’t copy the commit message — try again.', 'error');
+        });
+    });
+    msgRow.appendChild(copyBtn);
+    panel.appendChild(msgRow);
+
+    // File manifest: deduped union of file_paths across the shipped rows.
+    const files = [];
+    const seen = Object.create(null);
+    shippedRows.forEach(function (r) {
+        const paths = (r && Array.isArray(r.file_paths)) ? r.file_paths : [];
+        paths.forEach(function (p) {
+            const path = typeof p === 'string' ? p.trim() : '';
+            if (path && !seen[path]) { seen[path] = true; files.push(path); }
+        });
+    });
+
+    if (files.length) {
+        const manifestLabel = document.createElement('div');
+        manifestLabel.className = 'coverageCommitManifestLabel';
+        manifestLabel.textContent = files.length === 1
+            ? '1 file' : files.length + ' files';
+        panel.appendChild(manifestLabel);
+
+        const list = document.createElement('ul');
+        list.className = 'coverageCommitManifest';
+        files.forEach(function (p) {
+            const li = document.createElement('li');
+            li.className = 'coverageCommitManifestItem';
+            li.textContent = p;
+            list.appendChild(li);
+        });
+        panel.appendChild(list);
+    } else {
+        const empty = document.createElement('div');
+        empty.className = 'coverageCommitManifestEmpty';
+        empty.textContent = 'No files recorded for this aspect.';
+        panel.appendChild(empty);
+    }
+
+    return panel;
 }
 
 // Jump from a blocked aspect in the coverage detail modal to its waiting
@@ -2890,6 +3001,7 @@ function showCoverageDetailModal() {
             id: id,
             label: label,
             process: process,
+            rows: byAspect[id] || [],
             status: process ? 'manual' : aspectStatus(byAspect[id] || []),
         };
     });

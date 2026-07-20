@@ -263,6 +263,108 @@ describe('AGENT coverage detail modal', () => {
     });
 });
 
+describe('AGENT coverage detail modal — shipped commit helper', () => {
+    it('makes a shipped aspect row a tap-to-expand toggle with a chevron', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add a menu-driven loop' } }];
+        await loadBoard();
+        openDetail();
+        const shipped = document.querySelector('.coverageDetailRow--shipped');
+        expect(shipped).toBeTruthy();
+        expect(shipped.tagName).toBe('BUTTON');
+        expect(shipped.classList.contains('coverageDetailRow--expandable')).toBe(true);
+        expect(shipped.getAttribute('aria-expanded')).toBe('false');
+        expect(shipped.querySelector('.coverageDetailChevron')).toBeTruthy();
+    });
+
+    it('does not expand non-shipped aspects (proposed / not-started / manual)', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'proposed', aspect: 'A1', context: { title: 'Add' } }];
+        await loadBoard();
+        openDetail();
+        expect(document.querySelector('.coverageDetailRow--expandable')).toBeNull();
+        expect(document.querySelector('.coverageCommitLane')).toBeNull();
+    });
+
+    it('toggles the commit-helper lane open and closed on tap', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add a menu-driven loop' } }];
+        await loadBoard();
+        openDetail();
+        const shipped = document.querySelector('.coverageDetailRow--shipped');
+        const item = shipped.closest('.coverageDetailItem');
+        expect(item).toBeTruthy();
+        expect(item.classList.contains('is-expanded')).toBe(false);
+        shipped.click();
+        expect(item.classList.contains('is-expanded')).toBe(true);
+        expect(shipped.getAttribute('aria-expanded')).toBe('true');
+        shipped.click();
+        expect(item.classList.contains('is-expanded')).toBe(false);
+        expect(shipped.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('shows a commit message of "<title> (<aspect id>)"', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add a menu-driven loop' } }];
+        await loadBoard();
+        openDetail();
+        const msg = document.querySelector('.coverageCommitMsg');
+        expect(msg).toBeTruthy();
+        expect(msg.textContent).toBe('Add a menu-driven loop (A1)');
+    });
+
+    it('falls back to the aspect label when a shipped row has no title', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: {} }];
+        await loadBoard();
+        openDetail();
+        const msg = document.querySelector('.coverageCommitMsg');
+        expect(msg.textContent).toBe('Menu-driven interface (A1)');
+    });
+
+    it('copies the commit message to the clipboard on Copy', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        const orig = navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        try {
+            mountRoutedProject();
+            queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add a menu-driven loop' } }];
+            await loadBoard();
+            openDetail();
+            document.querySelector('.coverageDetailRow--shipped').click();
+            document.querySelector('.coverageCommitCopy').click();
+            expect(writeText).toHaveBeenCalledWith('Add a menu-driven loop (A1)');
+        } finally {
+            Object.defineProperty(navigator, 'clipboard', { value: orig, configurable: true });
+        }
+    });
+
+    it('renders the deduped union of file_paths across the aspect\'s shipped rows', async () => {
+        mountRoutedProject();
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' }, file_paths: ['src/a.js', 'src/b.js'] },
+            { id: '2', state: 'shipped', aspect: 'A1', context: { title: 'More' }, file_paths: ['src/b.js', 'src/c.js'] },
+        ];
+        await loadBoard();
+        openDetail();
+        document.querySelector('.coverageDetailRow--shipped').click();
+        const files = Array.from(document.querySelectorAll('.coverageCommitManifestItem'))
+            .map((el) => el.textContent);
+        expect(files).toEqual(['src/a.js', 'src/b.js', 'src/c.js']);
+        expect(document.querySelector('.coverageCommitManifestLabel').textContent).toBe('3 files');
+    });
+
+    it('shows an empty-manifest note when no file_paths are recorded', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } }];
+        await loadBoard();
+        openDetail();
+        document.querySelector('.coverageDetailRow--shipped').click();
+        expect(document.querySelector('.coverageCommitManifest')).toBeNull();
+        expect(document.querySelector('.coverageCommitManifestEmpty')).toBeTruthy();
+    });
+});
+
 describe('AGENT coverage detail modal — dismissal', () => {
     it('closes on the Close button', async () => {
         mountRoutedProject();
