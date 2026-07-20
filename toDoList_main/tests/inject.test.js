@@ -162,6 +162,21 @@ describe('onboardRepo — worker onboard payload', () => {
         expect(lastOnboardBody().shape).toBe('auto');
     });
 
+    it('forwards purpose "assignment" when selected', async () => {
+        await onboardRepo('rsterenchak/new-repo', 'build', 'assignment');
+        expect(lastOnboardBody().purpose).toBe('assignment');
+    });
+
+    it('defaults purpose to "personal" when omitted', async () => {
+        await onboardRepo('rsterenchak/new-repo', 'build');
+        expect(lastOnboardBody().purpose).toBe('personal');
+    });
+
+    it('normalizes any non-"assignment" purpose to "personal"', async () => {
+        await onboardRepo('rsterenchak/new-repo', 'build', 'bogus');
+        expect(lastOnboardBody().purpose).toBe('personal');
+    });
+
     it('returns { ok: false, reason } via describeError on a transport failure', async () => {
         fetchSpy.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
         const res = await onboardRepo('rsterenchak/new-repo', 'auto');
