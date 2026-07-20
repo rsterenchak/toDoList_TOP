@@ -67,21 +67,27 @@ async function flush(n = 8) {
     for (let i = 0; i < n; i++) await tick();
 }
 
-// A filled spec whose `## Rubric` section carries four labelled aspects: A1/A2/B1
-// (agent-shippable) plus G1 (a Git/process aspect the agent can't ship).
+// A filled spec whose `## Requirements` section carries the four aspect labels in
+// the real `**A1** — <what to build>` form, and whose `## Rubric` section carries
+// the graded aspect IDs in the real `**A1 — Competent:** <bar>` form. Labels are
+// sourced from Requirements (the short task phrase); the aspect-ID list stays on
+// the Rubric. A1/A2/B1 are agent-shippable; G1 is a Git/process aspect.
 const RUBRIC = {
     ok: true,
     content: [
         '# Assignment',
         '',
         '## Requirements',
-        '- Users can add tasks',
+        '- **A1** — Menu-driven interface',
+        '- **A2** — Task deletion works',
+        '- **B1** — State persists across reload',
+        '- **G1** — Clean commit history',
         '',
         '## Rubric',
-        '- A1 — Menu-driven interface',
-        '- A2 — Task deletion works',
-        '- B1 — State persists across reload',
-        '- G1 — Clean commit history',
+        '- **A1 — Competent:** The program presents a menu-driven interface.',
+        '- **A2 — Competent:** Tasks can be removed from the list.',
+        '- **B1 — Competent:** State survives a full reload.',
+        '- **G1 — Competent:** Commit history is clean and well-scoped.',
     ].join('\n'),
 };
 
@@ -162,6 +168,22 @@ describe('AGENT coverage detail modal', () => {
             .map((el) => el.textContent);
         expect(labels).toContain('Menu-driven interface');
         expect(labels).toContain('State persists across reload');
+    });
+
+    it('sources labels from the requirement text, not the rubric bar, with no markdown leak', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } }];
+        await loadBoard();
+        openDetail();
+        const labels = Array.from(document.querySelectorAll('.coverageDetailLabel'))
+            .map((el) => el.textContent);
+        // The requirement phrase, not the rubric's "Competent:** …" grading bar.
+        expect(labels).toContain('Menu-driven interface');
+        expect(labels).toContain('Clean commit history');
+        labels.forEach((label) => {
+            expect(label).not.toMatch(/Competent/);
+            expect(label).not.toContain('*');
+        });
     });
 
     it('color-codes each aspect by its live lifecycle status', async () => {

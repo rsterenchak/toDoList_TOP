@@ -1866,20 +1866,24 @@ function parseAspects(content) {
 }
 
 // Parse a `{ id: label }` map of each rubric aspect's human-readable label — the
-// rubric row text after its `A1`/`B2` tag, with any leading separator (`:`, `-`,
-// `—`, `.`, `)`, `]`) stripped. Additive to parseAspects (which returns the IDs
-// alone): the coverage detail modal reads this so a row can read "A1 — Menu-driven
-// interface" rather than a bare ID. Returns an empty map when there's no rubric
-// section, and omits IDs whose row carries no trailing text.
+// `## Requirements` row text after its `A1`/`B2` tag, with any leading separator
+// (`:`, `-`, `—`, `.`, `)`, `]`) and markdown emphasis (`*`, backtick) stripped.
+// The requirement rows (`**A1** — <what to build>`) carry the short task phrase,
+// whereas the rubric rows (`**A1 — Competent:** <bar>`) hold grading criteria — so
+// the label sources from requirements while parseAspects keeps the canonical
+// aspect-ID list on the rubric. Additive to parseAspects: the coverage detail
+// modal reads this so a row can read "A1 — Menu-driven interface" rather than a
+// bare ID. Returns an empty map when there's no requirements section, and omits
+// IDs whose row carries no trailing text.
 function parseAspectLabels(content) {
     const labels = Object.create(null);
-    const rubric = extractRubricSection(content);
-    if (rubric === null) return labels;
-    rubric.split('\n').forEach(function (line) {
+    const requirements = extractRequirementsSection(content);
+    if (requirements === null) return labels;
+    requirements.split('\n').forEach(function (line) {
         const m = line.match(/\b([A-Z]{1,2}\d+)\b/);
         if (!m || labels[m[1]]) return;
         const after = line.slice(m.index + m[1].length)
-            .replace(/^[\s:.)\]\-–—]+/, '')
+            .replace(/^[\s:.)\]\-–—*`]+/, '')
             .trim();
         if (after) labels[m[1]] = after;
     });
