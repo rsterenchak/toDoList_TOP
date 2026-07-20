@@ -1011,7 +1011,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4094cd3f-7c95-4163-99f7-0d0802037a37 -->
 
-- [ ] **[MEDIUM]** Add rubric coverage summary to the filled assignment card
+- [x] **[MEDIUM]** Add rubric coverage summary to the filled assignment card — Completed: 2026-07-19
   - Type: feature
   - Description: Coverage v1, part 1 — the at-a-glance status. Parse the aspect IDs from `assignment.md`'s `## Rubric` section, cross-reference against the project's `agent_queue` rows (`_rows`) to compute each aspect's status (shipped / in-flight / proposed / blocked / not-started), and render a coverage summary on the filled card in place of the current "N words · N sections" line: a gap-framed headline (lead with how many aspects are outstanding, since any uncovered criterion returns a WGU PA) and a segmented progress bar (shipped / in-flight / outstanding). Degrades to the words/sections line when no rubric was pasted. The tap-to-expand per-aspect detail with the blocked-jump is the next entry.
   - Behavior:
