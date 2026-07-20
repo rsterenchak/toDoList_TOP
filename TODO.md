@@ -1010,3 +1010,23 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4094cd3f-7c95-4163-99f7-0d0802037a37 -->
+
+- [ ] **[MEDIUM]** Add rubric coverage summary to the filled assignment card
+  - Type: feature
+  - Description: Coverage v1, part 1 — the at-a-glance status. Parse the aspect IDs from `assignment.md`'s `## Rubric` section, cross-reference against the project's `agent_queue` rows (`_rows`) to compute each aspect's status (shipped / in-flight / proposed / blocked / not-started), and render a coverage summary on the filled card in place of the current "N words · N sections" line: a gap-framed headline (lead with how many aspects are outstanding, since any uncovered criterion returns a WGU PA) and a segmented progress bar (shipped / in-flight / outstanding). Degrades to the words/sections line when no rubric was pasted. The tap-to-expand per-aspect detail with the blocked-jump is the next entry.
+  - Behavior:
+    1. On the filled card, replace "N words · N sections" with a coverage summary: a headline leading with the outstanding count (e.g. "5 of 8 covered · 3 outstanding") and a segmented bar showing shipped / in-flight / outstanding proportions.
+    2. An aspect's status comes from the rows carrying its aspect tag: shipped if any row shipped, in-flight if any dispatched/running, blocked if any `needs_words`, proposed if any `proposed`, else not-started. "Covered" = at least one shipped row for the aspect.
+    3. Coverage recomputes on every paint (so it updates live as rows ship or change), while the aspect list is parsed once per `assignment.md` read.
+    4. No rubric section, or no aspect IDs found → fall back to the existing words/sections line, so requirements-only specs still render a card.
+  - Implementation notes:
+    - Parse the aspect list in `describeAssignment` (agentView.js:1847), mirroring `extractRequirementsSection` (agentView.js:1815): extract the `## Rubric` section, pull the leading aspect ID from each row (a pattern like `/\b([A-Z]{1,2}\d+)\b/`, first match per line), dedupe in order, and cache as `_assignment.aspects` (an ordered list). Empty/absent when there's no rubric or no IDs.
+    - Compute per-aspect status in `buildAssignmentCard` (agentView.js:2474, filled branch), NOT in `describeAssignment` — it depends on `_rows`, which changes on realtime pushes independent of the assignment read, and `buildAssignmentCard` runs each paint. Group `_rows` by `row.aspect`; derive each aspect's status by priority shipped > in-flight (dispatched/running) > blocked (needs_words) > proposed > not-started.
+    - Render the summary in place of the meta line at agentView.js:2601 — the gap headline plus the segmented bar. Lead with the outstanding count (aspects not shipped), since the pre-submit question is "what's missing."
+    - Degrade gracefully: when `_assignment.aspects` is empty, render the existing `words · sections` line unchanged.
+    - Known v1 limitation to note, not fix: process/Git aspects (a "make N commits" rubric row) have no `agent_queue` row and can't ship, so they show outstanding permanently — there's no signal you've done them manually yet. The manual "done" tick that resolves this is coverage v2 (the GitLab lane). For v1 they honestly count as outstanding.
+    - `style.css`: the coverage summary and segmented progress-bar styles (shipped = accent, in-flight = a lighter/amber fill, outstanding = muted track), Void tokens. No inline styles.
+  - Out of scope: the tap-to-expand per-aspect detail list and the blocked-aspect jump-to-question (coverage v1 part 2, the next entry); the GitLab submission lane and manual "committed" ticks (v2); a distinct manual lane for process aspects (part 2 / v2); and any change to derive or the rows.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a2485a6f-2036-41fa-a61c-effe26451798 -->
