@@ -1087,7 +1087,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f6b3108d-d60e-45a7-8dff-44612a57382b -->
 
-- [ ] **[MEDIUM]** Add committed-to-GitLab tick to coverage aspects, Supabase-backed
+- [x] **[MEDIUM]** Add committed-to-GitLab tick to coverage aspects, Supabase-backed — Completed: 2026-07-20
   - Type: feature
   - Description: GitLab lane, part 2 — the submission tick, the last piece of the arc. Each shipped aspect's expansion (from part 1) gains a "Committed to GitLab" checkbox, and the manual aspect (C1) gets its own "mark done" tick; both persist to a new `aspect_submissions` Supabase table keyed by project + aspect, so ticking on one device shows ticked on another. The modal header gains a "N committed to GitLab" count — the built-vs-submitted distinction made trackable. C1 stays fully manual (no auto-tick from other aspects).
   - Behavior:
