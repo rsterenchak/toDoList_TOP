@@ -881,7 +881,7 @@
   - Completed:
   <!-- id: 1898b272-b6b7-4db6-bd34-6340fa851476 -->
 
-- [ ] **[MEDIUM]** Add read-only assignment card with absent/unfilled/filled states to the Agent view
+- [x] **[MEDIUM]** Add read-only assignment card with absent/unfilled/filled states to the Agent view — Completed: 2026-07-19
   - Type: feature
   - Description: First slice of the assignment-context feature — read `assignment.md` (the sibling of the routed repo's TODO.md) and render its state as a card at the top of the AGENT view, with no editing or task-derivation yet. The card has three states driven by the read result: absent (no file, or the read fails) renders nothing, unfilled (file present but its `## Requirements` section is empty or only the seeded HTML-comment hint) renders an amber "add assignment context" invite, and filled (`## Requirements` has real content) renders a summary (first requirement line as the title plus word/section counts). This is display-only plumbing — the editor modal, the Draft-tasks button, the derive pass, and rubric coverage all land in later entries.
   - Behavior:

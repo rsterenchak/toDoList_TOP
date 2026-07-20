@@ -4982,6 +4982,71 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   gap: 8px;
 }
 
+/* Assignment-context card at the top of the AGENT board — display-only in this
+   slice. Renders the classified state of the routed repo's assignment.md: an
+   amber "add assignment context" invite (unfilled) or a one-line spec summary
+   with word/section counts (filled). Absent renders no card. Shares the agent
+   card surface, with a file-text glyph rail to its left. */
+.agentAssignmentCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-md, 10px);
+}
+
+.agentAssignmentCard--unfilled {
+  border-color: var(--text-warning);
+}
+
+.agentAssignmentGlyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  margin-top: 1px;
+  color: var(--text-secondary);
+}
+
+.agentAssignmentCard--unfilled .agentAssignmentGlyph {
+  color: var(--text-warning);
+}
+
+.agentAssignmentBody {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.agentAssignmentEyebrow {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.agentAssignmentCard--unfilled .agentAssignmentEyebrow {
+  color: var(--text-warning);
+}
+
+.agentAssignmentTitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.agentAssignmentMeta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
 .agentCard {
   display: flex;
   flex-direction: column;

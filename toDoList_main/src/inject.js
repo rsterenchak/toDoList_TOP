@@ -418,6 +418,38 @@ export async function readTodoMdFromWorker(target) {
     }
 }
 
+// Read the `assignment.md` sibling of the routed repo's TODO.md through the
+// Worker. Mirrors readTodoMdFromWorker's wiring exactly (same `{ read: true,
+// repo, filePath }` shape, same `{ ok, content, sha }` return), differing only
+// in the path: it derives the sibling of `target.file_path` — the directory
+// portion of the registry's TODO.md path with `assignment.md` appended — rather
+// than reusing `target.file_path`, which is why readTodoMdFromWorker can't be
+// reused. Assumes the Worker's read handler serves an arbitrary repo-relative
+// path; until an `assignment.md` exists in a routed repo this returns not-ok,
+// which the AGENT view renders as the absent (no-card) state.
+export async function readAssignmentFromWorker(target) {
+    if (!target || !target.repo || !target.file_path) {
+        return { ok: false, reason: 'No target' };
+    }
+    const fp = target.file_path;
+    const slash = fp.lastIndexOf('/');
+    const dir = slash === -1 ? '' : fp.slice(0, slash + 1);
+    const assignmentPath = dir + 'assignment.md';
+    try {
+        const res = await postToWorker({
+            read: true,
+            repo: target.repo,
+            filePath: assignmentPath,
+        });
+        if (!res || typeof res.content !== 'string') {
+            return { ok: false, reason: 'Empty response' };
+        }
+        return { ok: true, content: res.content, sha: res.sha };
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
 
 // Exact form of the entry-id marker the inject Worker stamps onto each entry.
 // Replicated here (rather than imported from todoMdViewer.js) so the row layer's
