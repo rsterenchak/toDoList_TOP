@@ -1051,7 +1051,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4468bb9a-c928-48c6-b749-3a9198a70fe1 -->
 
-- [ ] **[LOW]** Fix coverage aspect labels showing rubric bar text instead of the requirement
+- [x] **[LOW]** Fix coverage aspect labels showing rubric bar text instead of the requirement — Completed: 2026-07-20
   - Type: bug
   - Description: In the coverage detail modal, every aspect row shows the rubric's Competent-bar text with leftover `**` markdown (e.g. "Competent:** The program prese…") instead of a readable label. `parseAspectLabels` (agentView.js ~1876) sources the label from the `## Rubric` section, whose rows are formatted `**A1 — Competent:** <bar>`, so the text after the ID tag is the grading criteria, not a label — and the leading-separator strip doesn't remove `*`, so the bold markers leak through too. Source the label from `## Requirements` instead — its rows (`**A1** — <what to build>`) carry the short task phrase — and extend the strip to remove markdown emphasis. Keep `parseAspects` (the aspect ID list) on the rubric, since that's the canonical graded-aspect set; only the labels move.
   - Behavior:
