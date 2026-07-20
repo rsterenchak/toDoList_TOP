@@ -936,7 +936,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: af12fac8-de21-4c59-8f55-00aa0b39543a -->
 
-- [ ] **[MEDIUM]** Add Draft-tasks-from-this button to the filled assignment card, dispatching derive
+- [x] **[MEDIUM]** Add Draft-tasks-from-this button to the filled assignment card, dispatching derive — Completed: 2026-07-19
   - Type: feature
   - Description: Third slice of the assignment-context feature — a "Draft tasks from this" button on the filled assignment card that triggers the derive run. Mirrors the header Run button → `dispatchTriage` pattern (`fireTriageSweep`, agentView.js:219), but scoped to the assignment card and dispatching derive instead of triage. Renders on the filled state only. On tap it sends `dispatch_derive` to the Worker, which — once its route and the `.claude/derive.md` routine exist — reads `assignment.md`, enumerates the rubric aspects, and writes candidate tasks plus clarifying questions to `agent_queue`. NOTE: this is the trigger only. The Worker `dispatch_derive` route, the `.claude/derive.md` routine, and the `agent_queue` `source`/`aspect` columns are prerequisites (out-of-band work); the Proposed bucket that renders derive's output is the next PWA entry. Until those exist, the button dispatches cleanly but nothing visible appears.
   - Behavior:
