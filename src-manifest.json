@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-20T07:03:51.244Z",
-  "sha": "aa5dc671b06a9db22cbb286b60ff8a61f5337e50",
+  "generatedAt": "2026-07-20T07:21:56.837Z",
+  "sha": "78bb88d3baf2f8642076f6608cdba1d4f0ba7d03",
   "files": [
     "aboutVersionCue.js",
     "agentView.js",
@@ -131,11 +131,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 3482,
+      "line": 3486,
       "files": [
         {
           "file": "agentView.js",
-          "line": 3482
+          "line": 3486
         }
       ]
     },
@@ -1627,11 +1627,11 @@
       "selector": "#coverageDetailModal",
       "label": "Coverage Detail Modal",
       "file": "agentView.js",
-      "line": 2905,
+      "line": 2909,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2905
+          "line": 2909
         },
         {
           "file": "style.css",
@@ -1643,11 +1643,11 @@
       "selector": "#coverageDetailModalActions",
       "label": "Coverage Detail Modal Actions",
       "file": "agentView.js",
-      "line": 2968,
+      "line": 2972,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2968
+          "line": 2972
         },
         {
           "file": "style.css",
@@ -1659,11 +1659,11 @@
       "selector": "#coverageDetailModalBackdrop",
       "label": "Coverage Detail Modal Backdrop",
       "file": "agentView.js",
-      "line": 2902,
+      "line": 2906,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2902
+          "line": 2906
         },
         {
           "file": "style.css",
@@ -1675,11 +1675,11 @@
       "selector": "#coverageDetailModalBody",
       "label": "Coverage Detail Modal Body",
       "file": "agentView.js",
-      "line": 2939,
+      "line": 2943,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2939
+          "line": 2943
         },
         {
           "file": "style.css",
@@ -1691,11 +1691,11 @@
       "selector": "#coverageDetailModalClose",
       "label": "Coverage Detail Modal Close",
       "file": "agentView.js",
-      "line": 2930,
+      "line": 2934,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2930
+          "line": 2934
         },
         {
           "file": "style.css",
@@ -1707,11 +1707,11 @@
       "selector": "#coverageDetailModalCloseBtn",
       "label": "Coverage Detail Modal Close Btn",
       "file": "agentView.js",
-      "line": 2971,
+      "line": 2975,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2971
+          "line": 2975
         },
         {
           "file": "style.css",
@@ -1723,11 +1723,11 @@
       "selector": "#coverageDetailModalEyebrow",
       "label": "Coverage Detail Modal Eyebrow",
       "file": "agentView.js",
-      "line": 2917,
+      "line": 2921,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2917
+          "line": 2921
         },
         {
           "file": "style.css",
@@ -1739,11 +1739,11 @@
       "selector": "#coverageDetailModalHeader",
       "label": "Coverage Detail Modal Header",
       "file": "agentView.js",
-      "line": 2911,
+      "line": 2915,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2911
+          "line": 2915
         },
         {
           "file": "style.css",
@@ -1755,11 +1755,11 @@
       "selector": "#coverageDetailModalTitle",
       "label": "Coverage Detail Modal Title",
       "file": "agentView.js",
-      "line": 2914,
+      "line": 2918,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2914
+          "line": 2918
         },
         {
           "file": "style.css",
@@ -1771,11 +1771,11 @@
       "selector": "#coverageDetailModalTitleText",
       "label": "Coverage Detail Modal Title Text",
       "file": "agentView.js",
-      "line": 2921,
+      "line": 2925,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2921
+          "line": 2925
         },
         {
           "file": "style.css",
