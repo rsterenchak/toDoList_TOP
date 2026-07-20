@@ -208,6 +208,10 @@ let _derivePoller = null;
 let _deriveSeenActive = false;
 let _deriveGraceDeadline = 0;
 let _deriveHardDeadline = 0;
+// The correlation_id minted for the in-flight derive run, retained so a genuine
+// completion can look up the run's conclusion (success vs. failure) rather than
+// settling the pill silently. Set in fireDeriveRun on dispatch, cleared on stop.
+let _deriveCorrelationId = null;
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -433,6 +437,7 @@ function stopDeriveTracking() {
     const wasActive = _deriveActive;
     _deriveActive = false;
     _deriveSeenActive = false;
+    _deriveCorrelationId = null;
     if (wasActive) paint();
 }
 
@@ -456,12 +461,43 @@ function pollDeriveOnce() {
             return;
         }
         // active === false
-        if (_deriveSeenActive || Date.now() >= _deriveGraceDeadline) {
-            // Either the confirmed run has finished, or the grace window for a
-            // run that never registered has elapsed — settle to Idle.
+        if (_deriveSeenActive) {
+            // A confirmed run has finished — capture its correlation id and
+            // target before settling to Idle, then fetch the run's conclusion so
+            // a silent failure surfaces, and refresh the queue so proposals land
+            // even if the realtime push lagged.
+            const correlationId = _deriveCorrelationId;
+            const target = resolveDispatchTarget();
+            stopDeriveTracking();
+            finishDeriveRun(correlationId, target);
+        } else if (Date.now() >= _deriveGraceDeadline) {
+            // The grace window for a run that never registered has elapsed —
+            // there's no genuine run outcome to report, so settle silently.
             stopDeriveTracking();
         }
     });
+}
+
+// Called once a confirmed derive run reports finished. Fetches the run's
+// conclusion by its correlation id (reusing the ship flow's pollRunStatus /
+// FAILURE_CONCLUSIONS machinery) and raises a failure toast when it failed;
+// then refreshes the queue so newly written proposals appear even if the
+// realtime push was missed. Never throws — a transient status miss just skips
+// the toast, and the queue refresh still runs.
+function finishDeriveRun(correlationId, target) {
+    const refresh = function () { refreshAgentQueue(getSelectedProjectName()); };
+    if (!correlationId) { refresh(); return; }
+    Promise.resolve(pollRunStatus({ correlationId: correlationId, target: target || null }))
+        .then(
+            function (res) {
+                if (res && res.ok !== false && res.status === 'completed'
+                    && FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
+                    showInjectToast('Derive run failed — check the run.', 'error');
+                }
+            },
+            function () {}
+        )
+        .then(refresh);
 }
 
 // Update the header status pill in place to reflect the current Working/Idle
@@ -3401,7 +3437,10 @@ function fireDeriveRun(btn) {
     // claude-derive.yml run to completion (settling to Idle when GitHub reports
     // it done), mirroring fireTriageSweep's dispatch handling.
     startDeriveTracking();
-    Promise.resolve(dispatchDerive(projectId, mintEntryId(), resolveDispatchTarget()))
+    // Retain the run's correlation id so its conclusion can be looked up on
+    // completion. stopDeriveTracking clears it on any failure/teardown.
+    _deriveCorrelationId = mintEntryId();
+    Promise.resolve(dispatchDerive(projectId, _deriveCorrelationId, resolveDispatchTarget()))
         .then(
             function (res) {
                 // If the dispatch itself failed, clear the optimistic Working
@@ -3986,6 +4025,7 @@ export function unsubscribeAgentView() {
     }
     _deriveActive = false;
     _deriveSeenActive = false;
+    _deriveCorrelationId = null;
 }
 
 // ── PERSISTENT AGENT-WORKING WATCH ──
