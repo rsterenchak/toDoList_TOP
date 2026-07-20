@@ -5495,6 +5495,105 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
+/* Shipped aspects expand to a commit-helper lane (copy-ready commit message +
+   file manifest for the GitHub → GitLab transfer). The row is a toggle button;
+   the lane sits below it inside the .coverageDetailItem wrapper. */
+.coverageDetailItem {
+  display: flex;
+  flex-direction: column;
+}
+.coverageDetailRow--expandable { cursor: pointer; }
+.coverageDetailRow--expandable:hover { background: var(--bg-hover); }
+.coverageDetailRow--expandable:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.coverageDetailChevron {
+  flex: 0 0 auto;
+  display: inline-flex;
+  color: var(--text-secondary);
+  transition: transform 0.12s ease;
+}
+.coverageDetailItem.is-expanded .coverageDetailChevron { transform: rotate(90deg); }
+
+.coverageCommitLane {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 2px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+}
+.coverageDetailItem.is-expanded .coverageCommitLane { display: flex; }
+
+.coverageCommitMsgRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.coverageCommitMsg {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  padding: 6px 8px;
+  border-radius: 5px;
+  background: var(--accent-dim);
+  border: 0.5px solid var(--border-dim);
+  word-break: break-word;
+}
+.coverageCommitCopy {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 6px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  min-height: 30px;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.coverageCommitCopy:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+.coverageCommitCopy:focus-visible {
+  outline: none;
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.coverageCommitManifestLabel {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-secondary);
+}
+.coverageCommitManifest {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.coverageCommitManifestItem {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+.coverageCommitManifestEmpty {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
 #coverageDetailModalActions {
   display: flex;
   justify-content: flex-end;

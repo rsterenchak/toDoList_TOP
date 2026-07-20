@@ -1067,7 +1067,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a5743703-c6c3-4539-8a1d-a2442f312aba -->
 
-- [ ] **[MEDIUM]** Add tap-to-expand commit helper to shipped coverage aspects
+- [x] **[MEDIUM]** Add tap-to-expand commit helper to shipped coverage aspects — Completed: 2026-07-20
   - Type: feature
   - Description: GitLab lane, part 1 — the commit helper. In the coverage detail modal, shipped aspects become tap-to-expand, revealing a lane with a copy-ready commit message and the file manifest for that aspect — the two things that make the GitHub → GitLab transfer mechanical. Derived entirely from existing data (the aspect's shipped rows: their titles for the message, their `file_paths` for the manifest), so no storage and no backend. The committed-to-GitLab tick that tracks what you've transferred is part 2 (Supabase-backed) and slots into this same expansion.
   - Behavior:
