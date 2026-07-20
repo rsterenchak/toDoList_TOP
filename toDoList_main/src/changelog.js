@@ -11,13 +11,7 @@ export const changelog = [
             "The Agent view now shows an assignment-context card at the top, summarizing the linked repo's assignment spec or inviting you to add one.",
             "Onboarding a repo now lets you mark it as a Personal project or an Assignment.",
             "The Agent view's assignment card is now tappable, opening an editor to write and save the linked repo's assignment spec.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-17',
-        added: [
-            "The next-refactor card now shows a clean summary or an unreadable note when a scan finds nothing to extract, instead of a misleading \"every suggestion skipped\" message.",
+            "The filled assignment card now has a \"Draft tasks from this\" button that asks the agent to turn the linked spec into candidate tasks.",
         ],
     },
 ];

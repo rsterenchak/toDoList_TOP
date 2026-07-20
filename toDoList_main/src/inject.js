@@ -680,6 +680,33 @@ export async function dispatchTriage(projectId, correlationId, target) {
 }
 
 
+// Dispatch a "derive" run through the same Worker the dispatch and triage flows
+// already use (same URL + Bearer secret). POSTs
+// `{ dispatch_derive: true, project_id, correlation_id, repo, filePath }` so the
+// Worker dispatches the derive routine against the project's linked repo (or its
+// default when `target` is null): it reads assignment.md, enumerates the rubric
+// aspects, and writes candidate tasks plus clarifying questions to agent_queue.
+// Like triage this is a batch, fire-and-forget sweep — results surface via the
+// agent_queue realtime subscription (once the Proposed bucket ships) and there is
+// nothing to poll here. Mirrors dispatchTriage's shape exactly: the Worker payload
+// is spread onto `{ ok: true }` on success; on any failure it returns
+// `{ ok: false, reason }` via describeError, matching dispatchRun's vocabulary.
+export async function dispatchDerive(projectId, correlationId, target) {
+    try {
+        const res = await postToWorker({
+            dispatch_derive: true,
+            project_id: projectId,
+            correlation_id: correlationId,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Poll a dispatched run's status through the same Worker the dispatch and
 // read flows already use (same URL, same Bearer secret). Sends
 // `{ status: true, correlation_id, repo, filePath }` so the Worker matches

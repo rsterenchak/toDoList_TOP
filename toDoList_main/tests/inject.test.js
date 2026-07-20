@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -29,6 +29,13 @@ function lastRewriteBody() {
 function lastTriageBody() {
     const call = fetchSpy.mock.calls.find((c) => {
         try { return JSON.parse(c[1].body).dispatch_triage; } catch (e) { return false; }
+    });
+    return call ? JSON.parse(call[1].body) : null;
+}
+
+function lastDeriveBody() {
+    const call = fetchSpy.mock.calls.find((c) => {
+        try { return JSON.parse(c[1].body).dispatch_derive; } catch (e) { return false; }
     });
     return call ? JSON.parse(call[1].body) : null;
 }
@@ -236,6 +243,57 @@ describe('dispatchTriage — worker dispatch_triage payload', () => {
     it('funnels a transport failure through describeError', async () => {
         fetchSpy.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
         const res = await dispatchTriage('proj-2', 'corr-10');
+        expect(res.ok).toBe(false);
+        expect(res.reason).toBe('Server error 500');
+    });
+});
+
+// dispatchDerive mirrors dispatchTriage exactly but flips the Worker route to
+// `dispatch_derive` (assignment.md → candidate tasks + questions). Same
+// fire-and-forget shape, same repo/filePath routing, same error vocabulary.
+describe('dispatchDerive — worker dispatch_derive payload', () => {
+    it('POSTs { dispatch_derive, project_id, correlation_id } and spreads the payload', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        const res = await dispatchDerive('proj-1', 'corr-9');
+        const body = lastDeriveBody();
+        expect(body).toBeTruthy();
+        expect(body.dispatch_derive).toBe(true);
+        expect(body.project_id).toBe('proj-1');
+        expect(body.correlation_id).toBe('corr-9');
+        expect(res.ok).toBe(true);
+        expect(res.dispatched).toBe(true);
+    });
+
+    it('routes to the passed target repo/filePath so derive runs against the project repo', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        await dispatchDerive('proj-1', 'corr-9', { repo: 'owner/other', file_path: 'docs/TODO.md' });
+        const body = lastDeriveBody();
+        expect(body).toBeTruthy();
+        expect(body.repo).toBe('owner/other');
+        expect(body.filePath).toBe('docs/TODO.md');
+    });
+
+    it('omits repo/filePath when no target is passed so the Worker default applies', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true }),
+        }));
+        await dispatchDerive('proj-1', 'corr-9');
+        const body = lastDeriveBody();
+        expect(body).toBeTruthy();
+        expect(body.repo).toBeUndefined();
+        expect(body.filePath).toBeUndefined();
+    });
+
+    it('funnels a transport failure through describeError', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({ ok: false, status: 500 }));
+        const res = await dispatchDerive('proj-2', 'corr-10');
         expect(res.ok).toBe(false);
         expect(res.reason).toBe('Server error 500');
     });
