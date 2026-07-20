@@ -972,3 +972,22 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d5d7c882-305a-4650-bfe4-e3962925666d -->
+
+- [ ] **[MEDIUM]** Add an Accept action to proposed cards that ships the proposal's draft
+  - Type: feature
+  - Description: Entry 4 renders proposals but the only action is removing them (×). Add an Accept action to each proposed card that promotes the proposal into TODO.md and dispatches a run to build it, reusing the existing drafted-dispatch flow. On Accept, the proposal's `draft` (the full TODO.md entry derive wrote) is injected and a run fires; the row transitions `proposed` → `dispatched`, leaving the Proposed bucket for In progress and following the normal run lifecycle to Shipped, with its aspect tag preserved so it feeds coverage later. Dismiss already works via the existing × remove control — this entry adds only Accept.
+  - Behavior:
+    1. Each proposed card gets an Accept button (tinted-accent, matching the header Run and card Draft buttons). Dismiss stays the existing × (unchanged).
+    2. On Accept — inject the proposal's draft into TODO.md and dispatch a run; the row moves to `dispatched`, so the card leaves Proposed and appears in In progress, then follows the normal lifecycle to Shipped.
+    3. Accept fires one run per proposal — you accept proposals in dependency order (foundation first) as you want each built, matching the build-then-commit workflow.
+    4. The aspect tag is preserved through the transition, so a shipped proposal retains its aspect for coverage.
+  - Implementation notes:
+    - Add an Accept button to the proposed card's secondary in `agentView.js` — a `buildProposedSecondary(row)`, or a `'proposed'` case in `buildSecondary` (~agentView.js:1950s), rendering the Accept button and, optionally, the proposal's `context.description` as a preview line so the choice to accept is informed.
+    - On Accept: call `dispatchDraft(row, row.draft, row.entry_id)` (agentView.js:1577). `row.draft` is the full TODO.md entry derive wrote (present via `select('*')`); `row.entry_id` is null on a fresh proposal, so `shipEntryForTodo` mints a fresh id.
+    - No change to `dispatchDraft` or `shipEntryForTodo` is needed: `shipEntryForTodo` (shipEntry.js:42) guards its todo-stamp with `if (todoId != null)` (shipEntry.js:65), so a null `todo_id` injects and dispatches without stamping a source todo. The row PATCH there only touches `state`/`entry_id`/`correlation_id`/`run_id`, leaving `aspect` intact.
+    - Guard against double-accept by disabling the button on click (the × remove's `is-pending` pattern).
+    - `style.css`: an Accept button style (tinted-accent). No inline styles.
+  - Out of scope: a dedicated Dismiss action (the existing × already removes a proposal); an accept-to-backlog-without-running mode (Accept dispatches a run, consistent with the drafted flow); the pill "Working" signal (entry 3b); and rubric coverage (a later entry).
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e5dcfa7e-3dd2-4b2a-969e-ad8a87e45966 -->
