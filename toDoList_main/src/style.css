@@ -5234,6 +5234,41 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   color: var(--text-secondary);
 }
 
+/* "Draft tasks from this" footer button on the filled assignment card. Reuses
+   the header Run button's tinted-accent treatment (accent text, accent-dim fill,
+   accent border, 10px radius) but as a full-width card footer rather than the
+   inline header chip — different geometry signals spec-derived vs project triage. */
+.agentAssignmentDeriveBtn {
+  margin-top: 8px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.agentAssignmentDeriveBtn:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentAssignmentDeriveBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.agentAssignmentDeriveBtn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .agentCard {
   display: flex;
   flex-direction: column;

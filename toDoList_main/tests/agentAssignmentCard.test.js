@@ -38,6 +38,7 @@ vi.mock('../src/supabaseClient.js', () => ({
 // what the assignment read resolves to per test.
 let assignmentResult = { ok: false, reason: 'No target' };
 let assignmentCalls = [];
+let deriveCalls = [];
 
 vi.mock('../src/inject.js', () => ({
     mintEntryId: () => 'mint-0',
@@ -45,6 +46,10 @@ vi.mock('../src/inject.js', () => ({
     injectEntry: () => Promise.resolve({ ok: true, id: 'e' }),
     dispatchRun: () => Promise.resolve({ ok: true, runId: 1 }),
     dispatchTriage: () => Promise.resolve({ ok: true }),
+    dispatchDerive: (projectId, correlationId, target) => {
+        deriveCalls.push({ projectId, correlationId, target });
+        return Promise.resolve({ ok: true });
+    },
     pollRunStatus: () => Promise.resolve({ ok: true, found: false }),
     resolveEntryByMarker: () => Promise.resolve({ ok: true, found: false }),
     fetchRunResult: () => Promise.resolve({ ok: true, result: '' }),
@@ -96,6 +101,7 @@ beforeEach(() => {
     queueError = null;
     assignmentResult = { ok: false, reason: 'No target' };
     assignmentCalls = [];
+    deriveCalls = [];
     document.body.classList.remove('agentUnavailable');
     document.body.innerHTML = '';
 });
@@ -184,5 +190,69 @@ describe('AGENT assignment card — filled state', () => {
         await loadBoard();
         expect(assignmentCalls.length).toBe(1);
         expect(assignmentCalls[0]).toEqual({ repo: 'owner/repo', file_path: 'TODO.md' });
+    });
+});
+
+describe('AGENT assignment card — Draft tasks from this (derive dispatch)', () => {
+    const FILLED = { ok: true, content: '## Requirements\n- Users can add tasks\n' };
+
+    it('renders the Draft-tasks footer button on the filled card', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+        const btn = document.querySelector('.agentAssignmentDeriveBtn');
+        expect(btn).toBeTruthy();
+        expect(btn.textContent).toBe('Draft tasks from this');
+    });
+
+    it('does not render the Draft-tasks button on the unfilled card', async () => {
+        mountRoutedProject();
+        assignmentResult = { ok: true, content: '# Assignment\n\nSome preamble.\n' };
+        await loadBoard();
+        expect(document.querySelector('.agentAssignmentCard--unfilled')).toBeTruthy();
+        expect(document.querySelector('.agentAssignmentDeriveBtn')).toBeNull();
+    });
+
+    it('dispatches a derive run for the active project id on tap', async () => {
+        const name = mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await flush();
+
+        expect(deriveCalls.length).toBe(1);
+        expect(deriveCalls[0].projectId).toBe(listLogic.getProjectId(name));
+    });
+
+    it('does not open the assignment editor when the Draft button is tapped', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+        // The mount read is the only assignment read so far.
+        expect(assignmentCalls.length).toBe(1);
+
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await flush();
+
+        // Opening the editor would trigger a second readAssignmentFromWorker; the
+        // button stops propagation so the card's open handler never fires.
+        expect(assignmentCalls.length).toBe(1);
+    });
+
+    it('disables the button while a derive dispatch is in flight (double-tap guard)', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        const btn = document.querySelector('.agentAssignmentDeriveBtn');
+        btn.click();
+        btn.click();
+        await flush();
+
+        // The second tap is dropped by the local disable, so only one run fires.
+        expect(deriveCalls.length).toBe(1);
+        expect(btn.disabled).toBe(true);
+        expect(btn.textContent).toBe('Drafting…');
     });
 });

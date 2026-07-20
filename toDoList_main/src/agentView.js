@@ -3,6 +3,7 @@ import { listLogic } from './listLogic.js';
 import {
     mintEntryId,
     dispatchTriage,
+    dispatchDerive,
     pollRunStatus,
     resolveEntryByMarker,
     fetchRunResult,
@@ -2414,8 +2415,59 @@ function buildAssignmentCard() {
         : 'Tap to add';
     body.appendChild(meta);
 
+    // Filled state only: a full-width "Draft tasks from this" footer button that
+    // dispatches a derive run (assignment.md → candidate tasks + questions). The
+    // card itself opens the assignment editor on click/Enter/Space, so the button
+    // stops event propagation to keep the derive dispatch from also opening the
+    // editor. Fire-and-forget like the header Run's triage sweep; results land in
+    // agent_queue and surface once the Proposed bucket ships.
+    if (a.state === 'filled') {
+        const draftBtn = document.createElement('button');
+        draftBtn.type = 'button';
+        draftBtn.className = 'agentAssignmentDeriveBtn';
+        draftBtn.textContent = 'Draft tasks from this';
+        draftBtn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            fireDeriveRun(draftBtn);
+        });
+        // Enter/Space activate the button natively; stop them bubbling to the
+        // card's keyboard-activation handler so they don't also open the editor.
+        draftBtn.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                e.stopPropagation();
+            }
+        });
+        body.appendChild(draftBtn);
+    }
+
     card.appendChild(body);
     return card;
+}
+
+// Dispatch a derive run for the active project, fire-and-forget, with a brief
+// local disable on the triggering button so a double-tap can't fire two runs.
+// Mirrors fireTriageSweep's dispatch call (resolve the project id, mint an entry
+// id, resolve the linked target) but sends dispatch_derive. Never throws.
+function fireDeriveRun(btn) {
+    if (btn && btn.disabled) return;
+    const projectName = getSelectedProjectName();
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    if (!projectId) return;
+    const label = btn ? btn.textContent : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = 'Drafting…';
+    }
+    Promise.resolve(dispatchDerive(projectId, mintEntryId(), resolveDispatchTarget()))
+        .catch(function () {});
+    // Re-enable after a beat regardless of the dispatch outcome: the run is
+    // fire-and-forget, so the button only guards against an immediate double-fire.
+    setTimeout(function () {
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = label;
+        }
+    }, 700);
 }
 
 // Header count segments derived from the loaded queue rows. flagged = every
