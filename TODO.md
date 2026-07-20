@@ -1030,3 +1030,23 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a2485a6f-2036-41fa-a61c-effe26451798 -->
+
+- [ ] **[MEDIUM]** Add tap-to-expand coverage detail with per-aspect status and blocked-jump
+  - Type: feature
+  - Description: Coverage v1, part 2 — the drillable detail behind the summary. Tapping the coverage summary opens a detail view listing every rubric aspect with its live lifecycle status (shipped / in-flight / proposed / blocked / not-started), color-coded, so you see not just how many are outstanding but exactly which and where each stands. Blocked aspects (a derive `needs_words` question is waiting on you) render in amber and, tapped, jump to that question in the board. Reuses part 1's `computeCoverage` for status; adds aspect labels (part 1 parsed IDs only) so each row reads "A1 — Menu-driven interface" rather than a bare ID.
+  - Behavior:
+    1. The coverage summary (`buildCoverageSummary`) becomes tappable — a `stopPropagation` handler (so it doesn't trigger the card's editor-open) plus a chevron affordance — opening a coverage detail modal.
+    2. The modal lists each aspect: its ID, its rubric label, and a status pill/dot colored by lifecycle — shipped (accent), in-flight (the bar's in-flight color), proposed (accent-dim), blocked (amber, `var(--text-warning)`), not-started (muted).
+    3. Blocked aspects are grouped/emphasized at the top in amber; tapping one closes the modal and scrolls its `needs_words` question into view in the board, focusing the answer input.
+    4. Process/Git aspects (rubric row matching commit/branch/repository-history keywords) are labeled "manual" and set apart, since the agent can't ship them — but they carry no done-state yet (the manual "done" tick is v2), so they read as manual · outstanding.
+    5. The modal closes three ways (close button, backdrop, Escape) via the shared dismiss helper.
+  - Implementation notes:
+    - Extend the rubric parse in `describeAssignment` (agentView.js:1847) to also capture each aspect's label — the rubric row text after the ID — stored additively as `_assignment.aspectLabels` (a `{ id: label }` map). Leave `_assignment.aspects` (the ID list) unchanged so part 1's summary/`computeCoverage` are untouched.
+    - Build the coverage detail modal in `agentView.js` (it reads `_rows`, `_assignment`, and reuses `computeCoverage` / the same per-aspect status logic as `buildCoverageSummary`), reusing the shared modal-dismiss helper from `modals.js` (~line 30 — export it if it isn't already). Mirror `showAssignmentEditorModal`'s chrome (eyebrow "COVERAGE", close button).
+    - Summary tap: add a click handler on the `buildCoverageSummary` element (agentView.js:2651) that calls `e.stopPropagation()` then opens the modal — matching the Draft button's `stopPropagation` guard so the card's `openAssignmentEditor` doesn't also fire. Add a chevron and `role`/keyboard affordance.
+    - Blocked-jump: for a blocked aspect, find its `needs_words` row in `_rows` (by `aspect`), get `row.id`, close the modal, then `document.querySelector('[data-answer-row="' + rowId + '"]')` (the hook at agentView.js:623) → `scrollIntoView` + focus. If the Needs-you bucket is collapsed and the input isn't in the DOM, expand it first.
+    - `style.css`: the detail list, per-status colors/dots, the manual-lane treatment, and the summary's chevron/tappable affordance. Void tokens, no inline styles.
+  - Out of scope: the GitLab submission lane — manual "committed to GitLab" ticks, copy-ready commit messages, file manifests (coverage v2, which needs persistence for the tick); marking a process aspect done (also v2, same reason); and any change to derive or the rows.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4468bb9a-c928-48c6-b749-3a9198a70fe1 -->
