@@ -203,6 +203,122 @@ describe('AGENT assignment card — filled state', () => {
     });
 });
 
+describe('AGENT assignment card — rubric coverage summary', () => {
+    // A filled spec whose `## Rubric` section carries three aspect IDs (A1, A2,
+    // B1). Coverage cross-references these against the loaded agent_queue rows'
+    // `aspect` tags to compute the summary.
+    const RUBRIC = {
+        ok: true,
+        content: [
+            '# Assignment',
+            '',
+            '## Requirements',
+            '- Users can add tasks',
+            '',
+            '## Rubric',
+            '- A1: Task creation works',
+            '- A2: Task deletion works',
+            '- B1: State persists across reload',
+        ].join('\n'),
+    };
+
+    it('renders the coverage summary in place of the words/sections meta line', async () => {
+        mountRoutedProject();
+        assignmentResult = RUBRIC;
+        // A1 shipped, A2 in-flight (running), B1 has no row (not-started).
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'running', aspect: 'A2', context: { title: 'Delete' } },
+        ];
+        await loadBoard();
+        const card = document.querySelector('.agentAssignmentCard--filled');
+        expect(card).toBeTruthy();
+        // The coverage block replaces the plain words/sections meta line.
+        expect(card.querySelector('.agentCoverage')).toBeTruthy();
+        expect(card.querySelector('.agentAssignmentMeta')).toBeNull();
+    });
+
+    it('headline leads with the outstanding count and shows covered-of-total', async () => {
+        mountRoutedProject();
+        assignmentResult = RUBRIC;
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'running', aspect: 'A2', context: { title: 'Delete' } },
+        ];
+        await loadBoard();
+        // 3 aspects, 1 shipped → 2 not covered; covered numerator is shipped only.
+        expect(document.querySelector('.agentCoverageHeadline').textContent)
+            .toBe('2 outstanding · 1 of 3 covered');
+    });
+
+    it('segments the bar into shipped / in-flight / outstanding proportions', async () => {
+        mountRoutedProject();
+        assignmentResult = RUBRIC;
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'running', aspect: 'A2', context: { title: 'Delete' } },
+        ];
+        await loadBoard();
+        const seg = (k) => document.querySelector('.agentCoverageSeg--' + k);
+        expect(seg('shipped').getAttribute('data-count')).toBe('1');
+        expect(seg('in-flight').getAttribute('data-count')).toBe('1');
+        // B1 has no row → the one outstanding aspect.
+        expect(seg('outstanding').getAttribute('data-count')).toBe('1');
+        expect(seg('shipped').style.flexGrow).toBe('1');
+    });
+
+    it('counts an aspect covered only when a shipped row wins over other states', async () => {
+        mountRoutedProject();
+        assignmentResult = RUBRIC;
+        // A1 has both a proposed and a shipped row → shipped wins (covered).
+        // A2 is only needs_words (blocked) → outstanding, not covered.
+        queueRows = [
+            { id: '1', state: 'proposed', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'shipped', aspect: 'A1', context: { title: 'Add v2' } },
+            { id: '3', state: 'needs_words', aspect: 'A2', context: { title: 'Delete' }, question: 'Which?' },
+        ];
+        await loadBoard();
+        expect(document.querySelector('.agentCoverageHeadline').textContent)
+            .toBe('2 outstanding · 1 of 3 covered');
+        expect(document.querySelector('.agentCoverageSeg--shipped').getAttribute('data-count')).toBe('1');
+        // needs_words is blocked, not in-flight, so it lands in outstanding.
+        expect(document.querySelector('.agentCoverageSeg--in-flight').getAttribute('data-count')).toBe('0');
+        expect(document.querySelector('.agentCoverageSeg--outstanding').getAttribute('data-count')).toBe('2');
+    });
+
+    it('falls back to the words/sections line when the spec has no rubric aspects', async () => {
+        mountRoutedProject();
+        // Filled requirements but no `## Rubric` section at all.
+        assignmentResult = {
+            ok: true,
+            content: '# Assignment\n\n## Requirements\n- Users can add tasks\n',
+        };
+        await loadBoard();
+        const card = document.querySelector('.agentAssignmentCard--filled');
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.agentCoverage')).toBeNull();
+        expect(card.querySelector('.agentAssignmentMeta').textContent).toMatch(/\d+ words · \d+ sections/);
+    });
+
+    it('falls back when a rubric section is present but carries no aspect IDs', async () => {
+        mountRoutedProject();
+        assignmentResult = {
+            ok: true,
+            content: [
+                '## Requirements',
+                '- Users can add tasks',
+                '',
+                '## Rubric',
+                '- Overall quality of the submission',
+                '- Clean commit history',
+            ].join('\n'),
+        };
+        await loadBoard();
+        expect(document.querySelector('.agentCoverage')).toBeNull();
+        expect(document.querySelector('.agentAssignmentMeta')).toBeTruthy();
+    });
+});
+
 describe('AGENT assignment card — Draft tasks from this (derive dispatch)', () => {
     const FILLED = { ok: true, content: '## Requirements\n- Users can add tasks\n' };
 

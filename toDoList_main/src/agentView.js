@@ -1827,6 +1827,44 @@ function extractRequirementsSection(content) {
     return out.join('\n');
 }
 
+// Return the raw text under the first top-level `## Rubric` header, up to the
+// next `## ` header or EOF, or null when there's no such header. Mirrors
+// extractRequirementsSection's boundary handling (level-3+ sub-headers are
+// kept, only `^## ` closes the section). Feeds the aspect-ID parse that drives
+// the filled card's coverage summary.
+function extractRubricSection(content) {
+    const lines = content.split('\n');
+    let start = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (/^##\s+rubric\s*$/i.test(lines[i].trim())) { start = i + 1; break; }
+    }
+    if (start === -1) return null;
+    const out = [];
+    for (let i = start; i < lines.length; i++) {
+        if (/^##\s+/.test(lines[i])) break;
+        out.push(lines[i]);
+    }
+    return out.join('\n');
+}
+
+// Parse the ordered, de-duplicated list of rubric aspect IDs from an
+// assignment.md — the leading `A1`/`B2`-style tag of each row under the
+// `## Rubric` section (first `\b[A-Z]{1,2}\d+\b` match per line). Returns [] when
+// there's no rubric section or no IDs, so a requirements-only spec still
+// classifies as filled and the card degrades to its words/sections line. These
+// IDs cross-reference the agent_queue rows' `aspect` field to compute coverage.
+function parseAspects(content) {
+    const rubric = extractRubricSection(content);
+    if (rubric === null) return [];
+    const seen = Object.create(null);
+    const aspects = [];
+    rubric.split('\n').forEach(function (line) {
+        const m = line.match(/\b([A-Z]{1,2}\d+)\b/);
+        if (m && !seen[m[1]]) { seen[m[1]] = true; aspects.push(m[1]); }
+    });
+    return aspects;
+}
+
 // Classify assignment.md content into the card's three states:
 //   'absent'   — no file / empty content: render no card.
 //   'unfilled' — no `## Requirements` header, or the section holds only HTML
@@ -1842,8 +1880,10 @@ function classifyAssignment(content) {
 
 // Build the assignment descriptor the card renders from: `{ state }` for absent
 // / unfilled, and for filled the summary — the first non-comment requirement
-// line as the title, plus a word count over the comment-stripped document and a
-// section count of its `## ` headers.
+// line as the title, plus a word count over the comment-stripped document, a
+// section count of its `## ` headers, and the ordered rubric aspect IDs. The
+// aspect list is parsed once here (per assignment.md read); the card's coverage
+// tally against agent_queue rows is recomputed each paint in buildAssignmentCard.
 function describeAssignment(content) {
     const state = classifyAssignment(content);
     if (state !== 'filled') return { state: state };
@@ -1856,7 +1896,13 @@ function describeAssignment(content) {
     const sections = cleaned.split('\n').filter(function (l) {
         return /^##\s+/.test(l);
     }).length;
-    return { state: 'filled', title: firstLine, words: words, sections: sections };
+    return {
+        state: 'filled',
+        title: firstLine,
+        words: words,
+        sections: sections,
+        aspects: parseAspects(content),
+    };
 }
 
 // Fetch the active project's assignment.md once and repaint the board with the
@@ -2550,11 +2596,98 @@ function openAssignmentEditor() {
     });
 }
 
+// The coverage status of one rubric aspect, derived from the states of the
+// agent_queue rows carrying its tag. Priority (highest first): a shipped row
+// means covered; else an in-flight (dispatched/running) row; else a blocked
+// (needs_words) row; else a proposed row; else nothing has started. "Covered"
+// (the summary's numerator) is exactly the shipped case.
+function aspectStatus(rows) {
+    let inFlight = false, blocked = false, proposed = false;
+    for (let i = 0; i < rows.length; i++) {
+        const s = rows[i] && rows[i].state;
+        if (s === 'shipped') return 'shipped';
+        if (s === 'dispatched' || s === 'running') inFlight = true;
+        else if (s === 'needs_words') blocked = true;
+        else if (s === 'proposed') proposed = true;
+    }
+    if (inFlight) return 'in-flight';
+    if (blocked) return 'blocked';
+    if (proposed) return 'proposed';
+    return 'not-started';
+}
+
+// Tally the coverage of the rubric `aspects` against the live agent_queue
+// `rows`: group rows by their `aspect` tag, derive each aspect's status, and
+// count shipped / in-flight aspects. `outstanding` is the segmented bar's third
+// slice — every aspect neither shipped nor in-flight (blocked, proposed,
+// not-started). Recomputed each paint so it tracks rows shipping/changing live.
+function computeCoverage(aspects, rows) {
+    const byAspect = Object.create(null);
+    (Array.isArray(rows) ? rows : []).forEach(function (r) {
+        const tag = r && typeof r.aspect === 'string' ? r.aspect.trim() : '';
+        if (!tag) return;
+        (byAspect[tag] || (byAspect[tag] = [])).push(r);
+    });
+    let shipped = 0, inFlight = 0;
+    aspects.forEach(function (a) {
+        const st = aspectStatus(byAspect[a] || []);
+        if (st === 'shipped') shipped++;
+        else if (st === 'in-flight') inFlight++;
+    });
+    const total = aspects.length;
+    return {
+        total: total,
+        shipped: shipped,
+        inFlight: inFlight,
+        outstanding: total - shipped - inFlight,
+    };
+}
+
+// Build the filled card's coverage summary — a gap-framed headline plus a
+// segmented progress bar — from the rubric `aspects` and the live agent_queue
+// `rows`. The headline leads with the outstanding count (aspects not yet
+// covered), since the pre-submit question is "what's still missing"; the bar
+// splits the aspects into shipped / in-flight / outstanding proportions.
+function buildCoverageSummary(aspects, rows) {
+    const cov = computeCoverage(aspects, rows);
+    const wrap = document.createElement('div');
+    wrap.className = 'agentCoverage';
+
+    const headline = document.createElement('div');
+    headline.className = 'agentCoverageHeadline';
+    const outstanding = cov.total - cov.shipped;
+    headline.textContent = outstanding + ' outstanding · ' +
+        cov.shipped + ' of ' + cov.total + ' covered';
+    wrap.appendChild(headline);
+
+    // The bar is decorative — the headline text is the accessible summary — so
+    // hide it from assistive tech. Three proportional segments sized by aspect
+    // count via flex-grow (computed dynamically, hence inline); a zero-count
+    // segment collapses to nothing.
+    const bar = document.createElement('div');
+    bar.className = 'agentCoverageBar';
+    bar.setAttribute('aria-hidden', 'true');
+    [
+        { key: 'shipped', n: cov.shipped },
+        { key: 'in-flight', n: cov.inFlight },
+        { key: 'outstanding', n: cov.outstanding },
+    ].forEach(function (seg) {
+        const el = document.createElement('div');
+        el.className = 'agentCoverageSeg agentCoverageSeg--' + seg.key;
+        el.style.flexGrow = String(seg.n);
+        el.setAttribute('data-count', String(seg.n));
+        bar.appendChild(el);
+    });
+    wrap.appendChild(bar);
+    return wrap;
+}
+
 // from the `_assignment` cache. Returns null for the absent state (no file /
 // empty), so the caller appends nothing; the unfilled state renders an amber
-// "add assignment context" invite, and the filled state renders a one-line
-// summary with word + section counts. Tapping either state re-reads the file for
-// fresh content + sha and opens the assignment editor modal (openAssignmentEditor).
+// "add assignment context" invite, and the filled state renders a summary —
+// a rubric coverage tally when the spec has aspect IDs, else the words/sections
+// line. Tapping either state re-reads the file for fresh content + sha and opens
+// the assignment editor modal (openAssignmentEditor).
 function buildAssignmentCard() {
     const a = _assignment;
     if (!a || a.state === 'absent') return null;
@@ -2595,12 +2728,21 @@ function buildAssignmentCard() {
         : 'No spec — add assignment context';
     body.appendChild(title);
 
-    const meta = document.createElement('div');
-    meta.className = 'agentAssignmentMeta';
-    meta.textContent = a.state === 'filled'
-        ? a.words + ' words · ' + a.sections + ' sections'
-        : 'Tap to add';
-    body.appendChild(meta);
+    // Filled with rubric aspects → a live coverage summary (headline + bar),
+    // recomputed from `_rows` each paint so it tracks rows shipping/changing.
+    // Filled without aspects (requirements-only spec) degrades to the original
+    // words/sections line; unfilled shows the "Tap to add" hint.
+    const aspects = a.state === 'filled' && Array.isArray(a.aspects) ? a.aspects : [];
+    if (aspects.length) {
+        body.appendChild(buildCoverageSummary(aspects, _rows));
+    } else {
+        const meta = document.createElement('div');
+        meta.className = 'agentAssignmentMeta';
+        meta.textContent = a.state === 'filled'
+            ? a.words + ' words · ' + a.sections + ' sections'
+            : 'Tap to add';
+        body.appendChild(meta);
+    }
 
     // Filled state only: a full-width "Draft tasks from this" footer button that
     // dispatches a derive run (assignment.md → candidate tasks + questions). The

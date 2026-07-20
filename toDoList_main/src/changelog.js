@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-19',
         added: [
-            "The Agent view's assignment card is now tappable, opening an editor to write and save the linked repo's assignment spec.",
             "The filled assignment card now has a \"Draft tasks from this\" button that asks the agent to turn the linked spec into candidate tasks.",
             "The Agent view now shows a Proposed bucket at the top listing the agent's freshly proposed tasks, each tagged with its aspect.",
             "Proposed agent tasks now have an Accept button that ships the proposal and kicks off a build.",
             "The Agent view's status pill now stays Working for the whole time a \"Draft tasks\" run is generating tasks.",
+            "The filled assignment card now shows a rubric coverage summary — how many aspects are still outstanding, with a progress bar of shipped, in-flight, and outstanding criteria.",
         ],
     },
 ];
