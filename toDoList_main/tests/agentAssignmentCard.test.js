@@ -39,6 +39,9 @@ vi.mock('../src/supabaseClient.js', () => ({
 let assignmentResult = { ok: false, reason: 'No target' };
 let assignmentCalls = [];
 let deriveCalls = [];
+let deriveResult = { ok: true };
+let activeRunsResult = { ok: true, active: false };
+let activeRunsCalls = [];
 
 vi.mock('../src/inject.js', () => ({
     mintEntryId: () => 'mint-0',
@@ -48,12 +51,15 @@ vi.mock('../src/inject.js', () => ({
     dispatchTriage: () => Promise.resolve({ ok: true }),
     dispatchDerive: (projectId, correlationId, target) => {
         deriveCalls.push({ projectId, correlationId, target });
-        return Promise.resolve({ ok: true });
+        return Promise.resolve(deriveResult);
     },
     pollRunStatus: () => Promise.resolve({ ok: true, found: false }),
     resolveEntryByMarker: () => Promise.resolve({ ok: true, found: false }),
     fetchRunResult: () => Promise.resolve({ ok: true, result: '' }),
-    fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
+    fetchActiveRuns: (target, workflow) => {
+        activeRunsCalls.push({ target, workflow });
+        return Promise.resolve(activeRunsResult);
+    },
     readTodoMdFromWorker: () => Promise.resolve({ ok: false, reason: 'No target' }),
     readAssignmentFromWorker: (target) => {
         assignmentCalls.push(target);
@@ -70,6 +76,7 @@ import { listLogic } from '../src/listLogic.js';
 import {
     subscribeAgentView,
     unsubscribeAgentView,
+    renderAgentView,
 } from '../src/agentView.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -102,6 +109,9 @@ beforeEach(() => {
     assignmentResult = { ok: false, reason: 'No target' };
     assignmentCalls = [];
     deriveCalls = [];
+    deriveResult = { ok: true };
+    activeRunsResult = { ok: true, active: false };
+    activeRunsCalls = [];
     document.body.classList.remove('agentUnavailable');
     document.body.innerHTML = '';
 });
@@ -252,6 +262,81 @@ describe('AGENT assignment card — Draft tasks from this (derive dispatch)', ()
 
         // The second tap is dropped by the local disable, so only one run fires.
         expect(deriveCalls.length).toBe(1);
+        expect(btn.disabled).toBe(true);
+        expect(btn.textContent).toBe('Drafting…');
+    });
+});
+
+describe('AGENT status pill — derive run progress', () => {
+    const FILLED = { ok: true, content: '## Requirements\n- Users can add tasks\n' };
+
+    it('flips the header pill to Working on a Draft tap (optimistic)', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        // Idle before the derive run starts.
+        const pill = document.getElementById('agentStatusPill');
+        expect(pill).toBeTruthy();
+        expect(pill.className).toContain('agentStatusPill--idle');
+
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await flush();
+
+        const pillNow = document.getElementById('agentStatusPill');
+        expect(pillNow.className).toContain('agentStatusPill--working');
+        const label = pillNow.querySelector('.agentStatusLabel');
+        if (label) expect(label.textContent).toBe('Working');
+    });
+
+    it('probes the derive workflow (not triage) while tracking', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+        activeRunsCalls = [];
+
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await flush();
+
+        // The tracker polls fetchActiveRuns scoped to claude-derive.yml.
+        expect(activeRunsCalls.some((c) => c.workflow === 'derive')).toBe(true);
+    });
+
+    it('clears the optimistic Working state when the dispatch itself fails', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        deriveResult = { ok: false, reason: 'Worker down' };
+        await loadBoard();
+
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await flush();
+
+        // A failed dispatch never registers a run, so the pill must settle back
+        // to Idle and the Draft button re-enable rather than pin Working.
+        const pill = document.getElementById('agentStatusPill');
+        expect(pill.className).toContain('agentStatusPill--idle');
+        const btn = document.querySelector('.agentAssignmentDeriveBtn');
+        expect(btn.disabled).toBe(false);
+        expect(btn.textContent).toBe('Draft tasks from this');
+    });
+
+    it('keeps the pill Working across a repaint while the run is in flight', async () => {
+        mountRoutedProject();
+        assignmentResult = FILLED;
+        await loadBoard();
+
+        document.querySelector('.agentAssignmentDeriveBtn').click();
+        await flush();
+
+        // A repaint (e.g. a realtime board push) rebuilds the header from
+        // `_deriveActive`, so both the pill and the Draft button stay in their
+        // working state rather than snapping back to Idle.
+        renderAgentView();
+        await flush();
+
+        const pill = document.getElementById('agentStatusPill');
+        expect(pill.className).toContain('agentStatusPill--working');
+        const btn = document.querySelector('.agentAssignmentDeriveBtn');
         expect(btn.disabled).toBe(true);
         expect(btn.textContent).toBe('Drafting…');
     });
