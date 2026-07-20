@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -348,6 +348,69 @@ describe('readAssignmentFromWorker — sibling path derivation', () => {
         }));
         const res = await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'TODO.md' });
         expect(res.ok).toBe(false);
+    });
+});
+
+// readRepoFile reads an arbitrary repo-relative file through the Worker's
+// `{ read: true, repo, filePath }` handler. Unlike readAssignmentFromWorker it
+// takes the path directly (no sibling derivation), so the coverage-commit
+// manifest can copy any shipped file's full content for a paste-into-GitLab
+// transfer.
+describe('readRepoFile — direct path read', () => {
+    function lastReadBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).read; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('posts the given path verbatim and returns its content and sha', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: 'file body', sha: 'blob1' }),
+        }));
+        const res = await readRepoFile(
+            { repo: 'owner/repo', file_path: 'TODO.md' },
+            'toDoList_main/src/main.js',
+        );
+        const body = lastReadBody();
+        expect(body).toBeTruthy();
+        expect(body.read).toBe(true);
+        expect(body.repo).toBe('owner/repo');
+        expect(body.filePath).toBe('toDoList_main/src/main.js');
+        expect(res).toEqual({ ok: true, content: 'file body', sha: 'blob1' });
+    });
+
+    it('returns ok:false without a Worker call when no target is passed', async () => {
+        const res = await readRepoFile(null, 'src/main.js');
+        expect(res.ok).toBe(false);
+        expect(lastReadBody()).toBeNull();
+    });
+
+    it('returns ok:false without a Worker call when the path is empty', async () => {
+        const res = await readRepoFile({ repo: 'owner/repo', file_path: 'TODO.md' }, '');
+        expect(res.ok).toBe(false);
+        expect(lastReadBody()).toBeNull();
+    });
+
+    it('returns ok:false when the Worker response carries no content', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ sha: 's' }),
+        }));
+        const res = await readRepoFile({ repo: 'owner/repo', file_path: 'TODO.md' }, 'src/x.js');
+        expect(res.ok).toBe(false);
+    });
+
+    it('maps a Worker failure to ok:false with a reason rather than throwing', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false,
+            status: 400,
+            text: () => Promise.resolve('not allowed'),
+        }));
+        const res = await readRepoFile({ repo: 'owner/repo', file_path: 'TODO.md' }, 'secret.txt');
+        expect(res.ok).toBe(false);
+        expect(typeof res.reason).toBe('string');
     });
 });
 

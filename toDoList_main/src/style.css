@@ -5584,10 +5584,44 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   gap: 2px;
 }
 .coverageCommitManifestItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
   color: var(--text-primary);
+}
+.coverageCommitManifestPath {
+  flex: 1 1 auto;
+  min-width: 0;
   word-break: break-all;
+}
+.coverageCommitFileCopy {
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  min-height: 26px;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+.coverageCommitFileCopy:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+.coverageCommitFileCopy:focus-visible {
+  outline: none;
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.coverageCommitFileCopy:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .coverageCommitManifestEmpty {
   font-size: 11px;

@@ -10,6 +10,7 @@ import {
     fetchActiveRuns,
     readTodoMdFromWorker,
     readAssignmentFromWorker,
+    readRepoFile,
     findTargetById,
     showInjectToast,
     isInjectConfigured,
@@ -3011,7 +3012,49 @@ function buildCommitHelperPanel(item, shippedRows, ctx) {
         files.forEach(function (p) {
             const li = document.createElement('li');
             li.className = 'coverageCommitManifestItem';
-            li.textContent = p;
+
+            const pathSpan = document.createElement('span');
+            pathSpan.className = 'coverageCommitManifestPath';
+            pathSpan.textContent = p;
+            li.appendChild(pathSpan);
+
+            const fileCopyBtn = document.createElement('button');
+            fileCopyBtn.type = 'button';
+            fileCopyBtn.className = 'coverageCommitFileCopy';
+            fileCopyBtn.textContent = 'Copy';
+            fileCopyBtn.addEventListener('click', function () {
+                const target = resolveReadTarget();
+                if (!target) {
+                    showInjectToast('No repo linked — cannot copy the file.', 'error');
+                    return;
+                }
+                // The read is a network round-trip (unlike the instant
+                // commit-message copy), so disable the button until it settles
+                // to keep a double-tap from firing two reads.
+                fileCopyBtn.disabled = true;
+                readRepoFile(target, p).then(function (res) {
+                    if (!res || !res.ok || typeof res.content !== 'string') {
+                        showInjectToast('Couldn’t read ' + p + ' — try again.', 'error');
+                        fileCopyBtn.disabled = false;
+                        return;
+                    }
+                    let copied;
+                    try {
+                        copied = navigator.clipboard.writeText(res.content);
+                    } catch (e) {
+                        copied = Promise.reject(e);
+                    }
+                    Promise.resolve(copied).then(function () {
+                        showInjectToast(p + ' copied.');
+                    }, function () {
+                        showInjectToast('Couldn’t copy ' + p + ' — try again.', 'error');
+                    }).then(function () {
+                        fileCopyBtn.disabled = false;
+                    });
+                });
+            });
+            li.appendChild(fileCopyBtn);
+
             list.appendChild(li);
         });
         panel.appendChild(list);
