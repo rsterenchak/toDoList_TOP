@@ -5404,6 +5404,25 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   background: rgba(108, 93, 245, 0.14);
 }
 
+.agentChip--proposed {
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+}
+
+/* Derive aspect tag ("A1"/"B1"): a small mono badge next to the state chip on
+   derive-generated rows (proposed + needs_words). */
+.agentAspectBadge {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.03em;
+  color: var(--text-secondary, var(--text-muted));
+  background: var(--bg-hover);
+  border-radius: 6px;
+  padding: 2px 6px;
+  white-space: nowrap;
+}
+
 .agentChip--failed {
   color: #e5534b;
   background: rgba(229, 83, 75, 0.14);

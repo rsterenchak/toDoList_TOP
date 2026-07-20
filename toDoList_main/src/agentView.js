@@ -39,6 +39,10 @@ import { shipEntryForTodo } from './shipEntry.js';
 // groups one or more agent_queue `state` values. Empty buckets are omitted at
 // render time; a full-empty state shows when the project has no rows at all.
 const BUCKETS = [
+    // Derive's freshly proposed rows surface at the top of the board so new
+    // output is seen first. `'proposed'` is produced only by derive, so a
+    // state-only filter is sufficient (no `source` check needed).
+    { key: 'proposed', label: 'Proposed', states: ['proposed'] },
     { key: 'needs-you', label: 'Needs you', states: ['needs_words', 'needs_mockup'] },
     { key: 'stuck', label: 'Stuck', states: ['failed', 'no_change'] },
     { key: 'in-progress', label: 'In progress', states: ['triaging', 'drafted', 'dispatched', 'running'] },
@@ -62,6 +66,7 @@ const IN_FLIGHT_STATES = ['triaging', 'dispatched', 'running'];
 
 // Human-readable chip label per state.
 const STATE_CHIP = {
+    proposed: 'Proposed',
     needs_words: 'Needs words',
     needs_mockup: 'Needs mockup',
     failed: 'Stuck',
@@ -459,6 +464,18 @@ function refreshAgentQueue(projectName, options) {
             if (settle) settleInFlightRows(_rows);
         }
     });
+}
+
+// A derive aspect badge: a small mono tag ("A1"/"B1") shown near the chip on
+// derive-generated rows. Returns null when the row carries no aspect (all
+// existing triage rows), so those cards render unchanged.
+function buildAspectBadge(row) {
+    const aspect = (row && typeof row.aspect === 'string') ? row.aspect.trim() : '';
+    if (!aspect) return null;
+    const badge = document.createElement('span');
+    badge.className = 'agentAspectBadge';
+    badge.textContent = aspect;
+    return badge;
 }
 
 // A state chip: a small pill labelling the row's queue state.
@@ -1941,6 +1958,12 @@ function buildCard(row) {
     title.textContent = text;
     title.title = text;
     head.appendChild(title);
+
+    // Derive-generated rows (proposed and needs_words alike) carry an `aspect`
+    // tag (e.g. "A1"); render it as a small mono badge near the chip. Triage
+    // rows have no aspect and render unchanged.
+    const aspectBadge = buildAspectBadge(row);
+    if (aspectBadge) head.appendChild(aspectBadge);
 
     head.appendChild(row.state === 'shipped' ? buildShippedGlyph() : buildChip(row.state));
     // Every card except the in-flight thin states (dispatched/running) gets a
