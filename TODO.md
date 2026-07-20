@@ -880,3 +880,21 @@
   - File: `toDoList_main/src/claudeSheet.js`
   - Completed:
   <!-- id: 1898b272-b6b7-4db6-bd34-6340fa851476 -->
+
+- [ ] **[MEDIUM]** Add read-only assignment card with absent/unfilled/filled states to the Agent view
+  - Type: feature
+  - Description: First slice of the assignment-context feature — read `assignment.md` (the sibling of the routed repo's TODO.md) and render its state as a card at the top of the AGENT view, with no editing or task-derivation yet. The card has three states driven by the read result: absent (no file, or the read fails) renders nothing, unfilled (file present but its `## Requirements` section is empty or only the seeded HTML-comment hint) renders an amber "add assignment context" invite, and filled (`## Requirements` has real content) renders a summary (first requirement line as the title plus word/section counts). This is display-only plumbing — the editor modal, the Draft-tasks button, the derive pass, and rubric coverage all land in later entries.
+  - Behavior:
+    1. absent — `readAssignmentFromWorker` returns not-ok (404) or the file is empty: render no card at all, matching a personal repo with no assignment.
+    2. unfilled — file present, but stripping HTML comments and whitespace under `## Requirements` leaves it empty (or there is no `## Requirements` header at all): render the amber invite card (file-text glyph, "ASSIGNMENT" eyebrow, "No spec — add assignment context", muted "Tap to add").
+    3. filled — `## Requirements` has real content: render the summary card (first non-comment requirement line as the title, "N words · N sections" computed from the `##` headers present).
+  - Implementation notes:
+    - New reader in `inject.js`: `readAssignmentFromWorker(target)`, mirroring `readTodoMdFromWorker` (inject.js:402) but sending `filePath` = the `assignment.md` sibling of `target.file_path` (take the directory portion of `target.file_path` and append `assignment.md`), returning `{ ok, content, sha }` the same way. `readTodoMdFromWorker` can't be reused because it hardcodes `filePath: target.file_path` (the registry's TODO.md).
+    - This assumes the Worker's existing `{ read: true, repo, filePath }` handler serves an arbitrary repo-relative path, not just the registry `file_path`. It already fetches `target.file_path` through GitHub via that exact shape; if the handler validates the path against the registry, widening it to also allow the sibling `assignment.md` is a one-line Worker change (manual `wrangler deploy`, out of band from this entry). Until an `assignment.md` exists anywhere, every repo correctly shows the absent state — commit a stub `assignment.md` to a routed repo to exercise the unfilled/filled states.
+    - Cache + mount in `agentView.js`, mirroring the `_rows` / `refreshAgentQueue` pattern (agentView.js:103, 435): a module-level `_assignment` cache, a `classifyAssignment(content)` returning `'absent' | 'unfilled' | 'filled'`, and a `refreshAssignment(target)` that fetches once via the new reader and calls `paint()`. `paint()` rebuilds the whole view on every realtime push, so the card must render from the cache on each paint — do NOT re-fetch inside `paint()`. Reset `_assignment` on project switch alongside the `_rows` reset in `renderAgentView`.
+    - Mount the card in `paint()` immediately after the `agentViewHeader` block is appended (agentView.js ~2548) and before the buckets, which places it behind the existing `isAgentUnavailable()` early return (agentView.js:2527) — a project with no routed repo never reaches the card, so no new no-repo gating is needed.
+    - Vanilla only, no new deps. Reuse the existing bolt/file glyph builders and Void tokens; the amber unfilled-state border uses `var(--text-warning)`.
+  - Out of scope: the editor modal and any tap-to-edit wiring (the card is display-only in this slice — no click handler on the summary or chevron yet); the Draft-tasks button; the `dispatch_derive` route; the Proposed bucket and rubric-aspect tagging; and coverage. The onboarder writing a stub `assignment.md` plus the CLAUDE.md pointer are Phase 1 and not required for this entry to merge.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0f3c5420-3ee2-4430-9fd6-3a5d72f500c6 -->
