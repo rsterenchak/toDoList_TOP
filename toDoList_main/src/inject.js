@@ -733,6 +733,66 @@ export async function dispatchDerive(projectId, correlationId, target) {
 }
 
 
+// Dispatch a "capture" run through the same Worker the dispatch, triage, and
+// derive flows already use (same URL + Bearer secret). Mirrors dispatchRun's
+// shape: POSTs `{ dispatch_capture: true, correlation_id, args, project, repo,
+// filePath }` so the Worker inserts a `run_outputs` row at status `running` and
+// fires `run-capture.yml`. Takes an options object like dispatchRun —
+// `{ target, correlationId, args, project }`, where `target` is
+// `{ repo, file_path }` and `args`/`project` default to `''` (empty ⇒ the
+// workflow's demo/auto-discover paths). The Worker payload is spread onto
+// `{ ok: true }` on success; on any failure it returns `{ ok: false, reason }`
+// via describeError, matching dispatchRun's error vocabulary. The card owns the
+// live view via subscribeRunOutputs on the same correlation id — the Worker's
+// insert of the `running` row fires the first realtime event.
+export async function dispatchCapture(options) {
+    const opts = options || {};
+    const target = opts.target || null;
+    try {
+        const res = await postToWorker({
+            dispatch_capture: true,
+            correlation_id: opts.correlationId,
+            args: opts.args || '',
+            project: opts.project || '',
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
+// Open a realtime subscription on the `run_outputs` row for one capture,
+// keyed by correlation id. Mirrors subscribeAgentView's channel wiring but is
+// per-capture, not a module-level singleton: the caller (the capture card) owns
+// the channel and tears it down with `supabase.removeChannel(...)` on unmount
+// and once status reaches a terminal value. Each INSERT/UPDATE invokes
+// `onRow(payload.new)` — the Worker's insert of the `running` row fires the
+// first event and `capture_result`'s update fires the terminal one. RLS scopes
+// `run_outputs` to the signed-in user; the `correlation_id` filter keeps the
+// channel from waking on unrelated captures. Returns the channel so the caller
+// owns teardown, or `null` when realtime is unavailable (no supabase client)
+// so the caller can degrade gracefully.
+export function subscribeRunOutputs(correlationId, onRow) {
+    if (!supabase || typeof supabase.channel !== 'function') return null;
+    try {
+        const channel = supabase
+            .channel('run_outputs:' + correlationId)
+            .on('postgres_changes',
+                { event: '*', schema: 'public', table: 'run_outputs', filter: 'correlation_id=eq.' + correlationId },
+                function (payload) {
+                    if (typeof onRow === 'function') onRow(payload.new);
+                })
+            .subscribe();
+        return channel;
+    } catch (e) {
+        return null;
+    }
+}
+
+
 // Poll a dispatched run's status through the same Worker the dispatch and
 // read flows already use (same URL, same Bearer secret). Sends
 // `{ status: true, correlation_id, repo, filePath }` so the Worker matches
