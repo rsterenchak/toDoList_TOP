@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-07-21',
         added: [
             "Run a repo's console app on demand from the Structure tab and read its output live.",
+            "Reopening the Structure tab shows the last run's captured output with a re-run control, and an in-progress run resumes live.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-20',
         added: [
-            "Coverage detail rows now carry a \"Committed to GitLab\" tick — persisted across devices — with a header count of how many aspects have been committed.",
             "Each file in a shipped aspect's commit manifest now has a Copy button that copies the file's current content, ready to paste into your GitLab clone.",
         ],
         fixed: [

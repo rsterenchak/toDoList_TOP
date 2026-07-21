@@ -12,12 +12,17 @@
 // never wipes it). Hidden entirely when there is no repo (the one inline-style
 // write refactorCard also uses).
 //
-// This entry delivers the fresh-run flow only (idle → running → done). Loading
-// the last stored capture on mount and a re-run affordance are the next entry, so
-// a completed run shows a read-only readout with no re-run button.
+// On mount the card fills asynchronously from the repo's last stored capture
+// (`listLogic.loadLatestCapture`, the way refactorCard's fillCard does): a
+// terminal row renders its read-only readout, a still-running row re-subscribes
+// and settles live, and no row (or a failed read) stays quietly idle. The done
+// state carries a ⟳ re-run control that re-fires the same run, and the card
+// exposes `card._captureTeardown` so a project switch can dispose a mid-run
+// realtime channel before the Structure view is rebuilt.
 
 import { mintEntryId, getCachedTargets, dispatchCapture, subscribeRunOutputs } from './inject.js';
 import { supabase } from './supabaseClient.js';
+import { listLogic } from './listLogic.js';
 
 function clearEl(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -49,6 +54,18 @@ function relativeTime(iso) {
     if (hrs < 24) return hrs + 'h ago';
     const days = Math.round(hrs / 24);
     return days + 'd ago';
+}
+
+// Recover the args a stored capture ran with from its resolved `command`, so a
+// loaded row (and a re-run of it) reflects the prior args in the idle input. The
+// dispatched command puts the user's args after a ` -- ` separator
+// (`python3 main.py -- 95 88 72`), so the substring past that is the args;
+// returns '' when there is no separator (nothing to recover).
+function argsFromCommand(command) {
+    const s = String(command || '');
+    const idx = s.indexOf(' -- ');
+    if (idx === -1) return '';
+    return s.slice(idx + 4).trim();
 }
 
 // ── Render helpers ───────────────────────────────────────────────────
@@ -176,13 +193,31 @@ function renderDone(ctx, row) {
         ctx.card.appendChild(err);
     }
 
+    // Footer: a space-between row with the relative time on the left and a ⟳
+    // re-run button on the right. The button re-fires the same run via
+    // startCapture (already inFlight-guarded), and works for both a just-finished
+    // run and a row loaded from storage on mount.
+    const footer = document.createElement('div');
+    footer.className = 'captureCardFooter';
+
     const when = relativeTime(row && (row.updated_at || row.finished_at || row.created_at));
-    if (when) {
-        const footer = document.createElement('div');
-        footer.className = 'captureCardFooter';
-        footer.textContent = when;
-        ctx.card.appendChild(footer);
-    }
+    const time = document.createElement('span');
+    time.className = 'captureCardFooterTime';
+    time.textContent = when || '';
+    footer.appendChild(time);
+
+    const rerun = document.createElement('button');
+    rerun.type = 'button';
+    rerun.className = 'captureCardRerun';
+    rerun.textContent = '⟳';
+    rerun.setAttribute('aria-label', 'Re-run this capture');
+    rerun.addEventListener('click', function () {
+        if (ctx.inFlight) return;
+        startCapture(ctx, ctx.lastArgs);
+    });
+    footer.appendChild(rerun);
+
+    ctx.card.appendChild(footer);
 }
 
 // A quiet inline error (mirroring refactorCard's renderError/showPushError): fall
@@ -261,11 +296,50 @@ async function startCapture(ctx, argsValue) {
     }
 }
 
+// Fill the card from the repo's last stored capture after the synchronous idle
+// render — the way refactorCard's fillCard does. A terminal `done`/`failed` row
+// renders the read-only done readout; a `running` row re-subscribes on its
+// correlation id and renders running (resuming an in-flight capture, including
+// one started on another device), which `onCaptureRow`'s terminal branch then
+// settles live; no row (or a failed read) stays quietly idle — a background read
+// has no error surface. Guarded so a Run tapped before this sub-second load
+// resolves is never clobbered by the load's re-render.
+async function fillFromLatest(ctx) {
+    let loaded;
+    try {
+        loaded = await listLogic.loadLatestCapture(ctx.repo);
+    } catch (e) {
+        return; // background read — stay idle, never surface an error
+    }
+    if (!loaded || loaded.ok === false) return;
+    const row = loaded.row;
+    if (!row) return;
+    // A Run fired before the load resolved owns the card now — don't overwrite it.
+    if (ctx.inFlight || ctx.channel) return;
+
+    const status = row.status;
+    if (status === 'done' || status === 'failed') {
+        ctx.lastArgs = argsFromCommand(row.command);
+        renderDone(ctx, row);
+        return;
+    }
+    if (status === 'running') {
+        ctx.lastArgs = argsFromCommand(row.command);
+        ctx.inFlight = true;
+        ctx.channel = subscribeRunOutputs(row.correlation_id, function (r) {
+            onCaptureRow(ctx, r);
+        });
+        renderRunning(ctx);
+    }
+    // Any other status: leave the idle render in place.
+}
+
 // ── Public entry ─────────────────────────────────────────────────────
 
-// A container element rendered synchronously in the idle state. Hidden entirely
-// when there's no repo (structureView already early-returns before this in that
-// case, but the guard keeps the card inert if ever called without one).
+// A container element rendered synchronously in the idle state, then filled
+// asynchronously from the last stored capture. Hidden entirely when there's no
+// repo (structureView already early-returns before this in that case, but the
+// guard keeps the card inert if ever called without one).
 export function renderCaptureCard(repo) {
     const card = document.createElement('div');
     card.className = 'captureCard';
@@ -276,6 +350,11 @@ export function renderCaptureCard(repo) {
     // Per-card mutable state closed over by the render/orchestration functions:
     // the in-flight guard, the owned realtime channel, and the last typed args.
     const ctx = { card: card, repo: repo, inFlight: false, channel: null, lastArgs: '' };
+    // Expose a teardown hook so a project switch (structureView rebuild) can
+    // dispose a mid-run realtime channel before the card is discarded — a lens
+    // repaint never calls this (it only clears the tree, leaving the card mounted).
+    card._captureTeardown = function () { teardownChannel(ctx); };
     renderIdle(ctx);
+    fillFromLatest(ctx);
     return card;
 }

@@ -3811,11 +3811,38 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   overflow-x: auto;
 }
 
+/* Done footer: relative time on the left, the ⟳ re-run control on the right. */
 .captureCardFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
   color: var(--text-secondary);
 }
+
+/* Re-run — a quiet accent icon button that re-fires the same capture. */
+.captureCardRerun {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 15px;
+  line-height: 1;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  /* 36px touch-target parity with the Run button. */
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 8px;
+  cursor: pointer;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+.captureCardRerun:hover {
+  opacity: 0.9;
+  background: rgba(108, 93, 245, 0.1);
+}
+.captureCardRerun:disabled { opacity: 0.5; cursor: default; }
 
 .captureCardError {
   font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;

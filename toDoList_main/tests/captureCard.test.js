@@ -33,6 +33,16 @@ vi.mock('../src/supabaseClient.js', () => ({
     supabase: { removeChannel: (...a) => removeChannel(...a) },
 }));
 
+// listLogic.loadLatestCapture is the on-mount reader — defaults to "no stored
+// row" so the card stays idle unless a test scripts a row.
+let loadResult = { ok: true, row: null };
+const loadLatestCapture = vi.fn(() => Promise.resolve(loadResult));
+vi.mock('../src/listLogic.js', () => ({
+    listLogic: {
+        loadLatestCapture: (...a) => loadLatestCapture(...a),
+    },
+}));
+
 import { renderCaptureCard } from '../src/captureCard.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -42,11 +52,13 @@ beforeEach(() => {
     dispatchResult = { ok: true, dispatched: true };
     cachedTargets = [];
     capturedOnRow = null;
+    loadResult = { ok: true, row: null };
     mintEntryId.mockClear();
     getCachedTargets.mockClear();
     dispatchCapture.mockClear();
     subscribeRunOutputs.mockClear();
     removeChannel.mockClear();
+    loadLatestCapture.mockClear();
 });
 
 describe('renderCaptureCard — synchronous idle shell', () => {
@@ -183,6 +195,116 @@ describe('renderCaptureCard — live row re-render', () => {
         const stderr = card.querySelector('.captureCardStderr');
         expect(stderr).toBeTruthy();
         expect(stderr.textContent).toBe('Traceback: boom');
+        expect(removeChannel).toHaveBeenCalledWith(returnedChannel);
+    });
+});
+
+describe('renderCaptureCard — load on mount', () => {
+    it('reads the repo\'s last stored capture on mount', async () => {
+        renderCaptureCard('o/r');
+        await flush();
+        expect(loadLatestCapture).toHaveBeenCalledWith('o/r');
+    });
+
+    it('renders the done readout from a terminal stored row', async () => {
+        loadResult = {
+            ok: true,
+            row: {
+                status: 'done',
+                exit_code: 0,
+                command: 'python3 main.py -- 95 88 72',
+                stdout: 'AVG: 85.0',
+                stderr: '',
+                created_at: new Date().toISOString(),
+            },
+        };
+        const card = renderCaptureCard('o/r');
+        await flush();
+        expect(card.querySelector('.captureCardExit').textContent).toBe('exit 0');
+        expect(card.querySelector('.captureCardTerm').textContent).toBe('AVG: 85.0');
+        // The re-run control is present, and the idle args are seeded from the
+        // stored command's post-` -- ` args.
+        expect(card.querySelector('.captureCardRerun')).toBeTruthy();
+    });
+
+    it('re-subscribes and shows running for an in-flight stored row', async () => {
+        loadResult = {
+            ok: true,
+            row: {
+                status: 'running',
+                correlation_id: 'corr-resumed',
+                command: 'python3 main.py -- 1 2',
+            },
+        };
+        const card = renderCaptureCard('o/r');
+        await flush();
+        expect(subscribeRunOutputs).toHaveBeenCalledWith('corr-resumed', expect.any(Function));
+        expect(card.querySelector('.captureCardRunning')).toBeTruthy();
+        // The resumed channel settles live when the run finishes.
+        capturedOnRow({ status: 'done', exit_code: 0, command: 'python3 main.py -- 1 2', stdout: 'ok', stderr: '' });
+        expect(card.querySelector('.captureCardExit').textContent).toBe('exit 0');
+        expect(removeChannel).toHaveBeenCalledWith(returnedChannel);
+    });
+
+    it('stays idle when there is no stored row', async () => {
+        loadResult = { ok: true, row: null };
+        const card = renderCaptureCard('o/r');
+        await flush();
+        expect(card.querySelector('.captureCardHint').textContent).toBe('output appears here');
+        expect(card.querySelector('.captureCardExit')).toBeNull();
+        expect(subscribeRunOutputs).not.toHaveBeenCalled();
+    });
+
+    it('stays idle (no error surface) when the read fails', async () => {
+        loadResult = { ok: false, error: 'boom' };
+        const card = renderCaptureCard('o/r');
+        await flush();
+        expect(card.querySelector('.captureCardHint')).toBeTruthy();
+        expect(card.querySelector('.captureCardError')).toBeNull();
+    });
+
+    it('does not clobber a Run tapped before the load resolves', async () => {
+        loadResult = {
+            ok: true,
+            row: { status: 'done', exit_code: 0, command: 'x -- old', stdout: 'stale', stderr: '' },
+        };
+        const card = renderCaptureCard('o/r');
+        // Tap Run synchronously, before fillFromLatest's async read resolves.
+        card.querySelector('.captureCardRun').click();
+        await flush();
+        // The in-flight guard held: still running, no stale done readout painted.
+        expect(card.querySelector('.captureCardRunning')).toBeTruthy();
+        expect(card.querySelector('.captureCardExit')).toBeNull();
+    });
+});
+
+describe('renderCaptureCard — re-run control', () => {
+    it('re-fires the same run from the done footer', async () => {
+        const card = renderCaptureCard('o/r');
+        card.querySelector('.captureCardArgs').value = '95 88 72';
+        card.querySelector('.captureCardRun').click();
+        await flush();
+        capturedOnRow({
+            status: 'done', exit_code: 0, command: 'python3 main.py -- 95 88 72',
+            stdout: 'AVG: 85.0', stderr: '', created_at: new Date().toISOString(),
+        });
+        expect(dispatchCapture).toHaveBeenCalledTimes(1);
+
+        // ⟳ re-run dispatches again with the retained args.
+        card.querySelector('.captureCardRerun').click();
+        await flush();
+        expect(dispatchCapture).toHaveBeenCalledTimes(2);
+        expect(dispatchCapture.mock.calls[1][0].args).toBe('95 88 72');
+    });
+});
+
+describe('renderCaptureCard — teardown hook', () => {
+    it('exposes _captureTeardown that disposes a mid-run channel', async () => {
+        const card = renderCaptureCard('o/r');
+        card.querySelector('.captureCardRun').click();
+        await flush();
+        expect(typeof card._captureTeardown).toBe('function');
+        card._captureTeardown();
         expect(removeChannel).toHaveBeenCalledWith(returnedChannel);
     });
 });
