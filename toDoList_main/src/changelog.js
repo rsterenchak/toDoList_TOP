@@ -10,13 +10,13 @@ export const changelog = [
             "Run a repo's console app on demand from the Structure tab and read its output live.",
             "Reopening the Structure tab shows the last run's captured output with a re-run control, and an in-progress run resumes live.",
         ],
+        fixed: [
+            "The Run & capture card's args input stays editable after a run or reopen, and its Run button repeats the run one-tap or with edited args.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-20',
-        added: [
-            "Each file in a shipped aspect's commit manifest now has a Copy button that copies the file's current content, ready to paste into your GitLab clone.",
-        ],
         fixed: [
             "Coverage detail rows now read each aspect's requirement text instead of leftover rubric grading text with stray markdown.",
             "A failed \"Draft tasks\" run now surfaces an error notice instead of quietly finishing, and freshly drafted proposals appear reliably once a run completes.",

@@ -1177,7 +1177,7 @@
   - Completed: 2026-07-21
   <!-- id: 3a14c784-cf98-4b60-829a-ad1707a6e626 -->
 
-- [ ] **[MEDIUM]** Make the capture card's args input editable in the done state
+- [x] **[MEDIUM]** Make the capture card's args input editable in the done state — Completed: 2026-07-21
   - Type: bug
   - Description: The Run & capture card (`toDoList_main/src/captureCard.js`) only renders the args input in the idle state — `renderIdle` calls `buildControls(ctx, false)` and `renderRunning` calls `buildControls(ctx, true)` (disabled), but `renderDone` renders no controls row at all, just the readout plus a ⟳ re-run button that repeats `ctx.lastArgs`. Since entry 3 added load-on-mount, reopening Structure now lands directly in the done state showing the last capture, so after the first run — or on any reopen — there's no editable args field and no path back to idle, leaving the args uneditable. Fix by rendering the controls row in the done state too, so the args input is a persistent control present in every state (disabled only while running).
   - Behavior: The done state shows the editable args input + Run button directly under the exit badge, above the command/stdout/stderr readout. The input is prefilled with the last args (`ctx.lastArgs`, already seeded from the row's command by entry 3's `fillFromLatest`), so tapping Run repeats the same run one-tap or the user edits the args first and runs. Running still disables the input. The standalone ⟳ re-run button is removed — Run now serves that purpose (it already reads the live input value via `buildControls`).
