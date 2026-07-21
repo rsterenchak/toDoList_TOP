@@ -3670,6 +3670,159 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   color: var(--text-primary);
 }
 
+/* RUN & CAPTURE card — the Structure tab's on-demand console runner. A near-black
+   surface that reads as a sibling of the NEXT REFACTOR card; the terminal blocks
+   sit on an even darker ground in SpaceMono so captured output reads as a
+   console. */
+.captureCard {
+  background: #101119;
+  border: 1px solid var(--border-dim);
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.captureCardEyebrow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.captureCardEyebrowLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+
+/* Running pill: a small spinning ring beside a "running" label, pinned to the
+   right of the eyebrow. Reuses the shared `spin` keyframes. */
+.captureCardRunning {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.captureCardSpinner {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 2px solid rgba(108, 93, 245, 0.3);
+  border-top-color: #6C5DF5;
+  animation: spin 0.7s linear infinite;
+}
+
+/* Exit badge: green on a clean exit, danger-red otherwise. */
+.captureCardExit {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+}
+.captureCardExit--ok { color: #57c98b; }
+.captureCardExit--fail { color: #ff5d7a; }
+
+/* Controls row: the args input flexes to fill, the Run button sits to its right. */
+.captureCardControls {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.captureCardArgs {
+  flex: 1 1 auto;
+  min-width: 0;
+  /* 16px keeps iOS Safari from auto-zooming this input on focus. */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  color: var(--text-primary);
+  background: #0a0b0f;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 8px 10px;
+}
+.captureCardArgs::placeholder { color: var(--text-secondary); }
+.captureCardArgs:disabled { opacity: 0.6; }
+
+/* Run — the card's primary action, in the accent purple. */
+.captureCardRun {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: #fff;
+  background: #6C5DF5;
+  border: 1px solid #6C5DF5;
+  border-radius: 6px;
+  /* 36px touch-target standard for tappable-height parity across the app. */
+  min-height: 36px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+}
+.captureCardRun:hover { opacity: 0.9; }
+.captureCardRun:disabled { opacity: 0.5; cursor: default; }
+
+.captureCardHint {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* The resolved command, dim monospace above the stdout terminal. */
+.captureCardCommand {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-secondary);
+  opacity: 0.75;
+  word-break: break-word;
+}
+
+/* Terminal block: captured stdout on a near-black ground, monospace, wrapping
+   preserved so multi-line output reads as a console. */
+.captureCardTerm {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: #0a0b0f;
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+.captureCardTermMuted { color: var(--text-secondary); }
+
+/* stderr view: the same terminal ground tinted danger-red, shown only when
+   stderr is non-empty. */
+.captureCardStderr {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: #ff5d7a;
+  background: rgba(255, 93, 122, 0.08);
+  border: 1px solid rgba(255, 93, 122, 0.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+}
+
+.captureCardFooter {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.captureCardError {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .structureHeader {
   display: flex;
   flex-direction: row;

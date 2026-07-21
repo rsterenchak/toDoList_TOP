@@ -7,6 +7,7 @@ import {
 } from './claudeSheet.js';
 import { resolveProjectRepo } from './seedTasksModal.js';
 import { renderRefactorCard } from './refactorCard.js';
+import { renderCaptureCard } from './captureCard.js';
 import {
     getStructureLens,
     setStructureLens,
@@ -2971,6 +2972,12 @@ export function renderStructureView() {
     // persistent sibling of the tree (like the filter box below), so a lens
     // repaint — which only clears `tree` — can't wipe it.
     view.appendChild(renderRefactorCard(repo, projectName));
+
+    // RUN & CAPTURE card: run this repo's console app on demand and read its
+    // output. Like the refactor card above it, mounted here as a persistent
+    // sibling of the tree so a lens repaint — which only clears `tree` — can't
+    // wipe it mid-run.
+    view.appendChild(renderCaptureCard(repo));
 
     // The filter box and the collapse/expand-all pill share one row (a persistent
     // sibling of the tree), so a lens render — which only clears `tree` — never
