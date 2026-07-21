@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-21',
+        added: [
+            "Run a repo's console app on demand from the Structure tab and read its output live.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-20',
         added: [
-            "Shipped rubric aspects in the coverage detail view now expand to a copy-ready commit message and the list of files to transfer.",
             "Coverage detail rows now carry a \"Committed to GitLab\" tick — persisted across devices — with a header count of how many aspects have been committed.",
             "Each file in a shipped aspect's commit manifest now has a Copy button that copies the file's current content, ready to paste into your GitLab clone.",
         ],
