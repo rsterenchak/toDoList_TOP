@@ -83,6 +83,51 @@ describe('renderCaptureCard — synchronous idle shell', () => {
     });
 });
 
+describe('renderCaptureCard — shape gating', () => {
+    it('renders normally for a console-shape repo', () => {
+        cachedTargets = [{ repo: 'o/r', file_path: 'docs/TODO.md', shape: 'console' }];
+        const card = renderCaptureCard('o/r');
+        expect(card.style.display).not.toBe('none');
+        expect(card.querySelector('.captureCardArgs')).toBeTruthy();
+    });
+
+    it('hides the card for a positively-known non-console shape', () => {
+        cachedTargets = [{ repo: 'o/r', file_path: 'docs/TODO.md', shape: 'served' }];
+        const card = renderCaptureCard('o/r');
+        expect(card.style.display).toBe('none');
+        expect(card.querySelector('.captureCardArgs')).toBeNull();
+    });
+
+    it('hides the card for each non-console shape', () => {
+        ['build', 'served', 'repo', 'sql', 'doc', 'maui', 'desktop'].forEach((shape) => {
+            cachedTargets = [{ repo: 'o/r', file_path: 'docs/TODO.md', shape }];
+            const card = renderCaptureCard('o/r');
+            expect(card.style.display).toBe('none');
+        });
+    });
+
+    it('renders (degrades to showing) when the repo is not in the cache', () => {
+        cachedTargets = [{ repo: 'other/repo', file_path: 'docs/TODO.md', shape: 'served' }];
+        const card = renderCaptureCard('o/r');
+        expect(card.style.display).not.toBe('none');
+        expect(card.querySelector('.captureCardArgs')).toBeTruthy();
+    });
+
+    it('renders (degrades to showing) when the cache is empty', () => {
+        cachedTargets = [];
+        const card = renderCaptureCard('o/r');
+        expect(card.style.display).not.toBe('none');
+        expect(card.querySelector('.captureCardArgs')).toBeTruthy();
+    });
+
+    it('renders when the cached row carries no shape', () => {
+        cachedTargets = [{ repo: 'o/r', file_path: 'docs/TODO.md' }];
+        const card = renderCaptureCard('o/r');
+        expect(card.style.display).not.toBe('none');
+        expect(card.querySelector('.captureCardArgs')).toBeTruthy();
+    });
+});
+
 describe('renderCaptureCard — Run dispatch', () => {
     it('mints a correlation id, opens the channel, and dispatches with the typed args + resolved target', async () => {
         cachedTargets = [{ repo: 'o/r', file_path: 'docs/TODO.md' }];
