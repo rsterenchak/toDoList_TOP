@@ -16,9 +16,10 @@
 // (`listLogic.loadLatestCapture`, the way refactorCard's fillCard does): a
 // terminal row renders its read-only readout, a still-running row re-subscribes
 // and settles live, and no row (or a failed read) stays quietly idle. The done
-// state carries a ⟳ re-run control that re-fires the same run, and the card
-// exposes `card._captureTeardown` so a project switch can dispose a mid-run
-// realtime channel before the Structure view is rebuilt.
+// state carries the same editable args input + Run button as idle (seeded from
+// the last run), so args stay editable and Run re-fires after a run or reopen;
+// the card exposes `card._captureTeardown` so a project switch can dispose a
+// mid-run realtime channel before the Structure view is rebuilt.
 
 import { mintEntryId, getCachedTargets, dispatchCapture, subscribeRunOutputs } from './inject.js';
 import { supabase } from './supabaseClient.js';
@@ -172,6 +173,12 @@ function renderDone(ctx, row) {
     badge.textContent = 'exit ' + (Number.isFinite(exit) ? exit : '—');
     ctx.card.appendChild(buildEyebrow(badge));
 
+    // The controls row is a persistent control present in every settled state, so
+    // the args input stays editable after a run or a reopen (which lands here via
+    // load-on-mount). Seeded from `ctx.lastArgs`; its Run button re-fires the run
+    // (one-tap repeat, or edit-then-run), replacing the old standalone ⟳ control.
+    ctx.card.appendChild(buildControls(ctx, false).controls);
+
     const command = row && row.command ? String(row.command) : '';
     if (command) {
         const cmd = document.createElement('div');
@@ -193,10 +200,8 @@ function renderDone(ctx, row) {
         ctx.card.appendChild(err);
     }
 
-    // Footer: a space-between row with the relative time on the left and a ⟳
-    // re-run button on the right. The button re-fires the same run via
-    // startCapture (already inFlight-guarded), and works for both a just-finished
-    // run and a row loaded from storage on mount.
+    // Footer: just the relative time. Re-running is handled by the persistent
+    // controls row's Run button above, so no standalone ⟳ control lives here.
     const footer = document.createElement('div');
     footer.className = 'captureCardFooter';
 
@@ -205,17 +210,6 @@ function renderDone(ctx, row) {
     time.className = 'captureCardFooterTime';
     time.textContent = when || '';
     footer.appendChild(time);
-
-    const rerun = document.createElement('button');
-    rerun.type = 'button';
-    rerun.className = 'captureCardRerun';
-    rerun.textContent = '⟳';
-    rerun.setAttribute('aria-label', 'Re-run this capture');
-    rerun.addEventListener('click', function () {
-        if (ctx.inFlight) return;
-        startCapture(ctx, ctx.lastArgs);
-    });
-    footer.appendChild(rerun);
 
     ctx.card.appendChild(footer);
 }

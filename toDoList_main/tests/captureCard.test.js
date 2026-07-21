@@ -222,9 +222,14 @@ describe('renderCaptureCard — load on mount', () => {
         await flush();
         expect(card.querySelector('.captureCardExit').textContent).toBe('exit 0');
         expect(card.querySelector('.captureCardTerm').textContent).toBe('AVG: 85.0');
-        // The re-run control is present, and the idle args are seeded from the
-        // stored command's post-` -- ` args.
-        expect(card.querySelector('.captureCardRerun')).toBeTruthy();
+        // The done state carries an editable args input (no standalone ⟳ button),
+        // seeded from the stored command's post-` -- ` args, plus a Run button.
+        const input = card.querySelector('.captureCardArgs');
+        expect(input).toBeTruthy();
+        expect(input.disabled).toBe(false);
+        expect(input.value).toBe('95 88 72');
+        expect(card.querySelector('.captureCardRun')).toBeTruthy();
+        expect(card.querySelector('.captureCardRerun')).toBeNull();
     });
 
     it('re-subscribes and shows running for an in-flight stored row', async () => {
@@ -278,8 +283,8 @@ describe('renderCaptureCard — load on mount', () => {
     });
 });
 
-describe('renderCaptureCard — re-run control', () => {
-    it('re-fires the same run from the done footer', async () => {
+describe('renderCaptureCard — re-run from the done state', () => {
+    it('re-fires the same run from the persistent done-state Run button', async () => {
         const card = renderCaptureCard('o/r');
         card.querySelector('.captureCardArgs').value = '95 88 72';
         card.querySelector('.captureCardRun').click();
@@ -289,12 +294,36 @@ describe('renderCaptureCard — re-run control', () => {
             stdout: 'AVG: 85.0', stderr: '', created_at: new Date().toISOString(),
         });
         expect(dispatchCapture).toHaveBeenCalledTimes(1);
+        // No standalone ⟳ control — the persistent Run button re-fires instead.
+        expect(card.querySelector('.captureCardRerun')).toBeNull();
 
-        // ⟳ re-run dispatches again with the retained args.
-        card.querySelector('.captureCardRerun').click();
+        // The done-state args input is present, editable, and seeded from the
+        // last run; tapping Run repeats the run one-tap.
+        const input = card.querySelector('.captureCardArgs');
+        expect(input.disabled).toBe(false);
+        expect(input.value).toBe('95 88 72');
+        card.querySelector('.captureCardRun').click();
         await flush();
         expect(dispatchCapture).toHaveBeenCalledTimes(2);
         expect(dispatchCapture.mock.calls[1][0].args).toBe('95 88 72');
+    });
+
+    it('runs edited args from the done state', async () => {
+        const card = renderCaptureCard('o/r');
+        card.querySelector('.captureCardArgs').value = '95 88 72';
+        card.querySelector('.captureCardRun').click();
+        await flush();
+        capturedOnRow({
+            status: 'done', exit_code: 0, command: 'python3 main.py -- 95 88 72',
+            stdout: 'AVG: 85.0', stderr: '', created_at: new Date().toISOString(),
+        });
+        // Edit the args in the done state, then Run — the new args dispatch.
+        const input = card.querySelector('.captureCardArgs');
+        input.value = '1 2 3';
+        card.querySelector('.captureCardRun').click();
+        await flush();
+        expect(dispatchCapture).toHaveBeenCalledTimes(2);
+        expect(dispatchCapture.mock.calls[1][0].args).toBe('1 2 3');
     });
 });
 
