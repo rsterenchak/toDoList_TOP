@@ -1186,3 +1186,20 @@
   - File: `toDoList_main/src/captureCard.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8d054332-f445-4f09-b4ee-f6d784cf9d78 -->
+
+- [ ] **[MEDIUM]** Auto-hide the Run & Capture card on non-console repos
+  - Type: bug
+  - Description: The Structure tab's Run & Capture card (`renderCaptureCard`, captureCard.js) mounts on every repo, but it runs a repo's console app via `dotnet run` — meaningless for non-console shapes (build-pipeline, served-from-source, repo-only, sql, doc, maui, desktop). On those it can never succeed: the capture dispatch 404s (no `run-capture.yml` in the repo), leaving a permanent dead panel with a red error, as seen on `toDoList_TOP` (a PWA). Gate the card by the repo's onboard shape — render it only for the console shape, hidden otherwise — so it appears only where it can actually run. The shape is already available client-side (`getCachedTargets()` rows carry it from the full `inject_targets` select), so this needs no Worker change and no new data.
+  - Behavior:
+    1. Run & Capture renders only when the current repo's shape is the runnable console shape.
+    2. On any non-console shape, the card is hidden entirely — the same hidden-container path the card already uses when there's no repo.
+    3. When the repo isn't found in the cached targets (cache not yet loaded, or a load race), the card still renders — degrade to showing rather than hiding on missing data, so a console repo is never hidden by an incomplete cache. Only a positively-known non-console repo is hidden.
+  - Implementation notes:
+    - In `renderCaptureCard(repo)` (captureCard.js), look up the repo in `getCachedTargets()` (already imported, already used by the file's `resolveTarget`): find the row where `.repo === repo` and read `.shape`. Hide the card (return the hidden container it already builds for the no-repo case) only when the row is found AND `shape` is present AND it isn't the console shape. Otherwise render normally.
+    - The shape column is in the cache because `loadInjectTargets` selects all columns (`.select()`, inject.js:1229) — no Worker change, no select change.
+    - Confirm the stored console shape value (the onboard dropdown / `ONBOARD_SHAPES` short form is `'console'`); match whatever onboarding actually records. Treat only that value as runnable.
+    - Keep the existing no-repo hide path unchanged; this adds a second hide condition alongside it.
+  - Out of scope: a manual collapse/hide toggle (auto-hide by shape replaces the need); making the card run for other shapes (maui/desktop don't produce capturable console output); and any change to the capture dispatch or the run-capture workflow.
+  - File: `toDoList_main/src/captureCard.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: c5fb9fad-74ec-4893-a2d4-915e271c63d4 -->
