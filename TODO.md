@@ -1187,7 +1187,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8d054332-f445-4f09-b4ee-f6d784cf9d78 -->
 
-- [ ] **[MEDIUM]** Auto-hide the Run & Capture card on non-console repos
+- [x] **[MEDIUM]** Auto-hide the Run & Capture card on non-console repos
   - Type: bug
   - Description: The Structure tab's Run & Capture card (`renderCaptureCard`, captureCard.js) mounts on every repo, but it runs a repo's console app via `dotnet run` — meaningless for non-console shapes (build-pipeline, served-from-source, repo-only, sql, doc, maui, desktop). On those it can never succeed: the capture dispatch 404s (no `run-capture.yml` in the repo), leaving a permanent dead panel with a red error, as seen on `toDoList_TOP` (a PWA). Gate the card by the repo's onboard shape — render it only for the console shape, hidden otherwise — so it appears only where it can actually run. The shape is already available client-side (`getCachedTargets()` rows carry it from the full `inject_targets` select), so this needs no Worker change and no new data.
   - Behavior:
@@ -1201,5 +1201,5 @@
     - Keep the existing no-repo hide path unchanged; this adds a second hide condition alongside it.
   - Out of scope: a manual collapse/hide toggle (auto-hide by shape replaces the need); making the card run for other shapes (maui/desktop don't produce capturable console output); and any change to the capture dispatch or the run-capture workflow.
   - File: `toDoList_main/src/captureCard.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-21 (PR #<number>)
   <!-- id: c5fb9fad-74ec-4893-a2d4-915e271c63d4 -->
