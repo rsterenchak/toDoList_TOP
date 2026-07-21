@@ -12,13 +12,13 @@ export const changelog = [
         ],
         fixed: [
             "The Run & capture card's args input stays editable after a run or reopen, and its Run button repeats the run one-tap or with edited args.",
+            "The Run & capture card now appears only for repos whose console app can actually run, and stays hidden on other repo shapes.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-20',
         fixed: [
-            "Coverage detail rows now read each aspect's requirement text instead of leftover rubric grading text with stray markdown.",
             "A failed \"Draft tasks\" run now surfaces an error notice instead of quietly finishing, and freshly drafted proposals appear reliably once a run completes.",
         ],
     },

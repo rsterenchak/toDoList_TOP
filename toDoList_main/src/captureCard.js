@@ -9,8 +9,10 @@
 // `renderCaptureCard(repo)` returns a container element synchronously — exactly
 // like `renderRefactorCard` in refactorCard.js — so structureView can mount it as
 // a persistent sibling of the tree (a lens repaint, which only clears the tree,
-// never wipes it). Hidden entirely when there is no repo (the one inline-style
-// write refactorCard also uses).
+// never wipes it). Hidden entirely when there is no repo, and also when the
+// repo's onboard shape is a positively-known non-console shape — only the console
+// shape actually runs a capturable app (the one inline-style write refactorCard
+// also uses).
 //
 // On mount the card fills asynchronously from the repo's last stored capture
 // (`listLogic.loadLatestCapture`, the way refactorCard's fillCard does): a
@@ -39,6 +41,28 @@ function resolveTarget(repo) {
         if (targets[i] && targets[i].repo === repo) return targets[i];
     }
     return { repo: repo };
+}
+
+// The onboard shape whose repos actually run a console app via `dispatchCapture`
+// (`run-capture.yml` does `dotnet run`). Only this shape can produce capturable
+// console output, so the card is gated to it.
+const CONSOLE_SHAPE = 'console';
+
+// Decide whether the RUN & CAPTURE card should be hidden for `repo` on shape
+// grounds. Looks the repo up in the inject-targets cache (already populated for
+// every Worker call) and reads its stored onboard `shape`. Hides ONLY a
+// positively-known non-console repo: a missing cache row (cache not yet loaded, a
+// load race) or a row with no shape degrades to SHOWING, so a console repo is
+// never hidden by incomplete data.
+function isHiddenByShape(repo) {
+    const targets = getCachedTargets();
+    for (let i = 0; i < targets.length; i++) {
+        const row = targets[i];
+        if (row && row.repo === repo) {
+            return !!row.shape && row.shape !== CONSOLE_SHAPE;
+        }
+    }
+    return false;
 }
 
 // "just now" / "Xm ago" / "Xh ago" / "Xd ago" from an ISO timestamp. Copied
@@ -338,6 +362,14 @@ export function renderCaptureCard(repo) {
     const card = document.createElement('div');
     card.className = 'captureCard';
     if (!repo) {
+        card.style.display = 'none';
+        return card;
+    }
+    // A repo whose onboard shape isn't the runnable console shape can never
+    // capture (its repo has no run-capture.yml), so hide the card entirely — the
+    // same hidden-container path as the no-repo case. Only a positively-known
+    // non-console repo is hidden; missing/absent shape degrades to showing.
+    if (isHiddenByShape(repo)) {
         card.style.display = 'none';
         return card;
     }
