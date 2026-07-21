@@ -2842,6 +2842,15 @@ function buildLensToggle(onChange) {
 export function renderStructureView() {
     const view = document.getElementById('structureView');
     if (!view) return;
+    // A project switch rebuilds this view wholesale (clear + re-mount), which
+    // would orphan a mid-run capture's realtime channel. Dispose it first via the
+    // card's teardown hook — only `clear(view)` unmounts the card, so lens
+    // repaints (which clear `tree`, not `view`) never reach here and the channel
+    // survives them.
+    const priorCaptureCard = view.querySelector('.captureCard');
+    if (priorCaptureCard && typeof priorCaptureCard._captureTeardown === 'function') {
+        priorCaptureCard._captureTeardown();
+    }
     clear(view);
 
     const projectName = getSelectedProjectName();

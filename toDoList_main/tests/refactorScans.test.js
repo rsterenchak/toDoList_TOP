@@ -100,6 +100,40 @@ describe('listLogic.loadLatestRefactorScan', () => {
     });
 });
 
+describe('listLogic.loadLatestCapture', () => {
+    it('scopes the run_outputs query to the user + repo, newest first, limit 1', async () => {
+        const row = { repo: 'o/r', correlation_id: 'c1', status: 'done', exit_code: 0, created_at: '2026-07-21T00:00:00Z' };
+        selectResult = { data: [row], error: null };
+        const res = await listLogic.loadLatestCapture('o/r');
+        expect(res.ok).toBe(true);
+        expect(res.row).toEqual(row);
+        expect(capturedFilters).toContainEqual(['user_id', 'u1']);
+        expect(capturedFilters).toContainEqual(['repo', 'o/r']);
+        expect(capturedOrder).toEqual(['created_at', { ascending: false }]);
+        expect(capturedLimit).toBe(1);
+    });
+
+    it('returns row:null when the repo has no stored capture', async () => {
+        selectResult = { data: [], error: null };
+        const res = await listLogic.loadLatestCapture('o/r');
+        expect(res.ok).toBe(true);
+        expect(res.row).toBe(null);
+    });
+
+    it('surfaces a query error as ok:false', async () => {
+        selectResult = { data: null, error: { message: 'boom' } };
+        const res = await listLogic.loadLatestCapture('o/r');
+        expect(res.ok).toBe(false);
+        expect(res.error).toBe('boom');
+    });
+
+    it('rejects a missing repo and a signed-out session', async () => {
+        expect((await listLogic.loadLatestCapture('')).ok).toBe(false);
+        sessionUser = null;
+        expect((await listLogic.loadLatestCapture('o/r')).ok).toBe(false);
+    });
+});
+
 describe('listLogic.dismissRefactorCandidate', () => {
     it('appends the name to the row dismissed array, scoped by user/repo/file', async () => {
         selectResult = { data: [{ dismissed: ['old'] }], error: null };

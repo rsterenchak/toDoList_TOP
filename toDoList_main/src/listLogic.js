@@ -1407,6 +1407,46 @@ export const listLogic = (function () {
         }
     }
 
+    // Read the most recent stored capture row for a repo. The Structure tab's
+    // RUN & CAPTURE card calls this on mount to recover the last capture's
+    // readout (exit code, command, stdout/stderr) — or to resume an in-flight
+    // one. Mirrors loadLatestRefactorScan exactly, swapping `refactor_scans` →
+    // `run_outputs` and `scanned_at` → `created_at`. Like `refactor_scans`,
+    // `run_outputs` carries a `user_id` column (NOT the todos pattern), so the
+    // `user_id` filter is correct here. Returns { ok, row } where `row` is the
+    // newest row for the repo or null when none exists; { ok:false, error } on
+    // failure so the card can stay quietly idle and never a toast.
+    // @category: user-mutation-only
+    async function loadLatestCapture(repo) {
+        if (!repo) return { ok: false, error: 'Missing repo.' };
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const result = await Promise.resolve(
+                supabase
+                    .from('run_outputs')
+                    .select()
+                    .eq('user_id', session.user.id)
+                    .eq('repo', repo)
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Load failed.',
+                };
+            }
+            const rows = (result && result.data) || [];
+            return { ok: true, row: rows.length ? rows[0] : null };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Load failed.' };
+        }
+    }
+
     // Append a candidate `name` to a stored scan row's `dismissed` array — the
     // NEXT REFACTOR card's "Skip" action, which permanently hides that candidate
     // so the card advances to the next-cheapest one. Reads the row's current
@@ -3554,6 +3594,7 @@ export const listLogic = (function () {
         getAspectSubmissions,
         setAspectSubmitted,
         loadLatestRefactorScan,
+        loadLatestCapture,
         dismissRefactorCandidate,
         stampTodoEntryId,
         unflagAgentTask,
