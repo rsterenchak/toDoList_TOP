@@ -11192,6 +11192,25 @@ body.row-dragging * { cursor: grabbing !important; }
      ellipsis line via the rules above. */
   .todoStatusLabel { display: none; }
 
+  /* Exception: surface the badge on mobile ONLY when the derived phase is one
+     genuinely blocked on the user — REVIEW (shipped, unacknowledged) or ASKING
+     (triage has a pending question). Every other status keeps the default hide
+     above and is carried by the left-edge color tab, so a word appearing on a
+     row always means the same thing: act on this. Keyed off the badge's own
+     data-status (set by buildStatusLabel / refreshTodoStatusUI from
+     derivePhase), so no JS branch is needed — the rule reads as "hidden on
+     mobile except when it needs you". The badge joins the trailing cluster just
+     ahead of the copy control (order 2 ties .copyTitleBtn's order below, so the
+     earlier-in-DOM badge renders before it) and is pushed right by the
+     flex-grow title, which truncates earlier to make room. Amber comes from the
+     existing data-status="review"/"asking" color rules. */
+  .todoStatusLabel[data-status="review"],
+  .todoStatusLabel[data-status="asking"] {
+    display: inline-flex;
+    align-self: center;
+    order: 2;
+  }
+
   /* Left-edge status tab. Drawn as a ::before so it can be a rounded sliver
      (a box-shadow inset stripe can't round) painted inside the row's
      border-radius. The desktop in-progress purple inset stripe is neutralized
