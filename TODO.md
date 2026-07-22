@@ -64,7 +64,7 @@
   - Completed: 2026-07-22
   <!-- id: c0f6b0c1-2d61-4fc8-b171-29cbc4025d05 -->
 
-- [ ] **[MEDIUM]** Compose row: paste a TODO.md entry straight into a new task
+- [x] **[MEDIUM]** Compose row: paste a TODO.md entry straight into a new task
   - Type: feature
   - Description: Entries drafted in the Claude app arrive as a fenced markdown block whose first line already carries the title. Turning one into a task today takes four steps — create the task, type a title by hand, open the description, paste the body — even though the paste contains everything needed. Add a paste affordance to the task-create row that reads a pasted entry, uses its headline as the task title and the full entry text as the description, and commits the task in one action, landing it ready to Inject.
   - Behavior: The task-create row offers a paste action. Tapping it reads the clipboard; if it holds text, a new task is committed with its title taken from the entry's headline (the text after the `**[PRIORITY]**` marker on the `- [ ]` line) and its description set to the complete pasted entry with any wrapping code fence removed. The description keeps the headline line, because that is what Inject commits — the extracted title is a display label, not a replacement for the entry text. If no `- [ ]` headline is found, the first non-empty line becomes the title and the whole text becomes the description, so a rough paste still lands rather than failing. If the pasted entry carries an `<!-- id: ... -->` marker, the task is still created but a toast notes that this entry already exists in TODO.md, since a marker means it was copied back out of the file rather than drafted fresh. An empty or unreadable clipboard surfaces a toast and creates nothing.
@@ -78,5 +78,5 @@
     - `style.css`: the chip follows the existing 36×36 and 10px-radius conventions and reuses current accent tokens; no new colours. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The ⌖ target picker chip, which is a much larger piece and stays unbuilt. The usage meters, which have no data source yet. Parsing the entry into structured fields — this app's model is title plus description text, and there are no separate Type/File/Priority fields to populate. Auto-injecting or auto-running the pasted entry; it lands as a normal task and Inject stays a deliberate second step. Refusing a paste that carries a marker. The description editor modal, the phase rail, and the task row. Desktop-specific create affordances if the chip row is mobile-only.
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 5b7a0836-2ec6-47ba-b11f-f2e98528a4aa -->

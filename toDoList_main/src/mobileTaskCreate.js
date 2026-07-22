@@ -16,6 +16,7 @@
 // committing.
 
 import { setRowDateOffset, showDueDatePopover } from './dueDate.js';
+import { showInjectToast } from './inject.js';
 
 
 // "today" | "tomorrow" | "custom" — the user's last chip pick within the
@@ -70,6 +71,91 @@ function isMobileViewport() {
 }
 
 
+// Parse a pasted TODO.md entry into a display title + a verbatim description.
+// Deliberately narrow (see the entry's implementation notes):
+//   - strip lines that are just a wrapping code fence (``` optionally + lang),
+//   - use the first top-level `- [ ]` / `- [x]` headline for the title,
+//     stripping its checkbox, a leading `**[PRIORITY]**`, and a trailing
+//     `— Completed: …` note,
+//   - fall back to the first non-empty line as the title when there is no
+//     checkbox headline, so a rough paste still lands.
+// The description is the fence-stripped text preserved byte-for-byte — it keeps
+// the headline line, because that is what Inject commits. `hasMarker` is a
+// simple presence check for the `<!-- id: … -->` comment; the id value is not
+// needed here, so no marker parser is duplicated into this module.
+export function parsePastedEntry(raw) {
+    const text = String(raw == null ? '' : raw);
+    const description = text
+        .split('\n')
+        .filter(function(line) { return !/^\s*```/.test(line); })
+        .join('\n');
+
+    const lines = description.split('\n');
+    let title = '';
+    const checkboxLine = lines.find(function(line) {
+        return /^\s*- \[[ xX]\]/.test(line);
+    });
+    if (checkboxLine) {
+        title = checkboxLine
+            .replace(/^\s*- \[[ xX]\]\s*/, '')
+            .replace(/^\*\*\[[^\]]*\]\*\*\s*/, '')
+            .replace(/\s*[—-]\s*Completed:.*$/i, '')
+            .trim();
+    }
+    if (!title) {
+        const firstNonEmpty = lines.find(function(line) { return line.trim().length > 0; });
+        title = firstNonEmpty ? firstNonEmpty.trim() : '';
+    }
+
+    return { title: title, description: description, hasMarker: /<!-- id:/.test(description) };
+}
+
+
+// Read the clipboard, parse a pasted entry, and commit a task through the same
+// Enter path a typed title uses — so the committed row gets its status badge,
+// a fresh blank placeholder, and persistence. The title input carries the
+// parsed headline; item.desc carries the full entry (the commit handler reads
+// the title from the input and never touches desc, so the value set here
+// survives). Clipboard reads need a user gesture and can reject, so both the
+// throw and the rejected-promise paths surface a toast; a denied read also
+// focuses the title input so the user can paste by hand rather than fail
+// silently. Mirrors copyTaskContextForClaude's dual-path clipboard handling.
+function handleEntryPaste(toDoChild, item) {
+    const toDoInput = toDoChild.querySelector('#toDoInput');
+    let read;
+    try {
+        read = navigator.clipboard.readText();
+    } catch (e) {
+        read = Promise.reject(e);
+    }
+    Promise.resolve(read).then(function(text) {
+        const raw = String(text || '');
+        if (!raw.trim()) {
+            showInjectToast('Clipboard is empty — nothing to paste.', 'error');
+            return;
+        }
+        const parsed = parsePastedEntry(raw);
+        if (!parsed.title) {
+            showInjectToast('Couldn’t read a task from the clipboard.', 'error');
+            return;
+        }
+        item.desc = parsed.description;
+        if (toDoInput) {
+            toDoInput.value = parsed.title;
+            toDoInput.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Enter', bubbles: true,
+            }));
+        }
+        if (parsed.hasMarker) {
+            showInjectToast('Pasted — this entry already exists in TODO.md.');
+        }
+    }, function() {
+        showInjectToast('Couldn’t read the clipboard — paste into the title instead.', 'error');
+        if (toDoInput) toDoInput.focus();
+    });
+}
+
+
 // Build and wire the chip row for a blank placeholder. Mounts the chip
 // row as the placeholder's NEXT SIBLING in #mainList — its own grid row
 // directly beneath the row, mirroring how #descSibling attaches — so CSS
@@ -111,6 +197,21 @@ export function attachMobileCreateChips(toDoChild, item) {
     const tomorrowChip = makeChip('tomorrow', 'Tomorrow');
     const calChip      = makeChip('custom',   '📅');
     calChip.setAttribute('aria-label', 'Pick a date');
+
+    // Paste a full TODO.md entry (drafted in the Claude app) straight into a
+    // committed task — headline becomes the title, whole entry the description.
+    const pasteChip = document.createElement('button');
+    pasteChip.type = 'button';
+    pasteChip.id = 'mobileCreatePasteChip';
+    pasteChip.className = 'mobileCreateChip mobileCreatePasteChip';
+    pasteChip.setAttribute('aria-label', 'Paste entry as a new task');
+    pasteChip.textContent = '📋';
+    pasteChip.addEventListener('mousedown', function(e) { e.preventDefault(); });
+    pasteChip.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleEntryPaste(toDoChild, item);
+    });
 
     const descChip = document.createElement('button');
     descChip.type = 'button';
@@ -180,6 +281,7 @@ export function attachMobileCreateChips(toDoChild, item) {
     chips.appendChild(todayChip);
     chips.appendChild(tomorrowChip);
     chips.appendChild(calChip);
+    chips.appendChild(pasteChip);
     chips.appendChild(descChip);
 
     // Mount the chips as the placeholder's next sibling rather than a child.

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-22',
+        added: [
+            "On phones, the task-create row can now paste a copied TODO.md entry straight into a new task — its headline becomes the title and the full entry becomes the description, ready to Inject.",
+        ],
         fixed: [
-            "The sign-in code field now accepts the full verification code instead of cutting it off, so codes longer than six digits verify and sign you in.",
             "Signing in with an email that has no account now shows a clear no-account message instead of a generic send failure.",
             "The mobile description editor's phase indicator now reads as an inert progress rail instead of tappable buttons, so it can't be mistaken for a settable control.",
             "The mobile description editor's Generate button now draws a complete outline on all four sides instead of appearing open-topped.",
