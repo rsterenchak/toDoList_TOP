@@ -13446,8 +13446,9 @@ body.row-dragging * { cursor: grabbing !important; }
    already mounted, and stacks above every other modal/popover so a
    sign-out re-render still wins over a stale popover that happened to
    be open at the time. The internal column centers the ghost mascot,
-   "Welcome." heading (or "Check your inbox." on screen 2), email
-   input + Continue button, and the two confirmation-screen actions.
+   "Welcome." heading (or "Enter your code." on screen 2), email
+   input + Continue button, and the screen-2 code input + Verify plus
+   the two code-entry actions (Resend code / Use a different email).
    Stays inside the dark theme by default per CLAUDE.md and recolors
    through the same theme tokens the rest of the app uses. */
 #authModalBackdrop {
@@ -13541,6 +13542,33 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 .authModalEmailInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+
+/* font-size: 16px — required to prevent iOS Safari auto-zoom on focus
+   per the mobile-input rule in CLAUDE.md. Mono + wide letter-spacing +
+   centered reads cleanly for a 6-digit code. */
+.authModalCodeInput {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  letter-spacing: 0.4em;
+  text-align: center;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  color: var(--text-primary);
+}
+
+.authModalCodeInput::placeholder {
+  color: var(--text-muted);
+  letter-spacing: 0.4em;
+}
+
+.authModalCodeInput:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
