@@ -81,7 +81,7 @@
   - Completed: 2026-07-22
   <!-- id: 5b7a0836-2ec6-47ba-b11f-f2e98528a4aa -->
 
-- [ ] **[MEDIUM]** Description editor: pick the File: path from the Structure manifest instead of typing it
+- [x] **[MEDIUM]** Description editor: pick the File: path from the Structure manifest instead of typing it
   - Type: feature
   - Description: Every entry needs a `- File:` line, and it is currently typed from memory — the one step in authoring an entry that requires knowing the repo's layout rather than describing a change. Structure already loads a generated manifest of the project's files, so the information needed to write that line is already in the app. Add a target-picker action to the description editor that lists the manifest's files, and on selection writes the chosen path into the entry's `File:` line — appending to an existing line or inserting a new one. This removes the last part of entry authoring that depends on holding file paths in your head.
   - Behavior: The description editor shows a target-picker action near the entry textarea. Tapping it opens a searchable list of the active project's manifest files, filterable by typing. Selecting one inserts its path, backtick-wrapped, into the entry text: if a `- File:` line already exists it is appended to that line comma-separated; if not, a new `- File:` line is inserted immediately before the `- Completed:` line, or at the end of the entry when no Completed line is present. The textarea updates in place, the description persists, and the picker closes. Selecting a path already present on the File: line is a no-op rather than a duplicate. When the active project has no manifest — never generated, or a project shape that has no source tree — the action is hidden entirely rather than opening an empty picker.
@@ -96,5 +96,5 @@
     - `style.css`: the chip follows the 36×36 and 10px-radius conventions and reuses current accent tokens; the picker list reuses existing surface tokens. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: A spatial pick canvas that renders the running UI with tappable regions — that needs elements to carry their own origin at creation and is a much larger piece. Runtime self-registration of DOM elements to their source module. Picking anything other than a file path (functions, types, SQL objects). Generating or refreshing the manifest. Structure's own views and lenses. Attaching a target to a task as a model field — the path lives in the entry text, which is what Inject commits. The compose row, the task row, and the phase rail.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: c3deafcf-ce80-4994-a39c-926733e0d275 -->
