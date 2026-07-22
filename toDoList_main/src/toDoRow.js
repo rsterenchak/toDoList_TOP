@@ -45,7 +45,7 @@ import {
     refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
-import { buildStatusLabel, applyTodoStatusClass } from './todoStatus.js';
+import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI } from './todoStatus.js';
 import { applyTaskFilter } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
@@ -158,6 +158,18 @@ const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" 
 // marker read resolves — correctness (never a stuck/wrong amber) over the flash.
 // Idempotent: no-ops when the resolved state already matches so live refreshes
 // never thrash the DOM, and it never touches the inject button's own glyph.
+// Derived REVIEW badge state: a committed row whose entry has SHIPPED but hasn't
+// been acknowledged. Resolved here (not in todoStatus.js) because this file
+// already owns the inject.js dependency — todoStatus.js is kept free of it to
+// avoid the module cycle the CLAUDE_RUNS_KEY comment in inject.js documents. The
+// stored manual `status` is irrelevant to this flag; it reads purely from the
+// shared marker cache plus the item's `entryReviewedAt` acknowledgement stamp.
+function needsEntryReview(item) {
+    if (!item || !item.entryId || item.entryReviewedAt) return false;
+    return resolveEntryRunState(item.entryId) === 'shipped';
+}
+
+
 function applyRunStatusGlyph(descIndicator, item) {
     if (!descIndicator) return;
     const resolved = resolveEntryRunState(item && item.entryId);
@@ -192,6 +204,12 @@ export function refreshDescStatusDots() {
         const row = indicator.closest('#toDoChild');
         if (row && row.__item) {
             applyRunStatusGlyph(indicator, row.__item);
+            // Refresh the derived REVIEW badge alongside the glyph so a
+            // pending → shipped flip lights REVIEW live, without a re-render.
+            // Committed rows only — blank placeholders carry no status label.
+            if (row.querySelector('.todoStatusLabel')) {
+                refreshTodoStatusUI(row, row.__item, needsEntryReview(row.__item));
+            }
             if (row.__item.entryId && row.dataset && row.dataset.value) {
                 projectsToRefresh.add(row.dataset.value);
             }
@@ -1686,7 +1704,7 @@ export function buildToDoRow(item, toDoName) {
     // CSS. Blank placeholder rows skip both: there is no committed task to tag.
     if (item.tit) {
         applyTodoStatusClass(toDoChild, item.status);
-        toDoChild.insertBefore(buildStatusLabel(item), descIndicator);
+        toDoChild.insertBefore(buildStatusLabel(item, needsEntryReview(item)), descIndicator);
     }
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
@@ -1788,7 +1806,7 @@ export function buildToDoRow(item, toDoName) {
         // insert if the same row somehow re-commits.
         if (!toDoChild.querySelector('.todoStatusLabel')) {
             applyTodoStatusClass(toDoChild, item.status);
-            toDoChild.insertBefore(buildStatusLabel(item), descIndicator);
+            toDoChild.insertBefore(buildStatusLabel(item, needsEntryReview(item)), descIndicator);
         }
 
         // STACK mobile commit accent — 700ms fading purple left-edge so the

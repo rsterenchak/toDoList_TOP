@@ -14,6 +14,7 @@ import {
 // refreshDescStatusDots is exactly what the module-level TODO_RUN_STATUS_EVENT
 // listener delegates to; calling it drives the same production dot logic.
 import { refreshDescStatusDots } from '../src/toDoRow.js';
+import { buildStatusLabel, applyTodoStatusClass } from '../src/todoStatus.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -267,6 +268,70 @@ describe('run-status glyph — live refresh through the marker cache', () => {
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
         expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(true);
         expect(indicator.querySelectorAll('svg').length).toBe(1); // reused, not duplicated
+    });
+});
+
+describe('derived REVIEW badge — lights on shipped-but-unacknowledged, live via the sweep', () => {
+    // A committed row also carries a `.todoStatusLabel`; the sweep refreshes it
+    // alongside the glyph. Build one with both the indicator and the badge.
+    function makeCommittedRow(item) {
+        const ml = document.getElementById('mainList') || (function () {
+            const el = document.createElement('div');
+            el.id = 'mainList';
+            document.body.appendChild(el);
+            return el;
+        })();
+        const row = document.createElement('div');
+        row.id = 'toDoChild';
+        row.__item = item;
+        row.setAttribute('data-value', 'Inbox');
+        const indicator = document.createElement('span');
+        indicator.id = 'descIndicator';
+        row.appendChild(indicator);
+        applyTodoStatusClass(row, item.status);
+        row.appendChild(buildStatusLabel(item, false));
+        ml.appendChild(row);
+        return { row, indicator, label: row.querySelector('.todoStatusLabel') };
+    }
+
+    it('flips the badge to REVIEW once the entry marker is checked and unacknowledged', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: review-ship-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const { label } = makeCommittedRow({
+            status: 'active', tit: 'Ship me', entryId: 'review-ship-id',
+        });
+        // Built as the manual status; the sweep derives review from the cache.
+        expect(label.getAttribute('data-status')).toBe('active');
+
+        refreshDescStatusDots();
+        expect(label.getAttribute('data-status')).toBe('review');
+        expect(label.textContent).toBe('⌁ REVIEW');
+    });
+
+    it('does NOT show REVIEW once the entry has been acknowledged (entryReviewedAt set)', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: review-ack-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const { label } = makeCommittedRow({
+            status: 'idea', tit: 'Acked', entryId: 'review-ack-id',
+            entryReviewedAt: '2026-07-22T00:00:00.000Z',
+        });
+
+        refreshDescStatusDots();
+        expect(label.getAttribute('data-status')).toBe('idea');
+        expect(label.textContent).toBe('○ IDEA');
+    });
+
+    it('does NOT show REVIEW while the entry is only pending (unchecked marker)', async () => {
+        mockTodoMd('- [ ] not done\n  <!-- id: review-pending-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const { indicator, label } = makeCommittedRow({
+            status: 'active', tit: 'Pending', entryId: 'review-pending-id',
+        });
+
+        refreshDescStatusDots();
+        // Glyph is amber pending, but the badge stays on the manual status.
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
+        expect(label.getAttribute('data-status')).toBe('active');
     });
 });
 
