@@ -16691,6 +16691,27 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: var(--accent-text);
 }
 
+/* REVIEW action inside the mobile description-editor modal — present only while
+   the task's derived phase is `accept` (shipped, awaiting acknowledgement; JS
+   toggles display). It leads the actions block on its own full-width row
+   (order:0, ahead of Generate's order:1) and routes to the TODO.md viewer where
+   the change is acknowledged. A solid amber fill (#ffbd5e — the same accent the
+   REVIEW badge and the viewer's Acknowledge pill carry, dark text for contrast)
+   marks it as the primary action for that phase, distinct from Generate / Inject
+   / Copy. The SpaceMono uppercase treatment comes from the shared
+   .descEditorModalBtn rule above; this rule only adds order, span, and color. */
+#descEditorModalActions #descEditorModalReview {
+  order: 0;
+  flex: 0 0 100%;
+  background: #ffbd5e;
+  color: #1a1408;
+  border-color: #ffbd5e;
+}
+#descEditorModalActions #descEditorModalReview:hover {
+  background: #ffcb7f;
+  border-color: #ffcb7f;
+}
+
 
 /* ── INJECT SETTINGS MODAL ── */
 #injectSettingsBackdrop {

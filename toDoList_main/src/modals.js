@@ -16,9 +16,9 @@ import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
-import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI } from './todoStatus.js';
+import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI, invokeReviewBadgeTap } from './todoStatus.js';
 import { reorderToDoDOM, makeGenerateButton, syncGenerateControl } from './toDoRow.js';
-import { derivePhase, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from './phase.js';
+import { derivePhase, PHASE, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from './phase.js';
 
 
 // ── SHARED MODAL DISMISS WIRING ──
@@ -361,15 +361,26 @@ export function showDescEditorModal(item, options) {
             rail.appendChild(node);
         });
         rail.setAttribute('aria-label', 'Pipeline phase: ' + PHASE_RAIL_LABELS[railPhase]);
+        return phase;
     }
-    renderRail();
 
-    // Repaint the rail when the phase changes while the modal is open — an entry
-    // can ship or be acknowledged from another surface mid-session. The row layer
-    // already refreshes on this same event via refreshDescStatusDots; the modal
-    // subscribes alongside it and tears the listener down on close (see
-    // onDescEditorClose) so a dismissed modal leaves nothing attached.
-    function onRailPhaseChange() { renderRail(); }
+    // Repaint the phase-dependent UI (the rail AND the REVIEW action below) from a
+    // single derived phase: renderRail computes derivePhase(item) once and returns
+    // it, and the REVIEW action reuses that value rather than resolving it a second
+    // time in the same render. Defined here but first invoked after the actions
+    // block builds reviewBtn.
+    function refreshPhaseUI() {
+        const phase = renderRail();
+        syncReviewAction(phase);
+    }
+
+    // Repaint when the phase changes while the modal is open — an entry can ship
+    // or be acknowledged from another surface mid-session, which both moves the
+    // rail and toggles the REVIEW action. The row layer already refreshes on this
+    // same event via refreshDescStatusDots; the modal subscribes alongside it and
+    // tears the listener down on close (see onDescEditorClose) so a dismissed
+    // modal leaves nothing attached.
+    function onRailPhaseChange() { refreshPhaseUI(); }
     document.addEventListener(TODO_RUN_STATUS_EVENT, onRailPhaseChange);
 
     const body = document.createElement('div');
@@ -448,19 +459,48 @@ export function showDescEditorModal(item, options) {
     generateSpend.id = 'descEditorModalGenerateSpend';
     generateSpend.textContent = 'Dispatches an agent run — spends your Max-plan quota.';
 
-    // Explicit stacking order for the whole actions block: Generate, its spend
-    // caption, Inject, then the Clear / Copy pair on one row. Each child carries
-    // its own `order` in CSS rather than layering another override onto a basis
-    // hack, so the sequence is readable with all four controls present.
+    // ── REVIEW ACTION ──
+    // Shown ONLY while the task's derived phase is `accept` (shipped, not yet
+    // acknowledged): below 1024px this modal is the task's only detail surface —
+    // the on-row REVIEW badge is CSS-hidden — so without this the mobile user
+    // sees REVIEW reported on the rail with no route out of it. It is a route,
+    // not a second Accept control: acknowledging stays the viewer's job, where
+    // the entry plus whatever the run appended (the PR number) is visible.
+    // Tapping dismisses the modal and opens the TODO.md viewer anchored to this
+    // entry — the same destination the row badge reaches on desktop, via the same
+    // registered handler (invokeReviewBadgeTap) rather than a second open-and-
+    // anchor implementation or a main.js import. syncReviewAction toggles its
+    // visibility off the phase refreshPhaseUI computes, so it appears/disappears
+    // in lockstep with the rail on TODO_RUN_STATUS_EVENT. Hidden by default.
+    const reviewBtn = document.createElement('button');
+    reviewBtn.id = 'descEditorModalReview';
+    reviewBtn.type = 'button';
+    reviewBtn.className = 'descEditorModalBtn';
+    reviewBtn.textContent = '⌁ Review shipped change';
+    reviewBtn.style.display = 'none';
+
+    function syncReviewAction(phase) {
+        reviewBtn.style.display = (phase === PHASE.ACCEPT) ? '' : 'none';
+    }
+
+    // Explicit stacking order for the whole actions block: the REVIEW action (when
+    // present) leads, then Generate, its spend caption, Inject, then the Clear /
+    // Copy pair on one row. Each child carries its own `order` in CSS rather than
+    // layering another override onto a basis hack, so the sequence is readable.
     actions.appendChild(clearBtn);
     actions.appendChild(injectBtn);
     actions.appendChild(generateBtn);
     actions.appendChild(generateSpend);
+    actions.appendChild(reviewBtn);
     actions.appendChild(copyBtn);
     // Reflect the linked queue row's current state (Generating…/failure) and land
     // a draft that finished while the modal was closed. Live pushes re-sync via
     // the shared sweep in refreshDescStatusDots (every `.generateBtn`).
     syncGenerateControl(generateBtn);
+
+    // First paint of the rail + REVIEW action now that reviewBtn exists (the
+    // TODO_RUN_STATUS_EVENT subscription above only repaints on later changes).
+    refreshPhaseUI();
 
     // ── STATUS SEGMENTED CONTROL ──
     // On mobile the on-row status badge (`.todoStatusLabel` → showStatusPopover)
@@ -574,10 +614,28 @@ export function showDescEditorModal(item, options) {
         }
     }
 
-    wireModalDismiss({
+    const closeDescEditor = wireModalDismiss({
         backdrop: backdrop,
         closeButtons: [closeX],
         onClose: onDescEditorClose
+    });
+
+    // REVIEW action: dismiss the modal FIRST, then open the anchored viewer. The
+    // viewer expands and scrolls to the anchored entry, and an open modal over it
+    // would land the scroll behind a scrim; deferring the open a tick lets the
+    // modal teardown (and its layout reflow) settle before the anchor offset is
+    // computed. Reuses the same registered handler the on-row REVIEW badge uses,
+    // so there is one open-and-anchor path. Phase `accept` already means the
+    // marker sits on a checked TODO.md entry, so the anchor resolves; the button
+    // is absent in every other phase (syncReviewAction), never opening an
+    // unanchored viewer from a surface that implied a specific entry.
+    reviewBtn.addEventListener('click', function() {
+        const entryId = item && item.entryId;
+        const projectName = opts.projectName || '';
+        closeDescEditor();
+        setTimeout(function() {
+            invokeReviewBadgeTap(entryId, projectName);
+        }, 0);
     });
 
     copyBtn.addEventListener('click', function() {
