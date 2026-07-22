@@ -1,10 +1,12 @@
-// Source-level pins for the Phase 4 magic-link sign-in modal.
+// Source-level pins for the email-OTP sign-in modal.
 //
 // The modal is the app's hard gate — index.js renders it whenever no
 // Supabase session exists at boot, and re-renders it whenever the
-// session is cleared via sign-out. These tests verify the wiring is
-// in place at the source level (modal builder structure, the
-// signInWithOtp call shape, the boot-time getSession + onAuthStateChange
+// session is cleared via sign-out. Screen 2 collects a 6-digit code and
+// calls verifyOtp in-app so the session lands in the installed PWA's
+// own storage jar. These tests verify the wiring is in place at the
+// source level (modal builder structure, the signInWithOtp / verifyOtp
+// call shapes, the boot-time getSession + onAuthStateChange
 // subscription, the sign-out row in both settings surfaces) rather
 // than driving Supabase live, which is deferred to a later validation
 // pass.
@@ -69,19 +71,19 @@ describe('Auth modal — source-level structure in auth.js', () => {
         expect(auth).toMatch(/Continue\s*→/);
     });
 
-    it('renders the screen-2 ghost-with-mail variant and "Check your inbox." heading', () => {
+    it('renders the screen-2 ghost-with-mail variant and "Enter your code." heading', () => {
         expect(auth).toMatch(/authModalMascot--mail/);
         expect(auth).toMatch(/authModalMailBadge/);
-        expect(auth).toMatch(/textContent\s*=\s*['"]Check your inbox\.['"]/);
+        expect(auth).toMatch(/textContent\s*=\s*['"]Enter your code\.['"]/);
     });
 
     it('highlights the destination email in accent purple on screen 2', () => {
         expect(auth).toMatch(/authModalEmailHighlight/);
-        expect(auth).toMatch(/A link is on its way to/);
+        expect(auth).toMatch(/Enter the 6-digit code sent to/);
     });
 
-    it('renders the screen-2 Resend link and "Use a different email" actions', () => {
-        expect(auth).toMatch(/Resend link/);
+    it('renders the screen-2 "Resend code" and "Use a different email" actions', () => {
+        expect(auth).toMatch(/Resend code/);
         expect(auth).toMatch(/Use a different email/);
     });
 
@@ -97,29 +99,58 @@ describe('Auth modal — source-level structure in auth.js', () => {
 });
 
 
-describe('Auth modal — signInWithOtp call shape', () => {
+describe('Auth modal — signInWithOtp call shape (code variant)', () => {
     const auth = read('auth.js');
 
-    it('calls supabase.auth.signInWithOtp with email + emailRedirectTo=window.location.origin', () => {
+    it('calls supabase.auth.signInWithOtp with the email and no emailRedirectTo', () => {
         expect(auth).toMatch(/supabase\.auth\.signInWithOtp\s*\(/);
-        // The redirect target needs to bounce back to whatever origin
-        // the app is hosted on so the magic-link callback can complete
-        // session exchange in-place.
-        expect(auth).toMatch(/emailRedirectTo:\s*window\.location\.origin/);
+        // The OTP-code variant drops emailRedirectTo entirely so Supabase
+        // sends a 6-digit code (from {{ .Token }}) instead of a magic
+        // link; verifyOtp then creates the session inside the PWA's own
+        // storage jar rather than the system browser's. The option key
+        // (emailRedirectTo:) must be gone from the call site.
+        expect(auth).not.toMatch(/emailRedirectTo\s*:/);
     });
 
     it('surfaces "Too many tries — wait a moment" on a rate-limit error', () => {
         expect(auth).toMatch(/Too many tries\s*—\s*wait a moment/);
     });
 
-    it('surfaces "Couldn\'t send link — try again" on a generic / network error', () => {
-        expect(auth).toMatch(/Couldn['’]t send link\s*—\s*try again/);
+    it('surfaces "Couldn\'t send code — try again" on a generic / network error', () => {
+        expect(auth).toMatch(/Couldn['’]t send code\s*—\s*try again/);
     });
 
     it('branches on HTTP 429 status to pick the rate-limit message', () => {
         // The Supabase SDK surfaces rate limiting as either error.status
         // or a wrapped response.status; the wrapper checks both.
         expect(auth).toMatch(/===?\s*429/);
+    });
+});
+
+
+describe('Auth modal — screen-2 code entry + verifyOtp', () => {
+    const auth = read('auth.js');
+
+    it('renders a code input wired for mobile OTP autofill', () => {
+        // inputmode numeric → numeric keypad; autocomplete one-time-code →
+        // iOS offers the code from the email; maxlength 6 caps the digits.
+        expect(auth).toMatch(/authModalCodeInput/);
+        expect(auth).toMatch(/inputMode\s*=\s*['"]numeric['"]/);
+        expect(auth).toMatch(/autocomplete\s*=\s*['"]one-time-code['"]/);
+        expect(auth).toMatch(/maxLength\s*=\s*6/);
+    });
+
+    it('renders a primary "Verify" button', () => {
+        expect(auth).toMatch(/textContent\s*=\s*['"]Verify['"]/);
+    });
+
+    it('calls supabase.auth.verifyOtp with email + token + type "email"', () => {
+        expect(auth).toMatch(/supabase\.auth\.verifyOtp\s*\(/);
+        expect(auth).toMatch(/type:\s*['"]email['"]/);
+    });
+
+    it('surfaces an inline error on an invalid / expired code', () => {
+        expect(auth).toMatch(/That code didn['’]t work — check it or resend/);
     });
 });
 
@@ -257,6 +288,13 @@ describe('Auth modal — CSS', () => {
 
     it('sizes the email input with font-size: 16px to prevent iOS Safari auto-zoom', () => {
         const idx = css.indexOf('.authModalEmailInput {');
+        expect(idx).toBeGreaterThan(-1);
+        const block = css.slice(idx, idx + 600);
+        expect(block).toMatch(/font-size:\s*16px/);
+    });
+
+    it('sizes the code input with font-size: 16px to prevent iOS Safari auto-zoom', () => {
+        const idx = css.indexOf('.authModalCodeInput {');
         expect(idx).toBeGreaterThan(-1);
         const block = css.slice(idx, idx + 600);
         expect(block).toMatch(/font-size:\s*16px/);

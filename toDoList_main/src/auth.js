@@ -1,18 +1,26 @@
-// Magic-link sign-in modal — the app's hard gate.
+// Email OTP sign-in modal — the app's hard gate.
 //
 // On boot, index.js queries supabase.auth.getSession(); if no session
 // exists, showAuthModal() renders a full-screen takeover blocking the
-// rest of the UI until the user authenticates via Supabase magic-link
-// auth. index.js also subscribes to supabase.auth.onAuthStateChange so
-// the modal hides when a session arrives and re-renders on sign-out.
+// rest of the UI until the user authenticates via Supabase email OTP.
+// index.js also subscribes to supabase.auth.onAuthStateChange so the
+// modal hides when a session arrives and re-renders on sign-out.
+//
+// The OTP (code) variant is used instead of the magic link so the
+// session is created inside the installed PWA's own storage jar. A
+// magic link opens in the system browser (a separate storage jar on
+// iOS), leaving the standalone app still signed out; entering the code
+// in-app avoids that split entirely.
 //
 // Screens:
 //   1 (sign-in)      — "Welcome." heading + email input + Continue button.
 //                      Submit calls supabase.auth.signInWithOtp; advances
 //                      to screen 2 on success.
-//   2 (confirmation) — "Check your inbox." with a Resend link button
-//                      (cooldown-disabled for 10s after each press) and a
-//                      quieter "Use a different email" link back to screen 1.
+//   2 (code entry)   — "Enter your code." with a 6-digit code input and a
+//                      Verify button (calls verifyOtp in-app), plus a
+//                      "Resend code" button (cooldown-disabled for 10s
+//                      after each press) and a quieter "Use a different
+//                      email" link back to screen 1.
 
 import { supabase } from './supabaseClient.js';
 
@@ -124,7 +132,7 @@ function renderSignInScreen(dialog, prefillEmail) {
         }
         submit.disabled = true;
         errorEl.style.display = 'none';
-        sendMagicLink(email).then(function(result) {
+        sendCode(email).then(function(result) {
             if (result.ok) {
                 renderConfirmationScreen(dialog, email);
             } else {
@@ -136,11 +144,14 @@ function renderSignInScreen(dialog, prefillEmail) {
 }
 
 
-// ── SCREEN 2: CONFIRMATION ──
-// Ghost mascot with a small mail-icon badge bottom-right, "Check your
-// inbox." heading, body copy with the email highlighted in the accent
-// purple, primary outlined Resend button (10s cooldown), and a quieter
-// text link back to screen 1.
+// ── SCREEN 2: CODE ENTRY ──
+// Ghost mascot with a small mail-icon badge bottom-right, "Enter your
+// code." heading, body copy with the email highlighted in the accent
+// purple, a 6-digit code input + primary Verify button, an outlined
+// Resend code button (10s cooldown), and a quieter text link back to
+// screen 1. Submitting a valid code calls verifyOtp in-app so the
+// session lands in the PWA's own storage jar; onAuthStateChange in
+// index.js then hides this gate.
 function renderConfirmationScreen(dialog, email) {
     while (dialog.firstChild) dialog.removeChild(dialog.firstChild);
 
@@ -158,17 +169,46 @@ function renderConfirmationScreen(dialog, email) {
     const heading = document.createElement('h1');
     heading.id = 'authModalTitle';
     heading.className = 'authModalHeading';
-    heading.textContent = 'Check your inbox.';
+    heading.textContent = 'Enter your code.';
     dialog.appendChild(heading);
 
     const body = document.createElement('p');
     body.className = 'authModalBody';
-    body.appendChild(document.createTextNode('A link is on its way to '));
+    body.appendChild(document.createTextNode('Enter the 6-digit code sent to '));
     const emailSpan = document.createElement('span');
     emailSpan.className = 'authModalEmailHighlight';
     emailSpan.textContent = email;
     body.appendChild(emailSpan);
     dialog.appendChild(body);
+
+    const form = document.createElement('form');
+    form.id = 'authModalCodeForm';
+    form.setAttribute('novalidate', '');
+
+    // Mobile-first: numeric keypad, iOS one-time-code autofill from the
+    // email, capped at 6 digits, and font-size 16px (via CSS) to avoid
+    // Safari auto-zoom on focus.
+    const codeInput = document.createElement('input');
+    codeInput.id = 'authModalCodeInput';
+    codeInput.className = 'authModalCodeInput';
+    codeInput.type = 'text';
+    codeInput.name = 'code';
+    codeInput.inputMode = 'numeric';
+    codeInput.autocomplete = 'one-time-code';
+    codeInput.maxLength = 6;
+    codeInput.required = true;
+    codeInput.placeholder = '••••••';
+    codeInput.setAttribute('aria-label', 'Six-digit code');
+
+    const verify = document.createElement('button');
+    verify.type = 'submit';
+    verify.id = 'authModalVerify';
+    verify.className = 'authModalSubmit';
+    verify.textContent = 'Verify';
+
+    form.appendChild(codeInput);
+    form.appendChild(verify);
+    dialog.appendChild(form);
 
     const errorEl = document.createElement('div');
     errorEl.id = 'authModalError';
@@ -177,16 +217,40 @@ function renderConfirmationScreen(dialog, email) {
     errorEl.style.display = 'none';
     dialog.appendChild(errorEl);
 
+    form.addEventListener('submit', function(event) {
+        event.preventDefault();
+        if (verify.disabled) return;
+        const token = (codeInput.value || '').trim();
+        if (!token) {
+            showError(errorEl, 'Enter the code from your email.');
+            return;
+        }
+        // Disable while the request is in flight so a double-tap can't
+        // fire two verifyOtp calls, mirroring the Resend cooldown guard.
+        verify.disabled = true;
+        errorEl.style.display = 'none';
+        verifyCode(email, token).then(function(result) {
+            if (result.ok) {
+                // onAuthStateChange in index.js hides the gate; leave the
+                // button disabled so nothing else fires as it tears down.
+                return;
+            }
+            verify.disabled = false;
+            showError(errorEl, result.message);
+            try { codeInput.focus(); } catch (_) { /* test environments */ }
+        });
+    });
+
     const resend = document.createElement('button');
     resend.type = 'button';
     resend.id = 'authModalResend';
     resend.className = 'authModalResend';
-    resend.textContent = 'Resend link';
+    resend.textContent = 'Resend code';
     resend.addEventListener('click', function() {
         if (resend.disabled) return;
         resend.disabled = true;
         errorEl.style.display = 'none';
-        sendMagicLink(email).then(function(result) {
+        sendCode(email).then(function(result) {
             if (!result.ok) {
                 showError(errorEl, result.message);
             }
@@ -206,6 +270,12 @@ function renderConfirmationScreen(dialog, email) {
         renderSignInScreen(dialog, '');
     });
     dialog.appendChild(back);
+
+    // Defer focus so the modal has finished (re)rendering before we hand
+    // keyboard focus to the code input.
+    setTimeout(function() {
+        try { codeInput.focus(); } catch (_) { /* test environments */ }
+    }, 0);
 }
 
 
@@ -216,15 +286,14 @@ function showError(errorEl, message) {
 
 
 // Wraps supabase.auth.signInWithOtp so the two screens can share one
-// error-classification path. Returns a plain { ok, message } shape
+// error-classification path. With no emailRedirectTo option Supabase
+// sends the OTP code (when the email template carries {{ .Token }})
+// rather than a magic link. Returns a plain { ok, message } shape
 // instead of bubbling Supabase's response object up — keeps the
 // renderers ignorant of the SDK error surface.
-function sendMagicLink(email) {
+function sendCode(email) {
     return supabase.auth.signInWithOtp({
         email: email,
-        options: {
-            emailRedirectTo: window.location.origin + window.location.pathname,
-        },
     }).then(function(response) {
         const error = response && response.error;
         if (!error) return { ok: true };
@@ -237,9 +306,31 @@ function sendMagicLink(email) {
         if (status === 429 || msg.indexOf('rate') !== -1) {
             return { ok: false, message: 'Too many tries — wait a moment' };
         }
-        return { ok: false, message: "Couldn't send link — try again" };
+        return { ok: false, message: "Couldn't send code — try again" };
     }, function() {
         // Network failure / promise rejection — same generic message.
-        return { ok: false, message: "Couldn't send link — try again" };
+        return { ok: false, message: "Couldn't send code — try again" };
+    });
+}
+
+
+// Wraps supabase.auth.verifyOtp for the screen-2 Verify button. On
+// success the session is created in-app (inside the PWA's storage jar)
+// and onAuthStateChange takes over. Returns the same { ok, message }
+// shape as sendCode so the renderer stays ignorant of the SDK surface.
+function verifyCode(email, token) {
+    return supabase.auth.verifyOtp({
+        email: email,
+        token: token,
+        type: 'email',
+    }).then(function(response) {
+        const error = response && response.error;
+        if (!error) return { ok: true };
+        // Any error here means the token didn't verify — wrong digits or
+        // an expired code. Point the user at re-checking or resending.
+        return { ok: false, message: "That code didn't work — check it or resend" };
+    }, function() {
+        // Network failure / promise rejection — same generic message as send.
+        return { ok: false, message: "Couldn't send code — try again" };
     });
 }

@@ -1204,7 +1204,7 @@
   - Completed: 2026-07-21 (PR #<number>)
   <!-- id: c5fb9fad-74ec-4893-a2d4-915e271c63d4 -->
 
-- [ ] **[HIGH]** Replace magic-link sign-in with an in-app email OTP code
+- [x] **[HIGH]** Replace magic-link sign-in with an in-app email OTP code
   - Type: bug
   - Description: Magic-link sign-in is structurally broken for the installed PWA: on iOS a homescreen app has a separate storage jar from Safari, so a magic link opens in Safari, creates the session there, and the standalone app never sees it — you return to the homescreen icon still signed out. Switch to the email OTP code variant of the same flow: `signInWithOtp` already sends either a link or a 6-digit code depending on the Supabase email template, so screen 2 becomes a code-entry screen that calls `verifyOtp` in-app. The session is then created inside the PWA's own storage jar, which fixes installed-app sign-in at the root. Screen 1 and the modal shell are unchanged.
   - Behavior:
@@ -1223,5 +1223,5 @@
     - `style.css`: the code input (wide letter-spacing, mono, centered reads well for a 6-digit code) and the Verify button, reusing the existing auth-modal button styles. No inline style writes beyond the existing `showError` display toggle.
   - Out of scope: a local PIN lock over the persisted session (Supabase already persists and auto-refreshes the session, so a PIN would be a privacy lock, not a convenience — separate entry if wanted); password auth; and any change to `index.js`'s session bootstrap or `onAuthStateChange` wiring.
   - File: `toDoList_main/src/auth.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: d9781223-c1d8-4d33-883a-27642525d97c -->

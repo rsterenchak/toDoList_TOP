@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-22',
+        fixed: [
+            "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-21',
         added: [
             "Run a repo's console app on demand from the Structure tab and read its output live.",
@@ -13,13 +20,6 @@ export const changelog = [
         fixed: [
             "The Run & capture card's args input stays editable after a run or reopen, and its Run button repeats the run one-tap or with edited args.",
             "The Run & capture card now appears only for repos whose console app can actually run, and stays hidden on other repo shapes.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-20',
-        fixed: [
-            "A failed \"Draft tasks\" run now surfaces an error notice instead of quietly finishing, and freshly drafted proposals appear reliably once a run completes.",
         ],
     },
 ];
