@@ -31,7 +31,7 @@
   - Completed: 2026-07-22
   <!-- id: 003b8aa8-ddc2-4b4a-8d73-25cd734f0fed -->
 
-- [ ] **[MEDIUM]** Task row: show the phase word on mobile, but only when the task is blocked on you
+- [x] **[MEDIUM]** Task row: show the phase word on mobile, but only when the task is blocked on you
   - Type: feature
   - Description: `.todoStatusLabel` is hidden below 1024px in favour of the left-edge colour tab, so the `⌁ REVIEW` and `⌁ ASKING` states it renders are invisible on phones — the only device this app is actually driven from. Unhiding it wholesale is wrong: the row was judged too cramped for a permanent badge, and at 390px a word on every row costs roughly 55px of title while most rows would spend it saying nothing useful. Instead, surface the badge on mobile ONLY when it is carrying a phase genuinely blocked on the user — review or asking — so that a word appearing on a row always carries the same instruction: act on this. Manual status stays hidden on mobile and stays settable from the description editor's MANUAL STATUS control, exactly as it is today.
   - Behavior: On viewports below 1024px, a committed row whose derived phase is `accept`-unreviewed or `asking` renders its badge (`⌁ REVIEW` / `⌁ ASKING`) right-aligned before the trailing copy control, in amber, and the title truncates earlier on that row to make room. Every other row renders exactly as it does now — no badge, title at full width. Tapping the badge does what it already does: for review it opens the TODO.md viewer anchored to that entry; for asking it opens the description editor where the question and answer field live. The badge is not a status-popover trigger on mobile — manual status is not settable from the row at this breakpoint and must not become so. Desktop is entirely unchanged: all five badge states keep rendering as they do today.
@@ -45,5 +45,5 @@
     - `style.css`: no new colour tokens — the amber is the existing `#ffbd5e` already used by both badge states. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The left-edge colour tab, which keeps carrying manual status and is deliberately NOT repurposed to carry phase — that would remove a signal in active use to duplicate one the word already provides. The three manual status values, the status popover, and the MANUAL STATUS control in the description editor. `derivePhase` and the phase vocabulary. The run glyph. The description editor modal, including its missing Accept action, which is a separate entry. Desktop rendering at any breakpoint above 1023px. The filter pills, the compose row, and the TODO.md viewer.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 7b1d1f88-620c-4a08-b291-8d3fddda62f0 -->
