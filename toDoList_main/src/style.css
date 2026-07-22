@@ -1405,6 +1405,98 @@ body {
   box-shadow: 0 0 0 1px var(--accent-dim);
 }
 
+/* FILE:-PATH PICKER — a target chip beside THE ENTRY that lists the project's
+   manifest files and writes the chosen path into the entry's File: line. The
+   chip follows the 36×36 / 10px-radius convention shared with the other create
+   chips and sits right-aligned above the textarea; its searchable dropdown
+   panel reuses the existing elevated-surface + accent tokens. */
+#descEditorModalTargetPick {
+  align-self: flex-end;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--accent-text);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+#descEditorModalTargetPick:hover { background: var(--bg-hover); }
+#descEditorModalTargetPick:focus {
+  outline: none;
+  border-color: var(--accent-text);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+#descEditorModalTargetPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 240px;
+  padding: 8px;
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+}
+
+#descEditorModalTargetSearch {
+  /* 16px floor to defeat iOS Safari's auto-zoom-on-focus (CLAUDE.md mobile-input
+     rule) — a smaller field would leave the page zoomed after the picker closes. */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  padding: 8px 10px;
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  background: var(--bg-base, var(--bg-elevated));
+  color: var(--text-primary);
+  outline: none;
+}
+#descEditorModalTargetSearch:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+
+#descEditorModalTargetList {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.descEditorModalTargetRow {
+  text-align: left;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.descEditorModalTargetRow:hover { background: var(--bg-hover); }
+.descEditorModalTargetRow:focus-visible {
+  outline: none;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+}
+
+.descEditorModalTargetEmpty {
+  margin: 0;
+  padding: 8px 10px;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 #descEditorModalActions {
   display: flex;
   flex-wrap: wrap;

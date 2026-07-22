@@ -1635,6 +1635,17 @@ export async function loadManifest(repo) {
     return result;
 }
 
+// Synchronous, no-fetch read of a repo's already-loaded manifest. Returns the
+// cached { ok, files, ... } result when loadManifest has run for `repo` this
+// session, or null when nothing is cached yet. Lets a surface that must not
+// block on a network call (e.g. the description editor's File:-path picker)
+// show its browse affordance only when the manifest is already in hand and hide
+// it otherwise, rather than triggering a second fetch of its own.
+export function getCachedManifest(repo) {
+    if (!repo) return null;
+    return srcManifestCache[repo] || null;
+}
+
 // The cached manifest paths for the repo the picker is currently browsing, or
 // an empty list when that repo has no fetchable manifest.
 function currentManifestFiles() {
