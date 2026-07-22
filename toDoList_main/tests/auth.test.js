@@ -174,6 +174,37 @@ describe('Auth modal — signInWithOtp call shape (code variant)', () => {
 });
 
 
+describe('Auth modal — signups-disabled / unregistered-email handling', () => {
+    const auth = read('auth.js');
+
+    it('passes shouldCreateUser: false to signInWithOtp', () => {
+        // New-user signups are disabled in Supabase, so the client must
+        // declare the same intent rather than leaning on the dashboard
+        // toggle alone — signInWithOtp should never attempt to create an
+        // account.
+        expect(auth).toMatch(/shouldCreateUser\s*:\s*false/);
+    });
+
+    it('surfaces a distinct "No account for that email" message', () => {
+        // A sign-in with an email that has no account must read as
+        // "there's no account here", not the generic send-failure copy
+        // that reads like a system fault.
+        expect(auth).toMatch(/No account for that email/);
+    });
+
+    it('classifies the signups-disabled / user-not-found error before the generic fallback', () => {
+        // The classifier inspects the error text for the signup-disabled
+        // wording (Supabase says "Signups not allowed…") alongside the
+        // existing 429 check, mapping it to the no-account message.
+        const idx = auth.indexOf('function sendCode');
+        expect(idx).toBeGreaterThan(-1);
+        const fn = auth.slice(idx, idx + 2000);
+        expect(fn).toMatch(/signup/i);
+        expect(fn).toMatch(/No account for that email/);
+    });
+});
+
+
 describe('Auth modal — screen-2 code entry + verifyOtp', () => {
     const auth = read('auth.js');
 
