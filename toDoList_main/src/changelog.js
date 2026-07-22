@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         added: [
-            "Discuss a task with Claude from its row to keep the whole chat scoped to it — the attached task shows as a chip above the composer and rides on every message until you detach it or start a new chat.",
+            "Tasks the agent has a question about now show an ASKING badge and let you answer its question inline from the task row, without opening the Agent board.",
         ],
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",

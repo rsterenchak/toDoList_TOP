@@ -7,6 +7,7 @@ import {
     STATUS_META,
     STATUS_ORDER,
     REVIEW_LABEL,
+    ASKING_LABEL,
     normalizeStatus,
     buildStatusLabel,
     applyTodoStatusClass,
@@ -223,13 +224,69 @@ describe('buildToDoRow integration is wired (source-level — row builder is not
 
     it('inserts the badge + applies the class only for committed rows (guarded by item.tit)', () => {
         // The build-path insert is guarded by `if (item.tit)` so blank
-        // placeholder rows never get a badge. The badge's review flag now comes
-        // from the single derived phase (`phase === PHASE.ACCEPT`) so a
-        // shipped-but-unacknowledged entry renders REVIEW — the same phase that
-        // drives the glyph, so the two can never disagree.
+        // placeholder rows never get a badge. The badge's derived overlay now
+        // comes from the single derived phase via `overlayForPhase(phase)` —
+        // 'review' for a shipped-but-unacknowledged entry, 'asking' for a task
+        // whose linked queue row is in needs_words — the same phase that drives
+        // the glyph, so the two can never disagree.
         expect(toDoRow).toMatch(
-            /if\s*\(\s*item\.tit\s*\)\s*\{\s*applyTodoStatusClass\(toDoChild,\s*item\.status\);\s*toDoChild\.insertBefore\(buildStatusLabel\(item,\s*phase\s*===\s*PHASE\.ACCEPT\),\s*descIndicator\);/
+            /if\s*\(\s*item\.tit\s*\)\s*\{\s*applyTodoStatusClass\(toDoChild,\s*item\.status\);\s*toDoChild\.insertBefore\(buildStatusLabel\(item,\s*overlayForPhase\(phase\)\),\s*descIndicator\);/
         );
+    });
+});
+
+
+describe('ASKING derived overlay', () => {
+    it('renders the ⌁ ASKING label with data-status="asking" and no menu ARIA', () => {
+        const label = buildStatusLabel({ status: 'active' }, 'asking');
+        expect(label.getAttribute('data-status')).toBe('asking');
+        expect(label.textContent).toBe(ASKING_LABEL);
+        expect(label.hasAttribute('aria-haspopup')).toBe(false);
+        expect(label.getAttribute('aria-label')).toMatch(/asking/i);
+    });
+
+    it('refreshTodoStatusUI overlays ASKING without touching the manual status class', () => {
+        const item = { status: 'in_progress' };
+        const row = makeRow(item, 'Inbox');
+        refreshTodoStatusUI(row, item, 'asking');
+        const label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('asking');
+        expect(label.textContent).toBe(ASKING_LABEL);
+        // The row modifier class still tracks the manual status underneath.
+        expect(row.classList.contains('todo-row--in_progress')).toBe(true);
+        // Clearing the overlay reverts the label to the manual status.
+        refreshTodoStatusUI(row, item, null);
+        expect(label.getAttribute('data-status')).toBe('in_progress');
+    });
+
+    it('tapping the ASKING badge opens the row description panel (no popover)', () => {
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+
+        const item = { status: 'active' };
+        const row = makeRow(item, 'Inbox');
+        // Overlay the label to ASKING and add a description-toggle caret.
+        refreshTodoStatusUI(row, item, 'asking');
+        const descToggle = document.createElement('div');
+        descToggle.id = 'descToggle';
+        let opened = 0;
+        descToggle.addEventListener('click', function () {
+            opened += 1;
+            descToggle.classList.add('open');
+        });
+        row.appendChild(descToggle);
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
+        // No status popover mounted for the asking overlay.
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+
+        // A second tap while open does not collapse the panel (no re-click).
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
     });
 });
 

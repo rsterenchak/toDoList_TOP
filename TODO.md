@@ -17,7 +17,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 139e8c36-0b0d-4249-99e3-52dda0ef5009 -->
 
-- [ ] **[MEDIUM]** Task row: surface triage's pending question and answer it without leaving the list
+- [x] **[MEDIUM]** Task row: surface triage's pending question and answer it without leaving the list — Completed: 2026-07-22
   - Type: feature
   - Description: When triage needs input it parks its `agent_queue` row in `needs_words` with a question, and the only place to see or answer it is the Agent board. That is the last state genuinely blocked on the user that lives on another surface — every other part of the loop (phase, generate, viewer, chat scope) now reaches the task row. Surface the pending question on the originating task's row and let it be answered there, routing through the same write path and the same auto-fired triage sweep the board already uses.
   - Behavior: A task whose linked `agent_queue` row is in `needs_words` renders an `⌁ ASKING` badge in amber, and its description panel shows triage's question above an answer field with a Send action. Sending writes the answer through listLogic and fires the triage sweep exactly as the board does, after which the badge clears and the row returns to its normal phase display. Unsent answer text survives a row rebuild (sort, filter, project switch) rather than being silently dropped. Rows with no linked queue row, or whose row is in any other state, are unchanged. The Agent board keeps rendering and answering `needs_words` exactly as it does today — this adds a second place to answer, it does not remove the first.

@@ -7978,11 +7978,98 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoStatusLabel[data-status="in_progress"] { color: #9D93EE; }
 .todoStatusLabel[data-status="idea"]        { color: #5a5a6a; }
 .todoStatusLabel[data-status="review"]      { color: #ffbd5e; }
+/* ASKING — triage has a pending question. Same amber as REVIEW; the two are the
+   only derived overlays and both signal "your input is needed". */
+.todoStatusLabel[data-status="asking"]      { color: #ffbd5e; }
 .todoStatusLabel:hover { opacity: 0.8; }
 .todoStatusLabel:focus-visible {
   outline: 1px solid var(--accent);
   outline-offset: 1px;
   border-radius: 3px;
+}
+
+/* ASKING question block — triage's pending question + an inline answer field,
+   mounted at the top of a task row's description panel when the row is ASKING.
+   Amber left-edge marks it as the "your input is needed" region (same #ffbd5e as
+   the badge); the answer controls mirror the Agent board's needs_words card so
+   both surfaces read as one control. 10px radius per the panel convention. */
+.askingBlock {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border-left: 3px solid #ffbd5e;
+  border-radius: 10px;
+  background: var(--bg-hover);
+}
+.askingQuestion {
+  margin: 0 0 8px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.askingAnswerInput {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  /* 16px avoids iOS Safari focus auto-zoom on this real, focusable input. */
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
+  padding: 8px 10px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+}
+.askingAnswerInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.askingAnswerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 8px;
+}
+.askingAnswerError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+.askingAnswerSend {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.askingAnswerSend:hover {
+  background: var(--accent);
+  color: #fff;
+}
+.askingAnswerSend:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.askingAnswerSend:disabled,
+.askingAnswerSend.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+.askingAnswerSend.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
 }
 
 /* IN PROGRESS — purple left-stripe (inset so it never shifts the row layout)

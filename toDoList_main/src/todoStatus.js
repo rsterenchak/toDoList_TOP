@@ -46,6 +46,16 @@ export const STATUS_ORDER = ['active', 'in_progress', 'idea'];
 // marker cache at the row layer, which owns the inject.js dependency); this
 // module only renders and acts on it.
 export const REVIEW_LABEL = '⌁ REVIEW';
+
+// A second derived, non-settable overlay: a committed row whose linked
+// `agent_queue` row is parked in `needs_words` (triage has a pending question)
+// renders this amber label instead of its manual status. Like REVIEW it never
+// appears in the popover, is never written to `status`, and never drives the
+// row-level stripe/muting — it is purely a display overlay. Its tap opens the
+// row's description panel (where the question + answer field live) rather than
+// the status popover. The caller supplies the derived overlay descriptor
+// (resolved from the shared agent-queue cache via derivePhase at the row layer).
+export const ASKING_LABEL = '⌁ ASKING';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
 
 
@@ -78,15 +88,25 @@ export function applyTodoStatusClass(toDoChild, status) {
 }
 
 
+// Normalize a caller's overlay argument to one of the derived-overlay states.
+// Back-compat: a boolean `true` (the old `needsReview` signal) maps to 'review';
+// a string 'review'/'asking' passes through; anything else is no overlay (null).
+function normalizeOverlay(overlay) {
+    if (overlay === true || overlay === 'review') return 'review';
+    if (overlay === 'asking') return 'asking';
+    return null;
+}
+
+
 // Build the status label element for a committed row. The label both shows the
 // status and is the tap target (aria-haspopup="menu"); the delegated handler
 // reads the owning row's `__item` to resolve the live status on click, so this
-// element only needs to reflect the value at build time. When `needsReview` is
-// true the label renders the derived `⌁ REVIEW` overlay (data-status="review")
-// and its tap acknowledges rather than opening the popover — the ARIA reflects
-// that. The manual status is untouched underneath, so clearing review reverts
-// the label to it.
-export function buildStatusLabel(item, needsReview) {
+// element only needs to reflect the value at build time. When `overlay` is a
+// derived state the label renders that overlay (`⌁ REVIEW` / `⌁ ASKING`) instead
+// of the manual status, and its tap behaves per-overlay rather than opening the
+// popover — the ARIA reflects that. The manual status is untouched underneath,
+// so clearing the overlay reverts the label to it.
+export function buildStatusLabel(item, overlay) {
     const status = normalizeStatus(item && item.status);
     const label = document.createElement('button');
     label.type = 'button';
@@ -94,20 +114,26 @@ export function buildStatusLabel(item, needsReview) {
     label.className = 'todoStatusLabel';
     label.setAttribute('aria-expanded', 'false');
     label.setAttribute('tabindex', '0');
-    applyStatusLabelState(label, status, needsReview);
+    applyStatusLabelState(label, status, overlay);
     return label;
 }
 
 
-// Set a label's rendered state — data-status, text, and the review-specific
-// ARIA — for either the derived review overlay or the manual status. Shared by
-// build and refresh so the two paths can never drift.
-function applyStatusLabelState(label, status, needsReview) {
-    if (needsReview) {
+// Set a label's rendered state — data-status, text, and the overlay-specific
+// ARIA — for either a derived overlay (review / asking) or the manual status.
+// Shared by build and refresh so the two paths can never drift.
+function applyStatusLabelState(label, status, overlay) {
+    const derived = normalizeOverlay(overlay);
+    if (derived === 'review') {
         label.setAttribute('data-status', 'review');
         label.removeAttribute('aria-haspopup');
         label.setAttribute('aria-label', 'Acknowledge shipped task');
         label.textContent = REVIEW_LABEL;
+    } else if (derived === 'asking') {
+        label.setAttribute('data-status', 'asking');
+        label.removeAttribute('aria-haspopup');
+        label.setAttribute('aria-label', 'Triage is asking a question — open to answer');
+        label.textContent = ASKING_LABEL;
     } else {
         label.setAttribute('data-status', status);
         label.setAttribute('aria-haspopup', 'menu');
@@ -119,14 +145,14 @@ function applyStatusLabelState(label, status, needsReview) {
 
 // Refresh a row's label text + modifier class in place after a status change,
 // avoiding a full re-render that would disturb the row's other in-flight state.
-// `needsReview` overlays the derived REVIEW label; the row modifier class always
-// tracks the MANUAL status, so the stripe/muting never keys off review.
-export function refreshTodoStatusUI(toDoChild, item, needsReview) {
+// `overlay` overlays the derived REVIEW / ASKING label; the row modifier class
+// always tracks the MANUAL status, so the stripe/muting never keys off an overlay.
+export function refreshTodoStatusUI(toDoChild, item, overlay) {
     if (!toDoChild) return;
     const status = normalizeStatus(item && item.status);
     applyTodoStatusClass(toDoChild, status);
     const label = toDoChild.querySelector('.todoStatusLabel');
-    if (label) applyStatusLabelState(label, status, needsReview);
+    if (label) applyStatusLabelState(label, status, overlay);
 }
 
 
@@ -258,6 +284,17 @@ export function wireStatusLabelDelegation(container) {
         // marker can't be found, so the tap is never a no-op. No popover mounts.
         if (label.getAttribute('data-status') === 'review') {
             if (reviewBadgeTapHandler) reviewBadgeTapHandler(item.entryId, projectName);
+            return;
+        }
+        // ASKING badge: triage has a pending question for this task. The question
+        // and its answer field live in the row's description panel, so a tap opens
+        // that panel (via the row's expand caret) rather than the status popover.
+        // No `status` write happens; the badge clears on its own once the answer
+        // re-queues the linked agent_queue row out of needs_words. No-op when the
+        // panel is already open so a second tap doesn't collapse it shut.
+        if (label.getAttribute('data-status') === 'asking') {
+            const descToggle = row.querySelector('#descToggle');
+            if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;
         }
         // Toggle off ONLY when the open popover belongs to THIS label; for any

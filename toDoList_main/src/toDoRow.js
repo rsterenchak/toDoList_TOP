@@ -46,6 +46,14 @@ import {
 } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI } from './todoStatus.js';
 import { derivePhase, PHASE } from './phase.js';
+import {
+    getQueueRowForTodo,
+    pendingAnswers,
+    loadQueueRows,
+    fireTriageSweep,
+    startAgentQueueSubscription,
+    onQueueChange,
+} from './agentQueueStore.js';
 import { applyTaskFilter } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
@@ -177,6 +185,185 @@ function glyphStateForPhase(phase) {
 }
 
 
+// Map a derived phase to the status-label overlay the badge renders. The badge
+// paints exactly one derived overlay per phase, keyed off the SAME phase the
+// glyph reads so the two can never disagree:
+//   'asking' → '⌁ ASKING' (amber) — triage has a pending question for this task
+//   'accept' → '⌁ REVIEW' (amber) — shipped, unacknowledged
+//   everything else → null (the manual status shows through)
+function overlayForPhase(phase) {
+    if (phase === PHASE.ASKING) return 'asking';
+    if (phase === PHASE.ACCEPT) return 'review';
+    return null;
+}
+
+
+// A self-contained, body-level toast for a non-blocking notice from the row
+// layer — e.g. an answer that saved but whose triage sweep couldn't dispatch.
+// Appended to document.body so it survives the row rebuild that clears the
+// answered row's ASKING badge, and auto-removed after a few seconds. Reuses the
+// Agent board's toast styling (`.agentViewToast`) rather than inventing a token.
+function showRowToast(message) {
+    if (typeof document === 'undefined') return;
+    const prior = document.getElementById('todoRowToast');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+    const toast = document.createElement('div');
+    toast.id = 'todoRowToast';
+    toast.className = 'agentViewToast';
+    toast.setAttribute('role', 'status');
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(function() {
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
+    }, 4000);
+}
+
+
+// Locate the OPEN description panel (`#descSibling`) belonging to a row, or null
+// when the row's panel isn't expanded. The panel is inserted directly after the
+// row — or one slot past the mobile chip row on a blank placeholder — mirroring
+// wireDescToggle's own insert/remove traversal.
+function openDescSiblingFor(toDoChild) {
+    let node = toDoChild.nextSibling;
+    if (node && node.id === 'mobileCreateChips') node = node.nextSibling;
+    return (node && node.id === 'descSibling') ? node : null;
+}
+
+
+// Build the ASKING question + answer block for a row's description panel. It
+// carries triage's pending question above a textarea, a Send action, and an
+// inline error slot. Sending routes the answer through listLogic.answerAgentTask
+// (the single agent_queue write path) and fires the shared triage sweep — exactly
+// as the Agent board's answer control does — then reloads the shared store so the
+// row leaves needs_words and its badge clears. Unsent text is mirrored into the
+// shared `pendingAnswers` map (keyed by the linked queue-row id, the same key the
+// board uses) so it survives a row rebuild and shows on whichever surface the user
+// opens next.
+function buildAskingBlock(item, projectName, queueRow) {
+    const block = document.createElement('div');
+    block.className = 'askingBlock';
+    block.setAttribute('data-answer-row', String(queueRow.id));
+
+    const question = (queueRow.question || '').trim();
+    if (question) {
+        const q = document.createElement('p');
+        q.className = 'askingQuestion';
+        q.textContent = question;
+        block.appendChild(q);
+    }
+
+    const input = document.createElement('textarea');
+    input.className = 'askingAnswerInput';
+    input.rows = 2;
+    input.placeholder = 'Answer to continue…';
+    input.setAttribute('aria-label', 'Answer triage');
+    // 16px avoids iOS Safari's focus auto-zoom (per the mobile input convention).
+    input.style.fontSize = '16px';
+    if (pendingAnswers.has(queueRow.id)) input.value = pendingAnswers.get(queueRow.id);
+    input.addEventListener('input', function() {
+        pendingAnswers.set(queueRow.id, input.value);
+    });
+    input.addEventListener('click', function(e) { e.stopPropagation(); });
+    block.appendChild(input);
+
+    const actions = document.createElement('div');
+    actions.className = 'askingAnswerActions';
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'askingAnswerError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'askingAnswerSend';
+    send.textContent = 'Send';
+    actions.appendChild(send);
+    block.appendChild(actions);
+
+    function submitAnswer() {
+        if (send.disabled) return;
+        const text = (input.value || '').trim();
+        if (!text) return;
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        send.disabled = true;
+        input.disabled = true;
+        send.classList.add('is-pending');
+        send.textContent = 'Sending…';
+        Promise.resolve(listLogic.answerAgentTask(queueRow.id, text, queueRow.thread)).then(function(res) {
+            if (res && res.ok) {
+                input.value = '';
+                pendingAnswers.delete(queueRow.id);
+                // Reload the shared store so the row leaves needs_words and its
+                // ASKING badge clears even where realtime isn't observed; then
+                // repaint every row's derived badge + panel from the fresh cache.
+                Promise.resolve(loadQueueRows(projectName)).then(refreshDescStatusDots);
+                // Auto-fire the sweep now the row is back in triaging — exactly as
+                // the board does. The answer is already saved, so a failed dispatch
+                // only means a manual Run is needed; surface it as a toast, never a
+                // block. Shares the store's in-flight guard with the board.
+                Promise.resolve(fireTriageSweep(projectName)).then(function(tr) {
+                    if (tr && tr.ok === false) {
+                        showRowToast('Answer saved, but triage didn’t start — Run it from the Agent tab.');
+                    }
+                });
+                return;
+            }
+            send.disabled = false;
+            input.disabled = false;
+            send.classList.remove('is-pending');
+            send.textContent = 'Send';
+            errorEl.textContent = (res && res.error) || 'Could not send. Try again.';
+            errorEl.hidden = false;
+        }).catch(function() {
+            send.disabled = false;
+            input.disabled = false;
+            send.classList.remove('is-pending');
+            send.textContent = 'Send';
+            errorEl.textContent = 'Could not send. Try again.';
+            errorEl.hidden = false;
+        });
+    }
+
+    send.addEventListener('click', function(e) {
+        e.stopPropagation();
+        submitAnswer();
+    });
+    return block;
+}
+
+
+// Keep a row's open description panel in sync with its ASKING phase. Mounts the
+// question + answer block at the top of the panel when the row's linked
+// agent_queue row is in needs_words, and removes it otherwise — so a realtime
+// push that answers or re-queues the task adds/clears the block live. No-op when
+// the panel isn't open (the block mounts on open via wireDescToggle) or when the
+// asking state is unchanged (idempotent, so live sweeps don't thrash the DOM).
+// Re-applies the panel-height snapshot whenever the block is added or removed.
+function syncAskingPanel(toDoChild, item, projectName) {
+    const panel = openDescSiblingFor(toDoChild);
+    if (!panel) return;
+    const existing = panel.querySelector('.askingBlock');
+    const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+    const wantAsking = !!(queueRow && queueRow.state === 'needs_words');
+    if (wantAsking) {
+        if (existing) {
+            // Already mounted for the same queue row — refresh the draft only so a
+            // repaint doesn't drop unsent text; rebuild if it points elsewhere.
+            if (existing.getAttribute('data-answer-row') === String(queueRow.id)) return;
+            existing.remove();
+        }
+        panel.insertBefore(buildAskingBlock(item, projectName, queueRow), panel.firstChild);
+        refreshViewerExpandedHeight();
+    } else if (existing) {
+        existing.remove();
+        refreshViewerExpandedHeight();
+    }
+}
+
+
 function applyRunStatusGlyph(descIndicator, phase) {
     if (!descIndicator) return;
     const state = glyphStateForPhase(phase);
@@ -217,12 +404,17 @@ export function refreshDescStatusDots() {
             // badge in the same pass so the two can never repaint out of step.
             const phase = derivePhase(row.__item);
             applyRunStatusGlyph(indicator, phase);
-            // Refresh the derived REVIEW badge alongside the glyph so a
-            // draft → accept flip lights REVIEW live, without a re-render.
-            // Committed rows only — blank placeholders carry no status label.
+            // Refresh the derived badge alongside the glyph so a draft → accept
+            // flip lights REVIEW, or a needs_words push lights ASKING, live and
+            // without a re-render. Committed rows only — blank placeholders carry
+            // no status label.
             if (row.querySelector('.todoStatusLabel')) {
-                refreshTodoStatusUI(row, row.__item, phase === PHASE.ACCEPT);
+                refreshTodoStatusUI(row, row.__item, overlayForPhase(phase));
             }
+            // Keep an open description panel's ASKING question block in step with
+            // the row's live phase (mounts / clears the answer field as the linked
+            // queue row enters / leaves needs_words).
+            syncAskingPanel(row, row.__item, row.getAttribute('data-value'));
             if (row.__item.entryId && row.dataset && row.dataset.value) {
                 projectsToRefresh.add(row.dataset.value);
             }
@@ -232,6 +424,18 @@ export function refreshDescStatusDots() {
         refreshShippedMarkersForProject(name);
     });
 }
+
+// Load a project's agent_queue rows into the shared store on a full project
+// render, then repaint the derived badges once the fetch resolves. Ensures the
+// realtime subscription is open first (idempotent) so subsequent pushes keep the
+// badges live. Guarded on a project name; a fetch failure degrades to no badge
+// (fetchQueueRows resolves to []), never a throw.
+function loadQueueRowsForRender(projectName) {
+    if (!projectName || typeof document === 'undefined') return;
+    startAgentQueueSubscription();
+    Promise.resolve(loadQueueRows(projectName)).then(refreshDescStatusDots);
+}
+
 
 // A single delegated document listener drives the live refresh when an inject
 // stamps a pending entry or a run reconciles to SHIPPED. Attached lazily on the
@@ -244,6 +448,13 @@ function ensureRunStatusDotListener() {
     if (runStatusListenerAttached || typeof document === 'undefined') return;
     runStatusListenerAttached = true;
     document.addEventListener(TODO_RUN_STATUS_EVENT, refreshDescStatusDots);
+    // A realtime agent_queue push (or a store reload) re-derives every row's
+    // phase through the same sweep, so an ASKING badge lights / clears live as
+    // triage parks a question or the answer re-queues the task. The store owns
+    // the subscription; opening it here (idempotent) ensures it's live on the
+    // list view even before the Agent tab is ever mounted.
+    startAgentQueueSubscription();
+    onQueueChange(refreshDescStatusDots);
 }
 
 
@@ -1345,6 +1556,10 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             // Trigger the textarea's auto-grow handler now that it's in the
             // DOM — scrollHeight is only meaningful for an attached element.
             descInput.dispatchEvent(new Event("input"));
+            // Mount triage's ASKING question + answer block at the top of the
+            // panel when this task's linked agent_queue row is in needs_words.
+            // No-op for every other row.
+            syncAskingPanel(toDoChild, item, projectName);
             descToggle.classList.add("open");
             switcher = 1;
         } else {
@@ -1745,7 +1960,7 @@ export function buildToDoRow(item, toDoName) {
     // CSS. Blank placeholder rows skip both: there is no committed task to tag.
     if (item.tit) {
         applyTodoStatusClass(toDoChild, item.status);
-        toDoChild.insertBefore(buildStatusLabel(item, phase === PHASE.ACCEPT), descIndicator);
+        toDoChild.insertBefore(buildStatusLabel(item, overlayForPhase(phase)), descIndicator);
     }
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
@@ -1847,7 +2062,7 @@ export function buildToDoRow(item, toDoName) {
         // insert if the same row somehow re-commits.
         if (!toDoChild.querySelector('.todoStatusLabel')) {
             applyTodoStatusClass(toDoChild, item.status);
-            toDoChild.insertBefore(buildStatusLabel(item, derivePhase(item) === PHASE.ACCEPT), descIndicator);
+            toDoChild.insertBefore(buildStatusLabel(item, overlayForPhase(derivePhase(item))), descIndicator);
         }
 
         // STACK mobile commit accent — 700ms fading purple left-edge so the
@@ -2109,6 +2324,11 @@ export function addAllToDo_DOM(items, name) {
     });
     updateCompletedSection(mainListDiv);
     applyTaskFilter();
+    // Load this project's agent_queue rows into the shared store so any task
+    // whose linked row is in needs_words lights its ASKING badge (and can be
+    // answered inline) — even if the Agent tab is never opened. Repaints the
+    // derived badges once the cache resolves.
+    loadQueueRowsForRender(name);
 }
 
 
@@ -2136,6 +2356,7 @@ export function addToDos_restore(toDoArray, toDoName, opts) {
     });
     updateCompletedSection(mainListDiv);
     applyTaskFilter();
+    loadQueueRowsForRender(toDoName);
 }
 
 
