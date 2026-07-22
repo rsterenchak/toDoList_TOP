@@ -76,6 +76,11 @@ function toTodoRowPayload(item, projectId) {
         // Nullable; the write path only forwards it when set, so the sync
         // degrades to current local behavior when the column is absent.
         entry_id: item.entryId || null,
+        // Acknowledgement timestamp for a shipped entry — drives the derived
+        // REVIEW badge (unset = unacknowledged). Synced so an acknowledgement on
+        // one device clears the badge everywhere. Nullable; forwarded only when
+        // set (see persistMutation) so a pre-migration server degrades cleanly.
+        entry_reviewed_at: item.entryReviewedAt || null,
     };
 }
 
@@ -1551,6 +1556,46 @@ export const listLogic = (function () {
     }
 
 
+    // Acknowledge a shipped entry by stamping `entry_reviewed_at` onto its
+    // source todo, clearing the derived REVIEW badge for that row. Mirrors
+    // stampTodoEntryId exactly — a single-field write on a todo keyed by id:
+    // scans every project for the matching id (the badge tap has only the id),
+    // stamps an ISO timestamp, saves locally, and mirrors to Supabase
+    // (entry_reviewed_at rides in toTodoRowPayload) so the acknowledgement
+    // survives a reload and reaches other devices. The manual `status` field is
+    // never touched here. No-op (returns { ok:false }) when the id is missing or
+    // the todo isn't found.
+    // @category: user-mutation-only
+    function markEntryReviewed(todoId) {
+        if (!todoId) return { ok: false, error: 'Missing id.' };
+        let found = null;
+        let foundProject = null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) { return it && it.id === todoId; });
+            if (hit) { found = hit; foundProject = names[i]; break; }
+        }
+        if (!found) return { ok: false, error: 'Todo not found.' };
+
+        found.entryReviewedAt = new Date().toISOString();
+        saveToStorage();
+
+        if (found.id && found.tit && found.tit !== '') {
+            persistMutation({
+                op: 'update',
+                table: 'todos',
+                payload: toTodoRowPayload(
+                    found,
+                    allProjects[foundProject].id || null
+                ),
+            });
+        }
+        return { ok: true };
+    }
+
+
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
     // @category: user-mutation-only
@@ -2971,6 +3016,9 @@ export const listLogic = (function () {
                     // upsert exactly as before, so the sync degrades gracefully
                     // rather than failing every write on an unknown column.
                     if (payload.entry_id) row.entry_id = payload.entry_id;
+                    // Same graceful-degradation contract for the acknowledgement
+                    // timestamp: forward only when set.
+                    if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
                 } else {
                     return;
                 }
@@ -3031,6 +3079,7 @@ export const listLogic = (function () {
                     // See the insert path: forward entry_id only when set so the
                     // update stays compatible with a pre-migration server.
                     if (payload.entry_id) row.entry_id = payload.entry_id;
+                    if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
                 } else {
                     return;
                 }
@@ -3279,6 +3328,12 @@ export const listLogic = (function () {
                         entryId: t.entry_id
                             || (localTodosById[t.id] && localTodosById[t.id].entryId)
                             || undefined,
+                        // Round-trip the acknowledgement timestamp so the derived
+                        // REVIEW badge stays cleared cross-device. Falls back to a
+                        // locally-known value when the server column is null.
+                        entryReviewedAt: t.entry_reviewed_at
+                            || (localTodosById[t.id] && localTodosById[t.id].entryReviewedAt)
+                            || undefined,
                         created_at: t.created_at || null,
                     });
                 });
@@ -3526,6 +3581,9 @@ export const listLogic = (function () {
             // unrelated UPDATE (which returns entry_id: null) never clobbers a
             // good local id via the Object.assign below.
             if (evt.new.entry_id) mapped.entryId = evt.new.entry_id;
+            // Same guard for the acknowledgement timestamp: carry it only when
+            // present so an unrelated UPDATE never clears a local acknowledgement.
+            if (evt.new.entry_reviewed_at) mapped.entryReviewedAt = evt.new.entry_reviewed_at;
             if (idx === -1) {
                 proj.items.push(mapped);
             } else {
@@ -3597,6 +3655,7 @@ export const listLogic = (function () {
         loadLatestCapture,
         dismissRefactorCandidate,
         stampTodoEntryId,
+        markEntryReviewed,
         unflagAgentTask,
         setProjectColor,
         getProjectSortByDue,

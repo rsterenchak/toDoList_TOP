@@ -36,6 +36,16 @@ export const STATUS_META = {
 // so other surfaces (e.g. the mobile description editor's status selector)
 // render the same vocabulary in the same order rather than re-hardcoding it.
 export const STATUS_ORDER = ['active', 'in_progress', 'idea'];
+
+// Derived, non-settable display state. A committed row whose entry has shipped
+// but hasn't been acknowledged renders this label instead of its manual status.
+// It is deliberately absent from STATUS_META / STATUS_ORDER: REVIEW never
+// appears in the popover, is never written to `status`, and never drives the
+// row-level stripe/muting — it is purely a display overlay that a tap clears.
+// The caller supplies the `needsReview` boolean (resolved from the shared
+// marker cache at the row layer, which owns the inject.js dependency); this
+// module only renders and acts on it.
+export const REVIEW_LABEL = '⌁ REVIEW';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
 
 
@@ -59,34 +69,52 @@ export function applyTodoStatusClass(toDoChild, status) {
 // Build the status label element for a committed row. The label both shows the
 // status and is the tap target (aria-haspopup="menu"); the delegated handler
 // reads the owning row's `__item` to resolve the live status on click, so this
-// element only needs to reflect the value at build time.
-export function buildStatusLabel(item) {
+// element only needs to reflect the value at build time. When `needsReview` is
+// true the label renders the derived `⌁ REVIEW` overlay (data-status="review")
+// and its tap acknowledges rather than opening the popover — the ARIA reflects
+// that. The manual status is untouched underneath, so clearing review reverts
+// the label to it.
+export function buildStatusLabel(item, needsReview) {
     const status = normalizeStatus(item && item.status);
     const label = document.createElement('button');
     label.type = 'button';
     label.id = 'todoStatusLabel';
     label.className = 'todoStatusLabel';
-    label.setAttribute('data-status', status);
-    label.setAttribute('aria-haspopup', 'menu');
     label.setAttribute('aria-expanded', 'false');
-    label.setAttribute('aria-label', 'Change task status');
     label.setAttribute('tabindex', '0');
-    label.textContent = STATUS_META[status].label;
+    applyStatusLabelState(label, status, needsReview);
     return label;
+}
+
+
+// Set a label's rendered state — data-status, text, and the review-specific
+// ARIA — for either the derived review overlay or the manual status. Shared by
+// build and refresh so the two paths can never drift.
+function applyStatusLabelState(label, status, needsReview) {
+    if (needsReview) {
+        label.setAttribute('data-status', 'review');
+        label.removeAttribute('aria-haspopup');
+        label.setAttribute('aria-label', 'Acknowledge shipped task');
+        label.textContent = REVIEW_LABEL;
+    } else {
+        label.setAttribute('data-status', status);
+        label.setAttribute('aria-haspopup', 'menu');
+        label.setAttribute('aria-label', 'Change task status');
+        label.textContent = STATUS_META[status].label;
+    }
 }
 
 
 // Refresh a row's label text + modifier class in place after a status change,
 // avoiding a full re-render that would disturb the row's other in-flight state.
-export function refreshTodoStatusUI(toDoChild, item) {
+// `needsReview` overlays the derived REVIEW label; the row modifier class always
+// tracks the MANUAL status, so the stripe/muting never keys off review.
+export function refreshTodoStatusUI(toDoChild, item, needsReview) {
     if (!toDoChild) return;
     const status = normalizeStatus(item && item.status);
     applyTodoStatusClass(toDoChild, status);
     const label = toDoChild.querySelector('.todoStatusLabel');
-    if (label) {
-        label.setAttribute('data-status', status);
-        label.textContent = STATUS_META[status].label;
-    }
+    if (label) applyStatusLabelState(label, status, needsReview);
 }
 
 
@@ -207,6 +235,16 @@ export function wireStatusLabelDelegation(container) {
         const projectName = row.getAttribute('data-value');
         if (!item || !projectName) return;
         event.stopPropagation();
+        // REVIEW acknowledgement: a badge in the derived review state clears the
+        // "you haven't looked at this" overlay instead of opening the status
+        // popover. Stamp the acknowledgement through listLogic (never the manual
+        // `status` field) and re-render the label to the stored status — no
+        // popover mounts on this tap.
+        if (label.getAttribute('data-status') === 'review') {
+            listLogic.markEntryReviewed(item.id);
+            refreshTodoStatusUI(row, item, false);
+            return;
+        }
         // Toggle off ONLY when the open popover belongs to THIS label; for any
         // other label (including when nothing is open) mount its popover.
         // showStatusPopover's own hideStatusPopover() call tears down a popover

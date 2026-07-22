@@ -5,6 +5,8 @@ import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
 
 import {
     STATUS_META,
+    STATUS_ORDER,
+    REVIEW_LABEL,
     normalizeStatus,
     buildStatusLabel,
     applyTodoStatusClass,
@@ -220,9 +222,10 @@ describe('buildToDoRow integration is wired (source-level — row builder is not
 
     it('inserts the badge + applies the class only for committed rows (guarded by item.tit)', () => {
         // The build-path insert is guarded by `if (item.tit)` so blank
-        // placeholder rows never get a badge.
+        // placeholder rows never get a badge. The badge carries the derived
+        // review flag so a shipped-but-unacknowledged entry renders REVIEW.
         expect(toDoRow).toMatch(
-            /if\s*\(\s*item\.tit\s*\)\s*\{\s*applyTodoStatusClass\(toDoChild,\s*item\.status\);\s*toDoChild\.insertBefore\(buildStatusLabel\(item\),\s*descIndicator\);/
+            /if\s*\(\s*item\.tit\s*\)\s*\{\s*applyTodoStatusClass\(toDoChild,\s*item\.status\);\s*toDoChild\.insertBefore\(buildStatusLabel\(item,\s*needsEntryReview\(item\)\),\s*descIndicator\);/
         );
     });
 });
@@ -320,6 +323,158 @@ describe('(e) cross-label popover swap in a single click', () => {
         const expanded = document.querySelectorAll('.todoStatusLabel[aria-expanded="true"]');
         expect(expanded.length).toBe(1);
         expect(expanded[0]).toBe(labelB);
+    });
+});
+
+
+describe('(h) derived REVIEW badge — shipped-but-unacknowledged overlay', () => {
+    // Build a committed row whose label is already in the review state, mirroring
+    // what buildToDoRow does when needsEntryReview(item) is true.
+    function makeReviewRow(item, projectName) {
+        const row = document.createElement('div');
+        row.id = 'toDoChild';
+        row.__item = item;
+        row.setAttribute('data-value', projectName || 'Inbox');
+        applyTodoStatusClass(row, item.status);
+        row.appendChild(buildStatusLabel(item, true));
+        return row;
+    }
+
+    it('REVIEW is a display-only state — absent from STATUS_META, STATUS_ORDER, and the popover', () => {
+        expect(REVIEW_LABEL).toBe('⌁ REVIEW');
+        expect(STATUS_META.review).toBeUndefined();
+        expect(STATUS_ORDER).toEqual(['active', 'in_progress', 'idea']);
+        expect(STATUS_ORDER).not.toContain('review');
+    });
+
+    it('buildStatusLabel(item, true) renders the REVIEW overlay regardless of stored status', () => {
+        const label = buildStatusLabel({ status: 'in_progress', tit: 'X' }, true);
+        expect(label.getAttribute('data-status')).toBe('review');
+        expect(label.textContent).toBe('⌁ REVIEW');
+        // Acknowledge-not-open ARIA: no menu semantics in the review state.
+        expect(label.hasAttribute('aria-haspopup')).toBe(false);
+        expect(label.getAttribute('aria-label')).toBe('Acknowledge shipped task');
+    });
+
+    it('buildStatusLabel(item, false) renders the manual status with menu ARIA', () => {
+        const label = buildStatusLabel({ status: 'idea', tit: 'X' }, false);
+        expect(label.getAttribute('data-status')).toBe('idea');
+        expect(label.textContent).toBe('○ IDEA');
+        expect(label.getAttribute('aria-haspopup')).toBe('menu');
+        expect(label.getAttribute('aria-label')).toBe('Change task status');
+    });
+
+    it('the review overlay never drives the row modifier class — that keys off the manual status', () => {
+        const item = { status: 'idea', tit: 'X' };
+        const row = makeReviewRow(item, 'Inbox');
+        // Badge is REVIEW…
+        expect(row.querySelector('.todoStatusLabel').getAttribute('data-status')).toBe('review');
+        // …but the row's stripe/muting class tracks the manual status (idea).
+        expect(row.classList.contains('todo-row--idea')).toBe(true);
+        expect(row.classList.contains('todo-row--review')).toBe(false);
+    });
+
+    it('tapping a REVIEW badge acknowledges via listLogic.markEntryReviewed and opens no popover', () => {
+        const spy = vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation(() => ({ ok: true }));
+        const item = { id: 'todo-42', status: 'active', tit: 'Shipped thing' };
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+        const row = makeReviewRow(item, 'Work');
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledWith('todo-42');
+        // No popover on a review tap.
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+    });
+
+    it('after acknowledging, the badge reverts to the stored manual status', () => {
+        vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation((id) => {
+            // Simulate the model stamping the acknowledgement in place.
+            item.entryReviewedAt = '2026-07-22T00:00:00.000Z';
+            return { ok: true };
+        });
+        const item = { id: 'todo-7', status: 'in_progress', tit: 'Shipped thing' };
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+        const row = makeReviewRow(item, 'Work');
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+
+        const label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('in_progress');
+        expect(label.textContent).toBe('⏵ IN PROGRESS');
+        expect(label.getAttribute('aria-haspopup')).toBe('menu');
+    });
+
+    it('a non-review badge tap still opens the popover (acknowledge path does not intercept it)', () => {
+        const item = { id: 'todo-9', status: 'active', tit: 'Normal' };
+        const ackSpy = vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation(() => ({ ok: true }));
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+        const row = makeRow(item, 'Work'); // manual-status badge, not review
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+
+        expect(ackSpy).not.toHaveBeenCalled();
+        expect(document.getElementById('todoStatusPopover')).not.toBeNull();
+    });
+
+    it('refreshTodoStatusUI(row, item, true) overlays REVIEW; (…, false) restores the manual status', () => {
+        const item = { status: 'idea', tit: 'X' };
+        const row = makeRow(item, 'Inbox');
+        document.body.appendChild(row);
+
+        refreshTodoStatusUI(row, item, true);
+        let label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('review');
+        expect(label.textContent).toBe('⌁ REVIEW');
+        // Row class still tracks the manual status even under the overlay.
+        expect(row.classList.contains('todo-row--idea')).toBe(true);
+
+        refreshTodoStatusUI(row, item, false);
+        label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('idea');
+        expect(label.textContent).toBe('○ IDEA');
+    });
+});
+
+
+describe('(i) listLogic.markEntryReviewed stamps the acknowledgement without touching status', () => {
+    beforeEach(() => {
+        try { localStorage.clear(); } catch (e) { /* ignore */ }
+        listLogic._reset();
+        listLogic.addProject('Proj');
+        listLogic.addToDo('Proj', 'Shipped task');
+    });
+
+    it('stamps entryReviewedAt on the matching todo and leaves the manual status alone', () => {
+        const item = listLogic.listItems('Proj').find((i) => i.tit === 'Shipped task');
+        item.status = 'in_progress';
+        expect(item.entryReviewedAt).toBeUndefined();
+
+        const res = listLogic.markEntryReviewed(item.id);
+
+        expect(res.ok).toBe(true);
+        expect(typeof item.entryReviewedAt).toBe('string');
+        expect(Number.isNaN(Date.parse(item.entryReviewedAt))).toBe(false);
+        // The acknowledgement must never rewrite the settable status field.
+        expect(item.status).toBe('in_progress');
+    });
+
+    it('is a no-op for a missing id or an unknown todo', () => {
+        expect(listLogic.markEntryReviewed().ok).toBe(false);
+        expect(listLogic.markEntryReviewed('no-such-id').ok).toBe(false);
     });
 });
 

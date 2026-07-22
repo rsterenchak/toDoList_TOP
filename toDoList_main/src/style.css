@@ -7936,6 +7936,7 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoStatusLabel[data-status="active"]      { color: #6C5DF5; }
 .todoStatusLabel[data-status="in_progress"] { color: #9D93EE; }
 .todoStatusLabel[data-status="idea"]        { color: #5a5a6a; }
+.todoStatusLabel[data-status="review"]      { color: #ffbd5e; }
 .todoStatusLabel:hover { opacity: 0.8; }
 .todoStatusLabel:focus-visible {
   outline: 1px solid var(--accent);
