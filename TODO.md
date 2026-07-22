@@ -1225,3 +1225,21 @@
   - File: `toDoList_main/src/auth.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-22
   <!-- id: d9781223-c1d8-4d33-883a-27642525d97c -->
+
+- [ ] **[MEDIUM]** Match the Resend cooldown to Supabase's 60-second OTP limit
+  - Type: bug
+  - Description: The auth modal's Resend button uses a 10-second cooldown (`RESEND_COOLDOWN_MS`, auth.js:24), but Supabase only permits one OTP request per email address every 60 seconds. The button therefore re-enables 50 seconds before the server will accept another request, so tapping Resend almost always fails with the 429 path ("Too many tries — wait a moment") and the resend never goes through. Raise the cooldown to match the server limit, and show the remaining seconds on the button so the wait is legible instead of feeling broken.
+  - Behavior:
+    1. After a send or resend, the Resend button is disabled for 60 seconds.
+    2. While disabled it counts down — "Resend code (45s)" — so the wait is visible rather than a dead button.
+    3. At zero it re-enables and reads "Resend code" again; tapping it now succeeds rather than 429ing.
+    4. If a resend still returns a rate-limit error (the separate built-in-SMTP hourly cap), the existing calmer message shows and the cooldown restarts.
+  - Implementation notes:
+    - `RESEND_COOLDOWN_MS` (auth.js:24): 10s → 60s, matching Supabase's documented per-address OTP interval. Update the comment, which currently justifies the shorter window.
+    - Add a per-second interval while the cooldown runs to update the button label with the remaining seconds; clear it when the cooldown ends and on modal teardown (`hideAuthModal`) so a timer can't outlive the modal.
+    - Start the cooldown after the *initial* send too, not only after a Resend press — the 60s window opens with the first code, so an immediate Resend on landing at screen 2 would otherwise 429.
+    - Keep the 429 classification and its message unchanged; the separate built-in-SMTP hourly cap can still trigger it legitimately.
+  - Out of scope: configuring a custom SMTP provider to raise the hourly email cap (a Supabase dashboard change, not a code one); changing the OTP expiry; and any change to the verify path.
+  - File: `toDoList_main/src/auth.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d9f96e99-aa25-484d-9c3d-802fc49384f3 -->
