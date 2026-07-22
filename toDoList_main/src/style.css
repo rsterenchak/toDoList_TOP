@@ -1285,41 +1285,76 @@ body {
    Reuses the accent tokens and the existing 10px radius / 36px chip conventions
    — no new color tokens. Nodes before the current phase render filled (accent),
    the current one highlighted (accent border + tint), the rest muted/empty. */
+/* Read-only PHASE RAIL — a connected progress rail, NOT a segmented control.
+   Four fixed-width dot-over-caption columns joined by thin connector rules; the
+   whole thing is inert (no button chrome, no border-radius box, no hover/press,
+   not focusable) so it can never be mistaken for the settable MANUAL STATUS
+   control lower in the modal. Phase is derived from TODO.md — nothing here is
+   tappable. */
 #descEditorModalRail {
   display: flex;
-  align-items: stretch;
-  gap: 6px;
-  padding: 12px 14px 4px;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  padding: 14px 14px 6px;
 }
 .descEditorModalRailNode {
-  flex: 1 1 0;
-  min-width: 0;
-  min-height: 36px;
+  flex: 0 0 auto;
+  width: 52px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 6px 4px;
-  border: 0.5px solid var(--border-dim);
-  border-radius: 10px;
+  gap: 6px;
+}
+/* The dot. 10px circle; dark and unfilled by default. Only the dot carries a
+   border-radius — it is a mark, not a box. */
+.descEditorModalRailDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  box-sizing: border-box;
   background: var(--bg-elevated);
+  border: 1px solid var(--border-dim);
+}
+/* Uppercase SpaceMono caption beneath each dot. */
+.descEditorModalRailCaption {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 10px;
+  font-size: 7.5px;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   white-space: nowrap;
   color: var(--text-muted);
 }
-/* Phases already passed: solid accent fill. */
-.descEditorModalRailNode.is-filled {
+/* Connector rule between two dots — a 1px line top-aligned so it meets the dots'
+   centers (dot is 10px, so its center sits 5px down; the connector's own 1px
+   height is offset by ~4.5px). Dark by default, accent when it trails a passed
+   or current node. */
+.descEditorModalRailConnector {
+  flex: 1 1 0;
+  min-width: 14px;
+  height: 1px;
+  margin-top: 4.5px;
+  background: var(--border-dim);
+}
+/* Phases already passed: solid-accent dot and an accent connector into it. */
+.descEditorModalRailNode.is-filled .descEditorModalRailDot {
   background: var(--accent);
   border-color: var(--accent);
-  color: #fff;
 }
-/* The current phase: accent-tinted highlight with an accent outline. */
-.descEditorModalRailNode.is-current {
+.descEditorModalRailConnector.is-filled {
+  background: var(--accent);
+}
+/* The current phase: a lighter (accent-tinted) fill ringed by an accent outline
+   and a soft halo. The halo is a box-shadow spread, NOT a border, so it does not
+   change the dot's box size and shift the row. */
+.descEditorModalRailNode.is-current .descEditorModalRailDot {
   background: var(--accent-dim);
   border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.descEditorModalRailNode.is-filled .descEditorModalRailCaption,
+.descEditorModalRailNode.is-current .descEditorModalRailCaption {
   color: var(--accent-text);
 }
 
@@ -1400,10 +1435,13 @@ body {
   margin: 0;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
-  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   line-height: 1.4;
   color: var(--text-muted);
-  text-align: center;
+  /* Left-aligned so it reads as a caption on the Generate button above it, not
+     as a standalone centered sentence. */
+  text-align: left;
 }
 /* Copy entry steps back from the solid purple fill to a border-bright outline
    — the accent fill now belongs to Inject as the primary action. */
@@ -16589,6 +16627,41 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 #descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected):hover:not(:disabled) {
   background: #5b4ce0;
+}
+
+/* Typographic conversion of the four action controls (Generate, Inject, Clear,
+   Copy) to the SpaceMono uppercase letterspaced treatment the rest of the
+   pipeline surfaces use. Scoped to #descEditorModalActions so the desktop
+   #descSibling inject button and every other .injectBtn host are untouched.
+   Placed after the generate/inject modal rules above so this wins the
+   equal-specificity source-order tie and overrides their 13px sizing.
+   Buttons take no text focus, so the 16px iOS auto-zoom floor (which the
+   textarea and title input keep) does not apply to them. */
+#descEditorModalActions .descEditorModalBtn {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+@media (max-width: 480px) {
+  #descEditorModalActions .descEditorModalBtn {
+    font-size: 10px;
+  }
+}
+/* Generate reads as a DISPATCHED action, not an instant one: inside the modal
+   its leading glyph is a dispatch chevron rather than the shared sparkle,
+   contrasting with Inject's upload arrow (which is unchanged). Scoped to the
+   modal, so the desktop panel keeps the sparkle. Gated to the idle state so the
+   Generating… spinner label is untouched. */
+#descEditorModalActions .generateBtn:not(.is-generating) .generateBtnIcon {
+  display: none;
+}
+#descEditorModalActions .generateBtn:not(.is-generating) .generateBtnLabel::before {
+  content: '\00BB';
+  margin-right: 0.45em;
+  font-weight: 700;
+  color: var(--accent-text);
 }
 
 
