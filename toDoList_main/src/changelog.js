@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         fixed: [
-            "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",
             "The sign-in Resend code button now waits the full 60 seconds the server requires, counting the wait down on the button so a resend actually goes through.",
             "The sign-in code field now accepts the full verification code instead of cutting it off, so codes longer than six digits verify and sign you in.",
             "Signing in with an email that has no account now shows a clear no-account message instead of a generic send failure.",
             "The mobile description editor's phase indicator now reads as an inert progress rail instead of tappable buttons, so it can't be mistaken for a settable control.",
+            "The mobile description editor's Generate button now draws a complete outline on all four sides instead of appearing open-topped.",
         ],
     },
 ];

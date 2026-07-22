@@ -17,7 +17,7 @@
   - Completed: 2026-07-22
   <!-- id: 06dc7867-8989-4048-b254-2a40b7749e19 -->
 
-- [ ] **[LOW]** Mobile description editor: Generate button's top border is clipped
+- [x] **[LOW]** Mobile description editor: Generate button's top border is clipped
   - Type: bug
   - Description: In the mobile description-editor modal, the outlined Generate button renders with no top border — left, right, and bottom edges draw normally, so the outline reads as an open-topped box. There is visible clear space between the textarea above and the button, so it is not being overlapped by a neighbor; the border is being clipped or suppressed rather than covered. Most likely a leftover from the explicit flex-order pass on `#descEditorModalActions`, which reordered every child and replaced the previous `order: -1` / `flex: 0 0 100%` arrangement.
   - Behavior: The Generate button draws a complete 1px outline on all four sides, matching the Clear and Copy entry buttons below it, with its existing spacing from the textarea above and the spend line below unchanged.
@@ -28,5 +28,5 @@
     - Confirm the sibling buttons are unaffected after the change; whatever is clipping Generate may be positional, so a margin change on one child can shift the others in a wrapping flex.
   - Out of scope: The phase rail, the section order, the SpaceMono typography conversion, and the spend-line wording — all correct as landed. Generate's behavior, the Inject button, and the MANUAL STATUS control. The desktop `#descSibling` panel.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 003b8aa8-ddc2-4b4a-8d73-25cd734f0fed -->

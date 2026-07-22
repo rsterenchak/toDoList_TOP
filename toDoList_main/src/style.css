@@ -16596,6 +16596,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 13px;
   padding: 8px 10px;
   min-height: 36px;
+  /* As the first child in the actions block, Generate sits directly below the
+     container's 0.5px border-top + padding, landing its own 0.5px hairline top
+     border at a fractional device-pixel row where it antialiases away — the
+     outline reads as an open-topped box while the Clear / Copy siblings further
+     down render fine. Promoting the button to its own composited layer snaps it
+     to the device-pixel grid so all four edges of the hairline draw, without
+     thickening the border past its siblings. */
+  transform: translateZ(0);
 }
 #descEditorModalActions .generateFailure {
   order: 3;
