@@ -10,13 +10,14 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Regression guard for the primary + secondary actions layout of the mobile
-// description-editor modal (#descEditorModalActions). Inject is the actual
-// pipeline action, so it takes a full-width filled-primary row of its own
-// above an equal-width (50/50) Clear / Copy outline pair. These tests pin the
-// CSS invariants so the layout can't silently collapse back to one mixed-width
-// row or flip the fill emphasis.
-describe('desc editor modal — primary + secondary actions layout', () => {
+// Regression guard for the stacked actions layout of the mobile
+// description-editor modal (#descEditorModalActions). The block reads top to
+// bottom: Generate (order 1) leading, its spend caption (order 2), Inject
+// (order 4), then an equal-width (50/50) Clear / Copy outline pair (orders 5/6).
+// Generate and Inject each take a full-width row; Inject keeps the deeper
+// filled-primary emphasis in its ready state. These tests pin the CSS
+// invariants so the sequence can't silently collapse or flip emphasis.
+describe('desc editor modal — stacked actions layout', () => {
     const css = read('style.css');
 
     // Body of the first `<selector> { ... }` rule whose selector matches the
@@ -42,12 +43,26 @@ describe('desc editor modal — primary + secondary actions layout', () => {
         expect(body).toMatch(/flex-wrap:\s*wrap/);
     });
 
-    it('Inject takes a full-width row ordered first', () => {
+    it('Generate leads the block on its own full-width row (order 1)', () => {
+        const body = ruleBody('#descEditorModalActions .generateBtn');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/order:\s*1\b/);
+        expect(body).toMatch(/flex:\s*0\s+0\s+100%/);
+    });
+
+    it('Inject takes a full-width row below Generate + its spend caption (order 4)', () => {
         const body = ruleBody('#descEditorModalActions .injectBtn');
         expect(body).not.toBeNull();
-        // order:-1 floats it above the (later-DOM) Clear/Copy pair; 100% basis
+        // order:4 sits below Generate (1) and its spend caption (2); 100% basis
         // forces it onto its own row in the wrapping flex container.
-        expect(body).toMatch(/order:\s*-1/);
+        expect(body).toMatch(/order:\s*4\b/);
+        expect(body).toMatch(/flex:\s*0\s+0\s+100%/);
+    });
+
+    it('the Generate spend caption sits directly under Generate (order 2, full-width)', () => {
+        const body = ruleBody('#descEditorModalGenerateSpend');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/order:\s*2\b/);
         expect(body).toMatch(/flex:\s*0\s+0\s+100%/);
     });
 

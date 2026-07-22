@@ -52,14 +52,16 @@ describe('mobile desc editor status selector — markup + placement', () => {
 
     const modals = read('modals.js');
 
-    it('renders a labeled Status row with the segmented control', () => {
+    it('renders a labeled status row with the segmented control', () => {
         expect(modals).toMatch(/['"]descEditorModalStatusRow['"]/);
         expect(modals).toMatch(/['"]descEditorModalStatusLabel['"]/);
         expect(modals).toMatch(/['"]descEditorModalStatusControl['"]/);
         const labelIdx = modals.indexOf("'descEditorModalStatusLabel'");
         expect(labelIdx).toBeGreaterThan(-1);
         const tail = modals.slice(labelIdx, labelIdx + 300);
-        expect(tail).toMatch(/textContent\s*=\s*['"]Status['"]/);
+        // The label reads "Manual status" to distinguish this user annotation
+        // from the derived pipeline phase rendered by the rail above.
+        expect(tail).toMatch(/textContent\s*=\s*['"]Manual status['"]/);
     });
 
     it('the segments are buttons in a radiogroup with role="radio"', () => {
@@ -68,18 +70,20 @@ describe('mobile desc editor status selector — markup + placement', () => {
         expect(modals).toMatch(/setAttribute\(\s*['"]role['"]\s*,\s*['"]radio['"]\s*\)/);
     });
 
-    it('inserts the Status row between the body and the actions row', () => {
+    it('places the status row LAST — below the actions row (demoted beneath Generate/Inject/Clear/Copy)', () => {
+        // The manual status control is demoted below the actions so the derived
+        // pipeline phase (the rail) leads and the two no longer stack adjacent.
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = modals.slice(fnIdx);
         const bodyAppend = fn.search(/dialog\.appendChild\(\s*body\s*\)/);
-        const statusAppend = fn.search(/dialog\.appendChild\(\s*statusRow\s*\)/);
         const actionsAppend = fn.search(/dialog\.appendChild\(\s*actions\s*\)/);
+        const statusAppend = fn.search(/dialog\.appendChild\(\s*statusRow\s*\)/);
         expect(bodyAppend).toBeGreaterThan(-1);
-        expect(statusAppend).toBeGreaterThan(-1);
         expect(actionsAppend).toBeGreaterThan(-1);
-        expect(bodyAppend).toBeLessThan(statusAppend);
-        expect(statusAppend).toBeLessThan(actionsAppend);
+        expect(statusAppend).toBeGreaterThan(-1);
+        expect(bodyAppend).toBeLessThan(actionsAppend);
+        expect(actionsAppend).toBeLessThan(statusAppend);
     });
 });
 

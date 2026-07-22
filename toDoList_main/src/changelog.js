@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-22',
-        added: [
-            "A Generate action on a task's description now drafts an entry with the agent and lands it back into the description for review, without leaving the task.",
+        changed: [
+            "The mobile task description editor now opens as a pipeline instrument — a read-only phase rail leads it and the manual status control sits below the actions.",
         ],
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",

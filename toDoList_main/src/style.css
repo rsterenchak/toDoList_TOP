@@ -1210,9 +1210,16 @@ body {
 }
 
 #descEditorModalTitleText {
-  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
-  font-size: 14px;
-  line-height: 1.3;
+  /* Uppercase SpaceMono display — the same treatment the pipeline surfaces use —
+     so the title reads as the heading of an instrument panel rather than a form
+     field label. `text-transform: uppercase` renders the appearance without
+     mutating the stored title; the edit input (below) drops the transform so the
+     user sees exactly what they type. */
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.35;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   color: var(--text-primary);
   cursor: pointer;
   min-width: 0;
@@ -1273,11 +1280,67 @@ body {
 #descEditorModalClose:hover { color: var(--text-primary); }
 #descEditorModalClose:focus { outline: none; color: var(--accent-text); }
 
+/* ── PHASE RAIL ──
+   Read-only four-node rail (IDEA · DRAFT · REVIEW · DONE) leading the modal.
+   Reuses the accent tokens and the existing 10px radius / 36px chip conventions
+   — no new color tokens. Nodes before the current phase render filled (accent),
+   the current one highlighted (accent border + tint), the rest muted/empty. */
+#descEditorModalRail {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  padding: 12px 14px 4px;
+}
+.descEditorModalRailNode {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 4px;
+  border: 0.5px solid var(--border-dim);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--text-muted);
+}
+/* Phases already passed: solid accent fill. */
+.descEditorModalRailNode.is-filled {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+/* The current phase: accent-tinted highlight with an accent outline. */
+.descEditorModalRailNode.is-current {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+
 #descEditorModalBody {
   padding: 12px 14px;
   flex: 1 1 auto;
   display: flex;
+  flex-direction: column;
+  gap: 6px;
   min-height: 0;
+}
+
+/* THE ENTRY label above the textarea — the SpaceMono uppercase accent label
+   shared with the eyebrow and the status row. */
+#descEditorModalEntryLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
 }
 
 #descEditorModalTextarea {
@@ -1316,13 +1379,31 @@ body {
   border-top: 0.5px solid var(--border-dim);
 }
 
-/* Primary + secondary actions layout: Inject is the actual pipeline action,
-   so it takes a full-width filled-primary row of its own (see the inject
-   rules in the inject-button section), with Clear and Copy entry as an
-   equal-width (50/50) outline pair on the row beneath. */
+/* Actions stacking order (explicit `order` on every child rather than layering
+   overrides onto a basis hack): Generate (order 1) and its spend caption
+   (order 2), Inject (order 4), then the Clear / Copy pair sharing the final row
+   (orders 5 / 6). Generate and Inject each take a full-width row of their own
+   (see the generate/inject rules in the inject-button section); Clear and Copy
+   are an equal-width (50/50) outline pair on the last row. */
 #descEditorModalActions #descEditorModalClear,
 #descEditorModalActions #descEditorModalCopy {
   flex: 1 1 0;
+}
+#descEditorModalActions #descEditorModalClear { order: 5; }
+#descEditorModalActions #descEditorModalCopy { order: 6; }
+
+/* Caption naming the budget Generate spends — full-width, directly beneath the
+   Generate button (order 2, between Generate's order 1 and Inject's order 4). */
+#descEditorModalGenerateSpend {
+  order: 2;
+  flex: 0 0 100%;
+  margin: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  line-height: 1.4;
+  color: var(--text-muted);
+  text-align: center;
 }
 /* Copy entry steps back from the solid purple fill to a border-bright outline
    — the accent fill now belongs to Inject as the primary action. */
@@ -1371,12 +1452,15 @@ body {
    textarea and the actions row, letting touch users set the workflow status
    the on-row badge no longer exposes on mobile. Three connected segments;
    the selected one fills with its status color, matched to the row edge tab
-   (active → accent purple, in_progress → amber, idea → muted). */
+   (active → accent purple, in_progress → amber, idea → muted). Sits LAST in the
+   dialog (below the actions), so it carries a top divider and full bottom
+   padding rather than the actions row's. */
 #descEditorModalStatusRow {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 12px 16px 0;
+  padding: 12px 16px 14px;
+  border-top: 0.5px solid var(--border-dim);
 }
 #descEditorModalStatusLabel {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -16463,10 +16547,11 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 
 /* Generate inside the mobile description-editor modal: its own full-width row
-   above Inject (order:-2 floats it above Inject's order:-1 and the DOM-later
-   Clear/Copy pair). Drops the row-style outer margin — the modal owns padding. */
+   leading the actions block (order:1). Its spend caption (order:2) and any
+   failure notice (order:3) follow immediately beneath it, then Inject (order:4).
+   Drops the row-style outer margin — the modal owns padding. */
 #descEditorModalActions .generateBtn {
-  order: -2;
+  order: 1;
   flex: 0 0 100%;
   justify-content: center;
   margin: 0;
@@ -16475,18 +16560,18 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   min-height: 36px;
 }
 #descEditorModalActions .generateFailure {
-  order: -2;
+  order: 3;
   flex: 0 0 100%;
   margin: 0;
 }
 
 /* When the inject button lives inside the mobile description-editor modal's
    actions row, drop the row-style outer margin (the modal owns its own
-   padding) and match the height of the other modal buttons. It is the
-   primary action, so it takes its own full-width row above the Clear / Copy
-   pair (order:-1 + 100% basis against the wrapping actions flex container). */
+   padding) and match the height of the other modal buttons. It takes its own
+   full-width row (order:4) below Generate and its spend caption, above the
+   Clear / Copy pair — 100% basis against the wrapping actions flex container. */
 #descEditorModalActions .injectBtn {
-  order: -1;
+  order: 4;
   flex: 0 0 100%;
   justify-content: center;
   margin: 0;

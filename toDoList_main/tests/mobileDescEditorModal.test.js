@@ -637,22 +637,29 @@ describe('mobile desc editor modal — two-tier header (eyebrow + wrapped title)
         expect(parseInt(sizeMatch[1], 10)).toBeLessThanOrEqual(11);
     });
 
-    it('the task title renders in the proportional body font, natural case, wrapping up to two lines', () => {
-        // The title moves to Trebuchet MS (the app's existing body font — no
-        // new dependency), ~14px, primary text color, and clamps to two lines
-        // instead of the old single ellipsised monospace line.
-        const ruleMatch = css.match(/#descEditorModalTitleText\s*\{([\s\S]{0,500}?)\}/);
+    it('the task title renders in the uppercase SpaceMono display treatment, wrapping up to two lines', () => {
+        // The title leads the header as the instrument-panel heading: SpaceMono,
+        // uppercased via `text-transform` (so the stored value is never mutated),
+        // primary text color, clamped to two lines. The edit input drops the
+        // transform so the user sees exactly what they type.
+        const ruleMatch = css.match(/#descEditorModalTitleText\s*\{([\s\S]{0,1000}?)\}/);
         expect(ruleMatch).toBeTruthy();
         const body = ruleMatch[1];
-        expect(body).toMatch(/font-family:[^;]*Trebuchet/);
+        expect(body).toMatch(/font-family:[^;]*SpaceMono/);
+        expect(body).toMatch(/text-transform:\s*uppercase/);
         expect(body).toMatch(/color:\s*var\(--text-primary\)/);
         expect(body).toMatch(/-webkit-line-clamp:\s*2/);
-        // Natural case — the title must NOT be uppercased the way the old
-        // single-line monospace label was.
-        expect(body).not.toMatch(/text-transform:\s*uppercase/);
         const sizeMatch = body.match(/font-size:\s*(\d+)px/);
         expect(sizeMatch).toBeTruthy();
-        expect(parseInt(sizeMatch[1], 10)).toBe(14);
+        expect(parseInt(sizeMatch[1], 10)).toBeGreaterThanOrEqual(13);
+    });
+
+    it('the edit input keeps text-transform:none so the raw title is visible while typing', () => {
+        // The uppercase appearance is display-only; the input the title swaps to
+        // on tap must show natural case so the user edits what they actually see.
+        const ruleMatch = css.match(/#descEditorModalTitleInput\s*\{([\s\S]{0,1000}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        expect(ruleMatch[1]).toMatch(/text-transform:\s*none/);
     });
 });
 

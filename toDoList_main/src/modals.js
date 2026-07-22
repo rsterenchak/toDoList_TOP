@@ -15,9 +15,10 @@
 import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
-import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker } from './inject.js';
+import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
 import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI } from './todoStatus.js';
 import { reorderToDoDOM, makeGenerateButton, syncGenerateControl } from './toDoRow.js';
+import { derivePhase, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from './phase.js';
 
 
 // ── SHARED MODAL DISMISS WIRING ──
@@ -309,8 +310,56 @@ export function showDescEditorModal(item, options) {
         commitTitle();
     });
 
+    // ── PHASE RAIL ──
+    // A read-only, four-node rail — IDEA · DRAFT · REVIEW · DONE — leading the
+    // modal so the mobile detail surface reads as the pipeline instrument the
+    // rest of the design uses (below 1024px the on-row status badge is hidden, so
+    // this modal is where a task is actually read). Nodes before the current
+    // phase render filled, the current one highlighted, the rest empty. It is
+    // display-only: phase is derived from TODO.md via derivePhase, so there is
+    // nothing a tap could mean — the rail carries no click handler.
+    const rail = document.createElement('div');
+    rail.id = 'descEditorModalRail';
+    rail.setAttribute('role', 'img');
+
+    function renderRail() {
+        const phase = derivePhase(item);
+        // `asking` is a triage-queue fact, not a rail node — resolve it to its
+        // underlying DRAFT stage so the rail never has to invent a fifth node.
+        const railPhase = PHASE_RAIL_ORDER.indexOf(phase) === -1 ? 'draft' : phase;
+        const currentIndex = PHASE_RAIL_ORDER.indexOf(railPhase);
+        rail.innerHTML = '';
+        PHASE_RAIL_ORDER.forEach(function(p, i) {
+            const node = document.createElement('span');
+            node.className = 'descEditorModalRailNode'
+                + (i < currentIndex ? ' is-filled' : '')
+                + (i === currentIndex ? ' is-current' : '');
+            node.setAttribute('data-phase', p);
+            node.textContent = PHASE_RAIL_LABELS[p];
+            rail.appendChild(node);
+        });
+        rail.setAttribute('aria-label', 'Pipeline phase: ' + PHASE_RAIL_LABELS[railPhase]);
+    }
+    renderRail();
+
+    // Repaint the rail when the phase changes while the modal is open — an entry
+    // can ship or be acknowledged from another surface mid-session. The row layer
+    // already refreshes on this same event via refreshDescStatusDots; the modal
+    // subscribes alongside it and tears the listener down on close (see
+    // onDescEditorClose) so a dismissed modal leaves nothing attached.
+    function onRailPhaseChange() { renderRail(); }
+    document.addEventListener(TODO_RUN_STATUS_EVENT, onRailPhaseChange);
+
     const body = document.createElement('div');
     body.id = 'descEditorModalBody';
+
+    // Label the entry field with the same SpaceMono uppercase treatment the rest
+    // of the pipeline surfaces use, so the textarea reads as THE ENTRY panel of an
+    // instrument, not an unlabelled form field.
+    const entryLabel = document.createElement('span');
+    entryLabel.id = 'descEditorModalEntryLabel';
+    entryLabel.textContent = 'The entry';
+    body.appendChild(entryLabel);
 
     const textarea = document.createElement('textarea');
     textarea.id = 'descEditorModalTextarea';
@@ -368,9 +417,23 @@ export function showDescEditorModal(item, options) {
     });
     generateBtn.classList.add('descEditorModalBtn');
 
+    // Caption beneath Generate naming which budget the dispatch spends. Generate
+    // flags the task and fires the triage sweep, which dispatches an agentic run
+    // (claude-triage.yml) billed to the Max-plan subscription quota — not the
+    // Console-billed chat budget — so the line makes the cost explicit before a
+    // tap. Sits directly under Generate via explicit CSS order.
+    const generateSpend = document.createElement('span');
+    generateSpend.id = 'descEditorModalGenerateSpend';
+    generateSpend.textContent = 'Dispatches an agent run — spends your Max-plan quota.';
+
+    // Explicit stacking order for the whole actions block: Generate, its spend
+    // caption, Inject, then the Clear / Copy pair on one row. Each child carries
+    // its own `order` in CSS rather than layering another override onto a basis
+    // hack, so the sequence is readable with all four controls present.
     actions.appendChild(clearBtn);
     actions.appendChild(injectBtn);
     actions.appendChild(generateBtn);
+    actions.appendChild(generateSpend);
     actions.appendChild(copyBtn);
     // Reflect the linked queue row's current state (Generating…/failure) and land
     // a draft that finished while the modal was closed. Live pushes re-sync via
@@ -384,12 +447,18 @@ export function showDescEditorModal(item, options) {
     // same vocabulary the desktop popover uses, pulled from STATUS_META /
     // STATUS_ORDER so the labels and order stay single-sourced. The selected
     // segment fills with its status color, matched to the row edge tab.
+    //
+    // It sits BELOW the actions (last in the dialog) under its own label. The
+    // rail above renders the DERIVED pipeline phase; this control is the user's
+    // OWN annotation, so the label reads "Manual status" to keep the two from
+    // being read as one stacked control (their vocabularies even overlap — the
+    // rail's IDEA node vs. the status Idea option).
     const statusRow = document.createElement('div');
     statusRow.id = 'descEditorModalStatusRow';
 
     const statusLabel = document.createElement('span');
     statusLabel.id = 'descEditorModalStatusLabel';
-    statusLabel.textContent = 'Status';
+    statusLabel.textContent = 'Manual status';
 
     const statusControl = document.createElement('div');
     statusControl.id = 'descEditorModalStatusControl';
@@ -446,10 +515,14 @@ export function showDescEditorModal(item, options) {
     statusRow.appendChild(statusLabel);
     statusRow.appendChild(statusControl);
 
+    // Order: header, phase rail, entry body, actions (Generate / Inject /
+    // Clear / Copy), then the manual STATUS control last — the derived phase now
+    // leads and the manual annotation is demoted below the actions.
     dialog.appendChild(header);
+    dialog.appendChild(rail);
     dialog.appendChild(body);
-    dialog.appendChild(statusRow);
     dialog.appendChild(actions);
+    dialog.appendChild(statusRow);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
@@ -468,6 +541,9 @@ export function showDescEditorModal(item, options) {
     // Save is implicit on any close — no separate Save button — then focus
     // returns to whatever opened the editor.
     function onDescEditorClose() {
+        // Detach the phase-rail live-repaint listener so a dismissed modal leaves
+        // nothing attached to the document.
+        document.removeEventListener(TODO_RUN_STATUS_EVENT, onRailPhaseChange);
         persist();
         if (previouslyFocused &&
             typeof previouslyFocused.focus === 'function' &&
