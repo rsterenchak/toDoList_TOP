@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-22T16:40:51.993Z",
-  "sha": "cf8bc1116503a9679da133c95a521d73cf1f20f5",
+  "generatedAt": "2026-07-22T17:33:02.641Z",
+  "sha": "044351bb616dcef738e7cc1d6b099053bc1f7e16",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -86,7 +86,7 @@
         },
         {
           "file": "style.css",
-          "line": 8135
+          "line": 8219
         }
       ]
     },
@@ -154,7 +154,7 @@
         },
         {
           "file": "style.css",
-          "line": 3514
+          "line": 3598
         }
       ]
     },
@@ -174,15 +174,15 @@
       "selector": "#assignmentEditorModal",
       "label": "Assignment Editor Modal",
       "file": "modals.js",
-      "line": 585,
+      "line": 661,
       "files": [
         {
           "file": "modals.js",
-          "line": 585
+          "line": 661
         },
         {
           "file": "style.css",
-          "line": 1443
+          "line": 1527
         }
       ]
     },
@@ -190,15 +190,15 @@
       "selector": "#assignmentEditorModalActions",
       "label": "Assignment Editor Modal Actions",
       "file": "modals.js",
-      "line": 641,
+      "line": 717,
       "files": [
         {
           "file": "modals.js",
-          "line": 641
+          "line": 717
         },
         {
           "file": "style.css",
-          "line": 1552
+          "line": 1636
         }
       ]
     },
@@ -206,15 +206,15 @@
       "selector": "#assignmentEditorModalBackdrop",
       "label": "Assignment Editor Modal Backdrop",
       "file": "modals.js",
-      "line": 582,
+      "line": 658,
       "files": [
         {
           "file": "modals.js",
-          "line": 582
+          "line": 658
         },
         {
           "file": "style.css",
-          "line": 1429
+          "line": 1513
         }
       ]
     },
@@ -222,15 +222,15 @@
       "selector": "#assignmentEditorModalBody",
       "label": "Assignment Editor Modal Body",
       "file": "modals.js",
-      "line": 617,
+      "line": 693,
       "files": [
         {
           "file": "modals.js",
-          "line": 617
+          "line": 693
         },
         {
           "file": "style.css",
-          "line": 1515
+          "line": 1599
         }
       ]
     },
@@ -238,15 +238,15 @@
       "selector": "#assignmentEditorModalCancel",
       "label": "Assignment Editor Modal Cancel",
       "file": "modals.js",
-      "line": 644,
+      "line": 720,
       "files": [
         {
           "file": "modals.js",
-          "line": 644
+          "line": 720
         },
         {
           "file": "style.css",
-          "line": 1578
+          "line": 1662
         }
       ]
     },
@@ -254,15 +254,15 @@
       "selector": "#assignmentEditorModalClose",
       "label": "Assignment Editor Modal Close",
       "file": "modals.js",
-      "line": 608,
+      "line": 684,
       "files": [
         {
           "file": "modals.js",
-          "line": 608
+          "line": 684
         },
         {
           "file": "style.css",
-          "line": 1499
+          "line": 1583
         }
       ]
     },
@@ -270,15 +270,15 @@
       "selector": "#assignmentEditorModalEyebrow",
       "label": "Assignment Editor Modal Eyebrow",
       "file": "modals.js",
-      "line": 597,
+      "line": 673,
       "files": [
         {
           "file": "modals.js",
-          "line": 597
+          "line": 673
         },
         {
           "file": "style.css",
-          "line": 1478
+          "line": 1562
         }
       ]
     },
@@ -286,39 +286,11 @@
       "selector": "#assignmentEditorModalHeader",
       "label": "Assignment Editor Modal Header",
       "file": "modals.js",
-      "line": 591,
+      "line": 667,
       "files": [
         {
           "file": "modals.js",
-          "line": 591
-        },
-        {
-          "file": "style.css",
-          "line": 1461
-        }
-      ]
-    },
-    {
-      "selector": "#assignmentEditorModalSave",
-      "label": "Assignment Editor Modal Save",
-      "file": "modals.js",
-      "line": 650,
-      "files": [
-        {
-          "file": "modals.js",
-          "line": 650
-        }
-      ]
-    },
-    {
-      "selector": "#assignmentEditorModalStatus",
-      "label": "Assignment Editor Modal Status",
-      "file": "modals.js",
-      "line": 636,
-      "files": [
-        {
-          "file": "modals.js",
-          "line": 636
+          "line": 667
         },
         {
           "file": "style.css",
@@ -327,18 +299,46 @@
       ]
     },
     {
-      "selector": "#assignmentEditorModalTextarea",
-      "label": "Assignment Editor Modal Textarea",
+      "selector": "#assignmentEditorModalSave",
+      "label": "Assignment Editor Modal Save",
       "file": "modals.js",
-      "line": 620,
+      "line": 726,
       "files": [
         {
           "file": "modals.js",
-          "line": 620
+          "line": 726
+        }
+      ]
+    },
+    {
+      "selector": "#assignmentEditorModalStatus",
+      "label": "Assignment Editor Modal Status",
+      "file": "modals.js",
+      "line": 712,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 712
         },
         {
           "file": "style.css",
-          "line": 1522
+          "line": 1629
+        }
+      ]
+    },
+    {
+      "selector": "#assignmentEditorModalTextarea",
+      "label": "Assignment Editor Modal Textarea",
+      "file": "modals.js",
+      "line": 696,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 696
+        },
+        {
+          "file": "style.css",
+          "line": 1606
         }
       ]
     },
@@ -346,15 +346,15 @@
       "selector": "#assignmentEditorModalTitle",
       "label": "Assignment Editor Modal Title",
       "file": "modals.js",
-      "line": 594,
+      "line": 670,
       "files": [
         {
           "file": "modals.js",
-          "line": 594
+          "line": 670
         },
         {
           "file": "style.css",
-          "line": 1470
+          "line": 1554
         }
       ]
     },
@@ -362,15 +362,15 @@
       "selector": "#assignmentEditorModalTitleText",
       "label": "Assignment Editor Modal Title Text",
       "file": "modals.js",
-      "line": 601,
+      "line": 677,
       "files": [
         {
           "file": "modals.js",
-          "line": 601
+          "line": 677
         },
         {
           "file": "style.css",
-          "line": 1488
+          "line": 1572
         }
       ]
     },
@@ -434,7 +434,7 @@
         },
         {
           "file": "style.css",
-          "line": 13714
+          "line": 13798
         }
       ]
     },
@@ -558,7 +558,7 @@
         },
         {
           "file": "style.css",
-          "line": 15045
+          "line": 15129
         }
       ]
     },
@@ -574,7 +574,7 @@
         },
         {
           "file": "style.css",
-          "line": 15077
+          "line": 15161
         }
       ]
     },
@@ -590,7 +590,7 @@
         },
         {
           "file": "style.css",
-          "line": 15257
+          "line": 15341
         }
       ]
     },
@@ -606,7 +606,7 @@
         },
         {
           "file": "style.css",
-          "line": 15458
+          "line": 15542
         }
       ]
     },
@@ -622,7 +622,7 @@
         },
         {
           "file": "style.css",
-          "line": 15094
+          "line": 15178
         }
       ]
     },
@@ -638,7 +638,7 @@
         },
         {
           "file": "style.css",
-          "line": 15152
+          "line": 15236
         }
       ]
     },
@@ -654,7 +654,7 @@
         },
         {
           "file": "style.css",
-          "line": 3538
+          "line": 3622
         }
       ]
     },
@@ -686,7 +686,7 @@
         },
         {
           "file": "style.css",
-          "line": 9341
+          "line": 9425
         }
       ]
     },
@@ -702,7 +702,7 @@
         },
         {
           "file": "style.css",
-          "line": 9327
+          "line": 9411
         }
       ]
     },
@@ -718,7 +718,7 @@
         },
         {
           "file": "style.css",
-          "line": 9360
+          "line": 9444
         }
       ]
     },
@@ -738,11 +738,11 @@
       "selector": "#changelogModal",
       "label": "Changelog Modal",
       "file": "modals.js",
-      "line": 810,
+      "line": 886,
       "files": [
         {
           "file": "modals.js",
-          "line": 810
+          "line": 886
         },
         {
           "file": "style.css",
@@ -754,11 +754,11 @@
       "selector": "#changelogModalActions",
       "label": "Changelog Modal Actions",
       "file": "modals.js",
-      "line": 837,
+      "line": 913,
       "files": [
         {
           "file": "modals.js",
-          "line": 837
+          "line": 913
         },
         {
           "file": "style.css",
@@ -770,11 +770,11 @@
       "selector": "#changelogModalBackdrop",
       "label": "Changelog Modal Backdrop",
       "file": "modals.js",
-      "line": 807,
+      "line": 883,
       "files": [
         {
           "file": "modals.js",
-          "line": 807
+          "line": 883
         },
         {
           "file": "style.css",
@@ -786,11 +786,11 @@
       "selector": "#changelogModalBody",
       "label": "Changelog Modal Body",
       "file": "modals.js",
-      "line": 832,
+      "line": 908,
       "files": [
         {
           "file": "modals.js",
-          "line": 832
+          "line": 908
         },
         {
           "file": "style.css",
@@ -802,11 +802,11 @@
       "selector": "#changelogModalClose",
       "label": "Changelog Modal Close",
       "file": "modals.js",
-      "line": 823,
+      "line": 899,
       "files": [
         {
           "file": "modals.js",
-          "line": 823
+          "line": 899
         },
         {
           "file": "style.css",
@@ -818,11 +818,11 @@
       "selector": "#changelogModalCloseBtn",
       "label": "Changelog Modal Close Btn",
       "file": "modals.js",
-      "line": 840,
+      "line": 916,
       "files": [
         {
           "file": "modals.js",
-          "line": 840
+          "line": 916
         },
         {
           "file": "style.css",
@@ -834,11 +834,11 @@
       "selector": "#changelogModalHeader",
       "label": "Changelog Modal Header",
       "file": "modals.js",
-      "line": 816,
+      "line": 892,
       "files": [
         {
           "file": "modals.js",
-          "line": 816
+          "line": 892
         },
         {
           "file": "style.css",
@@ -850,11 +850,11 @@
       "selector": "#changelogModalTitle",
       "label": "Changelog Modal Title",
       "file": "modals.js",
-      "line": 819,
+      "line": 895,
       "files": [
         {
           "file": "modals.js",
-          "line": 819
+          "line": 895
         },
         {
           "file": "style.css",
@@ -874,7 +874,7 @@
         },
         {
           "file": "style.css",
-          "line": 12912
+          "line": 12996
         }
       ]
     },
@@ -890,7 +890,7 @@
         },
         {
           "file": "style.css",
-          "line": 12913
+          "line": 12997
         }
       ]
     },
@@ -906,7 +906,7 @@
         },
         {
           "file": "style.css",
-          "line": 7845
+          "line": 7929
         }
       ]
     },
@@ -1054,7 +1054,7 @@
         },
         {
           "file": "style.css",
-          "line": 2037
+          "line": 2121
         }
       ]
     },
@@ -1118,7 +1118,7 @@
         },
         {
           "file": "style.css",
-          "line": 2111
+          "line": 2195
         }
       ]
     },
@@ -1158,7 +1158,7 @@
         },
         {
           "file": "style.css",
-          "line": 2249
+          "line": 2333
         }
       ]
     },
@@ -1222,7 +1222,7 @@
         },
         {
           "file": "style.css",
-          "line": 1828
+          "line": 1912
         }
       ]
     },
@@ -1322,7 +1322,7 @@
         },
         {
           "file": "style.css",
-          "line": 1924
+          "line": 2008
         }
       ]
     },
@@ -1338,7 +1338,7 @@
         },
         {
           "file": "style.css",
-          "line": 1923
+          "line": 2007
         }
       ]
     },
@@ -1354,7 +1354,7 @@
         },
         {
           "file": "style.css",
-          "line": 12761
+          "line": 12845
         }
       ]
     },
@@ -1370,7 +1370,7 @@
         },
         {
           "file": "style.css",
-          "line": 1951
+          "line": 2035
         }
       ]
     },
@@ -1398,7 +1398,7 @@
         },
         {
           "file": "style.css",
-          "line": 1945
+          "line": 2029
         }
       ]
     },
@@ -1414,7 +1414,7 @@
         },
         {
           "file": "style.css",
-          "line": 1977
+          "line": 2061
         }
       ]
     },
@@ -1466,7 +1466,7 @@
         },
         {
           "file": "style.css",
-          "line": 8574
+          "line": 8658
         }
       ]
     },
@@ -1518,7 +1518,7 @@
         },
         {
           "file": "style.css",
-          "line": 7663
+          "line": 7747
         }
       ]
     },
@@ -1534,7 +1534,7 @@
         },
         {
           "file": "style.css",
-          "line": 9168
+          "line": 9252
         }
       ]
     },
@@ -1550,7 +1550,7 @@
         },
         {
           "file": "style.css",
-          "line": 9154
+          "line": 9238
         }
       ]
     },
@@ -1570,11 +1570,11 @@
       "selector": "#confirmModal",
       "label": "Confirm Modal",
       "file": "modals.js",
-      "line": 81,
+      "line": 82,
       "files": [
         {
           "file": "modals.js",
-          "line": 81
+          "line": 82
         },
         {
           "file": "style.css",
@@ -1586,11 +1586,11 @@
       "selector": "#confirmModalActions",
       "label": "Confirm Modal Actions",
       "file": "modals.js",
-      "line": 90,
+      "line": 91,
       "files": [
         {
           "file": "modals.js",
-          "line": 90
+          "line": 91
         },
         {
           "file": "style.css",
@@ -1602,11 +1602,11 @@
       "selector": "#confirmModalBackdrop",
       "label": "Confirm Modal Backdrop",
       "file": "modals.js",
-      "line": 78,
+      "line": 79,
       "files": [
         {
           "file": "modals.js",
-          "line": 78
+          "line": 79
         },
         {
           "file": "style.css",
@@ -1618,11 +1618,11 @@
       "selector": "#confirmModalCancel",
       "label": "Confirm Modal Cancel",
       "file": "modals.js",
-      "line": 93,
+      "line": 94,
       "files": [
         {
           "file": "modals.js",
-          "line": 93
+          "line": 94
         },
         {
           "file": "style.css",
@@ -1634,11 +1634,11 @@
       "selector": "#confirmModalConfirm",
       "label": "Confirm Modal Confirm",
       "file": "modals.js",
-      "line": 98,
+      "line": 99,
       "files": [
         {
           "file": "modals.js",
-          "line": 98
+          "line": 99
         },
         {
           "file": "style.css",
@@ -1650,11 +1650,11 @@
       "selector": "#confirmModalMessage",
       "label": "Confirm Modal Message",
       "file": "modals.js",
-      "line": 86,
+      "line": 87,
       "files": [
         {
           "file": "modals.js",
-          "line": 86
+          "line": 87
         },
         {
           "file": "style.css",
@@ -1686,7 +1686,7 @@
         },
         {
           "file": "style.css",
-          "line": 5516
+          "line": 5600
         }
       ]
     },
@@ -1702,7 +1702,7 @@
         },
         {
           "file": "style.css",
-          "line": 5894
+          "line": 5978
         }
       ]
     },
@@ -1718,7 +1718,7 @@
         },
         {
           "file": "style.css",
-          "line": 1909
+          "line": 1993
         }
       ]
     },
@@ -1734,7 +1734,7 @@
         },
         {
           "file": "style.css",
-          "line": 5588
+          "line": 5672
         }
       ]
     },
@@ -1750,7 +1750,7 @@
         },
         {
           "file": "style.css",
-          "line": 5572
+          "line": 5656
         }
       ]
     },
@@ -1766,7 +1766,7 @@
         },
         {
           "file": "style.css",
-          "line": 5901
+          "line": 5985
         }
       ]
     },
@@ -1782,7 +1782,7 @@
         },
         {
           "file": "style.css",
-          "line": 5829
+          "line": 5913
         }
       ]
     },
@@ -1798,7 +1798,7 @@
         },
         {
           "file": "style.css",
-          "line": 5551
+          "line": 5635
         }
       ]
     },
@@ -1814,7 +1814,7 @@
         },
         {
           "file": "style.css",
-          "line": 5534
+          "line": 5618
         }
       ]
     },
@@ -1830,7 +1830,7 @@
         },
         {
           "file": "style.css",
-          "line": 5543
+          "line": 5627
         }
       ]
     },
@@ -1846,7 +1846,7 @@
         },
         {
           "file": "style.css",
-          "line": 5561
+          "line": 5645
         }
       ]
     },
@@ -1854,11 +1854,11 @@
       "selector": "#descEditorModal",
       "label": "Desc Editor Modal",
       "file": "modals.js",
-      "line": 185,
+      "line": 186,
       "files": [
         {
           "file": "modals.js",
-          "line": 185
+          "line": 186
         },
         {
           "file": "style.css",
@@ -1870,15 +1870,15 @@
       "selector": "#descEditorModalActions",
       "label": "Desc Editor Modal Actions",
       "file": "modals.js",
-      "line": 330,
+      "line": 379,
       "files": [
         {
           "file": "modals.js",
-          "line": 330
+          "line": 379
         },
         {
           "file": "style.css",
-          "line": 1310
+          "line": 1373
         }
       ]
     },
@@ -1886,11 +1886,11 @@
       "selector": "#descEditorModalBackdrop",
       "label": "Desc Editor Modal Backdrop",
       "file": "modals.js",
-      "line": 182,
+      "line": 183,
       "files": [
         {
           "file": "modals.js",
-          "line": 182
+          "line": 183
         },
         {
           "file": "style.css",
@@ -1902,15 +1902,15 @@
       "selector": "#descEditorModalBody",
       "label": "Desc Editor Modal Body",
       "file": "modals.js",
-      "line": 313,
+      "line": 354,
       "files": [
         {
           "file": "modals.js",
-          "line": 313
+          "line": 354
         },
         {
           "file": "style.css",
-          "line": 1276
+          "line": 1326
         }
       ]
     },
@@ -1918,15 +1918,15 @@
       "selector": "#descEditorModalClear",
       "label": "Desc Editor Modal Clear",
       "file": "modals.js",
-      "line": 333,
+      "line": 382,
       "files": [
         {
           "file": "modals.js",
-          "line": 333
+          "line": 382
         },
         {
           "file": "style.css",
-          "line": 1323
+          "line": 1388
         }
       ]
     },
@@ -1934,85 +1934,21 @@
       "selector": "#descEditorModalClose",
       "label": "Desc Editor Modal Close",
       "file": "modals.js",
-      "line": 239,
+      "line": 240,
       "files": [
         {
           "file": "modals.js",
-          "line": 239
+          "line": 240
         },
         {
           "file": "style.css",
-          "line": 1260
+          "line": 1267
         }
       ]
     },
     {
       "selector": "#descEditorModalCopy",
       "label": "Desc Editor Modal Copy",
-      "file": "modals.js",
-      "line": 339,
-      "files": [
-        {
-          "file": "modals.js",
-          "line": 339
-        },
-        {
-          "file": "style.css",
-          "line": 1324
-        }
-      ]
-    },
-    {
-      "selector": "#descEditorModalHeader",
-      "label": "Desc Editor Modal Header",
-      "file": "modals.js",
-      "line": 194,
-      "files": [
-        {
-          "file": "modals.js",
-          "line": 194
-        },
-        {
-          "file": "style.css",
-          "line": 1178
-        }
-      ]
-    },
-    {
-      "selector": "#descEditorModalStatusControl",
-      "label": "Desc Editor Modal Status Control",
-      "file": "modals.js",
-      "line": 395,
-      "files": [
-        {
-          "file": "modals.js",
-          "line": 395
-        },
-        {
-          "file": "style.css",
-          "line": 1389
-        }
-      ]
-    },
-    {
-      "selector": "#descEditorModalStatusLabel",
-      "label": "Desc Editor Modal Status Label",
-      "file": "modals.js",
-      "line": 391,
-      "files": [
-        {
-          "file": "modals.js",
-          "line": 391
-        },
-        {
-          "file": "style.css",
-          "line": 1381
-        }
-      ]
-    },
-    {
-      "selector": "#descEditorModalStatusRow",
-      "label": "Desc Editor Modal Status Row",
       "file": "modals.js",
       "line": 388,
       "files": [
@@ -2022,7 +1958,119 @@
         },
         {
           "file": "style.css",
-          "line": 1375
+          "line": 1389
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalEntryLabel",
+      "label": "Desc Editor Modal Entry Label",
+      "file": "modals.js",
+      "line": 360,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 360
+        },
+        {
+          "file": "style.css",
+          "line": 1337
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalGenerateSpend",
+      "label": "Desc Editor Modal Generate Spend",
+      "file": "modals.js",
+      "line": 426,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 426
+        },
+        {
+          "file": "style.css",
+          "line": 1397
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalHeader",
+      "label": "Desc Editor Modal Header",
+      "file": "modals.js",
+      "line": 195,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 195
+        },
+        {
+          "file": "style.css",
+          "line": 1178
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalRail",
+      "label": "Desc Editor Modal Rail",
+      "file": "modals.js",
+      "line": 322,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 322
+        },
+        {
+          "file": "style.css",
+          "line": 1288
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalStatusControl",
+      "label": "Desc Editor Modal Status Control",
+      "file": "modals.js",
+      "line": 464,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 464
+        },
+        {
+          "file": "style.css",
+          "line": 1473
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalStatusLabel",
+      "label": "Desc Editor Modal Status Label",
+      "file": "modals.js",
+      "line": 460,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 460
+        },
+        {
+          "file": "style.css",
+          "line": 1465
+        }
+      ]
+    },
+    {
+      "selector": "#descEditorModalStatusRow",
+      "label": "Desc Editor Modal Status Row",
+      "file": "modals.js",
+      "line": 457,
+      "files": [
+        {
+          "file": "modals.js",
+          "line": 457
+        },
+        {
+          "file": "style.css",
+          "line": 1458
         }
       ]
     },
@@ -2030,15 +2078,15 @@
       "selector": "#descEditorModalTextarea",
       "label": "Desc Editor Modal Textarea",
       "file": "modals.js",
-      "line": 316,
+      "line": 365,
       "files": [
         {
           "file": "modals.js",
-          "line": 316
+          "line": 365
         },
         {
           "file": "style.css",
-          "line": 1283
+          "line": 1346
         }
       ]
     },
@@ -2046,11 +2094,11 @@
       "selector": "#descEditorModalTitle",
       "label": "Desc Editor Modal Title",
       "file": "modals.js",
-      "line": 197,
+      "line": 198,
       "files": [
         {
           "file": "modals.js",
-          "line": 197
+          "line": 198
         },
         {
           "file": "style.css",
@@ -2062,15 +2110,15 @@
       "selector": "#descEditorModalTitleEdit",
       "label": "Desc Editor Modal Title Edit",
       "file": "modals.js",
-      "line": 214,
+      "line": 215,
       "files": [
         {
           "file": "modals.js",
-          "line": 214
+          "line": 215
         },
         {
           "file": "style.css",
-          "line": 1227
+          "line": 1234
         }
       ]
     },
@@ -2078,11 +2126,11 @@
       "selector": "#descEditorModalTitleEyebrow",
       "label": "Desc Editor Modal Title Eyebrow",
       "file": "modals.js",
-      "line": 207,
+      "line": 208,
       "files": [
         {
           "file": "modals.js",
-          "line": 207
+          "line": 208
         },
         {
           "file": "style.css",
@@ -2094,11 +2142,11 @@
       "selector": "#descEditorModalTitleEyebrowLabel",
       "label": "Desc Editor Modal Title Eyebrow Label",
       "file": "modals.js",
-      "line": 210,
+      "line": 211,
       "files": [
         {
           "file": "modals.js",
-          "line": 210
+          "line": 211
         },
         {
           "file": "style.css",
@@ -2110,15 +2158,15 @@
       "selector": "#descEditorModalTitleInput",
       "label": "Desc Editor Modal Title Input",
       "file": "modals.js",
-      "line": 226,
+      "line": 227,
       "files": [
         {
           "file": "modals.js",
-          "line": 226
+          "line": 227
         },
         {
           "file": "style.css",
-          "line": 1238
+          "line": 1245
         }
       ]
     },
@@ -2126,11 +2174,11 @@
       "selector": "#descEditorModalTitleText",
       "label": "Desc Editor Modal Title Text",
       "file": "modals.js",
-      "line": 222,
+      "line": 223,
       "files": [
         {
           "file": "modals.js",
-          "line": 222
+          "line": 223
         },
         {
           "file": "style.css",
@@ -2150,7 +2198,7 @@
         },
         {
           "file": "style.css",
-          "line": 1614
+          "line": 1698
         }
       ]
     },
@@ -2166,7 +2214,7 @@
         },
         {
           "file": "style.css",
-          "line": 9063
+          "line": 9147
         }
       ]
     },
@@ -2182,7 +2230,7 @@
         },
         {
           "file": "style.css",
-          "line": 7426
+          "line": 7510
         }
       ]
     },
@@ -2226,7 +2274,7 @@
         },
         {
           "file": "style.css",
-          "line": 5294
+          "line": 5378
         }
       ]
     },
@@ -2242,7 +2290,7 @@
         },
         {
           "file": "style.css",
-          "line": 12623
+          "line": 12707
         }
       ]
     },
@@ -2274,7 +2322,7 @@
         },
         {
           "file": "style.css",
-          "line": 10607
+          "line": 10691
         }
       ]
     },
@@ -2290,7 +2338,7 @@
         },
         {
           "file": "style.css",
-          "line": 11590
+          "line": 11674
         }
       ]
     },
@@ -2306,7 +2354,7 @@
         },
         {
           "file": "style.css",
-          "line": 11589
+          "line": 11673
         }
       ]
     },
@@ -2322,7 +2370,7 @@
         },
         {
           "file": "style.css",
-          "line": 11507
+          "line": 11591
         }
       ]
     },
@@ -2350,7 +2398,7 @@
         },
         {
           "file": "style.css",
-          "line": 11500
+          "line": 11584
         }
       ]
     },
@@ -2366,7 +2414,7 @@
         },
         {
           "file": "style.css",
-          "line": 1914
+          "line": 1998
         }
       ]
     },
@@ -2386,7 +2434,7 @@
         },
         {
           "file": "style.css",
-          "line": 8155
+          "line": 8239
         }
       ]
     },
@@ -2402,7 +2450,7 @@
         },
         {
           "file": "style.css",
-          "line": 7483
+          "line": 7567
         }
       ]
     },
@@ -2418,7 +2466,7 @@
         },
         {
           "file": "style.css",
-          "line": 7537
+          "line": 7621
         }
       ]
     },
@@ -2434,7 +2482,7 @@
         },
         {
           "file": "style.css",
-          "line": 7604
+          "line": 7688
         }
       ]
     },
@@ -2462,7 +2510,7 @@
         },
         {
           "file": "style.css",
-          "line": 14494
+          "line": 14578
         }
       ]
     },
@@ -2578,15 +2626,15 @@
       "selector": "#helpModal",
       "label": "Help Modal",
       "file": "modals.js",
-      "line": 978,
+      "line": 1054,
       "files": [
         {
           "file": "modals.js",
-          "line": 978
+          "line": 1054
         },
         {
           "file": "style.css",
-          "line": 1649
+          "line": 1733
         }
       ]
     },
@@ -2594,15 +2642,15 @@
       "selector": "#helpModalActions",
       "label": "Help Modal Actions",
       "file": "modals.js",
-      "line": 1082,
+      "line": 1158,
       "files": [
         {
           "file": "modals.js",
-          "line": 1082
+          "line": 1158
         },
         {
           "file": "style.css",
-          "line": 1789
+          "line": 1873
         }
       ]
     },
@@ -2610,15 +2658,15 @@
       "selector": "#helpModalBackdrop",
       "label": "Help Modal Backdrop",
       "file": "modals.js",
-      "line": 975,
+      "line": 1051,
       "files": [
         {
           "file": "modals.js",
-          "line": 975
+          "line": 1051
         },
         {
           "file": "style.css",
-          "line": 1635
+          "line": 1719
         }
       ]
     },
@@ -2626,15 +2674,15 @@
       "selector": "#helpModalBody",
       "label": "Help Modal Body",
       "file": "modals.js",
-      "line": 1000,
+      "line": 1076,
       "files": [
         {
           "file": "modals.js",
-          "line": 1000
+          "line": 1076
         },
         {
           "file": "style.css",
-          "line": 1696
+          "line": 1780
         }
       ]
     },
@@ -2642,15 +2690,15 @@
       "selector": "#helpModalClose",
       "label": "Help Modal Close",
       "file": "modals.js",
-      "line": 991,
+      "line": 1067,
       "files": [
         {
           "file": "modals.js",
-          "line": 991
+          "line": 1067
         },
         {
           "file": "style.css",
-          "line": 1683
+          "line": 1767
         }
       ]
     },
@@ -2658,15 +2706,15 @@
       "selector": "#helpModalCloseBtn",
       "label": "Help Modal Close Btn",
       "file": "modals.js",
-      "line": 1085,
+      "line": 1161,
       "files": [
         {
           "file": "modals.js",
-          "line": 1085
+          "line": 1161
         },
         {
           "file": "style.css",
-          "line": 1797
+          "line": 1881
         }
       ]
     },
@@ -2674,15 +2722,15 @@
       "selector": "#helpModalHeader",
       "label": "Help Modal Header",
       "file": "modals.js",
-      "line": 984,
+      "line": 1060,
       "files": [
         {
           "file": "modals.js",
-          "line": 984
+          "line": 1060
         },
         {
           "file": "style.css",
-          "line": 1666
+          "line": 1750
         }
       ]
     },
@@ -2690,15 +2738,15 @@
       "selector": "#helpModalTitle",
       "label": "Help Modal Title",
       "file": "modals.js",
-      "line": 987,
+      "line": 1063,
       "files": [
         {
           "file": "modals.js",
-          "line": 987
+          "line": 1063
         },
         {
           "file": "style.css",
-          "line": 1674
+          "line": 1758
         }
       ]
     },
@@ -2714,7 +2762,7 @@
         },
         {
           "file": "style.css",
-          "line": 13471
+          "line": 13555
         }
       ]
     },
@@ -2730,7 +2778,7 @@
         },
         {
           "file": "style.css",
-          "line": 13495
+          "line": 13579
         }
       ]
     },
@@ -2746,7 +2794,7 @@
         },
         {
           "file": "style.css",
-          "line": 13481
+          "line": 13565
         }
       ]
     },
@@ -2762,7 +2810,7 @@
         },
         {
           "file": "style.css",
-          "line": 13499
+          "line": 13583
         }
       ]
     },
@@ -2778,7 +2826,7 @@
         },
         {
           "file": "style.css",
-          "line": 13507
+          "line": 13591
         }
       ]
     },
@@ -2794,7 +2842,7 @@
         },
         {
           "file": "style.css",
-          "line": 14014
+          "line": 14098
         }
       ]
     },
@@ -2810,7 +2858,7 @@
         },
         {
           "file": "style.css",
-          "line": 16851
+          "line": 16936
         }
       ]
     },
@@ -2850,7 +2898,7 @@
         },
         {
           "file": "style.css",
-          "line": 17116
+          "line": 17201
         }
       ]
     },
@@ -2866,7 +2914,7 @@
         },
         {
           "file": "style.css",
-          "line": 17020
+          "line": 17105
         }
       ]
     },
@@ -2882,7 +2930,7 @@
         },
         {
           "file": "style.css",
-          "line": 17064
+          "line": 17149
         }
       ]
     },
@@ -2922,7 +2970,7 @@
         },
         {
           "file": "style.css",
-          "line": 17051
+          "line": 17136
         }
       ]
     },
@@ -2938,7 +2986,7 @@
         },
         {
           "file": "style.css",
-          "line": 17040
+          "line": 17125
         }
       ]
     },
@@ -2954,7 +3002,7 @@
         },
         {
           "file": "style.css",
-          "line": 17029
+          "line": 17114
         }
       ]
     },
@@ -2970,7 +3018,7 @@
         },
         {
           "file": "style.css",
-          "line": 17085
+          "line": 17170
         }
       ]
     },
@@ -3034,7 +3082,7 @@
         },
         {
           "file": "style.css",
-          "line": 17123
+          "line": 17208
         }
       ]
     },
@@ -3050,7 +3098,7 @@
         },
         {
           "file": "style.css",
-          "line": 17047
+          "line": 17132
         }
       ]
     },
@@ -3066,7 +3114,7 @@
         },
         {
           "file": "style.css",
-          "line": 17135
+          "line": 17220
         }
       ]
     },
@@ -3130,7 +3178,7 @@
         },
         {
           "file": "style.css",
-          "line": 16654
+          "line": 16739
         }
       ]
     },
@@ -3146,7 +3194,7 @@
         },
         {
           "file": "style.css",
-          "line": 16511
+          "line": 16596
         }
       ]
     },
@@ -3162,7 +3210,7 @@
         },
         {
           "file": "style.css",
-          "line": 16598
+          "line": 16683
         }
       ]
     },
@@ -3190,7 +3238,7 @@
         },
         {
           "file": "style.css",
-          "line": 16553
+          "line": 16638
         }
       ]
     },
@@ -3206,7 +3254,7 @@
         },
         {
           "file": "style.css",
-          "line": 16534
+          "line": 16619
         }
       ]
     },
@@ -3222,7 +3270,7 @@
         },
         {
           "file": "style.css",
-          "line": 16521
+          "line": 16606
         }
       ]
     },
@@ -3250,7 +3298,7 @@
         },
         {
           "file": "style.css",
-          "line": 16542
+          "line": 16627
         }
       ]
     },
@@ -3266,7 +3314,7 @@
         },
         {
           "file": "style.css",
-          "line": 16567
+          "line": 16652
         }
       ]
     },
@@ -3294,7 +3342,7 @@
         },
         {
           "file": "style.css",
-          "line": 16549
+          "line": 16634
         }
       ]
     },
@@ -3310,7 +3358,7 @@
         },
         {
           "file": "style.css",
-          "line": 16612
+          "line": 16697
         }
       ]
     },
@@ -3326,7 +3374,7 @@
         },
         {
           "file": "style.css",
-          "line": 16931
+          "line": 17016
         }
       ]
     },
@@ -3342,7 +3390,7 @@
         },
         {
           "file": "style.css",
-          "line": 16859
+          "line": 16944
         }
       ]
     },
@@ -3358,7 +3406,7 @@
         },
         {
           "file": "style.css",
-          "line": 16903
+          "line": 16988
         }
       ]
     },
@@ -3386,7 +3434,7 @@
         },
         {
           "file": "style.css",
-          "line": 16890
+          "line": 16975
         }
       ]
     },
@@ -3402,7 +3450,7 @@
         },
         {
           "file": "style.css",
-          "line": 16879
+          "line": 16964
         }
       ]
     },
@@ -3418,7 +3466,7 @@
         },
         {
           "file": "style.css",
-          "line": 16868
+          "line": 16953
         }
       ]
     },
@@ -3446,7 +3494,7 @@
         },
         {
           "file": "style.css",
-          "line": 16886
+          "line": 16971
         }
       ]
     },
@@ -3462,7 +3510,7 @@
         },
         {
           "file": "style.css",
-          "line": 16756
+          "line": 16841
         }
       ]
     },
@@ -3514,7 +3562,7 @@
         },
         {
           "file": "style.css",
-          "line": 17200
+          "line": 17285
         }
       ]
     },
@@ -3530,7 +3578,7 @@
         },
         {
           "file": "style.css",
-          "line": 16611
+          "line": 16696
         }
       ]
     },
@@ -3546,7 +3594,7 @@
         },
         {
           "file": "style.css",
-          "line": 14015
+          "line": 14099
         }
       ]
     },
@@ -3562,7 +3610,7 @@
         },
         {
           "file": "style.css",
-          "line": 3222
+          "line": 3306
         }
       ]
     },
@@ -3578,7 +3626,7 @@
         },
         {
           "file": "style.css",
-          "line": 2035
+          "line": 2119
         }
       ]
     },
@@ -3610,7 +3658,7 @@
         },
         {
           "file": "style.css",
-          "line": 12609
+          "line": 12693
         }
       ]
     },
@@ -3630,15 +3678,15 @@
       "selector": "#missedDatesModal",
       "label": "Missed Dates Modal",
       "file": "modals.js",
-      "line": 1141,
+      "line": 1217,
       "files": [
         {
           "file": "modals.js",
-          "line": 1141
+          "line": 1217
         },
         {
           "file": "style.css",
-          "line": 8844
+          "line": 8928
         }
       ]
     },
@@ -3646,15 +3694,15 @@
       "selector": "#missedDatesModalActions",
       "label": "Missed Dates Modal Actions",
       "file": "modals.js",
-      "line": 1243,
+      "line": 1319,
       "files": [
         {
           "file": "modals.js",
-          "line": 1243
+          "line": 1319
         },
         {
           "file": "style.css",
-          "line": 8916
+          "line": 9000
         }
       ]
     },
@@ -3662,15 +3710,15 @@
       "selector": "#missedDatesModalBackdrop",
       "label": "Missed Dates Modal Backdrop",
       "file": "modals.js",
-      "line": 1138,
+      "line": 1214,
       "files": [
         {
           "file": "modals.js",
-          "line": 1138
+          "line": 1214
         },
         {
           "file": "style.css",
-          "line": 1912
+          "line": 1996
         }
       ]
     },
@@ -3678,15 +3726,15 @@
       "selector": "#missedDatesModalBody",
       "label": "Missed Dates Modal Body",
       "file": "modals.js",
-      "line": 1163,
+      "line": 1239,
       "files": [
         {
           "file": "modals.js",
-          "line": 1163
+          "line": 1239
         },
         {
           "file": "style.css",
-          "line": 8890
+          "line": 8974
         }
       ]
     },
@@ -3694,15 +3742,15 @@
       "selector": "#missedDatesModalClose",
       "label": "Missed Dates Modal Close",
       "file": "modals.js",
-      "line": 1154,
+      "line": 1230,
       "files": [
         {
           "file": "modals.js",
-          "line": 1154
+          "line": 1230
         },
         {
           "file": "style.css",
-          "line": 8878
+          "line": 8962
         }
       ]
     },
@@ -3710,15 +3758,15 @@
       "selector": "#missedDatesModalCloseBtn",
       "label": "Missed Dates Modal Close Btn",
       "file": "modals.js",
-      "line": 1246,
+      "line": 1322,
       "files": [
         {
           "file": "modals.js",
-          "line": 1246
+          "line": 1322
         },
         {
           "file": "style.css",
-          "line": 8923
+          "line": 9007
         }
       ]
     },
@@ -3726,15 +3774,15 @@
       "selector": "#missedDatesModalHeader",
       "label": "Missed Dates Modal Header",
       "file": "modals.js",
-      "line": 1147,
+      "line": 1223,
       "files": [
         {
           "file": "modals.js",
-          "line": 1147
+          "line": 1223
         },
         {
           "file": "style.css",
-          "line": 8860
+          "line": 8944
         }
       ]
     },
@@ -3742,15 +3790,15 @@
       "selector": "#missedDatesModalTitle",
       "label": "Missed Dates Modal Title",
       "file": "modals.js",
-      "line": 1150,
+      "line": 1226,
       "files": [
         {
           "file": "modals.js",
-          "line": 1150
+          "line": 1226
         },
         {
           "file": "style.css",
-          "line": 8867
+          "line": 8951
         }
       ]
     },
@@ -3766,7 +3814,7 @@
         },
         {
           "file": "style.css",
-          "line": 10982
+          "line": 11066
         }
       ]
     },
@@ -3794,7 +3842,7 @@
         },
         {
           "file": "style.css",
-          "line": 12224
+          "line": 12308
         }
       ]
     },
@@ -3834,7 +3882,7 @@
         },
         {
           "file": "style.css",
-          "line": 11297
+          "line": 11381
         }
       ]
     },
@@ -3850,7 +3898,7 @@
         },
         {
           "file": "style.css",
-          "line": 3536
+          "line": 3620
         }
       ]
     },
@@ -3866,7 +3914,7 @@
         },
         {
           "file": "style.css",
-          "line": 11193
+          "line": 11277
         }
       ]
     },
@@ -3882,7 +3930,7 @@
         },
         {
           "file": "style.css",
-          "line": 12223
+          "line": 12307
         }
       ]
     },
@@ -3898,7 +3946,7 @@
         },
         {
           "file": "style.css",
-          "line": 11220
+          "line": 11304
         }
       ]
     },
@@ -3926,7 +3974,7 @@
         },
         {
           "file": "style.css",
-          "line": 12217
+          "line": 12301
         }
       ]
     },
@@ -3966,7 +4014,7 @@
         },
         {
           "file": "style.css",
-          "line": 11289
+          "line": 11373
         }
       ]
     },
@@ -3982,7 +4030,7 @@
         },
         {
           "file": "style.css",
-          "line": 11209
+          "line": 11293
         }
       ]
     },
@@ -3998,7 +4046,7 @@
         },
         {
           "file": "style.css",
-          "line": 10473
+          "line": 10557
         }
       ]
     },
@@ -4014,7 +4062,7 @@
         },
         {
           "file": "style.css",
-          "line": 15958
+          "line": 16042
         }
       ]
     },
@@ -4030,7 +4078,7 @@
         },
         {
           "file": "style.css",
-          "line": 10526
+          "line": 10610
         }
       ]
     },
@@ -4058,7 +4106,7 @@
         },
         {
           "file": "style.css",
-          "line": 15959
+          "line": 16043
         }
       ]
     },
@@ -4074,7 +4122,7 @@
         },
         {
           "file": "style.css",
-          "line": 15815
+          "line": 15899
         }
       ]
     },
@@ -4102,7 +4150,7 @@
         },
         {
           "file": "style.css",
-          "line": 14592
+          "line": 14676
         }
       ]
     },
@@ -4118,7 +4166,7 @@
         },
         {
           "file": "style.css",
-          "line": 14524
+          "line": 14608
         }
       ]
     },
@@ -4134,7 +4182,7 @@
         },
         {
           "file": "style.css",
-          "line": 14389
+          "line": 14473
         }
       ]
     },
@@ -4210,7 +4258,7 @@
         },
         {
           "file": "style.css",
-          "line": 14220
+          "line": 14304
         }
       ]
     },
@@ -4226,7 +4274,7 @@
         },
         {
           "file": "style.css",
-          "line": 13173
+          "line": 13257
         }
       ]
     },
@@ -4350,7 +4398,7 @@
         },
         {
           "file": "style.css",
-          "line": 11392
+          "line": 11476
         }
       ]
     },
@@ -4402,7 +4450,7 @@
         },
         {
           "file": "style.css",
-          "line": 7081
+          "line": 7165
         }
       ]
     },
@@ -4430,7 +4478,7 @@
         },
         {
           "file": "style.css",
-          "line": 1910
+          "line": 1994
         }
       ]
     },
@@ -4446,7 +4494,7 @@
         },
         {
           "file": "style.css",
-          "line": 7130
+          "line": 7214
         }
       ]
     },
@@ -4474,7 +4522,7 @@
         },
         {
           "file": "style.css",
-          "line": 7115
+          "line": 7199
         }
       ]
     },
@@ -4490,7 +4538,7 @@
         },
         {
           "file": "style.css",
-          "line": 7251
+          "line": 7335
         }
       ]
     },
@@ -4506,7 +4554,7 @@
         },
         {
           "file": "style.css",
-          "line": 7099
+          "line": 7183
         }
       ]
     },
@@ -4522,7 +4570,7 @@
         },
         {
           "file": "style.css",
-          "line": 7108
+          "line": 7192
         }
       ]
     },
@@ -4610,7 +4658,7 @@
         },
         {
           "file": "style.css",
-          "line": 1916
+          "line": 2000
         }
       ]
     },
@@ -4626,7 +4674,7 @@
         },
         {
           "file": "style.css",
-          "line": 11494
+          "line": 11578
         }
       ]
     },
@@ -4642,7 +4690,7 @@
         },
         {
           "file": "style.css",
-          "line": 11875
+          "line": 11959
         }
       ]
     },
@@ -4658,7 +4706,7 @@
         },
         {
           "file": "style.css",
-          "line": 11936
+          "line": 12020
         }
       ]
     },
@@ -4674,7 +4722,7 @@
         },
         {
           "file": "style.css",
-          "line": 11923
+          "line": 12007
         }
       ]
     },
@@ -4690,7 +4738,7 @@
         },
         {
           "file": "style.css",
-          "line": 11906
+          "line": 11990
         }
       ]
     },
@@ -4706,7 +4754,7 @@
         },
         {
           "file": "style.css",
-          "line": 11914
+          "line": 11998
         }
       ]
     },
@@ -4722,7 +4770,7 @@
         },
         {
           "file": "style.css",
-          "line": 13171
+          "line": 13255
         }
       ]
     },
@@ -4814,7 +4862,7 @@
         },
         {
           "file": "style.css",
-          "line": 10429
+          "line": 10513
         }
       ]
     },
@@ -4862,7 +4910,7 @@
         },
         {
           "file": "style.css",
-          "line": 8244
+          "line": 8328
         }
       ]
     },
@@ -4890,7 +4938,7 @@
         },
         {
           "file": "style.css",
-          "line": 8968
+          "line": 9052
         }
       ]
     },
@@ -4906,7 +4954,7 @@
         },
         {
           "file": "style.css",
-          "line": 1913
+          "line": 1997
         }
       ]
     },
@@ -4922,7 +4970,7 @@
         },
         {
           "file": "style.css",
-          "line": 9028
+          "line": 9112
         }
       ]
     },
@@ -4938,7 +4986,7 @@
         },
         {
           "file": "style.css",
-          "line": 9015
+          "line": 9099
         }
       ]
     },
@@ -4954,7 +5002,7 @@
         },
         {
           "file": "style.css",
-          "line": 8984
+          "line": 9068
         }
       ]
     },
@@ -4970,7 +5018,7 @@
         },
         {
           "file": "style.css",
-          "line": 9005
+          "line": 9089
         }
       ]
     },
@@ -4986,7 +5034,7 @@
         },
         {
           "file": "style.css",
-          "line": 8996
+          "line": 9080
         }
       ]
     },
@@ -5002,7 +5050,7 @@
         },
         {
           "file": "style.css",
-          "line": 8992
+          "line": 9076
         }
       ]
     },
@@ -5018,7 +5066,7 @@
         },
         {
           "file": "style.css",
-          "line": 7426
+          "line": 7510
         }
       ]
     },
@@ -5034,7 +5082,7 @@
         },
         {
           "file": "style.css",
-          "line": 8597
+          "line": 8681
         }
       ]
     },
@@ -5050,7 +5098,7 @@
         },
         {
           "file": "style.css",
-          "line": 3546
+          "line": 3630
         }
       ]
     },
@@ -5066,7 +5114,7 @@
         },
         {
           "file": "style.css",
-          "line": 3230
+          "line": 3314
         }
       ]
     },
@@ -5094,7 +5142,7 @@
         },
         {
           "file": "style.css",
-          "line": 7344
+          "line": 7428
         }
       ]
     },
@@ -5110,7 +5158,7 @@
         },
         {
           "file": "style.css",
-          "line": 7345
+          "line": 7429
         }
       ]
     },
@@ -5126,7 +5174,7 @@
         },
         {
           "file": "style.css",
-          "line": 13240
+          "line": 13324
         }
       ]
     },
@@ -5142,7 +5190,7 @@
         },
         {
           "file": "style.css",
-          "line": 9260
+          "line": 9344
         }
       ]
     },
@@ -5158,7 +5206,7 @@
         },
         {
           "file": "style.css",
-          "line": 9246
+          "line": 9330
         }
       ]
     },
@@ -5202,7 +5250,7 @@
         },
         {
           "file": "style.css",
-          "line": 3395
+          "line": 3479
         }
       ]
     },
@@ -5218,7 +5266,7 @@
         },
         {
           "file": "style.css",
-          "line": 7874
+          "line": 7958
         }
       ]
     },
@@ -5246,7 +5294,7 @@
         },
         {
           "file": "style.css",
-          "line": 7666
+          "line": 7750
         }
       ]
     },
@@ -5262,7 +5310,7 @@
         },
         {
           "file": "style.css",
-          "line": 9383
+          "line": 9467
         }
       ]
     },
@@ -5278,7 +5326,7 @@
         },
         {
           "file": "style.css",
-          "line": 9369
+          "line": 9453
         }
       ]
     },
@@ -5306,7 +5354,7 @@
         },
         {
           "file": "style.css",
-          "line": 9989
+          "line": 10073
         }
       ]
     },
@@ -5322,7 +5370,7 @@
         },
         {
           "file": "style.css",
-          "line": 9975
+          "line": 10059
         }
       ]
     },
@@ -5386,7 +5434,7 @@
         },
         {
           "file": "style.css",
-          "line": 3469
+          "line": 3553
         }
       ]
     },
@@ -5414,7 +5462,7 @@
         },
         {
           "file": "style.css",
-          "line": 3470
+          "line": 3554
         }
       ]
     },
@@ -5430,7 +5478,7 @@
         },
         {
           "file": "style.css",
-          "line": 3418
+          "line": 3502
         }
       ]
     },
