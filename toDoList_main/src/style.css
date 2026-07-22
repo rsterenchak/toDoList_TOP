@@ -2667,6 +2667,47 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-size: 12px;
   word-break: break-word;
 }
+/* Task-scope chip — always shown above the composer so the conversation's
+   scope is unambiguous. Reuses the attachment-chip tokens (no new colors) and
+   the 10px radius convention. The scoped variant reads as an accent chip; the
+   unscoped variant is a muted, control-free placeholder. */
+.claudeScopeChip {
+  display: flex;
+}
+.claudeScopeChip:not(:empty) { margin-bottom: 8px; }
+.claudeScopeChipTag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 3px 8px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border-mid);
+  font-size: 12px;
+}
+.claudeScopeChipTag--scoped {
+  background: var(--accent-dim);
+  color: var(--accent-text);
+}
+.claudeScopeChipTag--unscoped {
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+}
+.claudeScopeChipLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.claudeScopeChipRemove {
+  flex: 0 0 auto;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
 .claudeRunsList {
   flex: 1;
   min-height: 0;
@@ -16130,6 +16171,36 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 .injectBtn:disabled {
   cursor: default;
+}
+
+/* Discuss button — opens the Claude sheet scoped to this task. Sits beside the
+   inject button at the bottom of the description panel and mirrors its outlined
+   accent styling (no new color tokens) so the two per-row actions read as a
+   set. */
+.discussBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  margin: 0 12px 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.discussBtn:hover {
+  background: var(--accent-dim);
+}
+.discussBtn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
 /* Unconfigured state: dimmed outline, clicking opens the settings modal. */

@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-22',
-        changed: [
-            "A shipped task awaiting review now shows just the REVIEW badge instead of also showing the green shipped check, so the row marks its pipeline status once until you acknowledge it.",
+        added: [
+            "Discuss a task with Claude from its row to keep the whole chat scoped to it — the attached task shows as a chip above the composer and rides on every message until you detach it or start a new chat.",
         ],
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",

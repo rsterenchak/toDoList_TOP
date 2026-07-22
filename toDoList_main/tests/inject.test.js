@@ -81,6 +81,54 @@ describe('chatWithWorker — deep flag', () => {
     });
 });
 
+// The task-scope attachment rides on every turn as `attach_task` (title +
+// description only). It must be present when a task is scoped and absent
+// otherwise, and it must never leak the todo id — only the text the model reads.
+describe('chatWithWorker — attach_task (task scope)', () => {
+    it('sends attach_task { title, description } when a task is attached', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined,
+            { title: 'Add a widget', description: 'Under the header' },
+        );
+        const body = lastChatBody();
+        expect(body).toBeTruthy();
+        expect(body.attach_task).toEqual({ title: 'Add a widget', description: 'Under the header' });
+    });
+
+    it('omits attach_task entirely when no task is attached', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined,
+            null,
+        );
+        const body = lastChatBody();
+        expect(body).toBeTruthy();
+        expect('attach_task' in body).toBe(false);
+    });
+
+    it('omits attach_task when the task carries neither title nor description', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined,
+            { title: '', description: '' },
+        );
+        const body = lastChatBody();
+        expect('attach_task' in body).toBe(false);
+    });
+
+    it('sends only the title/description text, never a todo id', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined,
+            { id: 'todo-42', title: 'T', description: 'D' },
+        );
+        const body = lastChatBody();
+        expect(body.attach_task).toEqual({ title: 'T', description: 'D' });
+        expect('id' in body.attach_task).toBe(false);
+    });
+});
+
 // rewriteTodoMd POSTs the Worker's `{ rewrite: true, op, id, repo, filePath }`
 // branch through the same transport every other helper uses, and routes the
 // project's resolved inject target so the correct repo's TODO.md is mutated.

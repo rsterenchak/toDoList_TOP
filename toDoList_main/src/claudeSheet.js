@@ -121,6 +121,17 @@ let activeIterateEntry = null;
 // activeIterateEntry lifecycle so a stale link never rides a later, unrelated
 // ship.
 let activeHandoffRow = null;
+// The todo id of the task SCOPED to the current conversation, or null when the
+// chat is unscoped. Attaching a task (the row-side "Discuss" action) sets this;
+// while set, the task's title + description ride on every turn so follow-ups
+// need no re-explanation, and a scope chip renders above the composer. Only the
+// id is held — the title/description are resolved through listLogic at render
+// and send time so a rename shows fresh and a deletion collapses the chip.
+// Persisted per repo (todoapp_claudeChatTask) in lockstep with chatHistory and
+// activeIterateEntry, so a reload or workspace swap resumes that repo's scope;
+// cleared by "+ New Chat" in the same place the transcript is wiped, and
+// swapped/dropped on a workspace change exactly as the iterate entry is.
+let activeChatTask = null;
 // Repo-relative source paths attached to the CURRENT conversation. Sent as
 // `attach_files` on every turn (per-conversation accumulation), so the model
 // keeps the source context across follow-ups. Cleared on a fresh mount and by
@@ -350,6 +361,29 @@ export function openChatWithSeed(seedText, handoffRowId) {
     try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* defensive */ }
 }
 
+// Open the Claude sheet with a committed task ATTACHED (scoped) to the
+// conversation — the row-side "Discuss" entry point. Unlike openChatWithSeed
+// (which one-shot-seeds the composer), this attaches the task so it rides on
+// every turn and renders as the scope chip until detached or the session is
+// reset. Opens/uncollapses the chat surface exactly as openChatWithSeed does,
+// then attaches; the composer is left untouched so the user types their own
+// question. A blank id, or one that doesn't resolve to a real todo, is ignored.
+// Reached from toDoRow via a registered handler (main.js wires it) so toDoRow
+// never imports this module directly.
+export function openChatWithTask(todoId) {
+    if (!todoId || !listLogic.getTodoById(todoId)) return;
+    if (window.innerWidth <= MOBILE_MAX_WIDTH) {
+        if (!isClaudeSheetOpen()) openClaudeSheet();
+    } else {
+        document.body.classList.remove('chatPaneCollapsed');
+        setChatPaneCollapsed(false);
+    }
+    setActiveTab('chat');
+    attachTaskToChat(todoId);
+    const input = sheetQuery('#claudeComposerInput');
+    if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
+}
+
 // Auto-expand / auto-collapse the Claude chat pane when the active project
 // changes. A project "has a repo configured" by the SAME gate the sidebar
 // project-row thunderbolt (⚡) uses — inject is configured globally AND this
@@ -486,14 +520,20 @@ function autoSwapWorkspaceForProject(projectName) {
     // never dragged across repos.
     saveChatHistory();
     saveIterateEntry();
+    saveChatTask();
     setActiveChatRepo(repo);
     chatHistory = loadChatHistory(repo);
     activeIterateEntry = loadIterateEntry(repo);
+    // The task scope is per repo like the thread: persist the outgoing repo's and
+    // resume the incoming repo's (null when none), so a scope is never dragged
+    // across repos and swapping back restores it.
+    activeChatTask = loadChatTask(repo);
     // A workspace swap starts fresh on the incoming repo, so any hand-off link
     // from the outgoing repo's session must not ride a later ship on the new one.
     activeHandoffRow = null;
     clearAttachments();
     replayChatHistory();
+    renderScopeChip();
     renderWorkspacePill();
 
     // If the attach picker is open, refresh it to the new repo's source list.
@@ -638,6 +678,134 @@ function deleteIterateEntry(repo) {
         delete map[repo];
         writeIterateMap(map);
     }
+}
+
+// ── CHAT TASK SCOPE (localStorage-backed, per-repo) ──
+// The task-scope chip's attachment, stored as { [repo]: todoId } under one key —
+// a direct parallel to the iterate-entry map, so a repo's scope survives reloads
+// and resumes on a workspace swap exactly as its chat thread and iterate session
+// do. Only the id is persisted; the title/description are resolved live from
+// listLogic at render/send time, so localStorage never holds a stale task copy.
+const CHAT_TASK_KEY = 'todoapp_claudeChatTask';
+
+function readTaskMap() {
+    try {
+        const raw = localStorage.getItem(CHAT_TASK_KEY);
+        const parsed = raw ? JSON.parse(raw) : {};
+        return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+function writeTaskMap(map) {
+    try {
+        localStorage.setItem(CHAT_TASK_KEY, JSON.stringify(map));
+    } catch (e) { /* private mode */ }
+}
+
+// Persist the active workspace's scoped task id, or drop its map slot when the
+// chat is unscoped (activeChatTask === null). Read-modify-write so one repo's
+// scope never clobbers another's, mirroring saveIterateEntry.
+function saveChatTask() {
+    const map = readTaskMap();
+    if (activeChatTask) map[activeChatRepo] = activeChatTask;
+    else delete map[activeChatRepo];
+    writeTaskMap(map);
+}
+
+// The stored scoped task id for `repo`, or null when none is saved.
+function loadChatTask(repo) {
+    const id = readTaskMap()[repo];
+    return typeof id === 'string' && id ? id : null;
+}
+
+// Drop a repo's stored task scope, in lockstep with deleteChatHistory /
+// deleteIterateEntry.
+function deleteChatTask(repo) {
+    const map = readTaskMap();
+    if (Object.prototype.hasOwnProperty.call(map, repo)) {
+        delete map[repo];
+        writeTaskMap(map);
+    }
+}
+
+// Paint the scope chip above the composer from the current attachment. The chip
+// is always present so the scope is never ambiguous: with a task attached it
+// reads "🎯 <title>" and carries a detach ✕; with nothing attached it reads a
+// muted "Unscoped". The stored id is resolved live through listLogic — a rename
+// shows fresh — and if it no longer resolves (task deleted, project gone) the
+// attachment self-heals to unscoped rather than rendering a dangling chip.
+function renderScopeChip() {
+    const host = sheetQuery('#claudeScopeChip');
+    if (!host) return;
+    const todo = activeChatTask ? listLogic.getTodoById(activeChatTask) : null;
+    if (activeChatTask && !todo) {
+        // The id no longer resolves — drop the dead attachment and fall back to
+        // unscoped so a deleted task never leaves a stale chip behind.
+        activeChatTask = null;
+        saveChatTask();
+    }
+    host.innerHTML = '';
+    const chip = document.createElement('span');
+    chip.className = 'claudeScopeChipTag';
+    if (todo) {
+        chip.classList.add('claudeScopeChipTag--scoped');
+        const title = (todo.title && todo.title.trim()) ? todo.title.trim() : 'Untitled task';
+        const label = document.createElement('span');
+        label.className = 'claudeScopeChipLabel';
+        label.textContent = '🎯 ' + title;
+        label.title = title;
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'claudeScopeChipRemove';
+        x.setAttribute('aria-label', 'Detach task from chat');
+        x.textContent = '✕';
+        x.addEventListener('click', detachChatTask);
+        chip.appendChild(label);
+        chip.appendChild(x);
+    } else {
+        chip.classList.add('claudeScopeChipTag--unscoped');
+        chip.textContent = 'Unscoped';
+    }
+    host.appendChild(chip);
+}
+
+// Attach a committed task to the conversation by id (replacing any current one —
+// at most one task is scoped at a time). No-op on a blank id or one that doesn't
+// resolve to a real todo, so a phantom is never attached. Client-side scope
+// only: this never writes to agent_queue or touches triage.
+function attachTaskToChat(todoId) {
+    if (!todoId) return;
+    if (!listLogic.getTodoById(todoId)) return;
+    activeChatTask = todoId;
+    saveChatTask();
+    renderScopeChip();
+}
+
+// Detach the scoped task: the chip returns to unscoped and the task stops riding
+// on turns. The conversation itself is untouched.
+function detachChatTask() {
+    if (!activeChatTask) return;
+    activeChatTask = null;
+    saveChatTask();
+    renderScopeChip();
+}
+
+// Resolve the scoped task to the { title, description } context sent on a turn,
+// or null when nothing is attached. Resolves the id live so a renamed task sends
+// fresh text; a dead id self-heals to unscoped (chip included) rather than
+// sending stale context.
+function resolveActiveChatTask() {
+    if (!activeChatTask) return null;
+    const todo = listLogic.getTodoById(activeChatTask);
+    if (!todo) {
+        activeChatTask = null;
+        saveChatTask();
+        renderScopeChip();
+        return null;
+    }
+    return { title: todo.title, description: todo.description };
 }
 
 // Clear the chat surface and replay the in-memory chatHistory into it, rendering
@@ -793,6 +961,10 @@ function clearChatConversation() {
     deleteChatHistory(activeChatRepo);
     activeIterateEntry = null;
     deleteIterateEntry(activeChatRepo);
+    // "New Chat" clears the task scope along with the transcript, in the same
+    // place the thread is wiped so the two reset paths can't drift apart.
+    activeChatTask = null;
+    deleteChatTask(activeChatRepo);
     // A fresh chat is no longer the hand-off session, so a subsequent ship must
     // not settle the row the wiped conversation was handed off from.
     activeHandoffRow = null;
@@ -800,6 +972,8 @@ function clearChatConversation() {
     if (surface) surface.innerHTML = '';
     // The thread is empty again, so re-surface the capabilities intro note.
     renderChatIntro();
+    // The scope returns to unscoped in lockstep with the wipe.
+    renderScopeChip();
 }
 
 // The composer file-picker button + its dropdown panel. The button leads the
@@ -1179,6 +1353,14 @@ function buildChatView() {
     surface.id = 'claudeChatSurface';
     surface.className = 'claudeChatSurface';
 
+    // Task-scope chip — always present above the composer so the conversation's
+    // scope is never ambiguous: it reads "🎯 <title>" (with a detach ✕) when a
+    // task is attached, or a muted "Unscoped" otherwise. renderScopeChip() fills
+    // it from the active attachment.
+    const scopeChip = document.createElement('div');
+    scopeChip.id = 'claudeScopeChip';
+    scopeChip.className = 'claudeScopeChip';
+
     // Selected-attachment chips — sit directly above the composer.
     const chips = document.createElement('div');
     chips.id = 'claudeAttachChips';
@@ -1353,9 +1535,12 @@ function buildChatView() {
     });
 
     view.appendChild(surface);
+    view.appendChild(scopeChip);
     view.appendChild(chips);
     view.appendChild(imageRail);
     view.appendChild(composer);
+    // The chip is painted by mountClaudeSheet after contentEl is assigned and the
+    // scope is hydrated — sheetQuery can't resolve it yet at build time.
     return view;
 }
 
@@ -1828,6 +2013,13 @@ export function getActiveChatRepo() {
     return activeChatRepo;
 }
 
+// Read-only projection of the conversation's scoped task id (null when
+// unscoped), exported for tests that assert the attach/detach/persistence
+// lifecycle without reaching into module internals.
+export function getActiveChatTask() {
+    return activeChatTask;
+}
+
 // The app's own repo — the "running app" the UI lens can walk live. The
 // Structure view compares its selected repo against this to decide between the
 // live DOM map and the "no published UI map yet" state.
@@ -1851,6 +2043,9 @@ export function setChatWorkspaceRepo(repo) {
     deleteChatHistory(repo);
     activeIterateEntry = null;
     deleteIterateEntry(repo);
+    // Reframing wipes the incoming repo's session, so drop its task scope too.
+    activeChatTask = null;
+    deleteChatTask(repo);
     // Reframing on a new repo starts a fresh session, so drop any hand-off link.
     activeHandoffRow = null;
     const surface = sheetQuery('#claudeChatSurface');
@@ -1859,6 +2054,7 @@ export function setChatWorkspaceRepo(repo) {
     const panel = sheetQuery('#claudeAttachPanel');
     const pickerWasOpen = !!(panel && !panel.hidden);
     clearAttachments();
+    renderScopeChip();
     renderWorkspacePill();
     if (pickerWasOpen && panel) {
         setAttachPanelHidden(false);
@@ -2149,7 +2345,11 @@ async function requestAssistantReply(entryId, deep) {
     if (pending) pending.classList.add('claudeMsg--pending');
 
     try {
-        const result = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep);
+        // The scoped task (if any) rides on every turn so follow-ups need no
+        // re-explanation; resolveActiveChatTask reads its title/description live
+        // and self-heals a deleted task to unscoped before the send.
+        const attachTask = resolveActiveChatTask();
+        const result = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask);
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
         chatHistory.push({ role: 'assistant', content: reply });
@@ -3697,11 +3897,16 @@ export function mountClaudeSheet(parent) {
     // resumes with the diff intact rather than silently dropping to no-diff turns.
     chatHistory = loadChatHistory(activeChatRepo);
     activeIterateEntry = loadIterateEntry(activeChatRepo);
+    // The task scope is hydrated per repo alongside the thread and iterate entry,
+    // so a reload / PWA relaunch resumes the same scope; renderScopeChip paints it
+    // (self-healing to unscoped if the task was deleted while away).
+    activeChatTask = loadChatTask(activeChatRepo);
     // A fresh mount (reload / PWA relaunch) has no in-flight hand-off — the link
     // is in-memory session state, and once a run ships it rides the persisted run
     // record instead, so a reload mid-hand-off simply drops the (pre-ship) link.
     activeHandoffRow = null;
     replayChatHistory();
+    renderScopeChip();
 
     // Hydrate run records from localStorage, render them into the Runs tab,
     // and resume polling any run that was still in flight before a reload.

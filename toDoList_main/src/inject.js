@@ -353,10 +353,18 @@ export async function injectEntry(options) {
 // so the Worker applies its tighter 20KB suggestion cap, separate from the
 // manual `attach_files` budget.
 //
+// `attachTask` is an optional `{ title, description }` for a task scoped to the
+// conversation (the chat's task-scope chip). It rides as `attach_task` so the
+// whole conversation stays anchored to that task without re-explaining it each
+// turn. It is placed LAST in the payload, in the turn-variable tail alongside
+// the file/image attachments rather than in the repo-stable block, because
+// attach/detach is frequent and putting it earlier would invalidate the Worker's
+// cached repo-stable prefix on every scope change.
+//
 // Returns `{ reply, suggestedFiles }`: `reply` is the assistant's text, and
 // `suggestedFiles` is the array of paths the Worker proposed attaching this
 // turn (empty when none).
-export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles, deepThink) {
+export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles, deepThink, attachTask) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
@@ -373,6 +381,15 @@ export async function chatWithWorker(messages, entryId, attachFiles, repo, sugge
         // them with the 40KB manual-attach budget.
         if (Array.isArray(suggestedAttachFiles) && suggestedAttachFiles.length) {
             payload.suggested_attach_files = suggestedAttachFiles.slice();
+        }
+        // Task scope rides in the turn-variable tail (last field) so a frequent
+        // attach/detach never disturbs the cached repo-stable prefix above it.
+        // Only title/description are sent — the id stays client-side.
+        if (attachTask && (attachTask.title || attachTask.description)) {
+            payload.attach_task = {
+                title: attachTask.title || '',
+                description: attachTask.description || '',
+            };
         }
         const res = await postToWorker(payload);
         const suggestedFiles = res && Array.isArray(res.suggested_files)
