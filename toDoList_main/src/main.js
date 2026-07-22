@@ -54,7 +54,7 @@ import {
     buildCompanionToggle as buildCompanionToggleRow,
 } from './drawerRows.js';
 import { mountClaudeSheet } from './claudeSheet.js';
-import { syncClaudeSheetForProject } from './claudeSheet.js';
+import { syncClaudeSheetForProject, openChatWithTask } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
@@ -83,6 +83,7 @@ import {
     focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
     reorderToDoDOM,
+    setDiscussTaskHandler,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { createMobileUpdatePill } from './mobileUpdatePill.js';
@@ -3026,6 +3027,14 @@ setReviewBadgeTapHandler(function(entryId, projectName) {
         if (card && !isAnyMobileSheetOpen()) openViewerMobileSheet(card);
     }
     openViewerAnchoredToEntry(entryId);
+});
+
+// Wire the todo row's "Discuss" action to open the Claude sheet scoped to the
+// task. toDoRow.js owns the button but must not import claudeSheet.js (that
+// would close the toDoRow → claudeSheet → modals → toDoRow cycle), so it invokes
+// this registered handler with the todo id.
+setDiscussTaskHandler(function(todoId) {
+    openChatWithTask(todoId);
 });
 
 // Wire the viewer's "⋯" overflow button to open a mobile bottom-sheet menu

@@ -1626,6 +1626,34 @@ export const listLogic = (function () {
     }
 
 
+    // Resolve a committed todo by its id across all projects, returning a small
+    // read-only view { id, title, description } — or null when the id no longer
+    // resolves (task deleted, or never existed). Read-only: it never mutates,
+    // so callers that only need a task's current text (e.g. the Claude sheet's
+    // task-scope chip, which stores the id and re-reads the title/description on
+    // every render and turn) always see the live values — a rename is reflected
+    // and a deletion collapses the chip rather than surfacing stale text.
+    function getTodoById(todoId) {
+        if (!todoId) return null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) {
+                return it && it.id === todoId;
+            });
+            if (hit) {
+                return {
+                    id: hit.id,
+                    title: hit.tit || '',
+                    description: hit.desc || '',
+                };
+            }
+        }
+        return null;
+    }
+
+
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
     // @category: user-mutation-only
@@ -3687,6 +3715,7 @@ export const listLogic = (function () {
         stampTodoEntryId,
         markEntryReviewed,
         getEntryReviewInfo,
+        getTodoById,
         unflagAgentTask,
         setProjectColor,
         getProjectSortByDue,

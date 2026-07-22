@@ -51,6 +51,16 @@ import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 
 
+// The row-side "Discuss" action opens the Claude sheet scoped to this task.
+// claudeSheet.js can't be imported here directly (toDoRow → claudeSheet →
+// modals → toDoRow would close an import cycle inject.js documents and
+// deliberately avoids), so main.js — which imports both — registers the opener
+// through this slot, exactly as setViewerCardTapHandler bridges the viewer card.
+let discussTaskHandler = null;
+export function setDiscussTaskHandler(fn) {
+    discussTaskHandler = typeof fn === 'function' ? fn : null;
+}
+
 // Default due-date offset used when a row is committed without a user-chosen
 // date. A new task with no chosen date lands on today (today + 0), matching
 // the mobile inline-create default so both platforms agree.
@@ -1299,7 +1309,7 @@ function buildInfoGlyph() {
 
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item, projectName) {
+function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, discussBtn, item, projectName) {
 
     let switcher = 0;
 
@@ -1325,6 +1335,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             if (injectBtn) {
                 descSibling.appendChild(injectBtn);
                 refreshInjectButton(injectBtn, item, projectName);
+            }
+            // Discuss sits after inject, but only for a committed row — a blank
+            // placeholder has no task to scope a conversation to yet.
+            if (discussBtn && item.id) {
+                descSibling.appendChild(discussBtn);
             }
             descInput.value = item["desc"] || "";
             // Trigger the textarea's auto-grow handler now that it's in the
@@ -1569,6 +1584,25 @@ export function buildToDoRow(item, toDoName) {
     // The project name flows through so the no-target / ready states can
     // resolve the project's per-project inject target.
     const injectBtn = makeInjectButton(item, { projectName: toDoName });
+
+    // DISCUSS BUTTON — opens the Claude sheet with this task attached (scoped)
+    // so the whole conversation stays anchored to it. Sits beside the inject
+    // button at the bottom of the description panel. Committed rows only: the
+    // panel is only reachable once the row has a title, and a blank id is
+    // guarded below, so a placeholder never surfaces a live Discuss action. The
+    // opener is reached through the registered handler (main.js wires it) to
+    // avoid an import cycle back into claudeSheet.js.
+    const discussBtn = document.createElement("button");
+    discussBtn.type = "button";
+    discussBtn.className = "discussBtn";
+    discussBtn.setAttribute("aria-label", "Discuss this task with Claude");
+    discussBtn.title = "Discuss this task with Claude";
+    discussBtn.innerHTML = '<span class="discussBtnGlyph" aria-hidden="true">💬</span><span class="discussBtnLabel">Discuss</span>';
+    discussBtn.addEventListener("click", function(event) {
+        event.stopPropagation();
+        if (item.id && discussTaskHandler) discussTaskHandler(item.id);
+    });
+
     descInput.autocomplete = "off";
     descInput.placeholder = "Type description here...";
     descInput.style.fontSize = "12px";
@@ -1680,7 +1714,7 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, item, toDoName);
+    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, discussBtn, item, toDoName);
     wireSubControlBackspaceExit(descToggle, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);
