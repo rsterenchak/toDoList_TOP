@@ -149,6 +149,68 @@ describe('todo.md viewer — buildViewerRenderedBody hideCompleted option', () =
     });
 });
 
+// The first completed entry in FIXTURE carries this marker; treat it as the
+// shipped-but-unreviewed one for these tests.
+const UNREVIEWED_MARKER = 'aaaaaaaa-0000-0000-0000-000000000001';
+const isUnreviewed = (id) => id === UNREVIEWED_MARKER;
+
+describe('todo.md viewer — shipped-but-unreviewed entries (isEntryUnreviewed)', () => {
+    it('keeps an unreviewed shipped entry visible even while completed are hidden', () => {
+        const tokens = parseTodoMdChecklist(FIXTURE);
+        const kept = filterCompletedTokens(tokens, true, isUnreviewed).tokens;
+        const texts = kept.map((t) => t.text);
+        // The unreviewed shipped entry (and its sub-bullets) survive the hide.
+        expect(texts.some((t) => /Painted the strip/.test(t))).toBe(true);
+        expect(texts.some((t) => /some long description/.test(t))).toBe(true);
+        // The other completed entry (reviewed → predicate false) is still hidden.
+        expect(texts.some((t) => /Minimal done entry/.test(t))).toBe(false);
+    });
+
+    it('excludes unreviewed shipped entries from the completed count', () => {
+        // Two completed entries, one of them unreviewed → only one counts as hidden.
+        expect(countCompletedTodoMdEntries(FIXTURE, isUnreviewed)).toBe(1);
+        // With no predicate, both count (unchanged legacy behavior).
+        expect(countCompletedTodoMdEntries(FIXTURE)).toBe(2);
+    });
+
+    it('gives an unreviewed shipped row the amber treatment and an Acknowledge pill', () => {
+        const acks = [];
+        const wrap = buildViewerRenderedBody(FIXTURE, {
+            hideCompleted: false,
+            isEntryUnreviewed: isUnreviewed,
+            onAcknowledgeEntry: (id, btn) => acks.push({ id, btn }),
+        });
+        const reviewRows = wrap.querySelectorAll('.todoMdViewerCheckRow--review');
+        expect(reviewRows).toHaveLength(1);
+        const pill = wrap.querySelector('.todoMdViewerAckEntryBtn');
+        expect(pill).not.toBeNull();
+        expect(pill.dataset.entryId).toBe(UNREVIEWED_MARKER);
+        pill.click();
+        expect(acks).toHaveLength(1);
+        expect(acks[0].id).toBe(UNREVIEWED_MARKER);
+    });
+
+    it('adds no amber treatment or Acknowledge pill when the entry is reviewed', () => {
+        const wrap = buildViewerRenderedBody(FIXTURE, {
+            hideCompleted: false,
+            isEntryUnreviewed: () => false,
+            onAcknowledgeEntry: () => {},
+        });
+        expect(wrap.querySelectorAll('.todoMdViewerCheckRow--review')).toHaveLength(0);
+        expect(wrap.querySelector('.todoMdViewerAckEntryBtn')).toBeNull();
+    });
+
+    it('omits the Acknowledge pill when no onAcknowledgeEntry callback is supplied', () => {
+        const wrap = buildViewerRenderedBody(FIXTURE, {
+            hideCompleted: false,
+            isEntryUnreviewed: isUnreviewed,
+        });
+        // The amber treatment still paints, but there is no pill to tap.
+        expect(wrap.querySelectorAll('.todoMdViewerCheckRow--review')).toHaveLength(1);
+        expect(wrap.querySelector('.todoMdViewerAckEntryBtn')).toBeNull();
+    });
+});
+
 describe('todo.md viewer — show-completed menu item wiring (todoMdViewer.js)', () => {
     const main = read('todoMdViewer.js');
 

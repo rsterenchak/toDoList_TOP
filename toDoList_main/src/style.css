@@ -9713,6 +9713,40 @@ body.row-dragging * { cursor: grabbing !important; }
   border-color: rgba(0, 0, 0, 0.12);
 }
 
+/* Per-entry "Acknowledge" pill on an amber shipped-but-unreviewed entry.
+   Shares the Revert pill's shape and the same #ffbd5e amber accent so the two
+   read as a matched pair; a solid amber fill marks it as the primary action on
+   the flagged row. */
+.todoMdViewerAckEntryBtn {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  background: #ffbd5e;
+  color: #1a1408;
+  border: 1px solid #ffbd5e;
+  border-radius: var(--radius-sm);
+  padding: 2px 8px;
+  font: inherit;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.todoMdViewerAckEntryBtn:hover {
+  background: #ffcb7f;
+  border-color: #ffcb7f;
+}
+.todoMdViewerAckEntryBtn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.todoMdViewerAckEntryIcon {
+  flex: none;
+}
+
 /* "⋯" overflow menu in the header meta row — anchors a small dropdown of the
    whole-file actions (Clear completed / Clear all). Mirrors #projContextMenu's
    surface, shadow, and radius so the menus read identically. */
@@ -10140,6 +10174,16 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoMdViewerCheckRow--done .todoMdViewerCheckText {
   color: var(--text-muted);
   text-decoration: line-through;
+}
+/* Shipped-but-unreviewed entry: an amber left edge marks a completed entry the
+   user hasn't acknowledged yet, so it stands out even while completed entries
+   are collapsed. Reuses the #ffbd5e REVIEW-badge accent. */
+.todoMdViewerCheckRow--review {
+  border-left: 3px solid #ffbd5e;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 8px;
+  background: rgba(255, 189, 94, 0.08);
 }
 
 .todoMdViewerCheckBox {

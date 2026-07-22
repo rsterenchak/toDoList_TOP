@@ -25,7 +25,23 @@ import {
     showInjectToast,
     forgetEntryMarkerLocally,
     refreshShippedMarkers,
+    emitTodoRunStatusChange,
+    TODO_RUN_STATUS_EVENT,
 } from './inject.js';
+
+// Predicate shared by the viewer's completed-collapse, count, and amber-
+// treatment paths: a checked entry is "shipped but unreviewed" when its
+// `<!-- id -->` marker resolves to a todo in the active project that carries no
+// acknowledgement stamp. Delegates to listLogic (never re-parses markers) and
+// returns false for an unresolved marker, so a checked entry with no resolvable
+// marker collapses exactly as it does today.
+function isViewerEntryUnreviewed(entryId) {
+    if (!entryId) return false;
+    try {
+        const info = listLogic.getEntryReviewInfo(entryId);
+        return !!(info && info.found && !info.reviewed);
+    } catch (e) { return false; }
+}
 
 // Entries reverted (merged) this session — once a completed row's change has
 // been rolled back, its Revert control disappears so it can never be triggered
@@ -91,6 +107,10 @@ let viewerActiveTab = 'rendered';
 let viewerActiveProject = null;
 let viewerResizeHandler = null;
 let viewerActiveRunChangeHandler = null;
+// Reconciles the viewer's amber shipped-but-unreviewed treatments in place when
+// an acknowledgement lands from the tasks-surface REVIEW badge (which emits
+// TODO_RUN_STATUS_EVENT). Bound to the mounted card; detached with it.
+let viewerReviewSyncHandler = null;
 let viewerRunPollInterval = null;
 // Separate interval from the local run poll: this one polls the Worker's
 // repo-level `active_runs` probe so a run started on ANOTHER device lights up
@@ -162,6 +182,11 @@ function detachViewerResizeHandler() {
     if (viewerActiveRunChangeHandler) {
         document.removeEventListener(ACTIVE_RUN_CHANGE_EVENT, viewerActiveRunChangeHandler);
         viewerActiveRunChangeHandler = null;
+    }
+    // Drop the cross-surface review-sync subscription with the card too.
+    if (viewerReviewSyncHandler) {
+        document.removeEventListener(TODO_RUN_STATUS_EVENT, viewerReviewSyncHandler);
+        viewerReviewSyncHandler = null;
     }
 }
 
@@ -289,7 +314,15 @@ export function parseTodoMdChecklist(text) {
 // touched, and the pipeline reads the full file server-side via the GitHub
 // API — so this render-side filter is purely cosmetic and must never be
 // "consolidated" into anything that affects the pipeline read path.
-export function filterCompletedTokens(tokens, hideCompleted) {
+// `isEntryUnreviewed(entryId)` is an optional predicate that returns true when a
+// completed entry has SHIPPED but hasn't been acknowledged yet (its `<!-- id -->`
+// marker resolves to an un-reviewed todo). Such an entry is treated like an
+// active one — it is never hidden (it stays visible in its normal document
+// position even while completed entries are collapsed) and it is excluded from
+// `completedCount` so the "Show completed (N)" toggle counts only what is truly
+// hidden. Omitted or returning false → the entry collapses as any other
+// completed entry does today.
+export function filterCompletedTokens(tokens, hideCompleted, isEntryUnreviewed) {
     let completedCount = 0;
     const kept = [];
     let hiding = false;
@@ -303,12 +336,17 @@ export function filterCompletedTokens(tokens, hideCompleted) {
         }
         if (tok.type === 'checkbox' && tok.indent === 0) {
             // Top-level checkbox: starts a new entry block.
-            if (tok.checked) {
+            const unreviewed = tok.checked && typeof isEntryUnreviewed === 'function'
+                && isEntryUnreviewed(tok.entryId);
+            if (tok.checked && !unreviewed) {
                 completedCount++;
                 hiding = !!hideCompleted;
                 if (hiding) return; // drop the completed entry's own line
             } else {
-                hiding = false; // an active entry ends any prior hide range
+                // Active entries — and unreviewed-but-shipped entries, which
+                // must stay visible above the collapse toggle — end any prior
+                // hide range and never count toward the hidden total.
+                hiding = false;
             }
             kept.push(tok);
             return;
@@ -323,8 +361,10 @@ export function filterCompletedTokens(tokens, hideCompleted) {
 
 // Count completed top-level entries in raw TODO.md markdown. Used to label the
 // viewer's "Show completed (N)" toggle without rendering.
-export function countCompletedTodoMdEntries(text) {
-    return filterCompletedTokens(parseTodoMdChecklist(text), false).completedCount;
+export function countCompletedTodoMdEntries(text, isEntryUnreviewed) {
+    return filterCompletedTokens(
+        parseTodoMdChecklist(text), false, isEntryUnreviewed
+    ).completedCount;
 }
 
 // True when the markdown has at least one unchecked (`- [ ]`) top-level entry —
@@ -359,6 +399,15 @@ const REVERT_ENTRY_UNDO_GLYPH =
     '<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>' +
     '</svg>';
 
+// Check-in-circle glyph for the per-entry Acknowledge pill — reads as
+// "I've seen what shipped" on an amber-flagged, shipped-but-unreviewed entry.
+// DOM-built inline SVG like the sibling glyphs above, no icon library.
+const ACKNOWLEDGE_ENTRY_GLYPH =
+    '<svg class="todoMdViewerAckEntryIcon" viewBox="0 0 24 24" width="11" height="11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>' +
+    '<polyline points="22 4 12 14.01 9 11.01"/>' +
+    '</svg>';
+
 // Refresh / sync glyph for the icon-only Sync chip in the viewer bar. The
 // button reads as a neutral 36×36 chip alongside the amber Run backlog pill,
 // so the "Sync" text label is dropped in favor of this glyph (the aria-label
@@ -375,11 +424,13 @@ export function buildViewerRenderedBody(text, options) {
     const onRunEntry = typeof opts.onRunEntry === 'function' ? opts.onRunEntry : null;
     const onDeleteEntry = typeof opts.onDeleteEntry === 'function' ? opts.onDeleteEntry : null;
     const onRevertEntry = typeof opts.onRevertEntry === 'function' ? opts.onRevertEntry : null;
+    const isEntryUnreviewed = typeof opts.isEntryUnreviewed === 'function' ? opts.isEntryUnreviewed : null;
     const wrap = document.createElement('div');
     wrap.className = 'todoMdViewerRendered';
     const tokens = filterCompletedTokens(
         parseTodoMdChecklist(text),
-        !!opts.hideCompleted
+        !!opts.hideCompleted,
+        isEntryUnreviewed
     ).tokens;
     tokens.forEach(function(tok) {
         if (tok.type === 'heading') {
@@ -451,6 +502,35 @@ export function buildViewerRenderedBody(text, options) {
                     onRevertEntry(tok.entryId, revertLabel, revertBtn);
                 });
                 row.appendChild(revertBtn);
+            }
+            // Shipped-but-unacknowledged: a top-level completed entry whose
+            // marker resolves to an un-reviewed todo gets an amber left-edge
+            // treatment (so it stands out even while completed entries collapse)
+            // and an Acknowledge pill.
+            const unreviewedShipped = tok.indent === 0 && tok.checked && tok.entryId
+                && isEntryUnreviewed && isEntryUnreviewed(tok.entryId);
+            if (unreviewedShipped) row.classList.add('todoMdViewerCheckRow--review');
+            // Per-entry Acknowledge control — only on the amber shipped-but-
+            // unreviewed rows. Tapping it stamps `entry_reviewed_at` through
+            // listLogic, dropping the amber treatment and this pill in place and
+            // clearing the matching tasks-surface `⌁ REVIEW` badge. It is a
+            // local data write with no dispatch, so it is deliberately NOT swept
+            // by syncRunEntryButtonsDisabled — it stays enabled during a run.
+            const onAcknowledgeEntry = typeof opts.onAcknowledgeEntry === 'function' ? opts.onAcknowledgeEntry : null;
+            if (onAcknowledgeEntry && unreviewedShipped) {
+                const ackBtn = document.createElement('button');
+                ackBtn.type = 'button';
+                ackBtn.className = 'todoMdViewerAckEntryBtn';
+                ackBtn.dataset.entryId = tok.entryId;
+                ackBtn.setAttribute('aria-label', 'Acknowledge this shipped entry');
+                ackBtn.title = 'Mark this shipped entry as reviewed';
+                ackBtn.innerHTML = ACKNOWLEDGE_ENTRY_GLYPH +
+                    '<span class="todoMdViewerAckEntryLabel">Acknowledge</span>';
+                ackBtn.addEventListener('click', function(event) {
+                    event.stopPropagation();
+                    onAcknowledgeEntry(tok.entryId, ackBtn);
+                });
+                row.appendChild(ackBtn);
             }
             // Per-entry delete control — same gate as the Run button (top-level
             // entries carrying a resolved id marker). Deleting an id-less entry
@@ -687,7 +767,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(text)
-                : buildViewerRenderedBody(text, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, hideCompleted: !isTodoMdShowCompleted() })
+                : buildViewerRenderedBody(text, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, onAcknowledgeEntry: acknowledgeEntry, isEntryUnreviewed: isViewerEntryUnreviewed, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
     }
@@ -698,7 +778,7 @@ function buildTodoMdViewerCard(projectName, target) {
     // (and its divider) is hidden + disabled — "show completed (0)" is a no-op.
     function applyShowCompletedState() {
         const on = isTodoMdShowCompleted();
-        const n = countCompletedTodoMdEntries(card.dataset.content || '');
+        const n = countCompletedTodoMdEntries(card.dataset.content || '', isViewerEntryUnreviewed);
         showCompletedItem.setAttribute('aria-checked', on ? 'true' : 'false');
         showCompletedLabel.textContent =
             (on ? 'Hide' : 'Show') + ' completed (' + n + ')';
@@ -744,7 +824,7 @@ function buildTodoMdViewerCard(projectName, target) {
         body.appendChild(
             viewerActiveTab === 'raw'
                 ? buildViewerRawBody(content)
-                : buildViewerRenderedBody(content, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, hideCompleted: !isTodoMdShowCompleted() })
+                : buildViewerRenderedBody(content, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, onAcknowledgeEntry: acknowledgeEntry, isEntryUnreviewed: isViewerEntryUnreviewed, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
         // Refresh the toggle's (N) now that live content is available.
@@ -1012,6 +1092,26 @@ function buildTodoMdViewerCard(projectName, target) {
                 });
             },
         });
+    }
+
+    // Per-entry Acknowledge — stamp `entry_reviewed_at` on the entry's source
+    // todo (through listLogic, reusing the same write the tasks-surface REVIEW
+    // badge uses), then drop the amber treatment + this pill in place with no
+    // full body rebuild. Emitting TODO_RUN_STATUS_EVENT clears the matching
+    // row's `⌁ REVIEW` badge on the tasks surface (refreshDescStatusDots hears
+    // it); the viewer's own review-sync handler no-ops here since the row is
+    // already de-flagged. applyShowCompletedState re-tallies the collapse (N),
+    // which no longer counts this entry as shown-above-the-fold.
+    function acknowledgeEntry(entryId, btn) {
+        if (!entryId) return;
+        const info = listLogic.getEntryReviewInfo(entryId);
+        if (!info || !info.found || !info.todoId) return;
+        listLogic.markEntryReviewed(info.todoId);
+        const row = btn.closest('.todoMdViewerCheckRow');
+        if (row) row.classList.remove('todoMdViewerCheckRow--review');
+        if (btn.parentNode) btn.parentNode.removeChild(btn);
+        applyShowCompletedState();
+        emitTodoRunStatusChange();
     }
 
     clearCompletedItem.addEventListener('click', function(event) {
@@ -1761,6 +1861,28 @@ function buildTodoMdViewerCard(projectName, target) {
         }
     };
     document.addEventListener(ACTIVE_RUN_CHANGE_EVENT, viewerActiveRunChangeHandler);
+
+    // Cross-surface acknowledgement sync: the tasks-surface REVIEW badge stamps
+    // its acknowledgement and emits TODO_RUN_STATUS_EVENT. Reconcile the amber
+    // shipped-but-unreviewed treatments in place (no full body rebuild) so a
+    // card mounted alongside the row drops the amber flag + Acknowledge pill for
+    // any entry that is now reviewed. The viewer's own Acknowledge tap emits the
+    // same event, but it has already de-flagged its row, so this handler no-ops
+    // for that path.
+    viewerReviewSyncHandler = function() {
+        const rows = card.querySelectorAll('.todoMdViewerCheckRow--review');
+        let changed = false;
+        rows.forEach(function(row) {
+            const pill = row.querySelector('.todoMdViewerAckEntryBtn');
+            const eid = pill && pill.dataset.entryId;
+            if (!eid || isViewerEntryUnreviewed(eid)) return;
+            row.classList.remove('todoMdViewerCheckRow--review');
+            if (pill.parentNode) pill.parentNode.removeChild(pill);
+            changed = true;
+        });
+        if (changed) applyShowCompletedState();
+    };
+    document.addEventListener(TODO_RUN_STATUS_EVENT, viewerReviewSyncHandler);
 
     // Re-attach an in-flight run's pill if one is tracked for THIS project and
     // hasn't resolved yet. This fires on every card mount — both project

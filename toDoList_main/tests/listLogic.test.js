@@ -275,6 +275,48 @@ describe('listLogic — stampTodoEntryId (agent-flow run-status glyph)', () => {
 });
 
 
+// getEntryReviewInfo resolves a TODO.md `<!-- id -->` marker to its source todo
+// and reports whether it has been acknowledged — the read the viewer's amber
+// shipped-but-unreviewed treatment and Acknowledge pill are driven from.
+describe('listLogic — getEntryReviewInfo (viewer acknowledge lookup)', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Groceries');
+    });
+
+    it('resolves a marker id to its todo and reports it unreviewed by default', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        listLogic.stampTodoEntryId(milk.id, 'entry-abc');
+
+        const info = listLogic.getEntryReviewInfo('entry-abc');
+        expect(info.found).toBe(true);
+        expect(info.todoId).toBe(milk.id);
+        expect(info.reviewed).toBe(false);
+    });
+
+    it('reports reviewed:true once the entry has been acknowledged', () => {
+        listLogic.addToDo('Groceries', 'Bread');
+        const bread = listLogic.listItems('Groceries').find(i => i.tit === 'Bread');
+        listLogic.stampTodoEntryId(bread.id, 'entry-xyz');
+        listLogic.markEntryReviewed(bread.id);
+
+        const info = listLogic.getEntryReviewInfo('entry-xyz');
+        expect(info.found).toBe(true);
+        expect(info.reviewed).toBe(true);
+    });
+
+    it('returns the not-found shape for an unknown or empty marker id', () => {
+        expect(listLogic.getEntryReviewInfo('no-such-entry'))
+            .toEqual({ found: false, todoId: null, reviewed: false });
+        expect(listLogic.getEntryReviewInfo(''))
+            .toEqual({ found: false, todoId: null, reviewed: false });
+        expect(listLogic.getEntryReviewInfo(null))
+            .toEqual({ found: false, todoId: null, reviewed: false });
+    });
+});
+
+
 // ── COMPLETED-SORT INVARIANT ─────────────────────────────────────────
 describe('listLogic — completed sorting', () => {
     beforeEach(() => {
