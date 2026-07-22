@@ -63,6 +63,23 @@ export function setViewerCardTapHandler(fn) {
     viewerCardTapHandler = typeof fn === 'function' ? fn : null;
 }
 
+// Open the mounted viewer card scrolled to a specific entry's block, with a
+// brief highlight so the eye lands on the right entry in a long file. Invoked
+// by the tasks-surface `⌁ REVIEW` badge (through a handler main.js registers on
+// todoStatus, which also opens the mobile bottom sheet on touch). Locates the
+// live card — inline in #mainList on desktop, or hosted in the mobile sheet —
+// and defers to its per-card `__anchorToEntry` closure, which owns the
+// expand-before-scroll ordering because applyCollapsedState / applyExpandedHeight
+// are per-card closures. No-ops when no card is mounted (the project isn't
+// routed to an inject target). If the entry's marker isn't in the current body
+// the card still opens/expands, just unanchored.
+export function openViewerAnchoredToEntry(entryId) {
+    if (typeof document === 'undefined') return;
+    const card = document.getElementById('todoMdViewerCard');
+    if (!card || typeof card.__anchorToEntry !== 'function') return;
+    card.__anchorToEntry(entryId);
+}
+
 // On the mobile breakpoint the anchored "⋯" overflow dropdown is cramped and
 // easy to mis-tap, so the overflow button opens a slide-up bottom-sheet menu
 // instead (desktop keeps the anchored dropdown). The sheet machinery lives in
@@ -445,6 +462,11 @@ export function buildViewerRenderedBody(text, options) {
             row.className = 'todoMdViewerCheckRow';
             if (tok.checked) row.classList.add('todoMdViewerCheckRow--done');
             if (tok.indent > 0) row.style.paddingLeft = (12 + tok.indent * 4) + 'px';
+            // Tag each top-level entry block with its resolved marker id so the
+            // tasks-surface REVIEW badge can anchor the viewer to it with a
+            // querySelector rather than re-parsing markers (see
+            // openViewerAnchoredToEntry). Only top-level entries carry a marker.
+            if (tok.indent === 0 && tok.entryId) row.dataset.entryId = tok.entryId;
             const box = document.createElement('span');
             box.className = 'todoMdViewerCheckBox';
             box.setAttribute('aria-hidden', 'true');
@@ -827,6 +849,9 @@ function buildTodoMdViewerCard(projectName, target) {
                 : buildViewerRenderedBody(content, { onRunEntry: runEntry, onDeleteEntry: deleteEntry, onRevertEntry: revertCompletedEntry, onAcknowledgeEntry: acknowledgeEntry, isEntryUnreviewed: isViewerEntryUnreviewed, hideCompleted: !isTodoMdShowCompleted() })
         );
         syncRunEntryButtonsDisabled();
+        // A REVIEW-badge anchor requested before the body finished loading waits
+        // here for the rendered rows to exist, then scrolls + flashes.
+        flushPendingAnchor();
         // Refresh the toggle's (N) now that live content is available.
         applyShowCompletedState();
         // Neutralize the Run backlog pill when there's nothing pending to run,
@@ -1808,6 +1833,80 @@ function buildTodoMdViewerCard(projectName, target) {
     });
 
     applyCollapsedState(true);
+
+    // ── Anchor-to-entry support for the tasks-surface REVIEW badge ──
+    // main.js registers an open handler on todoStatus that reaches the mounted
+    // card through the module-level openViewerAnchoredToEntry, which calls this
+    // closure. It lives here (not at module scope) because the expand path uses
+    // the per-card applyCollapsedState / applyExpandedHeight closures. A pending
+    // id defers the scroll when the body is still loading; renderContent flushes
+    // it once the rendered rows exist.
+    let pendingAnchorEntryId = null;
+
+    function findEntryRow(entryId) {
+        if (!entryId) return null;
+        const rendered = body.querySelector('.todoMdViewerRendered');
+        if (!rendered) return null;
+        // Marker ids are generated UUIDs (hex + hyphen), safe in an attribute
+        // selector; guard against a malformed id throwing all the same.
+        try {
+            return rendered.querySelector(
+                '.todoMdViewerCheckRow[data-entry-id="' + entryId + '"]');
+        } catch (e) { return null; }
+    }
+
+    function flashAnchorRow(rowEl) {
+        if (!rowEl) return;
+        const CLS = 'todoMdViewerCheckRow--anchorFlash';
+        rowEl.classList.remove(CLS);
+        // Force a reflow so re-adding the class restarts the animation when the
+        // same entry is re-anchored.
+        void rowEl.offsetWidth;
+        rowEl.classList.add(CLS);
+        rowEl.addEventListener('animationend', function onEnd() {
+            rowEl.classList.remove(CLS);
+            rowEl.removeEventListener('animationend', onEnd);
+        });
+    }
+
+    function scrollToEntry(entryId) {
+        const rowEl = findEntryRow(entryId);
+        if (!rowEl) return false;
+        // The test environment stubs scrollIntoView; guard the capability so a
+        // missing implementation degrades to no scroll rather than throwing.
+        if (typeof rowEl.scrollIntoView === 'function') {
+            try { rowEl.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+            catch (e) { try { rowEl.scrollIntoView(); } catch (_) { /* ignore */ } }
+        }
+        flashAnchorRow(rowEl);
+        return true;
+    }
+
+    function flushPendingAnchor() {
+        if (!pendingAnchorEntryId) return;
+        if (scrollToEntry(pendingAnchorEntryId)) pendingAnchorEntryId = null;
+    }
+
+    card.__anchorToEntry = function(entryId) {
+        // Desktop inline: the card sits collapsed in #mainList until opened, so
+        // expand it (un-collapse + fill height) BEFORE scrolling —
+        // applyExpandedHeight must settle first or the scroll lands at the wrong
+        // offset. On mobile the card is hosted full-height in the bottom sheet
+        // (moved out of #mainList, where the collapse rule no longer applies), so
+        // skip the inline expand there.
+        const inMainList = card.parentNode && card.parentNode.id === 'mainList';
+        if (inMainList && card.classList.contains('collapsed')) {
+            applyCollapsedState(false);
+            card.classList.add('todoMdViewerCard--expanded');
+            applyExpandedHeight();
+        }
+        // Entry rows only exist on the rendered tab.
+        if (viewerActiveTab !== 'rendered') applyTab('rendered');
+        // The body may still be loading (card just mounted) — defer to the next
+        // render, which flushes the pending anchor once the rows exist.
+        if (!scrollToEntry(entryId)) pendingAnchorEntryId = entryId;
+    };
+    card.__flushPendingAnchor = flushPendingAnchor;
 
     // Mobile: tapping the card body anywhere outside its own buttons /
     // tabs opens the viewer in a slide-up bottom sheet. The inline card

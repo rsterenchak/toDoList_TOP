@@ -14,6 +14,7 @@ import {
     showStatusPopover,
     hideStatusPopover,
     wireStatusLabelDelegation,
+    setReviewBadgeTapHandler,
 } from '../src/todoStatus.js';
 import { wireToDoRowClick } from '../src/toDoRow.js';
 import { listLogic } from '../src/listLogic.js';
@@ -374,9 +375,11 @@ describe('(h) derived REVIEW badge — shipped-but-unacknowledged overlay', () =
         expect(row.classList.contains('todo-row--review')).toBe(false);
     });
 
-    it('tapping a REVIEW badge acknowledges via listLogic.markEntryReviewed and opens no popover', () => {
-        const spy = vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation(() => ({ ok: true }));
-        const item = { id: 'todo-42', status: 'active', tit: 'Shipped thing' };
+    it('tapping a REVIEW badge invokes the registered open handler with the entry id + project and opens no popover', () => {
+        const ackSpy = vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation(() => ({ ok: true }));
+        const openSpy = vi.fn();
+        setReviewBadgeTapHandler(openSpy);
+        const item = { id: 'todo-42', entryId: 'entry-abc', status: 'active', tit: 'Shipped thing' };
         const container = document.createElement('div');
         container.id = 'mainList';
         document.body.appendChild(container);
@@ -386,35 +389,51 @@ describe('(h) derived REVIEW badge — shipped-but-unacknowledged overlay', () =
 
         row.querySelector('.todoStatusLabel').click();
 
-        expect(spy).toHaveBeenCalledTimes(1);
-        expect(spy).toHaveBeenCalledWith('todo-42');
+        expect(openSpy).toHaveBeenCalledTimes(1);
+        expect(openSpy).toHaveBeenCalledWith('entry-abc', 'Work');
+        // Acknowledging no longer happens from the row — it lives in the viewer.
+        expect(ackSpy).not.toHaveBeenCalled();
         // No popover on a review tap.
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+        setReviewBadgeTapHandler(null);
+    });
+
+    it('a REVIEW badge tap does not stamp entryReviewedAt from the row — the badge stays in review', () => {
+        setReviewBadgeTapHandler(() => {});
+        const item = { id: 'todo-7', entryId: 'entry-7', status: 'in_progress', tit: 'Shipped thing' };
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+        const row = makeReviewRow(item, 'Work');
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+
+        // No stamp on tap — the badge clears only once acknowledged from the
+        // viewer (via TODO_RUN_STATUS_EVENT), so it stays in the review state.
+        expect(item.entryReviewedAt).toBeUndefined();
+        const label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('review');
+        expect(label.textContent).toBe('⌁ REVIEW');
+        setReviewBadgeTapHandler(null);
+    });
+
+    it('a REVIEW badge tap with no registered handler is a safe no-op (no throw, no popover)', () => {
+        setReviewBadgeTapHandler(null);
+        const item = { id: 'todo-8', entryId: 'entry-8', status: 'active', tit: 'Shipped thing' };
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+        const row = makeReviewRow(item, 'Work');
+        container.appendChild(row);
+
+        expect(() => row.querySelector('.todoStatusLabel').click()).not.toThrow();
         expect(document.getElementById('todoStatusPopover')).toBeNull();
     });
 
-    it('after acknowledging, the badge reverts to the stored manual status', () => {
-        vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation((id) => {
-            // Simulate the model stamping the acknowledgement in place.
-            item.entryReviewedAt = '2026-07-22T00:00:00.000Z';
-            return { ok: true };
-        });
-        const item = { id: 'todo-7', status: 'in_progress', tit: 'Shipped thing' };
-        const container = document.createElement('div');
-        container.id = 'mainList';
-        document.body.appendChild(container);
-        wireStatusLabelDelegation(container);
-        const row = makeReviewRow(item, 'Work');
-        container.appendChild(row);
-
-        row.querySelector('.todoStatusLabel').click();
-
-        const label = row.querySelector('.todoStatusLabel');
-        expect(label.getAttribute('data-status')).toBe('in_progress');
-        expect(label.textContent).toBe('⏵ IN PROGRESS');
-        expect(label.getAttribute('aria-haspopup')).toBe('menu');
-    });
-
-    it('a non-review badge tap still opens the popover (acknowledge path does not intercept it)', () => {
+    it('a non-review badge tap still opens the popover (review path does not intercept it)', () => {
         const item = { id: 'todo-9', status: 'active', tit: 'Normal' };
         const ackSpy = vi.spyOn(listLogic, 'markEntryReviewed').mockImplementation(() => ({ ok: true }));
         const container = document.createElement('div');

@@ -1309,7 +1309,7 @@
   - Completed: 2026-07-22
   <!-- id: 8a6c368a-94af-41da-8e25-8a8b03c7f86c -->
 
-- [ ] **[MEDIUM]** Task row: tapping the REVIEW badge opens the TODO.md viewer anchored to that entry
+- [x] **[MEDIUM]** Task row: tapping the REVIEW badge opens the TODO.md viewer anchored to that entry
   - Type: feature
   - Description: The `⌁ REVIEW` badge currently stamps `entry_reviewed_at` on tap, which acknowledges an entry without ever showing what shipped. The viewer now renders unreviewed entries with an inline Acknowledge pill, so the badge no longer needs to be an acknowledge control — it should be a link to the place where the decision can actually be made. Change the badge's review-state tap to open the viewer scrolled to that entry's block with a brief highlight, and remove the direct stamp from the row so acknowledging lives in exactly one place.
   - Behavior: Tapping a badge in the `review` state opens the project's TODO.md viewer — expanded inline on desktop, in the mobile bottom sheet on touch — scrolls that entry's block into view, and flashes a brief highlight on it so the eye lands on the right entry in a long file. No `entry_reviewed_at` write happens from the row anymore; the badge clears only once the entry is acknowledged from the viewer, via the existing `TODO_RUN_STATUS_EVENT` refresh. Taps on the three manual status values still open the status popover exactly as they do today. If the entry's marker cannot be found in the current TODO.md body, the viewer still opens (unanchored) rather than the tap doing nothing.
@@ -1322,5 +1322,5 @@
     - Scroll with `block: 'center'` and guard `scrollIntoView` behind a capability check — the test environment stubs it.
   - Out of scope: The Acknowledge pill and the `entry_reviewed_at` write itself, both of which stay exactly as they landed. The `derivePhase` consolidation and anything that changes what the badge displays. Any diff rendering of what the run changed. Anchoring the viewer from any other surface (Agent cards, chat Runs tab). The viewer's Run backlog pill, Sync, Redeploy, and the per-entry Run / Delete / Revert controls. Desktop viewer layout and the expand/collapse height machinery beyond the expand-before-scroll ordering above.
   - File: `toDoList_main/src/todoStatus.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 3c7f9dee-4bc7-4db9-80fb-3d201c4282a4 -->
