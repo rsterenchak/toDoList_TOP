@@ -1596,6 +1596,36 @@ export const listLogic = (function () {
     }
 
 
+    // Resolve a TODO.md entry marker id to its source todo and report whether
+    // that entry has been acknowledged. Scans every project for a todo whose
+    // `entryId` matches the marker (marker ids are globally unique, mirroring
+    // markEntryReviewed's own scan) and returns
+    // { found, todoId, reviewed } — `reviewed` is true only when the resolved
+    // todo carries an `entryReviewedAt` stamp. Read-only: the acknowledgement
+    // write stays in markEntryReviewed. Returns the not-found shape when the id
+    // is missing or resolves to nothing, so an unresolvable marker reads as
+    // "not an unreviewed shipped entry" at the call sites.
+    function getEntryReviewInfo(entryId) {
+        if (!entryId) return { found: false, todoId: null, reviewed: false };
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) {
+                return it && it.entryId === entryId;
+            });
+            if (hit) {
+                return {
+                    found: true,
+                    todoId: hit.id || null,
+                    reviewed: !!hit.entryReviewedAt,
+                };
+            }
+        }
+        return { found: false, todoId: null, reviewed: false };
+    }
+
+
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
     // @category: user-mutation-only
@@ -3656,6 +3686,7 @@ export const listLogic = (function () {
         dismissRefactorCandidate,
         stampTodoEntryId,
         markEntryReviewed,
+        getEntryReviewInfo,
         unflagAgentTask,
         setProjectColor,
         getProjectSortByDue,

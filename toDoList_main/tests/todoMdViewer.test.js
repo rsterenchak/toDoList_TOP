@@ -1265,3 +1265,66 @@ describe('todo.md viewer — per-entry Revert control on completed rows', () => 
         expect(wrap.querySelector('.todoMdViewerRevertEntryBtn')).toBeNull();
     });
 });
+
+
+describe('todo.md viewer — acknowledge shipped-but-unreviewed entries (todoMdViewer.js)', () => {
+    const main = read('todoMdViewer.js');
+    const css = read('style.css');
+    const status = read('todoStatus.js');
+
+    it('passes the acknowledge callback and unreviewed predicate into both render paths', () => {
+        const ack = main.match(/buildViewerRenderedBody\([^)]*onAcknowledgeEntry:\s*acknowledgeEntry/g) || [];
+        expect(ack.length).toBeGreaterThanOrEqual(2);
+        const pred = main.match(/buildViewerRenderedBody\([^)]*isEntryUnreviewed:\s*isViewerEntryUnreviewed/g) || [];
+        expect(pred.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('the collapse count is computed with the unreviewed predicate so it excludes shipped-but-unreviewed entries', () => {
+        expect(main).toMatch(/countCompletedTodoMdEntries\(\s*card\.dataset\.content\s*\|\|\s*''\s*,\s*isViewerEntryUnreviewed\s*\)/);
+    });
+
+    it('the unreviewed predicate resolves through listLogic (never a fresh marker regex)', () => {
+        const start = main.indexOf('function isViewerEntryUnreviewed');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 400);
+        expect(block).toMatch(/listLogic\.getEntryReviewInfo\(\s*entryId\s*\)/);
+        expect(block).toMatch(/info\.found\s*&&\s*!info\.reviewed/);
+    });
+
+    it('acknowledgeEntry reuses listLogic.markEntryReviewed and emits the shared status event', () => {
+        const start = main.indexOf('function acknowledgeEntry');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, start + 700);
+        // Resolve id → todo, then reuse the existing single-field write.
+        expect(block).toMatch(/listLogic\.getEntryReviewInfo\(\s*entryId\s*\)/);
+        expect(block).toMatch(/listLogic\.markEntryReviewed\(\s*info\.todoId\s*\)/);
+        // In-place drop of the amber treatment + pill — no full body rebuild.
+        expect(block).toMatch(/classList\.remove\(\s*'todoMdViewerCheckRow--review'\s*\)/);
+        expect(block).not.toMatch(/applyTab\(/);
+        // Cross-surface refresh of the row badge.
+        expect(block).toMatch(/emitTodoRunStatusChange\(\)/);
+    });
+
+    it('subscribes to TODO_RUN_STATUS_EVENT to reconcile amber treatments in place, and detaches on teardown', () => {
+        expect(main).toMatch(/document\.addEventListener\(\s*TODO_RUN_STATUS_EVENT\s*,\s*viewerReviewSyncHandler\s*\)/);
+        expect(main).toMatch(/document\.removeEventListener\(\s*TODO_RUN_STATUS_EVENT\s*,\s*viewerReviewSyncHandler\s*\)/);
+    });
+
+    it('the tasks-surface REVIEW badge tap emits the shared event after stamping the acknowledgement', () => {
+        // So a mounted viewer card drops its amber treatment for the same entry.
+        const start = status.indexOf("data-status') === 'review'");
+        expect(start).toBeGreaterThan(-1);
+        const block = status.slice(start, start + 600);
+        expect(block).toMatch(/markEntryReviewed\(\s*item\.id\s*\)/);
+        expect(block).toMatch(/emitTodoRunStatusChange\(\)/);
+    });
+
+    it('styles the amber left-edge treatment and the Acknowledge pill with the #ffbd5e accent', () => {
+        const rowRule = css.match(/\.todoMdViewerCheckRow--review\s*\{[^}]*\}/);
+        expect(rowRule).not.toBeNull();
+        expect(rowRule[0]).toMatch(/border-left:[^;]*#ffbd5e/);
+        const pillRule = css.match(/\.todoMdViewerAckEntryBtn\s*\{[^}]*\}/);
+        expect(pillRule).not.toBeNull();
+        expect(pillRule[0]).toMatch(/#ffbd5e/);
+    });
+});

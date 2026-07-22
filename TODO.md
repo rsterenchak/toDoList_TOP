@@ -1292,7 +1292,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 450c9438-d068-4f84-826c-58c262eafcac -->
 
-- [ ] **[MEDIUM]** TODO.md viewer: surface unreviewed shipped entries and acknowledge them in place
+- [x] **[MEDIUM]** TODO.md viewer: surface unreviewed shipped entries and acknowledge them in place
   - Type: feature
   - Description: The task row's `⌁ REVIEW` badge announces that an entry merged, but tapping it stamps `entry_reviewed_at` without ever showing what shipped — you confirm you looked at something you haven't seen. The viewer already renders `TODO.md` as per-entry rows with marker association and per-entry action pills, so it is the surface where an entry's actual text is in front of you. Give shipped-but-unacknowledged entries a visible treatment in the viewer body and an inline Acknowledge pill that stamps the same `entry_reviewed_at` column, so the row badge becomes the notification and the viewer becomes the place the decision is made.
   - Behavior: In the viewer's rendered body, a top-level entry whose checkbox is `[x]`, whose `<!-- id -->` marker resolves to a todo in the active project, and whose todo has no `entryReviewedAt` renders with an amber left-edge treatment and an `Acknowledge` pill alongside its existing per-entry controls. Tapping the pill stamps `entry_reviewed_at` through listLogic, drops the amber treatment and the pill from that entry in place (no full body rebuild), and clears the matching row's `⌁ REVIEW` badge on the tasks surface. Crucially, unreviewed entries stay visible even while "Show completed" is collapsed — they render above the collapse toggle in their normal document position, and the collapsed count excludes them so the number still describes what is actually hidden. Entries that are checked and already acknowledged, or checked with no resolvable marker, collapse as they do today. Nothing changes for unchecked entries.
@@ -1306,5 +1306,5 @@
     - `style.css`: add the amber entry treatment and the pill styling next to the existing `.todoMdViewerRunEntryBtn` / revert-pill rules, reusing `#ffbd5e` and the established 36×36 chip and 10px radius conventions. This entry touches `style.css`, so it must run with no other style-touching entry in flight.
   - Out of scope: The task row's `⌁ REVIEW` badge and its tap behavior — it keeps stamping directly; this entry adds a second, better-informed place to acknowledge, it does not rewire the first. Opening the viewer anchored to a specific entry from the row badge (a natural follow-up, deliberately separate). Any rendered before/after diff of what the run changed. Un-acknowledge or re-review affordances. The Run backlog pill, the run-pill lifecycle, Sync, Redeploy, and the Run / Delete / Revert per-entry controls. The mobile bottom-sheet host and the expand/collapse height machinery.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 8a6c368a-94af-41da-8e25-8a8b03c7f86c -->

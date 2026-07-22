@@ -21,6 +21,7 @@
 
 import { listLogic } from './listLogic.js';
 import { reorderToDoDOM } from './toDoRow.js';
+import { emitTodoRunStatusChange } from './inject.js';
 
 
 // Display metadata per status. The glyph + uppercase label match the Option C
@@ -243,6 +244,10 @@ export function wireStatusLabelDelegation(container) {
         if (label.getAttribute('data-status') === 'review') {
             listLogic.markEntryReviewed(item.id);
             refreshTodoStatusUI(row, item, false);
+            // Emit the shared run-status event so a mounted TODO.md viewer card
+            // drops its amber shipped-but-unreviewed treatment for this entry in
+            // place — the acknowledgement is honored on both surfaces at once.
+            emitTodoRunStatusChange();
             return;
         }
         // Toggle off ONLY when the open popover belongs to THIS label; for any
