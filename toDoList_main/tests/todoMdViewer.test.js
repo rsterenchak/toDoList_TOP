@@ -845,7 +845,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
     it('renders the control only for top-level entries that resolved a marker id', () => {
         const start = main.indexOf('function buildViewerRenderedBody');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 2600);
+        const block = main.slice(start, start + 3200);
         expect(block).toMatch(/onRunEntry\s*&&\s*tok\.indent\s*===\s*0\s*&&\s*tok\.entryId/);
         expect(block).toMatch(/todoMdViewerRunEntryBtn/);
         expect(block).toMatch(/Run this entry/);
@@ -1135,6 +1135,102 @@ describe('todo.md viewer — per-entry delete + clear ops (rewrite)', () => {
     });
 });
 
+describe('todo.md viewer — REVIEW-badge anchor (open scrolled to an entry)', () => {
+
+    const viewer = read('todoMdViewer.js');
+    const mainSrc = read('main.js');
+    const css = read('style.css');
+    const status = read('todoStatus.js');
+
+    it('tags a top-level entry row with its resolved marker id as data-entry-id', () => {
+        const wrap = buildViewerRenderedBody('- [x] Ship a thing <!-- id: anchor-1 -->', {});
+        const row = wrap.querySelector('.todoMdViewerCheckRow');
+        expect(row).not.toBeNull();
+        expect(row.dataset.entryId).toBe('anchor-1');
+    });
+
+    it('leaves rows without a resolved marker untagged so the anchor lookup skips them', () => {
+        const wrap = buildViewerRenderedBody('- [ ] No marker here', {});
+        const row = wrap.querySelector('.todoMdViewerCheckRow');
+        expect(row).not.toBeNull();
+        expect(row.dataset.entryId).toBeUndefined();
+    });
+
+    it('exports openViewerAnchoredToEntry, which defers to the mounted card __anchorToEntry closure', () => {
+        expect(viewer).toMatch(/export function openViewerAnchoredToEntry\s*\(\s*entryId\s*\)/);
+        const start = viewer.indexOf('export function openViewerAnchoredToEntry');
+        const block = viewer.slice(start, start + 500);
+        expect(block).toMatch(/getElementById\(\s*['"]todoMdViewerCard['"]\s*\)/);
+        expect(block).toMatch(/card\.__anchorToEntry/);
+    });
+
+    it('the anchor closure expands the collapsed inline card BEFORE scrolling', () => {
+        const start = viewer.indexOf('card.__anchorToEntry = function');
+        expect(start).toBeGreaterThan(-1);
+        const block = viewer.slice(start, start + 1400);
+        const expandIdx = block.indexOf('applyExpandedHeight()');
+        const scrollIdx = block.indexOf('scrollToEntry(entryId)');
+        expect(expandIdx).toBeGreaterThan(-1);
+        expect(scrollIdx).toBeGreaterThan(expandIdx);
+        // Only the inline #mainList card is expanded — the sheet-hosted copy
+        // (moved out of #mainList) is left alone.
+        expect(block).toMatch(/parentNode\.id === ['"]mainList['"]/);
+    });
+
+    it('scrolls with block: center behind a scrollIntoView capability guard', () => {
+        const start = viewer.indexOf('function scrollToEntry');
+        expect(start).toBeGreaterThan(-1);
+        const block = viewer.slice(start, start + 700);
+        expect(block).toMatch(/typeof rowEl\.scrollIntoView === ['"]function['"]/);
+        expect(block).toMatch(/block:\s*['"]center['"]/);
+    });
+
+    it('flushes a pending anchor once the body finishes rendering', () => {
+        const start = viewer.indexOf('function renderContent');
+        expect(start).toBeGreaterThan(-1);
+        const block = viewer.slice(start, start + 1400);
+        expect(block).toMatch(/flushPendingAnchor\(\)/);
+    });
+
+    it('removes the flash class on animationend so re-anchoring the same entry re-fires it', () => {
+        const start = viewer.indexOf('function flashAnchorRow');
+        expect(start).toBeGreaterThan(-1);
+        const block = viewer.slice(start, start + 500);
+        expect(block).toMatch(/todoMdViewerCheckRow--anchorFlash/);
+        expect(block).toMatch(/addEventListener\(\s*['"]animationend['"]/);
+    });
+
+    it('style.css defines the anchor-flash animation and disables it under reduced motion', () => {
+        expect(css).toMatch(/\.todoMdViewerCheckRow--anchorFlash\s*\{[^}]*animation:\s*todoMdViewerAnchorFlash/);
+        const idx = css.indexOf('@keyframes todoMdViewerAnchorFlash');
+        expect(idx).toBeGreaterThan(-1);
+        const after = css.slice(idx, idx + 700);
+        expect(after).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.todoMdViewerCheckRow--anchorFlash\s*\{\s*animation:\s*none/);
+    });
+
+    it('todoStatus.js review branch opens the viewer via the registered handler and no longer stamps', () => {
+        const start = status.indexOf("data-status') === 'review'");
+        expect(start).toBeGreaterThan(-1);
+        const block = status.slice(start, start + 300);
+        expect(block).toMatch(/reviewBadgeTapHandler\(\s*item\.entryId\s*,\s*projectName\s*\)/);
+        expect(block).not.toMatch(/markEntryReviewed/);
+    });
+
+    it('todoStatus.js dropped its inject.js import now that the row no longer emits acknowledgements', () => {
+        expect(status).not.toMatch(/emitTodoRunStatusChange/);
+        expect(status).not.toMatch(/from ['"]\.\/inject\.js['"]/);
+    });
+
+    it('main.js registers a review-badge handler that opens the mobile sheet on touch, then anchors', () => {
+        const start = mainSrc.indexOf('setReviewBadgeTapHandler(function');
+        expect(start).toBeGreaterThan(-1);
+        const block = mainSrc.slice(start, start + 500);
+        expect(block).toMatch(/isMobileViewport\(\)/);
+        expect(block).toMatch(/openViewerMobileSheet\(\s*card\s*\)/);
+        expect(block).toMatch(/openViewerAnchoredToEntry\(\s*entryId\s*\)/);
+    });
+});
+
 describe('todo.md viewer — per-entry Revert control on completed rows', () => {
 
     const inject = read('inject.js');
@@ -1310,13 +1406,17 @@ describe('todo.md viewer — acknowledge shipped-but-unreviewed entries (todoMdV
         expect(main).toMatch(/document\.removeEventListener\(\s*TODO_RUN_STATUS_EVENT\s*,\s*viewerReviewSyncHandler\s*\)/);
     });
 
-    it('the tasks-surface REVIEW badge tap emits the shared event after stamping the acknowledgement', () => {
-        // So a mounted viewer card drops its amber treatment for the same entry.
+    it('the tasks-surface REVIEW badge tap opens the viewer instead of stamping the acknowledgement', () => {
+        // The badge no longer acknowledges from the row — acknowledging lives in
+        // exactly one place, the viewer's Acknowledge pill. The tap now opens the
+        // viewer anchored to the entry (via the registered handler) so the change
+        // can be read before it is acknowledged; no stamp, no event from the row.
         const start = status.indexOf("data-status') === 'review'");
         expect(start).toBeGreaterThan(-1);
-        const block = status.slice(start, start + 600);
-        expect(block).toMatch(/markEntryReviewed\(\s*item\.id\s*\)/);
-        expect(block).toMatch(/emitTodoRunStatusChange\(\)/);
+        const block = status.slice(start, start + 300);
+        expect(block).toMatch(/reviewBadgeTapHandler\(\s*item\.entryId\s*,\s*projectName\s*\)/);
+        expect(block).not.toMatch(/markEntryReviewed/);
+        expect(block).not.toMatch(/emitTodoRunStatusChange/);
     });
 
     it('styles the amber left-edge treatment and the Acknowledge pill with the #ffbd5e accent', () => {

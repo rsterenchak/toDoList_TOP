@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-22',
-        added: [
-            "Shipped entries you haven't reviewed now stand out in the TODO.md viewer with an amber highlight and an Acknowledge button that marks them reviewed in place, staying visible even while completed entries are collapsed.",
+        changed: [
+            "Tapping a task's REVIEW badge now opens the TODO.md viewer scrolled to that shipped entry with a brief highlight, so you can review the change before acknowledging it.",
         ],
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",

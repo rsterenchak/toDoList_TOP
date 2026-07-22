@@ -10186,6 +10186,28 @@ body.row-dragging * { cursor: grabbing !important; }
   background: rgba(255, 189, 94, 0.08);
 }
 
+/* Anchor flash — a brief accent glow when the TODO.md viewer is opened scrolled
+   to a specific entry from the tasks-surface `⌁ REVIEW` badge, so the eye lands
+   on the right entry in a long file. An inset box-shadow ring (not a border) so
+   it never fights the row's own left-edge treatment or the amber review flag,
+   and it's removed on animationend in JS so re-anchoring the same entry re-fires
+   it. Follows the justCommittedMobile precedent. */
+.todoMdViewerCheckRow--anchorFlash {
+  animation: todoMdViewerAnchorFlash 1.1s ease-out;
+}
+@keyframes todoMdViewerAnchorFlash {
+  0%   { box-shadow: inset 0 0 0 2px rgba(157, 147, 238, 0.85); }
+  60%  { box-shadow: inset 0 0 0 2px rgba(157, 147, 238, 0.5); }
+  100% { box-shadow: inset 0 0 0 2px rgba(157, 147, 238, 0); }
+}
+/* Reduced motion — disable the flash animation but leave the scroll-into-view
+   intact (that's handled in JS, not by this animation). */
+@media (prefers-reduced-motion: reduce) {
+  .todoMdViewerCheckRow--anchorFlash {
+    animation: none;
+  }
+}
+
 .todoMdViewerCheckBox {
   display: inline-flex;
   align-items: center;

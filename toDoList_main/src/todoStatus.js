@@ -21,7 +21,6 @@
 
 import { listLogic } from './listLogic.js';
 import { reorderToDoDOM } from './toDoRow.js';
-import { emitTodoRunStatusChange } from './inject.js';
 
 
 // Display metadata per status. The glyph + uppercase label match the Option C
@@ -48,6 +47,18 @@ export const STATUS_ORDER = ['active', 'in_progress', 'idea'];
 // module only renders and acts on it.
 export const REVIEW_LABEL = '⌁ REVIEW';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
+
+
+// Handler that opens the project's TODO.md viewer anchored to a shipped entry
+// when its `⌁ REVIEW` badge is tapped. Registered by main.js (which owns the
+// mobile bottom-sheet host + the viewer's open-and-anchor entry point), the same
+// indirection setViewerCardTapHandler uses — so this module never imports
+// todoMdViewer.js or main.js and stays free of the inject.js/module-cycle
+// concerns the file header documents. Invoked with (entryId, projectName).
+let reviewBadgeTapHandler = null;
+export function setReviewBadgeTapHandler(fn) {
+    reviewBadgeTapHandler = typeof fn === 'function' ? fn : null;
+}
 
 
 // Coerce an arbitrary status to a known one. Mirrors listLogic's
@@ -236,18 +247,17 @@ export function wireStatusLabelDelegation(container) {
         const projectName = row.getAttribute('data-value');
         if (!item || !projectName) return;
         event.stopPropagation();
-        // REVIEW acknowledgement: a badge in the derived review state clears the
-        // "you haven't looked at this" overlay instead of opening the status
-        // popover. Stamp the acknowledgement through listLogic (never the manual
-        // `status` field) and re-render the label to the stored status — no
-        // popover mounts on this tap.
+        // REVIEW badge: a badge in the derived review state no longer stamps the
+        // acknowledgement itself — acknowledging now lives in exactly one place,
+        // the viewer's Acknowledge pill. Instead the tap opens the project's
+        // TODO.md viewer anchored to this entry's block (expanded inline on
+        // desktop, in the mobile sheet on touch) so the shipped change can be
+        // read before it is acknowledged. No `entry_reviewed_at` write happens
+        // here; the badge clears via TODO_RUN_STATUS_EVENT once the entry is
+        // acknowledged from the viewer. The viewer still opens unanchored if the
+        // marker can't be found, so the tap is never a no-op. No popover mounts.
         if (label.getAttribute('data-status') === 'review') {
-            listLogic.markEntryReviewed(item.id);
-            refreshTodoStatusUI(row, item, false);
-            // Emit the shared run-status event so a mounted TODO.md viewer card
-            // drops its amber shipped-but-unreviewed treatment for this entry in
-            // place — the acknowledgement is honored on both surfaces at once.
-            emitTodoRunStatusChange();
+            if (reviewBadgeTapHandler) reviewBadgeTapHandler(item.entryId, projectName);
             return;
         }
         // Toggle off ONLY when the open popover belongs to THIS label; for any

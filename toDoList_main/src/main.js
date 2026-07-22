@@ -86,7 +86,7 @@ import {
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { createMobileUpdatePill } from './mobileUpdatePill.js';
-import { wireStatusLabelDelegation } from './todoStatus.js';
+import { wireStatusLabelDelegation, setReviewBadgeTapHandler } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from './taskFilter.js';
 import { dropFocusIntoMainView } from './viewFocusNav.js';
 import { updateAllProjectBadges, navigateToProjectByIndex } from './projectBadges.js';
@@ -107,7 +107,7 @@ import {
     initInjectConfig,
     initInjectTargets,
 } from './inject.js';
-import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController } from './todoMdViewer.js';
+import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController, openViewerAnchoredToEntry } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
 import { openCompletedMobileSheet, openViewerMobileSheet, openOverflowMobileSheet, closeOverflowMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
 import button from './addProj_button.svg';
@@ -3009,6 +3009,23 @@ setViewerCardTapHandler(function(card, event) {
     // top would be redundant and strand the card in the wrong overlay.
     if (isAnyMobileSheetOpen()) return;
     openViewerMobileSheet(card);
+});
+
+// Wire the tasks-surface `⌁ REVIEW` badge to open the project's TODO.md viewer
+// anchored to the shipped entry (instead of stamping the acknowledgement from
+// the row). todoStatus.js owns the badge but must not import todoMdViewer.js /
+// main.js (module-cycle + inject.js isolation), so it invokes this registered
+// handler with the entry's marker id + project name. On touch the inline card is
+// cramped, so open the mobile bottom sheet first (moving the card into it), then
+// anchor; on desktop openViewerAnchoredToEntry expands the inline card and
+// scrolls. The anchor no-ops gracefully when the marker isn't in the body, so
+// the viewer still opens.
+setReviewBadgeTapHandler(function(entryId, projectName) {
+    if (isMobileViewport()) {
+        const card = document.querySelector('#mainList #todoMdViewerCard');
+        if (card && !isAnyMobileSheetOpen()) openViewerMobileSheet(card);
+    }
+    openViewerAnchoredToEntry(entryId);
 });
 
 // Wire the viewer's "⋯" overflow button to open a mobile bottom-sheet menu
