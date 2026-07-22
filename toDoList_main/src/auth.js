@@ -16,7 +16,7 @@
 //   1 (sign-in)      — "Welcome." heading + email input + Continue button.
 //                      Submit calls supabase.auth.signInWithOtp; advances
 //                      to screen 2 on success.
-//   2 (code entry)   — "Enter your code." with a 6-digit code input and a
+//   2 (code entry)   — "Enter your code." with a code input and a
 //                      Verify button (calls verifyOtp in-app), plus a
 //                      "Resend code" button (cooldown-disabled for 60s
 //                      after each send, counting the wait down on its
@@ -189,7 +189,7 @@ function renderSignInScreen(dialog, prefillEmail) {
 // ── SCREEN 2: CODE ENTRY ──
 // Ghost mascot with a small mail-icon badge bottom-right, "Enter your
 // code." heading, body copy with the email highlighted in the accent
-// purple, a 6-digit code input + primary Verify button, an outlined
+// purple, a code input + primary Verify button, an outlined
 // Resend code button (60s cooldown, counting down on its label), and a
 // quieter text link back to
 // screen 1. Submitting a valid code calls verifyOtp in-app so the
@@ -217,7 +217,7 @@ function renderConfirmationScreen(dialog, email) {
 
     const body = document.createElement('p');
     body.className = 'authModalBody';
-    body.appendChild(document.createTextNode('Enter the 6-digit code sent to '));
+    body.appendChild(document.createTextNode('Enter the code sent to '));
     const emailSpan = document.createElement('span');
     emailSpan.className = 'authModalEmailHighlight';
     emailSpan.textContent = email;
@@ -229,8 +229,13 @@ function renderConfirmationScreen(dialog, email) {
     form.setAttribute('novalidate', '');
 
     // Mobile-first: numeric keypad, iOS one-time-code autofill from the
-    // email, capped at 6 digits, and font-size 16px (via CSS) to avoid
-    // Safari auto-zoom on focus.
+    // email, and font-size 16px (via CSS) to avoid Safari auto-zoom on
+    // focus. maxlength is 10 (Supabase's configurable OTP ceiling), not
+    // the issued length: capping at the actual length (currently 8) would
+    // silently truncate a longer code if the dashboard setting changed,
+    // which is exactly the bug this replaced — 6 dropped the tail of every
+    // 8-digit code. 10 never truncates a real code yet still resists junk
+    // paste.
     const codeInput = document.createElement('input');
     codeInput.id = 'authModalCodeInput';
     codeInput.className = 'authModalCodeInput';
@@ -238,10 +243,10 @@ function renderConfirmationScreen(dialog, email) {
     codeInput.name = 'code';
     codeInput.inputMode = 'numeric';
     codeInput.autocomplete = 'one-time-code';
-    codeInput.maxLength = 6;
+    codeInput.maxLength = 10;
     codeInput.required = true;
     codeInput.placeholder = '••••••';
-    codeInput.setAttribute('aria-label', 'Six-digit code');
+    codeInput.setAttribute('aria-label', 'Verification code');
 
     const verify = document.createElement('button');
     verify.type = 'submit';

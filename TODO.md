@@ -1244,7 +1244,7 @@
   - Completed: 2026-07-22
   <!-- id: d9f96e99-aa25-484d-9c3d-802fc49384f3 -->
 
-- [ ] **[HIGH]** Fix the code input truncating OTP codes longer than six digits
+- [x] **[HIGH]** Fix the code input truncating OTP codes longer than six digits
   - Type: bug
   - Description: The auth modal's code input carries `maxlength="6"`, but this project's Supabase OTP codes are 8 digits — so the input silently truncates (e.g. `42582553` becomes `425825`) and every Verify submits an invalid token. Sign-in is completely blocked: the Auth logs show every `/verify` returning 403 "token has expired or is invalid", including codes seconds old, because the token sent was never the token issued. Remove the six-digit assumption from both the input constraint and the copy so any length Supabase issues works.
   - Behavior:
@@ -1258,5 +1258,5 @@
     - No change to `verifyCode` or the send path; both were correct.
   - Out of scope: changing Supabase's OTP length setting (a dashboard change — the input should tolerate whatever's configured rather than hard-coding a length); and the Resend cooldown fix (already shipped separately).
   - File: `toDoList_main/src/auth.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 58d441cb-a019-4629-b3b2-55082932ed2e -->
