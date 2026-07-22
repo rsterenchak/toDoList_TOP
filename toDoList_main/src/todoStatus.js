@@ -70,6 +70,18 @@ export function setReviewBadgeTapHandler(fn) {
     reviewBadgeTapHandler = typeof fn === 'function' ? fn : null;
 }
 
+// Invoke the registered review-badge handler from another surface (the mobile
+// description editor's REVIEW action reaches the viewer through the same entry
+// point rather than importing todoMdViewer.js / main.js itself). Returns true
+// when a handler was registered and invoked, false otherwise — so a caller can
+// gate its own affordance on the same registration and never leave a dead
+// control that opens nothing.
+export function invokeReviewBadgeTap(entryId, projectName) {
+    if (!reviewBadgeTapHandler) return false;
+    reviewBadgeTapHandler(entryId, projectName);
+    return true;
+}
+
 
 // Coerce an arbitrary status to a known one. Mirrors listLogic's
 // normalizeTodoStatus so the UI never renders an out-of-vocabulary badge — a

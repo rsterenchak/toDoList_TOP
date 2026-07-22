@@ -48,7 +48,7 @@
   - Completed: 2026-07-22
   <!-- id: 7b1d1f88-620c-4a08-b291-8d3fddda62f0 -->
 
-- [ ] **[MEDIUM]** Mobile description editor: give the REVIEW phase somewhere to go
+- [x] **[MEDIUM]** Mobile description editor: give the REVIEW phase somewhere to go
   - Type: bug
   - Description: The description editor's phase rail renders REVIEW when a task's entry has shipped and has not been acknowledged, but the modal offers no way to act on it. On mobile this modal is the task's only detail surface — the row badge is hidden below 1024px — so a user who opens a task in REVIEW sees the state reported and has no route out of it. Add a single action, shown only in that phase, that closes the modal and opens the TODO.md viewer anchored to this task's entry, where the Acknowledge pill and the run's appended PR number already live. This is deliberately a route rather than a second Accept control: the modal holds the local description, while TODO.md holds the entry plus whatever the run appended to it, so acknowledging from here would mean accepting without seeing which PR is being accepted.
   - Behavior: When a task's derived phase is `accept`-unreviewed, the description editor shows one additional action above Generate, styled as the primary action for that state. Tapping it dismisses the modal and opens the TODO.md viewer anchored to that task's entry with the existing highlight — the same destination the row badge reaches on desktop. In every other phase the action is absent entirely, not disabled. All existing controls keep their behavior and position; nothing else about the modal changes. If the task's marker cannot be resolved in the current TODO.md, the action is absent rather than opening an unanchored viewer from a surface that implied a specific entry.
@@ -61,5 +61,5 @@
     - Style it with the SpaceMono uppercase treatment the other actions now use, in the amber already carrying the review state (`#ffbd5e`), so it reads as belonging to the phase rather than as a third peer of Generate and Inject. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The Acknowledge pill in the TODO.md viewer and the `entry_reviewed_at` write, which stay the single acknowledge path. Adding an Accept control that stamps from the modal. The phase rail's rendering and `derivePhase`. The ASKING phase and its question block. Generate, Inject, Clear, Copy entry, and the MANUAL STATUS control. The task row, the row badge, and the desktop `#descSibling` panel. Any change to the viewer's anchoring or highlight behavior.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: c0f6b0c1-2d61-4fc8-b171-29cbc4025d05 -->
