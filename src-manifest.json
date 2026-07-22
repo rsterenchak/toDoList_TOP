@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-22T06:58:10.871Z",
-  "sha": "8a9c9b95ec968e3b08f946618fa7458fc2485867",
+  "generatedAt": "2026-07-22T07:11:05.139Z",
+  "sha": "85afc2cdf327ed0f1a1a460098af8a4d51dac56c",
   "files": [
     "aboutVersionCue.js",
     "agentView.js",
@@ -376,11 +376,11 @@
       "selector": "#authModalCodeForm",
       "label": "Auth Modal Code Form",
       "file": "auth.js",
-      "line": 185,
+      "line": 228,
       "files": [
         {
           "file": "auth.js",
-          "line": 185
+          "line": 228
         }
       ]
     },
@@ -388,11 +388,11 @@
       "selector": "#authModalCodeInput",
       "label": "Auth Modal Code Input",
       "file": "auth.js",
-      "line": 192,
+      "line": 235,
       "files": [
         {
           "file": "auth.js",
-          "line": 192
+          "line": 235
         }
       ]
     },
@@ -400,11 +400,11 @@
       "selector": "#authModalEmailInput",
       "label": "Auth Modal Email Input",
       "file": "auth.js",
-      "line": 91,
+      "line": 133,
       "files": [
         {
           "file": "auth.js",
-          "line": 91
+          "line": 133
         }
       ]
     },
@@ -412,11 +412,11 @@
       "selector": "#authModalError",
       "label": "Auth Modal Error",
       "file": "auth.js",
-      "line": 109,
+      "line": 151,
       "files": [
         {
           "file": "auth.js",
-          "line": 109
+          "line": 151
         }
       ]
     },
@@ -424,11 +424,11 @@
       "selector": "#authModalForm",
       "label": "Auth Modal Form",
       "file": "auth.js",
-      "line": 87,
+      "line": 129,
       "files": [
         {
           "file": "auth.js",
-          "line": 87
+          "line": 129
         },
         {
           "file": "style.css",
@@ -440,11 +440,11 @@
       "selector": "#authModalResend",
       "label": "Auth Modal Resend",
       "file": "auth.js",
-      "line": 246,
+      "line": 289,
       "files": [
         {
           "file": "auth.js",
-          "line": 246
+          "line": 289
         }
       ]
     },
@@ -452,11 +452,11 @@
       "selector": "#authModalSubmit",
       "label": "Auth Modal Submit",
       "file": "auth.js",
-      "line": 104,
+      "line": 146,
       "files": [
         {
           "file": "auth.js",
-          "line": 104
+          "line": 146
         }
       ]
     },
@@ -464,11 +464,11 @@
       "selector": "#authModalTitle",
       "label": "Auth Modal Title",
       "file": "auth.js",
-      "line": 81,
+      "line": 123,
       "files": [
         {
           "file": "auth.js",
-          "line": 81
+          "line": 123
         }
       ]
     },
@@ -476,11 +476,11 @@
       "selector": "#authModalUseDifferent",
       "label": "Auth Modal Use Different",
       "file": "auth.js",
-      "line": 266,
+      "line": 314,
       "files": [
         {
           "file": "auth.js",
-          "line": 266
+          "line": 314
         }
       ]
     },
@@ -488,11 +488,11 @@
       "selector": "#authModalVerify",
       "label": "Auth Modal Verify",
       "file": "auth.js",
-      "line": 205,
+      "line": 248,
       "files": [
         {
           "file": "auth.js",
-          "line": 205
+          "line": 248
         }
       ]
     },
