@@ -347,6 +347,14 @@ function showError(errorEl, message) {
 function sendCode(email) {
     return supabase.auth.signInWithOtp({
         email: email,
+        options: {
+            // New-user signups are disabled in Supabase, so declare that
+            // intent here rather than relying on the dashboard toggle
+            // alone: the client never tries to create an account, and an
+            // unregistered email fails with the signups-disabled error we
+            // classify below instead of silently provisioning a user.
+            shouldCreateUser: false,
+        },
     }).then(function(response) {
         const error = response && response.error;
         if (!error) return { ok: true };
@@ -356,8 +364,21 @@ function sendCode(email) {
         // hint, so the user sees the calmer message either way.
         const status = error.status || (error.response && error.response.status);
         const msg = String(error.message || '').toLowerCase();
+        const code = String(error.code || '').toLowerCase();
         if (status === 429 || msg.indexOf('rate') !== -1) {
             return { ok: false, message: 'Too many tries — wait a moment' };
+        }
+        // With shouldCreateUser: false, an email with no account comes
+        // back as a signups-disabled / user-not-found error (Supabase
+        // says "Signups not allowed…", code otp_disabled). Name that case
+        // so it reads as "there's no account" rather than a system fault.
+        if (
+            msg.indexOf('signup') !== -1 ||
+            msg.indexOf('not allowed') !== -1 ||
+            code.indexOf('otp_disabled') !== -1 ||
+            code.indexOf('signup') !== -1
+        ) {
+            return { ok: false, message: 'No account for that email' };
         }
         return { ok: false, message: "Couldn't send code — try again" };
     }, function() {

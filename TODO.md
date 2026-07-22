@@ -1261,7 +1261,7 @@
   - Completed: 2026-07-22
   <!-- id: 58d441cb-a019-4629-b3b2-55082932ed2e -->
 
-- [ ] **[LOW]** Surface a clear message when sign-in is attempted with an unregistered email
+- [x] **[LOW]** Surface a clear message when sign-in is attempted with an unregistered email — Completed: 2026-07-22
   - Type: bug
   - Description: With new-user signups disabled in Supabase, `signInWithOtp` rejects any email that isn't an existing user — but `sendCode` (auth.js ~295) collapses every non-429 failure into "Couldn't send code — try again", which reads as a system fault rather than "there's no account for this address." Classify that case and say so, and pass `shouldCreateUser: false` so the client's intent matches the server's setting rather than relying on the dashboard toggle alone.
   - Behavior:
