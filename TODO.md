@@ -1243,3 +1243,20 @@
   - File: `toDoList_main/src/auth.js`
   - Completed: 2026-07-22
   <!-- id: d9f96e99-aa25-484d-9c3d-802fc49384f3 -->
+
+- [ ] **[HIGH]** Fix the code input truncating OTP codes longer than six digits
+  - Type: bug
+  - Description: The auth modal's code input carries `maxlength="6"`, but this project's Supabase OTP codes are 8 digits — so the input silently truncates (e.g. `42582553` becomes `425825`) and every Verify submits an invalid token. Sign-in is completely blocked: the Auth logs show every `/verify` returning 403 "token has expired or is invalid", including codes seconds old, because the token sent was never the token issued. Remove the six-digit assumption from both the input constraint and the copy so any length Supabase issues works.
+  - Behavior:
+    1. The code input accepts the full code regardless of length — an 8-digit code types and pastes in complete.
+    2. Verify submits the whole code and signs in.
+    3. The copy no longer claims "6-digit" — it reads generically so a future length change doesn't make it wrong again.
+  - Implementation notes:
+    - The code input in `renderConfirmationScreen` (auth.js ~line 200): raise `maxlength` from `6` to `10` (Supabase's configurable ceiling) rather than removing it, so the field still resists junk paste but never truncates a real code. Keep `inputmode="numeric"`, `autocomplete="one-time-code"`, and the 16px minimum font size.
+    - Update the screen-2 body copy from "Enter the 6-digit code sent to …" to "Enter the code sent to …". Also update the file's header comment block, which documents screen 2 as a "6-digit code input".
+    - `style.css`: check the input's width/letter-spacing still reads cleanly at 8-10 characters — the current spacing was tuned for six.
+    - No change to `verifyCode` or the send path; both were correct.
+  - Out of scope: changing Supabase's OTP length setting (a dashboard change — the input should tolerate whatever's configured rather than hard-coding a length); and the Resend cooldown fix (already shipped separately).
+  - File: `toDoList_main/src/auth.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 58d441cb-a019-4629-b3b2-55082932ed2e -->
