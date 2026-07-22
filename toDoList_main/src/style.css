@@ -16345,6 +16345,141 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   grid-column: 1 / -1;
 }
 
+/* ── GENERATE WITH TRIAGE ──
+   Sibling of .injectBtn in the description panel. Tapping it flags the task
+   for the agent and fires the triage sweep; the finished draft lands back
+   into the description for review (Generate never injects). Reuses the same
+   outlined accent tokens as .injectBtn / .discussBtn so the row actions read
+   as one set. State is driven by syncGenerateControl in toDoRow.js. */
+.generateBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+  margin: 0 12px 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent-text);
+  cursor: pointer;
+  align-self: flex-start;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+.generateBtn:hover:not(:disabled) {
+  background: var(--accent-dim);
+}
+.generateBtn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.generateBtn:disabled {
+  cursor: default;
+}
+.generateBtn.is-generating {
+  opacity: 0.85;
+}
+.generateBtnIcon {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  display: block;
+  vertical-align: middle;
+}
+.generateBtnLabel {
+  white-space: nowrap;
+}
+/* In-flight spinner shown while the linked queue row sits in `triaging`. */
+.generateBtnSpinner {
+  flex: 0 0 auto;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent-dim);
+  border-top-color: var(--accent-text);
+  animation: generateSpin 0.7s linear infinite;
+}
+@keyframes generateSpin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .generateBtnSpinner { animation: none; }
+}
+/* Full-width in the 3-column descSibling grid, like the inject button, so it
+   isn't crushed into the 14px gutter column. */
+#descSibling .generateBtn {
+  grid-column: 1 / -1;
+}
+
+/* While Generate is in flight, Inject is disabled and visibly dimmed so the
+   user can't commit mid-generation (syncGenerateControl restores it when the
+   run leaves `triaging`). */
+.injectBtn--generating {
+  opacity: 0.5;
+  cursor: default;
+}
+
+/* Dismissible failure notice for a `failed` / `no_change` triage run. Mounted
+   as a sibling of the Generate button; the description is left untouched. */
+.generateFailure {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0 12px 10px 12px;
+  padding: 8px 10px;
+  border-left: 3px solid #e5534b;
+  border-radius: 8px;
+  background: var(--bg-hover);
+}
+#descSibling .generateFailure {
+  grid-column: 1 / -1;
+}
+.generateFailureText {
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.generateFailureDismiss {
+  flex: 0 0 auto;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+}
+.generateFailureDismiss:hover {
+  color: var(--text-primary);
+}
+.generateFailureDismiss:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+  border-radius: 4px;
+}
+
+/* Generate inside the mobile description-editor modal: its own full-width row
+   above Inject (order:-2 floats it above Inject's order:-1 and the DOM-later
+   Clear/Copy pair). Drops the row-style outer margin — the modal owns padding. */
+#descEditorModalActions .generateBtn {
+  order: -2;
+  flex: 0 0 100%;
+  justify-content: center;
+  margin: 0;
+  font-size: 13px;
+  padding: 8px 10px;
+  min-height: 36px;
+}
+#descEditorModalActions .generateFailure {
+  order: -2;
+  flex: 0 0 100%;
+  margin: 0;
+}
+
 /* When the inject button lives inside the mobile description-editor modal's
    actions row, drop the row-style outer margin (the modal owns its own
    padding) and match the height of the other modal buttons. It is the

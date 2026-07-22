@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         added: [
-            "Tasks the agent has a question about now show an ASKING badge and let you answer its question inline from the task row, without opening the Agent board.",
+            "A Generate action on a task's description now drafts an entry with the agent and lands it back into the description for review, without leaving the task.",
         ],
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",
