@@ -11140,6 +11140,20 @@ body.row-dragging * { cursor: grabbing !important; }
     color: #fff;
     border-color: var(--accent);
   }
+  /* Icon-only paste chip — tighter side padding than the text chips so the
+     glyph reads as a compact action, and pushed to the trailing edge alongside
+     the description toggle. Reuses the shared chip surface tokens; no new
+     colours. It is a momentary action, never a toggle, so it takes no
+     selected state. */
+  .mobileCreatePasteChip {
+    margin-left: auto;
+    padding: 0 12px;
+    font-size: 16px;
+  }
+  .mobileCreatePasteChip + .mobileCreateDescChip {
+    margin-left: 0;
+  }
+
   .mobileCreateDescChip {
     margin-left: auto;
   }

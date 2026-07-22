@@ -10,6 +10,7 @@ import {
     markChainingActive,
     isChainingActive,
     getChosenDueChip,
+    parsePastedEntry,
 } from '../src/mobileTaskCreate.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -282,6 +283,14 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         expect(chipsIdx).toBeGreaterThan(mediaIdx);
     });
 
+    it('styles the paste chip on the shared chip surface — no new colour tokens', () => {
+        // The paste chip reuses .mobileCreateChip; its own rule only adjusts
+        // spacing/glyph size and must not introduce a hardcoded colour.
+        const match = css.match(/\.mobileCreatePasteChip\s*\{[^}]*\}/);
+        expect(match).not.toBeNull();
+        expect(match[0]).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
+    });
+
     it('hides the chip cluster at the ≥1024px desktop breakpoint', () => {
         // The chip DOM is attached unconditionally to every blank placeholder
         // so the JS path stays single-branch, but on desktop the cluster
@@ -295,6 +304,170 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
             return /#mobileCreateChips\s*\{[^}]*display:\s*none/.test(m[0]);
         });
         expect(hidesChips).toBe(true);
+    });
+});
+
+
+// Pins the "paste a TODO.md entry straight into a new task" affordance:
+// a 📋 chip on the mobile create row reads the clipboard, parses a pasted
+// entry into a display title + verbatim description, and commits the task
+// through the same Enter path a typed title uses.
+
+describe('Compose row paste-entry — parsePastedEntry', () => {
+
+    it('takes the title from the checkbox headline, stripping the priority marker', () => {
+        const raw = '- [ ] **[MEDIUM]** Add a paste affordance\n  - Type: feature';
+        const parsed = parsePastedEntry(raw);
+        expect(parsed.title).toBe('Add a paste affordance');
+    });
+
+    it('keeps the full entry (headline included) as the description', () => {
+        const raw = '- [ ] **[HIGH]** Do the thing\n  - Type: bug\n  - File: a.js';
+        const parsed = parsePastedEntry(raw);
+        // The description must keep the headline line — that is what Inject commits.
+        expect(parsed.description).toBe(raw);
+    });
+
+    it('strips a wrapping code fence but preserves the body byte-for-byte', () => {
+        const raw = '```markdown\n- [ ] **[LOW]** Fenced task\n  - Type: feature\n```';
+        const parsed = parsePastedEntry(raw);
+        expect(parsed.title).toBe('Fenced task');
+        expect(parsed.description).toBe('- [ ] **[LOW]** Fenced task\n  - Type: feature');
+        expect(parsed.description).not.toMatch(/```/);
+    });
+
+    it('drops a trailing "— Completed: …" note from the title', () => {
+        const raw = '- [x] **[MEDIUM]** Shipped task — Completed: 2026-07-22 (PR #999)';
+        const parsed = parsePastedEntry(raw);
+        expect(parsed.title).toBe('Shipped task');
+    });
+
+    it('falls back to the first non-empty line when there is no checkbox headline', () => {
+        const raw = '\n\nRough idea with no checkbox\nsecond line\n';
+        const parsed = parsePastedEntry(raw);
+        expect(parsed.title).toBe('Rough idea with no checkbox');
+        expect(parsed.description).toBe(raw);
+    });
+
+    it('flags an entry that already carries an <!-- id: … --> marker', () => {
+        const withMarker = '- [ ] **[MEDIUM]** Existing entry\n  <!-- id: abc-123 -->';
+        const without = '- [ ] **[MEDIUM]** Fresh entry';
+        expect(parsePastedEntry(withMarker).hasMarker).toBe(true);
+        expect(parsePastedEntry(without).hasMarker).toBe(false);
+    });
+
+    it('returns empty fields for empty input rather than throwing', () => {
+        const parsed = parsePastedEntry('');
+        expect(parsed.title).toBe('');
+        expect(parsed.description).toBe('');
+        expect(parsed.hasMarker).toBe(false);
+    });
+});
+
+
+describe('Compose row paste-entry — chip DOM', () => {
+
+    beforeEach(() => {
+        resetMobileCreateSession();
+        document.body.innerHTML = '';
+    });
+
+    it('renders the 📋 paste chip in the create chip row', () => {
+        const row = makeBlankRow();
+        attachMobileCreateChips(row, row.__item);
+        const chip = chipsFor(row).querySelector('#mobileCreatePasteChip');
+        expect(chip).not.toBeNull();
+        expect(chip.textContent).toBe('📋');
+        expect(chip.getAttribute('aria-label')).toBe('Paste entry as a new task');
+    });
+});
+
+
+describe('Compose row paste-entry — commit flow', () => {
+
+    let originalClipboard;
+
+    beforeEach(() => {
+        resetMobileCreateSession();
+        document.body.innerHTML = '';
+        originalClipboard = navigator.clipboard;
+    });
+
+    function setClipboard(readText) {
+        Object.defineProperty(navigator, 'clipboard', {
+            value: { readText: readText },
+            configurable: true,
+        });
+    }
+
+    function restoreClipboard() {
+        Object.defineProperty(navigator, 'clipboard', {
+            value: originalClipboard,
+            configurable: true,
+        });
+    }
+
+    const flush = () => new Promise((r) => setTimeout(r, 0));
+
+    it('sets item.desc to the parsed entry and dispatches Enter on the title input', async () => {
+        setClipboard(() => Promise.resolve('- [ ] **[MEDIUM]** Pasted headline\n  - Type: feature'));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        await flush();
+
+        expect(item.desc).toBe('- [ ] **[MEDIUM]** Pasted headline\n  - Type: feature');
+        expect(row.querySelector('#toDoInput').value).toBe('Pasted headline');
+        expect(enterFired).toBe(true);
+        restoreClipboard();
+    });
+
+    it('creates nothing and toasts on an empty clipboard', async () => {
+        setClipboard(() => Promise.resolve('   '));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        await flush();
+
+        expect(enterFired).toBe(false);
+        expect(item.desc).toBeUndefined();
+        expect(document.getElementById('injectToast')).not.toBeNull();
+        restoreClipboard();
+    });
+
+    it('focuses the title input and toasts when the clipboard read is denied', async () => {
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        const input = row.querySelector('#toDoInput');
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        await flush();
+
+        expect(enterFired).toBe(false);
+        expect(document.getElementById('injectToast')).not.toBeNull();
+        expect(document.activeElement).toBe(input);
+        restoreClipboard();
     });
 });
 
