@@ -9,14 +9,12 @@ export const changelog = [
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",
             "The sign-in Resend code button now waits the full 60 seconds the server requires, counting the wait down on the button so a resend actually goes through.",
+            "The sign-in code field now accepts the full verification code instead of cutting it off, so codes longer than six digits verify and sign you in.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-21',
-        added: [
-            "Reopening the Structure tab shows the last run's captured output with a re-run control, and an in-progress run resumes live.",
-        ],
         fixed: [
             "The Run & capture card's args input stays editable after a run or reopen, and its Run button repeats the run one-tap or with edited args.",
             "The Run & capture card now appears only for repos whose console app can actually run, and stays hidden on other repo shapes.",

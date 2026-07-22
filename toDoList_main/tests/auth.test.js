@@ -2,7 +2,7 @@
 //
 // The modal is the app's hard gate — index.js renders it whenever no
 // Supabase session exists at boot, and re-renders it whenever the
-// session is cleared via sign-out. Screen 2 collects a 6-digit code and
+// session is cleared via sign-out. Screen 2 collects the emailed code and
 // calls verifyOtp in-app so the session lands in the installed PWA's
 // own storage jar. These tests verify the wiring is in place at the
 // source level (modal builder structure, the signInWithOtp / verifyOtp
@@ -79,7 +79,11 @@ describe('Auth modal — source-level structure in auth.js', () => {
 
     it('highlights the destination email in accent purple on screen 2', () => {
         expect(auth).toMatch(/authModalEmailHighlight/);
-        expect(auth).toMatch(/Enter the 6-digit code sent to/);
+        expect(auth).toMatch(/Enter the code sent to/);
+        // The copy must not hard-code a length — Supabase's OTP length is
+        // configurable (currently 8 digits here), so a "6-digit" claim was
+        // both wrong and brittle.
+        expect(auth).not.toMatch(/6-digit code sent to/);
     });
 
     it('renders the screen-2 "Resend code" and "Use a different email" actions', () => {
@@ -147,7 +151,7 @@ describe('Auth modal — signInWithOtp call shape (code variant)', () => {
     it('calls supabase.auth.signInWithOtp with the email and no emailRedirectTo', () => {
         expect(auth).toMatch(/supabase\.auth\.signInWithOtp\s*\(/);
         // The OTP-code variant drops emailRedirectTo entirely so Supabase
-        // sends a 6-digit code (from {{ .Token }}) instead of a magic
+        // sends a numeric code (from {{ .Token }}) instead of a magic
         // link; verifyOtp then creates the session inside the PWA's own
         // storage jar rather than the system browser's. The option key
         // (emailRedirectTo:) must be gone from the call site.
@@ -175,11 +179,16 @@ describe('Auth modal — screen-2 code entry + verifyOtp', () => {
 
     it('renders a code input wired for mobile OTP autofill', () => {
         // inputmode numeric → numeric keypad; autocomplete one-time-code →
-        // iOS offers the code from the email; maxlength 6 caps the digits.
+        // iOS offers the code from the email. maxlength must not truncate a
+        // real code: Supabase issues 8-digit codes here (configurable up to
+        // 10), and a maxlength of 6 silently dropped the trailing digits so
+        // every Verify submitted an invalid token. Cap at 10 — high enough to
+        // never truncate an issued code, low enough to still resist junk paste.
         expect(auth).toMatch(/authModalCodeInput/);
         expect(auth).toMatch(/inputMode\s*=\s*['"]numeric['"]/);
         expect(auth).toMatch(/autocomplete\s*=\s*['"]one-time-code['"]/);
-        expect(auth).toMatch(/maxLength\s*=\s*6/);
+        expect(auth).toMatch(/maxLength\s*=\s*10/);
+        expect(auth).not.toMatch(/maxLength\s*=\s*6\b/);
     });
 
     it('renders a primary "Verify" button', () => {

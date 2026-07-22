@@ -13549,7 +13549,8 @@ body.row-dragging * { cursor: grabbing !important; }
 
 /* font-size: 16px — required to prevent iOS Safari auto-zoom on focus
    per the mobile-input rule in CLAUDE.md. Mono + wide letter-spacing +
-   centered reads cleanly for a 6-digit code. */
+   centered reads cleanly across the 6–10 character codes Supabase
+   issues; width is fluid (100%) so a longer code never clips. */
 .authModalCodeInput {
   width: 100%;
   padding: 14px 16px;
