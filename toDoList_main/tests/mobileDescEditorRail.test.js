@@ -61,7 +61,10 @@ describe('mobile desc editor rail — markup + placement', () => {
 
     it('marks nodes before the current phase filled and the current one highlighted', () => {
         const fnIdx = modals.indexOf('function renderRail');
-        const fn = modals.slice(fnIdx, fnIdx + 900);
+        // Window widened past the original 900: renderRail now also builds the
+        // connector rules, so the node filled/current marking sits deeper in the
+        // function body. The assertions themselves are unchanged.
+        const fn = modals.slice(fnIdx, fnIdx + 1800);
         expect(fn).toMatch(/is-filled/);
         expect(fn).toMatch(/is-current/);
         expect(fn).toMatch(/i\s*<\s*currentIndex/);
@@ -139,23 +142,74 @@ describe('mobile desc editor — THE ENTRY label + Generate spend caption', () =
     });
 });
 
-describe('mobile desc editor rail — styling', () => {
+describe('mobile desc editor rail — connected-rail styling', () => {
     const css = read('style.css');
 
-    it('the rail nodes reuse the 10px radius and 36px chip conventions (no new tokens)', () => {
-        const ruleMatch = css.match(/\.descEditorModalRailNode\s*\{([\s\S]{0,600}?)\}/);
-        expect(ruleMatch).toBeTruthy();
-        const body = ruleMatch[1];
-        expect(body).toMatch(/border-radius:\s*10px/);
-        expect(body).toMatch(/min-height:\s*36px/);
+    it('is a connected rail: fixed-width dot-over-caption columns joined by connectors', () => {
+        // Each node is a plain column, NOT a chip/box — no border-radius box and
+        // no min-height button chrome on the node itself.
+        const nodeMatch = css.match(/\.descEditorModalRailNode\s*\{([\s\S]{0,400}?)\}/);
+        expect(nodeMatch).toBeTruthy();
+        const nodeBody = nodeMatch[1];
+        expect(nodeBody).toMatch(/flex-direction:\s*column/);
+        expect(nodeBody).not.toMatch(/border-radius/);
+        expect(nodeBody).not.toMatch(/min-height/);
+        // The dot is the only round element — a 10px circle.
+        const dotMatch = css.match(/\.descEditorModalRailDot\s*\{([\s\S]{0,300}?)\}/);
+        expect(dotMatch).toBeTruthy();
+        expect(dotMatch[1]).toMatch(/border-radius:\s*50%/);
+        expect(dotMatch[1]).toMatch(/width:\s*10px/);
+        // Connectors join the dots.
+        expect(css).toMatch(/\.descEditorModalRailConnector\s*\{[\s\S]{0,200}flex:\s*1\s+1\s+0/);
     });
 
-    it('filled + current nodes paint with the accent tokens', () => {
+    it('filled + current dots paint with the accent tokens; current gets a halo ring', () => {
+        // Passed dots: solid accent fill.
         expect(css).toMatch(
-            /\.descEditorModalRailNode\.is-filled\s*\{[\s\S]{0,120}background:\s*var\(--accent\)/
+            /\.descEditorModalRailNode\.is-filled\s+\.descEditorModalRailDot\s*\{[\s\S]{0,120}background:\s*var\(--accent\)/
         );
+        // The connector trailing a passed/current node is accent too.
         expect(css).toMatch(
-            /\.descEditorModalRailNode\.is-current\s*\{[\s\S]{0,160}border-color:\s*var\(--accent\)/
+            /\.descEditorModalRailConnector\.is-filled\s*\{[\s\S]{0,80}background:\s*var\(--accent\)/
+        );
+        // Current dot: accent outline plus a soft box-shadow halo (spread, not a
+        // border, so it doesn't resize the dot's box).
+        expect(css).toMatch(
+            /\.descEditorModalRailNode\.is-current\s+\.descEditorModalRailDot\s*\{[\s\S]{0,200}box-shadow:\s*0 0 0 3px/
+        );
+    });
+
+    it('the rail carries no interactive affordances — no hover, active, or cursor', () => {
+        // Guard the affordance-lie fix: the rail elements must never grow a
+        // :hover / :active feedback rule or a pointer cursor.
+        expect(css).not.toMatch(/\.descEditorModalRail(Node|Dot|Connector)[^{]*:hover/);
+        expect(css).not.toMatch(/\.descEditorModalRail(Node|Dot|Connector)[^{]*:active/);
+        expect(css).not.toMatch(/\.descEditorModalRail(Node|Dot|Connector)[^{]*\{[^}]*cursor:\s*pointer/);
+    });
+
+    it('the four action controls convert to SpaceMono uppercase letterspaced type', () => {
+        const ruleMatch = css.match(
+            /#descEditorModalActions\s+\.descEditorModalBtn\s*\{([\s\S]{0,300}?)\}/
+        );
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/font-family:\s*'SpaceMono'/);
+        expect(body).toMatch(/text-transform:\s*uppercase/);
+        expect(body).toMatch(/letter-spacing:/);
+    });
+
+    it('the Generate spend caption is uppercase letterspaced and left-aligned', () => {
+        const ruleMatch = css.match(/#descEditorModalGenerateSpend\s*\{([\s\S]{0,400}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/text-transform:\s*uppercase/);
+        expect(body).toMatch(/text-align:\s*left/);
+    });
+
+    it('Generate carries a leading dispatch mark that Inject does not', () => {
+        // Scoped to the modal so the desktop sparkle is untouched.
+        expect(css).toMatch(
+            /#descEditorModalActions\s+\.generateBtn[^{]*\.generateBtnLabel::before\s*\{[\s\S]{0,120}content:/
         );
     });
 

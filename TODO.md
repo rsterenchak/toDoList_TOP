@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Mobile description editor: render the phase indicator as a rail, not a segmented control
+- [x] **[MEDIUM]** Mobile description editor: render the phase indicator as a rail, not a segmented control
   - Type: bug
   - Description: The phase indicator landed as four filled pill buttons in a row, which reads as a settable segmented control — visually near-identical to the MANUAL STATUS control lower in the same modal, which IS settable. Phase is derived from TODO.md and cannot be set, so an indicator that looks like a control is an affordance lie, and having two lookalike controls at opposite ends of one modal reintroduces exactly the derived-vs-manual confusion this layout was restructured to remove. Rebuild it as a connected rail, and finish the typographic conversion the same entry specified but which did not reach the action buttons.
   - Behavior: The phase indicator renders as four small dots on a single horizontal connector line, evenly spaced, each with an uppercase caption beneath it — IDEA · DRAFT · REVIEW · DONE. Dots for phases already passed are filled in accent and their connecting segments are accent-colored; the current phase's dot is filled in the lighter accent with a soft halo ring; dots and segments ahead of the current phase stay dark and unfilled. No dot has a fill background, border-radius box, or button chrome of any kind, and the whole rail is inert — not focusable, no hover or press feedback, no cursor change. It must be impossible to mistake for something tappable. Separately, the four action controls (Generate, Inject, Clear, Copy entry) and the spend line under Generate convert to the SpaceMono uppercase letterspaced treatment used on the pipeline surfaces, and Generate gains a leading dispatch mark distinguishing it from Inject.
@@ -14,5 +14,5 @@
     - `style.css`: reuse the existing accent tokens; no new colors. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The modal's section order, which is correct as landed. `derivePhase`, the phase vocabulary, and `phase.js`'s label map. The MANUAL STATUS control's own styling, position, and behavior. The textarea, the title input and its rename handling, and the DESCRIPTION header. Generate's and Inject's behavior. The desktop `#descSibling` panel. Making the rail interactive in any way.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 06dc7867-8989-4048-b254-2a40b7749e19 -->

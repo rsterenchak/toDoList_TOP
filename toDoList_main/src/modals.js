@@ -330,12 +330,34 @@ export function showDescEditorModal(item, options) {
         const currentIndex = PHASE_RAIL_ORDER.indexOf(railPhase);
         rail.innerHTML = '';
         PHASE_RAIL_ORDER.forEach(function(p, i) {
+            // Connector rule linking the previous node to this one. It paints in
+            // accent when it leads into a passed-or-current node (i <= current),
+            // so the accent "progress" fills the rail up to the current dot.
+            // Purely decorative — aria-hidden, no chrome, no listener.
+            if (i > 0) {
+                const connector = document.createElement('span');
+                connector.className = 'descEditorModalRailConnector'
+                    + (i <= currentIndex ? ' is-filled' : '');
+                connector.setAttribute('aria-hidden', 'true');
+                rail.appendChild(connector);
+            }
+            // Each node is an inert column — a dot above an uppercase caption.
+            // Plain spans, never a button: no role, tabindex, or listener, so the
+            // rail cannot be focused, hovered, or pressed. Phase is derived from
+            // TODO.md, so there is nothing a tap could mean.
             const node = document.createElement('span');
             node.className = 'descEditorModalRailNode'
                 + (i < currentIndex ? ' is-filled' : '')
                 + (i === currentIndex ? ' is-current' : '');
             node.setAttribute('data-phase', p);
-            node.textContent = PHASE_RAIL_LABELS[p];
+            const dot = document.createElement('span');
+            dot.className = 'descEditorModalRailDot';
+            dot.setAttribute('aria-hidden', 'true');
+            const caption = document.createElement('span');
+            caption.className = 'descEditorModalRailCaption';
+            caption.textContent = PHASE_RAIL_LABELS[p];
+            node.appendChild(dot);
+            node.appendChild(caption);
             rail.appendChild(node);
         });
         rail.setAttribute('aria-label', 'Pipeline phase: ' + PHASE_RAIL_LABELS[railPhase]);
