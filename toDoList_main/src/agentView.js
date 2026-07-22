@@ -20,6 +20,19 @@ import {
 import { openChatWithSeed } from './claudeSheet.js';
 import { showConfirmModal, showAssignmentEditorModal, wireModalDismiss } from './modals.js';
 import { shipEntryForTodo } from './shipEntry.js';
+import {
+    getQueueRows,
+    getLoadedProjectName,
+    setQueueRows,
+    loadQueueRows,
+    fetchQueueRows,
+    pendingAnswers,
+    isTriageInFlight,
+    setTriageInFlight,
+    startAgentQueueSubscription,
+    onQueueChange,
+    setTriageDispatcher,
+} from './agentQueueStore.js';
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
 // replaces the old Conceive incubator surface. For the currently selected
@@ -104,13 +117,11 @@ const SWEEP_GRACE_MS = 30 * 1000;
 const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
 
 // ── module state ─────────────────────────────────────────────────────
-// The rows last loaded for the active project, the project they belong to,
-// and the live realtime channel. Module-level so a re-render (project switch,
-// realtime push) paints from the cache without a synchronous refetch, and so
-// the channel survives across re-renders and tears down cleanly on view exit.
-let _rows = [];
-let _loadedProjectName = null;
-let _channel = null;
+// The project-scoped row cache, the realtime channel, the unsent-answer draft
+// map, and the triage in-flight guard now live in agentQueueStore.js — shared
+// with the task-row layer so the board and the rows read one store. `getQueueRows()`
+// returns the cache; `loadQueueRows()` re-scopes and reloads it. Everything else
+// here (paint, settle, pollers, pill tracking) stays view-local.
 // The active project's assignment-context state — the classified result of
 // reading `assignment.md` (the sibling of the routed repo's TODO.md). Shaped
 // `{ state: 'absent' | 'unfilled' | 'filled', ... }` (filled also carries the
@@ -168,14 +179,14 @@ const _mockupPending = new Set();
 // sent. Mirroring _mockupVariants/_mockupPending, the draft is mirrored here on
 // every keystroke and re-applied in buildSecondary after a repaint, so an unsent
 // answer survives the rebuild. The focused input's caret is separately preserved
-// across the rebuild in paint(). Cleared on a successful send. Session-scoped only.
-const _pendingAnswers = new Map();
-// Short in-flight guard shared by the header Run button and the answer-submit
-// auto-fire, so a rapid double-tap or a quick succession of answers doesn't fire
-// redundant triage sweeps in the same tick. The workflow's concurrency group and
-// batch-all-`triaging` design coalesce anything that overlaps anyway, so at worst
-// this drops a truly redundant call. Cleared once the dispatch settles.
-let _triageInFlight = false;
+// across the rebuild in paint(). Cleared on a successful send. The map itself now
+// lives in agentQueueStore.js (imported as `pendingAnswers`) so the task-row
+// answer control and the board share one draft store.
+//
+// The triage in-flight guard (`isTriageInFlight`/`setTriageInFlight`) also lives
+// in the store now, shared by the header Run button, the board answer auto-fire,
+// and the task-row answer auto-fire, so a rapid double-tap or a quick succession
+// of answers across either surface doesn't fire redundant sweeps in the same tick.
 // Triage-sweep tracking state that drives the header's Working/Idle pill from
 // the real claude-triage.yml run (via the Worker's triage-scoped active_runs
 // probe), not just from agent_queue row states. `_sweepActive` is what the pill
@@ -243,10 +254,10 @@ function showAgentToast(message) {
 // in-flight flag; returns null when the guard or a missing project id swallows
 // the call, otherwise the dispatch result. Never throws.
 function fireTriageSweep(projectName) {
-    if (_triageInFlight) return Promise.resolve(null);
+    if (isTriageInFlight()) return Promise.resolve(null);
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     if (!projectId) return Promise.resolve(null);
-    _triageInFlight = true;
+    setTriageInFlight(true);
     // Optimistically drive the header pill to Working the instant we dispatch,
     // and start the poller that tracks the real claude-triage.yml run to
     // completion (settling the pill back to Idle when GitHub reports it done).
@@ -255,7 +266,7 @@ function fireTriageSweep(projectName) {
         .then(function () { return dispatchTriage(projectId, mintEntryId(), resolveDispatchTarget()); })
         .then(
             function (res) {
-                _triageInFlight = false;
+                setTriageInFlight(false);
                 // If the dispatch itself failed, clear the optimistic Working
                 // state so neither the pill nor the nav dot falsely reports a
                 // sweep in flight (no run will ever register).
@@ -263,7 +274,7 @@ function fireTriageSweep(projectName) {
                 return res;
             },
             function () {
-                _triageInFlight = false;
+                setTriageInFlight(false);
                 stopSweepTracking();
                 clearWorkingWatchSweepSeed();
                 pollAgentWorkingWatch();
@@ -271,6 +282,12 @@ function fireTriageSweep(projectName) {
             }
         );
 }
+
+// Register this board's triage-sweep dispatcher with the shared store so the
+// task-row answer control can fire the exact same sweep (same pill, same guard)
+// without importing this module. Runs at module load; agentView.js is always
+// imported by main.js, so the dispatcher is available before any row answers.
+setTriageDispatcher(fireTriageSweep);
 
 // ── triage-sweep tracking ────────────────────────────────────────────
 // Drive the header pill from the real claude-triage.yml run. A sweep is a
@@ -510,7 +527,7 @@ function finishDeriveRun(correlationId, target) {
 function refreshStatusPill() {
     const pill = document.getElementById('agentStatusPill');
     if (!pill) return;
-    const rows = Array.isArray(_rows) ? _rows : [];
+    const rows = getQueueRows();
     const shipInFlight = rows.some(function (r) {
         return r && (r.state === 'dispatched' || r.state === 'running');
     });
@@ -542,47 +559,22 @@ function getSelectedProjectName() {
     return input ? (input.value || '').trim() : '';
 }
 
-// Query agent_queue for one project's rows. Written to survive both the live
-// Supabase client (a chainable, awaitable query builder) and the test/stub
-// client (whose .select() resolves immediately and has no .eq); a synchronous
-// throw from the incompatible chain is caught and treated as "no rows", so the
-// view degrades to an empty board rather than crashing.
-function fetchQueueRows(projectId) {
-    return new Promise(function (resolve) {
-        try {
-            Promise.resolve(
-                supabase.from('agent_queue').select('*').eq('project_id', projectId)
-            ).then(function (res) {
-                if (res && res.error) { resolve([]); return; }
-                resolve((res && res.data) || []);
-            }).catch(function () { resolve([]); });
-        } catch (e) {
-            resolve([]);
-        }
-    });
-}
-
-// Re-scope and reload the queue for the given project, then repaint. Only the
-// most recent load for the still-selected project is applied, so a stale
-// in-flight fetch from a since-abandoned project can't clobber the board.
-// `options.settle` runs the mount-time reconcile pass (settleInFlightRows) after
-// the repaint — set only on view mount and project switch, NOT on the realtime
-// pushes / post-action refreshes that also call through here, so TODO.md is read
-// once per mount rather than on every board repaint.
+// Re-scope and reload the queue for the given project, then repaint. Delegates
+// the cache + stale-guard to the shared store's loadQueueRows (only the most
+// recent load for the still-selected project is applied, so a stale in-flight
+// fetch from a since-abandoned project can't clobber the board), then paints from
+// cache and — when `options.settle` is set — runs the mount-time reconcile pass
+// (settleInFlightRows). Settle is set only on view mount and project switch, NOT
+// on the realtime pushes / post-action refreshes, so TODO.md is read once per
+// mount rather than on every board repaint. The task-row badges track the same
+// store and update on the realtime push (or the next list render), so they need
+// no explicit notify from here.
 function refreshAgentQueue(projectName, options) {
     const settle = !!(options && options.settle);
-    _loadedProjectName = projectName;
-    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
-    if (!projectId) {
-        _rows = [];
-        paint();
-        return;
-    }
-    fetchQueueRows(projectId).then(function (rows) {
-        if (getSelectedProjectName() === _loadedProjectName) {
-            _rows = Array.isArray(rows) ? rows : [];
+    return loadQueueRows(projectName).then(function () {
+        if (getSelectedProjectName() === getLoadedProjectName()) {
             paint();
-            if (settle) settleInFlightRows(_rows);
+            if (settle) settleInFlightRows(getQueueRows());
         }
     });
 }
@@ -660,11 +652,11 @@ function buildSecondary(row) {
         input.setAttribute('data-answer-row', String(row.id));
         // Re-apply any unsent draft the user typed before an intervening repaint
         // tore the old textarea down, and keep the cache in step on every keystroke.
-        if (_pendingAnswers.has(row.id)) {
-            input.value = _pendingAnswers.get(row.id);
+        if (pendingAnswers.has(row.id)) {
+            input.value = pendingAnswers.get(row.id);
         }
         input.addEventListener('input', function () {
-            _pendingAnswers.set(row.id, input.value);
+            pendingAnswers.set(row.id, input.value);
         });
         wrap.appendChild(input);
 
@@ -708,7 +700,7 @@ function buildSecondary(row) {
             Promise.resolve(listLogic.answerAgentTask(row.id, text, row.thread)).then(function (res) {
                 if (res && res.ok) {
                     input.value = '';
-                    _pendingAnswers.delete(row.id);
+                    pendingAnswers.delete(row.id);
                     // The realtime subscription re-renders as the state flips;
                     // refresh explicitly too so the card leaves Needs you even
                     // where realtime isn't observed (e.g. offline stubs).
@@ -1777,7 +1769,7 @@ function resolveDispatchTarget() {
 // The state of the cached row with this id (or null when absent). Used by the
 // poller to avoid re-writing a state that hasn't actually changed on every tick.
 function currentRowState(rowId) {
-    const rows = Array.isArray(_rows) ? _rows : [];
+    const rows = getQueueRows();
     const r = rows.find(function (x) { return x && x.id === rowId; });
     return r ? r.state : null;
 }
@@ -3111,7 +3103,7 @@ function buildCommitHelperPanel(item, shippedRows, ctx) {
 // aspect has no needs_words row (or its card was handed off to chat, so no
 // answer input exists).
 function jumpToBlockedAspect(aspectId, closeFn) {
-    const rows = Array.isArray(_rows) ? _rows : [];
+    const rows = getQueueRows();
     const target = rows.find(function (r) {
         return r && r.state === 'needs_words' &&
             typeof r.aspect === 'string' && r.aspect.trim() === aspectId;
@@ -3148,7 +3140,7 @@ function showCoverageDetailModal(preloadedCommitted) {
     const aspects = a.aspects;
     const labels = (a.aspectLabels && typeof a.aspectLabels === 'object')
         ? a.aspectLabels : {};
-    const rows = Array.isArray(_rows) ? _rows : [];
+    const rows = getQueueRows();
 
     // Group rows by aspect tag, then classify each rubric aspect. Process aspects
     // short-circuit to 'manual' (no agent-shippable state); everything else
@@ -3369,7 +3361,7 @@ function buildAssignmentCard() {
     // words/sections line; unfilled shows the "Tap to add" hint.
     const aspects = a.state === 'filled' && Array.isArray(a.aspects) ? a.aspects : [];
     if (aspects.length) {
-        body.appendChild(buildCoverageSummary(aspects, _rows));
+        body.appendChild(buildCoverageSummary(aspects, getQueueRows()));
     } else {
         const meta = document.createElement('div');
         meta.className = 'agentAssignmentMeta';
@@ -3768,7 +3760,7 @@ function paint() {
         return;
     }
 
-    const rows = Array.isArray(_rows) ? _rows : [];
+    const rows = getQueueRows();
     const counts = computeQueueCounts(rows);
 
     const header = document.createElement('div');
@@ -3958,9 +3950,9 @@ export function isAgentUnavailable() {
 // project-scoped fetch that repaints again on resolve.
 export function renderAgentView() {
     const projectName = getSelectedProjectName();
-    if (projectName !== _loadedProjectName) {
-        _rows = [];
-        // Reset the assignment cache alongside _rows and re-read it for the new
+    if (projectName !== getLoadedProjectName()) {
+        setQueueRows([]);
+        // Reset the assignment cache alongside the rows and re-read it for the new
         // project (fetches once; a no-target project resolves to absent).
         _assignment = null;
         refreshAssignment(resolveReadTarget());
@@ -3972,23 +3964,24 @@ export function renderAgentView() {
     paint();
 }
 
-// Open the realtime subscription on agent_queue and load the current project's
-// rows. The channel is user-scoped (RLS narrows it to the signed-in user's
-// rows); each push simply re-scopes and reloads the active project's rows.
-// Idempotent — a second call while a channel is live only refreshes.
+// Ensure the board repaints on a shared-store realtime push. The store fetches
+// once per push and notifies; this listener just repaints from cache (paint()
+// no-ops when the board isn't mounted). Registered once — module-level state, so
+// a second subscribeAgentView call doesn't stack a second listener.
+let _boardQueueListenerRegistered = false;
+function ensureBoardQueueListener() {
+    if (_boardQueueListenerRegistered) return;
+    _boardQueueListenerRegistered = true;
+    onQueueChange(paint);
+}
+
+// Open the shared realtime subscription on agent_queue and load the current
+// project's rows. The store owns the channel now (app-lifetime, shared with the
+// task-row badges), so this just ensures it's open and registers the board's
+// repaint listener. Idempotent.
 export function subscribeAgentView() {
-    if (!_channel && supabase && typeof supabase.channel === 'function') {
-        try {
-            _channel = supabase
-                .channel('public:agent_queue')
-                .on('postgres_changes',
-                    { event: '*', schema: 'public', table: 'agent_queue' },
-                    function () { refreshAgentQueue(getSelectedProjectName()); })
-                .subscribe();
-        } catch (e) {
-            _channel = null;
-        }
-    }
+    startAgentQueueSubscription();
+    ensureBoardQueueListener();
     // Mount: load the queue and settle any dispatched/running rows that already
     // shipped on main while the tab was closed (resume-poll the rest via paint).
     refreshAgentQueue(getSelectedProjectName(), { settle: true });
@@ -4002,14 +3995,12 @@ export function subscribeAgentView() {
     seedSweepState();
 }
 
-// Tear down the realtime subscription on view exit so a backgrounded board
-// doesn't hold an open channel. Idempotent and safe to call when no channel
-// is open.
+// Board-exit teardown. The agent_queue realtime channel now lives in the shared
+// store and stays open app-lifetime (the task-row badges depend on it on the list
+// view), so it is deliberately NOT torn down here — only the board's own pollers
+// and pill trackers are. The board's repaint listener is left registered too:
+// paint() no-ops off-tab, so an idle push is cheap. Idempotent.
 export function unsubscribeAgentView() {
-    if (_channel && supabase && typeof supabase.removeChannel === 'function') {
-        try { supabase.removeChannel(_channel); } catch (e) { /* ignore */ }
-    }
-    _channel = null;
     // Stop every in-flight dispatch poller — a backgrounded board shouldn't keep
     // polling. A reopen re-arms them from paint() via syncDispatchPollers.
     Object.keys(_dispatchPollers).forEach(stopDispatchPoller);
