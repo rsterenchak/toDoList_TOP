@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         changed: [
-            "Tapping a task's REVIEW badge now opens the TODO.md viewer scrolled to that shipped entry with a brief highlight, so you can review the change before acknowledging it.",
+            "A shipped task awaiting review now shows just the REVIEW badge instead of also showing the green shipped check, so the row marks its pipeline status once until you acknowledge it.",
         ],
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",

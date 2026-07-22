@@ -223,10 +223,12 @@ describe('buildToDoRow integration is wired (source-level — row builder is not
 
     it('inserts the badge + applies the class only for committed rows (guarded by item.tit)', () => {
         // The build-path insert is guarded by `if (item.tit)` so blank
-        // placeholder rows never get a badge. The badge carries the derived
-        // review flag so a shipped-but-unacknowledged entry renders REVIEW.
+        // placeholder rows never get a badge. The badge's review flag now comes
+        // from the single derived phase (`phase === PHASE.ACCEPT`) so a
+        // shipped-but-unacknowledged entry renders REVIEW — the same phase that
+        // drives the glyph, so the two can never disagree.
         expect(toDoRow).toMatch(
-            /if\s*\(\s*item\.tit\s*\)\s*\{\s*applyTodoStatusClass\(toDoChild,\s*item\.status\);\s*toDoChild\.insertBefore\(buildStatusLabel\(item,\s*needsEntryReview\(item\)\),\s*descIndicator\);/
+            /if\s*\(\s*item\.tit\s*\)\s*\{\s*applyTodoStatusClass\(toDoChild,\s*item\.status\);\s*toDoChild\.insertBefore\(buildStatusLabel\(item,\s*phase\s*===\s*PHASE\.ACCEPT\),\s*descIndicator\);/
         );
     });
 });
