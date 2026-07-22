@@ -1203,3 +1203,25 @@
   - File: `toDoList_main/src/captureCard.js`
   - Completed: 2026-07-21 (PR #<number>)
   <!-- id: c5fb9fad-74ec-4893-a2d4-915e271c63d4 -->
+
+- [ ] **[HIGH]** Replace magic-link sign-in with an in-app email OTP code
+  - Type: bug
+  - Description: Magic-link sign-in is structurally broken for the installed PWA: on iOS a homescreen app has a separate storage jar from Safari, so a magic link opens in Safari, creates the session there, and the standalone app never sees it — you return to the homescreen icon still signed out. Switch to the email OTP code variant of the same flow: `signInWithOtp` already sends either a link or a 6-digit code depending on the Supabase email template, so screen 2 becomes a code-entry screen that calls `verifyOtp` in-app. The session is then created inside the PWA's own storage jar, which fixes installed-app sign-in at the root. Screen 1 and the modal shell are unchanged.
+  - Behavior:
+    1. Screen 1 (email + Continue) is unchanged — submitting still sends the email and advances to screen 2.
+    2. Screen 2 becomes "Enter your code." — a 6-digit code input plus a Verify button, keeping the existing Resend button (relabelled "Resend code", same 10s cooldown) and the quieter "Use a different email" link back to screen 1.
+    3. Submitting a valid code signs in; the existing `onAuthStateChange` listener in index.js hides the gate as it does today — no new session wiring.
+    4. An invalid or expired code shows an inline error in the existing error element and leaves the code input focused for a retry.
+    5. The code input is mobile-first: numeric keypad, iOS one-time-code autofill, and no Safari auto-zoom.
+  - Implementation notes:
+    - Prerequisite (Supabase dashboard, out of band): Auth → Email Templates → the magic-link template must include `{{ .Token }}` so the email carries a code. Without it Supabase keeps sending only a link and screen 2 has nothing to enter. Leaving `{{ .ConfirmationURL }}` in the template is harmless, but lead with the code.
+    - `sendMagicLink` (auth.js:221): drop the `emailRedirectTo` option (there's no redirect any more) and update its two error strings from "Couldn't send link" to "Couldn't send code". Keep the 429/rate-limit classification exactly as-is. Rename to `sendCode` for accuracy.
+    - New `verifyCode(email, token)` wrapper next to it, calling `supabase.auth.verifyOtp({ email: email, token: token, type: 'email' })` and returning the same `{ ok, message }` shape so the renderer stays ignorant of the SDK error surface. Map an invalid/expired token to "That code didn't work — check it or resend" and a network failure to the same generic message the send path uses.
+    - Screen 2 (the confirmation renderer, auth.js ~155-208): replace the "Check your inbox." heading with "Enter your code.", add the code input + a primary Verify button above the existing Resend and "Use a different email" controls. The renderer already receives the email for Resend — reuse it for the verify call. Relabel `authModalResend`'s text to "Resend code" (the id/class/cooldown stay).
+    - Code input attributes: `inputmode="numeric"`, `autocomplete="one-time-code"` (so iOS offers the code from the email), `maxlength="6"`, and `font-size: 16px` minimum to prevent Safari auto-zoom — the same input rule the rest of the app follows. Trim whitespace before verifying.
+    - Guard against double-submit by disabling Verify while the request is in flight, mirroring the Resend cooldown's disabled handling.
+    - `style.css`: the code input (wide letter-spacing, mono, centered reads well for a 6-digit code) and the Verify button, reusing the existing auth-modal button styles. No inline style writes beyond the existing `showError` display toggle.
+  - Out of scope: a local PIN lock over the persisted session (Supabase already persists and auto-refreshes the session, so a PIN would be a privacy lock, not a convenience — separate entry if wanted); password auth; and any change to `index.js`'s session bootstrap or `onAuthStateChange` wiring.
+  - File: `toDoList_main/src/auth.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: d9781223-c1d8-4d33-883a-27642525d97c -->
