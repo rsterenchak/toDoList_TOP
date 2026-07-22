@@ -1260,3 +1260,18 @@
   - File: `toDoList_main/src/auth.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-22
   <!-- id: 58d441cb-a019-4629-b3b2-55082932ed2e -->
+
+- [ ] **[LOW]** Surface a clear message when sign-in is attempted with an unregistered email
+  - Type: bug
+  - Description: With new-user signups disabled in Supabase, `signInWithOtp` rejects any email that isn't an existing user — but `sendCode` (auth.js ~295) collapses every non-429 failure into "Couldn't send code — try again", which reads as a system fault rather than "there's no account for this address." Classify that case and say so, and pass `shouldCreateUser: false` so the client's intent matches the server's setting rather than relying on the dashboard toggle alone.
+  - Behavior:
+    1. Submitting an email with no account shows a clear message — no account exists for that address — instead of a generic send failure.
+    2. Existing users are unaffected; the code sends as it does now.
+    3. Rate-limit (429) classification is unchanged.
+  - Implementation notes:
+    - `sendCode` (auth.js ~295): add `shouldCreateUser: false` to the `signInWithOtp` options so the client never attempts to create an account, independent of the dashboard toggle.
+    - In the same error classifier, map a signups-disabled / user-not-found error (check `error.message` for the signup-disabled wording alongside the existing 429 check) to a distinct message such as "No account for that email."
+    - Leave the generic fallback for genuine failures.
+  - File: `toDoList_main/src/auth.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6e8191fc-69cf-41b7-9508-e2f76b9ab2bb -->
