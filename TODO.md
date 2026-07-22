@@ -16,3 +16,17 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-22
   <!-- id: 06dc7867-8989-4048-b254-2a40b7749e19 -->
+
+- [ ] **[LOW]** Mobile description editor: Generate button's top border is clipped
+  - Type: bug
+  - Description: In the mobile description-editor modal, the outlined Generate button renders with no top border — left, right, and bottom edges draw normally, so the outline reads as an open-topped box. There is visible clear space between the textarea above and the button, so it is not being overlapped by a neighbor; the border is being clipped or suppressed rather than covered. Most likely a leftover from the explicit flex-order pass on `#descEditorModalActions`, which reordered every child and replaced the previous `order: -1` / `flex: 0 0 100%` arrangement.
+  - Behavior: The Generate button draws a complete 1px outline on all four sides, matching the Clear and Copy entry buttons below it, with its existing spacing from the textarea above and the spend line below unchanged.
+  - Implementation notes:
+    - Diagnose before changing anything — the fix differs by cause. In order of likelihood: (1) an ancestor (`#descEditorModalActions` or `#descEditorModalBody`) has `overflow: hidden` whose box edge falls exactly on the button's top border, clipping that one pixel; (2) a negative `margin-top` on the button pulling its border under a clipping boundary; (3) a `border-top-width: 0` or transparent-top rule inherited from a shared button base that the other action buttons happen not to hit.
+    - If the cause is an ancestor's `overflow: hidden`, do NOT simply remove it — check first whether it is containing rounded corners or clipping the textarea's auto-grow. Add padding or adjust the button's margin so the border falls inside the clip instead.
+    - Verify against all three of the button's visual states, not just the idle one — `refreshInjectButton`'s state variants carry their own border-color rules, and a fix applied to the base rule can be overridden by a state class.
+    - Confirm the sibling buttons are unaffected after the change; whatever is clipping Generate may be positional, so a margin change on one child can shift the others in a wrapping flex.
+  - Out of scope: The phase rail, the section order, the SpaceMono typography conversion, and the spend-line wording — all correct as landed. Generate's behavior, the Inject button, and the MANUAL STATUS control. The desktop `#descSibling` panel.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 003b8aa8-ddc2-4b4a-8d73-25cd734f0fed -->
