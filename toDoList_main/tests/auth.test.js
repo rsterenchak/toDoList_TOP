@@ -99,6 +99,48 @@ describe('Auth modal — source-level structure in auth.js', () => {
 });
 
 
+describe('Auth modal — Resend cooldown matches the 60s Supabase OTP window', () => {
+    const auth = read('auth.js');
+
+    it('sets the Resend cooldown to 60 seconds', () => {
+        // Supabase permits one OTP per address every 60s; a shorter
+        // window re-enables the button before the server will accept a
+        // resend, so it 429s every time. Pin the constant to the server
+        // limit so the button only re-enables once a resend can succeed.
+        expect(auth).toMatch(/RESEND_COOLDOWN_MS\s*=\s*60\s*\*\s*1000/);
+    });
+
+    it('counts the remaining seconds down on the button label', () => {
+        // While disabled the button reads "Resend code (Ns)" so the wait
+        // is legible rather than a dead button; a per-second interval
+        // drives the label down to zero.
+        expect(auth).toMatch(/setInterval/);
+        expect(auth).toMatch(/Resend code \(/);
+    });
+
+    it('clears the countdown timer on modal teardown', () => {
+        // The interval must not outlive the modal — hideAuthModal clears
+        // it so a stray timer can't fire against a torn-down button.
+        expect(auth).toMatch(/clearInterval/);
+        const idx = auth.indexOf('function hideAuthModal');
+        expect(idx).toBeGreaterThan(-1);
+        const fn = auth.slice(idx, idx + 400);
+        expect(fn).toMatch(/clearResendCooldown\s*\(/);
+    });
+
+    it('starts the cooldown after the initial send, not only after a resend', () => {
+        // The 60s per-address window opens with the first code, so the
+        // confirmation screen must arm the cooldown on render; otherwise
+        // an immediate resend on landing would 429. The shared starter is
+        // invoked from renderConfirmationScreen, not just the resend click.
+        const idx = auth.indexOf('function renderConfirmationScreen');
+        expect(idx).toBeGreaterThan(-1);
+        const fn = auth.slice(idx, idx + 6000);
+        expect(fn).toMatch(/startResendCooldown\s*\(/);
+    });
+});
+
+
 describe('Auth modal — signInWithOtp call shape (code variant)', () => {
     const auth = read('auth.js');
 

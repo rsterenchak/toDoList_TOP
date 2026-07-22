@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-07-22',
         fixed: [
             "Sign-in now uses a 6-digit code you enter in the app instead of a magic link, so the installed app signs in reliably.",
+            "The sign-in Resend code button now waits the full 60 seconds the server requires, counting the wait down on the button so a resend actually goes through.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-21',
         added: [
-            "Run a repo's console app on demand from the Structure tab and read its output live.",
             "Reopening the Structure tab shows the last run's captured output with a re-run control, and an in-progress run resumes live.",
         ],
         fixed: [
