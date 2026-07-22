@@ -17,7 +17,7 @@ import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker } from './inject.js';
 import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI } from './todoStatus.js';
-import { reorderToDoDOM } from './toDoRow.js';
+import { reorderToDoDOM, makeGenerateButton, syncGenerateControl } from './toDoRow.js';
 
 
 // ── SHARED MODAL DISMISS WIRING ──
@@ -349,9 +349,33 @@ export function showDescEditorModal(item, options) {
     const injectBtn = makeInjectButton(item, { projectName: opts.projectName || '' });
     injectBtn.classList.add('descEditorModalBtn');
 
+    // Generate — mirror of the desktop description-panel action, so both hosts
+    // drive one code path (makeGenerateButton / syncGenerateControl). On mobile
+    // this modal is the primary host, since the on-row Generate badge is CSS-
+    // hidden below 1024px. Flags the task + fires the triage sweep; the finished
+    // draft lands into this textarea for review. The resolvers hand the shared
+    // sync the modal's textarea + inject button (read-only + disabled while
+    // generating); onLanded reflects the landed text through the textarea's own
+    // input listener, which re-syncs item.desc and the inject button.
+    const generateBtn = makeGenerateButton(item, {
+        projectName: opts.projectName || '',
+        resolveTextarea: function() { return textarea; },
+        resolveInjectBtn: function() { return injectBtn; },
+        onLanded: function(draft) {
+            textarea.value = draft;
+            textarea.dispatchEvent(new Event('input'));
+        },
+    });
+    generateBtn.classList.add('descEditorModalBtn');
+
     actions.appendChild(clearBtn);
     actions.appendChild(injectBtn);
+    actions.appendChild(generateBtn);
     actions.appendChild(copyBtn);
+    // Reflect the linked queue row's current state (Generating…/failure) and land
+    // a draft that finished while the modal was closed. Live pushes re-sync via
+    // the shared sweep in refreshDescStatusDots (every `.generateBtn`).
+    syncGenerateControl(generateBtn);
 
     // ── STATUS SEGMENTED CONTROL ──
     // On mobile the on-row status badge (`.todoStatusLabel` → showStatusPopover)

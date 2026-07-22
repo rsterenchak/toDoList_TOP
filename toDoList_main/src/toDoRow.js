@@ -364,6 +364,280 @@ function syncAskingPanel(toDoChild, item, projectName) {
 }
 
 
+// ── GENERATE-WITH-TRIAGE CONTROL ─────────────────────────────────────────
+// A "Generate" action that sits beside Inject in a task's description panel.
+// Tapping it flags the task for the agent (listLogic.flagTaskForAgent) and fires
+// the SAME batch triage sweep the Agent board uses (fireTriageSweep), then the
+// finished draft lands back into the task's description for review — Generate
+// never injects, so derived text is always read before it becomes an entry.
+//
+// The control carries NO state of its own: the linked agent_queue row IS the
+// state. `triaging` means generating (spinner shown, Inject disabled, textarea
+// read-only); `drafted` means the draft is ready to land; `failed` / `no_change`
+// are terminal. Every transition arrives through the shared store's realtime
+// subscription, which re-derives the button on each push (see the sweep in
+// refreshDescStatusDots). Both hosts — the desktop description panel and the
+// mobile description-editor modal — build the button through makeGenerateButton
+// and drive it through syncGenerateControl, so they share one code path.
+
+// Sparkle glyph for the idle Generate action, and a spinner for the in-flight
+// Generating… state. Inline SVG/markup matching the icon approach used across
+// the row layer rather than importing an asset.
+const GENERATE_GLYPH_SVG = '<svg class="generateBtnIcon" viewBox="0 0 14 14" width="12" height="12" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 1.5 L8.15 5.85 L12.5 7 L8.15 8.15 L7 12.5 L5.85 8.15 L1.5 7 L5.85 5.85 Z"/></svg>';
+
+// Session-scoped set of agent_queue row ids whose finished draft has already
+// been landed into a task description. A drafted row lingers in the store (the
+// Agent board can still Dispatch it), so without this guard a later repaint —
+// or a subsequent user edit to the description — would re-land the draft and
+// clobber the edit. Keyed by queue-row id; the newly-landed row is never
+// re-landed. Module-level so the desktop panel and the mobile modal, which can
+// both observe the same drafted row, agree on landing it exactly once.
+const landedGenerateDrafts = new Set();
+
+// Paint the Generate button for one of its three visual states. 'idle' is the
+// tappable accent-outlined action; 'generating' is a disabled spinner; 'hidden'
+// removes it (no resolved inject target, or a queue row already owns the task's
+// lifecycle). Idempotent enough to call on every store push.
+function setGenerateVisual(btn, state) {
+    if (!btn) return;
+    if (state === 'hidden') {
+        btn.style.display = 'none';
+        btn.disabled = true;
+        return;
+    }
+    btn.style.display = '';
+    if (state === 'generating') {
+        btn.disabled = true;
+        btn.classList.add('is-generating');
+        btn.innerHTML = '<span class="generateBtnSpinner" aria-hidden="true"></span><span class="generateBtnLabel">Generating…</span>';
+        btn.setAttribute('aria-label', 'Generating an entry with the agent');
+        btn.title = 'The agent is generating an entry from this task';
+        return;
+    }
+    // idle
+    btn.disabled = false;
+    btn.classList.remove('is-generating');
+    btn.innerHTML = GENERATE_GLYPH_SVG + '<span class="generateBtnLabel">Generate</span>';
+    btn.setAttribute('aria-label', 'Generate an entry from this task with the agent');
+    btn.title = 'Have the agent draft an entry from this task’s title and description';
+}
+
+// Mount (or refresh) a dismissible failure notice as a sibling directly after
+// the Generate button, for a queue row that landed in `failed` / `no_change`.
+// Dismissing it records the row id on the button so a subsequent store push for
+// the SAME failed row doesn't re-surface it; a genuinely new failure (different
+// row id) shows again. Kept idempotent — an existing notice for the same row is
+// left in place with only its text refreshed.
+function showGenerateFailure(btn, message, rowId) {
+    if (!btn || !btn.parentNode) return;
+    let notice = btn.parentNode.querySelector('.generateFailure');
+    if (notice && notice.getAttribute('data-generate-failure') === String(rowId)) {
+        const text = notice.querySelector('.generateFailureText');
+        if (text) text.textContent = message;
+        return;
+    }
+    if (notice) notice.remove();
+    notice = document.createElement('div');
+    notice.className = 'generateFailure';
+    notice.setAttribute('role', 'status');
+    notice.setAttribute('data-generate-failure', String(rowId));
+
+    const text = document.createElement('span');
+    text.className = 'generateFailureText';
+    text.textContent = message;
+    notice.appendChild(text);
+
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'generateFailureDismiss';
+    dismiss.setAttribute('aria-label', 'Dismiss');
+    dismiss.textContent = '×';
+    dismiss.addEventListener('click', function(e) {
+        e.stopPropagation();
+        btn._genFailureDismissed = String(rowId);
+        notice.remove();
+        refreshViewerExpandedHeight();
+    });
+    notice.appendChild(dismiss);
+
+    btn.parentNode.insertBefore(notice, btn.nextSibling);
+    refreshViewerExpandedHeight();
+}
+
+// Remove any mounted failure notice for this button (the row left the failed
+// state, or the panel is idle again).
+function clearGenerateFailure(btn) {
+    if (!btn || !btn.parentNode) return;
+    const notice = btn.parentNode.querySelector('.generateFailure');
+    if (notice) {
+        notice.remove();
+        refreshViewerExpandedHeight();
+    }
+}
+
+// Write a finished draft into the task's description through listLogic — the
+// same persistence path descInput's blur handler uses (saveToStorage +
+// editToDoItem so the Supabase mirror fires). Then hand the host a chance to
+// reflect the text in its live editor and re-evaluate Inject. Never reads
+// Actions output or a second derive pipeline — the draft is exactly the
+// `agent_queue.draft` field the board renders behind its Dispatch gate.
+function landGeneratedDraft(btn, item, projectName, row) {
+    const draft = (row && typeof row.draft === 'string') ? row.draft : '';
+    if (!draft) return;
+    item.desc = draft;
+    listLogic.saveToStorage();
+    if (projectName) listLogic.editToDoItem(projectName, item);
+    if (typeof btn._genOnLanded === 'function') {
+        try { btn._genOnLanded(draft); } catch (e) { /* defensive */ }
+    }
+}
+
+// Fire the Generate flow: flag the task for the agent, then kick the shared
+// triage sweep. Mirrors the Agent board's flag path (flagTaskForAgent) plus the
+// row ASKING answer path's sweep (fireTriageSweep) — one queue, one guard. The
+// button is disabled immediately so a double-tap can't double-flag; the store's
+// realtime push (and the explicit reload) then repaints it into Generating….
+function onGenerateClick(btn) {
+    if (!btn || btn.disabled) return;
+    const item = btn._genItem;
+    const projectName = btn._genProjectName || '';
+    if (!item || !item.id) return;
+    // A fresh Generate clears any stale dismissed-failure marker so a later
+    // failure of THIS run can surface.
+    btn._genFailureDismissed = null;
+    clearGenerateFailure(btn);
+    btn.disabled = true;
+    setGenerateVisual(btn, 'generating');
+    Promise.resolve(listLogic.flagTaskForAgent(item.id)).then(function(res) {
+        if (!res || res.ok === false) {
+            // Flag failed (offline, or the task is already queued) — return to
+            // idle and surface the reason inline.
+            setGenerateVisual(btn, 'idle');
+            btn.disabled = false;
+            showGenerateFailure(btn, (res && res.error) || 'Could not start. Try again.', 'flag-error');
+            return;
+        }
+        // Reload the shared store so the new triaging row is visible even where
+        // realtime isn't observed, then repaint every Generate control from the
+        // fresh cache (the desktop badges + this button flip to Generating…).
+        Promise.resolve(loadQueueRows(projectName)).then(refreshDescStatusDots);
+        // Auto-fire the sweep now the row is queued — exactly as the board's Run
+        // does, sharing the store's in-flight guard. The flag already succeeded,
+        // so a failed dispatch only means a manual Run is needed; surface it as a
+        // toast, never a block.
+        Promise.resolve(fireTriageSweep(projectName)).then(function(tr) {
+            if (tr && tr.ok === false) {
+                showRowToast('Flagged, but triage didn’t start — Run it from the Agent tab.');
+            }
+        });
+    }).catch(function() {
+        setGenerateVisual(btn, 'idle');
+        btn.disabled = false;
+        showGenerateFailure(btn, 'Could not start. Try again.', 'flag-error');
+    });
+}
+
+// Build a Generate button for a host (the desktop description panel or the
+// mobile description-editor modal). `options.resolveInjectBtn` / `resolveTextarea`
+// let the shared sync reach the host's paired controls (to disable Inject and
+// make the textarea read-only while generating); `options.onLanded(draft)` lets
+// the host reflect the landed text in its live editor. State is applied by
+// syncGenerateControl — the caller syncs once after mounting, and the store's
+// realtime sweep re-syncs on every push.
+export function makeGenerateButton(item, options) {
+    const opts = options || {};
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'generateBtn';
+    btn._genItem = item;
+    btn._genProjectName = typeof opts.projectName === 'string' ? opts.projectName : '';
+    btn._genResolveTextarea = typeof opts.resolveTextarea === 'function' ? opts.resolveTextarea : null;
+    btn._genResolveInjectBtn = typeof opts.resolveInjectBtn === 'function' ? opts.resolveInjectBtn : null;
+    btn._genOnLanded = typeof opts.onLanded === 'function' ? opts.onLanded : null;
+    setGenerateVisual(btn, 'idle');
+    btn.addEventListener('click', function(event) {
+        event.stopPropagation();
+        onGenerateClick(btn);
+    });
+    return btn;
+}
+
+// Re-derive one Generate button from its task's linked agent_queue row. Reads
+// the shared store synchronously (getQueueRowForTodo), applies the three
+// generating effects (spinner / Inject disabled / textarea read-only) only while
+// the row sits in `triaging`, lands a `drafted` row's text exactly once, and
+// surfaces a dismissible notice for a `failed` / `no_change` row. Hidden with no
+// resolved inject target (matching Inject's no-target gate) or when a queue row
+// already owns the task's lifecycle, since Generate never regenerates.
+export function syncGenerateControl(btn) {
+    if (!btn || !btn._genItem) return;
+    const item = btn._genItem;
+    const projectName = btn._genProjectName || '';
+    const injectBtn = typeof btn._genResolveInjectBtn === 'function' ? btn._genResolveInjectBtn() : null;
+    const textarea = typeof btn._genResolveTextarea === 'function' ? btn._genResolveTextarea() : null;
+
+    const hasTarget = !!(item.id && projectName && listLogic.getProjectTargetId(projectName));
+    const row = item.id ? getQueueRowForTodo(item.id) : null;
+    const state = row ? row.state : null;
+    const generating = state === 'triaging';
+
+    // Read-only textarea + disabled Inject hold ONLY while triaging. Restore
+    // Inject through its own refresh when leaving the generating state so it
+    // returns to whatever state item.desc dictates.
+    if (textarea) textarea.readOnly = generating;
+    if (injectBtn) {
+        if (generating) {
+            injectBtn.disabled = true;
+            injectBtn.classList.add('injectBtn--generating');
+        } else if (injectBtn.classList.contains('injectBtn--generating')) {
+            injectBtn.classList.remove('injectBtn--generating');
+            refreshInjectButton(injectBtn, item, projectName);
+        }
+    }
+
+    // Land a finished draft exactly once (guarded by the module-level set), then
+    // fall through to the idle/hidden visuals below.
+    if (state === 'drafted' && row && !landedGenerateDrafts.has(row.id)) {
+        landedGenerateDrafts.add(row.id);
+        landGeneratedDraft(btn, item, projectName, row);
+    }
+
+    // Dismissible failure notice for a terminal-failed row.
+    if ((state === 'failed' || state === 'no_change') && btn._genFailureDismissed !== String(row.id)) {
+        const reason = (row.failure_reason || '').trim();
+        showGenerateFailure(btn, reason || (state === 'no_change'
+            ? 'The agent didn’t produce an entry from this task.'
+            : 'Couldn’t generate an entry — retry from the Agent tab.'), row.id);
+    } else {
+        clearGenerateFailure(btn);
+    }
+
+    // Visuals: Generating… while triaging; hidden when no target or when a queue
+    // row already owns the lifecycle (drafted/failed/needs_words/dispatched/…);
+    // the plain Generate action only in the true idle state.
+    if (!hasTarget) {
+        setGenerateVisual(btn, 'hidden');
+    } else if (generating) {
+        setGenerateVisual(btn, 'generating');
+    } else if (row) {
+        setGenerateVisual(btn, 'hidden');
+    } else {
+        setGenerateVisual(btn, 'idle');
+    }
+}
+
+// Re-sync every mounted Generate button in one pass — the desktop panels and,
+// when open, the mobile modal's button (all `.generateBtn`). Driven by the same
+// triggers that repaint the row badges, so a store push flips Generating… →
+// landed / failed live without a re-render.
+function syncAllGenerateControls() {
+    if (typeof document === 'undefined') return;
+    document.querySelectorAll('.generateBtn').forEach(function(btn) {
+        syncGenerateControl(btn);
+    });
+}
+
+
 function applyRunStatusGlyph(descIndicator, phase) {
     if (!descIndicator) return;
     const state = glyphStateForPhase(phase);
@@ -423,6 +697,10 @@ export function refreshDescStatusDots() {
     projectsToRefresh.forEach(function(name) {
         refreshShippedMarkersForProject(name);
     });
+    // Re-derive every mounted Generate button from the fresh queue-row cache so
+    // a triaging → drafted / failed transition lands / clears live. Covers the
+    // desktop panels and, when open, the mobile modal's button.
+    syncAllGenerateControls();
 }
 
 // Load a project's agent_queue rows into the shared store on a full project
@@ -1520,7 +1798,7 @@ function buildInfoGlyph() {
 
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, discussBtn, item, projectName) {
+function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, generateBtn, discussBtn, item, projectName) {
 
     let switcher = 0;
 
@@ -1546,6 +1824,15 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             if (injectBtn) {
                 descSibling.appendChild(injectBtn);
                 refreshInjectButton(injectBtn, item, projectName);
+            }
+            // Generate sits beside Inject, but only for a committed row — a blank
+            // placeholder has no task for the agent to draft from yet. Sync it
+            // from the linked queue row now (mounts Generating…/failure and lands
+            // a pending draft) after it's in the panel so the failure notice can
+            // slot in as a sibling.
+            if (generateBtn && item.id) {
+                descSibling.appendChild(generateBtn);
+                syncGenerateControl(generateBtn);
             }
             // Discuss sits after inject, but only for a committed row — a blank
             // placeholder has no task to scope a conversation to yet.
@@ -1800,6 +2087,26 @@ export function buildToDoRow(item, toDoName) {
     // resolve the project's per-project inject target.
     const injectBtn = makeInjectButton(item, { projectName: toDoName });
 
+    // GENERATE BUTTON — sits beside Inject in the description panel. Flags the
+    // task for the agent and fires the triage sweep; the finished draft lands
+    // back into this row's description for review (Generate never injects). The
+    // resolvers hand syncGenerateControl this row's textarea + inject button so
+    // it can make the textarea read-only and disable Inject while generating,
+    // and onLanded reflects the landed text and re-evaluates Inject. Committed
+    // rows only — wireDescToggle skips mounting it for a blank placeholder.
+    const generateBtn = makeGenerateButton(item, {
+        projectName: toDoName,
+        resolveTextarea: function() { return descInput; },
+        resolveInjectBtn: function() { return injectBtn; },
+        onLanded: function(draft) {
+            descInput.value = draft;
+            // Auto-grow reads scrollHeight off the synthetic input event.
+            descInput.dispatchEvent(new Event("input"));
+            refreshInjectButton(injectBtn, item, toDoName);
+            refreshViewerExpandedHeight();
+        },
+    });
+
     // DISCUSS BUTTON — opens the Claude sheet with this task attached (scoped)
     // so the whole conversation stays anchored to it. Sits beside the inject
     // button at the bottom of the description panel. Committed rows only: the
@@ -1929,7 +2236,7 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, discussBtn, item, toDoName);
+    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, generateBtn, discussBtn, item, toDoName);
     wireSubControlBackspaceExit(descToggle, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);
