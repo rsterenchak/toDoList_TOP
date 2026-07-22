@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-21T10:52:54.403Z",
-  "sha": "248b7bad8245076f6b89949f6e2ead8b14932b8a",
+  "generatedAt": "2026-07-22T06:58:10.871Z",
+  "sha": "8a9c9b95ec968e3b08f946618fa7458fc2485867",
   "files": [
     "aboutVersionCue.js",
     "agentView.js",
@@ -373,14 +373,38 @@
       ]
     },
     {
-      "selector": "#authModalEmailInput",
-      "label": "Auth Modal Email Input",
+      "selector": "#authModalCodeForm",
+      "label": "Auth Modal Code Form",
       "file": "auth.js",
-      "line": 83,
+      "line": 185,
       "files": [
         {
           "file": "auth.js",
-          "line": 83
+          "line": 185
+        }
+      ]
+    },
+    {
+      "selector": "#authModalCodeInput",
+      "label": "Auth Modal Code Input",
+      "file": "auth.js",
+      "line": 192,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 192
+        }
+      ]
+    },
+    {
+      "selector": "#authModalEmailInput",
+      "label": "Auth Modal Email Input",
+      "file": "auth.js",
+      "line": 91,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 91
         }
       ]
     },
@@ -388,11 +412,11 @@
       "selector": "#authModalError",
       "label": "Auth Modal Error",
       "file": "auth.js",
-      "line": 101,
+      "line": 109,
       "files": [
         {
           "file": "auth.js",
-          "line": 101
+          "line": 109
         }
       ]
     },
@@ -400,15 +424,15 @@
       "selector": "#authModalForm",
       "label": "Auth Modal Form",
       "file": "auth.js",
-      "line": 79,
+      "line": 87,
       "files": [
         {
           "file": "auth.js",
-          "line": 79
+          "line": 87
         },
         {
           "file": "style.css",
-          "line": 13518
+          "line": 13519
         }
       ]
     },
@@ -416,11 +440,11 @@
       "selector": "#authModalResend",
       "label": "Auth Modal Resend",
       "file": "auth.js",
-      "line": 182,
+      "line": 246,
       "files": [
         {
           "file": "auth.js",
-          "line": 182
+          "line": 246
         }
       ]
     },
@@ -428,11 +452,11 @@
       "selector": "#authModalSubmit",
       "label": "Auth Modal Submit",
       "file": "auth.js",
-      "line": 96,
+      "line": 104,
       "files": [
         {
           "file": "auth.js",
-          "line": 96
+          "line": 104
         }
       ]
     },
@@ -440,11 +464,11 @@
       "selector": "#authModalTitle",
       "label": "Auth Modal Title",
       "file": "auth.js",
-      "line": 73,
+      "line": 81,
       "files": [
         {
           "file": "auth.js",
-          "line": 73
+          "line": 81
         }
       ]
     },
@@ -452,11 +476,23 @@
       "selector": "#authModalUseDifferent",
       "label": "Auth Modal Use Different",
       "file": "auth.js",
-      "line": 202,
+      "line": 266,
       "files": [
         {
           "file": "auth.js",
-          "line": 202
+          "line": 266
+        }
+      ]
+    },
+    {
+      "selector": "#authModalVerify",
+      "label": "Auth Modal Verify",
+      "file": "auth.js",
+      "line": 205,
+      "files": [
+        {
+          "file": "auth.js",
+          "line": 205
         }
       ]
     },
@@ -520,7 +556,7 @@
         },
         {
           "file": "style.css",
-          "line": 14821
+          "line": 14849
         }
       ]
     },
@@ -536,7 +572,7 @@
         },
         {
           "file": "style.css",
-          "line": 14853
+          "line": 14881
         }
       ]
     },
@@ -552,7 +588,7 @@
         },
         {
           "file": "style.css",
-          "line": 15033
+          "line": 15061
         }
       ]
     },
@@ -568,7 +604,7 @@
         },
         {
           "file": "style.css",
-          "line": 15234
+          "line": 15262
         }
       ]
     },
@@ -584,7 +620,7 @@
         },
         {
           "file": "style.css",
-          "line": 14870
+          "line": 14898
         }
       ]
     },
@@ -600,7 +636,7 @@
         },
         {
           "file": "style.css",
-          "line": 14928
+          "line": 14956
         }
       ]
     },
@@ -2412,7 +2448,7 @@
         },
         {
           "file": "style.css",
-          "line": 14270
+          "line": 14298
         }
       ]
     },
@@ -2744,7 +2780,7 @@
         },
         {
           "file": "style.css",
-          "line": 13790
+          "line": 13818
         }
       ]
     },
@@ -2760,7 +2796,7 @@
         },
         {
           "file": "style.css",
-          "line": 16462
+          "line": 16490
         }
       ]
     },
@@ -2800,7 +2836,7 @@
         },
         {
           "file": "style.css",
-          "line": 16727
+          "line": 16755
         }
       ]
     },
@@ -2816,7 +2852,7 @@
         },
         {
           "file": "style.css",
-          "line": 16631
+          "line": 16659
         }
       ]
     },
@@ -2832,7 +2868,7 @@
         },
         {
           "file": "style.css",
-          "line": 16675
+          "line": 16703
         }
       ]
     },
@@ -2872,7 +2908,7 @@
         },
         {
           "file": "style.css",
-          "line": 16662
+          "line": 16690
         }
       ]
     },
@@ -2888,7 +2924,7 @@
         },
         {
           "file": "style.css",
-          "line": 16651
+          "line": 16679
         }
       ]
     },
@@ -2904,7 +2940,7 @@
         },
         {
           "file": "style.css",
-          "line": 16640
+          "line": 16668
         }
       ]
     },
@@ -2920,7 +2956,7 @@
         },
         {
           "file": "style.css",
-          "line": 16696
+          "line": 16724
         }
       ]
     },
@@ -2984,7 +3020,7 @@
         },
         {
           "file": "style.css",
-          "line": 16734
+          "line": 16762
         }
       ]
     },
@@ -3000,7 +3036,7 @@
         },
         {
           "file": "style.css",
-          "line": 16658
+          "line": 16686
         }
       ]
     },
@@ -3016,7 +3052,7 @@
         },
         {
           "file": "style.css",
-          "line": 16746
+          "line": 16774
         }
       ]
     },
@@ -3080,7 +3116,7 @@
         },
         {
           "file": "style.css",
-          "line": 16265
+          "line": 16293
         }
       ]
     },
@@ -3096,7 +3132,7 @@
         },
         {
           "file": "style.css",
-          "line": 16122
+          "line": 16150
         }
       ]
     },
@@ -3112,7 +3148,7 @@
         },
         {
           "file": "style.css",
-          "line": 16209
+          "line": 16237
         }
       ]
     },
@@ -3140,7 +3176,7 @@
         },
         {
           "file": "style.css",
-          "line": 16164
+          "line": 16192
         }
       ]
     },
@@ -3156,7 +3192,7 @@
         },
         {
           "file": "style.css",
-          "line": 16145
+          "line": 16173
         }
       ]
     },
@@ -3172,7 +3208,7 @@
         },
         {
           "file": "style.css",
-          "line": 16132
+          "line": 16160
         }
       ]
     },
@@ -3200,7 +3236,7 @@
         },
         {
           "file": "style.css",
-          "line": 16153
+          "line": 16181
         }
       ]
     },
@@ -3216,7 +3252,7 @@
         },
         {
           "file": "style.css",
-          "line": 16178
+          "line": 16206
         }
       ]
     },
@@ -3244,7 +3280,7 @@
         },
         {
           "file": "style.css",
-          "line": 16160
+          "line": 16188
         }
       ]
     },
@@ -3260,7 +3296,7 @@
         },
         {
           "file": "style.css",
-          "line": 16223
+          "line": 16251
         }
       ]
     },
@@ -3276,7 +3312,7 @@
         },
         {
           "file": "style.css",
-          "line": 16542
+          "line": 16570
         }
       ]
     },
@@ -3292,7 +3328,7 @@
         },
         {
           "file": "style.css",
-          "line": 16470
+          "line": 16498
         }
       ]
     },
@@ -3308,7 +3344,7 @@
         },
         {
           "file": "style.css",
-          "line": 16514
+          "line": 16542
         }
       ]
     },
@@ -3336,7 +3372,7 @@
         },
         {
           "file": "style.css",
-          "line": 16501
+          "line": 16529
         }
       ]
     },
@@ -3352,7 +3388,7 @@
         },
         {
           "file": "style.css",
-          "line": 16490
+          "line": 16518
         }
       ]
     },
@@ -3368,7 +3404,7 @@
         },
         {
           "file": "style.css",
-          "line": 16479
+          "line": 16507
         }
       ]
     },
@@ -3396,7 +3432,7 @@
         },
         {
           "file": "style.css",
-          "line": 16497
+          "line": 16525
         }
       ]
     },
@@ -3412,7 +3448,7 @@
         },
         {
           "file": "style.css",
-          "line": 16367
+          "line": 16395
         }
       ]
     },
@@ -3464,7 +3500,7 @@
         },
         {
           "file": "style.css",
-          "line": 16811
+          "line": 16839
         }
       ]
     },
@@ -3480,7 +3516,7 @@
         },
         {
           "file": "style.css",
-          "line": 16222
+          "line": 16250
         }
       ]
     },
@@ -3496,7 +3532,7 @@
         },
         {
           "file": "style.css",
-          "line": 13791
+          "line": 13819
         }
       ]
     },
@@ -3964,7 +4000,7 @@
         },
         {
           "file": "style.css",
-          "line": 15734
+          "line": 15762
         }
       ]
     },
@@ -4008,7 +4044,7 @@
         },
         {
           "file": "style.css",
-          "line": 15735
+          "line": 15763
         }
       ]
     },
@@ -4024,7 +4060,7 @@
         },
         {
           "file": "style.css",
-          "line": 15591
+          "line": 15619
         }
       ]
     },
@@ -4052,7 +4088,7 @@
         },
         {
           "file": "style.css",
-          "line": 14368
+          "line": 14396
         }
       ]
     },
@@ -4068,7 +4104,7 @@
         },
         {
           "file": "style.css",
-          "line": 14300
+          "line": 14328
         }
       ]
     },
@@ -4084,7 +4120,7 @@
         },
         {
           "file": "style.css",
-          "line": 14165
+          "line": 14193
         }
       ]
     },
@@ -4160,7 +4196,7 @@
         },
         {
           "file": "style.css",
-          "line": 13996
+          "line": 14024
         }
       ]
     },
