@@ -66,3 +66,31 @@ export function derivePhase(item) {
     }
     return PHASE.NONE;
 }
+
+
+// ── PHASE RAIL VOCABULARY ────────────────────────────────────────────────
+// The read-only phase rail (currently rendered in the mobile description-editor
+// modal) shows the pipeline as four ordered nodes and highlights the one a task
+// occupies. These two exports are its single source of truth so any surface that
+// grows a rail later — e.g. the desktop `#descSibling` panel — reuses the same
+// vocabulary and order rather than defining a second copy that could drift.
+//
+// PHASE_RAIL_ORDER is the left → right node order. It intentionally lists only
+// the FOUR pipeline phases, not `asking`: `asking` is a triage-queue fact, not a
+// pipeline node, so it has no rail node of its own — a rail renderer resolves it
+// to its underlying DRAFT stage rather than inventing a fifth node. There is
+// deliberately no RUN node: per-row run state is not tracked, and a permanently
+// empty node reads worse than no node.
+export const PHASE_RAIL_ORDER = Object.freeze([
+    PHASE.NONE, PHASE.DRAFT, PHASE.ACCEPT, PHASE.DONE,
+]);
+
+// The short uppercase display label each rail node shows. Keyed by the same
+// phase values derivePhase returns so a renderer can map a derived phase straight
+// to its node label.
+export const PHASE_RAIL_LABELS = Object.freeze({
+    [PHASE.NONE]: 'IDEA',
+    [PHASE.DRAFT]: 'DRAFT',
+    [PHASE.ACCEPT]: 'REVIEW',
+    [PHASE.DONE]: 'DONE',
+});

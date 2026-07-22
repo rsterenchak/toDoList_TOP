@@ -6,7 +6,7 @@ import {
     refreshShippedMarkers,
     initInjectConfig,
 } from '../src/inject.js';
-import { derivePhase, PHASE } from '../src/phase.js';
+import { derivePhase, PHASE, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from '../src/phase.js';
 import { setQueueRows } from '../src/agentQueueStore.js';
 
 // derivePhase is the single source of truth for a task row's pipeline phase:
@@ -55,6 +55,29 @@ describe('PHASE constants', () => {
             ASKING: 'asking',
         });
         expect(Object.values(PHASE)).not.toContain('run');
+    });
+});
+
+describe('PHASE_RAIL_ORDER / PHASE_RAIL_LABELS — read-only rail vocabulary', () => {
+    it('orders the four pipeline phases left → right, with no run and no asking node', () => {
+        expect(PHASE_RAIL_ORDER).toEqual([PHASE.NONE, PHASE.DRAFT, PHASE.ACCEPT, PHASE.DONE]);
+        // asking is a triage-queue fact, not a rail node — it must not appear.
+        expect(PHASE_RAIL_ORDER).not.toContain(PHASE.ASKING);
+        expect(PHASE_RAIL_ORDER).not.toContain('run');
+    });
+
+    it('maps each rail phase to its short uppercase display label', () => {
+        expect(PHASE_RAIL_LABELS[PHASE.NONE]).toBe('IDEA');
+        expect(PHASE_RAIL_LABELS[PHASE.DRAFT]).toBe('DRAFT');
+        expect(PHASE_RAIL_LABELS[PHASE.ACCEPT]).toBe('REVIEW');
+        expect(PHASE_RAIL_LABELS[PHASE.DONE]).toBe('DONE');
+    });
+
+    it('has a label for every rail-order phase (no missing node label)', () => {
+        PHASE_RAIL_ORDER.forEach((p) => {
+            expect(typeof PHASE_RAIL_LABELS[p]).toBe('string');
+            expect(PHASE_RAIL_LABELS[p].length).toBeGreaterThan(0);
+        });
     });
 });
 
