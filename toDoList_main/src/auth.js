@@ -18,24 +18,66 @@
 //                      to screen 2 on success.
 //   2 (code entry)   — "Enter your code." with a 6-digit code input and a
 //                      Verify button (calls verifyOtp in-app), plus a
-//                      "Resend code" button (cooldown-disabled for 10s
-//                      after each press) and a quieter "Use a different
-//                      email" link back to screen 1.
+//                      "Resend code" button (cooldown-disabled for 60s
+//                      after each send, counting the wait down on its
+//                      label) and a quieter "Use a different email" link
+//                      back to screen 1.
 
 import { supabase } from './supabaseClient.js';
 
 const BACKDROP_ID = 'authModalBackdrop';
 const DIALOG_ID   = 'authModal';
 
-// Brief disabled window after the Resend button is pressed so a user
-// can't tap-spam Supabase and trip the upstream rate limiter.
-const RESEND_COOLDOWN_MS = 10 * 1000;
+// Disabled window after an OTP is sent. Matches Supabase's documented
+// per-address OTP interval (one request every 60s); a shorter window
+// would re-enable the button before the server accepts another send, so
+// every resend would 429. The wait counts down on the button label so
+// it reads as deliberate rather than a dead button.
+const RESEND_COOLDOWN_MS = 60 * 1000;
+
+// Handle for the running Resend countdown, tracked at module scope so
+// hideAuthModal can clear it when the gate tears down — a timer must
+// never outlive its modal and fire against a removed button.
+let resendCooldownTimer = null;
+
+
+// Stop and forget any running Resend countdown. Idempotent.
+function clearResendCooldown() {
+    if (resendCooldownTimer !== null) {
+        clearInterval(resendCooldownTimer);
+        resendCooldownTimer = null;
+    }
+}
+
+
+// Disable the Resend button for the full 60s server window and count the
+// remaining seconds down on its label ("Resend code (45s)"), re-enabling
+// and restoring the plain label at zero. Called both when the
+// confirmation screen first renders (the initial send already opened the
+// window) and on each resend press (which restarts the window).
+function startResendCooldown(resend) {
+    clearResendCooldown();
+    let remaining = Math.round(RESEND_COOLDOWN_MS / 1000);
+    resend.disabled = true;
+    resend.textContent = 'Resend code (' + remaining + 's)';
+    resendCooldownTimer = setInterval(function() {
+        remaining -= 1;
+        if (remaining <= 0) {
+            clearResendCooldown();
+            resend.disabled = false;
+            resend.textContent = 'Resend code';
+            return;
+        }
+        resend.textContent = 'Resend code (' + remaining + 's)';
+    }, 1000);
+}
 
 
 // Idempotent teardown — safe to call when no modal is mounted.
 // onAuthStateChange uses this when a session arrives so the gate
 // vanishes without the caller needing to track its lifecycle.
 export function hideAuthModal() {
+    clearResendCooldown();
     const backdrop = document.getElementById(BACKDROP_ID);
     if (backdrop && backdrop.parentNode) {
         backdrop.parentNode.removeChild(backdrop);
@@ -148,7 +190,8 @@ function renderSignInScreen(dialog, prefillEmail) {
 // Ghost mascot with a small mail-icon badge bottom-right, "Enter your
 // code." heading, body copy with the email highlighted in the accent
 // purple, a 6-digit code input + primary Verify button, an outlined
-// Resend code button (10s cooldown), and a quieter text link back to
+// Resend code button (60s cooldown, counting down on its label), and a
+// quieter text link back to
 // screen 1. Submitting a valid code calls verifyOtp in-app so the
 // session lands in the PWA's own storage jar; onAuthStateChange in
 // index.js then hides this gate.
@@ -248,18 +291,23 @@ function renderConfirmationScreen(dialog, email) {
     resend.textContent = 'Resend code';
     resend.addEventListener('click', function() {
         if (resend.disabled) return;
-        resend.disabled = true;
         errorEl.style.display = 'none';
+        // Restart the 60s window immediately so the countdown reflects
+        // the fresh send; a rate-limit error still surfaces its message
+        // below without cutting the cooldown short.
+        startResendCooldown(resend);
         sendCode(email).then(function(result) {
             if (!result.ok) {
                 showError(errorEl, result.message);
             }
-            setTimeout(function() {
-                resend.disabled = false;
-            }, RESEND_COOLDOWN_MS);
         });
     });
     dialog.appendChild(resend);
+
+    // The initial send that brought us to this screen already opened
+    // Supabase's 60s per-address window, so arm the cooldown on render —
+    // an immediate resend on landing would otherwise 429.
+    startResendCooldown(resend);
 
     const back = document.createElement('button');
     back.type = 'button';
