@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         added: [
-            "On phones, the task-create row can now paste a copied TODO.md entry straight into a new task — its headline becomes the title and the full entry becomes the description, ready to Inject.",
+            "The description editor can now pick a source file from the project and drop its path into the entry's File: line, instead of typing the path from memory.",
         ],
         fixed: [
             "Signing in with an email that has no account now shows a clear no-account message instead of a generic send failure.",
