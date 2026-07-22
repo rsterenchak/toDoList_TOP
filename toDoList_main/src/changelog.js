@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-22',
+        added: [
+            "On phones, a task now shows a REVIEW or ASKING label on its row when it is waiting for your review or your answer, so the tasks that need you stand out.",
+        ],
         fixed: [
-            "The sign-in Resend code button now waits the full 60 seconds the server requires, counting the wait down on the button so a resend actually goes through.",
             "The sign-in code field now accepts the full verification code instead of cutting it off, so codes longer than six digits verify and sign you in.",
             "Signing in with an email that has no account now shows a clear no-account message instead of a generic send failure.",
             "The mobile description editor's phase indicator now reads as an inert progress rail instead of tappable buttons, so it can't be mistaken for a settable control.",
