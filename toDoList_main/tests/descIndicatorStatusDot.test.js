@@ -243,21 +243,48 @@ describe('run-status glyph — live refresh through the marker cache', () => {
         expect(indicator.querySelector('svg')).not.toBeNull();
     });
 
-    it('renders a green shipped glyph once the entry marker is on a checked TODO.md entry', async () => {
+    it('renders a green shipped glyph once the entry marker is checked AND acknowledged (done phase)', async () => {
+        // The green check now marks the 'done' phase only — checked in TODO.md
+        // AND acknowledged (entryReviewedAt set). A checked-but-unacknowledged
+        // entry is the 'accept' phase, whose single mark is the REVIEW badge, so
+        // its glyph is suppressed (covered by the suppression test below).
         mockTodoMd('- [x] shipped\n  <!-- id: green-glyph-id -->');
         await refreshShippedMarkers(freshTarget());
-        const { indicator } = makeRow({ entryId: 'green-glyph-id', injectedAt: 1700000000000 });
+        const { indicator } = makeRow({
+            entryId: 'green-glyph-id', injectedAt: 1700000000000,
+            entryReviewedAt: '2026-07-22T00:00:00.000Z',
+        });
         refreshDescStatusDots();
         expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(true);
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
         expect(indicator.querySelector('svg')).not.toBeNull();
     });
 
+    it('suppresses the glyph for a checked-but-unacknowledged entry (accept phase)', async () => {
+        // Regression guard for the consolidation: an unreviewed shipped row used
+        // to paint the green check AND the amber REVIEW badge, marking one fact
+        // twice. The REVIEW badge is now the row's single pipeline mark, so the
+        // glyph slot stays empty until the entry is acknowledged.
+        mockTodoMd('- [x] shipped\n  <!-- id: accept-glyph-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const { indicator } = makeRow({ entryId: 'accept-glyph-id', injectedAt: 1700000000000 });
+        refreshDescStatusDots();
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.innerHTML).toBe('');
+    });
+
     it('flips a pending glyph to shipped in place when the marker cache resolves', async () => {
-        // The routed TODO.md first shows the entry present-but-unchecked.
+        // The routed TODO.md first shows the entry present-but-unchecked. The
+        // item is already acknowledged, so once the marker is checked it lands in
+        // the 'done' phase and paints the green check (an unacknowledged entry
+        // would land in 'accept' and suppress the glyph instead).
         mockTodoMd('- [ ] not done yet\n  <!-- id: flip-glyph-id -->');
         await refreshShippedMarkers(freshTarget());
-        const { indicator } = makeRow({ entryId: 'flip-glyph-id', injectedAt: 1700000000000 });
+        const { indicator } = makeRow({
+            entryId: 'flip-glyph-id', injectedAt: 1700000000000,
+            entryReviewedAt: '2026-07-22T00:00:00.000Z',
+        });
         refreshDescStatusDots();
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
 
@@ -333,6 +360,40 @@ describe('derived REVIEW badge — lights on shipped-but-unacknowledged, live vi
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
         expect(label.getAttribute('data-status')).toBe('active');
     });
+
+    it('an accept row states its pipeline position exactly once — REVIEW badge, no glyph', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: single-mark-accept-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const { indicator, label } = makeCommittedRow({
+            status: 'active', tit: 'Awaiting review', entryId: 'single-mark-accept-id',
+        });
+
+        refreshDescStatusDots();
+        // The badge carries REVIEW…
+        expect(label.getAttribute('data-status')).toBe('review');
+        // …and the glyph is suppressed, so the shipped fact is marked once.
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(false);
+        expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
+        expect(indicator.innerHTML).toBe('');
+    });
+
+    it('acknowledging an accept row restores both the manual status badge and the green check (done)', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: ack-restore-id -->');
+        await refreshShippedMarkers(freshTarget());
+        const item = { status: 'in_progress', tit: 'Ship then ack', entryId: 'ack-restore-id' };
+        const { indicator, label } = makeCommittedRow(item);
+
+        refreshDescStatusDots();
+        expect(label.getAttribute('data-status')).toBe('review');
+        expect(indicator.innerHTML).toBe('');
+
+        // Acknowledge (as the viewer's Acknowledge pill does) and re-sweep.
+        item.entryReviewedAt = '2026-07-22T00:00:00.000Z';
+        refreshDescStatusDots();
+        expect(label.getAttribute('data-status')).toBe('in_progress');
+        expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(true);
+        expect(indicator.querySelector('svg')).not.toBeNull();
+    });
 });
 
 describe('wiring — dot is driven by the shared TODO.md, synced entry id, and events', () => {
@@ -343,10 +404,18 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
     const todoMdViewer = read('todoMdViewer.js');
     const css = read('style.css');
 
-    it('applyRunStatusGlyph resolves three-way state via resolveEntryRunState', () => {
-        expect(toDoRow).toMatch(
-            /function\s+applyRunStatusGlyph[\s\S]{0,200}resolveEntryRunState\(item[\s\S]{0,120}===\s*['"]none['"]/
+    it('derivePhase (phase.js) resolves the run state via resolveEntryRunState, and applyRunStatusGlyph consumes the derived phase', () => {
+        const phase = read('phase.js');
+        // The three-way run state now resolves once, inside derivePhase.
+        expect(phase).toMatch(
+            /function\s+derivePhase[\s\S]{0,300}resolveEntryRunState\(item\.entryId\)/
         );
+        // The glyph function no longer re-resolves the entry id — it maps the
+        // already-derived phase to a glyph state.
+        expect(toDoRow).toMatch(
+            /function\s+applyRunStatusGlyph\s*\(\s*descIndicator\s*,\s*phase\s*\)/
+        );
+        expect(toDoRow).not.toMatch(/function\s+applyRunStatusGlyph[\s\S]{0,200}resolveEntryRunState/);
     });
 
     it('injectDescription optimistically marks present and force-refreshes markers', () => {
@@ -367,9 +436,9 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
         );
     });
 
-    it('buildToDoRow renders the status glyph right after inserting the indicator', () => {
+    it('buildToDoRow renders the status glyph from the derived phase right after inserting the indicator', () => {
         expect(toDoRow).toMatch(
-            /insertBefore\(descIndicator,\s*toDoInput\);[\s\S]{0,400}applyRunStatusGlyph\(descIndicator,\s*item\)/
+            /insertBefore\(descIndicator,\s*toDoInput\);[\s\S]{0,600}applyRunStatusGlyph\(descIndicator,\s*phase\)/
         );
     });
 

@@ -41,11 +41,11 @@ import {
 import {
     makeInjectButton,
     refreshInjectButton,
-    resolveEntryRunState,
     refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI } from './todoStatus.js';
+import { derivePhase, PHASE } from './phase.js';
 import { applyTaskFilter } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
@@ -141,44 +141,44 @@ const RUN_STATUS_SHIPPED_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" 
 const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" stroke-width="1.4" stroke-dasharray="2.4 2.2" stroke-linecap="round"/></svg>';
 
 
-// Render the run-status glyph in the leading `#descIndicator` slot, driven
-// purely by the task's entry id resolved against the shared TODO.md:
-//   • shipped (green filled check)  — the entry's marker sits on a CHECKED
-//                                     TODO.md entry in the routed target repo
-//   • pending (amber dashed ring)   — the marker is present in TODO.md but its
-//                                     entry is still unchecked (injected here or
-//                                     synced from another device)
-//   • no glyph                      — the marker is absent from TODO.md (the
-//                                     task carries no entry id, or its entry was
-//                                     deleted/reverted, so the ring clears)
-// State is read from the shared TODO.md (via resolveEntryRunState against the
-// marker cache), not a device-local run store, so the glyph agrees across
-// devices. Because 'pending' now requires the marker to actually be present in
-// TODO.md, a task's glyph is briefly absent on first load until its project's
-// marker read resolves — correctness (never a stuck/wrong amber) over the flash.
-// Idempotent: no-ops when the resolved state already matches so live refreshes
-// never thrash the DOM, and it never touches the inject button's own glyph.
-// Derived REVIEW badge state: a committed row whose entry has SHIPPED but hasn't
-// been acknowledged. Resolved here (not in todoStatus.js) because this file
-// already owns the inject.js dependency — todoStatus.js is kept free of it to
-// avoid the module cycle the CLAUDE_RUNS_KEY comment in inject.js documents. The
-// stored manual `status` is irrelevant to this flag; it reads purely from the
-// shared marker cache plus the item's `entryReviewedAt` acknowledgement stamp.
-function needsEntryReview(item) {
-    if (!item || !item.entryId || item.entryReviewedAt) return false;
-    return resolveEntryRunState(item.entryId) === 'shipped';
+// Render the run-status glyph in the leading `#descIndicator` slot, driven by the
+// row's single derived pipeline phase (see `derivePhase` in phase.js) rather than
+// re-resolving the entry id here — so the glyph and the REVIEW badge can never
+// state the row's pipeline position out of step. The phase is resolved against
+// the shared TODO.md marker cache, not a device-local run store, so the glyph
+// agrees across devices. Because 'draft' requires the marker to actually be
+// present in TODO.md, a task's glyph is briefly absent on first load until its
+// project's marker read resolves — correctness (never a stuck/wrong amber) over
+// the flash. It never touches the inject button's own glyph.
+//
+// Map a derived pipeline phase to the run-status glyph state the leading slot
+// paints. The badge and the glyph are two views of one pipeline position, so
+// only one of them marks it per phase:
+//   'draft'  → 'pending' (amber dashed ring)
+//   'done'   → 'shipped' (green filled check)
+//   'accept' → '' — the amber ⌁ REVIEW badge is the row's single pipeline mark
+//              until it is acknowledged, so the glyph is suppressed here rather
+//              than duplicating the shipped fact alongside REVIEW.
+//   'none'   → '' — nothing to show.
+function glyphStateForPhase(phase) {
+    if (phase === PHASE.DRAFT) return 'pending';
+    if (phase === PHASE.DONE) return 'shipped';
+    return '';
 }
 
 
-function applyRunStatusGlyph(descIndicator, item) {
+function applyRunStatusGlyph(descIndicator, phase) {
     if (!descIndicator) return;
-    const resolved = resolveEntryRunState(item && item.entryId);
-    const state = resolved === 'none' ? '' : resolved;
+    const state = glyphStateForPhase(phase);
     const current = descIndicator.classList.contains('runStatusGlyph--shipped')
         ? 'shipped'
         : descIndicator.classList.contains('runStatusGlyph--pending')
             ? 'pending'
             : '';
+    // Idempotent — no-ops when the resolved state already matches so live
+    // refreshes never thrash the DOM. The guard covers the empty state too, so
+    // an 'accept' (or 'none') row's glyph is cleared exactly once and left alone
+    // on every subsequent sweep.
     if (current === state) return;
     descIndicator.classList.remove('runStatusGlyph--shipped', 'runStatusGlyph--pending');
     if (!state) {
@@ -203,12 +203,15 @@ export function refreshDescStatusDots() {
     document.querySelectorAll('#descIndicator').forEach(function(indicator) {
         const row = indicator.closest('#toDoChild');
         if (row && row.__item) {
-            applyRunStatusGlyph(indicator, row.__item);
+            // One phase per row, computed once, drives BOTH the glyph and the
+            // badge in the same pass so the two can never repaint out of step.
+            const phase = derivePhase(row.__item);
+            applyRunStatusGlyph(indicator, phase);
             // Refresh the derived REVIEW badge alongside the glyph so a
-            // pending → shipped flip lights REVIEW live, without a re-render.
+            // draft → accept flip lights REVIEW live, without a re-render.
             // Committed rows only — blank placeholders carry no status label.
             if (row.querySelector('.todoStatusLabel')) {
-                refreshTodoStatusUI(row, row.__item, needsEntryReview(row.__item));
+                refreshTodoStatusUI(row, row.__item, phase === PHASE.ACCEPT);
             }
             if (row.__item.entryId && row.dataset && row.dataset.value) {
                 projectsToRefresh.add(row.dataset.value);
@@ -1691,7 +1694,11 @@ export function buildToDoRow(item, toDoName) {
     // and make sure the live-refresh listener is attached so the glyph updates
     // as runs reconcile without a full re-render.
     ensureRunStatusDotListener();
-    applyRunStatusGlyph(descIndicator, item);
+    // One derived phase drives both the glyph and the REVIEW badge below, so the
+    // row states its pipeline position exactly once rather than resolving it
+    // twice through separate code paths.
+    const phase = derivePhase(item);
+    applyRunStatusGlyph(descIndicator, phase);
     // Kick a shipped-marker refresh for this project's routed target so the
     // glyph flips to green once the entry's TODO.md checkbox is [x]. TTL-cached
     // per repo, so this is a no-op when already fresh.
@@ -1704,7 +1711,7 @@ export function buildToDoRow(item, toDoName) {
     // CSS. Blank placeholder rows skip both: there is no committed task to tag.
     if (item.tit) {
         applyTodoStatusClass(toDoChild, item.status);
-        toDoChild.insertBefore(buildStatusLabel(item, needsEntryReview(item)), descIndicator);
+        toDoChild.insertBefore(buildStatusLabel(item, phase === PHASE.ACCEPT), descIndicator);
     }
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
@@ -1806,7 +1813,7 @@ export function buildToDoRow(item, toDoName) {
         // insert if the same row somehow re-commits.
         if (!toDoChild.querySelector('.todoStatusLabel')) {
             applyTodoStatusClass(toDoChild, item.status);
-            toDoChild.insertBefore(buildStatusLabel(item, needsEntryReview(item)), descIndicator);
+            toDoChild.insertBefore(buildStatusLabel(item, derivePhase(item) === PHASE.ACCEPT), descIndicator);
         }
 
         // STACK mobile commit accent — 700ms fading purple left-edge so the
