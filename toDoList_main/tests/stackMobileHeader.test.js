@@ -58,8 +58,12 @@ describe('STACK mobile project header', () => {
         const closeIdx = footerCounts.indexOf('updateMobileProjHeader', fnIdx);
         expect(closeIdx).toBeGreaterThan(fnIdx);
         // The observer that keeps the counts (and now the header) reactive
-        // still lives in main.js and drives the extracted function.
-        expect(main).toMatch(/new MutationObserver\(updateFooterCounts\)/);
+        // still lives in main.js and drives the extracted function. Its callback
+        // was later extended to also repaint the switcher's agent-work count on
+        // the same signal, so it now wraps the call rather than binding the bare
+        // reference — the invariant is that the observer still invokes
+        // updateFooterCounts, not that it is the sole callback.
+        expect(main).toMatch(/new MutationObserver\(function\s*\(\)\s*\{[\s\S]*?updateFooterCounts\(\)/);
     });
 
     it('groups the ‹ › chevrons into a vertical column and the name pill in the title row', () => {
