@@ -99,7 +99,7 @@
   - Completed: 2026-07-22
   <!-- id: c3deafcf-ce80-4994-a39c-926733e0d275 -->
 
-- [ ] **[MEDIUM]** claudeSheet: turn a chat reply into a task without the clipboard
+- [x] **[MEDIUM]** claudeSheet: turn a chat reply into a task without the clipboard
   - Type: feature
   - Description: A task can be attached to the chat for scope, but the conversation cannot produce anything — a reply containing a drafted entry has to be selected, copied, and pasted back in through the compose row. Chat sits upstream of the pipeline, so a discussion that arrives at a change should be able to emit it directly. Add an action on assistant messages that creates a task from the reply's content, using the same headline-parsing the paste path already uses, so a drafted entry lands in the list ready to Inject.
   - Behavior: Assistant messages in the chat sheet carry an action that creates a task from that message. Tapping it parses the message text the same way a pasted entry is parsed — headline for the title, full entry text for the description, code fence stripped — and commits a task into the active project. A brief confirmation names the created task so it is clear something landed on a surface the user is not currently looking at. When a task is attached to the chat, the newly created task is independent of it; the attachment is scope for the conversation, not a parent. Messages containing no fenced block or checkbox headline still create a task from the message text, with its first line as the title, so the action works on any reply rather than only on well-formed entries.
@@ -113,5 +113,5 @@
     - `style.css`: the action reuses existing chat-surface tokens and the 10px-radius convention; no new colours. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: Emitting an entry back onto the ATTACHED task (overwriting its description) rather than creating a new one — a plausible variant, deliberately separate. Auto-injecting or auto-running the created task. Creating into a project other than the active one. Multiple tasks from one message. The scope chip, the attachment mechanism, model selection, and the Runs tab. The compose row, the task row, and the description editor.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-22
   <!-- id: 114c453e-b811-4735-82e5-11122fae593d -->
