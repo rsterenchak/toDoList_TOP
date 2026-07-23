@@ -45,6 +45,7 @@ import {
     activeProjectNameForViewer,
 } from './runState.js';
 import { listLogic } from './listLogic.js';
+import { parsePastedEntry, commitEntryToActiveProject } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
 import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
@@ -821,7 +822,10 @@ function replayChatHistory() {
         // session (auto-swap replays from live chatHistory); after a reload it was
         // stripped on save, so the replay is text-only.
         const bubble = appendMessageBubble(turn.role, turn.content, turn.images);
-        if (turn.role === 'assistant' && bubble) renderAssistantContent(bubble, turn.content);
+        if (turn.role === 'assistant' && bubble) {
+            renderAssistantContent(bubble, turn.content);
+            mountCreateTaskAction(bubble, turn.content);
+        }
     }
     // An empty (per-repo) thread carries a persistent capabilities note at the
     // top naming what this chat can do in scope. It's a transient `note` bubble
@@ -2245,6 +2249,47 @@ export function extractDraftedEntry(reply) {
     return entry.trim() ? entry : null;
 }
 
+// Mount a "Create task" action on a COMPLETED assistant bubble. Chat sits
+// upstream of the pipeline, so a reply that arrives at a change should be able
+// to emit it directly instead of forcing a copy-paste back through the compose
+// row. On tap it parses the message with the SAME parser the paste path uses
+// (shared parsePastedEntry — headline for the title, full entry text for the
+// description, code fence stripped) and commits a task into the ACTIVE project
+// through the blank placeholder's Enter path, so the row lands with its status
+// badge and a fresh placeholder exactly like a typed task. The active project
+// is tracked separately from the chat's repo, so the confirmation names the
+// project that received it. Only ever called once a message is complete (never
+// mid-token), and only on assistant bubbles; idempotent so a replay/re-render
+// can't double-mount.
+function mountCreateTaskAction(bubble, rawText) {
+    if (!bubble || bubble.querySelector('.claudeMsgCreateTask')) return;
+    const text = String(rawText == null ? '' : rawText);
+    if (!text.trim()) return;
+
+    const actions = document.createElement('div');
+    actions.className = 'claudeMsgActions';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'claudeMsgCreateTask';
+    btn.textContent = '+ Create task';
+    btn.setAttribute('aria-label', 'Create a task from this reply');
+    btn.addEventListener('click', function() {
+        const parsed = parsePastedEntry(text);
+        if (!parsed.title) {
+            showInjectToast('Couldn’t read a task from this reply.', 'error');
+            return;
+        }
+        const project = commitEntryToActiveProject(parsed);
+        if (!project) {
+            showInjectToast('Couldn’t create the task — open a project first.', 'error');
+            return;
+        }
+        showInjectToast('Added “' + parsed.title + '” to ' + project + '.');
+    });
+    actions.appendChild(btn);
+    bubble.appendChild(actions);
+}
+
 // Detect an `INSPECT: <selector>` directive line the Worker emits in iterate
 // mode to ask for a live layout snapshot of an on-screen element. Returns the
 // captured selector (trimmed), or null when no directive line is present.
@@ -2382,6 +2427,10 @@ async function requestAssistantReply(entryId, deep) {
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
             renderAssistantContent(pending, visible);
+            // Mount the "Create task" action now that the reply is complete —
+            // parse from the raw reply so a fenced ```md entry (or a plain reply)
+            // yields the same title/description the paste path would.
+            mountCreateTaskAction(pending, reply);
         }
         if (inspectSelector) renderAttachLayoutButton(inspectSelector);
         if (ask) renderAskChips(ask);

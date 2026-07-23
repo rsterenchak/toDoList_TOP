@@ -3039,6 +3039,27 @@ button.claudeAttachChipLabel { cursor: pointer; }
   max-width: 100%;
   height: auto;
 }
+/* "Create task" action beneath a completed assistant reply — emits the reply
+   into a new task in the active project. Reuses the chat-surface tokens and the
+   10px-radius convention; no new colours. */
+.claudeMsgActions {
+  display: flex;
+  margin-top: 6px;
+}
+.claudeMsgCreateTask {
+  padding: 4px 10px;
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-mid);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.claudeMsgCreateTask:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-text);
+}
 
 .claudeDraftCard {
   margin: 0 0 12px;
