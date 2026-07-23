@@ -17,6 +17,12 @@
 
 import { setRowDateOffset, showDueDatePopover } from './dueDate.js';
 import { showInjectToast } from './inject.js';
+import { parsePastedEntry } from './entryParse.js';
+
+// Re-exported so existing importers (and tests) can keep reaching the parser
+// through this module; the single implementation now lives in entryParse.js,
+// shared with the chat reply "Create task" action.
+export { parsePastedEntry };
 
 
 // "today" | "tomorrow" | "custom" — the user's last chip pick within the
@@ -68,46 +74,6 @@ export function applyChosenDueToItem(item, row) {
 
 function isMobileViewport() {
     return typeof window !== 'undefined' && window.innerWidth < 1024;
-}
-
-
-// Parse a pasted TODO.md entry into a display title + a verbatim description.
-// Deliberately narrow (see the entry's implementation notes):
-//   - strip lines that are just a wrapping code fence (``` optionally + lang),
-//   - use the first top-level `- [ ]` / `- [x]` headline for the title,
-//     stripping its checkbox, a leading `**[PRIORITY]**`, and a trailing
-//     `— Completed: …` note,
-//   - fall back to the first non-empty line as the title when there is no
-//     checkbox headline, so a rough paste still lands.
-// The description is the fence-stripped text preserved byte-for-byte — it keeps
-// the headline line, because that is what Inject commits. `hasMarker` is a
-// simple presence check for the `<!-- id: … -->` comment; the id value is not
-// needed here, so no marker parser is duplicated into this module.
-export function parsePastedEntry(raw) {
-    const text = String(raw == null ? '' : raw);
-    const description = text
-        .split('\n')
-        .filter(function(line) { return !/^\s*```/.test(line); })
-        .join('\n');
-
-    const lines = description.split('\n');
-    let title = '';
-    const checkboxLine = lines.find(function(line) {
-        return /^\s*- \[[ xX]\]/.test(line);
-    });
-    if (checkboxLine) {
-        title = checkboxLine
-            .replace(/^\s*- \[[ xX]\]\s*/, '')
-            .replace(/^\*\*\[[^\]]*\]\*\*\s*/, '')
-            .replace(/\s*[—-]\s*Completed:.*$/i, '')
-            .trim();
-    }
-    if (!title) {
-        const firstNonEmpty = lines.find(function(line) { return line.trim().length > 0; });
-        title = firstNonEmpty ? firstNonEmpty.trim() : '';
-    }
-
-    return { title: title, description: description, hasMarker: /<!-- id:/.test(description) };
 }
 
 

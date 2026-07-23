@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         added: [
-            "The description editor can now pick a source file from the project and drop its path into the entry's File: line, instead of typing the path from memory.",
+            "A Claude chat reply can now become a new task in one tap, without copying it back through the compose row.",
         ],
         fixed: [
             "Signing in with an email that has no account now shows a clear no-account message instead of a generic send failure.",
