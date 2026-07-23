@@ -46,13 +46,14 @@ afterEach(() => {
 });
 
 describe('PHASE constants', () => {
-    it('exposes the five phases (four pipeline + asking), and no run phase', () => {
+    it('exposes the six phases (four pipeline + asking + drafted), and no run phase', () => {
         expect(PHASE).toEqual({
             NONE: 'none',
             DRAFT: 'draft',
             ACCEPT: 'accept',
             DONE: 'done',
             ASKING: 'asking',
+            DRAFTED: 'drafted',
         });
         expect(Object.values(PHASE)).not.toContain('run');
     });
@@ -61,8 +62,9 @@ describe('PHASE constants', () => {
 describe('PHASE_RAIL_ORDER / PHASE_RAIL_LABELS — read-only rail vocabulary', () => {
     it('orders the four pipeline phases left → right, with no run and no asking node', () => {
         expect(PHASE_RAIL_ORDER).toEqual([PHASE.NONE, PHASE.DRAFT, PHASE.ACCEPT, PHASE.DONE]);
-        // asking is a triage-queue fact, not a rail node — it must not appear.
+        // asking and drafted are triage-queue facts, not rail nodes — neither appears.
         expect(PHASE_RAIL_ORDER).not.toContain(PHASE.ASKING);
+        expect(PHASE_RAIL_ORDER).not.toContain(PHASE.DRAFTED);
         expect(PHASE_RAIL_ORDER).not.toContain('run');
     });
 
@@ -107,6 +109,48 @@ describe('derivePhase — asking outranks the marker-derived phases', () => {
         setQueueRows([{ id: 'q4', todo_id: 'someone-else', state: 'needs_words' }]);
         expect(derivePhase({ entryId: 'never-seen' })).toBe(PHASE.NONE);
         expect(derivePhase({ id: 'unlinked' })).toBe(PHASE.NONE);
+    });
+});
+
+describe('derivePhase — drafted (landed-but-unread draft) outranks the marker phases', () => {
+    it("returns 'drafted' when the linked queue row is drafted and the draft is unseen", () => {
+        setQueueRows([{ id: 'q5', todo_id: 'todo-drafted', state: 'drafted' }]);
+        expect(derivePhase({ id: 'todo-drafted' })).toBe(PHASE.DRAFTED);
+    });
+
+    it("clears to the underlying phase once draftSeenAt is stamped", async () => {
+        setQueueRows([{ id: 'q6', todo_id: 'todo-seen', state: 'drafted' }]);
+        // Unseen → DRAFTED…
+        expect(derivePhase({ id: 'todo-seen' })).toBe(PHASE.DRAFTED);
+        // …once looked at, the drafted overlay is gone. With no marker it is NONE.
+        expect(derivePhase({ id: 'todo-seen', draftSeenAt: '2026-07-22T00:00:00.000Z' }))
+            .toBe(PHASE.NONE);
+    });
+
+    it('yields to asking when both could apply (asking outranks drafted)', () => {
+        // A single queue row can only be in one state, but the ranking is pinned
+        // by check order: needs_words is tested before drafted.
+        setQueueRows([{ id: 'q7', todo_id: 'todo-both', state: 'needs_words' }]);
+        expect(derivePhase({ id: 'todo-both' })).toBe(PHASE.ASKING);
+    });
+
+    it('outranks a shipped/checked marker when the queue row is drafted', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: phase-drafted-ship -->');
+        await refreshShippedMarkers(freshTarget());
+        // Without a queue row this is ACCEPT…
+        expect(derivePhase({ id: 'todo-d', entryId: 'phase-drafted-ship' })).toBe(PHASE.ACCEPT);
+        // …but an unseen drafted queue row on the same todo takes precedence.
+        setQueueRows([{ id: 'q8', todo_id: 'todo-d', state: 'drafted' }]);
+        expect(derivePhase({ id: 'todo-d', entryId: 'phase-drafted-ship' })).toBe(PHASE.DRAFTED);
+        // Once the draft is seen, the marker phase (ACCEPT) shows through again.
+        expect(derivePhase({ id: 'todo-d', entryId: 'phase-drafted-ship', draftSeenAt: '2026-07-22T00:00:00.000Z' }))
+            .toBe(PHASE.ACCEPT);
+    });
+
+    it('ignores a drafted row for a different todo, or a missing id', () => {
+        setQueueRows([{ id: 'q9', todo_id: 'someone-else', state: 'drafted' }]);
+        expect(derivePhase({ id: 'unlinked' })).toBe(PHASE.NONE);
+        expect(derivePhase({ draftSeenAt: undefined })).toBe(PHASE.NONE);
     });
 });
 

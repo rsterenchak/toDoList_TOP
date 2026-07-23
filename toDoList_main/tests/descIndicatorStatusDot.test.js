@@ -406,9 +406,11 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
 
     it('derivePhase (phase.js) resolves the run state via resolveEntryRunState, and applyRunStatusGlyph consumes the derived phase', () => {
         const phase = read('phase.js');
-        // The three-way run state now resolves once, inside derivePhase.
+        // The three-way run state now resolves once, inside derivePhase. The
+        // window allows for the triage-queue guards (asking, drafted) that
+        // precede the marker resolution.
         expect(phase).toMatch(
-            /function\s+derivePhase[\s\S]{0,300}resolveEntryRunState\(item\.entryId\)/
+            /function\s+derivePhase[\s\S]{0,400}resolveEntryRunState\(item\.entryId\)/
         );
         // The glyph function no longer re-resolves the entry id — it maps the
         // already-derived phase to a glyph state.

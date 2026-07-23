@@ -177,6 +177,9 @@ const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" 
 //   'accept' → '' — the amber ⌁ REVIEW badge is the row's single pipeline mark
 //              until it is acknowledged, so the glyph is suppressed here rather
 //              than duplicating the shipped fact alongside REVIEW.
+//   'drafted'→ '' — the amber ⌁ DRAFTED badge is the row's single mark while a
+//              landed draft is unread, so the glyph stays empty (as for 'accept').
+//   'asking' → '' — the ⌁ ASKING badge is the row's single mark; no glyph.
 //   'none'   → '' — nothing to show.
 function glyphStateForPhase(phase) {
     if (phase === PHASE.DRAFT) return 'pending';
@@ -188,11 +191,13 @@ function glyphStateForPhase(phase) {
 // Map a derived phase to the status-label overlay the badge renders. The badge
 // paints exactly one derived overlay per phase, keyed off the SAME phase the
 // glyph reads so the two can never disagree:
-//   'asking' → '⌁ ASKING' (amber) — triage has a pending question for this task
-//   'accept' → '⌁ REVIEW' (amber) — shipped, unacknowledged
+//   'asking'  → '⌁ ASKING'  (amber) — triage has a pending question for this task
+//   'drafted' → '⌁ DRAFTED' (amber) — a landed draft this task hasn't been opened for
+//   'accept'  → '⌁ REVIEW'  (amber) — shipped, unacknowledged
 //   everything else → null (the manual status shows through)
 function overlayForPhase(phase) {
     if (phase === PHASE.ASKING) return 'asking';
+    if (phase === PHASE.DRAFTED) return 'drafted';
     if (phase === PHASE.ACCEPT) return 'review';
     return null;
 }

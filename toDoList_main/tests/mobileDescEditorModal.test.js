@@ -27,6 +27,19 @@ describe('mobile desc editor modal — modals.js export and shell', () => {
         expect(modals).toMatch(/export\s+function\s+showDescEditorModal\s*\(/);
     });
 
+    it('clears the DRAFTED badge on open — stamps draftSeenAt via listLogic and repaints', () => {
+        // Opening the editor IS the "look" the DRAFTED badge asks for, so it
+        // stamps draft_seen_at and fires TODO_RUN_STATUS_EVENT to repaint the row
+        // badge behind the modal. Gated on the phase actually being DRAFTED so it
+        // never stamps on an ordinary open — the green-but-does-nothing failure
+        // mode this codebase pins by test rather than by eye.
+        const fnIdx = modals.indexOf('function showDescEditorModal(');
+        const fn = modals.slice(fnIdx, fnIdx + 1200);
+        expect(fn).toMatch(/derivePhase\(\s*item\s*\)\s*===\s*PHASE\.DRAFTED/);
+        expect(fn).toMatch(/listLogic\.markDraftSeen\(\s*item\.id\s*\)/);
+        expect(fn).toMatch(/TODO_RUN_STATUS_EVENT/);
+    });
+
     it('mounts the modal under a #descEditorModalBackdrop / #descEditorModal pair', () => {
         expect(modals).toMatch(/#descEditorModalBackdrop|['"]descEditorModalBackdrop['"]/);
         expect(modals).toMatch(/['"]descEditorModal['"]/);
