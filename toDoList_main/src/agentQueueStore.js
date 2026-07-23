@@ -28,16 +28,6 @@ let _rows = [];
 let _loadedProjectName = null;
 let _channel = null;
 
-// The all-projects `agent_queue` cache — every one of the user's rows across all
-// projects, held SEPARATELY from `_rows`. `_rows` stays scoped to the selected
-// project so `getQueueRowForTodo` (the synchronous render-path lookup) keeps
-// returning only the on-screen project's rows; re-scoping it to all projects
-// would change what that returns. This second cache feeds the project switcher's
-// per-project "waiting agent work" count, which has to reason over projects that
-// are NOT currently on screen. RLS already scopes `agent_queue` to the user, so
-// one select with no project filter returns every project's rows in one trip.
-let _allRows = [];
-
 // Short in-flight guard shared by every triage-sweep dispatcher — the Agent
 // board's header Run button, the board's answer-submit auto-fire, and the task
 // row's answer-submit auto-fire — so a rapid double-tap or two answers in the
@@ -103,53 +93,6 @@ export function getQueueRowForTodo(todoId) {
 export function isTriageInFlight() { return _triageInFlight; }
 export function setTriageInFlight(v) { _triageInFlight = !!v; }
 
-// Read-only view of the all-projects cache; always an array.
-export function getAllQueueRows() {
-    return Array.isArray(_allRows) ? _allRows : [];
-}
-
-// Per-project count of agent work still waiting on the user — the number the
-// project switcher paints in amber next to each project. A row counts when it is
-// in `needs_words` (a pending triage question, the ASKING state) OR in `drafted`
-// with its linked todo's landed draft still unread (`!draftSeenAt`, the DRAFTED
-// state). This mirrors the two `agent_queue`-derived phases `derivePhase` treats
-// as blocked-on-you; the marker-derived REVIEW state is deliberately excluded
-// (see the entry's Out of scope). Returns a `{ [projectName]: count }` map with
-// only non-zero projects present. The `drafted`/unread test reads each todo's
-// `draftSeenAt` from the in-memory model — every project's todos are hydrated
-// into `allProjects`, so the lookup works cross-project without a per-project
-// fetch. Reads the all-rows cache synchronously; degrades to `{}` when it is
-// empty (e.g. under the stub client, where the all-fetch resolves to `[]`).
-export function getWaitingAgentCounts() {
-    const counts = {};
-    const rows = getAllQueueRows();
-    if (!rows.length) return counts;
-    // Reverse-map project id → name from the in-memory model so each queue row's
-    // `project_id` resolves to the switcher row it belongs to.
-    const names = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
-    const idToName = {};
-    for (let i = 0; i < names.length; i++) {
-        const pid = listLogic.getProjectId(names[i]);
-        if (pid) idToName[pid] = names[i];
-    }
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        if (!row) continue;
-        const name = idToName[row.project_id];
-        if (!name) continue;
-        let waiting = false;
-        if (row.state === 'needs_words') {
-            waiting = true;
-        } else if (row.state === 'drafted') {
-            const items = listLogic.listItems(name) || [];
-            const todo = items.find(function (it) { return it && it.id === row.todo_id; });
-            if (todo && !todo.draftSeenAt) waiting = true;
-        }
-        if (waiting) counts[name] = (counts[name] || 0) + 1;
-    }
-    return counts;
-}
-
 // Query agent_queue for one project's rows. Written to survive both the live
 // Supabase client (a chainable, awaitable query builder) and the test/stub
 // client (whose .select() resolves immediately and has no .eq); a synchronous
@@ -167,61 +110,6 @@ export function fetchQueueRows(projectId) {
         } catch (e) {
             resolve([]);
         }
-    });
-}
-
-// Query agent_queue for EVERY project's rows in a single round trip. RLS already
-// scopes the table to the user, so a select with no `project_id` filter returns
-// all of the user's rows. Same stub-client survival contract as fetchQueueRows:
-// the test client's `.select()` has no thenable of its own, so the wrapped result
-// carries no `data`/`error` and this resolves to `[]` — the switcher degrades to
-// no counts rather than throwing.
-export function fetchAllQueueRows() {
-    return new Promise(function (resolve) {
-        try {
-            Promise.resolve(
-                supabase.from('agent_queue').select('*')
-            ).then(function (res) {
-                if (res && res.error) { resolve([]); return; }
-                resolve((res && res.data) || []);
-            }).catch(function () { resolve([]); });
-        } catch (e) {
-            resolve([]);
-        }
-    });
-}
-
-// Reload the all-projects cache. Resolves to the cached rows. Does NOT repaint or
-// notify — the caller decides what to re-render. Used for the switcher's initial
-// paint; realtime pushes refresh it through refreshQueueCaches.
-export function loadAllQueueRows() {
-    return fetchAllQueueRows().then(function (rows) {
-        _allRows = Array.isArray(rows) ? rows : [];
-        return getAllQueueRows();
-    });
-}
-
-// Refresh BOTH caches from ONE all-projects fetch. `_allRows` receives every row
-// (for the switcher count); `_rows` is derived by filtering to the selected
-// project's id — the same set the per-project `.eq` query in loadQueueRows would
-// return, so `getQueueRowForTodo`'s selected-project scope is preserved without a
-// second round trip. Sets `_loadedProjectName` synchronously as the stale-guard
-// anchor, applying the derived `_rows` only when that project is still current.
-// Used by the realtime subscription so one push updates the task-row badges and
-// the switcher counts together.
-export function refreshQueueCaches(selectedProjectName) {
-    _loadedProjectName = selectedProjectName;
-    return fetchAllQueueRows().then(function (all) {
-        const rows = Array.isArray(all) ? all : [];
-        _allRows = rows;
-        if (_loadedProjectName === selectedProjectName) {
-            const projectId = selectedProjectName
-                ? listLogic.getProjectId(selectedProjectName) : null;
-            _rows = projectId
-                ? rows.filter(function (r) { return r && r.project_id === projectId; })
-                : [];
-        }
-        return getQueueRows();
     });
 }
 
@@ -280,10 +168,7 @@ export function startAgentQueueSubscription() {
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'agent_queue' },
                 function () {
-                    // One fetch refreshes both the selected-project cache (task-row
-                    // badges) and the all-projects cache (switcher counts); listeners
-                    // then repaint both surfaces from cache.
-                    refreshQueueCaches(resolveSelectedProjectName()).then(notifyQueueChange);
+                    loadQueueRows(resolveSelectedProjectName()).then(notifyQueueChange);
                 })
             .subscribe();
     } catch (e) {

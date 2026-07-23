@@ -91,12 +91,6 @@ import { wireStatusLabelDelegation, setReviewBadgeTapHandler } from './todoStatu
 import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from './taskFilter.js';
 import { dropFocusIntoMainView } from './viewFocusNav.js';
 import { updateAllProjectBadges, navigateToProjectByIndex } from './projectBadges.js';
-import {
-    startAgentQueueSubscription,
-    loadAllQueueRows,
-    getWaitingAgentCounts,
-    onQueueChange,
-} from './agentQueueStore.js';
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
@@ -2682,54 +2676,7 @@ function component() {
     });
     setTimeout(refreshProjRunSpinner, 0);
 
-    // ── Per-project "agent work waiting" count in the switcher ──
-    // Walk every committed sidebar project row and stamp an amber count of the
-    // project's tasks still blocked on the user (ASKING + unread DRAFTED),
-    // resolved from the shared all-projects agent-queue cache. A project with
-    // none shows nothing (the `.hasAgentCount` class both reveals the badge and
-    // reserves its grid column, so a zero-count row keeps its normal layout).
-    // The count is separate from the purple `.projBadge` incomplete-todo count
-    // and, unlike it, is live off `agent_queue` realtime pushes rather than todo
-    // mutations. The badge element is lazily attached (like the run spinner) so
-    // this reads from whatever built the rows rather than a second project list.
-    function updateAllProjectAgentCounts() {
-        if (!sideMain) return;
-        const counts = getWaitingAgentCounts();
-        const rows = sideMain.querySelectorAll('#projChild');
-        for (let i = 0; i < rows.length; i++) {
-            const row = rows[i];
-            const input = row.querySelector('#projInput');
-            const name = input ? input.value.trim() : '';
-            const count = name ? (counts[name] || 0) : 0;
-            let badge = row.querySelector('.projAgentCount');
-            if (count > 0) {
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'projAgentCount';
-                    // Sit just before the trailing incomplete-count pill.
-                    const projBadge = row.querySelector('.projBadge');
-                    if (projBadge) row.insertBefore(badge, projBadge);
-                    else row.appendChild(badge);
-                }
-                badge.textContent = String(count);
-                badge.setAttribute('aria-label',
-                    count + ' agent ' + (count === 1 ? 'task' : 'tasks') + ' waiting on you');
-                badge.title = 'Agent work waiting on you';
-                row.classList.add('hasAgentCount');
-            } else {
-                if (badge) badge.textContent = '';
-                row.classList.remove('hasAgentCount');
-            }
-        }
-    }
-
-    const footObserver = new MutationObserver(function () {
-        updateFooterCounts();
-        // Repaint the amber counts on the same signal so they survive row
-        // rebuilds (restore / rename / add / delete); the numbers come from the
-        // already-loaded all-projects cache, not a fetch.
-        updateAllProjectAgentCounts();
-    });
+    const footObserver = new MutationObserver(updateFooterCounts);
     footObserver.observe(mainList, {
         childList: true,
         subtree: true,
@@ -2743,14 +2690,6 @@ function component() {
     });
 
     setTimeout(updateFooterCounts, 0);
-
-    // Prime the all-projects agent-queue cache and paint the switcher counts,
-    // then keep them live: the store's realtime channel refreshes the cache on
-    // every `agent_queue` push (idempotent to open here), and onQueueChange
-    // repaints from that fresh cache without a project switch or re-render.
-    startAgentQueueSubscription();
-    loadAllQueueRows().then(updateAllProjectAgentCounts);
-    onQueueChange(updateAllProjectAgentCounts);
 
     // Mount the desktop companion on first boot when the pref allows and
     // the viewport qualifies. Deferred by a tick so document.body exists
