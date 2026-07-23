@@ -81,6 +81,11 @@ function toTodoRowPayload(item, projectId) {
         // one device clears the badge everywhere. Nullable; forwarded only when
         // set (see persistMutation) so a pre-migration server degrades cleanly.
         entry_reviewed_at: item.entryReviewedAt || null,
+        // First-look timestamp for a landed generate draft — drives the derived
+        // DRAFTED badge (unset = not yet looked at). Synced so opening the draft
+        // on one device clears the badge everywhere. Nullable; forwarded only when
+        // set (see persistMutation) so a pre-migration server degrades cleanly.
+        draft_seen_at: item.draftSeenAt || null,
     };
 }
 
@@ -1596,6 +1601,45 @@ export const listLogic = (function () {
     }
 
 
+    // Mark a landed generate draft as looked-at by stamping `draft_seen_at` onto
+    // its source todo, clearing the derived DRAFTED badge for that row. Mirrors
+    // markEntryReviewed exactly — a single-field write on a todo keyed by id:
+    // scans every project for the matching id, stamps an ISO timestamp, saves
+    // locally, and mirrors to Supabase (draft_seen_at rides in toTodoRowPayload)
+    // so the first-look survives a reload and reaches other devices. The manual
+    // `status` field is never touched here. No-op (returns { ok:false }) when the
+    // id is missing or the todo isn't found.
+    // @category: user-mutation-only
+    function markDraftSeen(todoId) {
+        if (!todoId) return { ok: false, error: 'Missing id.' };
+        let found = null;
+        let foundProject = null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) { return it && it.id === todoId; });
+            if (hit) { found = hit; foundProject = names[i]; break; }
+        }
+        if (!found) return { ok: false, error: 'Todo not found.' };
+
+        found.draftSeenAt = new Date().toISOString();
+        saveToStorage();
+
+        if (found.id && found.tit && found.tit !== '') {
+            persistMutation({
+                op: 'update',
+                table: 'todos',
+                payload: toTodoRowPayload(
+                    found,
+                    allProjects[foundProject].id || null
+                ),
+            });
+        }
+        return { ok: true };
+    }
+
+
     // Resolve a TODO.md entry marker id to its source todo and report whether
     // that entry has been acknowledged. Scans every project for a todo whose
     // `entryId` matches the marker (marker ids are globally unique, mirroring
@@ -3077,6 +3121,8 @@ export const listLogic = (function () {
                     // Same graceful-degradation contract for the acknowledgement
                     // timestamp: forward only when set.
                     if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
+                    // Same contract for the draft first-look timestamp.
+                    if (payload.draft_seen_at) row.draft_seen_at = payload.draft_seen_at;
                 } else {
                     return;
                 }
@@ -3138,6 +3184,7 @@ export const listLogic = (function () {
                     // update stays compatible with a pre-migration server.
                     if (payload.entry_id) row.entry_id = payload.entry_id;
                     if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
+                    if (payload.draft_seen_at) row.draft_seen_at = payload.draft_seen_at;
                 } else {
                     return;
                 }
@@ -3392,6 +3439,12 @@ export const listLogic = (function () {
                         entryReviewedAt: t.entry_reviewed_at
                             || (localTodosById[t.id] && localTodosById[t.id].entryReviewedAt)
                             || undefined,
+                        // Round-trip the draft first-look timestamp so the derived
+                        // DRAFTED badge stays cleared cross-device. Falls back to a
+                        // locally-known value when the server column is null.
+                        draftSeenAt: t.draft_seen_at
+                            || (localTodosById[t.id] && localTodosById[t.id].draftSeenAt)
+                            || undefined,
                         created_at: t.created_at || null,
                     });
                 });
@@ -3642,6 +3695,8 @@ export const listLogic = (function () {
             // Same guard for the acknowledgement timestamp: carry it only when
             // present so an unrelated UPDATE never clears a local acknowledgement.
             if (evt.new.entry_reviewed_at) mapped.entryReviewedAt = evt.new.entry_reviewed_at;
+            // Same guard for the draft first-look timestamp.
+            if (evt.new.draft_seen_at) mapped.draftSeenAt = evt.new.draft_seen_at;
             if (idx === -1) {
                 proj.items.push(mapped);
             } else {
@@ -3714,6 +3769,7 @@ export const listLogic = (function () {
         dismissRefactorCandidate,
         stampTodoEntryId,
         markEntryReviewed,
+        markDraftSeen,
         getEntryReviewInfo,
         getTodoById,
         unflagAgentTask,

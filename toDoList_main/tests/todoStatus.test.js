@@ -8,6 +8,7 @@ import {
     STATUS_ORDER,
     REVIEW_LABEL,
     ASKING_LABEL,
+    DRAFTED_LABEL,
     normalizeStatus,
     buildStatusLabel,
     applyTodoStatusClass,
@@ -291,6 +292,67 @@ describe('ASKING derived overlay', () => {
 });
 
 
+describe('DRAFTED derived overlay', () => {
+    it('renders the ⌁ DRAFTED label with data-status="drafted" and no menu ARIA', () => {
+        const label = buildStatusLabel({ status: 'active' }, 'drafted');
+        expect(label.getAttribute('data-status')).toBe('drafted');
+        expect(label.textContent).toBe(DRAFTED_LABEL);
+        expect(label.hasAttribute('aria-haspopup')).toBe(false);
+        expect(label.getAttribute('aria-label')).toMatch(/draft/i);
+    });
+
+    it('DRAFTED is display-only — absent from STATUS_META, STATUS_ORDER, and the popover', () => {
+        expect(DRAFTED_LABEL).toBe('⌁ DRAFTED');
+        expect(STATUS_META.drafted).toBeUndefined();
+        expect(STATUS_ORDER).not.toContain('drafted');
+    });
+
+    it('refreshTodoStatusUI overlays DRAFTED without touching the manual status class', () => {
+        const item = { status: 'in_progress' };
+        const row = makeRow(item, 'Inbox');
+        refreshTodoStatusUI(row, item, 'drafted');
+        const label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('drafted');
+        expect(label.textContent).toBe(DRAFTED_LABEL);
+        // The row modifier class still tracks the manual status underneath.
+        expect(row.classList.contains('todo-row--in_progress')).toBe(true);
+        // Clearing the overlay reverts the label to the manual status.
+        refreshTodoStatusUI(row, item, null);
+        expect(label.getAttribute('data-status')).toBe('in_progress');
+    });
+
+    it('tapping the DRAFTED badge opens the row description panel (no popover)', () => {
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+
+        const item = { status: 'active' };
+        const row = makeRow(item, 'Inbox');
+        // Overlay the label to DRAFTED and add a description-toggle caret.
+        refreshTodoStatusUI(row, item, 'drafted');
+        const descToggle = document.createElement('div');
+        descToggle.id = 'descToggle';
+        let opened = 0;
+        descToggle.addEventListener('click', function () {
+            opened += 1;
+            descToggle.classList.add('open');
+        });
+        row.appendChild(descToggle);
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
+        // No status popover mounted for the drafted overlay.
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+
+        // A second tap while open does not collapse the panel (no re-click).
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
+    });
+});
+
+
 describe('(e) cross-label popover swap in a single click', () => {
     // Regression: clicking label B while label A's popover is open must tear
     // down A's popover AND mount B's in the same click — no second click. The
@@ -553,6 +615,35 @@ describe('(i) listLogic.markEntryReviewed stamps the acknowledgement without tou
     it('is a no-op for a missing id or an unknown todo', () => {
         expect(listLogic.markEntryReviewed().ok).toBe(false);
         expect(listLogic.markEntryReviewed('no-such-id').ok).toBe(false);
+    });
+});
+
+
+describe('(j) listLogic.markDraftSeen stamps the draft first-look without touching status', () => {
+    beforeEach(() => {
+        try { localStorage.clear(); } catch (e) { /* ignore */ }
+        listLogic._reset();
+        listLogic.addProject('Proj');
+        listLogic.addToDo('Proj', 'Drafted task');
+    });
+
+    it('stamps draftSeenAt on the matching todo and leaves the manual status alone', () => {
+        const item = listLogic.listItems('Proj').find((i) => i.tit === 'Drafted task');
+        item.status = 'in_progress';
+        expect(item.draftSeenAt).toBeUndefined();
+
+        const res = listLogic.markDraftSeen(item.id);
+
+        expect(res.ok).toBe(true);
+        expect(typeof item.draftSeenAt).toBe('string');
+        expect(Number.isNaN(Date.parse(item.draftSeenAt))).toBe(false);
+        // The first-look stamp must never rewrite the settable status field.
+        expect(item.status).toBe('in_progress');
+    });
+
+    it('is a no-op for a missing id or an unknown todo', () => {
+        expect(listLogic.markDraftSeen().ok).toBe(false);
+        expect(listLogic.markDraftSeen('no-such-id').ok).toBe(false);
     });
 });
 

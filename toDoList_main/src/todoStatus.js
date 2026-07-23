@@ -56,6 +56,17 @@ export const REVIEW_LABEL = '⌁ REVIEW';
 // the status popover. The caller supplies the derived overlay descriptor
 // (resolved from the shared agent-queue cache via derivePhase at the row layer).
 export const ASKING_LABEL = '⌁ ASKING';
+
+// A third derived, non-settable overlay: a committed row whose linked
+// `agent_queue` row is in `drafted` and whose landed draft the user hasn't opened
+// yet renders this amber label instead of its manual status. Like REVIEW and
+// ASKING it never appears in the popover, is never written to `status`, and never
+// drives the row-level stripe/muting — it is purely a display overlay. Its tap
+// opens the row's description panel (where the draft lands), matching ASKING; the
+// overlay clears once the task's description editor is opened. The caller supplies
+// the derived overlay descriptor (resolved from the shared agent-queue cache via
+// derivePhase at the row layer).
+export const DRAFTED_LABEL = '⌁ DRAFTED';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
 
 
@@ -106,6 +117,7 @@ export function applyTodoStatusClass(toDoChild, status) {
 function normalizeOverlay(overlay) {
     if (overlay === true || overlay === 'review') return 'review';
     if (overlay === 'asking') return 'asking';
+    if (overlay === 'drafted') return 'drafted';
     return null;
 }
 
@@ -114,7 +126,8 @@ function normalizeOverlay(overlay) {
 // status and is the tap target (aria-haspopup="menu"); the delegated handler
 // reads the owning row's `__item` to resolve the live status on click, so this
 // element only needs to reflect the value at build time. When `overlay` is a
-// derived state the label renders that overlay (`⌁ REVIEW` / `⌁ ASKING`) instead
+// derived state the label renders that overlay (`⌁ REVIEW` / `⌁ ASKING` /
+// `⌁ DRAFTED`) instead
 // of the manual status, and its tap behaves per-overlay rather than opening the
 // popover — the ARIA reflects that. The manual status is untouched underneath,
 // so clearing the overlay reverts the label to it.
@@ -146,6 +159,11 @@ function applyStatusLabelState(label, status, overlay) {
         label.removeAttribute('aria-haspopup');
         label.setAttribute('aria-label', 'Triage is asking a question — open to answer');
         label.textContent = ASKING_LABEL;
+    } else if (derived === 'drafted') {
+        label.setAttribute('data-status', 'drafted');
+        label.removeAttribute('aria-haspopup');
+        label.setAttribute('aria-label', 'A draft landed — open to review it');
+        label.textContent = DRAFTED_LABEL;
     } else {
         label.setAttribute('data-status', status);
         label.setAttribute('aria-haspopup', 'menu');
@@ -305,6 +323,18 @@ export function wireStatusLabelDelegation(container) {
         // re-queues the linked agent_queue row out of needs_words. No-op when the
         // panel is already open so a second tap doesn't collapse it shut.
         if (label.getAttribute('data-status') === 'asking') {
+            const descToggle = row.querySelector('#descToggle');
+            if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
+            return;
+        }
+        // DRAFTED badge: a landed draft this task hasn't been opened for. The
+        // draft text lives in the row's description, so a tap opens that panel —
+        // the same destination the ASKING badge reaches — rather than the status
+        // popover. No `status` write happens here; opening the description editor
+        // clears the badge on its own (showDescEditorModal stamps draftSeenAt and
+        // fires TODO_RUN_STATUS_EVENT). No-op when the panel is already open so a
+        // second tap doesn't collapse it shut.
+        if (label.getAttribute('data-status') === 'drafted') {
             const descToggle = row.querySelector('#descToggle');
             if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;

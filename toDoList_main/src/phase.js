@@ -16,13 +16,17 @@
 // module from `todoStatus.js` or `inject.js`; that would recreate the import
 // cycle those files are structured to avoid.
 //
-// The phase vocabulary is five-valued — still no `'run'` phase. Per-entry run
+// The phase vocabulary is six-valued — still no `'run'` phase. Per-entry run
 // state is not tracked on task rows, so `derivePhase` never reaches for the
-// Worker `active_runs` probe or `runState.js` to synthesize one. The extra value
-// beyond the four pipeline phases is `'asking'` — the ONE state genuinely blocked
-// on the user that used to live only on the Agent board (a linked `agent_queue`
-// row parked in `needs_words`). It is a triage-queue fact, not a pipeline fact,
-// so it outranks all four marker-derived phases when both apply.
+// Worker `active_runs` probe or `runState.js` to synthesize one. The two values
+// beyond the four pipeline phases are `'asking'` and `'drafted'` — both states
+// genuinely blocked on the user that live on the triage `agent_queue` rather than
+// the marker pipeline. `'asking'` is a linked queue row parked in `needs_words`
+// (triage has a pending question); `'drafted'` is a linked queue row in `drafted`
+// whose landed draft the user has not yet looked at (`!item.draftSeenAt`). Both
+// are triage-queue facts, not pipeline facts, so they outrank the four
+// marker-derived phases when they apply; between them, `asking` outranks
+// `drafted`.
 
 import { resolveEntryRunState } from './inject.js';
 import { getQueueRowForTodo } from './agentQueueStore.js';
@@ -36,12 +40,17 @@ import { getQueueRowForTodo } from './agentQueueStore.js';
 //   'done'  — the marker sits on a CHECKED entry that HAS been acknowledged
 //   'asking'— the item's linked agent_queue row is in `needs_words`: triage has a
 //             pending question. Outranks the four above; independent of the marker.
+//   'drafted'— the item's linked agent_queue row is in `drafted` and its landed
+//             draft has not been looked at yet (`!item.draftSeenAt`): the derived
+//             entry is sitting unread. Outranks the four marker-derived phases;
+//             `asking` outranks it. Independent of the marker.
 export const PHASE = Object.freeze({
     NONE: 'none',
     DRAFT: 'draft',
     ACCEPT: 'accept',
     DONE: 'done',
     ASKING: 'asking',
+    DRAFTED: 'drafted',
 });
 
 
@@ -50,14 +59,17 @@ export const PHASE = Object.freeze({
 // reads the shared agent-queue cache synchronously, `resolveEntryRunState` reads
 // the shared marker cache synchronously, and the acknowledgement check reads the
 // in-memory item's own `entryReviewedAt` stamp. `asking` is checked first because
-// a pending triage question outranks the marker-derived phases: the mapping then
-// mirrors the three-way run state resolver — 'pending' → draft, 'shipped' splits
-// on the acknowledgement stamp into accept (unreviewed) or done (reviewed), and
-// both the falsy-id and cache-miss cases collapse to 'none'.
+// a pending triage question outranks the marker-derived phases; `drafted` is
+// checked next (a landed-but-unread draft, `!item.draftSeenAt`) so it too outranks
+// the marker phases while yielding to `asking`. The remaining mapping then mirrors
+// the three-way run state resolver — 'pending' → draft, 'shipped' splits on the
+// acknowledgement stamp into accept (unreviewed) or done (reviewed), and both the
+// falsy-id and cache-miss cases collapse to 'none'.
 export function derivePhase(item) {
     if (!item) return PHASE.NONE;
     const queueRow = item.id ? getQueueRowForTodo(item.id) : null;
     if (queueRow && queueRow.state === 'needs_words') return PHASE.ASKING;
+    if (queueRow && queueRow.state === 'drafted' && !item.draftSeenAt) return PHASE.DRAFTED;
     if (!item.entryId) return PHASE.NONE;
     const runState = resolveEntryRunState(item.entryId);
     if (runState === 'pending') return PHASE.DRAFT;

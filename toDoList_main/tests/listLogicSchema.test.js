@@ -157,6 +157,35 @@ describe('listLogic.js — toTodoRowPayload carries the injected entry_id column
 });
 
 
+describe('listLogic.js — toTodoRowPayload carries the draft_seen_at column', () => {
+    // The cross-device DRAFTED badge (a landed generate draft the user hasn't
+    // looked at) reads its cleared/uncleared state from draft_seen_at, mirroring
+    // entry_reviewed_at. toTodoRowPayload is the single funnel every todo write
+    // mirrors through, so it must carry draft_seen_at or opening a draft on one
+    // device never clears the badge on another — the green-but-does-nothing
+    // failure mode this codebase pins by test rather than by eye.
+    const body = functionBody(SRC, 'toTodoRowPayload');
+
+    it('includes `draft_seen_at` sourced from the item, nullable', () => {
+        expect(body).toMatch(/draft_seen_at:\s*item\.draftSeenAt\s*\|\|\s*null/);
+    });
+
+    it('hydrates item.draftSeenAt back from the row on the read/merge path', () => {
+        expect(SRC).toMatch(/draftSeenAt:\s*t\.draft_seen_at[\s\S]{0,120}\|\|\s*undefined/);
+    });
+
+    it('forwards draft_seen_at only when set in both persist branches', () => {
+        const pm = functionBody(SRC, 'persistMutation');
+        const insertIdx = pm.indexOf("op === 'insert'");
+        const updateIdx = pm.indexOf("op === 'update'");
+        const insertBranch = pm.slice(insertIdx, updateIdx);
+        const updateBranch = pm.slice(updateIdx);
+        expect(insertBranch).toMatch(/if\s*\(payload\.draft_seen_at\)\s*row\.draft_seen_at\s*=\s*payload\.draft_seen_at/);
+        expect(updateBranch).toMatch(/if\s*\(payload\.draft_seen_at\)\s*row\.draft_seen_at\s*=\s*payload\.draft_seen_at/);
+    });
+});
+
+
 describe('listLogic.js — persistMutation forwards hide_dates on the projects payload', () => {
     // toProjectRowPayload packs hide_dates, but persistMutation does NOT forward
     // the payload as-is for the projects table — it hand-rebuilds a fixed column

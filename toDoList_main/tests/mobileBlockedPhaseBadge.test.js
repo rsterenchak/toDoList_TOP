@@ -38,11 +38,11 @@ describe('mobile blocked-phase badge — surface REVIEW / ASKING only', () => {
         expect(mobileSlice).toMatch(/\.todoStatusLabel\s*\{\s*display:\s*none/);
     });
 
-    it('surfaces the badge on mobile for the two blocked-on-you phases', () => {
+    it('surfaces the badge on mobile for the three blocked-on-you phases', () => {
         // A single exception rule keyed off data-status, covering exactly
-        // review and asking, with a non-none display.
+        // review, asking, and drafted, with a non-none display.
         const exception = mobileSlice.match(
-            /\.todoStatusLabel\[data-status="review"\]\s*,\s*\.todoStatusLabel\[data-status="asking"\]\s*\{([\s\S]*?)\}/);
+            /\.todoStatusLabel\[data-status="review"\]\s*,\s*\.todoStatusLabel\[data-status="asking"\]\s*,\s*\.todoStatusLabel\[data-status="drafted"\]\s*\{([\s\S]*?)\}/);
         expect(exception).not.toBeNull();
         const body = exception[1];
         expect(body).toMatch(/display:\s*(?!none)/);
@@ -63,7 +63,7 @@ describe('mobile blocked-phase badge — surface REVIEW / ASKING only', () => {
 
     it('places the badge in the trailing cluster near the copy control via flex order', () => {
         const exception = mobileSlice.match(
-            /\.todoStatusLabel\[data-status="review"\]\s*,\s*\.todoStatusLabel\[data-status="asking"\]\s*\{([\s\S]*?)\}/);
+            /\.todoStatusLabel\[data-status="review"\]\s*,\s*\.todoStatusLabel\[data-status="asking"\]\s*,\s*\.todoStatusLabel\[data-status="drafted"\]\s*\{([\s\S]*?)\}/);
         const orderMatch = exception[1].match(/order:\s*(\d+)/);
         expect(orderMatch).not.toBeNull();
         const badgeOrder = Number(orderMatch[1]);
@@ -75,22 +75,25 @@ describe('mobile blocked-phase badge — surface REVIEW / ASKING only', () => {
         expect(badgeOrder).toBeLessThanOrEqual(Number(copyOrder[1]));
     });
 
-    it('reuses the existing amber (#ffbd5e) for both blocked states — no new token', () => {
+    it('reuses the existing amber (#ffbd5e) for all three blocked states — no new token', () => {
         expect(css).toMatch(/\.todoStatusLabel\[data-status="review"\]\s*\{\s*color:\s*#ffbd5e/);
         expect(css).toMatch(/\.todoStatusLabel\[data-status="asking"\]\s*\{\s*color:\s*#ffbd5e/);
+        expect(css).toMatch(/\.todoStatusLabel\[data-status="drafted"\]\s*\{\s*color:\s*#ffbd5e/);
     });
 
     it('drives the badge value from derivePhase with no new JS flag', () => {
         // The exception is CSS-only: the same overlayForPhase map that already
-        // sets data-status is the single source, so review/asking land on the
-        // attribute the selector reads without a parallel class.
+        // sets data-status is the single source, so review/asking/drafted land on
+        // the attribute the selector reads without a parallel class.
         const toDoRow = read('toDoRow.js');
         expect(toDoRow).toMatch(/function overlayForPhase\(phase\)/);
         expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.ASKING\s*\)\s*return\s*'asking'/);
+        expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.DRAFTED\s*\)\s*return\s*'drafted'/);
         expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.ACCEPT\s*\)\s*return\s*'review'/);
 
         const todoStatus = read('todoStatus.js');
         expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'review'\)/);
         expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'asking'\)/);
+        expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'drafted'\)/);
     });
 });

@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-22',
+        date: '2026-07-23',
         added: [
-            "A Claude chat reply can now become a new task in one tap, without copying it back through the compose row.",
+            "A task whose generated draft you haven't opened yet now shows an amber DRAFTED badge on phone and desktop, clearing the moment you open its description.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-22',
         fixed: [
             "Signing in with an email that has no account now shows a clear no-account message instead of a generic send failure.",
             "The mobile description editor's phase indicator now reads as an inert progress rail instead of tappable buttons, so it can't be mistaken for a settable control.",

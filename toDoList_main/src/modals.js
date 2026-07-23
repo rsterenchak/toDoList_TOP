@@ -265,6 +265,18 @@ export function showDescEditorModal(item, options) {
     if (!item) return;
     const opts = options || {};
 
+    // Clear the derived DRAFTED badge the moment the description editor opens: the
+    // badge means "a generated draft landed here and you haven't looked at it yet",
+    // and opening the editor IS the look. Gate on the phase actually being DRAFTED
+    // so an unconditional stamp doesn't write on every task the user ever opens.
+    // The stamp routes through listLogic like every other mutation (so it syncs
+    // and survives reload); TODO_RUN_STATUS_EVENT then repaints the row's badge
+    // behind the modal.
+    if (derivePhase(item) === PHASE.DRAFTED && item.id) {
+        listLogic.markDraftSeen(item.id);
+        document.dispatchEvent(new CustomEvent(TODO_RUN_STATUS_EVENT));
+    }
+
     const prior = document.getElementById('descEditorModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
 
