@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-24',
         fixed: [
-            "The file picker in a task's description now loads the project's source files on demand when opened, so it works even if the Structure tab was never visited this session, and shows a clear message when a project has no files or the list can't be loaded.",
             "A task's description text now stays at full content width in the description panel no matter which controls are mounted alongside it.",
             "File paths in a task's description file picker now fill the list as full-width readable rows, with long paths truncating on one line, instead of collapsing into narrow fragments.",
             "The description file picker now lists and inserts full repo-relative file paths, and can be filtered by folder, instead of bare filenames that pointed at files a run couldn't find.",
             "File paths in a task's description file picker now keep their full height when the list is long, so every path stays legible instead of squashing to a sliver as the list scrolls.",
+            "A task's description file picker no longer stacks duplicate copies of itself each time the description is closed and reopened.",
         ],
     },
 ];

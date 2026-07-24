@@ -296,7 +296,10 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
 
     it('mounts the trigger above the textarea and the panel inside #descSibling', () => {
         const idx = toDoRow.indexOf('function mountDescFilePicker(');
-        const fn = toDoRow.slice(idx, idx + 900);
+        // Window widened past the original 900 to fit the reopen-dedup cleanup now
+        // mounted at the top of the function; both insertBefore assertions below are
+        // unchanged, so wrong mount code still fails.
+        const fn = toDoRow.slice(idx, idx + 1300);
         expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.trigger\s*,\s*descInput\s*\)/);
         expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.panel\s*,\s*descInput\.nextSibling\s*\)/);
     });
