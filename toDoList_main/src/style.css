@@ -1514,6 +1514,11 @@ body {
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
 }
+/* The base rule sets display: flex, which would otherwise win over the
+   UA [hidden] { display: none }, so re-assert the hidden state explicitly.
+   Without this the trigger's toggle sets panel.hidden = true but the panel
+   stays visible, so the picker appears not to close. */
+.filePickPanel[hidden] { display: none; }
 
 .filePickSearch {
   /* 16px floor to defeat iOS Safari's auto-zoom-on-focus (CLAUDE.md mobile-input
