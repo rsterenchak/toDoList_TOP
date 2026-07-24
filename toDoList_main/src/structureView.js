@@ -27,6 +27,7 @@ import {
     locateHandle,
 } from './structureCanvas.js';
 import { captureRemote } from './structureRemoteCapture.js';
+import { joinSrcRootPath } from './srcPath.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
@@ -251,9 +252,8 @@ function ensureRegionsLoaded(repo) {
 // slash). Returns '' when the repo or file is unknown (no link rendered).
 function githubBlobUrl(repo, file, line) {
     if (!repo || !file) return '';
-    const root = String(currentSrcRoot || '').replace(/\/+$/, '');
     const frag = (typeof line === 'number' && line > 0) ? '#L' + line : '';
-    return 'https://github.com/' + repo + '/blob/main/' + (root ? root + '/' : '') + file + frag;
+    return 'https://github.com/' + repo + '/blob/main/' + joinSrcRootPath(currentSrcRoot, file) + frag;
 }
 
 // A quiet "View on GitHub ↗" secondary link, or null when no URL is resolvable.
