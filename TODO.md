@@ -18,7 +18,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1382bb96-1dab-4527-b0e6-79c4565eb0cf -->
 
-- [ ] **[MEDIUM]** Project switcher: show which other projects have a triage question waiting
+- [x] **[MEDIUM]** Project switcher: show which other projects have a triage question waiting — Completed: 2026-07-23
   - Type: feature
   - Description: A triage question parked in `needs_words` renders as an `⌁ ASKING` badge on a task row, which means it is only visible inside the project currently on screen. With seven projects, a question waiting in another one is silent until the user happens to switch to it — and the point of dispatching work asynchronously is that the user leaves. Show a per-project count of waiting questions in the project switcher. Deliberately narrow: this counts ONLY `agent_queue` rows in `needs_words`, which requires no todo data at all. A previous attempt also counted landed drafts, which needed each todo's `draftSeenAt` for projects whose todos are not loaded, and that broke the switcher's render entirely — see Out of scope.
   - Behavior: Each project in the switcher shows an amber count of its `agent_queue` rows in `needs_words`. A project with none shows nothing — no zero badge. The open project shows its own count the same way, so the switcher reads uniformly rather than special-casing the current one. The count is live: a realtime `agent_queue` push updates it without a re-render or a project switch. It is labelled as questions specifically, not as "needs you", since shipped-but-unreviewed entries and landed drafts are not included. Tapping a project switches to it exactly as it does today; the count adds no tap behavior. Above all, the switcher renders its project list normally whether or not any count can be resolved.
