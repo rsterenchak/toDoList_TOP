@@ -58,6 +58,7 @@ import { applyTaskFilter, setBlockedItemResolver } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker } from './filePicker.js';
+import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 
 
 // The row-side "Discuss" action opens the Claude sheet scoped to this task.
@@ -263,6 +264,77 @@ function openDescSiblingFor(toDoChild) {
 }
 
 
+// The single insertion anchor for the panel's leading blocks. The phase rail
+// always leads the panel; the ASKING and STUCK blocks mount immediately AFTER
+// it, and THE ENTRY label sits after those. Returning `rail.nextSibling` (the
+// label, once mounted) keeps that order regardless of which sync runs last —
+// `syncAskingPanel`, `syncStuckPanel`, and `mountDescRail` can be called in any
+// order without the rail ending up below a block. Falls back to `firstChild`
+// when no rail is present (e.g. a panel mid-build before mountDescRail runs).
+export function descPanelTopAnchor(panel) {
+    const rail = panel.querySelector('.phaseRail');
+    return rail ? rail.nextSibling : panel.firstChild;
+}
+
+
+// Mount (idempotently) the read-only phase rail and THE ENTRY section label at
+// the head of an OPEN description panel, and repaint the rail for the row's
+// current derived phase. The desktop counterpart to the mobile modal's rail +
+// entry label, driven by the same shared phaseRail.js builder so the two hosts
+// can never diverge.
+//
+// #descSibling is a persistent per-row node whose children survive close (the
+// same fact behind the file-picker reopen-duplication bug), so a fresh
+// createElement on every open would stack duplicate rails/labels — mount the
+// pair once, then reuse and only repaint. The rail is the panel's firstChild and
+// the label sits immediately after it; ASKING/STUCK blocks land between them via
+// descPanelTopAnchor. Both carry `grid-column: 1 / -1` in style.css so neither
+// collapses into a 14px gutter. refreshViewerExpandedHeight() runs on first mount
+// (which changes the panel's height) but not on a pure repaint (same height).
+export function mountDescRail(descSibling, item) {
+    const phase = derivePhase(item);
+    let rail = descSibling.querySelector('.phaseRail');
+    if (rail) {
+        paintPhaseRail(rail, phase);
+    } else {
+        rail = buildPhaseRail(phase);
+        descSibling.insertBefore(rail, descSibling.firstChild);
+        refreshViewerExpandedHeight();
+    }
+    if (!descSibling.querySelector('.descSiblingEntryLabel')) {
+        const label = document.createElement('span');
+        label.className = 'descSiblingEntryLabel';
+        label.textContent = 'The entry';
+        descSibling.insertBefore(label, rail.nextSibling);
+        refreshViewerExpandedHeight();
+    }
+}
+
+
+// The complete set of elements that can mount into the #descSibling description
+// panel, as CSS selector needles. The panel is a 3-column grid (14px 1fr 14px);
+// EVERY child must carry an explicit grid-column or it auto-places into a 14px
+// gutter — the defect that crushed the inject button, the ASKING block, and
+// #descInput in turn (four separate layout failures in one day). This list is the
+// single source of truth for that contract: the structural guard test asserts (a)
+// every needle here has a grid-column rule in style.css, and (b) every
+// `descSibling.appendChild(` / `descSibling.insertBefore(` call site in this file
+// mounts one of these. Adding a new panel child means adding it here.
+export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
+    '#descInput',
+    '#descSibling .phaseRail',
+    '#descSibling .descSiblingEntryLabel',
+    '#descSibling .askingBlock',
+    '#descSibling .descEditorModalStuck',
+    '#descSibling .filePickTrigger',
+    '#descSibling .filePickPanel',
+    '#descSibling .injectBtn',
+    '#descSibling .discussBtn',
+    '#descSibling .generateBtn',
+    '#descSibling .generateFailure',
+]);
+
+
 // Build the ASKING question + answer block for a row's description panel. It
 // carries triage's pending question above a textarea, a Send action, and an
 // inline error slot. Sending routes the answer through listLogic.answerAgentTask
@@ -375,6 +447,8 @@ function buildAskingBlock(item, projectName, queueRow) {
 // the panel isn't open (the block mounts on open via wireDescToggle) or when the
 // asking state is unchanged (idempotent, so live sweeps don't thrash the DOM).
 // Re-applies the panel-height snapshot whenever the block is added or removed.
+// Mounts immediately after the phase rail (via descPanelTopAnchor) so the rail
+// always leads the panel.
 function syncAskingPanel(toDoChild, item, projectName) {
     const panel = openDescSiblingFor(toDoChild);
     if (!panel) return;
@@ -388,7 +462,7 @@ function syncAskingPanel(toDoChild, item, projectName) {
             if (existing.getAttribute('data-answer-row') === String(queueRow.id)) return;
             existing.remove();
         }
-        panel.insertBefore(buildAskingBlock(item, projectName, queueRow), panel.firstChild);
+        panel.insertBefore(buildAskingBlock(item, projectName, queueRow), descPanelTopAnchor(panel));
         refreshViewerExpandedHeight();
     } else if (existing) {
         existing.remove();
@@ -432,12 +506,12 @@ function buildStuckBlock(reason) {
 // Keep a row's open description panel in sync with its STUCK phase — the chevron
 // counterpart to the STUCK-badge tap, which routes to the modal's own stuck
 // block. Mirrors syncAskingPanel exactly: same open-panel guard, same
-// insert-as-firstChild position, the same idempotent early-return (refresh the
-// mounted block's reason text rather than rebuild) so live sweeps don't thrash
-// the DOM, and the same removal path when the phase clears. Re-applies the
-// panel-height snapshot on both add and remove. ASKING and STUCK are mutually
-// exclusive phases (needs_words vs failed/no_change), so the two firstChild
-// mounts never collide.
+// insert-after-the-rail position (via descPanelTopAnchor), the same idempotent
+// early-return (refresh the mounted block's reason text rather than rebuild) so
+// live sweeps don't thrash the DOM, and the same removal path when the phase
+// clears. Re-applies the panel-height snapshot on both add and remove. ASKING and
+// STUCK are mutually exclusive phases (needs_words vs failed/no_change), so the
+// two mounts never collide.
 function syncStuckPanel(toDoChild, item) {
     const panel = openDescSiblingFor(toDoChild);
     if (!panel) return;
@@ -451,7 +525,7 @@ function syncStuckPanel(toDoChild, item) {
             if (reasonEl && reasonEl.textContent !== reason) reasonEl.textContent = reason;
             return;
         }
-        panel.insertBefore(buildStuckBlock(reason), panel.firstChild);
+        panel.insertBefore(buildStuckBlock(reason), descPanelTopAnchor(panel));
         refreshViewerExpandedHeight();
     } else if (existing) {
         existing.remove();
@@ -824,6 +898,12 @@ export function refreshDescStatusDots() {
             if (row.querySelector('.todoStatusLabel')) {
                 refreshTodoStatusUI(row, row.__item, overlayForPhase(phase));
             }
+            // Repaint an open description panel's phase rail so a draft → accept
+            // flip (or a queue-row transition) advances the rail live while the
+            // panel is open. Runs before the ASKING/STUCK syncs so the rail is
+            // present as their insertion anchor. No-op when the panel isn't open.
+            const openPanel = openDescSiblingFor(row);
+            if (openPanel) mountDescRail(openPanel, row.__item);
             // Keep an open description panel's ASKING question block in step with
             // the row's live phase (mounts / clears the answer field as the linked
             // queue row enters / leaves needs_words).
@@ -1998,9 +2078,15 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             // active project's manifest synchronously and self-hides when there
             // is none, so the control is simply absent for un-linked projects.
             mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
-            // Mount triage's ASKING question + answer block at the top of the
-            // panel when this task's linked agent_queue row is in needs_words.
-            // No-op for every other row.
+            // Mount the read-only phase rail + THE ENTRY label at the head of the
+            // panel (the desktop counterpart to the mobile modal's rail), driven
+            // by the shared phaseRail.js builder. Runs before the ASKING/STUCK
+            // syncs so those blocks land immediately after the rail via
+            // descPanelTopAnchor.
+            mountDescRail(descSibling, item);
+            // Mount triage's ASKING question + answer block right after the rail
+            // when this task's linked agent_queue row is in needs_words. No-op for
+            // every other row.
             syncAskingPanel(toDoChild, item, projectName);
             // Mount triage's STUCK failure-reason block at the top of the panel
             // when this task's linked agent_queue row is in failed / no_change —
