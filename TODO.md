@@ -159,3 +159,18 @@
   - File: `toDoList_main/src/toDoRow.js`
   - Completed: 2026-07-24
   <!-- id: b5dd865d-e240-4a27-a605-2926d3295a17 -->
+
+- [ ] **[MEDIUM]** File picker: the panel won't close because [hidden] loses to display:flex
+  - Type: bug
+  - Description: `createFilePicker`'s trigger toggles correctly in JS — `if (panel.hidden) openPanel(); else closePanel();`, and `closePanel` sets `panel.hidden = true` and `aria-expanded="false"`. But `.filePickPanel` declares `display: flex`, and an author-level `display` declaration outranks the UA stylesheet's `[hidden] { display: none }` rule, so the attribute is applied and the panel stays visible. Tapping the trigger a second time therefore appears to do nothing. This codebase already documents the trap (style.css:2410) and carries explicit `[hidden]` guards on eight `claude*` elements for the same reason; the picker was never given one.
+  - Behavior: Tapping the picker trigger opens the panel; tapping it again closes it. A closed panel occupies no space and none of its contents are focusable or reachable by keyboard. `aria-expanded` on the trigger tracks the visible state, which it already does. The initial mounted state is closed. Both hosts behave identically.
+  - Implementation notes:
+    - Add `.filePickPanel[hidden] { display: none; }` next to the base `.filePickPanel` rule, matching the established pattern (`.claudeView[hidden]`, `.claudeAttachPanel[hidden]`, and the six others). Put a short comment on it pointing at the same reason, so it is not "cleaned up" later as redundant.
+    - Do not solve this by switching the panel away from `display: flex`, and do not swap the `hidden` attribute for a class. The attribute is the right mechanism, it already carries the correct accessibility semantics, and every other toggled surface in this file uses it.
+    - Check whether the trigger has the same defect. `.filePickTrigger` declares `display` implicitly through its box styling — if any rule sets `display` on it and it is ever hidden via the attribute (the self-hide when a project has no manifest), it needs the same guard. Grep how the no-manifest case hides the trigger; if that path uses inline `style.display`, note it in the PR body rather than changing it here.
+    - Verify the panel is closed on mount. If `mountDescFilePicker`'s rebuild leaves it open, the guard will make that visible for the first time — the correct initial state is closed with an empty filter.
+    - Regression test: assert that setting `hidden` on the panel results in a computed `display` of `none`. A test asserting the attribute alone passes today with the bug present, which is how this shipped.
+  - Out of scope: The trigger's toggle logic, which is correct. The picker's layout, `srcRoot` prefixing, on-demand load, filtering, insertion, and the reopen-duplication fix — all correct as landed. The other `claude*` `[hidden]` guards. `#descSibling` grid placement. The mobile description-editor modal.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3dbb7032-cefe-480d-97f4-de89d1cff5c4 -->
