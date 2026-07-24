@@ -326,13 +326,16 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
         expect(fn).toMatch(/onRender:\s*function\s*\(\)\s*\{\s*refreshViewerExpandedHeight\(\)/);
     });
 
-    it('places the trigger and panel full-width in the #descSibling grid (no 14px gutter collapse)', () => {
-        const body = ruleBodyContaining(css, '#descSibling .filePickTrigger');
-        expect(body).not.toBeNull();
-        expect(body).toMatch(/grid-column:\s*1\s*\/\s*-1\s*;/);
-        // The grouped selector must also name the panel so it spans the row too.
-        const idx = css.indexOf('#descSibling .filePickTrigger');
-        const selector = css.slice(idx, css.indexOf('{', idx));
-        expect(selector).toContain('#descSibling .filePickPanel');
+    it('places the picker in the #descSibling grid (no 14px gutter collapse): panel full-width, trigger in the content column', () => {
+        // The panel fills the content width like the textarea below it.
+        const panelBody = ruleBodyContaining(css, '#descSibling .filePickPanel');
+        expect(panelBody).not.toBeNull();
+        expect(panelBody).toMatch(/grid-column:\s*1\s*\/\s*-1\s*;/);
+        // The trigger sits in the content column and right-aligns to the
+        // textarea's edge rather than spanning to the panel border.
+        const triggerBody = ruleBodyContaining(css, '#descSibling .filePickTrigger');
+        expect(triggerBody).not.toBeNull();
+        expect(triggerBody).toMatch(/grid-column:\s*2\s*;/);
+        expect(triggerBody).toMatch(/justify-self:\s*end\s*;/);
     });
 });

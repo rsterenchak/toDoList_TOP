@@ -74,13 +74,22 @@ describe('desktop description panel — every child is explicitly grid-placed', 
         '#descSibling .generateFailure',
         '#descSibling .askingBlock',
         '#descSibling .descEditorModalStuck',
-        '#descSibling .filePickTrigger',
         '#descSibling .filePickPanel',
     ];
     it.each(fullWidthChildren)('%s carries an explicit full-width placement', (selector) => {
         const body = ruleBodyContaining(css, selector);
         expect(body).not.toBeNull();
         expect(body).toMatch(/grid-column:\s*1\s*\/\s*-1\s*;/);
+    });
+
+    // The picker trigger aligns to the content column's right edge (matching the
+    // textarea), not the panel border — so it sits in column 2 with justify-self,
+    // NOT the full-width `1 / -1` its searchable panel below it uses.
+    it('the picker trigger sits in the content column, right-aligned to the textarea', () => {
+        const body = ruleBodyContaining(css, '#descSibling .filePickTrigger');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/grid-column:\s*2\s*;/);
+        expect(body).toMatch(/justify-self:\s*end\s*;/);
     });
 });
 
