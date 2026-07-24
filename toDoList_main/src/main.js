@@ -84,6 +84,7 @@ import {
     focusBlankToDoInputIfDesktop,
     reorderToDoDOM,
     setDiscussTaskHandler,
+    setStuckReasonResolver,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { createMobileUpdatePill } from './mobileUpdatePill.js';
@@ -99,6 +100,7 @@ import {
     unsubscribeAgentView,
     syncAgentAvailabilityForProject,
     startAgentWorkingWatch,
+    stuckReasonText,
 } from './agentView.js';
 import {
     startAgentQueueSubscription,
@@ -3060,6 +3062,12 @@ setReviewBadgeTapHandler(function(entryId, projectName) {
 setDiscussTaskHandler(function(todoId) {
     openChatWithTask(todoId);
 });
+
+// The desktop description panel's STUCK failure-reason block reuses the exact
+// copy resolver the Agent view and the mobile modal use (stuckReasonText). The
+// row layer can't import agentView (its cycle-avoidance boundary), so register
+// the single resolver here — main.js imports both.
+setStuckReasonResolver(stuckReasonText);
 
 // Wire the viewer's "⋯" overflow button to open a mobile bottom-sheet menu
 // instead of the anchored dropdown on touch. The viewer (todoMdViewer.js)

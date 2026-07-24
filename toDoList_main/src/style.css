@@ -16801,6 +16801,18 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   grid-column: 1 / -1;
 }
 
+/* The ASKING question + answer block and the STUCK failure-reason block both
+   mount as the panel's firstChild. Like every other #descSibling child they
+   auto-place into the 14px gutter column without an explicit placement, which
+   crushes the triage question one word per line and the answer controls with
+   it; span the full grid row so they lay out at the panel's content width. The
+   STUCK block reuses the modal's .descEditorModalStuck treatment verbatim and
+   only adds this grid placement for the panel host. */
+#descSibling .askingBlock,
+#descSibling .descEditorModalStuck {
+  grid-column: 1 / -1;
+}
+
 /* ── GENERATE WITH TRIAGE ──
    Sibling of .injectBtn in the description panel. Tapping it flags the task
    for the agent and fires the triage sweep; the finished draft lands back
