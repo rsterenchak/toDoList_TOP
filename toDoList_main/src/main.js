@@ -100,6 +100,12 @@ import {
     syncAgentAvailabilityForProject,
     startAgentWorkingWatch,
 } from './agentView.js';
+import {
+    startAgentQueueSubscription,
+    loadAllQueueRows,
+    getWaitingQuestionCounts,
+    onQueueChange,
+} from './agentQueueStore.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -2259,6 +2265,12 @@ function component() {
 
                 listLogic.listProjects();
 
+                // A create or rename just rebuilt this row's committed name, so
+                // re-derive its (and every row's) triage-question count from the
+                // already-loaded all-projects cache. Explicit call — the paint is
+                // deliberately not observer-driven (see updateAllProjectQuestionCounts).
+                updateAllProjectQuestionCounts();
+
 
                 // On Click - should bring back ability to use add projects button
                 projButton.style.pointerEvents = "auto";
@@ -2691,6 +2703,18 @@ function component() {
 
     setTimeout(updateFooterCounts, 0);
 
+    // Prime the all-projects agent-queue cache and paint the switcher's
+    // per-project "triage question waiting" counts, then keep them live. The
+    // store's realtime channel (idempotent to open here) refreshes the cache on
+    // every `agent_queue` push, and onQueueChange repaints from that fresh cache
+    // without a project switch or re-render. Row-set changes (create / rename /
+    // restore) repaint via explicit updateAllProjectQuestionCounts() calls on
+    // those paths — NOT via a sidebar MutationObserver, whose childList signal
+    // the paint's own span insertion would re-trigger into a hang.
+    startAgentQueueSubscription();
+    loadAllQueueRows().then(updateAllProjectQuestionCounts);
+    onQueueChange(updateAllProjectQuestionCounts);
+
     // Mount the desktop companion on first boot when the pref allows and
     // the viewport qualifies. Deferred by a tick so document.body exists
     // (index.js appends the component right after component() returns).
@@ -2785,7 +2809,7 @@ function seedSampleTodosIntoActiveProjectIfEmpty() {
 }
 
 
-export { component, restoreFromStorage, notifyUpdateAvailable };
+export { component, restoreFromStorage, notifyUpdateAvailable, updateAllProjectQuestionCounts };
 
 
 // Phase 5: one-shot full re-render hook for Supabase hydration. The
@@ -3047,6 +3071,96 @@ setOverflowSheetController({
     close: closeOverflowMobileSheet,
 });
 
+
+// ── Per-project "triage question waiting" count in the switcher ──
+// Walk every committed sidebar project row and stamp an amber count of the
+// project's `agent_queue` rows parked in `needs_words` (the ASKING triage
+// state), so a question waiting in a project that's off-screen still reaches the
+// user without switching to it. A project with none shows nothing (the
+// `.hasQuestionCount` class both reveals the badge and reserves its grid column,
+// so a zero-count row keeps its normal layout). The count is separate from the
+// purple `.projBadge` incomplete-todo count and, unlike it, is live off
+// `agent_queue` realtime pushes rather than todo mutations.
+//
+// This paint is driven EXPLICITLY from the paths that (re)build project rows —
+// the create/rename commit, the initial/rehydrate/import restore, and every
+// realtime `agent_queue` push (via onQueueChange). It is NEVER wired to a
+// `childList`/`subtree` MutationObserver on the sidebar: the paint mutates that
+// subtree (it inserts the badge span and toggles a class), so such an observer
+// would re-trigger the paint on its own writes and hang the tab — exactly the
+// regression that reverted the first attempt.
+//
+// Two independent defences make a stray re-entry a bounded no-op rather than a
+// hang:
+//   1. A module-level in-flight guard: a recursive call returns immediately.
+//   2. Idempotency: a paint whose counts already match the DOM performs ZERO
+//      writes (no textContent set, no class toggle), so it can't feed a mutation
+//      signal back to any caller.
+//
+// HARD REQUIREMENT: the count must never be able to break the switcher's render.
+// All counts are resolved into a plain name→count map ONCE, before the row loop,
+// inside a try/catch that falls back to an empty map; the loop then only reads
+// that map with a default of zero and never calls into the store or listLogic.
+// The count needs no todo data — it derives entirely from `agent_queue` rows and
+// their `project_id` (see getWaitingQuestionCounts).
+let _questionCountPaintInFlight = false;
+function updateAllProjectQuestionCounts() {
+    // Re-entrancy guard — cheap insurance against a future caller triggering this
+    // recursively. Set on entry, cleared in `finally`, so a second call while one
+    // is running returns immediately instead of hanging the tab.
+    if (_questionCountPaintInFlight) return;
+    _questionCountPaintInFlight = true;
+    try {
+        const sideMain = document.getElementById('sideMa');
+        if (!sideMain) return;
+        let counts;
+        try {
+            counts = getWaitingQuestionCounts() || {};
+        } catch (e) {
+            counts = {};
+        }
+        const rows = sideMain.querySelectorAll('#projChild');
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const input = row.querySelector('#projInput');
+            const name = input ? input.value.trim() : '';
+            const count = name ? (counts[name] || 0) : 0;
+            let badge = row.querySelector('.projQuestionCount');
+            if (count > 0) {
+                const text = String(count);
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'projQuestionCount';
+                    // Sit just before the trailing incomplete-count pill.
+                    const projBadge = row.querySelector('.projBadge');
+                    if (projBadge) row.insertBefore(badge, projBadge);
+                    else row.appendChild(badge);
+                }
+                // Idempotent writes — skip each DOM mutation whose result already
+                // matches, so a paint that changes nothing performs zero writes.
+                if (badge.textContent !== text) badge.textContent = text;
+                const label = count + ' triage '
+                    + (count === 1 ? 'question' : 'questions') + ' waiting on you';
+                if (badge.getAttribute('aria-label') !== label) {
+                    badge.setAttribute('aria-label', label);
+                }
+                if (badge.title !== 'Triage questions waiting on you') {
+                    badge.title = 'Triage questions waiting on you';
+                }
+                if (!row.classList.contains('hasQuestionCount')) {
+                    row.classList.add('hasQuestionCount');
+                }
+            } else {
+                if (badge && badge.textContent !== '') badge.textContent = '';
+                if (row.classList.contains('hasQuestionCount')) {
+                    row.classList.remove('hasQuestionCount');
+                }
+            }
+        }
+    } finally {
+        _questionCountPaintInFlight = false;
+    }
+}
 
 // restoreFromStorage — call this AFTER component() is appended to document.body
 // so that getElementById calls resolve against the live DOM.
@@ -3392,6 +3506,12 @@ function restoreFromStorage(opts) {
     // Honour the persisted top-level view (Projects or Agent); a
     // legacy stored 'inbox'/'today'/'conceive' value falls back to Projects.
     applyActiveView(getActiveView());
+
+    // This restore rebuilt the entire sidebar (initial boot, re-hydrate, or
+    // post-import), so repaint the per-project triage-question counts against
+    // whatever all-projects cache is currently loaded. Explicit call — the paint
+    // is deliberately not observer-driven (see updateAllProjectQuestionCounts).
+    updateAllProjectQuestionCounts();
 
     // First-run welcome tour — fires once when the just-seeded sample
     // project has produced live DOM targets (sidebar row, due pill,

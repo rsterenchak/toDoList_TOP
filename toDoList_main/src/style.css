@@ -737,6 +737,48 @@ body {
   animation: spin 0.7s linear infinite;
 }
 
+/* Per-project "triage question waiting" count in the sidebar drawer rows. An
+   amber pill mirroring the purple .projBadge incomplete-count pill's shape,
+   sitting just left of it. It counts the project's agent_queue rows parked in
+   needs_words (the ASKING triage state) so a question waiting in an off-screen
+   project still reaches the user. Reuses the #ffbd5e amber the blocked-on-you
+   task badges use. Hidden by default (like the ⚡ bolt and the run spinner); the
+   `.hasQuestionCount` modifier both reveals it and reserves its grid column, so
+   a project with no waiting question keeps the row's normal layout.
+   pointer-events: none so taps fall through to the row — tapping the project
+   still just switches to it, adding no tap behavior. */
+.projQuestionCount {
+  display: none;
+  justify-self: end;
+  align-self: center;
+  color: #ffbd5e;
+  background: rgba(255, 189, 94, 0.18);
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  line-height: 1;
+  padding: 1px 7px;
+  border-radius: 99px;
+  pointer-events: none;
+}
+#projChild.hasQuestionCount .projQuestionCount {
+  display: inline-block;
+}
+/* Reserve the amber count's own auto column just left of the .projBadge count,
+   composing with the ⚡ bolt's leading column and the run spinner's column so
+   every combination keeps the title's truncation budget intact. */
+#projChild.hasQuestionCount {
+  grid-template-columns: minmax(0, 1fr) auto auto 12px;
+}
+#projChild.hasInjectBolt.hasQuestionCount {
+  grid-template-columns: auto minmax(0, 1fr) auto auto 12px;
+}
+#projChild.hasRunSpinner.hasQuestionCount {
+  grid-template-columns: minmax(0, 1fr) auto auto auto 12px;
+}
+#projChild.hasInjectBolt.hasRunSpinner.hasQuestionCount {
+  grid-template-columns: auto minmax(0, 1fr) auto auto auto 12px;
+}
+
 /* Same bolt, mounted inside the desktop project-picker dropdown rows. The
    sidebar's display rule is `#projChild`-scoped, so the dropdown needs its
    own show rule; the row is flex, so the bolt simply leads the name. The
