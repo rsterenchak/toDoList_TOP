@@ -16900,17 +16900,24 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 
 /* The read-only phase rail and THE ENTRY section label lead the desktop
    description panel, mirroring the mobile modal. Both are #descSibling children
-   in its 3-column grid (14px 1fr 14px); an auto-placed child lands in a 14px
-   gutter — the defect that crushed the inject button, the ASKING block, and
-   #descInput in turn. Span both full-width. The shared .phaseRail centers its
-   nodes; the panel host only adds the placement and its own vertical padding
-   (the grid's gutters replace the modal's 14px side padding). */
+   in its 3-column grid (14px 1fr 14px). PLACEMENT RULE for this grid: a block
+   that carries its own internal padding (the ASKING and STUCK cards, padding
+   10px 12px) spans `1 / -1` gutter-to-gutter; content that should align with
+   the textarea's edges — the rail, the section label, #descInput — sits in the
+   `2` content column instead, so it never lands flush against the panel border.
+   The rail is additionally capped and left-aligned so its connectors stay short
+   and the four nodes read as one sequence rather than stretching edge to edge;
+   the max-width/margins live on the panel host (not the shared .phaseRail) so
+   the mobile modal's narrower rail is unaffected. */
 #descSibling .phaseRail {
-  grid-column: 1 / -1;
+  grid-column: 2;
+  justify-self: start;
+  max-width: 440px;
+  margin-top: 4px;
   padding: 4px 0 6px;
 }
 #descSibling .descSiblingEntryLabel {
-  grid-column: 1 / -1;
+  grid-column: 2;
 }
 
 /* The ASKING question + answer block and the STUCK failure-reason block both
@@ -16929,14 +16936,15 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 /* The shared File:-path picker (createFilePicker) mounts its trigger chip above
    the textarea and its searchable panel below it. Both are #descSibling children
    and would otherwise auto-place into the 14px gutter column — the same defect
-   that crushed .askingBlock — so span them across the full grid row. The chip
-   keeps its right alignment via justify-self; the panel fills the content width
-   like the textarea it sits under. */
-#descSibling .filePickTrigger,
+   that crushed .askingBlock. The panel fills the content width like the textarea
+   it sits under, so it spans the full grid row. The trigger sits in the content
+   column and keeps its right alignment via justify-self, so its right edge lines
+   up with the textarea's right edge rather than the panel's border. */
 #descSibling .filePickPanel {
   grid-column: 1 / -1;
 }
 #descSibling .filePickTrigger {
+  grid-column: 2;
   justify-self: end;
 }
 
