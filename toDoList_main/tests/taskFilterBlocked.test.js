@@ -65,12 +65,13 @@ afterEach(() => {
 // (a) The blocked set is EXACTLY the three phases — the single definition in
 // phase.js that the chip reads, so a fourth blocked state later lands in one
 // place.
-describe('isBlockedPhase — the blocked set is exactly {accept, asking, drafted, stuck}', () => {
-    it('matches the four blocked phases and nothing else', () => {
+describe('isBlockedPhase — the blocked set is exactly {accept, asking, drafted, stuck, mockup}', () => {
+    it('matches the five blocked phases and nothing else', () => {
         expect(isBlockedPhase(PHASE.ACCEPT)).toBe(true);
         expect(isBlockedPhase(PHASE.ASKING)).toBe(true);
         expect(isBlockedPhase(PHASE.DRAFTED)).toBe(true);
         expect(isBlockedPhase(PHASE.STUCK)).toBe(true);
+        expect(isBlockedPhase(PHASE.MOCKUP)).toBe(true);
 
         expect(isBlockedPhase(PHASE.NONE)).toBe(false);
         expect(isBlockedPhase(PHASE.DRAFT)).toBe(false);

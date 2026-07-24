@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('PHASE constants', () => {
-    it('exposes the seven phases (four pipeline + asking + drafted + stuck), and no run phase', () => {
+    it('exposes the eight phases (four pipeline + asking + drafted + stuck + mockup), and no run phase', () => {
         expect(PHASE).toEqual({
             NONE: 'none',
             DRAFT: 'draft',
@@ -55,6 +55,7 @@ describe('PHASE constants', () => {
             ASKING: 'asking',
             DRAFTED: 'drafted',
             STUCK: 'stuck',
+            MOCKUP: 'mockup',
         });
         expect(Object.values(PHASE)).not.toContain('run');
     });
@@ -63,9 +64,11 @@ describe('PHASE constants', () => {
 describe('PHASE_RAIL_ORDER / PHASE_RAIL_LABELS — read-only rail vocabulary', () => {
     it('orders the four pipeline phases left → right, with no run and no asking node', () => {
         expect(PHASE_RAIL_ORDER).toEqual([PHASE.NONE, PHASE.DRAFT, PHASE.ACCEPT, PHASE.DONE]);
-        // asking and drafted are triage-queue facts, not rail nodes — neither appears.
+        // asking/drafted/stuck/mockup are triage-queue facts, not rail nodes — none appear.
         expect(PHASE_RAIL_ORDER).not.toContain(PHASE.ASKING);
         expect(PHASE_RAIL_ORDER).not.toContain(PHASE.DRAFTED);
+        expect(PHASE_RAIL_ORDER).not.toContain(PHASE.STUCK);
+        expect(PHASE_RAIL_ORDER).not.toContain(PHASE.MOCKUP);
         expect(PHASE_RAIL_ORDER).not.toContain('run');
     });
 
@@ -190,6 +193,45 @@ describe('derivePhase — stuck (a failed / no_change run) outranks the marker p
         // so with no marker the row collapses back to NONE.
         setQueueRows([{ id: 'qs5', todo_id: 'todo-clear', state: 'triaging' }]);
         expect(derivePhase({ id: 'todo-clear' })).toBe(PHASE.NONE);
+    });
+});
+
+describe('derivePhase — mockup (a needs_mockup run) outranks the marker phases', () => {
+    it("returns 'mockup' when the linked queue row is in needs_mockup", () => {
+        setQueueRows([{ id: 'qm1', todo_id: 'todo-mockup', state: 'needs_mockup' }]);
+        expect(derivePhase({ id: 'todo-mockup' })).toBe(PHASE.MOCKUP);
+    });
+
+    it('outranks a pending (present-but-unchecked) marker', () => {
+        markEntryPresentLocally('owner/mockup-repo', 'phase-mockup-pending');
+        // Without a queue row the still-unchecked marker reads as DRAFT…
+        expect(derivePhase({ id: 'todo-mp', entryId: 'phase-mockup-pending' })).toBe(PHASE.DRAFT);
+        // …but a needs_mockup queue row on the same todo takes precedence.
+        setQueueRows([{ id: 'qm2', todo_id: 'todo-mp', state: 'needs_mockup' }]);
+        expect(derivePhase({ id: 'todo-mp', entryId: 'phase-mockup-pending' })).toBe(PHASE.MOCKUP);
+    });
+
+    it('outranks a shipped/checked marker as well', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: phase-mockup-ship -->');
+        await refreshShippedMarkers(freshTarget());
+        expect(derivePhase({ id: 'todo-ms', entryId: 'phase-mockup-ship' })).toBe(PHASE.ACCEPT);
+        setQueueRows([{ id: 'qm3', todo_id: 'todo-ms', state: 'needs_mockup' }]);
+        expect(derivePhase({ id: 'todo-ms', entryId: 'phase-mockup-ship' })).toBe(PHASE.MOCKUP);
+    });
+
+    it('clears when the queue row leaves needs_mockup (a mockup is chosen / re-triage)', () => {
+        setQueueRows([{ id: 'qm4', todo_id: 'todo-mclear', state: 'needs_mockup' }]);
+        expect(derivePhase({ id: 'todo-mclear' })).toBe(PHASE.MOCKUP);
+        // Choosing a mockup or re-triaging moves the row on — with no marker it
+        // collapses back to NONE.
+        setQueueRows([{ id: 'qm4', todo_id: 'todo-mclear', state: 'triaging' }]);
+        expect(derivePhase({ id: 'todo-mclear' })).toBe(PHASE.NONE);
+    });
+
+    it('ignores a needs_mockup row for a different todo, or a missing id', () => {
+        setQueueRows([{ id: 'qm5', todo_id: 'someone-else', state: 'needs_mockup' }]);
+        expect(derivePhase({ id: 'unlinked' })).toBe(PHASE.NONE);
+        expect(derivePhase({})).toBe(PHASE.NONE);
     });
 });
 

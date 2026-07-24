@@ -63,6 +63,7 @@ import {
     renderAgentView,
     subscribeAgentView,
     unsubscribeAgentView,
+    anchorAgentCardForTodo,
 } from '../src/agentView.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -1485,5 +1486,65 @@ describe('AGENT view — needs_mockup launcher', () => {
         const err = document.querySelector('.agentMockupError');
         expect(err.hidden).toBe(false);
         expect(err.textContent).toMatch(/boom/);
+    });
+});
+
+
+// The tasks-surface `⌁ MOCKUP` badge jumps the board to a task's card. Cards
+// carry a data-todo-id anchor, and anchorAgentCardForTodo scrolls + pulses the
+// matching card. When the badge is tapped before the board has painted the card
+// (an async queue load followed the view switch), the anchor is held and the
+// next paint() flushes it.
+describe('AGENT view — open-and-anchor to a task card (⌁ MOCKUP badge target)', () => {
+    let scrollSpy;
+    beforeEach(() => {
+        listLogic.addProject('AnchorProj');
+        mountDom('AnchorProj');
+        // jsdom leaves scrollIntoView undefined; the anchor guards the capability,
+        // so stub it as a spy to observe the scroll.
+        scrollSpy = vi.fn();
+        window.HTMLElement.prototype.scrollIntoView = scrollSpy;
+    });
+    afterEach(() => {
+        delete window.HTMLElement.prototype.scrollIntoView;
+    });
+
+    it('stamps data-todo-id on a card built from a queue row with a todo_id', async () => {
+        queueRows = [{ id: 'q-anch', todo_id: 'todo-anch', state: 'needs_mockup', context: { title: 'Anchor me' } }];
+        await loadBoard();
+        const card = document.querySelector('.agentCard[data-todo-id]');
+        expect(card).toBeTruthy();
+        expect(card.getAttribute('data-todo-id')).toBe('todo-anch');
+    });
+
+    it('scrolls and flashes the matching card when it is already painted', async () => {
+        queueRows = [{ id: 'q-anch', todo_id: 'todo-anch', state: 'needs_mockup', context: { title: 'Anchor me' } }];
+        await loadBoard();
+        anchorAgentCardForTodo('todo-anch');
+        const card = document.querySelector('.agentCard[data-todo-id="todo-anch"]');
+        expect(scrollSpy).toHaveBeenCalledTimes(1);
+        expect(card.classList.contains('agentCard--anchorFlash')).toBe(true);
+    });
+
+    it('does not scroll for a todo id with no matching card', async () => {
+        queueRows = [{ id: 'q-anch', todo_id: 'todo-anch', state: 'needs_mockup', context: { title: 'Anchor me' } }];
+        await loadBoard();
+        anchorAgentCardForTodo('todo-absent');
+        expect(scrollSpy).not.toHaveBeenCalled();
+    });
+
+    it('flushes a pending anchor on the next paint once the card exists', async () => {
+        // No card yet — request the anchor while the board is empty.
+        queueRows = [];
+        await loadBoard();
+        anchorAgentCardForTodo('todo-late');
+        expect(scrollSpy).not.toHaveBeenCalled();
+        // The row arrives and the board repaints (a fresh fetch loads it into the
+        // shared store) — the held anchor flushes at the end of paint().
+        queueRows = [{ id: 'q-late', todo_id: 'todo-late', state: 'needs_mockup', context: { title: 'Late' } }];
+        await loadBoard();
+        expect(scrollSpy).toHaveBeenCalledTimes(1);
+        const card = document.querySelector('.agentCard[data-todo-id="todo-late"]');
+        expect(card.classList.contains('agentCard--anchorFlash')).toBe(true);
     });
 });

@@ -10,6 +10,7 @@ import {
     ASKING_LABEL,
     DRAFTED_LABEL,
     STUCK_LABEL,
+    MOCKUP_LABEL,
     normalizeStatus,
     buildStatusLabel,
     applyTodoStatusClass,
@@ -18,6 +19,7 @@ import {
     hideStatusPopover,
     wireStatusLabelDelegation,
     setReviewBadgeTapHandler,
+    setMockupBadgeTapHandler,
 } from '../src/todoStatus.js';
 import { wireToDoRowClick } from '../src/toDoRow.js';
 import { listLogic } from '../src/listLogic.js';
@@ -409,6 +411,71 @@ describe('STUCK derived overlay', () => {
         // A second tap while open does not collapse the panel (no re-click).
         row.querySelector('.todoStatusLabel').click();
         expect(opened).toBe(1);
+    });
+});
+
+
+describe('MOCKUP derived overlay', () => {
+    afterEach(() => {
+        // Clear the module-level handler so it can't leak into other tests.
+        setMockupBadgeTapHandler(null);
+    });
+
+    it('renders the ⌁ MOCKUP label with data-status="mockup" and no menu ARIA', () => {
+        const label = buildStatusLabel({ status: 'active' }, 'mockup');
+        expect(label.getAttribute('data-status')).toBe('mockup');
+        expect(label.textContent).toBe(MOCKUP_LABEL);
+        expect(label.hasAttribute('aria-haspopup')).toBe(false);
+        expect(label.getAttribute('aria-label')).toMatch(/mockup/i);
+    });
+
+    it('MOCKUP is display-only — absent from STATUS_META, STATUS_ORDER, and the popover', () => {
+        expect(MOCKUP_LABEL).toBe('⌁ MOCKUP');
+        expect(STATUS_META.mockup).toBeUndefined();
+        expect(STATUS_ORDER).not.toContain('mockup');
+    });
+
+    it('refreshTodoStatusUI overlays MOCKUP without touching the manual status class', () => {
+        const item = { status: 'in_progress' };
+        const row = makeRow(item, 'Inbox');
+        refreshTodoStatusUI(row, item, 'mockup');
+        const label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('mockup');
+        expect(label.textContent).toBe(MOCKUP_LABEL);
+        expect(row.classList.contains('todo-row--in_progress')).toBe(true);
+        // Clearing the overlay reverts the label to the manual status (the badge
+        // clears on its own once the queue row leaves needs_mockup).
+        refreshTodoStatusUI(row, item, null);
+        expect(label.getAttribute('data-status')).toBe('in_progress');
+    });
+
+    it('tapping the MOCKUP badge routes to the Agent view, not the description panel', () => {
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+
+        const routed = [];
+        setMockupBadgeTapHandler(function (todoId, projectName) {
+            routed.push([todoId, projectName]);
+        });
+
+        const item = { id: 'todo-mk', status: 'active' };
+        const row = makeRow(item, 'Inbox');
+        refreshTodoStatusUI(row, item, 'mockup');
+        // A description toggle is present — the MOCKUP tap must NOT open it (unlike
+        // ASKING / DRAFTED / STUCK, whose taps do).
+        const descToggle = document.createElement('div');
+        descToggle.id = 'descToggle';
+        let opened = 0;
+        descToggle.addEventListener('click', function () { opened += 1; });
+        row.appendChild(descToggle);
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+        expect(routed).toEqual([['todo-mk', 'Inbox']]);
+        expect(opened).toBe(0);
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
     });
 });
 
