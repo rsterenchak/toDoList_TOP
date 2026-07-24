@@ -477,7 +477,11 @@ function syncStuckPanel(toDoChild, item) {
 // same height recompute after the picker's own list (re)paints — the loading
 // state and the populated list are different heights, so the panel shifts every
 // row below it when the on-demand load resolves.
-function mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn) {
+export function mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn) {
+    // Idempotent across reopens — drop any prior picker so opens don't stack duplicates.
+    descSibling.querySelectorAll('.filePickTrigger, .filePickPanel').forEach(function (el) {
+        el.remove();
+    });
     const picker = createFilePicker({
         projectName: projectName || '',
         textarea: descInput,
