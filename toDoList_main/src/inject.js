@@ -292,7 +292,28 @@ async function injectDescription(item, target) {
             markEntryPresentLocally(target.repo, item.entryId);
             refreshShippedMarkers(target, true);
         }
-        return { ok: true };
+        // Persist the entry id to the todo's Supabase row so the task→entry
+        // link survives hydration on any device. `saveToStorage()` above only
+        // writes localStorage, which is exactly what has masked this: the
+        // originating device's local fallback fills `entryId` back in, so a
+        // null `entry_id` column is invisible there but orphans the task
+        // everywhere else. Route through the same single-field write the Agent
+        // dispatch path uses (stampTodoEntryId → toTodoRowPayload carries
+        // entry_id to Supabase), keyed by the todo's own id. Runs only AFTER
+        // postToWorker resolves, so a failed inject never records an id for an
+        // entry that isn't in the file. The inject itself has already
+        // succeeded, so a stamp failure is a link failure, not an inject
+        // failure — surface it distinctly rather than swallowing it.
+        let linkFailed = false;
+        try {
+            const stamp = await Promise.resolve(
+                listLogic.stampTodoEntryId(item.id, item.entryId)
+            );
+            if (!stamp || stamp.ok === false) linkFailed = true;
+        } catch (stampErr) {
+            linkFailed = true;
+        }
+        return linkFailed ? { ok: true, linkFailed: true } : { ok: true };
     } catch (e) {
         return { ok: false, reason: describeError(e) };
     }
@@ -1088,7 +1109,15 @@ export function makeInjectButton(item, options) {
             const target = findTargetById(targetId);
             const result = await injectDescription(item, target);
             if (result.ok) {
-                showInjectToast('Injected to TODO.md');
+                // The entry landed in TODO.md in every ok case. When the
+                // entry-id persistence write failed, say so explicitly — the
+                // inject succeeded but the task couldn't be linked to its
+                // entry — without reading as a failed inject.
+                if (result.linkFailed) {
+                    showInjectToast('Injected to TODO.md, but couldn’t link this task to its entry', 'error');
+                } else {
+                    showInjectToast('Injected to TODO.md');
+                }
                 refreshInjectButton(btn, item);
                 // injectDescription just stamped item.injectedAt — surface the
                 // amber pending dot on this row's description indicator now.

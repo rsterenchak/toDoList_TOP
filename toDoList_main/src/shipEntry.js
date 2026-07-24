@@ -7,6 +7,7 @@ import {
     readTodoMdFromWorker,
     markEntryPresentLocally,
     refreshShippedMarkers,
+    showInjectToast,
 } from './inject.js';
 
 // The generic "ship a TODO.md entry tied to a todo and dispatch a run for it"
@@ -63,7 +64,22 @@ export async function shipEntryForTodo(options) {
     // `todo_id` (= the item's id); markEntryPresentLocally + a forced marker
     // refresh light the amber immediately, mirroring injectDescription.
     if (todoId != null) {
-        Promise.resolve(listLogic.stampTodoEntryId(todoId, entryId)).catch(function () {});
+        // Surface a stamp failure rather than swallowing it: the run has been
+        // injected/dispatched, but if the entry id doesn't reach the todo's
+        // Supabase row the task is silently orphaned from its entry on every
+        // other device — the same failure mode the inject button guards. A
+        // failure here is a link failure, not a dispatch failure, so the toast
+        // says exactly that.
+        Promise.resolve(listLogic.stampTodoEntryId(todoId, entryId)).then(
+            function (stamp) {
+                if (!stamp || stamp.ok === false) {
+                    showInjectToast('Run dispatched, but couldn’t link this task to its entry', 'error');
+                }
+            },
+            function () {
+                showInjectToast('Run dispatched, but couldn’t link this task to its entry', 'error');
+            }
+        );
         if (target && target.repo) {
             markEntryPresentLocally(target.repo, entryId);
             refreshShippedMarkers(target, true);
