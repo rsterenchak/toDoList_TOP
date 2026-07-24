@@ -40,7 +40,7 @@
   - Completed: 2026-07-24
   <!-- id: a5093bc6-7841-4d66-a877-3f806472d663 -->
 
-- [ ] **[LOW]** Blocked filter chip: make it smaller and quieter, and distinguish waiting from filtering
+- [x] **[LOW]** Blocked filter chip: make it smaller and quieter, and distinguish waiting from filtering
   - Type: bug
   - Description: The blocked chip landed as a full-height bordered pill reading `BLOCKED 1`, which gives it the same visual weight as the ACTIVE status pill beside it — but it is a secondary, occasional control, not a peer of the primary filter. Worse, it renders that bright bordered treatment while the filter is RELEASED, so "one task is waiting" is visually identical to "I am currently filtering to blocked", and the two cannot be told apart at a glance. Reduce it to a glyph and a count, and give it three distinct visual states instead of one.
   - Behavior: The chip renders as an amber `⌁` glyph plus the count, with no word — shorter than the status pill (roughly 28px tall against the pill's 36px) so it reads as secondary. Three states: (1) count zero — no border, no fill, text at near-background dimness, inert, still occupying its full width so the bar's geometry does not shift; (2) count above zero, filter released — amber text on no border and no fill, colour alone carrying the signal; (3) filter engaged — the chip takes a soft amber fill and border, and the status pill snaps to ALL as it already does. Every existing behavior is unchanged: the count, the snap-to-ALL, the auto-release at zero, persistence, and the live repaint.
@@ -54,5 +54,5 @@
     - `style.css`: existing `#ffbd5e` amber, no new tokens. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The count logic, `isBlockedPhase`, and the three blocked phases. Snap-to-ALL, auto-release, and persistence. The status cycle pill, the Sort control, and the segmented desktop filter. The row badge, the description editor, and the TODO.md viewer. Any change to which tasks the filter shows.
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 45478646-22c3-4dc0-bc34-8aceecf60f30 -->
