@@ -225,6 +225,23 @@ describe('STACK mobile inline-expand task creation — toDoRow.js wiring', () =>
         expect(toDoRow).toMatch(/removeAttribute\(\s*['"]data-blank-placeholder['"]\s*\)/);
         expect(toDoRow).toMatch(/mobileCreateChips[\s\S]*?\.remove\(\)/);
     });
+
+    it('strips the chip row at every width, not only the mobile breakpoint', () => {
+        // The 📋 paste chip commits on desktop too, so the chip-row + marker
+        // cleanup must sit OUTSIDE (before) the mobile-only accent/chaining
+        // block — otherwise a committed desktop row keeps its visible chip
+        // sibling and its blank-placeholder marker.
+        const removeAttrIdx = toDoRow.indexOf("removeAttribute('data-blank-placeholder')");
+        const mobileAccentIdx = toDoRow.indexOf('justCommittedMobile');
+        expect(removeAttrIdx).toBeGreaterThan(-1);
+        expect(mobileAccentIdx).toBeGreaterThan(-1);
+        // Cleanup precedes the mobile accent block…
+        expect(removeAttrIdx).toBeLessThan(mobileAccentIdx);
+        // …and the width guard that wraps that block comes AFTER the cleanup,
+        // so the cleanup is not itself gated behind `window.innerWidth < 1024`.
+        const guardIdx = toDoRow.lastIndexOf('window.innerWidth < 1024', mobileAccentIdx);
+        expect(guardIdx).toBeGreaterThan(removeAttrIdx);
+    });
 });
 
 
@@ -273,10 +290,12 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         expect(css).toMatch(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{[\s\S]*?\.justCommittedMobile[\s\S]*?animation:\s*none/);
     });
 
-    it('scopes the chip styles to the ≤1023px mobile breakpoint', () => {
-        // The block must live inside the existing @media (max-width: 1023px)
-        // section — desktop never surfaces the chip row, so its styling
-        // would be dead weight at the top level.
+    it('keeps the full chip cluster styling inside the ≤1023px mobile breakpoint', () => {
+        // The cluster's appearance (Today / Tomorrow / 📅 / + ¶ plus the
+        // wrap + tuck layout) lives inside the existing @media (max-width:
+        // 1023px) section. Desktop only restates the small surface the 📋
+        // paste chip needs, so the first #mobileCreateChips rule is the
+        // mobile one.
         const mediaIdx = css.indexOf('@media (max-width: 1023px)');
         const chipsIdx = css.indexOf('#mobileCreateChips');
         expect(mediaIdx).toBeGreaterThan(-1);
@@ -291,19 +310,26 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         expect(match[0]).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
     });
 
-    it('hides the chip cluster at the ≥1024px desktop breakpoint', () => {
+    it('surfaces only the 📋 paste chip at the ≥1024px desktop breakpoint', () => {
         // The chip DOM is attached unconditionally to every blank placeholder
-        // so the JS path stays single-branch, but on desktop the cluster
-        // (Today / Tomorrow / 📅 / + ¶) must never paint — desktop
-        // placeholder rows must look identical to committed rows.
+        // so the JS path stays single-branch. On desktop the date/description
+        // chips (Today / Tomorrow / 📅 / + ¶) stay hidden, but the 📋 paste
+        // chip is surfaced so a drafted TODO.md entry can be pasted into a
+        // task. The container hides until the row is focus-within, then
+        // reveals — mirroring the mobile reveal.
         const desktopBlocks = Array.from(
             css.matchAll(/@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*?\n\}/g)
         );
         expect(desktopBlocks.length).toBeGreaterThan(0);
-        const hidesChips = desktopBlocks.some(function(m) {
-            return /#mobileCreateChips\s*\{[^}]*display:\s*none/.test(m[0]);
+        const pasteBlock = desktopBlocks.find(function(m) {
+            return /#mobileCreateChips\s*>\s*\.mobileCreateChip:not\(\.mobileCreatePasteChip\)\s*\{[^}]*display:\s*none/.test(m[0]);
         });
-        expect(hidesChips).toBe(true);
+        expect(pasteBlock).toBeTruthy();
+        // Container hidden by default, revealed on focus-within at desktop.
+        expect(pasteBlock[0]).toMatch(/#mobileCreateChips\s*\{[^}]*display:\s*none/);
+        expect(pasteBlock[0]).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#mobileCreateChips\s*\{[\s\S]*?display:\s*flex/);
+        // The paste chip itself carries a rule so it actually paints.
+        expect(pasteBlock[0]).toMatch(/#mobileCreateChips\s*>\s*\.mobileCreatePasteChip\s*\{/);
     });
 });
 
@@ -426,6 +452,32 @@ describe('Compose row paste-entry — commit flow', () => {
         expect(item.desc).toBe('- [ ] **[MEDIUM]** Pasted headline\n  - Type: feature');
         expect(row.querySelector('#toDoInput').value).toBe('Pasted headline');
         expect(enterFired).toBe(true);
+        restoreClipboard();
+    });
+
+    it('commits a pasted entry at a desktop viewport width', async () => {
+        // The paste affordance is available on desktop, so the same
+        // clipboard-read → set desc → dispatch Enter path must fire at
+        // ≥1024px, not only on mobile.
+        const originalWidth = window.innerWidth;
+        Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
+        setClipboard(() => Promise.resolve('- [ ] **[HIGH]** Desktop paste\n  - Type: feature'));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        await flush();
+
+        expect(item.desc).toBe('- [ ] **[HIGH]** Desktop paste\n  - Type: feature');
+        expect(row.querySelector('#toDoInput').value).toBe('Desktop paste');
+        expect(enterFired).toBe(true);
+        Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
         restoreClipboard();
     });
 

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-24',
+        added: [
+            "Paste a drafted TODO.md entry straight into a new task from the desktop create row, not just on mobile.",
+        ],
         fixed: [
-            "The description file picker now lists and inserts full repo-relative file paths, and can be filtered by folder, instead of bare filenames that pointed at files a run couldn't find.",
             "File paths in a task's description file picker now keep their full height when the list is long, so every path stays legible instead of squashing to a sliver as the list scrolls.",
             "A task's description file picker no longer stacks duplicate copies of itself each time the description is closed and reopened.",
             "The description file picker's panel now closes again when its button is tapped a second time, instead of staying open.",

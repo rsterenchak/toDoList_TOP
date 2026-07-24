@@ -12671,7 +12671,55 @@ body.row-dragging * { cursor: grabbing !important; }
   #drawerSettingsBtnWrap,
   #drawerSettingsBtn,
   #drawerFooter { display: none; }
-  #mobileCreateChips { display: none; }
+
+  /* Desktop create-row paste affordance. The date/description chips
+     (Today / Tomorrow / 📅 / + ¶) stay mobile-only — the desktop row
+     already exposes those through its own chrome — but the 📋 paste-entry
+     chip is surfaced here so a TODO.md entry drafted in the Claude app can
+     be pasted into a task without a mobile device. The chip cluster's own
+     appearance rules live inside the ≤1023px block and are media-scoped, so
+     the small surface the paste chip needs is restated here rather than
+     hoisted out, keeping the mobile layout byte-for-byte unchanged. The
+     container stays hidden until the placeholder row is focus-within,
+     mirroring the mobile reveal. */
+  #mobileCreateChips {
+    display: none;
+    width: auto;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 6px 12px;
+    margin: -3px 8px 5px;
+    background: var(--bg-surface);
+    border: 0.5px solid var(--border-mid);
+    border-top: 0.5px dashed var(--border-mid);
+    border-radius: 0 0 6px 6px;
+  }
+  #toDoChild[data-blank-placeholder]:focus-within + #mobileCreateChips {
+    display: flex;
+  }
+  /* Only the paste chip paints on desktop; every other chip stays hidden. */
+  #mobileCreateChips > .mobileCreateChip:not(.mobileCreatePasteChip) {
+    display: none;
+  }
+  #mobileCreateChips > .mobileCreatePasteChip {
+    appearance: none;
+    -webkit-appearance: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
+    border: 0.5px solid var(--border-mid);
+    border-radius: 999px;
+    min-height: 32px;
+    padding: 0 12px;
+    font-size: 16px;
+    line-height: 1;
+    cursor: pointer;
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  }
+  #mobileCreateChips > .mobileCreatePasteChip:hover { background: var(--bg-hover); }
 
   /* Cap a long description so it doesn't push the row's height into the
      todos below it. The JS auto-grow handler keeps writing scrollHeight
