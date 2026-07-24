@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-24T10:38:16.350Z",
-  "sha": "4cad3191fce8e25e0de307fe0625969035fc507b",
+  "generatedAt": "2026-07-24T10:59:10.951Z",
+  "sha": "90084cf8484d88525809e377c712baea8eb38f63",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -81,11 +81,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 2133,
+      "line": 2137,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2133
+          "line": 2137
         },
         {
           "file": "style.css",
@@ -125,11 +125,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 2159,
+      "line": 2163,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2159
+          "line": 2163
         }
       ]
     },
@@ -901,11 +901,11 @@
       "selector": "#checkToDo",
       "label": "Check To Do",
       "file": "toDoRow.js",
-      "line": 939,
+      "line": 943,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 939
+          "line": 943
         },
         {
           "file": "style.css",
@@ -1461,11 +1461,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 2173,
+      "line": 2177,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2173
+          "line": 2177
         },
         {
           "file": "style.css",
@@ -1669,11 +1669,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 2198,
+      "line": 2202,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2198
+          "line": 2202
         }
       ]
     },
@@ -2221,11 +2221,11 @@
       "selector": "#descIndicator",
       "label": "Desc Indicator",
       "file": "toDoRow.js",
-      "line": 2313,
+      "line": 2317,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2313
+          "line": 2317
         },
         {
           "file": "style.css",
@@ -2237,11 +2237,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 2230,
+      "line": 2234,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2230
+          "line": 2234
         },
         {
           "file": "style.css",
@@ -2253,11 +2253,11 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 2229,
+      "line": 2233,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2229
+          "line": 2233
         },
         {
           "file": "style.css",
@@ -2277,7 +2277,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 2207
+          "line": 2211
         },
         {
           "file": "style.css",
@@ -2437,7 +2437,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 2083
+          "line": 2087
         },
         {
           "file": "style.css",
@@ -4921,11 +4921,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 2088,
+      "line": 2092,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2088
+          "line": 2092
         },
         {
           "file": "style.css",
@@ -4949,11 +4949,11 @@
       "selector": "#statsModal",
       "label": "Stats Modal",
       "file": "toDoRow.js",
-      "line": 1483,
+      "line": 1487,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1483
+          "line": 1487
         },
         {
           "file": "style.css",
@@ -4965,11 +4965,11 @@
       "selector": "#statsModalBackdrop",
       "label": "Stats Modal Backdrop",
       "file": "toDoRow.js",
-      "line": 1480,
+      "line": 1484,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1480
+          "line": 1484
         },
         {
           "file": "style.css",
@@ -4981,11 +4981,11 @@
       "selector": "#statsModalBody",
       "label": "Stats Modal Body",
       "file": "toDoRow.js",
-      "line": 1515,
+      "line": 1519,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1515
+          "line": 1519
         },
         {
           "file": "style.css",
@@ -4997,11 +4997,11 @@
       "selector": "#statsModalClose",
       "label": "Stats Modal Close",
       "file": "toDoRow.js",
-      "line": 1506,
+      "line": 1510,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1506
+          "line": 1510
         },
         {
           "file": "style.css",
@@ -5013,11 +5013,11 @@
       "selector": "#statsModalHeader",
       "label": "Stats Modal Header",
       "file": "toDoRow.js",
-      "line": 1489,
+      "line": 1493,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1489
+          "line": 1493
         },
         {
           "file": "style.css",
@@ -5029,11 +5029,11 @@
       "selector": "#statsModalSubtitle",
       "label": "Stats Modal Subtitle",
       "file": "toDoRow.js",
-      "line": 1499,
+      "line": 1503,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1499
+          "line": 1503
         },
         {
           "file": "style.css",
@@ -5045,11 +5045,11 @@
       "selector": "#statsModalTitle",
       "label": "Stats Modal Title",
       "file": "toDoRow.js",
-      "line": 1495,
+      "line": 1499,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1495
+          "line": 1499
         },
         {
           "file": "style.css",
@@ -5061,11 +5061,11 @@
       "selector": "#statsModalTitleWrap",
       "label": "Stats Modal Title Wrap",
       "file": "toDoRow.js",
-      "line": 1492,
+      "line": 1496,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1492
+          "line": 1496
         },
         {
           "file": "style.css",
@@ -5077,11 +5077,11 @@
       "selector": "#statsSibling",
       "label": "Stats Sibling",
       "file": "toDoRow.js",
-      "line": 1283,
+      "line": 1287,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1283
+          "line": 1287
         },
         {
           "file": "style.css",
@@ -5093,11 +5093,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 2220,
+      "line": 2224,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2220
+          "line": 2224
         },
         {
           "file": "style.css",
@@ -5261,11 +5261,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 2067,
+      "line": 2071,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2067
+          "line": 2071
         },
         {
           "file": "style.css",
@@ -5277,11 +5277,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 2103,
+      "line": 2107,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2103
+          "line": 2107
         },
         {
           "file": "style.css",
@@ -5293,11 +5293,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 2096,
+      "line": 2100,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2096
+          "line": 2100
         }
       ]
     },
