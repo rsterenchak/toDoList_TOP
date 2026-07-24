@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-24',
-        added: [
-            "Paste a drafted TODO.md entry straight into a new task from the desktop create row, not just on mobile.",
+        changed: [
+            "The compose row's paste chip now opens an editable panel to review a drafted entry before it becomes a task, and still works when clipboard access is blocked.",
         ],
         fixed: [
             "File paths in a task's description file picker now keep their full height when the list is long, so every path stays legible instead of squashing to a sliver as the list scrolls.",

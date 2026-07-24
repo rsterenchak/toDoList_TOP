@@ -255,11 +255,14 @@ function showRowToast(message) {
 
 // Locate the OPEN description panel (`#descSibling`) belonging to a row, or null
 // when the row's panel isn't expanded. The panel is inserted directly after the
-// row — or one slot past the mobile chip row on a blank placeholder — mirroring
-// wireDescToggle's own insert/remove traversal.
+// row — or past the blank placeholder's leading siblings (the mobile chip row
+// and, when open, the paste-entry panel) — mirroring wireDescToggle's own
+// insert/remove traversal.
 function openDescSiblingFor(toDoChild) {
     let node = toDoChild.nextSibling;
-    if (node && node.id === 'mobileCreateChips') node = node.nextSibling;
+    while (node && (node.id === 'mobileCreateChips' || node.id === 'pasteEntryPanel')) {
+        node = node.nextSibling;
+    }
     return (node && node.id === 'descSibling') ? node : null;
 }
 
@@ -2040,10 +2043,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         if (switcher === 0) {
             // On the blank placeholder the chip row sits immediately after
             // the row as its own sibling (and the CSS reveal keys off that
-            // adjacency), so slot the description panel AFTER the chips when
-            // they're present; otherwise directly after the row.
+            // adjacency), and the paste-entry panel — when open — sits after
+            // the chips, so slot the description panel AFTER both of those
+            // leading siblings; otherwise directly after the row.
             let descAnchor = toDoChild.nextSibling;
-            if (descAnchor && descAnchor.id === 'mobileCreateChips') {
+            while (descAnchor && (descAnchor.id === 'mobileCreateChips' || descAnchor.id === 'pasteEntryPanel')) {
                 descAnchor = descAnchor.nextSibling;
             }
             mainList.insertBefore(descSibling, descAnchor);
@@ -2096,10 +2100,10 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             descToggle.classList.add("open");
             switcher = 1;
         } else {
-            // Mirror the insert: the panel may sit one slot down past the
-            // chip sibling on the blank placeholder.
+            // Mirror the insert: the panel may sit past the chip sibling and
+            // the paste-entry panel on the blank placeholder.
             let descNode = toDoChild.nextSibling;
-            if (descNode && descNode.id === 'mobileCreateChips') {
+            while (descNode && (descNode.id === 'mobileCreateChips' || descNode.id === 'pasteEntryPanel')) {
                 descNode = descNode.nextSibling;
             }
             if (descNode && descNode.id === 'descSibling') {
@@ -2621,13 +2625,23 @@ export function buildToDoRow(item, toDoName) {
         // marker (and, on desktop, the now-visible chip row) lingers and the
         // next blank placeholder stacks a second one beneath it.
         toDoChild.removeAttribute('data-blank-placeholder');
+        toDoChild.removeAttribute('data-paste-open');
         toDoChild.classList.remove('mobile-create-row');
         // The chip row lives as the row's next sibling (its own grid row),
-        // not a child, so reach it there to strip it on commit.
-        const chipRow = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'mobileCreateChips')
-            ? toDoChild.nextSibling
-            : null;
+        // not a child, so reach it there to strip it on commit. The paste
+        // chip's inline panel (mounted right after the chip row) must go too —
+        // committing via a typed title while it is open would otherwise leave
+        // it orphaned beneath a now-committed row.
+        let chipRow = null;
+        let pastePanel = null;
+        let scan = toDoChild.nextSibling;
+        while (scan && (scan.id === 'mobileCreateChips' || scan.id === 'pasteEntryPanel')) {
+            if (scan.id === 'mobileCreateChips') chipRow = scan;
+            if (scan.id === 'pasteEntryPanel') pastePanel = scan;
+            scan = scan.nextSibling;
+        }
         if (chipRow) chipRow.remove();
+        if (pastePanel) pastePanel.remove();
 
         // STACK mobile commit accent — 700ms fading purple left-edge so the
         // user sees their just-committed task land — plus the session flip
@@ -2938,12 +2952,12 @@ export function reorderToDoDOM(projectName) {
         let row = rowsByItem.get(item);
         if (!row) row = buildToDoRow(item, projectName);
         // Collect any auxiliary panels that belong to this row (the
-        // description panel, the recurring-task stats drawer, and the blank
-        // placeholder's mobile chip row can be present). They sit as
-        // consecutive siblings beneath the row.
+        // description panel, the recurring-task stats drawer, the blank
+        // placeholder's mobile chip row, and the paste-entry panel can be
+        // present). They sit as consecutive siblings beneath the row.
         const auxiliary = [];
         let next = row.nextSibling;
-        while (next && (next.id === 'descSibling' || next.id === 'statsSibling' || next.id === 'mobileCreateChips')) {
+        while (next && (next.id === 'descSibling' || next.id === 'statsSibling' || next.id === 'mobileCreateChips' || next.id === 'pasteEntryPanel')) {
             auxiliary.push(next);
             next = next.nextSibling;
         }

@@ -18,6 +18,7 @@
 import { setRowDateOffset, showDueDatePopover } from './dueDate.js';
 import { showInjectToast } from './inject.js';
 import { parsePastedEntry } from './entryParse.js';
+import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 
 // Re-exported so existing importers (and tests) can keep reaching the parser
 // through this module; the single implementation now lives in entryParse.js,
@@ -77,17 +78,148 @@ function isMobileViewport() {
 }
 
 
-// Read the clipboard, parse a pasted entry, and commit a task through the same
-// Enter path a typed title uses — so the committed row gets its status badge,
-// a fresh blank placeholder, and persistence. The title input carries the
-// parsed headline; item.desc carries the full entry (the commit handler reads
-// the title from the input and never touches desc, so the value set here
-// survives). Clipboard reads need a user gesture and can reject, so both the
-// throw and the rejected-promise paths surface a toast; a denied read also
-// focuses the title input so the user can paste by hand rather than fail
-// silently. Mirrors copyTaskContextForClaude's dual-path clipboard handling.
-function handleEntryPaste(toDoChild, item) {
+// Parse the collected text and commit a task through the same Enter path a
+// typed title uses — so the committed row gets its status badge, a fresh blank
+// placeholder, and persistence. The title input carries the parsed headline;
+// item.desc carries the full entry (the commit handler reads the title from the
+// input and never touches desc, so the value set here survives). Returns true
+// when a task was committed. A carried marker still surfaces the existing toast.
+function commitParsedEntry(toDoChild, item, raw) {
+    const parsed = parsePastedEntry(raw);
+    if (!parsed.title) return false;
     const toDoInput = toDoChild.querySelector('#toDoInput');
+    item.desc = parsed.description;
+    if (toDoInput) {
+        toDoInput.value = parsed.title;
+        toDoInput.dispatchEvent(new KeyboardEvent('keydown', {
+            key: 'Enter', bubbles: true,
+        }));
+    }
+    if (parsed.hasMarker) {
+        showInjectToast('Pasted — this entry already exists in TODO.md.');
+    }
+    return true;
+}
+
+
+// Locate the paste-entry panel mounted for a row, or null. It sits as the
+// placeholder's sibling directly after the chip row (mirroring #descSibling),
+// so walk past the chip row to reach it.
+function pastePanelFor(toDoChild) {
+    let node = toDoChild.nextSibling;
+    while (node && node.id === 'mobileCreateChips') node = node.nextSibling;
+    return (node && node.id === 'pasteEntryPanel') ? node : null;
+}
+
+
+// Remove the paste-entry panel and clear the chip's pressed state. Falls back
+// to a global lookup because the commit path removes the chip row from between
+// the panel and the row, which the sibling walk above no longer traverses.
+function closePastePanel(toDoChild, pasteChip) {
+    let panel = pastePanelFor(toDoChild);
+    if (!panel && typeof document !== 'undefined') {
+        panel = document.getElementById('pasteEntryPanel');
+    }
+    if (panel) panel.remove();
+    if (toDoChild) toDoChild.removeAttribute('data-paste-open');
+    if (pasteChip) pasteChip.classList.remove('mobileCreateChipSelected');
+    refreshViewerExpandedHeight();
+}
+
+
+// Open an inline panel below the compose row holding a labelled textarea and
+// PARSE & ADD / CANCEL actions, so a drafted TODO.md entry is visible and
+// editable before it becomes a task — and pasting still works when the
+// clipboard API is unavailable or blocked (frequent on iOS Safari). Mounts the
+// panel as the placeholder's SIBLING (the row is `overflow: clip` at a fixed
+// height, so a child would be cropped), directly after the chip row and before
+// an open #descSibling. Idempotent: any existing panel is removed first.
+function openPastePanel(toDoChild, item, pasteChip) {
+    const existing = pastePanelFor(toDoChild);
+    if (existing) existing.remove();
+
+    const panel = document.createElement('div');
+    panel.id = 'pasteEntryPanel';
+    panel.className = 'pasteEntryPanel';
+    panel.setAttribute('aria-label', 'Paste a TODO.md entry');
+
+    const label = document.createElement('div');
+    label.className = 'pasteEntryLabel';
+    label.textContent = 'PASTE A TODO.md ENTRY';
+
+    const textarea = document.createElement('textarea');
+    textarea.className = 'pasteEntryInput';
+    textarea.setAttribute('placeholder',
+        '- [ ] **[MEDIUM]** Title\n  - Type: feature\n  - Description: …');
+    // Disable smart substitutions so pasted markdown isn't mangled (16px+ font
+    // to avoid iOS focus auto-zoom lives on the CSS rule) — descInput sets the
+    // same for the same reason.
+    textarea.spellcheck = false;
+    textarea.setAttribute('autocapitalize', 'off');
+    textarea.setAttribute('autocorrect', 'off');
+
+    const actions = document.createElement('div');
+    actions.className = 'pasteEntryActions';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'pasteEntryBtn pasteEntryCancel';
+    cancelBtn.textContent = 'CANCEL';
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = 'pasteEntryBtn pasteEntryAdd';
+    addBtn.textContent = 'PARSE & ADD';
+
+    // Keep focus stable: a mousedown on a button must not blur the textarea
+    // before the click lands.
+    [cancelBtn, addBtn].forEach(function(b) {
+        b.addEventListener('mousedown', function(e) { e.preventDefault(); });
+    });
+
+    cancelBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        closePastePanel(toDoChild, pasteChip);
+    });
+
+    addBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Inert on empty — the panel stays open so the user can paste.
+        if (!textarea.value.trim()) return;
+        commitParsedEntry(toDoChild, item, textarea.value);
+        closePastePanel(toDoChild, pasteChip);
+    });
+
+    actions.appendChild(cancelBtn);
+    actions.appendChild(addBtn);
+    panel.appendChild(label);
+    panel.appendChild(textarea);
+    panel.appendChild(actions);
+
+    const parent = toDoChild.parentNode;
+    if (parent) {
+        const anchor = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'mobileCreateChips')
+            ? toDoChild.nextSibling
+            : toDoChild;
+        parent.insertBefore(panel, anchor.nextSibling);
+    }
+
+    // Keep the chip row (and the pressed chip) visible while the panel is open:
+    // the mobile/desktop reveal is otherwise gated on the row being
+    // focus-within, which moving focus into the sibling textarea breaks.
+    toDoChild.setAttribute('data-paste-open', 'true');
+    pasteChip.classList.add('mobileCreateChipSelected');
+
+    // The panel changes the stack height below it — an expanded viewer card
+    // caches its body height, so nudge it to re-measure.
+    refreshViewerExpandedHeight();
+
+    // Focus so a manual paste works immediately; the clipboard pre-fill is
+    // best-effort and must not block opening. A denied or unavailable read is a
+    // normal path here, not a fallback, so it surfaces no toast.
+    textarea.focus();
     let read;
     try {
         read = navigator.clipboard.readText();
@@ -96,29 +228,12 @@ function handleEntryPaste(toDoChild, item) {
     }
     Promise.resolve(read).then(function(text) {
         const raw = String(text || '');
-        if (!raw.trim()) {
-            showInjectToast('Clipboard is empty — nothing to paste.', 'error');
-            return;
+        // Only pre-fill if the panel is still open and the user hasn't typed.
+        if (raw && typeof document !== 'undefined'
+            && document.body.contains(textarea) && textarea.value === '') {
+            textarea.value = raw;
         }
-        const parsed = parsePastedEntry(raw);
-        if (!parsed.title) {
-            showInjectToast('Couldn’t read a task from the clipboard.', 'error');
-            return;
-        }
-        item.desc = parsed.description;
-        if (toDoInput) {
-            toDoInput.value = parsed.title;
-            toDoInput.dispatchEvent(new KeyboardEvent('keydown', {
-                key: 'Enter', bubbles: true,
-            }));
-        }
-        if (parsed.hasMarker) {
-            showInjectToast('Pasted — this entry already exists in TODO.md.');
-        }
-    }, function() {
-        showInjectToast('Couldn’t read the clipboard — paste into the title instead.', 'error');
-        if (toDoInput) toDoInput.focus();
-    });
+    }, function() { /* denied / unavailable — leave the textarea empty and focused */ });
 }
 
 
@@ -164,8 +279,10 @@ export function attachMobileCreateChips(toDoChild, item) {
     const calChip      = makeChip('custom',   '📅');
     calChip.setAttribute('aria-label', 'Pick a date');
 
-    // Paste a full TODO.md entry (drafted in the Claude app) straight into a
-    // committed task — headline becomes the title, whole entry the description.
+    // Paste a full TODO.md entry (drafted in the Claude app) into a new task.
+    // Tapping toggles an inline panel below the compose row where the entry is
+    // shown and edited before it lands — headline becomes the title, whole entry
+    // the description.
     const pasteChip = document.createElement('button');
     pasteChip.type = 'button';
     pasteChip.id = 'mobileCreatePasteChip';
@@ -176,7 +293,11 @@ export function attachMobileCreateChips(toDoChild, item) {
     pasteChip.addEventListener('click', function(e) {
         e.preventDefault();
         e.stopPropagation();
-        handleEntryPaste(toDoChild, item);
+        if (pastePanelFor(toDoChild)) {
+            closePastePanel(toDoChild, pasteChip);
+        } else {
+            openPastePanel(toDoChild, item, pasteChip);
+        }
     });
 
     const descChip = document.createElement('button');
