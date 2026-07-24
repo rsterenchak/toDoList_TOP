@@ -45,7 +45,7 @@ import {
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI } from './todoStatus.js';
-import { derivePhase, PHASE } from './phase.js';
+import { derivePhase, PHASE, isBlockedPhase } from './phase.js';
 import {
     getQueueRowForTodo,
     pendingAnswers,
@@ -54,7 +54,7 @@ import {
     startAgentQueueSubscription,
     onQueueChange,
 } from './agentQueueStore.js';
-import { applyTaskFilter } from './taskFilter.js';
+import { applyTaskFilter, setBlockedItemResolver } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 
@@ -68,6 +68,16 @@ let discussTaskHandler = null;
 export function setDiscussTaskHandler(fn) {
     discussTaskHandler = typeof fn === 'function' ? fn : null;
 }
+
+// The blocked-on-you filter chip in the task filter bar keys off a row's derived
+// phase, but taskFilter.js can't import phase.js without closing an import cycle
+// (taskFilter → phase → inject → modals → toDoRow → taskFilter). toDoRow.js
+// already imports both, so it registers the blocked-phase test as the dependency
+// seam — the chip's count and membership resolve through this resolver.
+setBlockedItemResolver(function (item) {
+    return isBlockedPhase(derivePhase(item));
+});
+
 
 // Default due-date offset used when a row is committed without a user-chosen
 // date. A new task with no chosen date lands on today (today + 0), matching
@@ -706,6 +716,12 @@ export function refreshDescStatusDots() {
     // a triaging → drafted / failed transition lands / clears live. Covers the
     // desktop panels and, when open, the mobile modal's button.
     syncAllGenerateControls();
+    // The blocked-on-you chip counts derived phases, so the same marker/queue
+    // sweep that flips a row's badge must refresh the chip's count and (when the
+    // blocked filter is engaged) the visible membership. This sweep runs on both
+    // TODO_RUN_STATUS_EVENT and onQueueChange, so hanging the repaint here keeps
+    // the chip live off both signals without adding a new event.
+    applyTaskFilter();
 }
 
 // Load a project's agent_queue rows into the shared store on a full project

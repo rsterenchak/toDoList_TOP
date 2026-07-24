@@ -18,7 +18,7 @@
   - Completed: 2026-07-23
   <!-- id: 3b0854b6-8641-4cd7-80a2-5a84afd920f7 -->
 
-- [ ] **[MEDIUM]** Task filter: a blocked-on-you toggle beside the status pill
+- [x] **[MEDIUM]** Task filter: a blocked-on-you toggle beside the status pill
   - Type: feature
   - Description: The task filter keys entirely on the manual `status` field — ALL / Active / Ideas — so there is no way to filter to the three states that are genuinely waiting on a human: REVIEW (shipped, unacknowledged), ASKING (a parked triage question), and DRAFTED (a generated entry not yet looked at). Those are now first-class phases with a shared vocabulary and a shared amber treatment, but finding them means scrolling the list looking for amber words. Add one amber toggle to the filter bar that shows only blocked rows, kept deliberately separate from the status pill so a derived state never joins a control that is otherwise pure manual status — the same separation already settled on the row badge and the description-editor rail.
   - Behavior: The filter bar carries an amber chip showing the count of blocked tasks in the current project — tasks whose `derivePhase` is `accept`, `asking`, or `drafted`. The chip is ALWAYS present, not conditionally mounted: at zero it renders dimmed and inert with a `0`, so the bar's geometry never shifts and "nothing needs me" is readable rather than inferred from an absence. Tapping it when the count is non-zero filters the list to blocked rows only and simultaneously snaps the status pill to ALL, so the two controls are never both filtering — no invisible AND, and the pill never displays a value it is not applying. Tapping again releases the filter, leaving the pill on ALL. While the blocked filter is active and the count falls to zero (the last item acknowledged or answered), the filter auto-releases and the full list returns, so the user can never be stranded in an empty filtered view. The blocked filter persists across reload alongside the existing filter preference. Count and membership both update live as phases change, without a re-render or a project switch.
@@ -37,5 +37,5 @@
     - `style.css`: reuses the existing `#ffbd5e` amber and the 36px-chip and radius conventions; no new tokens. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: Replacing the status pill's ALL / Active / Ideas vocabulary with phase-based filters, and the prototype's four-across pill row — the segmented control is already hidden on narrow phones for space, and re-adding it there is a separate decision. Composing the blocked filter with a non-ALL status filter. Sorting by phase. The usage meters, which have no data source. Merging the Tasks and Agent tabs. The row badge, the description editor, and the TODO.md viewer.
   - File: `toDoList_main/src/phase.js`, `toDoList_main/src/taskFilter.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: a5093bc6-7841-4d66-a877-3f806472d663 -->

@@ -80,6 +80,18 @@ export function derivePhase(item) {
 }
 
 
+// The set of phases that mean a task is genuinely blocked on the user: ACCEPT
+// (shipped but unacknowledged — derivePhase only returns ACCEPT while unreviewed,
+// flipping to DONE once `entryReviewedAt` is set, so no extra unreviewed check is
+// needed here), ASKING (a parked triage question), and DRAFTED (a landed draft
+// not yet looked at). This is the single definition of the blocked set — the
+// status filter's blocked-on-you toggle reads it rather than inlining the three
+// phases, so a fourth blocked state later lands in exactly one place.
+export function isBlockedPhase(phase) {
+    return phase === PHASE.ACCEPT || phase === PHASE.ASKING || phase === PHASE.DRAFTED;
+}
+
+
 // ── PHASE RAIL VOCABULARY ────────────────────────────────────────────────
 // The read-only phase rail (currently rendered in the mobile description-editor
 // modal) shows the pipeline as four ordered nodes and highlights the one a task

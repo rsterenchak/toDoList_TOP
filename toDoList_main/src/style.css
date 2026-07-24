@@ -3666,6 +3666,73 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
+/* ── BLOCKED-ON-YOU FILTER CHIP ──
+   A single amber chip in #taskFilterBar (before the Sort control) that filters
+   the list to tasks whose derived phase is blocked on the user (REVIEW / ASKING
+   / DRAFTED). Visible at BOTH breakpoints — unlike the status controls it is not
+   CSS-gated by width. Always mounted: at a zero count it renders dimmed and inert
+   (the --empty modifier + the disabled attribute) so the bar's geometry never
+   shifts and "nothing needs you" reads as a state rather than an absence. Reuses
+   the #ffbd5e amber the REVIEW badge and Revert pill already carry, and the 36px
+   chip + 10px radius conventions of the mobile Sort trigger; no new tokens. */
+.taskFilterBlockedChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  height: 36px;
+  padding: 0 11px;
+  line-height: 1;
+  border-radius: 10px;
+  border: 0.5px solid #ffbd5e;
+  background: transparent;
+  color: #ffbd5e;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+.taskFilterBlockedChip:hover {
+  background: rgba(255, 189, 94, 0.12);
+}
+
+.taskFilterBlockedChip:focus-visible {
+  outline: 2px solid #ffbd5e;
+  outline-offset: 2px;
+}
+
+/* Engaged: a solid amber fill so an active blocked filter reads at a glance,
+   mirroring the amber-fill acknowledge control. */
+.taskFilterBlockedChip.selected {
+  background: #ffbd5e;
+  border-color: #ffbd5e;
+  color: #1a1a24;
+}
+
+/* Zero blocked tasks: dimmed and inert. The chip keeps its footprint so the
+   bar's geometry never shifts, but reads as disabled and takes no clicks. */
+.taskFilterBlockedChip--empty {
+  opacity: 0.4;
+  cursor: default;
+  border-color: var(--border-bright);
+  color: var(--text-muted);
+}
+
+.taskFilterBlockedChip--empty:hover {
+  background: transparent;
+}
+
+.taskFilterBlockedCount {
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
 /* Rows (and their trailing description / stats drawers) hidden by the active
    status filter. `!important` lets this single utility class beat the row's
    own ID-level `display: flex` without naming each ID — a plain class selector

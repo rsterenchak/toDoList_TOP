@@ -18,6 +18,7 @@ export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
 export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
 export const TASK_FILTER_KEY = 'todoapp_taskFilter';
+export const BLOCKED_FILTER_KEY = 'todoapp_blockedFilter';
 export const TASK_SORT_KEY = 'todoapp_taskSort';
 export const CHAT_PANE_COLLAPSED_KEY = 'todoapp_chatPaneCollapsed';
 export const TODO_MD_SHOW_COMPLETED_KEY = 'todoapp_todoMdShowCompleted';
@@ -114,6 +115,28 @@ export function setTaskFilter(filter) {
     try {
         const stored = (filter === 'active' || filter === 'ideas') ? filter : 'all';
         localStorage.setItem(TASK_FILTER_KEY, stored);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── blocked-on-you filter (on / off) ──
+// A separate amber toggle beside the status filter that, when active, shows only
+// tasks whose derived phase is blocked on the user (REVIEW / ASKING / DRAFTED).
+// It shares the filter bar with the status pill but keys off a derived state, so
+// it persists under its own key rather than joining the manual-status token set.
+// Only the string 'true' reads as active; anything else (including a stale value)
+// reads as off, and a stored-active preference whose blocked count is zero on
+// boot auto-releases so a reload can never land in an empty filtered view.
+export function getBlockedFilter() {
+    try {
+        return localStorage.getItem(BLOCKED_FILTER_KEY) === 'true';
+    } catch (e) {
+        return false;
+    }
+}
+
+export function setBlockedFilter(active) {
+    try {
+        localStorage.setItem(BLOCKED_FILTER_KEY, active ? 'true' : 'false');
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
