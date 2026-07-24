@@ -18,7 +18,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e528bc4c-42a3-4797-9e4e-8797f2d58938 -->
 
-- [ ] **[MEDIUM]** Surface a task waiting on a mockup decision
+- [x] **[MEDIUM]** Surface a task waiting on a mockup decision
   - Type: feature
   - Description: `needs_mockup` is the last state in the Agent board's "Needs you" bucket with no representation on the task row. A task parked there is invisible outside the board, so it can sit indefinitely while every other blocked-on-you state (ASKING, DRAFTED, REVIEW, STUCK) announces itself in the list. Add a `⌁ MOCKUP` badge in the same amber as the other waiting states, counted by the blocked filter chip, whose tap opens the Agent board scrolled to that task's card. Deliberately routes rather than ports: the board's mockup flow — generated A/B/C variants cached per queue row, the prompt builders, the pending-state mirroring — is a substantial working surface, and duplicating it on the row would mean two implementations of one feature.
   - Behavior: A task whose linked `agent_queue` row is in `needs_mockup` renders `⌁ MOCKUP` in amber (`#ffbd5e`), on mobile as well as desktop, and counts toward the blocked filter chip alongside ASKING, DRAFTED, REVIEW and STUCK. Tapping it switches to the Agent view and scrolls that task's card into view with a brief highlight, so the tap lands on the right card rather than the top of the Needs-you bucket. It is not settable and has no dismiss control; it clears when the queue row leaves `needs_mockup`, which happens when a mockup is chosen or the row is re-triaged. Unlike ASKING and STUCK, it adds NO block to the description editor — the work happens on the board, and a second partial surface would invite acting in the wrong place.
@@ -34,5 +34,5 @@
     - `style.css`: existing `#ffbd5e`; the change is one added value in the existing `data-status` selector plus the card-highlight animation. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: Porting the mockup generation flow, its A/B/C variants, its prompt builders, or its caches to the row or the description editor. Any mockup block in the description editor. Choosing or applying a mockup from the row. The Agent board's own rendering of `needs_mockup` cards beyond the new anchor entry point. The bucket overview, the Dispatch gate, and the `dispatched`/`running` states. The phase rail, the run glyph, and the manual status control. Merging the Tasks and Agent tabs.
   - File: `toDoList_main/src/phase.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 006e4edb-bb80-4b86-9bec-8a00fc55c754 -->
