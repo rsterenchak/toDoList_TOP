@@ -1553,6 +1553,15 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  /* Rows must fill the list's content width; each declaration covers a distinct
+     plausible cause of the collapse. align-self so the cross-axis size inherits
+     the column container's stretch; width:100% in case the button is being
+     shrink-to-fit as a blockified control; min-width:0 so overflow/ellipsis can
+     clip instead of the flex item's automatic min-content size forcing max-content.
+     Safe with the global box-sizing: border-box (padding stays inside 100%). */
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
 }
 .filePickRow:hover { background: var(--bg-hover); }
 .filePickRow:focus-visible {
