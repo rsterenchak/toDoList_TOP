@@ -2614,23 +2614,28 @@ export function buildToDoRow(item, toDoName) {
             toDoChild.insertBefore(buildStatusLabel(item, overlayForPhase(derivePhase(item))), descIndicator);
         }
 
-        // STACK mobile commit accent — 700ms fading purple left-edge so the
-        // user sees their just-committed task land. Also flips the session
-        // into "chaining" mode so the next blank placeholder built by
-        // appendNewToDoRow uses the "Type the next…" copy instead of the
-        // initial dashed-row hint.
-        if (window.innerWidth < 1024) {
-            // Strip the blank-placeholder marker now that this row is a
-            // real todo; the chip row CSS rules key off the attribute.
-            toDoChild.removeAttribute('data-blank-placeholder');
-            toDoChild.classList.remove('mobile-create-row');
-            // The chip row now lives as the row's next sibling (its own grid
-            // row), not a child, so reach it there to strip it on commit.
-            const chipRow = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'mobileCreateChips')
-                ? toDoChild.nextSibling
-                : null;
-            if (chipRow) chipRow.remove();
+        // Strip the blank-placeholder marker and the chip row now that this
+        // row is a real todo. This runs at EVERY width: the 📋 paste-entry
+        // chip surfaces on desktop too, so a committed desktop row must shed
+        // its chip sibling and marker just like a mobile one — otherwise the
+        // marker (and, on desktop, the now-visible chip row) lingers and the
+        // next blank placeholder stacks a second one beneath it.
+        toDoChild.removeAttribute('data-blank-placeholder');
+        toDoChild.classList.remove('mobile-create-row');
+        // The chip row lives as the row's next sibling (its own grid row),
+        // not a child, so reach it there to strip it on commit.
+        const chipRow = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'mobileCreateChips')
+            ? toDoChild.nextSibling
+            : null;
+        if (chipRow) chipRow.remove();
 
+        // STACK mobile commit accent — 700ms fading purple left-edge so the
+        // user sees their just-committed task land — plus the session flip
+        // into "chaining" mode so the next blank placeholder built by
+        // appendNewToDoRow uses the "Type the next…" copy. Both are part of
+        // the mobile inline-expand flow, not the desktop paste affordance, so
+        // they stay gated to the ≤1023px breakpoint.
+        if (window.innerWidth < 1024) {
             if (!prefersReducedMotion()) {
                 toDoChild.classList.add('justCommittedMobile');
                 setTimeout(function() {
