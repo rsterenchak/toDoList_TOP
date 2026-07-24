@@ -3691,6 +3691,15 @@ button.claudeAttachChipLabel { cursor: pointer; }
   align-items: center;
   gap: 4px;
   flex: 0 0 auto;
+  /* Anchors the chip (and, on mobile, the Sort trigger DOM-ordered right after
+     it) to the bar's right edge: this margin absorbs the free space left of the
+     right cluster, mirroring the leftmost-chip pattern used by the nav chip
+     cluster. On mobile the in-row Sort trigger sits to the chip's right and
+     travels with it; on desktop that trigger is display:none and the chip
+     anchors right on its own. HARD DEPENDENCY: this only works while the chip is
+     always rendered — it dims to an inert --empty state at zero but is never
+     display:none. If the chip is ever hidden, Sort loses its right alignment. */
+  margin-left: auto;
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;
@@ -11738,9 +11747,12 @@ body.row-dragging * { cursor: grabbing !important; }
   #bulkDescActions { display: none; }
   /* With the desktop Sort overlay hidden, surface the in-row Sort trigger so
      the task sort stays reachable on phones. Shown only here, so exactly one
-     Sort trigger is ever visible. It sits as its own chip at the row's far
-     right edge (margin-left:auto), no longer fused to the filter control. */
-  #taskSortBtnMobile { display: inline-flex; margin-left: auto; }
+     Sort trigger is ever visible. It sits at the row's far right edge as part of
+     the right cluster, but the `margin-left: auto` that anchors that cluster now
+     lives on the blocked chip (the cluster's leftmost member, DOM-ordered just
+     before this trigger) — a second auto margin here would split the free space
+     and push the chip and Sort apart instead of grouping them. */
+  #taskSortBtnMobile { display: inline-flex; }
   /* The fused divider is retired in the un-fused layout — keep it hidden. */
   .taskFilterBarDivider { display: none; }
 

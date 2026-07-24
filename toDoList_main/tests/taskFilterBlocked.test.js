@@ -128,6 +128,24 @@ describe('blocked chip — always present, dimmed + inert at zero', () => {
         chip(bar).click();
         expect(getBlockedFilter()).toBe(false);
     });
+
+    // Right-edge anchoring depends on the chip being DOM-ordered immediately
+    // before the Sort trigger: the chip carries `margin-left: auto` and Sort is
+    // appended right after it (by main.js), so the two travel to the bar's right
+    // edge together as one cluster. buildTaskFilterBar must leave the chip as the
+    // bar's last child so that later-appended Sort lands directly after it — if a
+    // future control is appended between them, the chip stops being the cluster's
+    // leftmost member and the anchoring breaks.
+    it('leaves the chip as the last child so Sort appends directly after it', () => {
+        const bar = buildTaskFilterBar();
+        expect(bar.lastElementChild).toBe(chip(bar));
+
+        // Mirror main.js appending the in-row Sort trigger onto the bar.
+        const sort = document.createElement('button');
+        sort.id = 'taskSortBtnMobile';
+        bar.appendChild(sort);
+        expect(chip(bar).nextElementSibling).toBe(sort);
+    });
 });
 
 
