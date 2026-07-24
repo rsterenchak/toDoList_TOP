@@ -76,7 +76,7 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         attachMobileCreateChips(blankRow, blankRow.__item);
         expect(chipsFor(blankRow)).not.toBeNull();
         // The chip row is a sibling, never a descendant of the row.
-        expect(blankRow.querySelector('#mobileCreateChips')).toBeNull();
+        expect(blankRow.querySelector('#createChipRow')).toBeNull();
 
         const committedRow = makeRowForItem({ tit: 'walk dog', due: '' });
         attachMobileCreateChips(committedRow, committedRow.__item);
@@ -97,20 +97,20 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         expect(chips.querySelector('[data-chip="today"]').textContent).toBe('Today');
         expect(chips.querySelector('[data-chip="tomorrow"]').textContent).toBe('Tomorrow');
         expect(chips.querySelector('[data-chip="custom"]').textContent).toBe('📅');
-        expect(chips.querySelector('#mobileCreateDescChip')).not.toBeNull();
+        expect(chips.querySelector('#createDescChip')).not.toBeNull();
     });
 
-    it('highlights the currently-chosen chip via mobileCreateChipSelected', () => {
+    it('highlights the currently-chosen chip via createChipSelected', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
         const chips = chipsFor(row);
         const today = chips.querySelector('[data-chip="today"]');
-        expect(today.classList.contains('mobileCreateChipSelected')).toBe(true);
+        expect(today.classList.contains('createChipSelected')).toBe(true);
 
         chips.querySelector('[data-chip="tomorrow"]').click();
         const tomorrow = chips.querySelector('[data-chip="tomorrow"]');
-        expect(tomorrow.classList.contains('mobileCreateChipSelected')).toBe(true);
-        expect(today.classList.contains('mobileCreateChipSelected')).toBe(false);
+        expect(tomorrow.classList.contains('createChipSelected')).toBe(true);
+        expect(today.classList.contains('createChipSelected')).toBe(false);
     });
 
     it('Today chip updates session state to "today" and clears any stale custom due', () => {
@@ -223,7 +223,7 @@ describe('STACK mobile inline-expand task creation — toDoRow.js wiring', () =>
         // Without these, the committed row would still carry the chip
         // affordance — visually wrong and confusing on mobile.
         expect(toDoRow).toMatch(/removeAttribute\(\s*['"]data-blank-placeholder['"]\s*\)/);
-        expect(toDoRow).toMatch(/mobileCreateChips[\s\S]*?\.remove\(\)/);
+        expect(toDoRow).toMatch(/createChipRow[\s\S]*?\.remove\(\)/);
     });
 
     it('strips the chip row at every width, not only the mobile breakpoint', () => {
@@ -267,18 +267,18 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
     const css = read('style.css');
 
     it('hides the chip row by default and reveals it via the adjacent-sibling combinator when the placeholder row is focus-within', () => {
-        expect(css).toMatch(/#mobileCreateChips\s*\{[^}]*display:\s*none/);
+        expect(css).toMatch(/#createChipRow\s*\{[^}]*display:\s*none/);
         // The chip row is the placeholder's sibling now, so the reveal uses
         // the adjacent-sibling (`+`) combinator rather than a descendant match.
-        expect(css).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#mobileCreateChips\s*\{[\s\S]*?display:\s*flex/);
+        expect(css).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#createChipRow\s*\{[\s\S]*?display:\s*flex/);
     });
 
     it('gives the chips a ≥44px touch target', () => {
-        expect(css).toMatch(/\.mobileCreateChip\s*\{[\s\S]*?min-height:\s*44px/);
+        expect(css).toMatch(/\.createChip\s*\{[\s\S]*?min-height:\s*44px/);
     });
 
     it('paints a selected chip with the accent fill', () => {
-        expect(css).toMatch(/\.mobileCreateChip\.mobileCreateChipSelected\s*\{[\s\S]*?background:\s*var\(--accent\)/);
+        expect(css).toMatch(/\.createChip\.createChipSelected\s*\{[\s\S]*?background:\s*var\(--accent\)/);
     });
 
     it('defines a 0.7s fading accent keyframe and gates the animation behind .justCommittedMobile', () => {
@@ -294,18 +294,18 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         // The cluster's appearance (Today / Tomorrow / 📅 / + ¶ plus the
         // wrap + tuck layout) lives inside the existing @media (max-width:
         // 1023px) section. Desktop only restates the small surface the 📋
-        // paste chip needs, so the first #mobileCreateChips rule is the
+        // paste chip needs, so the first #createChipRow rule is the
         // mobile one.
         const mediaIdx = css.indexOf('@media (max-width: 1023px)');
-        const chipsIdx = css.indexOf('#mobileCreateChips');
+        const chipsIdx = css.indexOf('#createChipRow');
         expect(mediaIdx).toBeGreaterThan(-1);
         expect(chipsIdx).toBeGreaterThan(mediaIdx);
     });
 
     it('styles the paste chip on the shared chip surface — no new colour tokens', () => {
-        // The paste chip reuses .mobileCreateChip; its own rule only adjusts
+        // The paste chip reuses .createChip; its own rule only adjusts
         // spacing/glyph size and must not introduce a hardcoded colour.
-        const match = css.match(/\.mobileCreatePasteChip\s*\{[^}]*\}/);
+        const match = css.match(/\.createPasteChip\s*\{[^}]*\}/);
         expect(match).not.toBeNull();
         expect(match[0]).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
     });
@@ -322,14 +322,14 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         );
         expect(desktopBlocks.length).toBeGreaterThan(0);
         const pasteBlock = desktopBlocks.find(function(m) {
-            return /#mobileCreateChips\s*>\s*\.mobileCreateChip:not\(\.mobileCreatePasteChip\)\s*\{[^}]*display:\s*none/.test(m[0]);
+            return /#createChipRow\s*>\s*\.createChip:not\(\.createPasteChip\)\s*\{[^}]*display:\s*none/.test(m[0]);
         });
         expect(pasteBlock).toBeTruthy();
         // Container hidden by default, revealed on focus-within at desktop.
-        expect(pasteBlock[0]).toMatch(/#mobileCreateChips\s*\{[^}]*display:\s*none/);
-        expect(pasteBlock[0]).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#mobileCreateChips\s*\{[\s\S]*?display:\s*flex/);
+        expect(pasteBlock[0]).toMatch(/#createChipRow\s*\{[^}]*display:\s*none/);
+        expect(pasteBlock[0]).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#createChipRow\s*\{[\s\S]*?display:\s*flex/);
         // The paste chip itself carries a rule so it actually paints.
-        expect(pasteBlock[0]).toMatch(/#mobileCreateChips\s*>\s*\.mobileCreatePasteChip\s*\{/);
+        expect(pasteBlock[0]).toMatch(/#createChipRow\s*>\s*\.createPasteChip\s*\{/);
     });
 });
 
@@ -401,7 +401,7 @@ describe('Compose row paste-entry — chip DOM', () => {
     it('renders the 📋 paste chip in the create chip row', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
-        const chip = chipsFor(row).querySelector('#mobileCreatePasteChip');
+        const chip = chipsFor(row).querySelector('#createPasteChip');
         expect(chip).not.toBeNull();
         expect(chip.textContent).toBe('📋');
         expect(chip.getAttribute('aria-label')).toBe('Paste entry as a new task');
@@ -441,12 +441,12 @@ describe('Compose row paste-entry — inline panel', () => {
 
     function panelFor(row) {
         let n = row.nextElementSibling;
-        while (n && n.id === 'mobileCreateChips') n = n.nextElementSibling;
+        while (n && n.id === 'createChipRow') n = n.nextElementSibling;
         return n && n.id === 'pasteEntryPanel' ? n : null;
     }
 
     function tapPasteChip(row) {
-        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        chipsFor(row).querySelector('#createPasteChip').click();
     }
 
     it('opens the inline panel and presses the chip on tap', async () => {
@@ -466,8 +466,8 @@ describe('Compose row paste-entry — inline panel', () => {
         expect(panel.querySelector('.pasteEntryInput')).not.toBeNull();
         expect(panel.querySelector('.pasteEntryAdd')).not.toBeNull();
         expect(panel.querySelector('.pasteEntryCancel')).not.toBeNull();
-        expect(chipsFor(row).querySelector('#mobileCreatePasteChip')
-            .classList.contains('mobileCreateChipSelected')).toBe(true);
+        expect(chipsFor(row).querySelector('#createPasteChip')
+            .classList.contains('createChipSelected')).toBe(true);
         expect(row.getAttribute('data-paste-open')).toBe('true');
         restoreClipboard();
     });
@@ -484,8 +484,8 @@ describe('Compose row paste-entry — inline panel', () => {
         tapPasteChip(row);
         expect(panelFor(row)).toBeNull();
         expect(row.getAttribute('data-paste-open')).toBeNull();
-        expect(chipsFor(row).querySelector('#mobileCreatePasteChip')
-            .classList.contains('mobileCreateChipSelected')).toBe(false);
+        expect(chipsFor(row).querySelector('#createPasteChip')
+            .classList.contains('createChipSelected')).toBe(false);
         restoreClipboard();
     });
 
@@ -655,11 +655,11 @@ describe('Compose row paste-entry — sibling-order + CSS', () => {
     it('teaches every blank-placeholder sibling walk about the paste-entry panel', () => {
         // The description-panel insert/remove anchors, openDescSiblingFor, the
         // reorder-rebuild collector, and the commit cleanup all walk past
-        // #mobileCreateChips; each must ALSO account for #pasteEntryPanel, or an
+        // #createChipRow; each must ALSO account for #pasteEntryPanel, or an
         // open description panel lands in the wrong slot when the paste panel is
         // open (and a commit-via-typed-title orphans the panel). This is a
         // source-structural guard — it does not compute layout.
-        const chipWalks = (toDoRow.match(/id === 'mobileCreateChips'/g) || []).length;
+        const chipWalks = (toDoRow.match(/id === 'createChipRow'/g) || []).length;
         const pasteWalks = (toDoRow.match(/id === 'pasteEntryPanel'/g) || []).length;
         expect(chipWalks).toBeGreaterThan(0);
         expect(pasteWalks).toBeGreaterThanOrEqual(chipWalks);
@@ -684,7 +684,7 @@ describe('Compose row paste-entry — sibling-order + CSS', () => {
     });
 
     it('keeps the chip row (and pressed chip) visible while the panel is open via data-paste-open', () => {
-        expect(css).toMatch(/data-blank-placeholder\]\[data-paste-open\]\s*\+\s*#mobileCreateChips/);
+        expect(css).toMatch(/data-blank-placeholder\]\[data-paste-open\]\s*\+\s*#createChipRow/);
     });
 });
 
@@ -696,7 +696,7 @@ describe('Compose row paste-entry — sibling-order + CSS', () => {
 // descendant query.
 function chipsFor(row) {
     const sib = row.nextElementSibling;
-    return sib && sib.id === 'mobileCreateChips' ? sib : null;
+    return sib && sib.id === 'createChipRow' ? sib : null;
 }
 
 function makeBlankRow() {

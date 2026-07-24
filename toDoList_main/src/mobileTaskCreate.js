@@ -107,7 +107,7 @@ function commitParsedEntry(toDoChild, item, raw) {
 // so walk past the chip row to reach it.
 function pastePanelFor(toDoChild) {
     let node = toDoChild.nextSibling;
-    while (node && node.id === 'mobileCreateChips') node = node.nextSibling;
+    while (node && node.id === 'createChipRow') node = node.nextSibling;
     return (node && node.id === 'pasteEntryPanel') ? node : null;
 }
 
@@ -122,7 +122,7 @@ function closePastePanel(toDoChild, pasteChip) {
     }
     if (panel) panel.remove();
     if (toDoChild) toDoChild.removeAttribute('data-paste-open');
-    if (pasteChip) pasteChip.classList.remove('mobileCreateChipSelected');
+    if (pasteChip) pasteChip.classList.remove('createChipSelected');
     refreshViewerExpandedHeight();
 }
 
@@ -200,7 +200,7 @@ function openPastePanel(toDoChild, item, pasteChip) {
 
     const parent = toDoChild.parentNode;
     if (parent) {
-        const anchor = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'mobileCreateChips')
+        const anchor = (toDoChild.nextSibling && toDoChild.nextSibling.id === 'createChipRow')
             ? toDoChild.nextSibling
             : toDoChild;
         parent.insertBefore(panel, anchor.nextSibling);
@@ -210,7 +210,7 @@ function openPastePanel(toDoChild, item, pasteChip) {
     // the mobile/desktop reveal is otherwise gated on the row being
     // focus-within, which moving focus into the sibling textarea breaks.
     toDoChild.setAttribute('data-paste-open', 'true');
-    pasteChip.classList.add('mobileCreateChipSelected');
+    pasteChip.classList.add('createChipSelected');
 
     // The panel changes the stack height below it — an expanded viewer card
     // caches its body height, so nudge it to re-measure.
@@ -255,17 +255,17 @@ export function attachMobileCreateChips(toDoChild, item) {
     toDoChild.setAttribute('data-blank-placeholder', 'true');
 
     const chips = document.createElement('div');
-    chips.id = 'mobileCreateChips';
+    chips.id = 'createChipRow';
     chips.setAttribute('aria-label', 'Quick options for new task');
 
     function makeChip(chipId, label) {
         const btn = document.createElement('button');
         btn.type = 'button';
-        btn.className = 'mobileCreateChip';
+        btn.className = 'createChip';
         btn.setAttribute('data-chip', chipId);
         btn.textContent = label;
         if (chipId === chosenDueChip) {
-            btn.classList.add('mobileCreateChipSelected');
+            btn.classList.add('createChipSelected');
         }
         // Stop touchstart/mousedown from stealing focus away from the
         // title input — without this, tapping a chip blurs the input,
@@ -285,8 +285,8 @@ export function attachMobileCreateChips(toDoChild, item) {
     // the description.
     const pasteChip = document.createElement('button');
     pasteChip.type = 'button';
-    pasteChip.id = 'mobileCreatePasteChip';
-    pasteChip.className = 'mobileCreateChip mobileCreatePasteChip';
+    pasteChip.id = 'createPasteChip';
+    pasteChip.className = 'createChip createPasteChip';
     pasteChip.setAttribute('aria-label', 'Paste entry as a new task');
     pasteChip.textContent = '📋';
     pasteChip.addEventListener('mousedown', function(e) { e.preventDefault(); });
@@ -302,8 +302,8 @@ export function attachMobileCreateChips(toDoChild, item) {
 
     const descChip = document.createElement('button');
     descChip.type = 'button';
-    descChip.id = 'mobileCreateDescChip';
-    descChip.className = 'mobileCreateChip mobileCreateDescChip';
+    descChip.id = 'createDescChip';
+    descChip.className = 'createChip createDescChip';
     descChip.setAttribute('aria-label', 'Toggle description');
     descChip.textContent = '+ ¶';
     descChip.addEventListener('mousedown', function(e) { e.preventDefault(); });
@@ -311,9 +311,9 @@ export function attachMobileCreateChips(toDoChild, item) {
     function refreshDueSelection() {
         [todayChip, tomorrowChip, calChip].forEach(function(c) {
             if (c.getAttribute('data-chip') === chosenDueChip) {
-                c.classList.add('mobileCreateChipSelected');
+                c.classList.add('createChipSelected');
             } else {
-                c.classList.remove('mobileCreateChipSelected');
+                c.classList.remove('createChipSelected');
             }
         });
     }
@@ -359,9 +359,9 @@ export function attachMobileCreateChips(toDoChild, item) {
         if (!descToggle) return;
         descToggle.click();
         if (descToggle.classList.contains('open')) {
-            descChip.classList.add('mobileCreateChipSelected');
+            descChip.classList.add('createChipSelected');
         } else {
-            descChip.classList.remove('mobileCreateChipSelected');
+            descChip.classList.remove('createChipSelected');
         }
     });
 

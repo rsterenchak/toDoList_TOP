@@ -260,7 +260,7 @@ function showRowToast(message) {
 // insert/remove traversal.
 function openDescSiblingFor(toDoChild) {
     let node = toDoChild.nextSibling;
-    while (node && (node.id === 'mobileCreateChips' || node.id === 'pasteEntryPanel')) {
+    while (node && (node.id === 'createChipRow' || node.id === 'pasteEntryPanel')) {
         node = node.nextSibling;
     }
     return (node && node.id === 'descSibling') ? node : null;
@@ -2047,7 +2047,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             // the chips, so slot the description panel AFTER both of those
             // leading siblings; otherwise directly after the row.
             let descAnchor = toDoChild.nextSibling;
-            while (descAnchor && (descAnchor.id === 'mobileCreateChips' || descAnchor.id === 'pasteEntryPanel')) {
+            while (descAnchor && (descAnchor.id === 'createChipRow' || descAnchor.id === 'pasteEntryPanel')) {
                 descAnchor = descAnchor.nextSibling;
             }
             mainList.insertBefore(descSibling, descAnchor);
@@ -2103,7 +2103,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             // Mirror the insert: the panel may sit past the chip sibling and
             // the paste-entry panel on the blank placeholder.
             let descNode = toDoChild.nextSibling;
-            while (descNode && (descNode.id === 'mobileCreateChips' || descNode.id === 'pasteEntryPanel')) {
+            while (descNode && (descNode.id === 'createChipRow' || descNode.id === 'pasteEntryPanel')) {
                 descNode = descNode.nextSibling;
             }
             if (descNode && descNode.id === 'descSibling') {
@@ -2635,8 +2635,8 @@ export function buildToDoRow(item, toDoName) {
         let chipRow = null;
         let pastePanel = null;
         let scan = toDoChild.nextSibling;
-        while (scan && (scan.id === 'mobileCreateChips' || scan.id === 'pasteEntryPanel')) {
-            if (scan.id === 'mobileCreateChips') chipRow = scan;
+        while (scan && (scan.id === 'createChipRow' || scan.id === 'pasteEntryPanel')) {
+            if (scan.id === 'createChipRow') chipRow = scan;
             if (scan.id === 'pasteEntryPanel') pastePanel = scan;
             scan = scan.nextSibling;
         }
@@ -2957,7 +2957,7 @@ export function reorderToDoDOM(projectName) {
         // present). They sit as consecutive siblings beneath the row.
         const auxiliary = [];
         let next = row.nextSibling;
-        while (next && (next.id === 'descSibling' || next.id === 'statsSibling' || next.id === 'mobileCreateChips' || next.id === 'pasteEntryPanel')) {
+        while (next && (next.id === 'descSibling' || next.id === 'statsSibling' || next.id === 'createChipRow' || next.id === 'pasteEntryPanel')) {
             auxiliary.push(next);
             next = next.nextSibling;
         }

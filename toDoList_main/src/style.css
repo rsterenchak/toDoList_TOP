@@ -11560,7 +11560,7 @@ body.row-dragging * { cursor: grabbing !important; }
      above, mirroring #descSibling: matched side gutters, a dashed top
      divider, and a shared bottom radius. The negative top margin tucks it
      against the focused row's bottom edge. */
-  #mobileCreateChips {
+  #createChipRow {
     display: none;
     width: auto;
     flex-wrap: wrap;
@@ -11573,16 +11573,16 @@ body.row-dragging * { cursor: grabbing !important; }
     border-top: 0.5px dashed var(--border-mid);
     border-radius: 0 0 6px 6px;
   }
-  #toDoChild[data-blank-placeholder]:focus-within + #mobileCreateChips {
+  #toDoChild[data-blank-placeholder]:focus-within + #createChipRow {
     display: flex;
   }
   /* Keep the chip row visible while the inline paste panel is open — moving
      focus into the sibling panel drops the row's :focus-within, which would
      otherwise hide the row (and the pressed paste chip). */
-  #toDoChild[data-blank-placeholder][data-paste-open] + #mobileCreateChips {
+  #toDoChild[data-blank-placeholder][data-paste-open] + #createChipRow {
     display: flex;
   }
-  .mobileCreateChip {
+  .createChip {
     appearance: none;
     -webkit-appearance: none;
     background: var(--bg-elevated);
@@ -11599,8 +11599,8 @@ body.row-dragging * { cursor: grabbing !important; }
     touch-action: manipulation;
     transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
   }
-  .mobileCreateChip:hover { background: var(--bg-hover); }
-  .mobileCreateChip.mobileCreateChipSelected {
+  .createChip:hover { background: var(--bg-hover); }
+  .createChip.createChipSelected {
     background: var(--accent);
     color: #fff;
     border-color: var(--accent);
@@ -11609,17 +11609,17 @@ body.row-dragging * { cursor: grabbing !important; }
      glyph reads as a compact action, and pushed to the trailing edge alongside
      the description toggle. Reuses the shared chip surface tokens; no new
      colours. It toggles the inline paste panel, so it takes the shared
-     .mobileCreateChipSelected pressed fill while that panel is open. */
-  .mobileCreatePasteChip {
+     .createChipSelected pressed fill while that panel is open. */
+  .createPasteChip {
     margin-left: auto;
     padding: 0 12px;
     font-size: 16px;
   }
-  .mobileCreatePasteChip + .mobileCreateDescChip {
+  .createPasteChip + .createDescChip {
     margin-left: 0;
   }
 
-  .mobileCreateDescChip {
+  .createDescChip {
     margin-left: auto;
   }
 
@@ -11628,7 +11628,7 @@ body.row-dragging * { cursor: grabbing !important; }
      so it reads as one extended surface rather than separate boxes. The chip
      row sits between the placeholder and #descSibling (its own sibling
      panel), so the panel tucks under the chip row rather than the row. */
-  #toDoChild[data-blank-placeholder]:has(#descToggle.open) + #mobileCreateChips + #descSibling {
+  #toDoChild[data-blank-placeholder]:has(#descToggle.open) + #createChipRow + #descSibling {
     margin-top: -5px;
     border-top: 0.5px dashed var(--border-mid);
     border-radius: 0 0 6px 6px;
@@ -12766,7 +12766,7 @@ body.row-dragging * { cursor: grabbing !important; }
      hoisted out, keeping the mobile layout byte-for-byte unchanged. The
      container stays hidden until the placeholder row is focus-within,
      mirroring the mobile reveal. */
-  #mobileCreateChips {
+  #createChipRow {
     display: none;
     width: auto;
     align-items: center;
@@ -12779,20 +12779,20 @@ body.row-dragging * { cursor: grabbing !important; }
     border-top: 0.5px dashed var(--border-mid);
     border-radius: 0 0 6px 6px;
   }
-  #toDoChild[data-blank-placeholder]:focus-within + #mobileCreateChips {
+  #toDoChild[data-blank-placeholder]:focus-within + #createChipRow {
     display: flex;
   }
   /* Keep the chip row visible while the inline paste panel is open (see the
      matching ≤1023px rule) — focus moves into the sibling panel, dropping the
      row's :focus-within. */
-  #toDoChild[data-blank-placeholder][data-paste-open] + #mobileCreateChips {
+  #toDoChild[data-blank-placeholder][data-paste-open] + #createChipRow {
     display: flex;
   }
   /* Only the paste chip paints on desktop; every other chip stays hidden. */
-  #mobileCreateChips > .mobileCreateChip:not(.mobileCreatePasteChip) {
+  #createChipRow > .createChip:not(.createPasteChip) {
     display: none;
   }
-  #mobileCreateChips > .mobileCreatePasteChip {
+  #createChipRow > .createPasteChip {
     appearance: none;
     -webkit-appearance: none;
     display: inline-flex;
@@ -12809,11 +12809,11 @@ body.row-dragging * { cursor: grabbing !important; }
     cursor: pointer;
     transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
   }
-  #mobileCreateChips > .mobileCreatePasteChip:hover { background: var(--bg-hover); }
+  #createChipRow > .createPasteChip:hover { background: var(--bg-hover); }
   /* Pressed fill while the inline paste panel is open. The shared
-     .mobileCreateChipSelected rule lives inside the ≤1023px block, so the
+     .createChipSelected rule lives inside the ≤1023px block, so the
      accent fill is restated here to reach the desktop paste chip. */
-  #mobileCreateChips > .mobileCreatePasteChip.mobileCreateChipSelected {
+  #createChipRow > .createPasteChip.createChipSelected {
     background: var(--accent);
     color: #fff;
     border-color: var(--accent);
