@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Project switcher: per-project triage question count, without the observer loop
+- [x] **[MEDIUM]** Project switcher: per-project triage question count, without the observer loop
   - Type: feature
   - Description: Third attempt. PR #830 shipped this and hung the app on load; it was reverted in #831. Cause is now known exactly: `updateAllProjectQuestionCounts` writes into `sideMain` (creates a `.projQuestionCount` span and sets `badge.textContent`), while `questionCountObserver` observes `sideMain` with `childList: true, subtree: true`. Setting `textContent` is a childList mutation, so every paint re-triggered the observer, which repainted, forever — an infinite microtask loop that pinned the main thread. Synchronous chrome rendered; async hydration never ran; the app showed an empty list with no project header. The store half of #830 was correct and is reinstated unchanged. Rebuild the switcher half with no self-triggering observer.
   - Behavior: Each project in the switcher shows an amber count of its `agent_queue` rows in `needs_words`. A project with none shows nothing — no zero badge. The open project shows its own count the same way. The count is live: an `agent_queue` realtime push repaints it without a project switch. It is labelled as triage questions, not "needs you", since shipped-but-unreviewed entries and landed drafts are excluded. Tapping a project switches to it as it does today. The switcher renders its project list normally whether or not any count resolves, and painting counts must never re-enter itself.
@@ -15,5 +15,5 @@
     - `style.css`: reinstate #830's rules unchanged — the hidden-by-default pill and the `.hasQuestionCount` reveal were not implicated. Existing `#ffbd5e` amber, no new tokens. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: Counting landed drafts (`drafted` with no `draftSeenAt`) cross-project — needs other projects' todos in memory. Counting REVIEW cross-project — needs a per-repo TODO.md read for all seven projects on load. Any notification outside the app, a global aggregate badge on the chat button, auto-switching to a project with waiting work, the task rows' own badges, and the Agent board. The `footObserver` on `mainList` and any other existing observer.
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-23
   <!-- id: 3b0854b6-8641-4cd7-80a2-5a84afd920f7 -->
