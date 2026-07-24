@@ -152,8 +152,15 @@ describe('mobile Sort trigger — CSS visibility', () => {
     it('reveals the trigger, hides the divider, and pushes Sort to the far right at the mobile breakpoint', () => {
         const triggerRule = extractMobileRule(css, '#taskSortBtnMobile');
         expect(triggerRule).toMatch(/display:\s*inline-flex/);
-        // The chip is pushed to the row's far edge in the un-fused layout.
-        expect(triggerRule).toMatch(/margin-left:\s*auto/);
+        // Right-edge anchoring now lives on the blocked chip (the right cluster's
+        // leftmost member, DOM-ordered just before Sort), which absorbs the free
+        // space and carries Sort along with it. The trigger itself must NOT also
+        // carry margin-left:auto — two auto margins would split the space and
+        // push the chip and Sort apart. The chip's base rule owns the anchor.
+        expect(triggerRule).not.toMatch(/margin-left:\s*auto/);
+        const chipRule = css.match(/\.taskFilterBlockedChip\s*\{([^}]*)\}/);
+        expect(chipRule).not.toBeNull();
+        expect(chipRule[1]).toMatch(/margin-left:\s*auto/);
         // The retired divider stays hidden at the mobile breakpoint too.
         const dividerRule = extractMobileRule(css, '.taskFilterBarDivider');
         expect(dividerRule).toMatch(/display:\s*none/);
