@@ -100,6 +100,12 @@ import {
     syncAgentAvailabilityForProject,
     startAgentWorkingWatch,
 } from './agentView.js';
+import {
+    startAgentQueueSubscription,
+    loadAllQueueRows,
+    getWaitingQuestionCounts,
+    onQueueChange,
+} from './agentQueueStore.js';
 import { renderStructureView, captureStructureSnapshot } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -2676,6 +2682,58 @@ function component() {
     });
     setTimeout(refreshProjRunSpinner, 0);
 
+    // ── Per-project "triage question waiting" count in the switcher ──
+    // Walk every committed sidebar project row and stamp an amber count of the
+    // project's `agent_queue` rows parked in `needs_words` (the ASKING triage
+    // state), so a question waiting in a project that's off-screen still reaches
+    // the user without switching to it. A project with none shows nothing (the
+    // `.hasQuestionCount` class both reveals the badge and reserves its grid
+    // column, so a zero-count row keeps its normal layout). The count is separate
+    // from the purple `.projBadge` incomplete-todo count and, unlike it, is live
+    // off `agent_queue` realtime pushes rather than todo mutations.
+    //
+    // HARD REQUIREMENT: the count must never be able to break the switcher's
+    // render. All counts are resolved into a plain name→count map ONCE, before
+    // the row loop, inside a try/catch that falls back to an empty map; the loop
+    // then only reads that map with a default of zero and never calls into the
+    // store or listLogic. The count needs no todo data — it derives entirely from
+    // `agent_queue` rows and their `project_id` (see getWaitingQuestionCounts).
+    function updateAllProjectQuestionCounts() {
+        if (!sideMain) return;
+        let counts;
+        try {
+            counts = getWaitingQuestionCounts() || {};
+        } catch (e) {
+            counts = {};
+        }
+        const rows = sideMain.querySelectorAll('#projChild');
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            const input = row.querySelector('#projInput');
+            const name = input ? input.value.trim() : '';
+            const count = name ? (counts[name] || 0) : 0;
+            let badge = row.querySelector('.projQuestionCount');
+            if (count > 0) {
+                if (!badge) {
+                    badge = document.createElement('span');
+                    badge.className = 'projQuestionCount';
+                    // Sit just before the trailing incomplete-count pill.
+                    const projBadge = row.querySelector('.projBadge');
+                    if (projBadge) row.insertBefore(badge, projBadge);
+                    else row.appendChild(badge);
+                }
+                badge.textContent = String(count);
+                badge.setAttribute('aria-label',
+                    count + ' triage ' + (count === 1 ? 'question' : 'questions') + ' waiting on you');
+                badge.title = 'Triage questions waiting on you';
+                row.classList.add('hasQuestionCount');
+            } else {
+                if (badge) badge.textContent = '';
+                row.classList.remove('hasQuestionCount');
+            }
+        }
+    }
+
     const footObserver = new MutationObserver(updateFooterCounts);
     footObserver.observe(mainList, {
         childList: true,
@@ -2690,6 +2748,26 @@ function component() {
     });
 
     setTimeout(updateFooterCounts, 0);
+
+    // Prime the all-projects agent-queue cache and paint the switcher's
+    // per-project "triage question waiting" counts, then keep them live. The
+    // store's realtime channel (idempotent to open here) refreshes the cache on
+    // every `agent_queue` push, and onQueueChange repaints from that fresh cache
+    // without a project switch or re-render. A dedicated sidebar observer
+    // repaints on row rebuilds (project add / rename / delete / restore) so a
+    // rebuilt row re-derives its count from the already-loaded cache; it watches
+    // only childList + the input `value` (not `class`), so the paint's own class
+    // toggle can't re-trigger it into a loop.
+    startAgentQueueSubscription();
+    loadAllQueueRows().then(updateAllProjectQuestionCounts);
+    onQueueChange(updateAllProjectQuestionCounts);
+    const questionCountObserver = new MutationObserver(updateAllProjectQuestionCounts);
+    questionCountObserver.observe(sideMain, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['value']
+    });
 
     // Mount the desktop companion on first boot when the pref allows and
     // the viewport qualifies. Deferred by a tick so document.body exists
