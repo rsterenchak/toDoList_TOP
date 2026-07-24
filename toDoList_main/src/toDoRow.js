@@ -477,7 +477,7 @@ function syncStuckPanel(toDoChild, item) {
 // same height recompute after the picker's own list (re)paints — the loading
 // state and the populated list are different heights, so the panel shifts every
 // row below it when the on-demand load resolves.
-function mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectName, injectBtn) {
+function mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn) {
     const picker = createFilePicker({
         projectName: projectName || '',
         textarea: descInput,
@@ -493,7 +493,9 @@ function mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectN
         },
     });
     descSibling.insertBefore(picker.trigger, descInput);
-    descSibling.insertBefore(picker.panel, descSpacer2);
+    // Panel drops in directly below the textarea; both are placed explicitly
+    // by CSS grid-column, so this only sets DOM/row order, not the column.
+    descSibling.insertBefore(picker.panel, descInput.nextSibling);
 }
 
 
@@ -1941,7 +1943,7 @@ function buildInfoGlyph() {
 
 // ── HELPER: wire the dropdown toggle button that opens/closes a row's description ──
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
-function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, generateBtn, discussBtn, item, projectName) {
+function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn, generateBtn, discussBtn, item, projectName) {
 
     let switcher = 0;
 
@@ -1961,9 +1963,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
                 descAnchor = descAnchor.nextSibling;
             }
             mainList.insertBefore(descSibling, descAnchor);
-            descSibling.appendChild(descSpacer1);
+            // Every child is placed explicitly via CSS grid-column (see
+            // #descInput / #descSibling in style.css), so mount order no longer
+            // affects layout — the two gutter-filler spacers this panel used to
+            // carry are gone.
             descSibling.appendChild(descInput);
-            descSibling.appendChild(descSpacer2);
             if (injectBtn) {
                 descSibling.appendChild(injectBtn);
                 refreshInjectButton(injectBtn, item, projectName);
@@ -1989,7 +1993,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             // Mount the shared File:-path picker above the textarea. It reads the
             // active project's manifest synchronously and self-hides when there
             // is none, so the control is simply absent for un-linked projects.
-            mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectName, injectBtn);
+            mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
             // Mount triage's ASKING question + answer block at the top of the
             // panel when this task's linked agent_queue row is in needs_words.
             // No-op for every other row.
@@ -2057,9 +2061,7 @@ export function buildToDoRow(item, toDoName) {
     const statsToggle     = document.createElement("div");
     const spacer          = document.createElement("div");
     const descSibling     = document.createElement("div");
-    const descSpacer1     = document.createElement("div");
     const descInput       = document.createElement("textarea");
-    const descSpacer2     = document.createElement("div");
 
     // set IDs and initial styles
     toDoChild.id           = "toDoChild";
@@ -2225,12 +2227,10 @@ export function buildToDoRow(item, toDoName) {
     statsToggle.innerHTML = '<svg viewBox="0 0 14 14" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" y1="12" x2="12" y2="12"/><rect x="3" y="7" width="1.8" height="4"/><rect x="6.1" y="4" width="1.8" height="7"/><rect x="9.2" y="2" width="1.8" height="9"/></svg>';
 
     descSibling.id  = "descSibling";
-    descSpacer1.id  = "descSpacer1";
     descInput.id    = "descInput";
-    descSpacer2.id  = "descSpacer2";
 
     // Inject-to-TODO.md button — appears at the bottom of the description
-    // panel (after descSpacer2) and posts the description text to a
+    // panel and posts the description text to a
     // user-configured Cloudflare Worker. Hidden when the description is
     // empty; the keyup/blur handlers below refresh its state. The button
     // itself manages its five visual states (hidden, unconfigured,
@@ -2388,7 +2388,7 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInput, descSpacer2, injectBtn, generateBtn, discussBtn, item, toDoName);
+    wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn, generateBtn, discussBtn, item, toDoName);
     wireSubControlBackspaceExit(descToggle, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);

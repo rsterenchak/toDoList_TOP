@@ -76,7 +76,7 @@
   - Completed: 2026-07-24
   <!-- id: 415e4f80-8ce8-4746-84be-b46466be6f4e -->
 
-- [ ] **[HIGH]** Description panel: give every child explicit grid placement
+- [x] **[HIGH]** Description panel: give every child explicit grid placement
   - Type: bug
   - Description: `#descSibling` is `grid-template-columns: 14px 1fr 14px` and NO child declares a `grid-column`. Placement is implicit: the panel is mounted as `[descSpacer1, descInput, descSpacer2]` and the two spacers exist solely to occupy the gutter tracks so the textarea auto-places into the `1fr` column. The layout is therefore a function of child order and count, and any insertion shifts everything after it by one cell. This has now failed three times in one day — `.askingBlock` inserted as `firstChild` rendered one word per line, and `descSibling.insertBefore(picker.trigger, descInput)` pushed `#descInput` itself into a 14px gutter, making descriptions unreadable and unwritable on desktop. Replace implicit placement with an explicit `grid-column` on every child so insertion order can never displace anything again.
   - Behavior: The description panel lays out identically to its correct state today — the textarea and every full-width block span the content column, the gutters stay 14px — but the layout no longer depends on how many children are mounted or in what order. Inserting a new control anywhere in the panel leaves every existing child where it was. The immediate visible fix is that `#descInput` renders at full content width again with the manifest picker mounted.
@@ -91,5 +91,5 @@
     - Verify the mobile description-editor modal is untouched — it is not a grid, and none of these rules should reach it.
   - Out of scope: `#descSibling`'s `grid-template-columns` definition. The manifest picker's own behavior, its on-demand load, and its filtering — all correct as landed. The ASKING and stuck blocks' content. The Generate and Inject controls' behavior. The mobile modal. The task row's own chrome, and the phase-face redesign, which is a separate direction.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 3971b495-c87c-49ac-a7a4-e87afe34888d -->
