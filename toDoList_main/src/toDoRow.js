@@ -69,6 +69,17 @@ export function setDiscussTaskHandler(fn) {
     discussTaskHandler = typeof fn === 'function' ? fn : null;
 }
 
+// The desktop description panel's STUCK failure-reason block reuses the exact
+// copy the Agent view and the mobile modal show (agentView's stuckReasonText),
+// but the row layer must not import agentView (the cycle-avoidance boundary the
+// row's store-import test pins). So main.js — which imports both — registers the
+// single resolver here, exactly as setDiscussTaskHandler bridges the Claude
+// sheet. Until it's wired the panel simply omits the reason text (never throws).
+let stuckReasonResolver = null;
+export function setStuckReasonResolver(fn) {
+    stuckReasonResolver = typeof fn === 'function' ? fn : null;
+}
+
 // The blocked-on-you filter chip in the task filter bar keys off a row's derived
 // phase, but taskFilter.js can't import phase.js without closing an import cycle
 // (taskFilter → phase → inject → modals → toDoRow → taskFilter). toDoRow.js
@@ -374,6 +385,69 @@ function syncAskingPanel(toDoChild, item, projectName) {
             existing.remove();
         }
         panel.insertBefore(buildAskingBlock(item, projectName, queueRow), panel.firstChild);
+        refreshViewerExpandedHeight();
+    } else if (existing) {
+        existing.remove();
+        refreshViewerExpandedHeight();
+    }
+}
+
+
+// Resolve the STUCK reason text through the registered resolver (agentView's
+// stuckReasonText, wired by main.js). Falls back to the empty string only when
+// the resolver isn't wired yet, so the block never throws and never invents a
+// second copy of the fallback strings.
+function resolveStuckReason(queueRow) {
+    return stuckReasonResolver ? stuckReasonResolver(queueRow) : '';
+}
+
+// Build the STUCK failure-reason block for a row's description panel — the same
+// read-only danger-red card the description-editor modal mounts, reusing the
+// modal's class names (so the CSS treatment is shared, not copied) and the
+// modal's single copy resolver (`stuckReasonText`). Kept structurally identical
+// to modals.js's renderStuckBlock so the two hosts read as one control.
+function buildStuckBlock(reason) {
+    const block = document.createElement('div');
+    block.className = 'descEditorModalStuck';
+    block.setAttribute('role', 'status');
+
+    const label = document.createElement('span');
+    label.className = 'descEditorModalStuckLabel';
+    label.textContent = '⌁ STUCK';
+    block.appendChild(label);
+
+    const reasonEl = document.createElement('p');
+    reasonEl.className = 'descEditorModalStuckReason';
+    reasonEl.textContent = reason;
+    block.appendChild(reasonEl);
+
+    return block;
+}
+
+
+// Keep a row's open description panel in sync with its STUCK phase — the chevron
+// counterpart to the STUCK-badge tap, which routes to the modal's own stuck
+// block. Mirrors syncAskingPanel exactly: same open-panel guard, same
+// insert-as-firstChild position, the same idempotent early-return (refresh the
+// mounted block's reason text rather than rebuild) so live sweeps don't thrash
+// the DOM, and the same removal path when the phase clears. Re-applies the
+// panel-height snapshot on both add and remove. ASKING and STUCK are mutually
+// exclusive phases (needs_words vs failed/no_change), so the two firstChild
+// mounts never collide.
+function syncStuckPanel(toDoChild, item) {
+    const panel = openDescSiblingFor(toDoChild);
+    if (!panel) return;
+    const existing = panel.querySelector('.descEditorModalStuck');
+    const wantStuck = !!(item && item.id) && derivePhase(item) === PHASE.STUCK;
+    if (wantStuck) {
+        const queueRow = getQueueRowForTodo(item.id);
+        const reason = resolveStuckReason(queueRow);
+        if (existing) {
+            const reasonEl = existing.querySelector('.descEditorModalStuckReason');
+            if (reasonEl && reasonEl.textContent !== reason) reasonEl.textContent = reason;
+            return;
+        }
+        panel.insertBefore(buildStuckBlock(reason), panel.firstChild);
         refreshViewerExpandedHeight();
     } else if (existing) {
         existing.remove();
@@ -707,6 +781,10 @@ export function refreshDescStatusDots() {
             // the row's live phase (mounts / clears the answer field as the linked
             // queue row enters / leaves needs_words).
             syncAskingPanel(row, row.__item, row.getAttribute('data-value'));
+            // Keep an open panel's STUCK failure-reason block in step with the
+            // row's live phase too, so a re-triage that leaves failed/no_change
+            // clears it while the panel is open (and a fresh failure mounts it).
+            syncStuckPanel(row, row.__item);
             if (row.__item.entryId && row.dataset && row.dataset.value) {
                 projectsToRefresh.add(row.dataset.value);
             }
@@ -1871,6 +1949,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             // panel when this task's linked agent_queue row is in needs_words.
             // No-op for every other row.
             syncAskingPanel(toDoChild, item, projectName);
+            // Mount triage's STUCK failure-reason block at the top of the panel
+            // when this task's linked agent_queue row is in failed / no_change —
+            // the chevron-path equivalent of the modal's stuck block. No-op for
+            // every other row (and mutually exclusive with the ASKING block).
+            syncStuckPanel(toDoChild, item);
             descToggle.classList.add("open");
             switcher = 1;
         } else {
