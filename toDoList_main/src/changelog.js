@@ -12,13 +12,13 @@ export const changelog = [
         fixed: [
             "The blocked-on-you filter chip is now a smaller amber glyph and count that reads dim when nothing is waiting, plain amber when tasks await you, and filled only while you are filtering to them.",
             "The blocked-on-you filter chip now sits at the right edge of the task filter bar beside the Sort control instead of packed against the status pill.",
+            "A task injected from the Inject button now keeps its link to its TODO.md entry on every device, so its run glyph and review badge no longer vanish when the task is opened elsewhere.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-23',
         added: [
-            "A task whose generated draft you haven't opened yet now shows an amber DRAFTED badge on phone and desktop, clearing the moment you open its description.",
             "The project switcher now shows an amber count of the triage questions waiting in each project, so a question parked in another project is visible without switching to it.",
         ],
     },
