@@ -3,6 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
+// insertFilePathIntoEntry now lives in the shared filePicker.js module and is
+// re-exported from modals.js — import from the re-export so this pins the seam
+// callers/tests actually use.
 import { insertFilePathIntoEntry } from '../src/modals.js';
 import { getCachedManifest, loadManifest } from '../src/claudeSheet.js';
 
@@ -152,58 +155,78 @@ describe('getCachedManifest — synchronous, no-fetch cache read', () => {
     });
 });
 
-describe('desc editor File:-path picker — modal wiring', () => {
-    const modals = read('modals.js');
+describe('File:-path picker — shared module (filePicker.js)', () => {
+    const filePicker = read('filePicker.js');
 
-    it('reads the manifest synchronously from the cache (no second fetch; no structureView import)', () => {
-        expect(modals).toMatch(
+    it('reads the manifest synchronously from the cache — no second fetch, no structureView import', () => {
+        expect(filePicker).toMatch(
             /import\s*\{[^}]*getCachedManifest[^}]*\}\s*from\s*['"]\.\/claudeSheet\.js['"]/
         );
-        // Reads the cache, never calls the async loader from the modal.
-        expect(modals).toMatch(/getCachedManifest\(/);
-        expect(modals).not.toMatch(/from\s*['"]\.\/structureView\.js['"]/);
-        expect(modals).not.toMatch(/\bloadManifest\(/);
+        expect(filePicker).toMatch(/getCachedManifest\(/);
+        expect(filePicker).not.toMatch(/from\s*['"]\.\/structureView\.js['"]/);
+        expect(filePicker).not.toMatch(/\bloadManifest\(/);
     });
 
-    it('builds a #descEditorModalTargetPick chip, hidden when there is no manifest', () => {
-        expect(modals).toMatch(/['"]descEditorModalTargetPick['"]/);
-        const idx = modals.indexOf("'descEditorModalTargetPick'");
+    it('exports createFilePicker plus the insertion helper for both hosts to share', () => {
+        expect(filePicker).toMatch(/export function createFilePicker\(/);
+        expect(filePicker).toMatch(/export function insertFilePathIntoEntry\(/);
+    });
+
+    it('hides the trigger entirely when the project has no manifest', () => {
+        expect(filePicker).toMatch(/if\s*\(\s*!manifestFiles\.length\s*\)\s*trigger\.style\.display\s*=\s*['"]none['"]/);
+    });
+
+    it('writes the pick through insertFilePathIntoEntry, re-syncs the textarea, then defers persistence to the host', () => {
+        const idx = filePicker.indexOf('function applyFilePick');
         expect(idx).toBeGreaterThan(-1);
-        // Hidden entirely when the manifest has no files to browse.
-        expect(modals).toMatch(/if\s*\(\s*!manifestFiles\.length\s*\)\s*targetPickBtn\.style\.display\s*=\s*['"]none['"]/);
-    });
-
-    it('mounts the chip above the textarea and the panel in the body', () => {
-        expect(modals).toMatch(/body\.insertBefore\(\s*targetPickBtn\s*,\s*textarea\s*\)/);
-        expect(modals).toMatch(/body\.appendChild\(\s*targetPanel\s*\)/);
-    });
-
-    it('writes the pick through insertFilePathIntoEntry then re-syncs + persists', () => {
-        const idx = modals.indexOf('function applyFilePick');
-        expect(idx).toBeGreaterThan(-1);
-        const fn = modals.slice(idx, idx + 600);
+        const fn = filePicker.slice(idx, idx + 600);
         expect(fn).toMatch(/insertFilePathIntoEntry\(\s*textarea\.value\s*,\s*path\s*\)/);
-        // Dispatch the input event (re-syncs item.desc + inject button + auto-grow)
-        // and persist through listLogic.
+        // Dispatch the input event (auto-grow, and on the modal item.desc +
+        // inject-button re-sync), then hand off to the host's onInsert.
         expect(fn).toMatch(/textarea\.dispatchEvent\(\s*new Event\(\s*['"]input['"]\s*\)\s*\)/);
-        expect(fn).toMatch(/listLogic\.saveToStorage\(\)/);
+        expect(fn).toMatch(/onInsert\(\)/);
     });
 
     it('caps the rendered rows and shows a keep-typing hint past the cap', () => {
-        expect(modals).toMatch(/TARGET_PICK_CAP/);
-        const idx = modals.indexOf('function renderTargetList');
+        expect(filePicker).toMatch(/TARGET_PICK_CAP/);
+        const idx = filePicker.indexOf('function renderList');
         expect(idx).toBeGreaterThan(-1);
-        const fn = modals.slice(idx, idx + 1200);
+        const fn = filePicker.slice(idx, idx + 1200);
         expect(fn).toMatch(/slice\(\s*0\s*,\s*TARGET_PICK_CAP\s*\)/);
         expect(fn).toMatch(/Keep typing to narrow/);
     });
 });
 
-describe('desc editor File:-path picker — styling', () => {
+describe('File:-path picker — modal host (modals.js)', () => {
+    const modals = read('modals.js');
+
+    it('drives the shared picker rather than a private copy — no direct manifest read', () => {
+        expect(modals).toMatch(/import\s*\{[^}]*createFilePicker[^}]*\}\s*from\s*['"]\.\/filePicker\.js['"]/);
+        expect(modals).not.toMatch(/from\s*['"]\.\/structureView\.js['"]/);
+        expect(modals).not.toMatch(/\bloadManifest\(/);
+        // The manifest read moved into filePicker.js; the modal no longer touches it.
+        expect(modals).not.toMatch(/getCachedManifest\(/);
+    });
+
+    it('mounts the trigger above the textarea and the panel in the body, keeping the modal id hooks', () => {
+        expect(modals).toMatch(/createFilePicker\(\{/);
+        expect(modals).toMatch(/triggerId:\s*['"]descEditorModalTargetPick['"]/);
+        expect(modals).toMatch(/body\.insertBefore\(\s*filePicker\.trigger\s*,\s*textarea\s*\)/);
+        expect(modals).toMatch(/body\.appendChild\(\s*filePicker\.panel\s*\)/);
+    });
+
+    it('persists through listLogic after a pick', () => {
+        const idx = modals.indexOf('createFilePicker({');
+        const call = modals.slice(idx, idx + 400);
+        expect(call).toMatch(/onInsert:\s*function\s*\(\)\s*\{\s*listLogic\.saveToStorage\(\)/);
+    });
+});
+
+describe('File:-path picker — styling (shared .filePick* classes)', () => {
     const css = read('style.css');
 
     it('the chip follows the 36×36 / 10px-radius convention', () => {
-        const m = css.match(/#descEditorModalTargetPick\s*\{([\s\S]{0,700}?)\}/);
+        const m = css.match(/\.filePickTrigger\s*\{([\s\S]{0,700}?)\}/);
         expect(m).toBeTruthy();
         expect(m[1]).toMatch(/width:\s*36px/);
         expect(m[1]).toMatch(/height:\s*36px/);
@@ -211,17 +234,85 @@ describe('desc editor File:-path picker — styling', () => {
     });
 
     it('the search input carries the 16px iOS-auto-zoom floor', () => {
-        const m = css.match(/#descEditorModalTargetSearch\s*\{([\s\S]{0,700}?)\}/);
+        const m = css.match(/\.filePickSearch\s*\{([\s\S]{0,700}?)\}/);
         expect(m).toBeTruthy();
         expect(m[1]).toMatch(/font-size:\s*16px/);
     });
 
     it('the list scrolls within a bounded panel rather than growing unbounded', () => {
-        const m = css.match(/#descEditorModalTargetPanel\s*\{([\s\S]{0,700}?)\}/);
+        const m = css.match(/\.filePickPanel\s*\{([\s\S]{0,700}?)\}/);
         expect(m).toBeTruthy();
         expect(m[1]).toMatch(/max-height:/);
-        const list = css.match(/#descEditorModalTargetList\s*\{([\s\S]{0,300}?)\}/);
+        const list = css.match(/\.filePickList\s*\{([\s\S]{0,300}?)\}/);
         expect(list).toBeTruthy();
         expect(list[1]).toMatch(/overflow-y:\s*auto/);
+    });
+});
+
+describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
+    const toDoRow = read('toDoRow.js');
+    const css = read('style.css');
+
+    function ruleBodyContaining(source, needle) {
+        let depth = 0;
+        let selectorStart = 0;
+        for (let i = 0; i < source.length; i++) {
+            const c = source[i];
+            if (c === '{') {
+                if (depth === 0) {
+                    const selector = source.slice(selectorStart, i);
+                    if (selector.includes(needle)) {
+                        const blockEnd = source.indexOf('}', i);
+                        return source.slice(i + 1, blockEnd);
+                    }
+                }
+                depth++;
+                continue;
+            }
+            if (c === '}') {
+                depth--;
+                if (depth === 0) selectorStart = i + 1;
+            }
+        }
+        return null;
+    }
+
+    it('builds the desktop picker through the shared createFilePicker', () => {
+        expect(toDoRow).toMatch(/import\s*\{[^}]*createFilePicker[^}]*\}\s*from\s*['"]\.\/filePicker\.js['"]/);
+        expect(toDoRow).toMatch(/function mountDescFilePicker\(/);
+        expect(toDoRow).toMatch(/createFilePicker\(\{/);
+    });
+
+    it('mounts the trigger above the textarea and the panel inside #descSibling', () => {
+        const idx = toDoRow.indexOf('function mountDescFilePicker(');
+        const fn = toDoRow.slice(idx, idx + 900);
+        expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.trigger\s*,\s*descInput\s*\)/);
+        expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.panel\s*,\s*descSpacer2\s*\)/);
+    });
+
+    it('mounts the picker on every panel open (rebuilt each time), not once at build', () => {
+        expect(toDoRow).toMatch(/mountDescFilePicker\(descSibling,\s*descSpacer2,\s*descInput,\s*item,\s*projectName,\s*injectBtn\)/);
+        const openIdx = toDoRow.indexOf('function wireDescToggle(');
+        const openBlock = toDoRow.slice(openIdx, openIdx + 3000);
+        expect(openBlock).toMatch(/mountDescFilePicker\(/);
+    });
+
+    it('persists through the listLogic path descInput uses and refreshes inject + viewer height after a pick', () => {
+        const idx = toDoRow.indexOf('function mountDescFilePicker(');
+        const fn = toDoRow.slice(idx, idx + 900);
+        expect(fn).toMatch(/listLogic\.saveToStorage\(\)/);
+        expect(fn).toMatch(/listLogic\.editToDoItem\(projectName,\s*item\)/);
+        expect(fn).toMatch(/refreshInjectButton\(injectBtn,\s*item,\s*projectName\)/);
+        expect(fn).toMatch(/refreshViewerExpandedHeight\(\)/);
+    });
+
+    it('places the trigger and panel full-width in the #descSibling grid (no 14px gutter collapse)', () => {
+        const body = ruleBodyContaining(css, '#descSibling .filePickTrigger');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/grid-column:\s*1\s*\/\s*-1\s*;/);
+        // The grouped selector must also name the panel so it spans the row too.
+        const idx = css.indexOf('#descSibling .filePickTrigger');
+        const selector = css.slice(idx, css.indexOf('{', idx));
+        expect(selector).toContain('#descSibling .filePickPanel');
     });
 });

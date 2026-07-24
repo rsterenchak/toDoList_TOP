@@ -57,6 +57,7 @@ import {
 import { applyTaskFilter, setBlockedItemResolver } from './taskFilter.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
+import { createFilePicker } from './filePicker.js';
 
 
 // The row-side "Discuss" action opens the Claude sheet scoped to this task.
@@ -456,6 +457,37 @@ function syncStuckPanel(toDoChild, item) {
         existing.remove();
         refreshViewerExpandedHeight();
     }
+}
+
+
+// Mount the shared File:-path picker into an OPEN description panel — the desktop
+// counterpart to the mobile modal's picker (both build it through
+// createFilePicker so the search filter, insertion logic, and manifest read are
+// one implementation). The trigger chip sits above the textarea; its searchable
+// panel drops in below it. Both are full-width in the panel's three-column grid
+// via `#descSibling .filePickTrigger` / `.filePickPanel` — an auto-placed child
+// would land in a 14px gutter, the same defect that crushed .askingBlock. The
+// picker self-hides when the project has no manifest, so the control is simply
+// absent rather than opening an empty list. Called on every panel open (the
+// panel is rebuilt by wireDescToggle each time), so the shown/hidden state and
+// the file list are re-derived fresh. After a pick, persist through the same
+// listLogic path descInput's own handlers use, refresh the inject button (a
+// previously-empty description may now be non-empty), and recompute the viewer
+// height since mounting the File: line shifts every row below.
+function mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectName, injectBtn) {
+    const picker = createFilePicker({
+        projectName: projectName || '',
+        textarea: descInput,
+        onInsert: function () {
+            item.desc = descInput.value;
+            listLogic.saveToStorage();
+            if (projectName) listLogic.editToDoItem(projectName, item);
+            if (injectBtn) refreshInjectButton(injectBtn, item, projectName);
+            refreshViewerExpandedHeight();
+        },
+    });
+    descSibling.insertBefore(picker.trigger, descInput);
+    descSibling.insertBefore(picker.panel, descSpacer2);
 }
 
 
@@ -1948,6 +1980,10 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descSpacer1, descInp
             // Trigger the textarea's auto-grow handler now that it's in the
             // DOM — scrollHeight is only meaningful for an attached element.
             descInput.dispatchEvent(new Event("input"));
+            // Mount the shared File:-path picker above the textarea. It reads the
+            // active project's manifest synchronously and self-hides when there
+            // is none, so the control is simply absent for un-linked projects.
+            mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectName, injectBtn);
             // Mount triage's ASKING question + answer block at the top of the
             // panel when this task's linked agent_queue row is in needs_words.
             // No-op for every other row.
