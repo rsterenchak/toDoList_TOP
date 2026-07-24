@@ -57,7 +57,7 @@
   - Completed: 2026-07-24
   <!-- id: c02fe93d-db19-46d6-821d-b55fd10d51b5 -->
 
-- [ ] **[MEDIUM]** Manifest file picker: load the manifest on demand instead of depending on the Structure tab
+- [x] **[MEDIUM]** Manifest file picker: load the manifest on demand instead of depending on the Structure tab
   - Type: bug
   - Description: The picker reads `srcManifestCache` synchronously and never fetches. That cache is populated only by `structureView.js`'s render and one `claudeSheet.js` path, so the picker has files ONLY if the Structure tab was opened earlier in the session — otherwise it is empty, and the feature that exists to remove typing file paths from memory silently does nothing. The two hosts also diverge on the empty case: the mobile modal hides its trigger (`targetPickBtn.style.display = 'none'`), while the desktop panel renders the filter input above a NO FILES MATCH message. Make the picker load the manifest itself when opened, and reconcile the two hosts onto one behavior. The original spec's "read the cache, hide when absent" instruction is what caused this and is superseded by this entry.
   - Behavior: Opening the picker in either host loads the active project's manifest if it is not already cached, showing a brief loading state in place of the list, then rendering the files. A subsequent open is instant, since `loadManifest` caches per repo. When the load resolves with no files — a project shape with no source tree, a manifest CI never generated, or a fetch failure — the picker shows a short explanatory message rather than a bare NO FILES MATCH, and says which case it is where that is knowable. The trigger control itself is always present when the project has a routing target, since whether files exist is no longer knowable before opening. Both hosts behave identically. Everything else is unchanged: filtering, insertion into the `- File:` line, dedup, and the cap on rendered rows.
@@ -73,5 +73,5 @@
     - Tests: assert the picker triggers a load when the cache is cold; that a second open does not refetch; that a concurrent open reuses the in-flight promise; that a resolved-empty manifest renders the explanatory state rather than NO FILES MATCH; and that both hosts drive the same code path.
   - Out of scope: Generating or refreshing the manifest itself, and anything in the `manifest-*.yml` workflows. Prefetching the manifest at app start or on project switch — loading on open is sufficient and avoids a fetch for projects whose picker is never used. The Structure view's own manifest use. The picker's filtering, insertion logic, dedup, and row cap, all correct as landed. The compose row's paste chip and the phase rail.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 415e4f80-8ce8-4746-84be-b46466be6f4e -->
