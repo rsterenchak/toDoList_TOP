@@ -28,6 +28,17 @@ let _rows = [];
 let _loadedProjectName = null;
 let _channel = null;
 
+// The all-projects `agent_queue` cache — every one of the user's rows across ALL
+// projects, held SEPARATELY from `_rows`. `_rows` stays scoped to the selected
+// project so `getQueueRowForTodo` (the synchronous render-path lookup) keeps
+// returning only the on-screen project's rows; re-scoping it would change what
+// that returns for every task row. This second cache feeds the project
+// switcher's per-project "triage question waiting" count, which has to reason
+// over projects that are NOT currently on screen. RLS already scopes
+// `agent_queue` to the user, so one select with no `project_id` filter returns
+// every project's rows in a single round trip.
+let _allRows = [];
+
 // Short in-flight guard shared by every triage-sweep dispatcher — the Agent
 // board's header Run button, the board's answer-submit auto-fire, and the task
 // row's answer-submit auto-fire — so a rapid double-tap or two answers in the
@@ -93,6 +104,54 @@ export function getQueueRowForTodo(todoId) {
 export function isTriageInFlight() { return _triageInFlight; }
 export function setTriageInFlight(v) { _triageInFlight = !!v; }
 
+// Read-only view of the all-projects cache; always an array.
+export function getAllQueueRows() {
+    return Array.isArray(_allRows) ? _allRows : [];
+}
+
+// Per-project count of triage questions still waiting on the user — the amber
+// number the project switcher paints next to each project. A row counts ONLY
+// when it is parked in `needs_words` (a pending triage question, the ASKING
+// state). Nothing else is included: shipped-but-unreviewed entries and landed
+// drafts are deliberately out of scope, and counting drafts would require each
+// project's todos in memory (which broke an earlier attempt). Returns a
+// `{ [projectName]: count }` map with only non-zero projects present.
+//
+// Reads NO todo data. It resolves each queue row's `project_id` to a project
+// NAME through the same in-memory model the store already uses
+// (`listLogic.getProjectId`), so an unresolvable id contributes nothing and
+// reads as zero downstream rather than raising. Reads the all-rows cache
+// synchronously; degrades to `{}` when it is empty (e.g. under the stub client,
+// where the all-fetch resolves to `[]`) and never throws — the switcher's render
+// leans on this so a broken count source can never abort its project list.
+export function getWaitingQuestionCounts() {
+    const counts = {};
+    try {
+        const rows = getAllQueueRows();
+        if (!rows.length) return counts;
+        // Reverse-map project id → name from the in-memory model so each queue
+        // row's `project_id` resolves to the switcher row it belongs to. A name
+        // whose id is not yet known simply never enters the map, so it counts as
+        // zero rather than raising.
+        const names = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+        const idToName = {};
+        for (let i = 0; i < names.length; i++) {
+            const pid = listLogic.getProjectId(names[i]);
+            if (pid) idToName[pid] = names[i];
+        }
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.state !== 'needs_words') continue;
+            const name = idToName[row.project_id];
+            if (!name) continue;
+            counts[name] = (counts[name] || 0) + 1;
+        }
+    } catch (e) {
+        return {};
+    }
+    return counts;
+}
+
 // Query agent_queue for one project's rows. Written to survive both the live
 // Supabase client (a chainable, awaitable query builder) and the test/stub
 // client (whose .select() resolves immediately and has no .eq); a synchronous
@@ -110,6 +169,37 @@ export function fetchQueueRows(projectId) {
         } catch (e) {
             resolve([]);
         }
+    });
+}
+
+// Query agent_queue for EVERY project's rows in a single round trip. RLS already
+// scopes the table to the user, so a select with no `project_id` filter returns
+// all of the user's rows. Same stub-client survival contract as fetchQueueRows:
+// the test client's `.select()` carries no row data of its own, so the wrapped
+// result has no `data`/`error` and this resolves to `[]` — the switcher degrades
+// to no counts rather than crashing.
+export function fetchAllQueueRows() {
+    return new Promise(function (resolve) {
+        try {
+            Promise.resolve(
+                supabase.from('agent_queue').select('*')
+            ).then(function (res) {
+                if (res && res.error) { resolve([]); return; }
+                resolve((res && res.data) || []);
+            }).catch(function () { resolve([]); });
+        } catch (e) {
+            resolve([]);
+        }
+    });
+}
+
+// Reload the all-projects cache. Resolves to the cached rows. Does NOT repaint or
+// notify — the caller decides what to re-render. Used for the switcher's initial
+// paint; realtime pushes refresh it alongside the selected-project cache.
+export function loadAllQueueRows() {
+    return fetchAllQueueRows().then(function (rows) {
+        _allRows = Array.isArray(rows) ? rows : [];
+        return getAllQueueRows();
     });
 }
 
@@ -168,7 +258,15 @@ export function startAgentQueueSubscription() {
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'agent_queue' },
                 function () {
-                    loadQueueRows(resolveSelectedProjectName()).then(notifyQueueChange);
+                    // One push refreshes BOTH the selected-project cache (task-row
+                    // badges) and the all-projects cache (the switcher's per-project
+                    // question counts); listeners then repaint both surfaces from
+                    // cache. Reuses this single app-lifetime channel rather than
+                    // opening a second subscription for the switcher counts.
+                    Promise.all([
+                        loadQueueRows(resolveSelectedProjectName()),
+                        loadAllQueueRows(),
+                    ]).then(notifyQueueChange);
                 })
             .subscribe();
     } catch (e) {
