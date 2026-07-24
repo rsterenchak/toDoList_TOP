@@ -91,7 +91,7 @@
   - Completed: 2026-07-24
   <!-- id: 6a8ebd2a-fa67-4a96-947e-d0f87dfbc521 -->
 
-- [ ] **[MEDIUM]** Surface a failed or no-change run on the task row
+- [x] **[MEDIUM]** Surface a failed or no-change run on the task row
   - Type: feature
   - Description: The Agent board's Stuck bucket holds `failed` and `no_change` rows — runs that broke, or that completed and decided nothing needed doing. Neither has any representation on the task row, so a run that went wrong is invisible until the board is visited. ASKING, DRAFTED and REVIEW all reach the user without leaving the list; Stuck is the last blocked-on-you state that does not, and it is the largest remaining reason to switch tabs. Add a `⌁ STUCK` badge in the danger red already used for Revert — amber continues to mean "waiting on you", red means "this went wrong" — and show the run's failure reason in the description editor so the row leads somewhere that explains itself. Requires NO schema change: the state is derived entirely from the linked `agent_queue` row, and clears when that row leaves `failed`/`no_change`.
   - Behavior: A task whose linked `agent_queue` row is in `failed` or `no_change` renders `⌁ STUCK` in danger red (`#ff5d7a`), on mobile as well as desktop, and counts toward the blocked filter chip alongside the three amber states. Tapping the badge opens the task's description editor, which shows the run's failure reason as a read-only block — matching how ASKING surfaces its question there. The badge outranks the marker-derived phases: a failed run usually leaves its entry in TODO.md unchecked, which would otherwise read as DRAFT, and STUCK must win. It is not settable and has no dismiss control; it clears when the queue row moves to any other state, which happens on re-triage or re-dispatch from the Agent board. Both `failed` and `no_change` render the same word — the distinction lives in the reason text, and `no_change` already has its own treatment in the TODO.md viewer.
@@ -108,5 +108,5 @@
     - Tests: assert `derivePhase` returns STUCK for both `failed` and `no_change`; that it outranks a pending marker; that `isBlockedPhase` includes it; and that the badge clears when the queue row moves to another state.
   - Out of scope: Retrying, re-triaging, or re-dispatching a stuck run from the row — the Agent board keeps owning those actions, and this entry only surfaces the state. Distinguishing `failed` from `no_change` in the badge word. Recolouring the blocked filter chip when its count includes a stuck row. `needs_mockup` and the mockup flow, which stay board-only. The Agent board's own rendering, its Stuck bucket, and its reconcile-stuck-triaging sweep. The phase rail, the run glyph, and the manual status control. Merging the Tasks and Agent tabs.
   - File: `toDoList_main/src/phase.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 868e291e-da10-4347-9919-11e8f7d132d3 -->
