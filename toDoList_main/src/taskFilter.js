@@ -346,14 +346,20 @@ function buildBlockedChip() {
     chip.setAttribute('aria-pressed', 'false');
     chip.setAttribute('aria-label', 'Blocked on you: 0. Nothing needs you.');
 
+    // Glyph only — no word. The accessible name is carried entirely by the
+    // button's aria-label (painted below and in updateBlockedChip), so both the
+    // glyph and the count are hidden from screen readers to avoid announcing a
+    // bare symbol and number on top of the label.
     const label = document.createElement('span');
     label.className = 'taskFilterBlockedLabel';
-    label.textContent = 'Blocked';
+    label.textContent = '⌁';
+    label.setAttribute('aria-hidden', 'true');
     chip.appendChild(label);
 
     const count = document.createElement('span');
     count.className = 'taskFilterBlockedCount';
     count.textContent = '0';
+    count.setAttribute('aria-hidden', 'true');
     chip.appendChild(count);
 
     return chip;

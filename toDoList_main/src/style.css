@@ -3667,34 +3667,62 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 /* ── BLOCKED-ON-YOU FILTER CHIP ──
-   A single amber chip in #taskFilterBar (before the Sort control) that filters
-   the list to tasks whose derived phase is blocked on the user (REVIEW / ASKING
-   / DRAFTED). Visible at BOTH breakpoints — unlike the status controls it is not
-   CSS-gated by width. Always mounted: at a zero count it renders dimmed and inert
-   (the --empty modifier + the disabled attribute) so the bar's geometry never
-   shifts and "nothing needs you" reads as a state rather than an absence. Reuses
-   the #ffbd5e amber the REVIEW badge and Revert pill already carry, and the 36px
-   chip + 10px radius conventions of the mobile Sort trigger; no new tokens. */
+   A small amber glyph-and-count chip in #taskFilterBar (before the Sort control)
+   that filters the list to tasks whose derived phase is blocked on the user
+   (REVIEW / ASKING / DRAFTED). Visible at BOTH breakpoints — unlike the status
+   controls it is not CSS-gated by width. Deliberately secondary: it reads as a
+   ~28px glyph, shorter than the 36px status pill beside it, so it never looks
+   like a peer of the primary filter. Three distinct visual states, keyed off the
+   --empty class (count zero) and the .selected class (filter engaged), so
+   "one task is waiting" is never confused with "I am currently filtering":
+     1. zero count (--empty)     — no border, no fill, near-background dim text,
+                                    inert; keeps its footprint so the bar's
+                                    geometry never shifts.
+     2. count > 0, released      — amber text on no border and no fill; colour
+                                    alone carries the signal.
+     3. engaged (.selected)      — a soft amber fill + border.
+   Always mounted (never conditionally). The hit area stays a full 36px via a
+   ::before overlay even though the visible chip is 28px, since this is a
+   phone-first surface. Reuses the #ffbd5e amber the REVIEW badge and Revert pill
+   already carry; no new tokens. */
 .taskFilterBlockedChip {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex: 0 0 auto;
   font-family: inherit;
   font-size: 11px;
   font-weight: 700;
-  letter-spacing: 0.10em;
-  text-transform: uppercase;
-  height: 36px;
-  padding: 0 11px;
+  height: 28px;
+  padding: 0 9px;
   line-height: 1;
-  border-radius: 10px;
-  border: 0.5px solid #ffbd5e;
+  border-radius: 9px;
+  /* Transparent border in the released state so engaging (which colours the
+     border) never shifts the chip by the border's width. */
+  border: 0.5px solid transparent;
   background: transparent;
   color: #ffbd5e;
   cursor: pointer;
   user-select: none;
   transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+
+/* Extend the touch target to 36px without enlarging the visible 28px chip, so
+   the tap area stays comfortable on phones. */
+.taskFilterBlockedChip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 36px;
+}
+
+.taskFilterBlockedLabel {
+  font-size: 14px;
+  line-height: 1;
 }
 
 .taskFilterBlockedChip:hover {
@@ -3706,20 +3734,22 @@ button.claudeAttachChipLabel { cursor: pointer; }
   outline-offset: 2px;
 }
 
-/* Engaged: a solid amber fill so an active blocked filter reads at a glance,
-   mirroring the amber-fill acknowledge control. */
+/* Engaged: a soft amber fill + border so an active blocked filter reads at a
+   glance, distinct from the plain amber text of the released-but-waiting state. */
 .taskFilterBlockedChip.selected {
-  background: #ffbd5e;
+  background: rgba(255, 189, 94, 0.16);
   border-color: #ffbd5e;
-  color: #1a1a24;
+  color: #ffbd5e;
 }
 
-/* Zero blocked tasks: dimmed and inert. The chip keeps its footprint so the
-   bar's geometry never shifts, but reads as disabled and takes no clicks. */
+/* Zero blocked tasks: no border, no fill, near-background dim text, inert. The
+   chip keeps its footprint so the bar's geometry never shifts, but reads as
+   disabled and takes no clicks. */
 .taskFilterBlockedChip--empty {
-  opacity: 0.4;
+  opacity: 0.45;
   cursor: default;
-  border-color: var(--border-bright);
+  border-color: transparent;
+  background: transparent;
   color: var(--text-muted);
 }
 
