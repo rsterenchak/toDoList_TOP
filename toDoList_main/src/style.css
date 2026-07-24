@@ -9523,6 +9523,12 @@ body.row-dragging * { cursor: grabbing !important; }
 
 #descInput {
   font-size: 12px;
+  /* #descSibling is a three-column grid (14px 1fr 14px). Place the textarea
+     explicitly in the 1fr content column so it can never be displaced into a
+     14px gutter by a sibling inserted before it (the manifest picker trigger
+     did exactly that). Every #descSibling child carries an explicit
+     grid-column for this reason — none is left to auto-placement. */
+  grid-column: 2;
   /* Monospace so multi-line markdown drafts line up cleanly and indentation
      reads correctly — matches the mobile desc-editor modal textarea. */
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -16839,12 +16845,20 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   white-space: nowrap;
 }
 
-/* #descSibling is a 3-column grid (14px 1fr 14px). Without an explicit
-   placement the inject button — appended after the spacer/input/spacer
-   trio — lands in the 14px gutter column of a new grid row, which crushes
-   it against the left edge and skews the icon. Spanning the full row
-   restores the inline-flex layout the button was designed for. */
+/* #descSibling is a 3-column grid (14px 1fr 14px). EVERY child of the panel
+   carries an explicit grid-column so its position is a function of CSS, never
+   of how many children are mounted or in what order — an implicit placement
+   lands in the 14px gutter column of a new grid row, which crushed the inject
+   button, the ASKING block, and #descInput itself in turn. Full-width action
+   controls and blocks span `1 / -1`; the textarea sits in the `2` content
+   column (see #descInput). */
 #descSibling .injectBtn {
+  grid-column: 1 / -1;
+}
+
+/* The Discuss action sits beside Inject in the panel; span it full-width for
+   the same reason — an auto-placed action button lands in the 14px gutter. */
+#descSibling .discussBtn {
   grid-column: 1 / -1;
 }
 

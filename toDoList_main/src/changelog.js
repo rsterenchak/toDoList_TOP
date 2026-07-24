@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-24',
         fixed: [
-            "The blocked-on-you filter chip is now a smaller amber glyph and count that reads dim when nothing is waiting, plain amber when tasks await you, and filled only while you are filtering to them.",
             "The blocked-on-you filter chip now sits at the right edge of the task filter bar beside the Sort control instead of packed against the status pill.",
             "A task injected from the Inject button now keeps its link to its TODO.md entry on every device, so its run glyph and review badge no longer vanish when the task is opened elsewhere.",
             "A task's description panel now lays out the triage question and answer field at full width instead of crushing them into a narrow gutter, and a failed run's reason now appears there too when the description is opened.",
             "The file picker in a task's description now loads the project's source files on demand when opened, so it works even if the Structure tab was never visited this session, and shows a clear message when a project has no files or the list can't be loaded.",
+            "A task's description text now stays at full content width in the description panel no matter which controls are mounted alongside it.",
         ],
     },
 ];

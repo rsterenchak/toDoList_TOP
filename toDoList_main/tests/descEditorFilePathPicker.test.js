@@ -298,11 +298,11 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
         const idx = toDoRow.indexOf('function mountDescFilePicker(');
         const fn = toDoRow.slice(idx, idx + 900);
         expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.trigger\s*,\s*descInput\s*\)/);
-        expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.panel\s*,\s*descSpacer2\s*\)/);
+        expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.panel\s*,\s*descInput\.nextSibling\s*\)/);
     });
 
     it('mounts the picker on every panel open (rebuilt each time), not once at build', () => {
-        expect(toDoRow).toMatch(/mountDescFilePicker\(descSibling,\s*descSpacer2,\s*descInput,\s*item,\s*projectName,\s*injectBtn\)/);
+        expect(toDoRow).toMatch(/mountDescFilePicker\(descSibling,\s*descInput,\s*item,\s*projectName,\s*injectBtn\)/);
         const openIdx = toDoRow.indexOf('function wireDescToggle(');
         const openBlock = toDoRow.slice(openIdx, openIdx + 3000);
         expect(openBlock).toMatch(/mountDescFilePicker\(/);
