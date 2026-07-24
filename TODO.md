@@ -241,7 +241,7 @@
   - Out of scope: Any behavioral change to the chip row, the paste flow, the date/description chips, or the desktop reveal. Renaming the `mobileTaskCreate.js` file or its exports.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`
 
-- [ ] **[MEDIUM]** Paste chip: open an inline paste panel instead of committing from the clipboard
+- [x] **[MEDIUM]** Paste chip: open an inline paste panel instead of committing from the clipboard
   - Type: feature
   - Description: The paste chip currently reads `navigator.clipboard.readText()` and commits a task in one action, so the entry is never shown before it lands and a denied or empty clipboard read produces only a toast. The reviewed design opens an inline panel below the compose row containing a labelled textarea and PARSE & ADD / CANCEL actions, so the entry is visible and editable before it becomes a task — and pasting still works when the clipboard API is unavailable or blocked, which on iOS Safari it frequently is.
   - Behavior: Tapping the paste chip opens a panel directly below the compose row, above the task list, with a section label, a monospace textarea whose placeholder shows the expected entry shape, and two actions: PARSE & ADD (primary) and CANCEL. The chip renders in a pressed state while the panel is open, and tapping it again closes the panel. On open, the app attempts a clipboard read and pre-fills the textarea when it succeeds; when it fails or is denied, the textarea opens empty and focused so the user can paste manually — no toast, no error, since manual paste is a normal path rather than a fallback. PARSE & ADD runs the existing parse and commits one task, then closes the panel and clears it. CANCEL closes and clears without creating anything. PARSE & ADD with empty text is inert. Committing an entry that carries a marker still surfaces the existing toast.
@@ -258,5 +258,5 @@
     - Test: opening shows the panel and pressed chip state; a denied clipboard read still opens an empty focused textarea; PARSE & ADD commits one task and closes; CANCEL creates nothing; opening twice leaves exactly one panel; and the description panel still anchors correctly with the paste panel open.
   - Out of scope: The parse rules, the marker toast, and the commit path. The ⌖ target chip. The mic button. The filter pills. The chip's placement in the row, which is correct as landed. Auto-injecting or auto-running a pasted entry.
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 2d41683a-0504-42b6-988e-063ecace3e51 -->
