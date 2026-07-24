@@ -93,3 +93,19 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-24
   <!-- id: 3971b495-c87c-49ac-a7a4-e87afe34888d -->
+
+- [ ] **[HIGH]** File picker: rows collapse instead of filling the list
+  - Type: bug
+  - Description: In the description panel's manifest picker, `.filePickRow` buttons render far narrower than their container, so file paths appear as fragments a character or two wide instead of readable rows. `.filePickList` measures full width — the collapse is at the row level. The stylesheet contains exactly one `.filePickRow` rule (plus `:hover` and `:focus-visible`), with no `width`, no `align-self`, and no media-query override, and its parent is `display: flex; flex-direction: column` whose default `align-items: stretch` should already size these buttons to the container. The mechanism is therefore not determinable from source; this entry fixes the outcome defensively and asserts it with a layout test rather than guessing at a cause.
+  - Behavior: Every row in the picker's file list fills the list's content width. A path longer than the available width truncates with an ellipsis on one line rather than wrapping or fragmenting. Rows keep their current padding, radius, monospace type, hover and focus-visible treatments, and click behavior. Identical in both hosts — the description panel and the mobile description-editor modal.
+  - Implementation notes:
+    - Add to `.filePickRow`, in this order, each covering a different plausible cause: `align-self: stretch` (in case the row's cross-axis sizing is not inheriting the container's stretch), `width: 100%` (in case the button is being shrink-to-fit as a blockified inline-block), and `min-width: 0` (so `overflow: hidden` + `text-overflow: ellipsis` can actually clip rather than the flex item's automatic minimum size forcing it to max-content).
+    - Confirm the codebase sets `box-sizing: border-box` globally before relying on `width: 100%` — `.filePickRow` carries `padding: 8px 10px`, and under `content-box` that width would overflow the list and reintroduce a horizontal scrollbar. If border-box is not global, scope it to this rule.
+    - Do not change `.filePickList` or `.filePickPanel`. The list measures correctly and the panel's `grid-column: 1 / -1` placement in `#descSibling` is correct; changing either risks re-breaking the placement work that just landed.
+    - Check the mobile modal host as well as the desktop panel. `.filePickRow` is shared, so if the collapse is present there too this fixes both — and if the modal is currently fine, the added declarations must not change it.
+    - The regression test must assert the OUTCOME, not the declarations: mount the picker with several rows and assert each row's width matches the list's content width. A test that greps for `align-self: stretch` in the stylesheet would pass even if the rows still collapse, which is how the last three layout defects in this panel reached production.
+    - This is the fourth layout defect in `#descSibling` in one day, and all four were invisible to a suite that does not compute layout. Note in the PR body whether the project's test environment can measure layout at all; if it cannot, say so plainly rather than adding a test that only asserts CSS text.
+  - Out of scope: `.filePickList` and `.filePickPanel` styling and their grid placement. The picker's on-demand manifest load, filtering, insertion, dedup, and row cap. The `#descSibling` explicit-placement work, which is correct. The mobile modal's layout. The task row and the phase-face redesign.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: c1f9046f-9272-4e60-978d-81c5e3b5c433 -->
