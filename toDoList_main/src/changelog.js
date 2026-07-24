@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-24',
         added: [
-            "A task waiting on a mockup decision now shows an amber MOCKUP badge that opens the Agent board scrolled to that task's card when tapped.",
+            "The desktop description panel now offers the same file picker as the mobile editor, inserting a chosen project source path into the entry's File: line.",
         ],
         fixed: [
             "The blocked-on-you filter chip is now a smaller amber glyph and count that reads dim when nothing is waiting, plain amber when tasks await you, and filled only while you are filtering to them.",

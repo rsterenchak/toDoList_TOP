@@ -1475,11 +1475,16 @@ body {
 }
 
 /* FILE:-PATH PICKER — a target chip beside THE ENTRY that lists the project's
-   manifest files and writes the chosen path into the entry's File: line. The
-   chip follows the 36×36 / 10px-radius convention shared with the other create
-   chips and sits right-aligned above the textarea; its searchable dropdown
-   panel reuses the existing elevated-surface + accent tokens. */
-#descEditorModalTargetPick {
+   manifest files and writes the chosen path into the entry's File: line. Shared
+   by the mobile description-editor modal and the desktop description panel
+   (both build it through createFilePicker), so the treatment is keyed off the
+   .filePick* classes rather than a host id. The chip follows the 36×36 /
+   10px-radius convention shared with the other create chips and sits
+   right-aligned above the textarea; its searchable dropdown panel reuses the
+   existing elevated-surface + accent tokens. The desktop grid-column placement
+   that keeps both out of the panel's 14px gutter lives with the other
+   #descSibling children further down. */
+.filePickTrigger {
   align-self: flex-end;
   width: 36px;
   height: 36px;
@@ -1492,14 +1497,14 @@ body {
   cursor: pointer;
   transition: background 0.12s ease, border-color 0.12s ease;
 }
-#descEditorModalTargetPick:hover { background: var(--bg-hover); }
-#descEditorModalTargetPick:focus {
+.filePickTrigger:hover { background: var(--bg-hover); }
+.filePickTrigger:focus {
   outline: none;
   border-color: var(--accent-text);
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
-#descEditorModalTargetPanel {
+.filePickPanel {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1510,7 +1515,7 @@ body {
   background: var(--bg-elevated);
 }
 
-#descEditorModalTargetSearch {
+.filePickSearch {
   /* 16px floor to defeat iOS Safari's auto-zoom-on-focus (CLAUDE.md mobile-input
      rule) — a smaller field would leave the page zoomed after the picker closes. */
   font-size: 16px;
@@ -1522,12 +1527,12 @@ body {
   color: var(--text-primary);
   outline: none;
 }
-#descEditorModalTargetSearch:focus {
+.filePickSearch:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 1px var(--accent-dim);
 }
 
-#descEditorModalTargetList {
+.filePickList {
   display: flex;
   flex-direction: column;
   gap: 2px;
@@ -1535,7 +1540,7 @@ body {
   min-height: 0;
 }
 
-.descEditorModalTargetRow {
+.filePickRow {
   text-align: left;
   padding: 8px 10px;
   border: none;
@@ -1549,14 +1554,14 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.descEditorModalTargetRow:hover { background: var(--bg-hover); }
-.descEditorModalTargetRow:focus-visible {
+.filePickRow:hover { background: var(--bg-hover); }
+.filePickRow:focus-visible {
   outline: none;
   background: var(--accent-dim);
   color: var(--accent-text);
 }
 
-.descEditorModalTargetEmpty {
+.filePickEmpty {
   margin: 0;
   padding: 8px 10px;
   color: var(--text-muted);
@@ -16838,6 +16843,20 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 #descSibling .askingBlock,
 #descSibling .descEditorModalStuck {
   grid-column: 1 / -1;
+}
+
+/* The shared File:-path picker (createFilePicker) mounts its trigger chip above
+   the textarea and its searchable panel below it. Both are #descSibling children
+   and would otherwise auto-place into the 14px gutter column — the same defect
+   that crushed .askingBlock — so span them across the full grid row. The chip
+   keeps its right alignment via justify-self; the panel fills the content width
+   like the textarea it sits under. */
+#descSibling .filePickTrigger,
+#descSibling .filePickPanel {
+  grid-column: 1 / -1;
+}
+#descSibling .filePickTrigger {
+  justify-self: end;
 }
 
 /* ── GENERATE WITH TRIAGE ──
