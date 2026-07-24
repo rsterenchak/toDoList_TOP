@@ -27,6 +27,10 @@ import { findTargetById } from './inject.js';
 // through loadManifest, which caches per repo — when it is not. No second cache,
 // no second fetch, and no structureView import (which would pull in the canvas).
 import { getCachedManifest, loadManifest } from './claudeSheet.js';
+// The manifest lists files RELATIVE to its `srcRoot`; joinSrcRootPath prefixes
+// that root so the picker shows, filters, dedups, and inserts full repo-relative
+// paths (the same joiner structureView.js uses for its blob links).
+import { joinSrcRootPath } from './srcPath.js';
 
 // Cap the rendered rows so a several-hundred-file manifest never mounts in full
 // (on a phone, or in the desktop panel); when the filter still matches more than
@@ -65,9 +69,16 @@ function loadManifestOnce(repo) {
     return p;
 }
 
-// The file list carried by a manifest result, or [] when absent/failed.
+// The file list carried by a manifest result, or [] when absent/failed. The
+// manifest names files relative to its `srcRoot`, so the root is joined onto
+// each name HERE — once, where the result becomes the list — so the rendered
+// label, the filter text, the dedup comparison, and the inserted string are all
+// the same full repo-relative path. An absent or empty `srcRoot` (older
+// manifests, and the C# / repo-root-relative shape) leaves the name unchanged.
 function filesFromManifest(result) {
-    return (result && result.ok && Array.isArray(result.files)) ? result.files : [];
+    if (!(result && result.ok && Array.isArray(result.files))) return [];
+    const srcRoot = result.srcRoot;
+    return result.files.map(function (file) { return joinSrcRootPath(srcRoot, file); });
 }
 
 // Split a `File:` line value on commas and report whether `path` is already one

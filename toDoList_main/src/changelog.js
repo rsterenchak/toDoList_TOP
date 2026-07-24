@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-24',
         fixed: [
-            "A task injected from the Inject button now keeps its link to its TODO.md entry on every device, so its run glyph and review badge no longer vanish when the task is opened elsewhere.",
             "A task's description panel now lays out the triage question and answer field at full width instead of crushing them into a narrow gutter, and a failed run's reason now appears there too when the description is opened.",
             "The file picker in a task's description now loads the project's source files on demand when opened, so it works even if the Structure tab was never visited this session, and shows a clear message when a project has no files or the list can't be loaded.",
             "A task's description text now stays at full content width in the description panel no matter which controls are mounted alongside it.",
             "File paths in a task's description file picker now fill the list as full-width readable rows, with long paths truncating on one line, instead of collapsing into narrow fragments.",
+            "The description file picker now lists and inserts full repo-relative file paths, and can be filtered by folder, instead of bare filenames that pointed at files a run couldn't find.",
         ],
     },
 ];

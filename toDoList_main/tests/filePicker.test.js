@@ -196,6 +196,78 @@ describe('createFilePicker — on-demand manifest load', () => {
     });
 });
 
+describe('createFilePicker — srcRoot prefixing', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    // Warm cache carrying an explicit srcRoot, mirroring a real manifest whose
+    // file names are relative to that root.
+    function withRootedManifest(srcRoot, files) {
+        listLogic.getProjectTargetId.mockReturnValue('target-1');
+        findTargetById.mockReturnValue({ id: 'target-1', repo: 'owner/repo' });
+        getCachedManifest.mockReturnValue({ ok: true, files, srcRoot });
+    }
+
+    it('renders full repo-relative paths for a non-empty srcRoot', () => {
+        withRootedManifest('toDoList_main/src', ['toDoRow.js', 'style.css']);
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        picker.trigger.click();
+        const rows = [...picker.panel.querySelectorAll('.filePickRow')].map((r) => r.textContent);
+        expect(rows).toEqual(['toDoList_main/src/toDoRow.js', 'toDoList_main/src/style.css']);
+    });
+
+    it('inserts the full prefixed path into the File: line', () => {
+        withRootedManifest('toDoList_main/src', ['toDoRow.js']);
+        const textarea = document.createElement('textarea');
+        textarea.value = '- [ ] **[MEDIUM]** Do a thing\n  - Type: feature';
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        picker.trigger.click();
+        picker.panel.querySelector('.filePickRow').click();
+        expect(textarea.value).toContain('- File: `toDoList_main/src/toDoRow.js`');
+        expect(textarea.value).not.toContain('`toDoRow.js`,');
+    });
+
+    it('filters by a directory segment once paths are prefixed', () => {
+        withRootedManifest('toDoList_main/src', ['toDoRow.js', 'style.css']);
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        picker.trigger.click();
+        const search = picker.panel.querySelector('.filePickSearch');
+        search.value = 'toDoList_main/src';
+        search.dispatchEvent(new Event('input'));
+        expect(picker.panel.querySelectorAll('.filePickRow').length).toBe(2);
+    });
+
+    it('leaves names unchanged for an empty srcRoot (C# / repo-root-relative), no leading slash', () => {
+        withRootedManifest('', ['LinearSearch/BST.cs']);
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        picker.trigger.click();
+        const row = picker.panel.querySelector('.filePickRow');
+        expect(row.textContent).toBe('LinearSearch/BST.cs');
+    });
+
+    it('treats an undefined srcRoot the same as empty', () => {
+        withRootedManifest(undefined, ['app.js']);
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        picker.trigger.click();
+        const row = picker.panel.querySelector('.filePickRow');
+        expect(row.textContent).toBe('app.js');
+    });
+
+    it('strips a trailing slash on srcRoot rather than producing a double slash', () => {
+        withRootedManifest('toDoList_main/src/', ['toDoRow.js']);
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        picker.trigger.click();
+        const row = picker.panel.querySelector('.filePickRow');
+        expect(row.textContent).toBe('toDoList_main/src/toDoRow.js');
+    });
+});
+
 describe('createFilePicker — open/filter/pick behavior', () => {
     beforeEach(() => {
         vi.clearAllMocks();
