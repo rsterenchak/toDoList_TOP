@@ -110,3 +110,22 @@
   - File: `toDoList_main/src/phase.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-24
   <!-- id: 868e291e-da10-4347-9919-11e8f7d132d3 -->
+
+- [ ] **[MEDIUM]** Description panel: grid-place the ASKING block, and add the STUCK reason to desktop
+  - Type: bug
+  - Description: `#descSibling` is a three-column grid (`grid-template-columns: 14px 1fr 14px`). `.askingBlock` carries no `grid-column`, and `refreshAskingBlock` inserts it via `panel.insertBefore(block, panel.firstChild)`, so it auto-places into column 1 — 14px wide — and the triage question renders one word per line. This is the same hazard `.todoMdViewerCard` and the inject button already avoid with `grid-column: 1 / -1`. Separately, the STUCK failure-reason block was only built for the mobile modal (`.descEditorModalStuck`); the desktop description panel has no equivalent, so a desktop row shows the red STUCK badge with nothing anywhere explaining what went wrong.
+  - Behavior: The ASKING block spans the full width of the description panel on desktop, so the question, the answer textarea, and the Send control all lay out at the panel's content width rather than in a gutter. A task whose phase is `stuck` shows its failure reason in the desktop description panel too, in the same red left-accent card treatment the modal already uses, mounted in the same position the ASKING block occupies. Both blocks span the full grid width. Mobile is unchanged — the modal is not a grid and both blocks already render correctly there.
+  - Implementation notes:
+    - The fix for the ASKING block is one declaration: `grid-column: 1 / -1` on `.askingBlock`. Scope it so it only applies inside the grid panel if `.askingBlock` is reused elsewhere — grep for other mount points before deciding whether to put it on the base class or on a `#descSibling .askingBlock` selector.
+    - Audit EVERY other child mounted into `#descSibling` for the same defect while you are here — the Generate control, its spend line, the inject button, the textarea, and the spacers. Anything auto-placing without a `grid-column` lands in a 14px gutter. Report what you find in the PR body even if it is already correct, so the audit is on record.
+    - For the desktop STUCK block: reuse the modal's structure and CSS rather than authoring a second treatment. If `.descEditorModalStuck` and its label/reason classes are modal-scoped by name, either generalise the class names across both hosts or add the panel selectors to the same rule block — do not copy the declarations, or the two will drift the way the derived/manual treatments have before.
+    - Mount it in `toDoRow.js` alongside the ASKING block, following `refreshAskingBlock`'s shape exactly: same insert position, same rebuild-on-open behavior (the panel is rebuilt by `wireDescToggle` on every open, so a one-time init will not survive a collapse/expand cycle), and the same `onQueueChange` subscription so a re-triage clears it live while the panel is open.
+    - The failure reason is `failure_reason` on the linked queue row, with the shared `no_change` fallback string the modal already uses — import that fallback rather than writing a second copy.
+    - Call `refreshViewerExpandedHeight()` after mounting or removing either block. Inserting into `#descSibling` shifts every row below it, including an expanded viewer card whose body height is a cached snapshot.
+    - Do not add a stuck block to the Agent board — the board already renders its Stuck bucket.
+    - Add a regression test asserting `.askingBlock` carries a full-width grid placement, since this defect is invisible to any test that does not compute layout.
+    - `style.css`: no new tokens — existing `#ffbd5e` amber and `#ff5d7a` red. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
+  - Out of scope: The ASKING block's own content, its answer input, the Send control, and the answer-submit path. The STUCK badge, `derivePhase`, and the phase vocabulary. The mobile description-editor modal's layout. The Agent board. `#descSibling`'s grid definition itself — the three-column track is correct and used by every other child; the fix is placing children into it, not changing it.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e528bc4c-42a3-4797-9e4e-8797f2d58938 -->
