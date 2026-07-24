@@ -75,25 +75,34 @@ describe('mobile blocked-phase badge — surface REVIEW / ASKING only', () => {
         expect(badgeOrder).toBeLessThanOrEqual(Number(copyOrder[1]));
     });
 
-    it('reuses the existing amber (#ffbd5e) for all three blocked states — no new token', () => {
+    it('reuses the existing amber (#ffbd5e) for all three amber blocked states — no new token', () => {
         expect(css).toMatch(/\.todoStatusLabel\[data-status="review"\]\s*\{\s*color:\s*#ffbd5e/);
         expect(css).toMatch(/\.todoStatusLabel\[data-status="asking"\]\s*\{\s*color:\s*#ffbd5e/);
         expect(css).toMatch(/\.todoStatusLabel\[data-status="drafted"\]\s*\{\s*color:\s*#ffbd5e/);
     });
 
+    it('surfaces STUCK on mobile too, but in danger red (#ff5d7a) not amber', () => {
+        // STUCK is blocked-on-you like the amber three, so it joins the mobile
+        // surface rule — but "this went wrong" reads red, not "waiting on you" amber.
+        expect(mobileSlice).toMatch(/\.todoStatusLabel\[data-status="stuck"\]/);
+        expect(css).toMatch(/\.todoStatusLabel\[data-status="stuck"\]\s*\{\s*color:\s*#ff5d7a/);
+    });
+
     it('drives the badge value from derivePhase with no new JS flag', () => {
         // The exception is CSS-only: the same overlayForPhase map that already
-        // sets data-status is the single source, so review/asking/drafted land on
-        // the attribute the selector reads without a parallel class.
+        // sets data-status is the single source, so review/asking/drafted/stuck land
+        // on the attribute the selector reads without a parallel class.
         const toDoRow = read('toDoRow.js');
         expect(toDoRow).toMatch(/function overlayForPhase\(phase\)/);
         expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.ASKING\s*\)\s*return\s*'asking'/);
         expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.DRAFTED\s*\)\s*return\s*'drafted'/);
         expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.ACCEPT\s*\)\s*return\s*'review'/);
+        expect(toDoRow).toMatch(/if\s*\(\s*phase\s*===\s*PHASE\.STUCK\s*\)\s*return\s*'stuck'/);
 
         const todoStatus = read('todoStatus.js');
         expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'review'\)/);
         expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'asking'\)/);
         expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'drafted'\)/);
+        expect(todoStatus).toMatch(/setAttribute\('data-status',\s*'stuck'\)/);
     });
 });

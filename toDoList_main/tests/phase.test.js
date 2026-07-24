@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('PHASE constants', () => {
-    it('exposes the six phases (four pipeline + asking + drafted), and no run phase', () => {
+    it('exposes the seven phases (four pipeline + asking + drafted + stuck), and no run phase', () => {
         expect(PHASE).toEqual({
             NONE: 'none',
             DRAFT: 'draft',
@@ -54,6 +54,7 @@ describe('PHASE constants', () => {
             DONE: 'done',
             ASKING: 'asking',
             DRAFTED: 'drafted',
+            STUCK: 'stuck',
         });
         expect(Object.values(PHASE)).not.toContain('run');
     });
@@ -151,6 +152,44 @@ describe('derivePhase — drafted (landed-but-unread draft) outranks the marker 
         setQueueRows([{ id: 'q9', todo_id: 'someone-else', state: 'drafted' }]);
         expect(derivePhase({ id: 'unlinked' })).toBe(PHASE.NONE);
         expect(derivePhase({ draftSeenAt: undefined })).toBe(PHASE.NONE);
+    });
+});
+
+describe('derivePhase — stuck (a failed / no_change run) outranks the marker phases', () => {
+    it("returns 'stuck' when the linked queue row is in failed", () => {
+        setQueueRows([{ id: 'qs1', todo_id: 'todo-failed', state: 'failed' }]);
+        expect(derivePhase({ id: 'todo-failed' })).toBe(PHASE.STUCK);
+    });
+
+    it("returns 'stuck' when the linked queue row is in no_change", () => {
+        setQueueRows([{ id: 'qs2', todo_id: 'todo-nochange', state: 'no_change' }]);
+        expect(derivePhase({ id: 'todo-nochange' })).toBe(PHASE.STUCK);
+    });
+
+    it('outranks a pending (present-but-unchecked) marker — a failed run leaves its entry unchecked', () => {
+        markEntryPresentLocally('owner/stuck-repo', 'phase-stuck-pending');
+        // Without a queue row the still-unchecked marker reads as DRAFT…
+        expect(derivePhase({ id: 'todo-sp', entryId: 'phase-stuck-pending' })).toBe(PHASE.DRAFT);
+        // …but a failed queue row on the same todo takes precedence.
+        setQueueRows([{ id: 'qs3', todo_id: 'todo-sp', state: 'failed' }]);
+        expect(derivePhase({ id: 'todo-sp', entryId: 'phase-stuck-pending' })).toBe(PHASE.STUCK);
+    });
+
+    it('outranks a shipped/checked marker as well', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: phase-stuck-ship -->');
+        await refreshShippedMarkers(freshTarget());
+        expect(derivePhase({ id: 'todo-ss', entryId: 'phase-stuck-ship' })).toBe(PHASE.ACCEPT);
+        setQueueRows([{ id: 'qs4', todo_id: 'todo-ss', state: 'no_change' }]);
+        expect(derivePhase({ id: 'todo-ss', entryId: 'phase-stuck-ship' })).toBe(PHASE.STUCK);
+    });
+
+    it('clears when the queue row moves to another state (re-triage / re-dispatch)', () => {
+        setQueueRows([{ id: 'qs5', todo_id: 'todo-clear', state: 'failed' }]);
+        expect(derivePhase({ id: 'todo-clear' })).toBe(PHASE.STUCK);
+        // Re-triaging moves the row back to triaging — not a blocked/derived phase —
+        // so with no marker the row collapses back to NONE.
+        setQueueRows([{ id: 'qs5', todo_id: 'todo-clear', state: 'triaging' }]);
+        expect(derivePhase({ id: 'todo-clear' })).toBe(PHASE.NONE);
     });
 });
 

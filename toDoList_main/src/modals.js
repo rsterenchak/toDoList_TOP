@@ -19,6 +19,8 @@ import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAss
 import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI, invokeReviewBadgeTap } from './todoStatus.js';
 import { reorderToDoDOM, makeGenerateButton, syncGenerateControl } from './toDoRow.js';
 import { derivePhase, PHASE, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from './phase.js';
+import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
+import { stuckReasonText } from './agentView.js';
 // Synchronous, no-fetch read of a repo's already-loaded source manifest — the
 // description-editor's File:-path picker reads it to list the project's files
 // without re-fetching or blocking the modal on a network call (structureView.js
@@ -465,24 +467,28 @@ export function showDescEditorModal(item, options) {
         return phase;
     }
 
-    // Repaint the phase-dependent UI (the rail AND the REVIEW action below) from a
-    // single derived phase: renderRail computes derivePhase(item) once and returns
-    // it, and the REVIEW action reuses that value rather than resolving it a second
-    // time in the same render. Defined here but first invoked after the actions
-    // block builds reviewBtn.
+    // Repaint the phase-dependent UI (the rail, the REVIEW action, AND the STUCK
+    // reason block below) from a single derived phase: renderRail computes
+    // derivePhase(item) once and returns it, and the REVIEW action + STUCK block
+    // reuse that value rather than resolving it a second time in the same render.
+    // Defined here but first invoked after the actions block builds reviewBtn.
     function refreshPhaseUI() {
         const phase = renderRail();
         syncReviewAction(phase);
+        renderStuckBlock(phase);
     }
 
     // Repaint when the phase changes while the modal is open — an entry can ship
-    // or be acknowledged from another surface mid-session, which both moves the
-    // rail and toggles the REVIEW action. The row layer already refreshes on this
-    // same event via refreshDescStatusDots; the modal subscribes alongside it and
-    // tears the listener down on close (see onDescEditorClose) so a dismissed
+    // or be acknowledged from another surface mid-session (TODO_RUN_STATUS_EVENT),
+    // and the linked agent_queue row can enter or leave failed/no_change via a
+    // realtime push (onQueueChange), both of which move the rail, toggle the REVIEW
+    // action, and mount/clear the STUCK block. The row layer already refreshes on
+    // both signals via refreshDescStatusDots; the modal points its one handler at
+    // both and tears them down on close (see onDescEditorClose) so a dismissed
     // modal leaves nothing attached.
     function onRailPhaseChange() { refreshPhaseUI(); }
     document.addEventListener(TODO_RUN_STATUS_EVENT, onRailPhaseChange);
+    const unsubscribeQueueChange = onQueueChange(onRailPhaseChange);
 
     const body = document.createElement('div');
     body.id = 'descEditorModalBody';
@@ -494,6 +500,47 @@ export function showDescEditorModal(item, options) {
     entryLabel.id = 'descEditorModalEntryLabel';
     entryLabel.textContent = 'The entry';
     body.appendChild(entryLabel);
+
+    // ── STUCK REASON BLOCK ──
+    // When the task's derived phase is `stuck` (its linked agent_queue row is in
+    // failed / no_change), surface the run's failure reason as a read-only block at
+    // the top of the editor — the same shape and position the row's ASKING block
+    // uses for triage's question, so the badge tap leads somewhere that explains
+    // itself. The reason text reuses agentView's single fallback resolver
+    // (stuckReasonText) rather than a second copy of the copy. It mounts only in the
+    // stuck phase and clears the moment the queue row moves on; repainted from
+    // refreshPhaseUI (which runs on both TODO_RUN_STATUS_EVENT and onQueueChange).
+    // Idempotent: it refreshes the mounted block's text rather than rebuilding.
+    function renderStuckBlock(phase) {
+        const existing = body.querySelector('#descEditorModalStuck');
+        if (phase !== PHASE.STUCK) {
+            if (existing) existing.remove();
+            return;
+        }
+        const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+        const reason = stuckReasonText(queueRow);
+        if (existing) {
+            const reasonEl = existing.querySelector('.descEditorModalStuckReason');
+            if (reasonEl && reasonEl.textContent !== reason) reasonEl.textContent = reason;
+            return;
+        }
+        const block = document.createElement('div');
+        block.id = 'descEditorModalStuck';
+        block.className = 'descEditorModalStuck';
+        block.setAttribute('role', 'status');
+
+        const label = document.createElement('span');
+        label.className = 'descEditorModalStuckLabel';
+        label.textContent = '⌁ STUCK';
+        block.appendChild(label);
+
+        const reasonEl = document.createElement('p');
+        reasonEl.className = 'descEditorModalStuckReason';
+        reasonEl.textContent = reason;
+        block.appendChild(reasonEl);
+
+        body.insertBefore(block, body.firstChild);
+    }
 
     const textarea = document.createElement('textarea');
     textarea.id = 'descEditorModalTextarea';
@@ -813,9 +860,10 @@ export function showDescEditorModal(item, options) {
     // Save is implicit on any close — no separate Save button — then focus
     // returns to whatever opened the editor.
     function onDescEditorClose() {
-        // Detach the phase-rail live-repaint listener so a dismissed modal leaves
-        // nothing attached to the document.
+        // Detach the phase-rail live-repaint listeners so a dismissed modal leaves
+        // nothing attached — both the run-status event and the agent-queue store.
         document.removeEventListener(TODO_RUN_STATUS_EVENT, onRailPhaseChange);
+        if (typeof unsubscribeQueueChange === 'function') unsubscribeQueueChange();
         persist();
         if (previouslyFocused &&
             typeof previouslyFocused.focus === 'function' &&

@@ -16,17 +16,19 @@
 // module from `todoStatus.js` or `inject.js`; that would recreate the import
 // cycle those files are structured to avoid.
 //
-// The phase vocabulary is six-valued — still no `'run'` phase. Per-entry run
+// The phase vocabulary is seven-valued — still no `'run'` phase. Per-entry run
 // state is not tracked on task rows, so `derivePhase` never reaches for the
-// Worker `active_runs` probe or `runState.js` to synthesize one. The two values
-// beyond the four pipeline phases are `'asking'` and `'drafted'` — both states
-// genuinely blocked on the user that live on the triage `agent_queue` rather than
-// the marker pipeline. `'asking'` is a linked queue row parked in `needs_words`
-// (triage has a pending question); `'drafted'` is a linked queue row in `drafted`
-// whose landed draft the user has not yet looked at (`!item.draftSeenAt`). Both
-// are triage-queue facts, not pipeline facts, so they outrank the four
-// marker-derived phases when they apply; between them, `asking` outranks
-// `drafted`.
+// Worker `active_runs` probe or `runState.js` to synthesize one. The three values
+// beyond the four pipeline phases are `'asking'`, `'drafted'`, and `'stuck'` — all
+// states that live on the triage `agent_queue` rather than the marker pipeline.
+// `'asking'` is a linked queue row parked in `needs_words` (triage has a pending
+// question); `'drafted'` is a linked queue row in `drafted` whose landed draft the
+// user has not yet looked at (`!item.draftSeenAt`); `'stuck'` is a linked queue
+// row in `failed` or `no_change` — a run that broke or completed without changing
+// anything. All three are triage-queue facts, not pipeline facts, so they outrank
+// the four marker-derived phases when they apply (a failed run usually leaves its
+// entry unchecked, which would otherwise read as DRAFT). The three queue states
+// are mutually exclusive, so relative order among them does not matter.
 
 import { resolveEntryRunState } from './inject.js';
 import { getQueueRowForTodo } from './agentQueueStore.js';
@@ -44,6 +46,11 @@ import { getQueueRowForTodo } from './agentQueueStore.js';
 //             draft has not been looked at yet (`!item.draftSeenAt`): the derived
 //             entry is sitting unread. Outranks the four marker-derived phases;
 //             `asking` outranks it. Independent of the marker.
+//   'stuck' — the item's linked agent_queue row is in `failed` or `no_change`: the
+//             run broke, or completed and merged nothing. Outranks every
+//             marker-derived phase (a failed run usually leaves its entry
+//             unchecked, which would otherwise read as DRAFT). Independent of the
+//             marker; clears when the queue row leaves failed/no_change.
 export const PHASE = Object.freeze({
     NONE: 'none',
     DRAFT: 'draft',
@@ -51,6 +58,7 @@ export const PHASE = Object.freeze({
     DONE: 'done',
     ASKING: 'asking',
     DRAFTED: 'drafted',
+    STUCK: 'stuck',
 });
 
 
@@ -61,7 +69,10 @@ export const PHASE = Object.freeze({
 // in-memory item's own `entryReviewedAt` stamp. `asking` is checked first because
 // a pending triage question outranks the marker-derived phases; `drafted` is
 // checked next (a landed-but-unread draft, `!item.draftSeenAt`) so it too outranks
-// the marker phases while yielding to `asking`. The remaining mapping then mirrors
+// the marker phases while yielding to `asking`; `stuck` (a `failed`/`no_change`
+// queue row) is checked alongside them, above the `entryId` guard, so a broken run
+// outranks the DRAFT its still-unchecked entry would otherwise read as. The
+// remaining mapping then mirrors
 // the three-way run state resolver — 'pending' → draft, 'shipped' splits on the
 // acknowledgement stamp into accept (unreviewed) or done (reviewed), and both the
 // falsy-id and cache-miss cases collapse to 'none'.
@@ -70,6 +81,7 @@ export function derivePhase(item) {
     const queueRow = item.id ? getQueueRowForTodo(item.id) : null;
     if (queueRow && queueRow.state === 'needs_words') return PHASE.ASKING;
     if (queueRow && queueRow.state === 'drafted' && !item.draftSeenAt) return PHASE.DRAFTED;
+    if (queueRow && (queueRow.state === 'failed' || queueRow.state === 'no_change')) return PHASE.STUCK;
     if (!item.entryId) return PHASE.NONE;
     const runState = resolveEntryRunState(item.entryId);
     if (runState === 'pending') return PHASE.DRAFT;
@@ -85,10 +97,13 @@ export function derivePhase(item) {
 // flipping to DONE once `entryReviewedAt` is set, so no extra unreviewed check is
 // needed here), ASKING (a parked triage question), and DRAFTED (a landed draft
 // not yet looked at). This is the single definition of the blocked set — the
-// status filter's blocked-on-you toggle reads it rather than inlining the three
-// phases, so a fourth blocked state later lands in exactly one place.
+// status filter's blocked-on-you toggle reads it rather than inlining the
+// phases, so a further blocked state later lands in exactly one place. STUCK (a
+// broken or no-change run) joins the amber three: it too is genuinely blocked on
+// the user, even though it paints in danger red rather than amber on the row.
 export function isBlockedPhase(phase) {
-    return phase === PHASE.ACCEPT || phase === PHASE.ASKING || phase === PHASE.DRAFTED;
+    return phase === PHASE.ACCEPT || phase === PHASE.ASKING
+        || phase === PHASE.DRAFTED || phase === PHASE.STUCK;
 }
 
 

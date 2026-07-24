@@ -1044,17 +1044,25 @@ function buildProposedSecondary(row) {
 // directly. The button disables while its action is in flight and re-enables
 // with a non-blocking error on failure. Retry is disabled when the row has
 // neither an entry_id nor a draft (nothing to re-dispatch).
+// Resolve the reason text a Stuck (`failed` / `no_change`) row surfaces: its own
+// recorded `failure_reason` when present, else a state-specific fallback. Exported
+// so the task-row description editor can surface the identical text when it renders
+// the `stuck` phase, rather than defining a second copy of the fallback strings.
+export function stuckReasonText(row) {
+    const reason = (row && row.failure_reason ? String(row.failure_reason) : '').trim();
+    if (reason) return reason;
+    return (row && row.state === 'no_change')
+        ? 'The run finished without merging any changes.'
+        : 'The run failed. Retry from the queue.';
+}
+
 function buildStuckSecondary(row) {
-    const state = row.state;
     const wrap = document.createElement('div');
     wrap.className = 'agentSecondary agentStuck';
 
-    const reason = (row.failure_reason || '').trim();
     const p = document.createElement('p');
     p.className = 'agentFailure';
-    p.textContent = reason || (state === 'no_change'
-        ? 'The run finished without merging any changes.'
-        : 'The run failed. Retry from the queue.');
+    p.textContent = stuckReasonText(row);
     wrap.appendChild(p);
 
     const actions = document.createElement('div');

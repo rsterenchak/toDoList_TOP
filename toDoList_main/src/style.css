@@ -1420,6 +1420,33 @@ body {
   color: var(--accent-text);
 }
 
+/* STUCK reason block — a read-only failure notice at the top of the editor when
+   the task's derived phase is `stuck`. Mirrors the row's .askingBlock shape (a
+   left-accent card) but in danger red (#ff5d7a, the same the STUCK badge and the
+   Revert control use) so it reads as "this went wrong", not "waiting on you". */
+.descEditorModalStuck {
+  margin: 0;
+  padding: 10px 12px;
+  border-left: 3px solid #ff5d7a;
+  border-radius: 10px;
+  background: var(--bg-hover);
+}
+.descEditorModalStuckLabel {
+  display: block;
+  margin: 0 0 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ff5d7a;
+}
+.descEditorModalStuckReason {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
 #descEditorModalTextarea {
   flex: 1 1 auto;
   width: 100%;
@@ -8366,6 +8393,10 @@ body.row-dragging * { cursor: grabbing !important; }
 .todoStatusLabel[data-status="asking"]      { color: #ffbd5e; }
 /* DRAFTED — a generated draft landed and hasn't been looked at. Same amber. */
 .todoStatusLabel[data-status="drafted"]     { color: #ffbd5e; }
+/* STUCK — the linked run failed or changed nothing. Danger red (the same
+   #ff5d7a the Revert control uses), so amber keeps meaning "waiting on you" and
+   red means "this went wrong". */
+.todoStatusLabel[data-status="stuck"]       { color: #ff5d7a; }
 .todoStatusLabel:hover { opacity: 0.8; }
 .todoStatusLabel:focus-visible {
   outline: 1px solid var(--accent);
@@ -11481,7 +11512,9 @@ body.row-dragging * { cursor: grabbing !important; }
      ties .copyTitleBtn's order below, so the earlier-in-DOM badge renders before
      it) and is pushed right by the flex-grow title, which truncates earlier to
      make room. Amber comes from the existing data-status="review"/"asking"/
-     "drafted" color rules. */
+     "drafted" color rules; STUCK joins the same surface rule but paints danger
+     red from its own color rule above. */
+  .todoStatusLabel[data-status="stuck"],
   .todoStatusLabel[data-status="review"],
   .todoStatusLabel[data-status="asking"],
   .todoStatusLabel[data-status="drafted"] {

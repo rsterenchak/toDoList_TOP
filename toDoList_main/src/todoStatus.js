@@ -67,6 +67,17 @@ export const ASKING_LABEL = '⌁ ASKING';
 // the derived overlay descriptor (resolved from the shared agent-queue cache via
 // derivePhase at the row layer).
 export const DRAFTED_LABEL = '⌁ DRAFTED';
+
+// A fourth derived, non-settable overlay: a committed row whose linked
+// `agent_queue` row is in `failed` or `no_change` — a run that broke or completed
+// without changing anything. Unlike REVIEW / ASKING / DRAFTED (amber "waiting on
+// you"), this paints in danger red — "this went wrong" — but is otherwise the same
+// kind of overlay: never in the popover, never written to `status`, and never
+// driving the row stripe. Its tap opens the row's description panel, where the
+// run's failure reason is surfaced (matching ASKING). The caller supplies the
+// derived overlay descriptor (resolved from the shared agent-queue cache via
+// derivePhase at the row layer).
+export const STUCK_LABEL = '⌁ STUCK';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
 
 
@@ -118,6 +129,7 @@ function normalizeOverlay(overlay) {
     if (overlay === true || overlay === 'review') return 'review';
     if (overlay === 'asking') return 'asking';
     if (overlay === 'drafted') return 'drafted';
+    if (overlay === 'stuck') return 'stuck';
     return null;
 }
 
@@ -164,6 +176,11 @@ function applyStatusLabelState(label, status, overlay) {
         label.removeAttribute('aria-haspopup');
         label.setAttribute('aria-label', 'A draft landed — open to review it');
         label.textContent = DRAFTED_LABEL;
+    } else if (derived === 'stuck') {
+        label.setAttribute('data-status', 'stuck');
+        label.removeAttribute('aria-haspopup');
+        label.setAttribute('aria-label', 'This run went wrong — open to see why');
+        label.textContent = STUCK_LABEL;
     } else {
         label.setAttribute('data-status', status);
         label.setAttribute('aria-haspopup', 'menu');
@@ -335,6 +352,17 @@ export function wireStatusLabelDelegation(container) {
         // fires TODO_RUN_STATUS_EVENT). No-op when the panel is already open so a
         // second tap doesn't collapse it shut.
         if (label.getAttribute('data-status') === 'drafted') {
+            const descToggle = row.querySelector('#descToggle');
+            if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
+            return;
+        }
+        // STUCK badge: the linked run failed or changed nothing. Its failure reason
+        // lives in the row's description editor, so a tap opens that panel — the
+        // same destination ASKING and DRAFTED reach — rather than the status
+        // popover. No `status` write happens; the badge clears on its own once the
+        // linked agent_queue row leaves failed/no_change (re-triage / re-dispatch).
+        // No-op when the panel is already open so a second tap doesn't collapse it.
+        if (label.getAttribute('data-status') === 'stuck') {
             const descToggle = row.querySelector('#descToggle');
             if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;
