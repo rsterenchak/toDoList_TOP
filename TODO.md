@@ -175,7 +175,7 @@
   - Completed: 2026-07-24
   <!-- id: 3dbb7032-cefe-480d-97f4-de89d1cff5c4 -->
 
-- [ ] **[MEDIUM]** Desktop description panel: add the phase rail and section labels
+- [x] **[MEDIUM]** Desktop description panel: add the phase rail and section labels
   - Type: feature
   - Description: The mobile description-editor modal leads with a four-node phase rail (IDEA · DRAFT · REVIEW · DONE) and a THE ENTRY section label, so the panel reads as the item's phase face rather than a bare textarea. The desktop `#descSibling` panel never got either — it opens straight into the entry textarea with no indication of where the item sits in the pipeline. Add the same rail and label to the desktop panel, driven by one shared builder rather than a second copy. Also add a structural test that locks in the panel's grid-placement contract, since four separate layout defects shipped through this panel in one day and none was visible to the existing suite.
   - Behavior: Opening a description on desktop shows, in order: the phase rail; the ASKING or STUCK block when the task is in one of those states; a THE ENTRY label; the textarea; then the picker, action controls, and Discuss exactly as today. The rail is display-only and inert — not focusable, no hover or press feedback, no cursor change — because phase is derived and there is nothing for a click to mean. Nodes before the current phase are filled with their connectors accented; the current node is highlighted; nodes ahead stay dark. Queue-derived states (ASKING, DRAFTED, STUCK, MOCKUP) resolve to their underlying pipeline stage rather than adding a node, matching the modal. The rail repaints live as phase changes while the panel is open. Mobile is unchanged.
@@ -192,5 +192,5 @@
     - State plainly in the PR body that this guard does not verify computed layout, so the limitation is on record rather than assumed away.
   - Out of scope: Changing what the panel shows per phase — the textarea and every action control stay visible in every phase, exactly as today. That phase-switching behavior is the next entry and is deliberately separate. Fusing the row and panel into a single card. The mobile modal's layout and its MANUAL STATUS control. `derivePhase`, the phase vocabulary, the row badge, and the run glyph. The file picker's behavior. A layout-computing test runner.
   - File: `toDoList_main/src/phaseRail.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: bd2189c1-45b0-4469-932b-475bb35901e5 -->
