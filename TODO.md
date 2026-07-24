@@ -74,7 +74,7 @@
   - Completed: 2026-07-24
   <!-- id: a037b5c6-3dba-407c-b84b-593c99269cfa -->
 
-- [ ] **[HIGH]** Inject button: persist the entry id to Supabase, not just localStorage
+- [x] **[HIGH]** Inject button: persist the entry id to Supabase, not just localStorage
   - Type: bug
   - Description: `injectDescription` mints `item.entryId`, assigns it directly on the in-memory item, and calls `listLogic.saveToStorage()` — which writes `allProjects` to localStorage and dispatches `dataChanged`, and nothing else. The `entry_id` column is never written, so a task injected from the Inject button has a server row whose `entry_id` stays null. Hydration's local fallback (`entryId: t.entry_id || localTodosById[t.id].entryId`) masks this on the originating device, so the bug is invisible there — but on any other device, or after localStorage is cleared or evicted, the id is gone, `derivePhase` returns `none`, and the task shows no run glyph and no REVIEW badge even though its entry is `[x]` in TODO.md with a valid marker. The task is permanently orphaned from its entry. Worse, `injectDescription` mints a fresh id when `entryId` is absent, so re-injecting an orphaned task appends a SECOND copy of the entry (the Worker dedups by id, and the id is new). The Agent dispatch path already does this correctly via `listLogic.stampTodoEntryId`; the Inject button must do the same.
   - Behavior: Injecting a task's description from the Inject button persists that task's entry id to the `todos.entry_id` column, so the task→entry link survives hydration on any device. A task injected on one device shows its pending glyph, then its REVIEW badge on merge, when opened on another. If the persistence write fails, the failure is surfaced rather than swallowed — the inject itself still succeeded and the entry is in TODO.md, so the message must say that the entry landed but the task could not be linked, and must not read as a failed inject. Nothing else about inject changes: the mint-once-and-reuse behavior on re-inject, the optimistic amber glyph, and the forced marker refresh all stay as they are.
@@ -88,5 +88,5 @@
     - Tests: assert that a successful inject issues a `stampTodoEntryId` call with the item's id and the minted entry id; that a failed inject issues none; and that a rejected stamp surfaces rather than resolving silently. The existing suite passed with this bug present because nothing asserted on the Supabase write from the inject path.
   - Out of scope: Repairing tasks that are ALREADY orphaned — their id is gone from both localStorage and the server, so there is nothing to recover from, and any relink UI is a separate entry. Preventing a duplicate entry when re-injecting an orphaned task. Surfacing a task's `entryId` anywhere in the UI. The marker cache, `resolveEntryRunState`, `parseTodoMdMarkers`, and `derivePhase`. The Agent dispatch path's own behavior beyond the swallowed error. The TODO.md viewer and the row badge.
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/shipEntry.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 6a8ebd2a-fa67-4a96-947e-d0f87dfbc521 -->
