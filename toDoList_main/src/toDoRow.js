@@ -467,13 +467,16 @@ function syncStuckPanel(toDoChild, item) {
 // panel drops in below it. Both are full-width in the panel's three-column grid
 // via `#descSibling .filePickTrigger` / `.filePickPanel` — an auto-placed child
 // would land in a 14px gutter, the same defect that crushed .askingBlock. The
-// picker self-hides when the project has no manifest, so the control is simply
-// absent rather than opening an empty list. Called on every panel open (the
-// panel is rebuilt by wireDescToggle each time), so the shown/hidden state and
-// the file list are re-derived fresh. After a pick, persist through the same
+// picker self-hides only when the project has no linked repo; otherwise the chip
+// is present and the file list loads on demand the first time it opens. Called
+// on every panel open (the panel is rebuilt by wireDescToggle each time), so the
+// shown/hidden state is re-derived fresh. After a pick, persist through the same
 // listLogic path descInput's own handlers use, refresh the inject button (a
 // previously-empty description may now be non-empty), and recompute the viewer
-// height since mounting the File: line shifts every row below.
+// height since mounting the File: line shifts every row below. onRender does the
+// same height recompute after the picker's own list (re)paints — the loading
+// state and the populated list are different heights, so the panel shifts every
+// row below it when the on-demand load resolves.
 function mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectName, injectBtn) {
     const picker = createFilePicker({
         projectName: projectName || '',
@@ -483,6 +486,9 @@ function mountDescFilePicker(descSibling, descSpacer2, descInput, item, projectN
             listLogic.saveToStorage();
             if (projectName) listLogic.editToDoItem(projectName, item);
             if (injectBtn) refreshInjectButton(injectBtn, item, projectName);
+            refreshViewerExpandedHeight();
+        },
+        onRender: function () {
             refreshViewerExpandedHeight();
         },
     });

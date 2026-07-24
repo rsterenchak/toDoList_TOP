@@ -1571,6 +1571,21 @@ body {
   letter-spacing: 0.08em;
 }
 
+/* The on-demand load's brief "Loading files…" line — a gently pulsing muted
+   variant so it reads as transient rather than as a settled empty message. */
+.filePickLoading {
+  animation: filePickLoadingPulse 1.1s ease-in-out infinite;
+}
+
+@keyframes filePickLoadingPulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 0.9; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .filePickLoading { animation: none; }
+}
+
 #descEditorModalActions {
   display: flex;
   flex-wrap: wrap;

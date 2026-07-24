@@ -158,13 +158,24 @@ describe('getCachedManifest — synchronous, no-fetch cache read', () => {
 describe('File:-path picker — shared module (filePicker.js)', () => {
     const filePicker = read('filePicker.js');
 
-    it('reads the manifest synchronously from the cache — no second fetch, no structureView import', () => {
+    it('loads the manifest on demand through loadManifest and reads the cache — one seam, no structureView import', () => {
         expect(filePicker).toMatch(
-            /import\s*\{[^}]*getCachedManifest[^}]*\}\s*from\s*['"]\.\/claudeSheet\.js['"]/
+            /import\s*\{[^}]*getCachedManifest[^}]*loadManifest[^}]*\}\s*from\s*['"]\.\/claudeSheet\.js['"]/
         );
+        expect(filePicker).toMatch(/\bloadManifest\(/);
         expect(filePicker).toMatch(/getCachedManifest\(/);
+        // The load reaches loadManifest, not a second fetch or a copied parse,
+        // and never pulls in structureView (which would drag the canvas along).
         expect(filePicker).not.toMatch(/from\s*['"]\.\/structureView\.js['"]/);
-        expect(filePicker).not.toMatch(/\bloadManifest\(/);
+        expect(filePicker).not.toMatch(/\bfetch\(/);
+    });
+
+    it('dedups a load already in flight rather than starting a duplicate fetch', () => {
+        expect(filePicker).toMatch(/manifestLoadsInFlight/);
+    });
+
+    it('guards the on-demand repaint against a detached panel node', () => {
+        expect(filePicker).toMatch(/isConnected/);
     });
 
     it('exports createFilePicker plus the insertion helper for both hosts to share', () => {
@@ -172,8 +183,8 @@ describe('File:-path picker — shared module (filePicker.js)', () => {
         expect(filePicker).toMatch(/export function insertFilePathIntoEntry\(/);
     });
 
-    it('hides the trigger entirely when the project has no manifest', () => {
-        expect(filePicker).toMatch(/if\s*\(\s*!manifestFiles\.length\s*\)\s*trigger\.style\.display\s*=\s*['"]none['"]/);
+    it('hides the trigger only when the project has no linked repo (present otherwise, loads on open)', () => {
+        expect(filePicker).toMatch(/if\s*\(\s*!repo\s*\)\s*trigger\.style\.display\s*=\s*['"]none['"]/);
     });
 
     it('writes the pick through insertFilePathIntoEntry, re-syncs the textarea, then defers persistence to the host', () => {
@@ -191,7 +202,7 @@ describe('File:-path picker — shared module (filePicker.js)', () => {
         expect(filePicker).toMatch(/TARGET_PICK_CAP/);
         const idx = filePicker.indexOf('function renderList');
         expect(idx).toBeGreaterThan(-1);
-        const fn = filePicker.slice(idx, idx + 1200);
+        const fn = filePicker.slice(idx, idx + 2200);
         expect(fn).toMatch(/slice\(\s*0\s*,\s*TARGET_PICK_CAP\s*\)/);
         expect(fn).toMatch(/Keep typing to narrow/);
     });
@@ -299,11 +310,17 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
 
     it('persists through the listLogic path descInput uses and refreshes inject + viewer height after a pick', () => {
         const idx = toDoRow.indexOf('function mountDescFilePicker(');
-        const fn = toDoRow.slice(idx, idx + 900);
+        const fn = toDoRow.slice(idx, idx + 1100);
         expect(fn).toMatch(/listLogic\.saveToStorage\(\)/);
         expect(fn).toMatch(/listLogic\.editToDoItem\(projectName,\s*item\)/);
         expect(fn).toMatch(/refreshInjectButton\(injectBtn,\s*item,\s*projectName\)/);
         expect(fn).toMatch(/refreshViewerExpandedHeight\(\)/);
+    });
+
+    it('recomputes the viewer height after the picker (re)paints via onRender', () => {
+        const idx = toDoRow.indexOf('function mountDescFilePicker(');
+        const fn = toDoRow.slice(idx, idx + 1100);
+        expect(fn).toMatch(/onRender:\s*function\s*\(\)\s*\{\s*refreshViewerExpandedHeight\(\)/);
     });
 
     it('places the trigger and panel full-width in the #descSibling grid (no 14px gutter collapse)', () => {

@@ -7,6 +7,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('../src/claudeSheet.js', () => ({
     getCachedManifest: vi.fn(),
+    loadManifest: vi.fn(),
 }));
 vi.mock('../src/inject.js', () => ({
     findTargetById: vi.fn(),
@@ -16,14 +17,36 @@ vi.mock('../src/listLogic.js', () => ({
 }));
 
 import { createFilePicker, insertFilePathIntoEntry } from '../src/filePicker.js';
-import { getCachedManifest } from '../src/claudeSheet.js';
+import { getCachedManifest, loadManifest } from '../src/claudeSheet.js';
 import { findTargetById } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
 
+// Warm cache: the repo is linked AND its manifest is already loaded, so the
+// picker renders synchronously with no on-demand load.
 function withManifest(files) {
     listLogic.getProjectTargetId.mockReturnValue('target-1');
     findTargetById.mockReturnValue({ id: 'target-1', repo: 'owner/repo' });
     getCachedManifest.mockReturnValue({ ok: true, files });
+}
+
+// Cold cache: the repo is linked but nothing is cached yet, so opening the
+// picker loads the manifest on demand. `loadManifest` resolves to `result`.
+function withColdManifest(result) {
+    listLogic.getProjectTargetId.mockReturnValue('target-1');
+    findTargetById.mockReturnValue({ id: 'target-1', repo: 'owner/cold-' + Math.random() });
+    getCachedManifest.mockReturnValue(null);
+    loadManifest.mockResolvedValue(result);
+}
+
+// Mount a picker's panel so the on-demand load's isConnected guard passes.
+function mount(picker) {
+    document.body.appendChild(picker.trigger);
+    document.body.appendChild(picker.panel);
+}
+
+// Flush all pending microtasks (the load chain hops through several .then's).
+function flush() {
+    return new Promise((res) => setTimeout(res, 0));
 }
 
 describe('createFilePicker — availability', () => {
@@ -40,14 +63,16 @@ describe('createFilePicker — availability', () => {
         expect(picker.panel.hidden).toBe(true);
     });
 
-    it('is unavailable when the repo manifest was never loaded', () => {
+    it('is available and shows the trigger when the repo is linked but the manifest is not yet loaded', () => {
         listLogic.getProjectTargetId.mockReturnValue('target-1');
         findTargetById.mockReturnValue({ id: 'target-1', repo: 'owner/repo' });
         getCachedManifest.mockReturnValue(null);
         const textarea = document.createElement('textarea');
         const picker = createFilePicker({ projectName: 'P', textarea });
-        expect(picker.available).toBe(false);
-        expect(picker.trigger.style.display).toBe('none');
+        // The trigger is present because a routing target exists — whether the
+        // repo has files is only knowable after opening.
+        expect(picker.available).toBe(true);
+        expect(picker.trigger.style.display).not.toBe('none');
     });
 
     it('is available and shows the trigger when the manifest has files', () => {
@@ -58,6 +83,116 @@ describe('createFilePicker — availability', () => {
         expect(picker.trigger.style.display).not.toBe('none');
         expect(picker.trigger.className).toContain('filePickTrigger');
         expect(picker.panel.className).toContain('filePickPanel');
+    });
+});
+
+describe('createFilePicker — on-demand manifest load', () => {
+    beforeEach(() => {
+        vi.clearAllMocks();
+    });
+
+    it('loads the manifest on first open when the cache is cold, showing a loading state then the files', async () => {
+        withColdManifest({ ok: true, files: ['src/a.js', 'src/b.js'] });
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        mount(picker);
+        picker.trigger.click();
+        // Loading line paints synchronously before the load resolves.
+        expect(picker.panel.querySelector('.filePickLoading')).not.toBeNull();
+        expect(loadManifest).toHaveBeenCalledTimes(1);
+        await flush();
+        const rows = picker.panel.querySelectorAll('.filePickRow');
+        expect(rows.length).toBe(2);
+        expect(picker.panel.querySelector('.filePickLoading')).toBeNull();
+    });
+
+    it('does not refetch on a second open once loaded', async () => {
+        withColdManifest({ ok: true, files: ['src/a.js'] });
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        mount(picker);
+        picker.trigger.click();
+        await flush();
+        expect(loadManifest).toHaveBeenCalledTimes(1);
+        picker.trigger.click(); // close
+        picker.trigger.click(); // re-open
+        await Promise.resolve();
+        expect(loadManifest).toHaveBeenCalledTimes(1);
+        expect(picker.panel.querySelectorAll('.filePickRow').length).toBe(1);
+    });
+
+    it('reuses the in-flight load when two hosts open the same repo concurrently', async () => {
+        listLogic.getProjectTargetId.mockReturnValue('target-1');
+        findTargetById.mockReturnValue({ id: 'target-1', repo: 'owner/shared-' + Math.random() });
+        getCachedManifest.mockReturnValue(null);
+        let resolveLoad;
+        loadManifest.mockReturnValue(new Promise((res) => { resolveLoad = res; }));
+
+        const ta1 = document.createElement('textarea');
+        const ta2 = document.createElement('textarea');
+        const p1 = createFilePicker({ projectName: 'P', textarea: ta1 });
+        const p2 = createFilePicker({ projectName: 'P', textarea: ta2 });
+        mount(p1);
+        mount(p2);
+        p1.trigger.click();
+        p2.trigger.click();
+        // Both opened while the single load is still outstanding → one fetch.
+        expect(loadManifest).toHaveBeenCalledTimes(1);
+        resolveLoad({ ok: true, files: ['src/a.js'] });
+        await flush();
+        expect(p1.panel.querySelectorAll('.filePickRow').length).toBe(1);
+        expect(p2.panel.querySelectorAll('.filePickRow').length).toBe(1);
+    });
+
+    it('renders an explanatory empty state (not "No files match") for a genuinely empty manifest', async () => {
+        withColdManifest({ ok: true, files: [] });
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        mount(picker);
+        picker.trigger.click();
+        await flush();
+        const msg = picker.panel.querySelector('.filePickEmpty');
+        expect(msg).not.toBeNull();
+        expect(msg.textContent).toMatch(/manifest/i);
+        expect(msg.textContent).not.toBe('No files match');
+    });
+
+    it('reads a failed fetch as a retryable problem, distinct from an empty manifest', async () => {
+        withColdManifest({ ok: false, files: [] });
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        mount(picker);
+        picker.trigger.click();
+        await flush();
+        const msg = picker.panel.querySelector('.filePickEmpty');
+        expect(msg.textContent).toMatch(/couldn|temporary|load/i);
+        expect(msg.textContent).not.toBe('No files match');
+    });
+
+    it('does not paint when the panel was detached before the load resolved', async () => {
+        withColdManifest({ ok: true, files: ['src/a.js'] });
+        const textarea = document.createElement('textarea');
+        const picker = createFilePicker({ projectName: 'P', textarea });
+        mount(picker);
+        picker.trigger.click();
+        // Simulate wireDescToggle rebuilding the panel (detaching this node).
+        picker.panel.remove();
+        picker.trigger.remove();
+        await flush();
+        // No rows painted onto the detached node.
+        expect(picker.panel.querySelectorAll('.filePickRow').length).toBe(0);
+    });
+
+    it('runs onRender after the loading state and again after the list resolves', async () => {
+        withColdManifest({ ok: true, files: ['src/a.js'] });
+        const textarea = document.createElement('textarea');
+        const onRender = vi.fn();
+        const picker = createFilePicker({ projectName: 'P', textarea, onRender });
+        mount(picker);
+        picker.trigger.click();
+        expect(onRender).toHaveBeenCalledTimes(1); // loading paint
+        await flush();
+        expect(onRender).toHaveBeenCalledTimes(2); // populated paint
     });
 });
 
