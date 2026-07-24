@@ -160,7 +160,7 @@
   - Completed: 2026-07-24
   <!-- id: b5dd865d-e240-4a27-a605-2926d3295a17 -->
 
-- [ ] **[MEDIUM]** File picker: the panel won't close because [hidden] loses to display:flex
+- [x] **[MEDIUM]** File picker: the panel won't close because [hidden] loses to display:flex
   - Type: bug
   - Description: `createFilePicker`'s trigger toggles correctly in JS — `if (panel.hidden) openPanel(); else closePanel();`, and `closePanel` sets `panel.hidden = true` and `aria-expanded="false"`. But `.filePickPanel` declares `display: flex`, and an author-level `display` declaration outranks the UA stylesheet's `[hidden] { display: none }` rule, so the attribute is applied and the panel stays visible. Tapping the trigger a second time therefore appears to do nothing. This codebase already documents the trap (style.css:2410) and carries explicit `[hidden]` guards on eight `claude*` elements for the same reason; the picker was never given one.
   - Behavior: Tapping the picker trigger opens the panel; tapping it again closes it. A closed panel occupies no space and none of its contents are focusable or reachable by keyboard. `aria-expanded` on the trigger tracks the visible state, which it already does. The initial mounted state is closed. Both hosts behave identically.
@@ -172,5 +172,5 @@
     - Regression test: assert that setting `hidden` on the panel results in a computed `display` of `none`. A test asserting the attribute alone passes today with the bug present, which is how this shipped.
   - Out of scope: The trigger's toggle logic, which is correct. The picker's layout, `srcRoot` prefixing, on-demand load, filtering, insertion, and the reopen-duplication fix — all correct as landed. The other `claude*` `[hidden]` guards. `#descSibling` grid placement. The mobile description-editor modal.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 3dbb7032-cefe-480d-97f4-de89d1cff5c4 -->
