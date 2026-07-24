@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-24T09:21:34.301Z",
-  "sha": "5ab29655f0db8caf08a647118b0ca775ff5c3eba",
+  "generatedAt": "2026-07-24T09:42:02.753Z",
+  "sha": "3ec6cfe7fd2436a48408c9bd4ac1b34e488d35da",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -80,11 +80,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 2131,
+      "line": 2133,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2131
+          "line": 2133
         },
         {
           "file": "style.css",
@@ -124,11 +124,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 2157,
+      "line": 2159,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2157
+          "line": 2159
         }
       ]
     },
@@ -436,7 +436,7 @@
         },
         {
           "file": "style.css",
-          "line": 14217
+          "line": 14223
         }
       ]
     },
@@ -560,7 +560,7 @@
         },
         {
           "file": "style.css",
-          "line": 15548
+          "line": 15554
         }
       ]
     },
@@ -576,7 +576,7 @@
         },
         {
           "file": "style.css",
-          "line": 15580
+          "line": 15586
         }
       ]
     },
@@ -592,7 +592,7 @@
         },
         {
           "file": "style.css",
-          "line": 15760
+          "line": 15766
         }
       ]
     },
@@ -608,7 +608,7 @@
         },
         {
           "file": "style.css",
-          "line": 15961
+          "line": 15967
         }
       ]
     },
@@ -624,7 +624,7 @@
         },
         {
           "file": "style.css",
-          "line": 15597
+          "line": 15603
         }
       ]
     },
@@ -640,7 +640,7 @@
         },
         {
           "file": "style.css",
-          "line": 15655
+          "line": 15661
         }
       ]
     },
@@ -688,7 +688,7 @@
         },
         {
           "file": "style.css",
-          "line": 9802
+          "line": 9808
         }
       ]
     },
@@ -704,7 +704,7 @@
         },
         {
           "file": "style.css",
-          "line": 9788
+          "line": 9794
         }
       ]
     },
@@ -720,7 +720,7 @@
         },
         {
           "file": "style.css",
-          "line": 9821
+          "line": 9827
         }
       ]
     },
@@ -876,7 +876,7 @@
         },
         {
           "file": "style.css",
-          "line": 13415
+          "line": 13421
         }
       ]
     },
@@ -892,7 +892,7 @@
         },
         {
           "file": "style.css",
-          "line": 13416
+          "line": 13422
         }
       ]
     },
@@ -900,11 +900,11 @@
       "selector": "#checkToDo",
       "label": "Check To Do",
       "file": "toDoRow.js",
-      "line": 937,
+      "line": 939,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 937
+          "line": 939
         },
         {
           "file": "style.css",
@@ -1356,7 +1356,7 @@
         },
         {
           "file": "style.css",
-          "line": 13264
+          "line": 13270
         }
       ]
     },
@@ -1460,11 +1460,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 2171,
+      "line": 2173,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2171
+          "line": 2173
         },
         {
           "file": "style.css",
@@ -1536,7 +1536,7 @@
         },
         {
           "file": "style.css",
-          "line": 9629
+          "line": 9635
         }
       ]
     },
@@ -1552,7 +1552,7 @@
         },
         {
           "file": "style.css",
-          "line": 9615
+          "line": 9621
         }
       ]
     },
@@ -1668,11 +1668,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 2196,
+      "line": 2198,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2196
+          "line": 2198
         }
       ]
     },
@@ -2040,7 +2040,7 @@
         },
         {
           "file": "style.css",
-          "line": 17091
+          "line": 17105
         }
       ]
     },
@@ -2236,11 +2236,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 2229,
+      "line": 2230,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2229
+          "line": 2230
         },
         {
           "file": "style.css",
@@ -2252,39 +2252,15 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 2227,
+      "line": 2229,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2227
+          "line": 2229
         },
         {
           "file": "style.css",
           "line": 1486
-        }
-      ]
-    },
-    {
-      "selector": "#descSpacer1",
-      "label": "Desc Spacer1",
-      "file": "toDoRow.js",
-      "line": 2228,
-      "files": [
-        {
-          "file": "toDoRow.js",
-          "line": 2228
-        }
-      ]
-    },
-    {
-      "selector": "#descSpacer2",
-      "label": "Desc Spacer2",
-      "file": "toDoRow.js",
-      "line": 2230,
-      "files": [
-        {
-          "file": "toDoRow.js",
-          "line": 2230
         }
       ]
     },
@@ -2300,7 +2276,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 2205
+          "line": 2207
         },
         {
           "file": "style.css",
@@ -2320,7 +2296,7 @@
         },
         {
           "file": "style.css",
-          "line": 13126
+          "line": 13132
         }
       ]
     },
@@ -2352,7 +2328,7 @@
         },
         {
           "file": "style.css",
-          "line": 11068
+          "line": 11074
         }
       ]
     },
@@ -2368,7 +2344,7 @@
         },
         {
           "file": "style.css",
-          "line": 12093
+          "line": 12099
         }
       ]
     },
@@ -2384,7 +2360,7 @@
         },
         {
           "file": "style.css",
-          "line": 12092
+          "line": 12098
         }
       ]
     },
@@ -2400,7 +2376,7 @@
         },
         {
           "file": "style.css",
-          "line": 12010
+          "line": 12016
         }
       ]
     },
@@ -2428,7 +2404,7 @@
         },
         {
           "file": "style.css",
-          "line": 12003
+          "line": 12009
         }
       ]
     },
@@ -2460,7 +2436,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 2081
+          "line": 2083
         },
         {
           "file": "style.css",
@@ -2540,7 +2516,7 @@
         },
         {
           "file": "style.css",
-          "line": 14997
+          "line": 15003
         }
       ]
     },
@@ -2792,7 +2768,7 @@
         },
         {
           "file": "style.css",
-          "line": 13974
+          "line": 13980
         }
       ]
     },
@@ -2808,7 +2784,7 @@
         },
         {
           "file": "style.css",
-          "line": 13998
+          "line": 14004
         }
       ]
     },
@@ -2824,7 +2800,7 @@
         },
         {
           "file": "style.css",
-          "line": 13984
+          "line": 13990
         }
       ]
     },
@@ -2840,7 +2816,7 @@
         },
         {
           "file": "style.css",
-          "line": 14002
+          "line": 14008
         }
       ]
     },
@@ -2856,7 +2832,7 @@
         },
         {
           "file": "style.css",
-          "line": 14010
+          "line": 14016
         }
       ]
     },
@@ -2872,7 +2848,7 @@
         },
         {
           "file": "style.css",
-          "line": 14517
+          "line": 14523
         }
       ]
     },
@@ -2888,7 +2864,7 @@
         },
         {
           "file": "style.css",
-          "line": 17445
+          "line": 17459
         }
       ]
     },
@@ -2928,7 +2904,7 @@
         },
         {
           "file": "style.css",
-          "line": 17710
+          "line": 17724
         }
       ]
     },
@@ -2944,7 +2920,7 @@
         },
         {
           "file": "style.css",
-          "line": 17614
+          "line": 17628
         }
       ]
     },
@@ -2960,7 +2936,7 @@
         },
         {
           "file": "style.css",
-          "line": 17658
+          "line": 17672
         }
       ]
     },
@@ -3000,7 +2976,7 @@
         },
         {
           "file": "style.css",
-          "line": 17645
+          "line": 17659
         }
       ]
     },
@@ -3016,7 +2992,7 @@
         },
         {
           "file": "style.css",
-          "line": 17634
+          "line": 17648
         }
       ]
     },
@@ -3032,7 +3008,7 @@
         },
         {
           "file": "style.css",
-          "line": 17623
+          "line": 17637
         }
       ]
     },
@@ -3048,7 +3024,7 @@
         },
         {
           "file": "style.css",
-          "line": 17679
+          "line": 17693
         }
       ]
     },
@@ -3112,7 +3088,7 @@
         },
         {
           "file": "style.css",
-          "line": 17717
+          "line": 17731
         }
       ]
     },
@@ -3128,7 +3104,7 @@
         },
         {
           "file": "style.css",
-          "line": 17641
+          "line": 17655
         }
       ]
     },
@@ -3144,7 +3120,7 @@
         },
         {
           "file": "style.css",
-          "line": 17729
+          "line": 17743
         }
       ]
     },
@@ -3208,7 +3184,7 @@
         },
         {
           "file": "style.css",
-          "line": 17248
+          "line": 17262
         }
       ]
     },
@@ -3224,7 +3200,7 @@
         },
         {
           "file": "style.css",
-          "line": 17105
+          "line": 17119
         }
       ]
     },
@@ -3240,7 +3216,7 @@
         },
         {
           "file": "style.css",
-          "line": 17192
+          "line": 17206
         }
       ]
     },
@@ -3268,7 +3244,7 @@
         },
         {
           "file": "style.css",
-          "line": 17147
+          "line": 17161
         }
       ]
     },
@@ -3284,7 +3260,7 @@
         },
         {
           "file": "style.css",
-          "line": 17128
+          "line": 17142
         }
       ]
     },
@@ -3300,7 +3276,7 @@
         },
         {
           "file": "style.css",
-          "line": 17115
+          "line": 17129
         }
       ]
     },
@@ -3328,7 +3304,7 @@
         },
         {
           "file": "style.css",
-          "line": 17136
+          "line": 17150
         }
       ]
     },
@@ -3344,7 +3320,7 @@
         },
         {
           "file": "style.css",
-          "line": 17161
+          "line": 17175
         }
       ]
     },
@@ -3372,7 +3348,7 @@
         },
         {
           "file": "style.css",
-          "line": 17143
+          "line": 17157
         }
       ]
     },
@@ -3388,7 +3364,7 @@
         },
         {
           "file": "style.css",
-          "line": 17206
+          "line": 17220
         }
       ]
     },
@@ -3404,7 +3380,7 @@
         },
         {
           "file": "style.css",
-          "line": 17525
+          "line": 17539
         }
       ]
     },
@@ -3420,7 +3396,7 @@
         },
         {
           "file": "style.css",
-          "line": 17453
+          "line": 17467
         }
       ]
     },
@@ -3436,7 +3412,7 @@
         },
         {
           "file": "style.css",
-          "line": 17497
+          "line": 17511
         }
       ]
     },
@@ -3464,7 +3440,7 @@
         },
         {
           "file": "style.css",
-          "line": 17484
+          "line": 17498
         }
       ]
     },
@@ -3480,7 +3456,7 @@
         },
         {
           "file": "style.css",
-          "line": 17473
+          "line": 17487
         }
       ]
     },
@@ -3496,7 +3472,7 @@
         },
         {
           "file": "style.css",
-          "line": 17462
+          "line": 17476
         }
       ]
     },
@@ -3524,7 +3500,7 @@
         },
         {
           "file": "style.css",
-          "line": 17480
+          "line": 17494
         }
       ]
     },
@@ -3540,7 +3516,7 @@
         },
         {
           "file": "style.css",
-          "line": 17350
+          "line": 17364
         }
       ]
     },
@@ -3592,7 +3568,7 @@
         },
         {
           "file": "style.css",
-          "line": 17794
+          "line": 17808
         }
       ]
     },
@@ -3608,7 +3584,7 @@
         },
         {
           "file": "style.css",
-          "line": 17205
+          "line": 17219
         }
       ]
     },
@@ -3624,7 +3600,7 @@
         },
         {
           "file": "style.css",
-          "line": 14518
+          "line": 14524
         }
       ]
     },
@@ -3688,7 +3664,7 @@
         },
         {
           "file": "style.css",
-          "line": 13112
+          "line": 13118
         }
       ]
     },
@@ -3844,7 +3820,7 @@
         },
         {
           "file": "style.css",
-          "line": 11443
+          "line": 11449
         }
       ]
     },
@@ -3884,7 +3860,7 @@
         },
         {
           "file": "style.css",
-          "line": 12727
+          "line": 12733
         }
       ]
     },
@@ -3924,7 +3900,7 @@
         },
         {
           "file": "style.css",
-          "line": 11797
+          "line": 11803
         }
       ]
     },
@@ -3956,7 +3932,7 @@
         },
         {
           "file": "style.css",
-          "line": 11693
+          "line": 11699
         }
       ]
     },
@@ -3972,7 +3948,7 @@
         },
         {
           "file": "style.css",
-          "line": 12726
+          "line": 12732
         }
       ]
     },
@@ -3988,7 +3964,7 @@
         },
         {
           "file": "style.css",
-          "line": 11720
+          "line": 11726
         }
       ]
     },
@@ -4016,7 +3992,7 @@
         },
         {
           "file": "style.css",
-          "line": 12720
+          "line": 12726
         }
       ]
     },
@@ -4056,7 +4032,7 @@
         },
         {
           "file": "style.css",
-          "line": 11789
+          "line": 11795
         }
       ]
     },
@@ -4072,7 +4048,7 @@
         },
         {
           "file": "style.css",
-          "line": 11709
+          "line": 11715
         }
       ]
     },
@@ -4088,7 +4064,7 @@
         },
         {
           "file": "style.css",
-          "line": 10934
+          "line": 10940
         }
       ]
     },
@@ -4104,7 +4080,7 @@
         },
         {
           "file": "style.css",
-          "line": 16461
+          "line": 16467
         }
       ]
     },
@@ -4120,7 +4096,7 @@
         },
         {
           "file": "style.css",
-          "line": 10987
+          "line": 10993
         }
       ]
     },
@@ -4148,7 +4124,7 @@
         },
         {
           "file": "style.css",
-          "line": 16462
+          "line": 16468
         }
       ]
     },
@@ -4164,7 +4140,7 @@
         },
         {
           "file": "style.css",
-          "line": 16318
+          "line": 16324
         }
       ]
     },
@@ -4192,7 +4168,7 @@
         },
         {
           "file": "style.css",
-          "line": 15095
+          "line": 15101
         }
       ]
     },
@@ -4208,7 +4184,7 @@
         },
         {
           "file": "style.css",
-          "line": 15027
+          "line": 15033
         }
       ]
     },
@@ -4224,7 +4200,7 @@
         },
         {
           "file": "style.css",
-          "line": 14892
+          "line": 14898
         }
       ]
     },
@@ -4300,7 +4276,7 @@
         },
         {
           "file": "style.css",
-          "line": 14723
+          "line": 14729
         }
       ]
     },
@@ -4316,7 +4292,7 @@
         },
         {
           "file": "style.css",
-          "line": 13676
+          "line": 13682
         }
       ]
     },
@@ -4440,7 +4416,7 @@
         },
         {
           "file": "style.css",
-          "line": 11895
+          "line": 11901
         }
       ]
     },
@@ -4716,7 +4692,7 @@
         },
         {
           "file": "style.css",
-          "line": 11997
+          "line": 12003
         }
       ]
     },
@@ -4732,7 +4708,7 @@
         },
         {
           "file": "style.css",
-          "line": 12378
+          "line": 12384
         }
       ]
     },
@@ -4748,7 +4724,7 @@
         },
         {
           "file": "style.css",
-          "line": 12439
+          "line": 12445
         }
       ]
     },
@@ -4764,7 +4740,7 @@
         },
         {
           "file": "style.css",
-          "line": 12426
+          "line": 12432
         }
       ]
     },
@@ -4780,7 +4756,7 @@
         },
         {
           "file": "style.css",
-          "line": 12409
+          "line": 12415
         }
       ]
     },
@@ -4796,7 +4772,7 @@
         },
         {
           "file": "style.css",
-          "line": 12417
+          "line": 12423
         }
       ]
     },
@@ -4812,7 +4788,7 @@
         },
         {
           "file": "style.css",
-          "line": 13674
+          "line": 13680
         }
       ]
     },
@@ -4904,7 +4880,7 @@
         },
         {
           "file": "style.css",
-          "line": 10890
+          "line": 10896
         }
       ]
     },
@@ -4944,11 +4920,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 2086,
+      "line": 2088,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2086
+          "line": 2088
         },
         {
           "file": "style.css",
@@ -4972,11 +4948,11 @@
       "selector": "#statsModal",
       "label": "Stats Modal",
       "file": "toDoRow.js",
-      "line": 1481,
+      "line": 1483,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1481
+          "line": 1483
         },
         {
           "file": "style.css",
@@ -4988,11 +4964,11 @@
       "selector": "#statsModalBackdrop",
       "label": "Stats Modal Backdrop",
       "file": "toDoRow.js",
-      "line": 1478,
+      "line": 1480,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1478
+          "line": 1480
         },
         {
           "file": "style.css",
@@ -5004,11 +4980,11 @@
       "selector": "#statsModalBody",
       "label": "Stats Modal Body",
       "file": "toDoRow.js",
-      "line": 1513,
+      "line": 1515,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1513
+          "line": 1515
         },
         {
           "file": "style.css",
@@ -5020,11 +4996,11 @@
       "selector": "#statsModalClose",
       "label": "Stats Modal Close",
       "file": "toDoRow.js",
-      "line": 1504,
+      "line": 1506,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1504
+          "line": 1506
         },
         {
           "file": "style.css",
@@ -5036,11 +5012,11 @@
       "selector": "#statsModalHeader",
       "label": "Stats Modal Header",
       "file": "toDoRow.js",
-      "line": 1487,
+      "line": 1489,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1487
+          "line": 1489
         },
         {
           "file": "style.css",
@@ -5052,11 +5028,11 @@
       "selector": "#statsModalSubtitle",
       "label": "Stats Modal Subtitle",
       "file": "toDoRow.js",
-      "line": 1497,
+      "line": 1499,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1497
+          "line": 1499
         },
         {
           "file": "style.css",
@@ -5068,11 +5044,11 @@
       "selector": "#statsModalTitle",
       "label": "Stats Modal Title",
       "file": "toDoRow.js",
-      "line": 1493,
+      "line": 1495,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1493
+          "line": 1495
         },
         {
           "file": "style.css",
@@ -5084,11 +5060,11 @@
       "selector": "#statsModalTitleWrap",
       "label": "Stats Modal Title Wrap",
       "file": "toDoRow.js",
-      "line": 1490,
+      "line": 1492,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1490
+          "line": 1492
         },
         {
           "file": "style.css",
@@ -5100,11 +5076,11 @@
       "selector": "#statsSibling",
       "label": "Stats Sibling",
       "file": "toDoRow.js",
-      "line": 1281,
+      "line": 1283,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1281
+          "line": 1283
         },
         {
           "file": "style.css",
@@ -5116,11 +5092,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 2218,
+      "line": 2220,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2218
+          "line": 2220
         },
         {
           "file": "style.css",
@@ -5216,7 +5192,7 @@
         },
         {
           "file": "style.css",
-          "line": 13743
+          "line": 13749
         }
       ]
     },
@@ -5232,7 +5208,7 @@
         },
         {
           "file": "style.css",
-          "line": 9721
+          "line": 9727
         }
       ]
     },
@@ -5248,7 +5224,7 @@
         },
         {
           "file": "style.css",
-          "line": 9707
+          "line": 9713
         }
       ]
     },
@@ -5284,11 +5260,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 2065,
+      "line": 2067,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2065
+          "line": 2067
         },
         {
           "file": "style.css",
@@ -5300,11 +5276,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 2101,
+      "line": 2103,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2101
+          "line": 2103
         },
         {
           "file": "style.css",
@@ -5316,11 +5292,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 2094,
+      "line": 2096,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2094
+          "line": 2096
         }
       ]
     },
@@ -5352,7 +5328,7 @@
         },
         {
           "file": "style.css",
-          "line": 9844
+          "line": 9850
         }
       ]
     },
@@ -5368,7 +5344,7 @@
         },
         {
           "file": "style.css",
-          "line": 9830
+          "line": 9836
         }
       ]
     },
@@ -5396,7 +5372,7 @@
         },
         {
           "file": "style.css",
-          "line": 10450
+          "line": 10456
         }
       ]
     },
@@ -5412,7 +5388,7 @@
         },
         {
           "file": "style.css",
-          "line": 10436
+          "line": 10442
         }
       ]
     },
