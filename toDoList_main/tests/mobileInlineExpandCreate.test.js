@@ -409,7 +409,11 @@ describe('Compose row paste-entry — chip DOM', () => {
 });
 
 
-describe('Compose row paste-entry — commit flow', () => {
+// The paste chip now opens an inline panel where the entry is shown and edited
+// before it lands, rather than committing straight from the clipboard. These
+// tests supersede the earlier "commit flow" block that pinned the direct
+// clipboard-to-task behavior, which this entry deliberately replaces.
+describe('Compose row paste-entry — inline panel', () => {
 
     let originalClipboard;
 
@@ -435,91 +439,252 @@ describe('Compose row paste-entry — commit flow', () => {
 
     const flush = () => new Promise((r) => setTimeout(r, 0));
 
-    it('sets item.desc to the parsed entry and dispatches Enter on the title input', async () => {
-        setClipboard(() => Promise.resolve('- [ ] **[MEDIUM]** Pasted headline\n  - Type: feature'));
-        const row = makeBlankRow();
-        const item = row.__item;
-        attachMobileCreateChips(row, item);
+    function panelFor(row) {
+        let n = row.nextElementSibling;
+        while (n && n.id === 'mobileCreateChips') n = n.nextElementSibling;
+        return n && n.id === 'pasteEntryPanel' ? n : null;
+    }
 
-        let enterFired = false;
-        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') enterFired = true;
-        });
-
+    function tapPasteChip(row) {
         chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+    }
+
+    it('opens the inline panel and presses the chip on tap', async () => {
+        setClipboard(() => Promise.resolve(''));
+        const row = makeBlankRow();
+        attachMobileCreateChips(row, row.__item);
+
+        tapPasteChip(row);
         await flush();
 
-        expect(item.desc).toBe('- [ ] **[MEDIUM]** Pasted headline\n  - Type: feature');
-        expect(row.querySelector('#toDoInput').value).toBe('Pasted headline');
-        expect(enterFired).toBe(true);
+        const panel = panelFor(row);
+        expect(panel).not.toBeNull();
+        // The panel is a sibling of the row, mounted right after the chip row —
+        // never a descendant (the row is overflow: clip at a fixed height).
+        expect(chipsFor(row).nextElementSibling).toBe(panel);
+        expect(row.querySelector('#pasteEntryPanel')).toBeNull();
+        expect(panel.querySelector('.pasteEntryInput')).not.toBeNull();
+        expect(panel.querySelector('.pasteEntryAdd')).not.toBeNull();
+        expect(panel.querySelector('.pasteEntryCancel')).not.toBeNull();
+        expect(chipsFor(row).querySelector('#mobileCreatePasteChip')
+            .classList.contains('mobileCreateChipSelected')).toBe(true);
+        expect(row.getAttribute('data-paste-open')).toBe('true');
         restoreClipboard();
     });
 
-    it('commits a pasted entry at a desktop viewport width', async () => {
-        // The paste affordance is available on desktop, so the same
-        // clipboard-read → set desc → dispatch Enter path must fire at
-        // ≥1024px, not only on mobile.
-        const originalWidth = window.innerWidth;
-        Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
-        setClipboard(() => Promise.resolve('- [ ] **[HIGH]** Desktop paste\n  - Type: feature'));
+    it('tapping the chip again closes the panel (toggle)', async () => {
+        setClipboard(() => Promise.resolve(''));
         const row = makeBlankRow();
-        const item = row.__item;
-        attachMobileCreateChips(row, item);
+        attachMobileCreateChips(row, row.__item);
 
-        let enterFired = false;
-        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') enterFired = true;
-        });
-
-        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        tapPasteChip(row);
         await flush();
+        expect(panelFor(row)).not.toBeNull();
 
-        expect(item.desc).toBe('- [ ] **[HIGH]** Desktop paste\n  - Type: feature');
-        expect(row.querySelector('#toDoInput').value).toBe('Desktop paste');
-        expect(enterFired).toBe(true);
-        Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
+        tapPasteChip(row);
+        expect(panelFor(row)).toBeNull();
+        expect(row.getAttribute('data-paste-open')).toBeNull();
+        expect(chipsFor(row).querySelector('#mobileCreatePasteChip')
+            .classList.contains('mobileCreateChipSelected')).toBe(false);
         restoreClipboard();
     });
 
-    it('creates nothing and toasts on an empty clipboard', async () => {
-        setClipboard(() => Promise.resolve('   '));
+    it('reopening after a close leaves exactly one panel', async () => {
+        setClipboard(() => Promise.resolve(''));
         const row = makeBlankRow();
-        const item = row.__item;
-        attachMobileCreateChips(row, item);
+        attachMobileCreateChips(row, row.__item);
 
-        let enterFired = false;
-        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') enterFired = true;
-        });
+        tapPasteChip(row); await flush();   // open
+        tapPasteChip(row);                   // close
+        tapPasteChip(row); await flush();    // open again
 
-        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
-        await flush();
-
-        expect(enterFired).toBe(false);
-        expect(item.desc).toBeUndefined();
-        expect(document.getElementById('injectToast')).not.toBeNull();
+        expect(document.querySelectorAll('#pasteEntryPanel').length).toBe(1);
         restoreClipboard();
     });
 
-    it('focuses the title input and toasts when the clipboard read is denied', async () => {
+    it('pre-fills the textarea from a successful clipboard read', async () => {
+        const entry = '- [ ] **[MEDIUM]** Pasted headline\n  - Type: feature';
+        setClipboard(() => Promise.resolve(entry));
+        const row = makeBlankRow();
+        attachMobileCreateChips(row, row.__item);
+
+        tapPasteChip(row);
+        await flush();
+
+        expect(panelFor(row).querySelector('.pasteEntryInput').value).toBe(entry);
+        restoreClipboard();
+    });
+
+    it('opens an empty, focused textarea when the clipboard read is denied — no toast', async () => {
+        // A denied or unavailable clipboard is a normal path here (iOS Safari
+        // blocks it frequently), not a fallback: no toast, no error, just an
+        // empty focused textarea to paste into.
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        attachMobileCreateChips(row, row.__item);
+
+        tapPasteChip(row);
+        await flush();
+
+        const ta = panelFor(row).querySelector('.pasteEntryInput');
+        expect(ta.value).toBe('');
+        expect(document.activeElement).toBe(ta);
+        expect(document.getElementById('injectToast')).toBeNull();
+        restoreClipboard();
+    });
+
+    it('PARSE & ADD parses the textarea, sets item.desc, dispatches Enter, and closes', async () => {
         setClipboard(() => Promise.reject(new Error('denied')));
         const row = makeBlankRow();
         const item = row.__item;
         attachMobileCreateChips(row, item);
 
         let enterFired = false;
-        const input = row.querySelector('#toDoInput');
-        input.addEventListener('keydown', (e) => {
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
             if (e.key === 'Enter') enterFired = true;
         });
 
-        chipsFor(row).querySelector('#mobileCreatePasteChip').click();
+        tapPasteChip(row);
         await flush();
 
-        expect(enterFired).toBe(false);
-        expect(document.getElementById('injectToast')).not.toBeNull();
-        expect(document.activeElement).toBe(input);
+        const entry = '- [ ] **[HIGH]** Typed entry\n  - Type: feature';
+        panelFor(row).querySelector('.pasteEntryInput').value = entry;
+        panelFor(row).querySelector('.pasteEntryAdd').click();
+
+        expect(item.desc).toBe(entry);
+        expect(row.querySelector('#toDoInput').value).toBe('Typed entry');
+        expect(enterFired).toBe(true);
+        expect(panelFor(row)).toBeNull();
         restoreClipboard();
+    });
+
+    it('PARSE & ADD with empty text is inert and leaves the panel open', async () => {
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        tapPasteChip(row);
+        await flush();
+
+        panelFor(row).querySelector('.pasteEntryInput').value = '   ';
+        panelFor(row).querySelector('.pasteEntryAdd').click();
+
+        expect(enterFired).toBe(false);
+        expect(item.desc).toBeUndefined();
+        expect(panelFor(row)).not.toBeNull();
+        restoreClipboard();
+    });
+
+    it('CANCEL closes the panel and creates nothing', async () => {
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        tapPasteChip(row);
+        await flush();
+
+        panelFor(row).querySelector('.pasteEntryInput').value = 'discard me';
+        panelFor(row).querySelector('.pasteEntryCancel').click();
+
+        expect(panelFor(row)).toBeNull();
+        expect(enterFired).toBe(false);
+        expect(item.desc).toBeUndefined();
+        expect(row.getAttribute('data-paste-open')).toBeNull();
+        restoreClipboard();
+    });
+
+    it('commits at a desktop viewport width too', async () => {
+        const originalWidth = window.innerWidth;
+        Object.defineProperty(window, 'innerWidth', { value: 1280, configurable: true });
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        let enterFired = false;
+        row.querySelector('#toDoInput').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') enterFired = true;
+        });
+
+        tapPasteChip(row);
+        await flush();
+        panelFor(row).querySelector('.pasteEntryInput').value =
+            '- [ ] **[HIGH]** Desktop paste\n  - Type: feature';
+        panelFor(row).querySelector('.pasteEntryAdd').click();
+
+        expect(item.desc).toBe('- [ ] **[HIGH]** Desktop paste\n  - Type: feature');
+        expect(enterFired).toBe(true);
+        Object.defineProperty(window, 'innerWidth', { value: originalWidth, configurable: true });
+        restoreClipboard();
+    });
+
+    it('still surfaces the marker toast when the pasted entry carries an id', async () => {
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        attachMobileCreateChips(row, row.__item);
+
+        tapPasteChip(row);
+        await flush();
+        panelFor(row).querySelector('.pasteEntryInput').value =
+            '- [ ] **[MEDIUM]** Existing entry\n  <!-- id: abc-123 -->';
+        panelFor(row).querySelector('.pasteEntryAdd').click();
+
+        expect(document.getElementById('injectToast')).not.toBeNull();
+        restoreClipboard();
+    });
+});
+
+
+describe('Compose row paste-entry — sibling-order + CSS', () => {
+
+    const toDoRow = read('toDoRow.js');
+    const css = read('style.css');
+
+    it('teaches every blank-placeholder sibling walk about the paste-entry panel', () => {
+        // The description-panel insert/remove anchors, openDescSiblingFor, the
+        // reorder-rebuild collector, and the commit cleanup all walk past
+        // #mobileCreateChips; each must ALSO account for #pasteEntryPanel, or an
+        // open description panel lands in the wrong slot when the paste panel is
+        // open (and a commit-via-typed-title orphans the panel). This is a
+        // source-structural guard — it does not compute layout.
+        const chipWalks = (toDoRow.match(/id === 'mobileCreateChips'/g) || []).length;
+        const pasteWalks = (toDoRow.match(/id === 'pasteEntryPanel'/g) || []).length;
+        expect(chipWalks).toBeGreaterThan(0);
+        expect(pasteWalks).toBeGreaterThanOrEqual(chipWalks);
+    });
+
+    it('mounts the panel styling outside the media blocks so it paints at every width', () => {
+        // #pasteEntryPanel's base rule sits ahead of every responsive @media
+        // block in the file, so it is a top-level rule — the paste chip surfaces
+        // on desktop and mobile alike, so its panel must too.
+        const panelIdx = css.indexOf('#pasteEntryPanel {');
+        const firstMobileMedia = css.indexOf('@media (max-width: 1023px)');
+        const firstDesktopMedia = css.indexOf('@media (min-width: 1024px)');
+        expect(panelIdx).toBeGreaterThan(-1);
+        expect(panelIdx).toBeLessThan(firstMobileMedia);
+        expect(panelIdx).toBeLessThan(firstDesktopMedia);
+    });
+
+    it('gives the paste textarea a ≥16px font to avoid iOS focus auto-zoom', () => {
+        const body = css.match(/\.pasteEntryInput\s*\{[^}]*\}/);
+        expect(body).not.toBeNull();
+        expect(body[0]).toMatch(/font-size:\s*16px/);
+    });
+
+    it('keeps the chip row (and pressed chip) visible while the panel is open via data-paste-open', () => {
+        expect(css).toMatch(/data-blank-placeholder\]\[data-paste-open\]\s*\+\s*#mobileCreateChips/);
     });
 });
 
