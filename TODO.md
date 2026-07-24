@@ -195,7 +195,7 @@
   - Completed: 2026-07-24
   <!-- id: bd2189c1-45b0-4469-932b-475bb35901e5 -->
 
-- [ ] **[LOW]** Desktop description panel: inset and cap the phase rail
+- [x] **[LOW]** Desktop description panel: inset and cap the phase rail
   - Type: bug
   - Description: The phase rail and the THE ENTRY label were given `grid-column: 1 / -1`, which spans all three tracks of `#descSibling` including its two 14px gutters, so both sit flush against the panel's left and right borders instead of aligning with the textarea. The rail also stretches to the full panel width, so its connectors run long enough that the four nodes read as unrelated markers rather than one sequence. The `1 / -1` instruction was correct for the ASKING and STUCK blocks, which carry their own internal padding, and wrong for these two, which do not.
   - Behavior: The phase rail and the THE ENTRY label align with the left edge of the textarea, inset from the panel's borders by the same gutter every other piece of content respects. The rail is capped at a comfortable width rather than stretching edge to edge, so its connectors stay short and the four nodes read as one sequence; it sits left-aligned within the content column rather than centred. A small gap separates the rail from the panel's top edge. The picker trigger's right edge aligns with the textarea's right edge rather than the panel's border. Nothing about the rail's states, colours, or inertness changes.
@@ -210,5 +210,5 @@
     - The structural guard added with the rail asserts each panel child HAS a `grid-column` declaration, not a particular value, so changing these three to `2` should keep it passing. Confirm rather than assume, and if it hardcodes `1 / -1` anywhere, correct the assertion to check for presence.
   - Out of scope: The rail's node states, colours, labels, inertness, and its live repaint. The phase vocabulary and `derivePhase`. The ASKING and STUCK blocks. The textarea, picker behavior, and the action controls. The mobile modal's own layout beyond verifying no regression. Phase-dependent panel contents, which is the next entry.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: 54eed669-c3dc-45e1-b283-974063578ea8 -->
