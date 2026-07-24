@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             "An amber blocked-on-you toggle in the task filter bar shows only the tasks waiting on you — those in review, with a parked question, or with an unopened draft — and releases itself when none remain.",
         ],
+        fixed: [
+            "The blocked-on-you filter chip is now a smaller amber glyph and count that reads dim when nothing is waiting, plain amber when tasks await you, and filled only while you are filtering to them.",
+        ],
     },
     {
         version: '1.1',
@@ -22,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-22',
         fixed: [
-            "The mobile description editor's Generate button now draws a complete outline on all four sides instead of appearing open-topped.",
             "On phones, a shipped task awaiting your review now shows a Review action in its description editor that opens the entry so you can review and acknowledge the change.",
         ],
     },

@@ -4,6 +4,8 @@ import {
     buildTaskFilterBar,
     applyTaskFilter,
     setBlockedItemResolver,
+    firstFocusableInTaskFilterBar,
+    taskFilterArrowTarget,
 } from '../src/taskFilter.js';
 import {
     getTaskFilter,
@@ -315,6 +317,69 @@ describe('placeholder row visibility under the blocked filter', () => {
 
         expect(isHidden(blank)).toBe(false);
         expect(isHidden(blocked)).toBe(false);
+    });
+});
+
+
+// The chip reads as a glyph + count (no word), and gives three distinct visual
+// states so "one task is waiting" is never confused with "I am filtering".
+describe('blocked chip — glyph label and three distinct visual states', () => {
+    it('shows an amber glyph and count, not the word "Blocked", but keeps the accessible name', () => {
+        const bar = buildTaskFilterBar();
+        const c = chip(bar);
+        const label = c.querySelector('.taskFilterBlockedLabel');
+
+        // Visible label is the glyph only — the word is gone from the paint.
+        expect(label.textContent).toBe('⌁');
+        expect(c.textContent).not.toMatch(/blocked/i);
+        // The glyph and count carry no meaning to a screen reader, so they are
+        // hidden and the accessible name comes wholly from aria-label.
+        expect(label.getAttribute('aria-hidden')).toBe('true');
+        expect(c.querySelector('.taskFilterBlockedCount').getAttribute('aria-hidden')).toBe('true');
+        expect(c.getAttribute('aria-label')).toMatch(/blocked on you/i);
+    });
+
+    it('distinguishes zero, released-with-count, and engaged states', () => {
+        const ml = makeMainList();
+        const blocked = makeRow('Blocked', 'active', { blocked: true });
+        ml.append(blocked, makeRow('Other', 'active'));
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        // State 2: count > 0, released — not --empty, not selected (amber text
+        // alone), and interactive.
+        applyTaskFilter();
+        expect(chip(bar).classList.contains('taskFilterBlockedChip--empty')).toBe(false);
+        expect(chip(bar).classList.contains('selected')).toBe(false);
+        expect(chip(bar).disabled).toBe(false);
+
+        // State 3: engaged — soft fill via the selected class, still not --empty.
+        chip(bar).click();
+        expect(chip(bar).classList.contains('selected')).toBe(true);
+        expect(chip(bar).classList.contains('taskFilterBlockedChip--empty')).toBe(false);
+
+        // State 1: zero — --empty + inert, and NOT selected, so a released-waiting
+        // chip and an engaged chip can never look the same as an empty one.
+        chip(bar).click(); // release
+        blocked.__item.blk = false;
+        applyTaskFilter();
+        expect(chip(bar).classList.contains('taskFilterBlockedChip--empty')).toBe(true);
+        expect(chip(bar).classList.contains('selected')).toBe(false);
+        expect(chip(bar).disabled).toBe(true);
+    });
+
+    it('is not a target of the filter-bar arrow-key navigation at a zero count', () => {
+        const ml = makeMainList();
+        ml.append(makeRow('A', 'active'), makeRow('B', 'idea')); // nothing blocked
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+        applyTaskFilter();
+
+        // The zero-count chip must never become a focus stop in the bar's
+        // roving-focus sequence.
+        expect(firstFocusableInTaskFilterBar()).not.toBe(chip(bar));
+        expect(taskFilterArrowTarget(chip(bar), 'ArrowRight')).toBeNull();
+        expect(taskFilterArrowTarget(chip(bar), 'ArrowLeft')).toBeNull();
     });
 });
 
