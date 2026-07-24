@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[LOW]** Rename the create chip row away from the `mobile*` prefix
+- [x] **[LOW]** Rename the create chip row away from the `mobile*` prefix — Completed: 2026-07-24
   - Type: feature
   - Description: The task-create chip row is `#mobileCreateChips` with `.mobileCreateChip` / `.mobileCreateChipSelected` / `.mobileCreatePasteChip` / `.mobileCreateDescChip` classes, but the 📋 paste-entry chip now surfaces on desktop too, so the `mobile*` prefix is misleading — the same kind of naming confusion that made the file picker's host scoping hard to reason about. This was deliberately deferred from the "make the paste-entry chip available on desktop" entry, which noted the naming can be corrected separately.
   - Behavior: No user-visible change on either mobile or desktop — the chip row, its date/description chips, and the paste chip behave exactly as today. Only the internal element id and CSS class names change.
