@@ -94,7 +94,7 @@
   - Completed: 2026-07-24
   <!-- id: 3971b495-c87c-49ac-a7a4-e87afe34888d -->
 
-- [ ] **[HIGH]** File picker: rows collapse instead of filling the list
+- [x] **[HIGH]** File picker: rows collapse instead of filling the list
   - Type: bug
   - Description: In the description panel's manifest picker, `.filePickRow` buttons render far narrower than their container, so file paths appear as fragments a character or two wide instead of readable rows. `.filePickList` measures full width — the collapse is at the row level. The stylesheet contains exactly one `.filePickRow` rule (plus `:hover` and `:focus-visible`), with no `width`, no `align-self`, and no media-query override, and its parent is `display: flex; flex-direction: column` whose default `align-items: stretch` should already size these buttons to the container. The mechanism is therefore not determinable from source; this entry fixes the outcome defensively and asserts it with a layout test rather than guessing at a cause.
   - Behavior: Every row in the picker's file list fills the list's content width. A path longer than the available width truncates with an ellipsis on one line rather than wrapping or fragmenting. Rows keep their current padding, radius, monospace type, hover and focus-visible treatments, and click behavior. Identical in both hosts — the description panel and the mobile description-editor modal.
@@ -107,5 +107,5 @@
     - This is the fourth layout defect in `#descSibling` in one day, and all four were invisible to a suite that does not compute layout. Note in the PR body whether the project's test environment can measure layout at all; if it cannot, say so plainly rather than adding a test that only asserts CSS text.
   - Out of scope: `.filePickList` and `.filePickPanel` styling and their grid placement. The picker's on-demand manifest load, filtering, insertion, dedup, and row cap. The `#descSibling` explicit-placement work, which is correct. The mobile modal's layout. The task row and the phase-face redesign.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: c1f9046f-9272-4e60-978d-81c5e3b5c433 -->
