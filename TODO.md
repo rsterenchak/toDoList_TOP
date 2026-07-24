@@ -143,3 +143,19 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-07-24
   <!-- id: 099cb080-2b04-445e-8045-b93a3775388a -->
+
+- [ ] **[HIGH]** Description panel: file picker duplicates on every reopen
+  - Type: bug
+  - Description: Opening a description, then closing and reopening it, mounts a second file-picker trigger and a second filter field — and a third on the next cycle. `descSibling` is a persistent element created once per row; `wireDescToggle`'s close branch removes it from `#mainList` but never clears its children. On reopen, `descInput`, `injectBtn`, `generateBtn` and `discussBtn` are re-appended, which merely MOVES the existing nodes, so they do not duplicate. `mountDescFilePicker` instead calls `createFilePicker(...)`, which constructs fresh trigger and panel elements on every call and inserts them beside the pair left over from the previous open. `syncAskingPanel` and `syncStuckPanel` already avoid this by querying for an existing block before mounting; the picker needs the same idempotence.
+  - Behavior: A description panel contains exactly one picker trigger and one filter panel no matter how many times it is opened and closed. Reopening presents the picker collapsed with an empty filter, not in whatever state it was left in. Every other panel child behaves as it does today.
+  - Implementation notes:
+    - Make `mountDescFilePicker` idempotent by removing any existing `.filePickTrigger` and `.filePickPanel` children of `descSibling` before mounting the new pair. Mirror `syncAskingPanel`'s shape — it is the established pattern in this file for a panel child that must survive repeated mounts.
+    - Remove-and-rebuild rather than early-return-if-present. The picker closes over `item`, `projectName`, and `descInput`, and a stale closure would silently write into the wrong row after a re-render; a fresh build also guarantees the collapsed, unfiltered state on reopen.
+    - Detach any listener or in-flight manifest load owned by the discarded picker if `createFilePicker` exposes a teardown. If it does not, check whether the discarded panel holds a pending `loadManifest` continuation that would paint into a detached node — the on-demand load entry added a detached-node guard, so confirm it covers this path rather than assuming.
+    - AUDIT the other mounts in `wireDescToggle`'s open branch for the same class of defect. Anything that constructs new nodes per open rather than re-appending a stable one will duplicate identically. `syncGenerateControl` is the one to check closely — the open branch's comment notes its failure notice "slots in as a sibling", which means it creates a node. Report every mount's idempotence status in the PR body.
+    - Do not fix this by clearing `descSibling` wholesale on close or open. Its children are stable per-row nodes carrying listeners and state; replacing them would rebuild the textarea and lose the caret, scroll position, and any unsent ASKING answer text.
+    - Regression test: open, close, and reopen a row's description, then assert exactly one `.filePickTrigger` and one `.filePickPanel` are present. Repeat for three cycles, since a naive fix can still leak on the second. Add the same assertion for the ASKING and STUCK blocks so the existing idempotence is locked in rather than incidental.
+  - Out of scope: The picker's layout, `srcRoot` prefixing, on-demand load, filtering, and insertion — all correct as landed. `wireDescToggle`'s open/close insertion logic and its `mobileCreateChips` anchor handling. The `#descSibling` grid placement. The mobile description-editor modal, which is rebuilt from scratch each time it opens. The task row and the phase-face redesign.
+  - File: `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b5dd865d-e240-4a27-a605-2926d3295a17 -->
