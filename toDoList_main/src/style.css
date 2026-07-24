@@ -1333,14 +1333,22 @@ body {
    not focusable) so it can never be mistaken for the settable MANUAL STATUS
    control lower in the modal. Phase is derived from TODO.md — nothing here is
    tappable. */
-#descEditorModalRail {
+/* Shared phase-rail layout (both hosts: the mobile modal and the desktop
+   #descSibling panel). The node/dot/caption/connector classes are host-neutral
+   `phaseRail*` names built by the shared phaseRail.js builder; each host layers
+   its own placement on top (the modal's side padding below; the panel's
+   grid-column further down). */
+.phaseRail {
   display: flex;
   align-items: flex-start;
   justify-content: center;
   gap: 0;
+}
+/* Modal host: the side + top padding the dialog wants around the rail. */
+#descEditorModalRail {
   padding: 14px 14px 6px;
 }
-.descEditorModalRailNode {
+.phaseRailNode {
   flex: 0 0 auto;
   width: 52px;
   display: flex;
@@ -1350,7 +1358,7 @@ body {
 }
 /* The dot. 10px circle; dark and unfilled by default. Only the dot carries a
    border-radius — it is a mark, not a box. */
-.descEditorModalRailDot {
+.phaseRailDot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
@@ -1359,7 +1367,7 @@ body {
   border: 1px solid var(--border-dim);
 }
 /* Uppercase SpaceMono caption beneath each dot. */
-.descEditorModalRailCaption {
+.phaseRailCaption {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 7.5px;
   font-weight: 600;
@@ -1372,7 +1380,7 @@ body {
    centers (dot is 10px, so its center sits 5px down; the connector's own 1px
    height is offset by ~4.5px). Dark by default, accent when it trails a passed
    or current node. */
-.descEditorModalRailConnector {
+.phaseRailConnector {
   flex: 1 1 0;
   min-width: 14px;
   height: 1px;
@@ -1380,23 +1388,23 @@ body {
   background: var(--border-dim);
 }
 /* Phases already passed: solid-accent dot and an accent connector into it. */
-.descEditorModalRailNode.is-filled .descEditorModalRailDot {
+.phaseRailNode.is-filled .phaseRailDot {
   background: var(--accent);
   border-color: var(--accent);
 }
-.descEditorModalRailConnector.is-filled {
+.phaseRailConnector.is-filled {
   background: var(--accent);
 }
 /* The current phase: a lighter (accent-tinted) fill ringed by an accent outline
    and a soft halo. The halo is a box-shadow spread, NOT a border, so it does not
    change the dot's box size and shift the row. */
-.descEditorModalRailNode.is-current .descEditorModalRailDot {
+.phaseRailNode.is-current .phaseRailDot {
   background: var(--accent-dim);
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-dim);
 }
-.descEditorModalRailNode.is-filled .descEditorModalRailCaption,
-.descEditorModalRailNode.is-current .descEditorModalRailCaption {
+.phaseRailNode.is-filled .phaseRailCaption,
+.phaseRailNode.is-current .phaseRailCaption {
   color: var(--accent-text);
 }
 
@@ -1410,8 +1418,12 @@ body {
 }
 
 /* THE ENTRY label above the textarea — the SpaceMono uppercase accent label
-   shared with the eyebrow and the status row. */
-#descEditorModalEntryLabel {
+   shared with the eyebrow and the status row. Both hosts share one declaration
+   (the modal id and the desktop panel's .descSiblingEntryLabel) so the two can't
+   drift; the desktop instance's grid placement is added with the other
+   #descSibling child rules further down. */
+#descEditorModalEntryLabel,
+.descSiblingEntryLabel {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 10px;
   font-weight: 600;
@@ -16886,9 +16898,25 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   grid-column: 1 / -1;
 }
 
+/* The read-only phase rail and THE ENTRY section label lead the desktop
+   description panel, mirroring the mobile modal. Both are #descSibling children
+   in its 3-column grid (14px 1fr 14px); an auto-placed child lands in a 14px
+   gutter — the defect that crushed the inject button, the ASKING block, and
+   #descInput in turn. Span both full-width. The shared .phaseRail centers its
+   nodes; the panel host only adds the placement and its own vertical padding
+   (the grid's gutters replace the modal's 14px side padding). */
+#descSibling .phaseRail {
+  grid-column: 1 / -1;
+  padding: 4px 0 6px;
+}
+#descSibling .descSiblingEntryLabel {
+  grid-column: 1 / -1;
+}
+
 /* The ASKING question + answer block and the STUCK failure-reason block both
-   mount as the panel's firstChild. Like every other #descSibling child they
-   auto-place into the 14px gutter column without an explicit placement, which
+   mount immediately after the rail (via descPanelTopAnchor). Like every other
+   #descSibling child they auto-place into the 14px gutter column without an
+   explicit placement, which
    crushes the triage question one word per line and the answer controls with
    it; span the full grid row so they lay out at the panel's content width. The
    STUCK block reuses the modal's .descEditorModalStuck treatment verbatim and

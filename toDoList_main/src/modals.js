@@ -18,7 +18,8 @@ import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
 import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI, invokeReviewBadgeTap } from './todoStatus.js';
 import { reorderToDoDOM, makeGenerateButton, syncGenerateControl } from './toDoRow.js';
-import { derivePhase, PHASE, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from './phase.js';
+import { derivePhase, PHASE } from './phase.js';
+import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
 import { stuckReasonText } from './agentView.js';
 // The File:-path picker (trigger chip + searchable manifest panel) and its
@@ -340,49 +341,16 @@ export function showDescEditorModal(item, options) {
     // phase render filled, the current one highlighted, the rest empty. It is
     // display-only: phase is derived from TODO.md via derivePhase, so there is
     // nothing a tap could mean — the rail carries no click handler.
-    const rail = document.createElement('div');
+    // The rail markup + repaint live in the shared phaseRail.js builder so this
+    // modal and the desktop #descSibling panel render one rail, never two that
+    // drift. buildPhaseRail sets role="img" and the phaseRail* classes; the modal
+    // only adds its own id for host-specific padding.
+    const rail = buildPhaseRail(derivePhase(item));
     rail.id = 'descEditorModalRail';
-    rail.setAttribute('role', 'img');
 
     function renderRail() {
         const phase = derivePhase(item);
-        // `asking` is a triage-queue fact, not a rail node — resolve it to its
-        // underlying DRAFT stage so the rail never has to invent a fifth node.
-        const railPhase = PHASE_RAIL_ORDER.indexOf(phase) === -1 ? 'draft' : phase;
-        const currentIndex = PHASE_RAIL_ORDER.indexOf(railPhase);
-        rail.innerHTML = '';
-        PHASE_RAIL_ORDER.forEach(function(p, i) {
-            // Connector rule linking the previous node to this one. It paints in
-            // accent when it leads into a passed-or-current node (i <= current),
-            // so the accent "progress" fills the rail up to the current dot.
-            // Purely decorative — aria-hidden, no chrome, no listener.
-            if (i > 0) {
-                const connector = document.createElement('span');
-                connector.className = 'descEditorModalRailConnector'
-                    + (i <= currentIndex ? ' is-filled' : '');
-                connector.setAttribute('aria-hidden', 'true');
-                rail.appendChild(connector);
-            }
-            // Each node is an inert column — a dot above an uppercase caption.
-            // Plain spans, never a button: no role, tabindex, or listener, so the
-            // rail cannot be focused, hovered, or pressed. Phase is derived from
-            // TODO.md, so there is nothing a tap could mean.
-            const node = document.createElement('span');
-            node.className = 'descEditorModalRailNode'
-                + (i < currentIndex ? ' is-filled' : '')
-                + (i === currentIndex ? ' is-current' : '');
-            node.setAttribute('data-phase', p);
-            const dot = document.createElement('span');
-            dot.className = 'descEditorModalRailDot';
-            dot.setAttribute('aria-hidden', 'true');
-            const caption = document.createElement('span');
-            caption.className = 'descEditorModalRailCaption';
-            caption.textContent = PHASE_RAIL_LABELS[p];
-            node.appendChild(dot);
-            node.appendChild(caption);
-            rail.appendChild(node);
-        });
-        rail.setAttribute('aria-label', 'Pipeline phase: ' + PHASE_RAIL_LABELS[railPhase]);
+        paintPhaseRail(rail, phase);
         return phase;
     }
 

@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-24',
+        added: [
+            "The desktop description panel now leads with a read-only phase rail and a section label, matching the mobile editor.",
+        ],
         fixed: [
-            "File paths in a task's description file picker now fill the list as full-width readable rows, with long paths truncating on one line, instead of collapsing into narrow fragments.",
             "The description file picker now lists and inserts full repo-relative file paths, and can be filtered by folder, instead of bare filenames that pointed at files a run couldn't find.",
             "File paths in a task's description file picker now keep their full height when the list is long, so every path stays legible instead of squashing to a sliver as the list scrolls.",
             "A task's description file picker no longer stacks duplicate copies of itself each time the description is closed and reopened.",

@@ -16,59 +16,56 @@ function read(relative) {
 // caption, and the manual STATUS control is demoted below the actions. Source-
 // inspection only, matching the mobileDescEditorModal style — the modal flow is
 // too heavily wired to instantiate end-to-end here.
+//
+// The rail markup itself now lives in the shared phaseRail.js builder (so the
+// desktop #descSibling panel renders the same rail); this file pins the modal's
+// USE of that builder, and phaseRail.test.js pins the builder's own DOM.
 
-describe('mobile desc editor rail — phase.js vocabulary reuse', () => {
+describe('mobile desc editor rail — shared phaseRail.js builder reuse', () => {
     const modals = read('modals.js');
 
-    it('imports derivePhase + the rail vocabulary from phase.js (single-sourced)', () => {
+    it('imports derivePhase from phase.js (single-sourced phase derivation)', () => {
         expect(modals).toMatch(
             /import\s*\{[^}]*derivePhase[^}]*\}\s*from\s*['"]\.\/phase\.js['"]/
         );
+    });
+
+    it('imports the rail builder from the shared phaseRail.js module', () => {
         expect(modals).toMatch(
-            /import\s*\{[^}]*PHASE_RAIL_ORDER[^}]*\}\s*from\s*['"]\.\/phase\.js['"]/
+            /import\s*\{[^}]*buildPhaseRail[^}]*\}\s*from\s*['"]\.\/phaseRail\.js['"]/
         );
         expect(modals).toMatch(
-            /import\s*\{[^}]*PHASE_RAIL_LABELS[^}]*\}\s*from\s*['"]\.\/phase\.js['"]/
+            /import\s*\{[^}]*paintPhaseRail[^}]*\}\s*from\s*['"]\.\/phaseRail\.js['"]/
         );
     });
 
-    it('builds the rail nodes by iterating PHASE_RAIL_ORDER (not a hardcoded list)', () => {
-        expect(modals).toMatch(/PHASE_RAIL_ORDER\.forEach\(/);
-        expect(modals).toMatch(/PHASE_RAIL_LABELS\[/);
+    it('no longer inlines the rail vocabulary — the node-building moved to phaseRail.js', () => {
+        // The extraction's point is one implementation. If modals reintroduces the
+        // PHASE_RAIL_ORDER iteration it would be a second copy that could drift.
+        expect(modals).not.toMatch(/PHASE_RAIL_ORDER\.forEach\(/);
     });
 
-    it('derives the current phase from derivePhase (display-only, no phase mutation)', () => {
+    it('renderRail derives the current phase and repaints via the shared builder', () => {
         const fnIdx = modals.indexOf('function renderRail');
         expect(fnIdx).toBeGreaterThan(-1);
-        const fn = modals.slice(fnIdx, fnIdx + 900);
+        const fn = modals.slice(fnIdx, fnIdx + 400);
         expect(fn).toMatch(/derivePhase\(\s*item\s*\)/);
+        expect(fn).toMatch(/paintPhaseRail\(\s*rail\s*,/);
     });
 });
 
 describe('mobile desc editor rail — markup + placement', () => {
     const modals = read('modals.js');
 
-    it('renders a #descEditorModalRail with descEditorModalRailNode children', () => {
-        expect(modals).toMatch(/['"]descEditorModalRail['"]/);
-        expect(modals).toMatch(/['"]descEditorModalRailNode/);
+    it('builds the rail through buildPhaseRail and gives it the modal host id', () => {
+        expect(modals).toMatch(/buildPhaseRail\(\s*derivePhase\(\s*item\s*\)\s*\)/);
+        expect(modals).toMatch(/rail\.id\s*=\s*['"]descEditorModalRail['"]/);
     });
 
-    it('the rail is display-only: role="img", no click handler on the rail', () => {
-        expect(modals).toMatch(/rail\.setAttribute\(\s*['"]role['"]\s*,\s*['"]img['"]\s*\)/);
-        // No tap-to-change: the rail element gets no click listener.
+    it('the rail is display-only: no click handler is attached to it in the modal', () => {
+        // No tap-to-change: the rail element gets no click listener (role="img"
+        // itself is set by the shared builder — see phaseRail.test.js).
         expect(modals).not.toMatch(/rail\.addEventListener\(\s*['"]click['"]/);
-    });
-
-    it('marks nodes before the current phase filled and the current one highlighted', () => {
-        const fnIdx = modals.indexOf('function renderRail');
-        // Window widened past the original 900: renderRail now also builds the
-        // connector rules, so the node filled/current marking sits deeper in the
-        // function body. The assertions themselves are unchanged.
-        const fn = modals.slice(fnIdx, fnIdx + 1800);
-        expect(fn).toMatch(/is-filled/);
-        expect(fn).toMatch(/is-current/);
-        expect(fn).toMatch(/i\s*<\s*currentIndex/);
-        expect(fn).toMatch(/i\s*===\s*currentIndex/);
     });
 
     it('places the rail immediately after the header, before the body', () => {
@@ -147,44 +144,45 @@ describe('mobile desc editor rail — connected-rail styling', () => {
 
     it('is a connected rail: fixed-width dot-over-caption columns joined by connectors', () => {
         // Each node is a plain column, NOT a chip/box — no border-radius box and
-        // no min-height button chrome on the node itself.
-        const nodeMatch = css.match(/\.descEditorModalRailNode\s*\{([\s\S]{0,400}?)\}/);
+        // no min-height button chrome on the node itself. Classes are the shared
+        // host-neutral phaseRail* names.
+        const nodeMatch = css.match(/\.phaseRailNode\s*\{([\s\S]{0,400}?)\}/);
         expect(nodeMatch).toBeTruthy();
         const nodeBody = nodeMatch[1];
         expect(nodeBody).toMatch(/flex-direction:\s*column/);
         expect(nodeBody).not.toMatch(/border-radius/);
         expect(nodeBody).not.toMatch(/min-height/);
         // The dot is the only round element — a 10px circle.
-        const dotMatch = css.match(/\.descEditorModalRailDot\s*\{([\s\S]{0,300}?)\}/);
+        const dotMatch = css.match(/\.phaseRailDot\s*\{([\s\S]{0,300}?)\}/);
         expect(dotMatch).toBeTruthy();
         expect(dotMatch[1]).toMatch(/border-radius:\s*50%/);
         expect(dotMatch[1]).toMatch(/width:\s*10px/);
         // Connectors join the dots.
-        expect(css).toMatch(/\.descEditorModalRailConnector\s*\{[\s\S]{0,200}flex:\s*1\s+1\s+0/);
+        expect(css).toMatch(/\.phaseRailConnector\s*\{[\s\S]{0,200}flex:\s*1\s+1\s+0/);
     });
 
     it('filled + current dots paint with the accent tokens; current gets a halo ring', () => {
         // Passed dots: solid accent fill.
         expect(css).toMatch(
-            /\.descEditorModalRailNode\.is-filled\s+\.descEditorModalRailDot\s*\{[\s\S]{0,120}background:\s*var\(--accent\)/
+            /\.phaseRailNode\.is-filled\s+\.phaseRailDot\s*\{[\s\S]{0,120}background:\s*var\(--accent\)/
         );
         // The connector trailing a passed/current node is accent too.
         expect(css).toMatch(
-            /\.descEditorModalRailConnector\.is-filled\s*\{[\s\S]{0,80}background:\s*var\(--accent\)/
+            /\.phaseRailConnector\.is-filled\s*\{[\s\S]{0,80}background:\s*var\(--accent\)/
         );
         // Current dot: accent outline plus a soft box-shadow halo (spread, not a
         // border, so it doesn't resize the dot's box).
         expect(css).toMatch(
-            /\.descEditorModalRailNode\.is-current\s+\.descEditorModalRailDot\s*\{[\s\S]{0,200}box-shadow:\s*0 0 0 3px/
+            /\.phaseRailNode\.is-current\s+\.phaseRailDot\s*\{[\s\S]{0,200}box-shadow:\s*0 0 0 3px/
         );
     });
 
     it('the rail carries no interactive affordances — no hover, active, or cursor', () => {
         // Guard the affordance-lie fix: the rail elements must never grow a
         // :hover / :active feedback rule or a pointer cursor.
-        expect(css).not.toMatch(/\.descEditorModalRail(Node|Dot|Connector)[^{]*:hover/);
-        expect(css).not.toMatch(/\.descEditorModalRail(Node|Dot|Connector)[^{]*:active/);
-        expect(css).not.toMatch(/\.descEditorModalRail(Node|Dot|Connector)[^{]*\{[^}]*cursor:\s*pointer/);
+        expect(css).not.toMatch(/\.phaseRail(Node|Dot|Connector)[^{]*:hover/);
+        expect(css).not.toMatch(/\.phaseRail(Node|Dot|Connector)[^{]*:active/);
+        expect(css).not.toMatch(/\.phaseRail(Node|Dot|Connector)[^{]*\{[^}]*cursor:\s*pointer/);
     });
 
     it('the four action controls convert to SpaceMono uppercase letterspaced type', () => {
