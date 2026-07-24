@@ -6381,6 +6381,27 @@ body.agentWorking #viewPillAgent .agentWorkingDot {
   padding: 8px 12px;
 }
 
+/* Anchor highlight — briefly pulses a card when the tasks-surface `⌁ MOCKUP`
+   badge jumps the board to it, so the eye lands on the right card in a long
+   board. An inset amber box-shadow ring (matching the MOCKUP badge's amber) that
+   never fights the card's own border or stripe, removed on animationend in JS so
+   re-anchoring the same card re-fires it. Follows the viewer's anchor-flash. */
+.agentCard--anchorFlash {
+  animation: agentCardAnchorFlash 1.1s ease-out;
+}
+@keyframes agentCardAnchorFlash {
+  0%   { box-shadow: inset 0 0 0 2px rgba(255, 189, 94, 0.85); }
+  60%  { box-shadow: inset 0 0 0 2px rgba(255, 189, 94, 0.5); }
+  100% { box-shadow: inset 0 0 0 2px rgba(255, 189, 94, 0); }
+}
+/* Reduced motion — drop the flash animation but keep the scroll-into-view intact
+   (that's handled in JS, not by this animation). */
+@media (prefers-reduced-motion: reduce) {
+  .agentCard--anchorFlash {
+    animation: none;
+  }
+}
+
 /* Not-assigned cards carry a left rail (the `.stripe`) that mirrors the
    in_progress todo-row treatment: transparent by default, purple when the task
    is in progress, over a lifted background with an "In progress" pill beneath
@@ -8397,6 +8418,10 @@ body.row-dragging * { cursor: grabbing !important; }
    #ff5d7a the Revert control uses), so amber keeps meaning "waiting on you" and
    red means "this went wrong". */
 .todoStatusLabel[data-status="stuck"]       { color: #ff5d7a; }
+/* MOCKUP — the linked run is parked waiting on a mockup decision. Amber, like the
+   other "waiting on you" overlays; the decision itself lives on the Agent board,
+   where a tap on this badge jumps. */
+.todoStatusLabel[data-status="mockup"]      { color: #ffbd5e; }
 .todoStatusLabel:hover { opacity: 0.8; }
 .todoStatusLabel:focus-visible {
   outline: 1px solid var(--accent);
@@ -11512,9 +11537,11 @@ body.row-dragging * { cursor: grabbing !important; }
      ties .copyTitleBtn's order below, so the earlier-in-DOM badge renders before
      it) and is pushed right by the flex-grow title, which truncates earlier to
      make room. Amber comes from the existing data-status="review"/"asking"/
-     "drafted" color rules; STUCK joins the same surface rule but paints danger
-     red from its own color rule above. */
+     "drafted"/"mockup" color rules; STUCK joins the same surface rule but paints
+     danger red from its own color rule above. MOCKUP joins as a fifth surfaced
+     state — amber, "waiting on a mockup decision". */
   .todoStatusLabel[data-status="stuck"],
+  .todoStatusLabel[data-status="mockup"],
   .todoStatusLabel[data-status="review"],
   .todoStatusLabel[data-status="asking"],
   .todoStatusLabel[data-status="drafted"] {

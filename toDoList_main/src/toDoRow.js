@@ -202,6 +202,7 @@ const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" 
 //              landed draft is unread, so the glyph stays empty (as for 'accept').
 //   'asking' → '' — the ⌁ ASKING badge is the row's single mark; no glyph.
 //   'stuck'  → '' — the ⌁ STUCK badge is the row's single mark; no glyph.
+//   'mockup' → '' — the ⌁ MOCKUP badge is the row's single mark; no glyph.
 //   'none'   → '' — nothing to show.
 function glyphStateForPhase(phase) {
     if (phase === PHASE.DRAFT) return 'pending';
@@ -217,12 +218,14 @@ function glyphStateForPhase(phase) {
 //   'drafted' → '⌁ DRAFTED' (amber) — a landed draft this task hasn't been opened for
 //   'accept'  → '⌁ REVIEW'  (amber) — shipped, unacknowledged
 //   'stuck'   → '⌁ STUCK'   (danger red) — the linked run failed or changed nothing
+//   'mockup'  → '⌁ MOCKUP'  (amber) — the linked run is awaiting a mockup decision
 //   everything else → null (the manual status shows through)
 function overlayForPhase(phase) {
     if (phase === PHASE.ASKING) return 'asking';
     if (phase === PHASE.DRAFTED) return 'drafted';
     if (phase === PHASE.ACCEPT) return 'review';
     if (phase === PHASE.STUCK) return 'stuck';
+    if (phase === PHASE.MOCKUP) return 'mockup';
     return null;
 }
 

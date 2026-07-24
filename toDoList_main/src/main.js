@@ -88,7 +88,7 @@ import {
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { createMobileUpdatePill } from './mobileUpdatePill.js';
-import { wireStatusLabelDelegation, setReviewBadgeTapHandler } from './todoStatus.js';
+import { wireStatusLabelDelegation, setReviewBadgeTapHandler, setMockupBadgeTapHandler } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from './taskFilter.js';
 import { dropFocusIntoMainView } from './viewFocusNav.js';
 import { updateAllProjectBadges, navigateToProjectByIndex } from './projectBadges.js';
@@ -100,6 +100,7 @@ import {
     unsubscribeAgentView,
     syncAgentAvailabilityForProject,
     startAgentWorkingWatch,
+    anchorAgentCardForTodo,
     stuckReasonText,
 } from './agentView.js';
 import {
@@ -3061,6 +3062,18 @@ setReviewBadgeTapHandler(function(entryId, projectName) {
 // this registered handler with the todo id.
 setDiscussTaskHandler(function(todoId) {
     openChatWithTask(todoId);
+});
+
+// Wire the tasks-surface `⌁ MOCKUP` badge to jump to the Agent board scrolled to
+// the task's card. todoStatus.js owns the badge but must not import agentView.js /
+// main.js (module-cycle + inject.js isolation), so it invokes this registered
+// handler with the todo id. Switch to the Agent view first — that repaints the
+// board (synchronously when the queue is already loaded, otherwise after a fetch)
+// — then anchor: anchorAgentCardForTodo scrolls the card now if it exists, or lets
+// the next paint() flush the anchor once the card is rendered.
+setMockupBadgeTapHandler(function(todoId) {
+    applyActiveView('agent');
+    anchorAgentCardForTodo(todoId);
 });
 
 // The desktop description panel's STUCK failure-reason block reuses the exact

@@ -2216,6 +2216,13 @@ function buildCard(row) {
     const card = document.createElement('div');
     card.className = 'agentCard' + (thin ? ' agentCard--thin' : '');
     card.setAttribute('data-state', row.state || '');
+    // Stamp the linked todo id so the tasks-surface `⌁ MOCKUP` badge can jump the
+    // board to this exact card (see anchorAgentCardForTodo). Triage-derived rows
+    // carry a todo_id; rows without one (e.g. a raw proposal) simply aren't
+    // anchor targets and the attribute is omitted.
+    if (row.todo_id != null && row.todo_id !== '') {
+        card.setAttribute('data-todo-id', String(row.todo_id));
+    }
 
     const head = document.createElement('div');
     head.className = 'agentCardHead';
@@ -3715,6 +3722,72 @@ function buildBucket(bucket, rows) {
 // Pure render — never fetches — so realtime pushes and re-renders stay cheap
 // and loop-free. A missing #agentView (before component() builds the shell)
 // short-circuits.
+// ── OPEN-AND-ANCHOR (tasks-surface ⌁ MOCKUP badge → board card) ──
+// A task row's `⌁ MOCKUP` badge routes here (via a handler main.js registers on
+// todoStatus.js, which switches to the Agent view first) to jump the board to
+// this task's card. The board rebuilds its whole DOM on every paint(), so when
+// this is called right after the view switch the target card may not exist yet —
+// renderAgentView repaints synchronously only when the queue is already loaded
+// for the project, and asynchronously (after a fetch) otherwise. Mirror the
+// viewer's entry-anchor: try to scroll now, and if the card isn't rendered yet,
+// stash the todo id so the next paint() flushes it once the card exists. The
+// match is by exact todo id, so a stale pending id can never scroll to the wrong
+// card — at worst it waits harmlessly for its own card to reappear.
+let _pendingAnchorTodoId = null;
+
+function findAgentCardForTodo(view, todoId) {
+    const cards = view.querySelectorAll('.agentCard[data-todo-id]');
+    for (let i = 0; i < cards.length; i++) {
+        if (cards[i].getAttribute('data-todo-id') === String(todoId)) return cards[i];
+    }
+    return null;
+}
+
+// Re-fire a short highlight on a card. Removes the class and forces a reflow
+// before re-adding it so re-anchoring the SAME card restarts the animation, and
+// self-clears on animationend. Mirrors the viewer's flashAnchorRow; the CSS drops
+// the animation under prefers-reduced-motion while the scroll (below) stays.
+function flashAgentCard(card) {
+    const CLS = 'agentCard--anchorFlash';
+    card.classList.remove(CLS);
+    void card.offsetWidth;
+    card.classList.add(CLS);
+    card.addEventListener('animationend', function onEnd() {
+        card.classList.remove(CLS);
+        card.removeEventListener('animationend', onEnd);
+    });
+}
+
+function scrollToAgentCard(todoId) {
+    if (typeof document === 'undefined') return false;
+    const view = document.getElementById('agentView');
+    if (!view) return false;
+    const card = findAgentCardForTodo(view, todoId);
+    if (!card) return false;
+    // The test environment stubs scrollIntoView; guard the capability so a missing
+    // implementation degrades to no scroll rather than throwing.
+    if (typeof card.scrollIntoView === 'function') {
+        try { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+        catch (e) { try { card.scrollIntoView(); } catch (_) { /* ignore */ } }
+    }
+    flashAgentCard(card);
+    return true;
+}
+
+function flushPendingAnchor() {
+    if (_pendingAnchorTodoId == null) return;
+    if (scrollToAgentCard(_pendingAnchorTodoId)) _pendingAnchorTodoId = null;
+}
+
+// Public entry point: scroll the Agent board to the card for `todoId` and pulse
+// it. Called after main.js switches to the Agent view; if the card isn't painted
+// yet, the id is held and the next paint() flushes it.
+export function anchorAgentCardForTodo(todoId) {
+    if (todoId == null || todoId === '') return;
+    if (!scrollToAgentCard(todoId)) _pendingAnchorTodoId = String(todoId);
+}
+
+
 function paint() {
     const view = document.getElementById('agentView');
     if (!view) return;
@@ -3904,6 +3977,12 @@ function paint() {
             }
         }
     }
+
+    // A ⌁ MOCKUP badge tap may have requested an anchor to a card that wasn't
+    // rendered yet (the view switch triggered an async queue load). Now the board
+    // is in the document, flush any pending anchor so the target card scrolls into
+    // view and pulses. No-op when nothing is pending or the card still isn't here.
+    flushPendingAnchor();
 }
 
 // ── AGENT-TAB AVAILABILITY GATE ──

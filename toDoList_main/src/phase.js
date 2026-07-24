@@ -16,19 +16,21 @@
 // module from `todoStatus.js` or `inject.js`; that would recreate the import
 // cycle those files are structured to avoid.
 //
-// The phase vocabulary is seven-valued — still no `'run'` phase. Per-entry run
+// The phase vocabulary is eight-valued — still no `'run'` phase. Per-entry run
 // state is not tracked on task rows, so `derivePhase` never reaches for the
-// Worker `active_runs` probe or `runState.js` to synthesize one. The three values
-// beyond the four pipeline phases are `'asking'`, `'drafted'`, and `'stuck'` — all
-// states that live on the triage `agent_queue` rather than the marker pipeline.
-// `'asking'` is a linked queue row parked in `needs_words` (triage has a pending
-// question); `'drafted'` is a linked queue row in `drafted` whose landed draft the
-// user has not yet looked at (`!item.draftSeenAt`); `'stuck'` is a linked queue
-// row in `failed` or `no_change` — a run that broke or completed without changing
-// anything. All three are triage-queue facts, not pipeline facts, so they outrank
-// the four marker-derived phases when they apply (a failed run usually leaves its
-// entry unchecked, which would otherwise read as DRAFT). The three queue states
-// are mutually exclusive, so relative order among them does not matter.
+// Worker `active_runs` probe or `runState.js` to synthesize one. The four values
+// beyond the four pipeline phases are `'asking'`, `'drafted'`, `'stuck'`, and
+// `'mockup'` — all states that live on the triage `agent_queue` rather than the
+// marker pipeline. `'asking'` is a linked queue row parked in `needs_words`
+// (triage has a pending question); `'drafted'` is a linked queue row in `drafted`
+// whose landed draft the user has not yet looked at (`!item.draftSeenAt`);
+// `'stuck'` is a linked queue row in `failed` or `no_change` — a run that broke or
+// completed without changing anything; `'mockup'` is a linked queue row parked in
+// `needs_mockup` — the run is waiting on a mockup decision that happens on the
+// Agent board. All four are triage-queue facts, not pipeline facts, so they
+// outrank the four marker-derived phases when they apply (a failed run usually
+// leaves its entry unchecked, which would otherwise read as DRAFT). The four queue
+// states are mutually exclusive, so relative order among them does not matter.
 
 import { resolveEntryRunState } from './inject.js';
 import { getQueueRowForTodo } from './agentQueueStore.js';
@@ -51,6 +53,11 @@ import { getQueueRowForTodo } from './agentQueueStore.js';
 //             marker-derived phase (a failed run usually leaves its entry
 //             unchecked, which would otherwise read as DRAFT). Independent of the
 //             marker; clears when the queue row leaves failed/no_change.
+//   'mockup'— the item's linked agent_queue row is in `needs_mockup`: the run is
+//             parked waiting on a mockup decision (the choose-a-variant flow lives
+//             on the Agent board). Outranks the marker-derived phases like the
+//             other queue states. Independent of the marker; clears when the queue
+//             row leaves needs_mockup (a mockup is chosen or the row re-triaged).
 export const PHASE = Object.freeze({
     NONE: 'none',
     DRAFT: 'draft',
@@ -59,6 +66,7 @@ export const PHASE = Object.freeze({
     ASKING: 'asking',
     DRAFTED: 'drafted',
     STUCK: 'stuck',
+    MOCKUP: 'mockup',
 });
 
 
@@ -70,8 +78,9 @@ export const PHASE = Object.freeze({
 // a pending triage question outranks the marker-derived phases; `drafted` is
 // checked next (a landed-but-unread draft, `!item.draftSeenAt`) so it too outranks
 // the marker phases while yielding to `asking`; `stuck` (a `failed`/`no_change`
-// queue row) is checked alongside them, above the `entryId` guard, so a broken run
-// outranks the DRAFT its still-unchecked entry would otherwise read as. The
+// queue row) and `mockup` (a `needs_mockup` queue row) are checked alongside them,
+// above the `entryId` guard, so a broken run or a mockup-parked run outranks the
+// DRAFT its still-unchecked entry would otherwise read as. The
 // remaining mapping then mirrors
 // the three-way run state resolver — 'pending' → draft, 'shipped' splits on the
 // acknowledgement stamp into accept (unreviewed) or done (reviewed), and both the
@@ -82,6 +91,7 @@ export function derivePhase(item) {
     if (queueRow && queueRow.state === 'needs_words') return PHASE.ASKING;
     if (queueRow && queueRow.state === 'drafted' && !item.draftSeenAt) return PHASE.DRAFTED;
     if (queueRow && (queueRow.state === 'failed' || queueRow.state === 'no_change')) return PHASE.STUCK;
+    if (queueRow && queueRow.state === 'needs_mockup') return PHASE.MOCKUP;
     if (!item.entryId) return PHASE.NONE;
     const runState = resolveEntryRunState(item.entryId);
     if (runState === 'pending') return PHASE.DRAFT;
@@ -101,9 +111,13 @@ export function derivePhase(item) {
 // phases, so a further blocked state later lands in exactly one place. STUCK (a
 // broken or no-change run) joins the amber three: it too is genuinely blocked on
 // the user, even though it paints in danger red rather than amber on the row.
+// MOCKUP (a `needs_mockup` run awaiting a mockup decision) joins them as a fifth
+// amber "waiting on you" state — the decision lives on the Agent board, but the
+// task is just as blocked, so the chip counts it alongside the others.
 export function isBlockedPhase(phase) {
     return phase === PHASE.ACCEPT || phase === PHASE.ASKING
-        || phase === PHASE.DRAFTED || phase === PHASE.STUCK;
+        || phase === PHASE.DRAFTED || phase === PHASE.STUCK
+        || phase === PHASE.MOCKUP;
 }
 
 
@@ -115,9 +129,10 @@ export function isBlockedPhase(phase) {
 // vocabulary and order rather than defining a second copy that could drift.
 //
 // PHASE_RAIL_ORDER is the left → right node order. It intentionally lists only
-// the FOUR pipeline phases, not `asking`: `asking` is a triage-queue fact, not a
-// pipeline node, so it has no rail node of its own — a rail renderer resolves it
-// to its underlying DRAFT stage rather than inventing a fifth node. There is
+// the FOUR pipeline phases, not the queue-derived states (`asking`, `drafted`,
+// `stuck`, `mockup`): those are triage-queue facts, not pipeline nodes, so they
+// have no rail node of their own — a rail renderer resolves each to its underlying
+// pipeline stage rather than inventing an extra node. There is
 // deliberately no RUN node: per-row run state is not tracked, and a permanently
 // empty node reads worse than no node.
 export const PHASE_RAIL_ORDER = Object.freeze([

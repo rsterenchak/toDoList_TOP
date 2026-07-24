@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-24',
         added: [
-            "A task whose agent run failed or finished without changes now shows a red STUCK badge and reveals the run's reason when opened, so a broken run surfaces on the list instead of only on the Agent board.",
+            "A task waiting on a mockup decision now shows an amber MOCKUP badge that opens the Agent board scrolled to that task's card when tapped.",
         ],
         fixed: [
             "The blocked-on-you filter chip is now a smaller amber glyph and count that reads dim when nothing is waiting, plain amber when tasks await you, and filled only while you are filtering to them.",
