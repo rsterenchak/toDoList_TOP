@@ -18,8 +18,40 @@
 // (see todoStatus.js). Row hiding uses a class rather than an inline style so
 // the known fragile inline-style override pattern is avoided.
 
-import { getTaskFilter, setTaskFilter } from './prefs.js';
+import { getTaskFilter, setTaskFilter, getBlockedFilter, setBlockedFilter } from './prefs.js';
 import { sizeMainListGhostSpacer } from './emptyState.js';
+
+
+// The blocked-on-you chip filters on a row's DERIVED phase (see phase.js's
+// isBlockedPhase). This module must not import phase.js directly: that would
+// close an import cycle — taskFilter → phase → inject → modals → toDoRow →
+// taskFilter — so the phase test is injected instead. A module that already
+// depends on both (toDoRow.js) registers the resolver once via
+// setBlockedItemResolver; until it does, the chip resolves to zero blocked rows
+// and stays inert. Keeping `prefs` as the only hard dependency preserves the
+// same acyclic property the status filter relies on.
+let blockedItemResolver = null;
+
+export function setBlockedItemResolver(fn) {
+    blockedItemResolver = typeof fn === 'function' ? fn : null;
+}
+
+// Is this row's item blocked on the user? Delegates to the injected resolver and
+// degrades to "not blocked" when the resolver is absent or throws, so a resolver
+// failure can never hide the list or throw on the render path.
+function isBlockedItem(item) {
+    if (!blockedItemResolver || !item) return false;
+    try {
+        return !!blockedItemResolver(item);
+    } catch (e) {
+        return false;
+    }
+}
+
+// Re-entrancy guard for the zero-count auto-release: flipping the pref repaints,
+// which recomputes the count and could re-enter applyTaskFilter. The guard makes
+// the release perform exactly one pass and stop rather than loop.
+let releasingBlocked = false;
 
 
 // Known workflow statuses. Mirrors listLogic/todoStatus normalisation so a
@@ -50,6 +82,7 @@ const FILTERS = [
 const EMPTY_MESSAGES = {
     active: 'Nothing active right now.',
     ideas: 'No ideas captured yet.',
+    blocked: 'Nothing is blocked on you right now.',
 };
 
 const HIDDEN_CLASS = 'taskFilterHidden';
@@ -121,16 +154,36 @@ export function buildTaskFilterBar() {
 
     bar.appendChild(pill);
     bar.appendChild(buildSegmentedControl());
+    bar.appendChild(buildBlockedChip());
     paintCyclePill(bar);
     paintSegmented(bar);
 
     bar.addEventListener('click', function (event) {
         if (!event.target.closest) return;
 
-        // Mobile segment — set its filter directly, no cycling.
+        // Blocked-on-you chip — toggles the derived-phase filter. Inert at a zero
+        // count (the disabled attribute), so a click only lands when at least one
+        // task is blocked. Engaging snaps the status pill to ALL so the two
+        // controls never both filter (no invisible AND); releasing leaves the
+        // pill on ALL.
+        const chip = event.target.closest('.taskFilterBlockedChip');
+        if (chip && bar.contains(chip)) {
+            if (chip.disabled) return;
+            const engaging = !getBlockedFilter();
+            setBlockedFilter(engaging);
+            if (engaging) setTaskFilter('all');
+            paintCyclePill(bar);
+            paintSegmented(bar);
+            applyTaskFilter();
+            return;
+        }
+
+        // Mobile segment — set its filter directly, no cycling. Selecting a
+        // status filter releases the blocked filter so the two never compose.
         const seg = event.target.closest('.taskFilterSeg');
         if (seg && bar.contains(seg)) {
             const key = seg.getAttribute('data-seg');
+            setBlockedFilter(false);
             if (!key || key === getTaskFilter()) {
                 // Still repaint to settle any stale visual state, then re-apply.
                 paintCyclePill(bar);
@@ -145,9 +198,11 @@ export function buildTaskFilterBar() {
             return;
         }
 
-        // Desktop cycle pill — advance one step.
+        // Desktop cycle pill — advance one step. Cycling a status filter releases
+        // the blocked filter so the two never compose.
         const clicked = event.target.closest('.taskCyclePill');
         if (!clicked || !bar.contains(clicked)) return;
+        setBlockedFilter(false);
         const current = getTaskFilter();
         let idx = FILTERS.findIndex(function (f) { return f.key === current; });
         if (idx < 0) idx = 0;
@@ -277,6 +332,34 @@ function buildSegmentedControl() {
 }
 
 
+// Build the blocked-on-you chip: a single amber control that filters the list to
+// tasks whose derived phase is blocked on the user (REVIEW / ASKING / DRAFTED).
+// Unlike the status controls it is visible at BOTH breakpoints (never CSS-gated
+// by width) and is ALWAYS mounted — at a zero count it renders dimmed and inert
+// (the --empty modifier + disabled) so the bar's geometry never shifts. Its live
+// count, pressed state, and aria-label are painted by updateBlockedChip.
+function buildBlockedChip() {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'taskFilterBlockedChip taskFilterBlockedChip--empty';
+    chip.disabled = true;
+    chip.setAttribute('aria-pressed', 'false');
+    chip.setAttribute('aria-label', 'Blocked on you: 0. Nothing needs you.');
+
+    const label = document.createElement('span');
+    label.className = 'taskFilterBlockedLabel';
+    label.textContent = 'Blocked';
+    chip.appendChild(label);
+
+    const count = document.createElement('span');
+    count.className = 'taskFilterBlockedCount';
+    count.textContent = '0';
+    chip.appendChild(count);
+
+    return chip;
+}
+
+
 // Reflect the persisted filter onto the cycle pill's label, data-filter, and
 // aria state. The count is refreshed separately by applyTaskFilter → updateCounts.
 function paintCyclePill(bar) {
@@ -321,10 +404,12 @@ export function applyTaskFilter() {
     const mainList = document.getElementById('mainList');
     if (!mainList) return;
 
+    const blockedActive = getBlockedFilter();
     const active = getTaskFilter();
     const activeFilter = FILTERS.filter(function (f) { return f.key === active; })[0] || FILTERS[0];
 
     const counts = { all: 0, active: 0, ideas: 0 };
+    let blockedCount = 0;
     let total = 0;
     let visible = 0;
 
@@ -338,25 +423,87 @@ export function applyTaskFilter() {
         // work only. Row hiding (setRowHidden) stays unconditional so the
         // filter-match partition still applies when COMPLETED is expanded.
         const isCompleted = !!(row.__item && row.__item.completed);
+        // Blocked membership is computed from the FULL committed, non-completed
+        // set — matching how the status counts are computed — not the visible
+        // subset.
+        const blocked = !isCompleted && isBlockedItem(row.__item);
         if (!isCompleted) {
             total += 1;
             counts.all += 1;
             if (status === 'active' || status === 'in_progress') counts.active += 1;
             if (status === 'idea') counts.ideas += 1;
+            if (blocked) blockedCount += 1;
         }
 
-        const show = activeFilter.match(status);
+        // When the blocked filter is engaged the status pill is on ALL, so
+        // visibility keys purely on blocked membership; otherwise the status
+        // filter governs as before.
+        const show = blockedActive ? blocked : activeFilter.match(status);
         if (show && !isCompleted) visible += 1;
         setRowHidden(row, !show);
     });
 
     updateCounts(counts);
-    updateFilterEmptyState(mainList, active, total, visible);
+    updateBlockedChip(blockedCount, blockedActive);
+    updateFilterEmptyState(mainList, blockedActive ? 'blocked' : active, total, visible);
 
     // Filtering hides/shows rows via a class with no DOM mutation or resize, so
     // re-size the ghost spacer here too — otherwise hiding rows could shrink the
     // list below the viewport without the spacer re-expanding to fill the void.
     sizeMainListGhostSpacer(mainList);
+
+    // Auto-release: a blocked filter whose count has fallen to zero (the last
+    // item acknowledged or answered) releases itself so the user is never
+    // stranded in an empty filtered view. Gated on `total > 0` so the boot-time
+    // call against an unrendered list can't clear a stored-active preference
+    // before its rows exist; a stored-active preference that resolves to zero
+    // once rows ARE present does release, as specified. The re-entrancy guard
+    // makes the release repaint once and stop rather than loop.
+    if (blockedActive && total > 0 && blockedCount === 0 && !releasingBlocked) {
+        releasingBlocked = true;
+        try {
+            setBlockedFilter(false);
+            applyTaskFilter();
+        } finally {
+            releasingBlocked = false;
+        }
+    }
+}
+
+
+// Paint the blocked chip's live count, pressed state, and disabled/dimmed state
+// from the current blocked count and whether the filter is engaged. Idempotent —
+// every write is guarded on a value change so a repaint that changes nothing
+// performs zero DOM writes (the auto-release relies on this to settle in one
+// pass). At a zero count the chip goes dimmed + inert (--empty + disabled) so the
+// bar's geometry never shifts and "nothing needs you" reads as a state.
+function updateBlockedChip(count, active) {
+    const bar = document.getElementById('taskFilterBar');
+    if (!bar) return;
+    const chip = bar.querySelector('.taskFilterBlockedChip');
+    if (!chip) return;
+
+    const countSpan = chip.querySelector('.taskFilterBlockedCount');
+    if (countSpan) {
+        const next = String(count);
+        if (countSpan.textContent !== next) countSpan.textContent = next;
+    }
+
+    const isEmpty = count === 0;
+    if (chip.classList.contains('taskFilterBlockedChip--empty') !== isEmpty) {
+        chip.classList.toggle('taskFilterBlockedChip--empty', isEmpty);
+    }
+    if (chip.disabled !== isEmpty) chip.disabled = isEmpty;
+    if (chip.classList.contains('selected') !== active) chip.classList.toggle('selected', active);
+
+    const pressed = active ? 'true' : 'false';
+    if (chip.getAttribute('aria-pressed') !== pressed) chip.setAttribute('aria-pressed', pressed);
+
+    let label;
+    if (active) label = 'Blocked on you: ' + count + '. Showing only blocked tasks. Tap to show all.';
+    else if (isEmpty) label = 'Blocked on you: 0. Nothing needs you.';
+    else label = 'Blocked on you: ' + count + '. Tap to show only blocked tasks.';
+    if (chip.getAttribute('aria-label') !== label) chip.setAttribute('aria-label', label);
 }
 
 
