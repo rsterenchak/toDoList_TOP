@@ -9,6 +9,7 @@ import {
     REVIEW_LABEL,
     ASKING_LABEL,
     DRAFTED_LABEL,
+    STUCK_LABEL,
     normalizeStatus,
     buildStatusLabel,
     applyTodoStatusClass,
@@ -344,6 +345,65 @@ describe('DRAFTED derived overlay', () => {
         row.querySelector('.todoStatusLabel').click();
         expect(opened).toBe(1);
         // No status popover mounted for the drafted overlay.
+        expect(document.getElementById('todoStatusPopover')).toBeNull();
+
+        // A second tap while open does not collapse the panel (no re-click).
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
+    });
+});
+
+
+describe('STUCK derived overlay', () => {
+    it('renders the ⌁ STUCK label with data-status="stuck" and no menu ARIA', () => {
+        const label = buildStatusLabel({ status: 'active' }, 'stuck');
+        expect(label.getAttribute('data-status')).toBe('stuck');
+        expect(label.textContent).toBe(STUCK_LABEL);
+        expect(label.hasAttribute('aria-haspopup')).toBe(false);
+        expect(label.getAttribute('aria-label')).toMatch(/wrong|stuck|run/i);
+    });
+
+    it('STUCK is display-only — absent from STATUS_META, STATUS_ORDER, and the popover', () => {
+        expect(STUCK_LABEL).toBe('⌁ STUCK');
+        expect(STATUS_META.stuck).toBeUndefined();
+        expect(STATUS_ORDER).not.toContain('stuck');
+    });
+
+    it('refreshTodoStatusUI overlays STUCK without touching the manual status class', () => {
+        const item = { status: 'in_progress' };
+        const row = makeRow(item, 'Inbox');
+        refreshTodoStatusUI(row, item, 'stuck');
+        const label = row.querySelector('.todoStatusLabel');
+        expect(label.getAttribute('data-status')).toBe('stuck');
+        expect(label.textContent).toBe(STUCK_LABEL);
+        // The row modifier class still tracks the manual status underneath.
+        expect(row.classList.contains('todo-row--in_progress')).toBe(true);
+        // Clearing the overlay reverts the label to the manual status.
+        refreshTodoStatusUI(row, item, null);
+        expect(label.getAttribute('data-status')).toBe('in_progress');
+    });
+
+    it('tapping the STUCK badge opens the row description panel (no popover)', () => {
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+
+        const item = { status: 'active' };
+        const row = makeRow(item, 'Inbox');
+        refreshTodoStatusUI(row, item, 'stuck');
+        const descToggle = document.createElement('div');
+        descToggle.id = 'descToggle';
+        let opened = 0;
+        descToggle.addEventListener('click', function () {
+            opened += 1;
+            descToggle.classList.add('open');
+        });
+        row.appendChild(descToggle);
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
         expect(document.getElementById('todoStatusPopover')).toBeNull();
 
         // A second tap while open does not collapse the panel (no re-click).

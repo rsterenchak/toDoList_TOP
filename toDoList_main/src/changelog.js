@@ -8,18 +8,12 @@ export const changelog = [
         date: '2026-07-24',
         added: [
             "An amber blocked-on-you toggle in the task filter bar shows only the tasks waiting on you — those in review, with a parked question, or with an unopened draft — and releases itself when none remain.",
+            "A task whose agent run failed or finished without changes now shows a red STUCK badge and reveals the run's reason when opened, so a broken run surfaces on the list instead of only on the Agent board.",
         ],
         fixed: [
             "The blocked-on-you filter chip is now a smaller amber glyph and count that reads dim when nothing is waiting, plain amber when tasks await you, and filled only while you are filtering to them.",
             "The blocked-on-you filter chip now sits at the right edge of the task filter bar beside the Sort control instead of packed against the status pill.",
             "A task injected from the Inject button now keeps its link to its TODO.md entry on every device, so its run glyph and review badge no longer vanish when the task is opened elsewhere.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-23',
-        added: [
-            "The project switcher now shows an amber count of the triage questions waiting in each project, so a question parked in another project is visible without switching to it.",
         ],
     },
 ];
