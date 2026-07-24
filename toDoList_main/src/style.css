@@ -1562,6 +1562,12 @@ body {
   align-self: stretch;
   width: 100%;
   min-width: 0;
+  /* Vertical floor: overflow:hidden drops a flex item's automatic minimum size to
+     zero, so once the list overflows .filePickPanel's 240px cap the default
+     flex-shrink:1 would compress every row toward zero height, clipping each path
+     to a sliver. flex-shrink:0 restores the height floor without touching
+     overflow:hidden, so the list scrolls instead of squashing its rows. */
+  flex-shrink: 0;
 }
 .filePickRow:hover { background: var(--bg-hover); }
 .filePickRow:focus-visible {
@@ -1578,6 +1584,10 @@ body {
   font-size: 11px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  /* Same height floor as .filePickRow — the "Keep typing to narrow" hint is
+     appended after the rows and shares .filePickList's flex column, so it would
+     squash the same way once it coexists with an overflowing row set. */
+  flex-shrink: 0;
 }
 
 /* The on-demand load's brief "Loading files…" line — a gently pulsing muted
