@@ -37,7 +37,7 @@
   - Completed: 2026-07-24
   <!-- id: 006e4edb-bb80-4b86-9bec-8a00fc55c754 -->
 
-- [ ] **[MEDIUM]** Desktop description panel: add the manifest file picker
+- [x] **[MEDIUM]** Desktop description panel: add the manifest file picker
   - Type: feature
   - Description: The ⌖ target picker that writes a `- File:` line from the Structure manifest was built into the mobile description-editor modal only — `modals.js` references the manifest, `toDoRow.js` does not. The desktop `#descSibling` description panel therefore has no picker at all, so authoring an entry on desktop means typing file paths from memory, which is precisely the step that feature exists to remove. Mount the same picker in the desktop panel, driven by one shared implementation rather than a second copy.
   - Behavior: The desktop description panel shows a target-picker control near the entry textarea. Activating it opens the same searchable manifest list the modal uses, filterable by typing, and selecting a path inserts it backtick-wrapped into the entry text — appended comma-separated to an existing `- File:` line, or inserted as a new one immediately before `- Completed:`, or at the end when there is no Completed line. Selecting a path already on the File: line is a no-op. The textarea updates in place, the description persists, and the picker closes. When the active project has no manifest, the control is hidden rather than opening an empty picker. Mobile is unchanged.
@@ -54,5 +54,5 @@
     - `style.css`: reuse the modal picker's existing rules by generalising their selectors across both hosts; do not copy declarations. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The phase rail, section labels, and SpaceMono typography in the desktop panel — the desktop row already conveys phase through its badge and run glyph, so that parity is cosmetic and separate. A spatial pick canvas rendering the live UI with tappable regions. Picking anything other than a file path. Generating or refreshing the manifest. The mobile modal's picker behavior, which is correct as landed. The compose row's paste chip.
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: c02fe93d-db19-46d6-821d-b55fd10d51b5 -->
