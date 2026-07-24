@@ -57,7 +57,7 @@
   - Completed: 2026-07-24
   <!-- id: 45478646-22c3-4dc0-bc34-8aceecf60f30 -->
 
-- [ ] **[LOW]** Blocked filter chip: anchor it to the right beside the Sort control
+- [x] **[LOW]** Blocked filter chip: anchor it to the right beside the Sort control
   - Type: bug
   - Description: The blocked chip renders left-aligned, packed against the status cycle pill, instead of sitting next to the Sort control at the row's right edge. Cause is known: `#taskFilterBar` is `justify-content: flex-start`, and the right-edge anchoring comes entirely from `margin-left: auto` on `#taskSortBtnMobile` (style.css, mobile media block). Any element inserted before Sort therefore packs left with the pill while Sort alone absorbs the slack. Move the auto margin onto the blocked chip so the chip and Sort travel to the right edge together as one cluster.
   - Behavior: The blocked chip sits immediately to the left of the Sort control at the right edge of the filter bar, with the status cycle pill hugging the left edge and the free space between them. On desktop, where the in-row Sort trigger is hidden and the Sort dropdown lives in the `#bulkDescActions` overlay, the chip still anchors to the right edge of the bar on its own. All three of the chip's visual states and every behavior are unchanged.
@@ -71,5 +71,5 @@
     - `style.css`: no new tokens, no size or colour changes. This entry touches `style.css`, so it runs with no other style-touching entry in flight.
   - Out of scope: The chip's size, colours, glyph, and three visual states, all correct as landed. The count logic, `isBlockedPhase`, snap-to-ALL, auto-release, and persistence. The status cycle pill and the desktop segmented control. The Sort control's own appearance and its dropdown. The row badge and the description editor.
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: a037b5c6-3dba-407c-b84b-593c99269cfa -->
