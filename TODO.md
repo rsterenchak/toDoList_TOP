@@ -126,3 +126,20 @@
   - File: `toDoList_main/src/filePicker.js`, `toDoList_main/src/structureView.js`
   - Completed: 2026-07-24
   <!-- id: efee89dc-286b-476c-b477-5b60379fb01b -->
+
+- [ ] **[HIGH]** File picker: rows squash to zero height when the list overflows
+  - Type: bug
+  - Description: `.filePickRow` sets `overflow: hidden` for its ellipsis treatment. On a flex item that changes the automatic minimum size from content-based to zero, so the row loses its floor. The rows are children of `.filePickList`, a `flex-direction: column` container whose height is capped by `.filePickPanel`'s `max-height: 240px`. As soon as the file list is long enough to overflow that cap, the default `flex-shrink: 1` compresses every row toward zero height, clipping each path to a horizontal sliver of glyphs. Filtering down to a single match removes the overflow, nothing shrinks, and the row renders correctly — which is why the picker looked fine in the one-result case and unreadable otherwise. This is a vertical sizing defect, not the horizontal one an earlier entry addressed, and it has been present since the picker shipped.
+  - Behavior: Every row in the picker's file list renders at its natural height regardless of how many rows are present, so paths are legible with the list unfiltered. When the list is taller than the panel's cap it scrolls, as `overflow-y: auto` intends, instead of compressing its contents. A path wider than the row still truncates with an ellipsis on one line. Rows keep their padding, radius, monospace type, hover and focus-visible treatments, and click behavior, in both the description panel and the mobile modal.
+  - Implementation notes:
+    - Add `flex-shrink: 0` to `.filePickRow`. That is the fix — it restores the row's height floor without touching `overflow: hidden`, so the ellipsis behavior is preserved.
+    - Do not remove `overflow: hidden` as an alternative. It is load-bearing for `text-overflow: ellipsis`, and dropping it would trade this defect for horizontal overflow.
+    - Do not add a fixed `height` or `min-height` in pixels. The row's height should stay derived from its padding and line-height so type-size changes do not clip it.
+    - Check whether `.filePickEmpty` and any "keep typing to narrow" message element are also flex children of `.filePickList` — they carry text and would squash the same way once they coexist with rows. Give them the same treatment if so.
+    - Leave `.filePickList` and `.filePickPanel` alone. `overflow-y: auto` and `min-height: 0` on the list are correct and are what make scrolling work once the rows stop shrinking.
+    - The regression test must render MULTIPLE rows past the panel's height cap and assert each row's height is non-zero and equal to the others. A single-row test passes today with the bug present, which is exactly how this survived two prior entries and a manual check.
+    - If the test environment cannot compute layout, say so plainly in the PR body rather than substituting a stylesheet-text assertion. Four layout defects in this area have now shipped past tests that only grep CSS.
+  - Out of scope: `.filePickRow` width, `align-self`, and `min-width`, addressed separately. The `srcRoot` path-prefix fix, which is a data-shape issue and independent of this. The picker's on-demand load, filtering, dedup, insertion position, and row cap. `.filePickList` and `.filePickPanel` styling. The `#descSibling` grid placement work.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 099cb080-2b04-445e-8045-b93a3775388a -->
