@@ -110,7 +110,7 @@
   - Completed: 2026-07-24
   <!-- id: c1f9046f-9272-4e60-978d-81c5e3b5c433 -->
 
-- [ ] **[HIGH]** File picker: insert full repo paths, not bare filenames
+- [x] **[HIGH]** File picker: insert full repo paths, not bare filenames
   - Type: bug
   - Description: `src-manifest.json` stores file names RELATIVE to its `srcRoot` key — `auth.js`, not `toDoList_main/src/auth.js`. `loadManifest` already surfaces `srcRoot`, and `structureView.js` prefixes it when building GitHub blob links (`githubBlobUrl`), with a documented carve-out for C# manifests that emit an empty `srcRoot` and repo-root-relative paths. `filePicker.js` never learned this — `srcRoot` appears zero times in it — so the picker lists bare filenames and writes them straight into the entry's `- File:` line. The resulting entry points at a path that does not exist in the repo, which a run cannot resolve. It also makes the list unsearchable by directory: typing `src` matches nothing, because no entry contains it.
   - Behavior: The picker's rows show, and the picker inserts, the full repo-relative path — `srcRoot` joined to the manifest file name with a single `/`, with no leading slash and no double slash. When the manifest's `srcRoot` is absent or empty (the C# / repo-root-relative case), the file name is used unchanged. Filtering matches against the full path, so typing a directory segment narrows to that directory. Dedup against an existing `- File:` line compares full paths. Everything else is unchanged: the on-demand load, the row cap, the insertion position relative to `- Completed:`, and both hosts.
@@ -124,5 +124,5 @@
     - Tests: a manifest with a non-empty `srcRoot` yields prefixed paths in the list, the filter, and the inserted text; an empty `srcRoot` yields unchanged names with no leading slash; an `undefined` `srcRoot` behaves the same as empty; and filtering by a directory segment matches.
   - Out of scope: `.filePickRow` width and the picker's layout, now correct. The on-demand manifest load, filtering mechanics, row cap, and insertion position. The manifest generator (`scripts/gen-src-manifest.js`) and the `manifest-*.yml` workflows — the manifest's relative-path format is the established contract and Structure depends on it. `structureView.js`'s own use of `srcRoot`. The description panel's grid placement.
   - File: `toDoList_main/src/filePicker.js`, `toDoList_main/src/structureView.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: efee89dc-286b-476c-b477-5b60379fb01b -->
