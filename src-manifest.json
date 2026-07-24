@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-24T10:01:33.118Z",
-  "sha": "8bd10cc6e9cdf95bacadbb94a0d01940b1240340",
+  "generatedAt": "2026-07-24T10:22:43.820Z",
+  "sha": "fc7806cd7e12aee29b05b9296a56347637af44a7",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -54,6 +54,7 @@
     "settingsModal.js",
     "shipEntry.js",
     "sidebarDrawer.js",
+    "srcPath.js",
     "structureCanvas.js",
     "structureRemoteCapture.js",
     "structureView.js",
