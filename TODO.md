@@ -213,7 +213,7 @@
   - Completed: 2026-07-24
   <!-- id: 54eed669-c3dc-45e1-b283-974063578ea8 -->
 
-- [ ] **[MEDIUM]** Compose row: make the paste-entry chip available on desktop
+- [x] **[MEDIUM]** Compose row: make the paste-entry chip available on desktop
   - Type: feature
   - Description: The paste-an-entry affordance that turns a fenced TODO.md block into a task in one action lives in `attachMobileCreateChips` (`mobileTaskCreate.js`), and every `#mobileCreateChips` rule in the stylesheet sits inside a media block — so the chip is mobile-only. On desktop the same paste still costs a task creation, a typed title, opening the description, and a paste. Give the chip a desktop home driven by the same parse and commit path, not a second implementation.
   - Behavior: The task-create row offers a paste action at desktop widths as well as mobile. Activating it reads the clipboard and commits a task whose title is the entry's headline and whose description is the full entry text, exactly as the mobile chip does today — including the fenced-block strip, the fallback to the first non-empty line when no `- [ ]` headline is present, and the toast noting a carried marker. An empty or unreadable clipboard surfaces a toast and creates nothing. Mobile behavior and layout are unchanged.
@@ -227,5 +227,16 @@
     - Test: parse-and-commit produces one committed row with a badge and a fresh blank placeholder at both breakpoints; a denied clipboard read creates nothing and surfaces a toast; and the chip row does not shift the create row's layout when revealed.
   - Out of scope: The parse rules themselves, the marker-carrying toast, and the chat-emit path — all correct as landed. The filter pills. The file picker. The description panel. Any change to what a pasted entry becomes.
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-24
   <!-- id: a523f34f-0718-4c8e-a47a-ab9c6f44d17e -->
+
+- [ ] **[LOW]** Rename the create chip row away from the `mobile*` prefix
+  - Type: feature
+  - Description: The task-create chip row is `#mobileCreateChips` with `.mobileCreateChip` / `.mobileCreateChipSelected` / `.mobileCreatePasteChip` / `.mobileCreateDescChip` classes, but the 📋 paste-entry chip now surfaces on desktop too, so the `mobile*` prefix is misleading — the same kind of naming confusion that made the file picker's host scoping hard to reason about. This was deliberately deferred from the "make the paste-entry chip available on desktop" entry, which noted the naming can be corrected separately.
+  - Behavior: No user-visible change on either mobile or desktop — the chip row, its date/description chips, and the paste chip behave exactly as today. Only the internal element id and CSS class names change.
+  - Implementation notes:
+    - Rename the `#mobileCreateChips` id and the `.mobileCreate*` CSS classes to a neutral, host-agnostic name (e.g. `#createChipRow` / `.createChip*`). Update every selector and reference across `style.css`, `toDoRow.js`, `mobileTaskCreate.js`, and `tests/mobileInlineExpandCreate.test.js`. Do not leave an alias.
+    - Keep the `mobileTaskCreate.js` filename and its exported function names (`attachMobileCreateChips`, `resetMobileCreateSession`, …) unchanged in this pass — id and CSS class names only, to bound the blast radius. Renaming the module and its exports is a separate follow-up if wanted.
+    - The chip row is referenced by id in several spots in `toDoRow.js` (the descSibling anchor walk, the reorder-rebuild sibling collection, and the commit cleanup). Grep for the id and update all of them, and re-run the create-row test suite.
+  - Out of scope: Any behavioral change to the chip row, the paste flow, the date/description chips, or the desktop reveal. Renaming the `mobileTaskCreate.js` file or its exports.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`
