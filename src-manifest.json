@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-07-24T15:02:33.442Z",
-  "sha": "2f1e2948c7c7f06a467a7f996f5444614c8f069f",
+  "generatedAt": "2026-07-24T16:09:44.650Z",
+  "sha": "191496f11a1ef51b31196a758e870e3e26129a59",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -1851,6 +1851,46 @@
         {
           "file": "style.css",
           "line": 6027
+        }
+      ]
+    },
+    {
+      "selector": "#createChipRow",
+      "label": "Create Chip Row",
+      "file": "mobileTaskCreate.js",
+      "line": 258,
+      "files": [
+        {
+          "file": "mobileTaskCreate.js",
+          "line": 258
+        },
+        {
+          "file": "style.css",
+          "line": 11563
+        }
+      ]
+    },
+    {
+      "selector": "#createDescChip",
+      "label": "Create Desc Chip",
+      "file": "mobileTaskCreate.js",
+      "line": 305,
+      "files": [
+        {
+          "file": "mobileTaskCreate.js",
+          "line": 305
+        }
+      ]
+    },
+    {
+      "selector": "#createPasteChip",
+      "label": "Create Paste Chip",
+      "file": "mobileTaskCreate.js",
+      "line": 288,
+      "files": [
+        {
+          "file": "mobileTaskCreate.js",
+          "line": 288
         }
       ]
     },
@@ -3807,46 +3847,6 @@
         {
           "file": "style.css",
           "line": 9364
-        }
-      ]
-    },
-    {
-      "selector": "#mobileCreateChips",
-      "label": "Mobile Create Chips",
-      "file": "mobileTaskCreate.js",
-      "line": 258,
-      "files": [
-        {
-          "file": "mobileTaskCreate.js",
-          "line": 258
-        },
-        {
-          "file": "style.css",
-          "line": 11563
-        }
-      ]
-    },
-    {
-      "selector": "#mobileCreateDescChip",
-      "label": "Mobile Create Desc Chip",
-      "file": "mobileTaskCreate.js",
-      "line": 305,
-      "files": [
-        {
-          "file": "mobileTaskCreate.js",
-          "line": 305
-        }
-      ]
-    },
-    {
-      "selector": "#mobileCreatePasteChip",
-      "label": "Mobile Create Paste Chip",
-      "file": "mobileTaskCreate.js",
-      "line": 288,
-      "files": [
-        {
-          "file": "mobileTaskCreate.js",
-          "line": 288
         }
       ]
     },
