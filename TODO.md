@@ -36,3 +36,20 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-25
   <!-- id: b3a9f935-489c-4479-bdf7-3bbb7e15df55 -->
+
+- [ ] **[LOW]** Paste chip: replace the emoji glyph with a monochrome inline SVG
+  - Type: bug
+  - Description: The paste chip renders its icon with `pasteChip.textContent = '📋'`, a literal clipboard emoji the OS draws in full color at its own metrics. Beside the mic — a monochrome inline SVG that inherits the button's text color — it reads as a foreign element rather than a sibling control, and it is the only full-color glyph on the page. The chip already reuses `.micButton` for its shape and size; swap the emoji for an inline SVG clipboard that inherits `currentColor`, matching the mic and the rest of the app's icon set.
+  - Behavior: The paste chip shows a monochrome clipboard icon in the same muted tone as the mic glyph, at a matching optical size, centered in the 36×36 circle. On hover, focus, and the panel-open pressed state, the icon takes the same color treatment those states already apply to the chip, since it inherits `currentColor`. No change to the chip's size, circle, position, or behavior — only the glyph.
+  - Implementation notes:
+    - Replace the `textContent = '📋'` assignment with an inline `<svg>` set via `innerHTML`, using `fill="none" stroke="currentColor"` (or `fill="currentColor"` for a solid form — match whichever the mic uses so the two read as one set). Grep how `voiceInput.js` / `mountMicButton` builds the mic SVG and mirror its viewBox, stroke-width, and sizing approach rather than inventing new metrics. The codebase builds glyphs this way in `structureView.js`, `todoMdViewer.js`, and `inject.js` — follow the existing convention.
+    - Size the glyph via the existing `addTaskPasteChip` class (the comment notes it already "sizes the glyph"), not via width/height baked into the SVG, so a single CSS rule governs both the mic and the chip if they share one.
+    - Do NOT set a fixed color on the glyph. It must inherit `currentColor` so the chip's hover, focus-visible, and open-state (`aria-expanded` / pressed) treatments — which act on the button's color — carry to the icon for free. A hardcoded fill would leave the icon static while the button reacts.
+    - Verify the icon is centered in the circle. The emoji had its own baseline and optical metrics; an SVG will sit differently, so check vertical centering against the mic rather than assuming the old positioning holds.
+    - Keep everything else in `createPasteChipTrigger` intact — the `mousedown` focus guard, the click handler, the `.micButton` base class, and the id.
+    - Check the chip strip is not left with a second emoji elsewhere — the calendar chip in the create strip also uses an emoji (📅/🗓). That one is out of scope for this entry, but note in the PR body whether the app has a broader emoji-glyph inconsistency worth a follow-up, so it is on record rather than discovered later.
+    - This is a visual-only change to one element; a computed-layout test is not required, but confirm the SVG inherits color by asserting the glyph element has no own `fill`/`stroke` color attribute other than `currentColor`.
+  - Out of scope: The paste chip's size, circle, position, panel, and behavior. The mic button. The calendar and other create-strip chip emojis, noted for a possible follow-up but not changed here. The ⌖ file picker. The filter pills.
+  - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: cf5b0576-ed28-4997-8ad4-b798c87a1cbf -->
