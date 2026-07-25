@@ -34,6 +34,7 @@ import { updateCompletedSection } from './emptyState.js';
 import { ensureCompanion } from './companion.js';
 import {
     attachMobileCreateChips,
+    createPasteChipTrigger,
     applyChosenDueToItem,
     markChainingActive,
     isChainingActive,
@@ -2264,6 +2265,13 @@ export function buildToDoRow(item, toDoName) {
         })
         : null;
 
+    // 📋 paste-entry trigger — like the mic, it belongs only to the blank
+    // "Add a task" placeholder (guarded on !item.tit), sits in the input row
+    // immediately left of the mic (appended before it below), and is stripped in
+    // the same commit-cleanup block the mic is. It toggles the inline paste panel
+    // (openPastePanel), whose wiring is unchanged by this relocation.
+    const pasteChip = !item.tit ? createPasteChipTrigger(toDoChild, item) : null;
+
     closeButtonToDo.id = "closeButtonToDo";
     // Hide delete on blank placeholder rows — deleting the only available
     // input slot would leave the user with no way to create new items.
@@ -2434,6 +2442,9 @@ export function buildToDoRow(item, toDoName) {
     if (addGlyph) toDoChild.appendChild(addGlyph);
     toDoChild.appendChild(toDoTitleDisplay);
     toDoChild.appendChild(toDoInput);
+    // Paste trigger renders to the mic's left: appended before it, both on the
+    // row's trailing side.
+    if (pasteChip) toDoChild.appendChild(pasteChip);
     if (micBtn) toDoChild.appendChild(micBtn);
     toDoChild.appendChild(copyBtn);
     toDoChild.appendChild(duePill);
@@ -2602,6 +2613,9 @@ export function buildToDoRow(item, toDoName) {
         // Same for the voice-dictation mic: it only belongs on the blank
         // "Add a task" placeholder, so remove it once this row is committed.
         if (micBtn && micBtn.parentElement) micBtn.remove();
+        // And the 📋 paste-entry trigger, which shares the mic's blank-only
+        // lifecycle — drop it so a committed row carries neither control.
+        if (pasteChip && pasteChip.parentElement) pasteChip.remove();
         // When the project hides due dates, undo the pill reveal and urgency
         // tint the default block above just applied — committing a task must
         // not surface a pill this project has opted out of. The stored `due`

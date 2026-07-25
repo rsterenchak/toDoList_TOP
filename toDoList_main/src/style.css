@@ -2695,6 +2695,24 @@ body:has(#settingsMenu) #claudeLauncher {
   margin-left: 2px;
 }
 
+/* 📋 paste-entry trigger — sits in the blank "Add a task" placeholder's input
+   row, immediately left of the voice mic. Reuses .micButton so it is
+   pixel-identical to the mic (a 36×36 circle) and fits the fixed-height,
+   overflow: clip row without cropping or inflating it; font-size sizes the
+   glyph. It toggles the inline paste panel and takes the shared accent fill
+   (mirroring the chip strip's pressed state) while that panel is open. No new
+   colour tokens — the surface and accent are borrowed from the mic and chips. */
+.addTaskPasteChip {
+  flex-shrink: 0;
+  margin-left: 2px;
+  font-size: 16px;
+}
+.addTaskPasteChip.createChipSelected {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
 /* ── VOICE LISTENING OVERLAY ──
    Shared, on-demand "listening" surface appended to <body> while dictating from
    a surface that opts in (currently the add-task row). A dimmed, blurred
@@ -11605,20 +11623,8 @@ body.row-dragging * { cursor: grabbing !important; }
     color: #fff;
     border-color: var(--accent);
   }
-  /* Icon-only paste chip — tighter side padding than the text chips so the
-     glyph reads as a compact action, and pushed to the trailing edge alongside
-     the description toggle. Reuses the shared chip surface tokens; no new
-     colours. It toggles the inline paste panel, so it takes the shared
-     .createChipSelected pressed fill while that panel is open. */
-  .createPasteChip {
-    margin-left: auto;
-    padding: 0 12px;
-    font-size: 16px;
-  }
-  .createPasteChip + .createDescChip {
-    margin-left: 0;
-  }
-
+  /* The description toggle sits at the strip's trailing edge (the 📋 paste
+     trigger that used to share this edge now lives in the input row). */
   .createDescChip {
     margin-left: auto;
   }
@@ -12756,67 +12762,14 @@ body.row-dragging * { cursor: grabbing !important; }
   #drawerSettingsBtn,
   #drawerFooter { display: none; }
 
-  /* Desktop create-row paste affordance. The date/description chips
-     (Today / Tomorrow / 📅 / + ¶) stay mobile-only — the desktop row
-     already exposes those through its own chrome — but the 📋 paste-entry
-     chip is surfaced here so a TODO.md entry drafted in the Claude app can
-     be pasted into a task without a mobile device. The chip cluster's own
-     appearance rules live inside the ≤1023px block and are media-scoped, so
-     the small surface the paste chip needs is restated here rather than
-     hoisted out, keeping the mobile layout byte-for-byte unchanged. The
-     container stays hidden until the placeholder row is focus-within,
-     mirroring the mobile reveal. */
+  /* The date/description chip strip (Today / Tomorrow / 📅 / + ¶) stays
+     mobile-only — the desktop row already exposes those through its own
+     chrome. The 📋 paste-entry trigger, previously surfaced here on desktop,
+     now lives in the blank placeholder's input row (left of the mic) via
+     .addTaskPasteChip, which paints at every width. So the strip has nothing
+     to surface at desktop widths and is never revealed here. */
   #createChipRow {
     display: none;
-    width: auto;
-    align-items: center;
-    justify-content: flex-end;
-    gap: 6px;
-    padding: 6px 12px;
-    margin: -3px 8px 5px;
-    background: var(--bg-surface);
-    border: 0.5px solid var(--border-mid);
-    border-top: 0.5px dashed var(--border-mid);
-    border-radius: 0 0 6px 6px;
-  }
-  #toDoChild[data-blank-placeholder]:focus-within + #createChipRow {
-    display: flex;
-  }
-  /* Keep the chip row visible while the inline paste panel is open (see the
-     matching ≤1023px rule) — focus moves into the sibling panel, dropping the
-     row's :focus-within. */
-  #toDoChild[data-blank-placeholder][data-paste-open] + #createChipRow {
-    display: flex;
-  }
-  /* Only the paste chip paints on desktop; every other chip stays hidden. */
-  #createChipRow > .createChip:not(.createPasteChip) {
-    display: none;
-  }
-  #createChipRow > .createPasteChip {
-    appearance: none;
-    -webkit-appearance: none;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--bg-elevated);
-    color: var(--text-secondary);
-    border: 0.5px solid var(--border-mid);
-    border-radius: 999px;
-    min-height: 32px;
-    padding: 0 12px;
-    font-size: 16px;
-    line-height: 1;
-    cursor: pointer;
-    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
-  }
-  #createChipRow > .createPasteChip:hover { background: var(--bg-hover); }
-  /* Pressed fill while the inline paste panel is open. The shared
-     .createChipSelected rule lives inside the ≤1023px block, so the
-     accent fill is restated here to reach the desktop paste chip. */
-  #createChipRow > .createPasteChip.createChipSelected {
-    background: var(--accent);
-    color: #fff;
-    border-color: var(--accent);
   }
 
   /* Cap a long description so it doesn't push the row's height into the
