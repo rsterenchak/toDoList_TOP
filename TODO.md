@@ -19,3 +19,20 @@
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-25 (already shipped in PR for commit af245f05)
   <!-- id: 2d41683a-0504-42b6-988e-063ecace3e51 -->
+
+- [ ] **[MEDIUM]** Paste chip: move the trigger into the input row, left of the mic
+  - Type: bug
+  - Description: The paste chip trigger (`createPasteChip`) is built in `mobileTaskCreate.js` and appended to the create chip strip (`createChipRow`), so it sits among the date chips between the calendar and the description toggle. It was meant to live in the "Add a task" input row beside the mic, matching `micBtn`, which is appended directly to `toDoChild`. Move the trigger into the input row immediately to the left of the mic. Only the trigger's location changes — the paste panel it opens (`pasteEntryPanel`), its clipboard pre-fill, parse, and commit all stay as they are.
+  - Behavior: The blank placeholder's input row shows the paste chip to the left of the mic, both on its right side, at all widths and without requiring focus. Tapping it opens the same inline paste panel below the compose row that it opens today. The chip is gone from the date chip strip. It disappears when the row is committed, as the mic does. The date chips (Today / Tomorrow / calendar / description toggle) remain in the strip, now without the clipboard chip among them.
+  - Implementation notes:
+    - Mount the trigger exactly like the mic: build it for the blank placeholder only (guarded the way `micBtn` is on `!item.tit`), append it to `toDoChild` immediately before the mic so it renders to the mic's left, and remove it in the same commit-cleanup block where `micBtn.remove()` runs. It currently lives in `attachMobileCreateChips`; move its creation out of there and into the row-build path next to the mic.
+    - Size it to the MIC, not the 36×36 chip standard used in the strip. `#toDoChild` is a fixed-height flex row with `overflow: clip`; the strip chips are larger and would be cropped or would inflate the row. Read the mic's computed size and match it.
+    - The panel wiring stays put. Every `pasteEntryPanel` reference in `toDoRow.js` — the sibling-walk anchors in `wireDescToggle`, the commit cleanup, and the height logic — is about the PANEL, not the trigger, and must not change. Verify the trigger still opens and closes that panel after the move, since the open handler may currently be bound during `attachMobileCreateChips`.
+    - Removing the chip from `createChipRow` may leave that strip with only the date chips. Confirm the strip's flex layout still reads correctly with one fewer item and no gap where the chip was.
+    - `#toDoChild` uses `overflow: clip` and its title input is `flex: 1 1 0; min-width: 0`. Two right-side controls plus the input must not overflow — check the input still shrinks rather than pushing the chips off the row, at 390px with a long draft in the field.
+    - Do not add a ⌖ target chip to the row; the picker stays in the description panel.
+    - Test: the paste chip is present on the blank placeholder without focus, to the left of the mic, at both breakpoints; absent from the chip strip; absent on committed rows; removed after commit; and still opens the paste panel.
+  - Out of scope: The paste panel itself, its clipboard pre-fill, parse, commit, and marker toast — all correct as landed. The mic's behavior. The date chips and their focus-reveal. The ⌖ file picker. The filter pills. Renaming `createChipRow` or the `mobile*`-prefixed identifiers.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b3a9f935-489c-4479-bdf7-3bbb7e15df55 -->
