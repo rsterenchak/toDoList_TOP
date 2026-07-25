@@ -5,6 +5,7 @@ import { beforeEach, describe, it, expect } from 'vitest';
 
 import {
     attachMobileCreateChips,
+    createPasteChipTrigger,
     applyChosenDueToItem,
     resetMobileCreateSession,
     markChainingActive,
@@ -98,6 +99,9 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         expect(chips.querySelector('[data-chip="tomorrow"]').textContent).toBe('Tomorrow');
         expect(chips.querySelector('[data-chip="custom"]').textContent).toBe('📅');
         expect(chips.querySelector('#createDescChip')).not.toBeNull();
+        // The 📋 paste trigger no longer lives in the strip — it moved to the
+        // input row (built by buildToDoRow, left of the mic).
+        expect(chips.querySelector('#createPasteChip')).toBeNull();
     });
 
     it('highlights the currently-chosen chip via createChipSelected', () => {
@@ -177,6 +181,27 @@ describe('STACK mobile inline-expand task creation — toDoRow.js wiring', () =>
 
     it('attaches the chip row from buildToDoRow', () => {
         expect(toDoRow).toMatch(/attachMobileCreateChips\(toDoChild,\s*item\)/);
+    });
+
+    it('builds the 📋 paste trigger for the blank placeholder only, guarded like the mic', () => {
+        // The trigger belongs to the always-pinned blank placeholder, so it is
+        // built only when the row has no title (mirrors the micBtn guard).
+        expect(toDoRow).toMatch(/const\s+pasteChip\s*=\s*!item\.tit\s*\?\s*createPasteChipTrigger\(toDoChild,\s*item\)/);
+    });
+
+    it('mounts the paste trigger in the input row, immediately left of the mic', () => {
+        // Appending the paste chip before the mic renders it to the mic's left,
+        // both on the row's trailing side. The append must precede the mic's.
+        const pasteAppendIdx = toDoRow.indexOf('toDoChild.appendChild(pasteChip)');
+        const micAppendIdx = toDoRow.indexOf('toDoChild.appendChild(micBtn)');
+        expect(pasteAppendIdx).toBeGreaterThan(-1);
+        expect(micAppendIdx).toBeGreaterThan(-1);
+        expect(pasteAppendIdx).toBeLessThan(micAppendIdx);
+    });
+
+    it('strips the paste trigger on commit alongside the mic', () => {
+        // A committed row is a real todo — it must shed both blank-only controls.
+        expect(toDoRow).toMatch(/pasteChip\s*&&\s*pasteChip\.parentElement\s*\)\s*pasteChip\.remove\(\)/);
     });
 
     it('applies the chosen date inside the title-commit handler before the default fallback', () => {
@@ -302,34 +327,33 @@ describe('STACK mobile inline-expand task creation — CSS surface', () => {
         expect(chipsIdx).toBeGreaterThan(mediaIdx);
     });
 
-    it('styles the paste chip on the shared chip surface — no new colour tokens', () => {
-        // The paste chip reuses .createChip; its own rule only adjusts
-        // spacing/glyph size and must not introduce a hardcoded colour.
-        const match = css.match(/\.createPasteChip\s*\{[^}]*\}/);
+    it('sizes the input-row paste trigger to the mic without new colour tokens', () => {
+        // The trigger reuses .micButton for its box; its own .addTaskPasteChip
+        // base rule only sizes the glyph and spacing, and must not introduce a
+        // hardcoded colour.
+        const match = css.match(/\.addTaskPasteChip\s*\{[^}]*\}/);
         expect(match).not.toBeNull();
         expect(match[0]).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
     });
 
-    it('surfaces only the 📋 paste chip at the ≥1024px desktop breakpoint', () => {
-        // The chip DOM is attached unconditionally to every blank placeholder
-        // so the JS path stays single-branch. On desktop the date/description
-        // chips (Today / Tomorrow / 📅 / + ¶) stay hidden, but the 📋 paste
-        // chip is surfaced so a drafted TODO.md entry can be pasted into a
-        // task. The container hides until the row is focus-within, then
-        // reveals — mirroring the mobile reveal.
+    it('keeps the chip strip hidden at the ≥1024px desktop breakpoint — the paste trigger left it', () => {
+        // The date/description chips are mobile-only, and the 📋 paste trigger
+        // now lives in the input row (.addTaskPasteChip, a top-level rule) rather
+        // than this strip. So at desktop widths the strip is simply hidden and is
+        // never revealed on focus-within.
         const desktopBlocks = Array.from(
             css.matchAll(/@media\s*\(min-width:\s*1024px\)\s*\{[\s\S]*?\n\}/g)
         );
         expect(desktopBlocks.length).toBeGreaterThan(0);
-        const pasteBlock = desktopBlocks.find(function(m) {
-            return /#createChipRow\s*>\s*\.createChip:not\(\.createPasteChip\)\s*\{[^}]*display:\s*none/.test(m[0]);
+        const chipBlock = desktopBlocks.find(function(m) {
+            return /#createChipRow\s*\{[^}]*display:\s*none/.test(m[0]);
         });
-        expect(pasteBlock).toBeTruthy();
-        // Container hidden by default, revealed on focus-within at desktop.
-        expect(pasteBlock[0]).toMatch(/#createChipRow\s*\{[^}]*display:\s*none/);
-        expect(pasteBlock[0]).toMatch(/#toDoChild\[data-blank-placeholder\]:focus-within\s*\+\s*#createChipRow\s*\{[\s\S]*?display:\s*flex/);
-        // The paste chip itself carries a rule so it actually paints.
-        expect(pasteBlock[0]).toMatch(/#createChipRow\s*>\s*\.createPasteChip\s*\{/);
+        expect(chipBlock).toBeTruthy();
+        // Desktop no longer reveals the strip — the paste trigger moved out.
+        expect(chipBlock[0]).not.toMatch(/:focus-within\s*\+\s*#createChipRow\s*\{[\s\S]*?display:\s*flex/);
+        // The input-row trigger is styled outside the media blocks so it paints
+        // at desktop and mobile alike.
+        expect(css).toMatch(/\.addTaskPasteChip\s*\{/);
     });
 });
 
@@ -398,13 +422,21 @@ describe('Compose row paste-entry — chip DOM', () => {
         document.body.innerHTML = '';
     });
 
-    it('renders the 📋 paste chip in the create chip row', () => {
+    it('builds the 📋 paste trigger for the input row, sized to the mic and absent from the strip', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
-        const chip = chipsFor(row).querySelector('#createPasteChip');
-        expect(chip).not.toBeNull();
+        // The trigger no longer sits in the date-chip strip…
+        expect(chipsFor(row).querySelector('#createPasteChip')).toBeNull();
+
+        // …it is built for the input row by createPasteChipTrigger.
+        const chip = createPasteChipTrigger(row, row.__item);
+        row.appendChild(chip);
         expect(chip.textContent).toBe('📋');
         expect(chip.getAttribute('aria-label')).toBe('Paste entry as a new task');
+        // Reuses .micButton so it matches the mic's 36×36 box exactly.
+        expect(chip.classList.contains('micButton')).toBe(true);
+        expect(chip.classList.contains('addTaskPasteChip')).toBe(true);
+        expect(row.querySelector('#createPasteChip')).toBe(chip);
     });
 });
 
@@ -445,8 +477,21 @@ describe('Compose row paste-entry — inline panel', () => {
         return n && n.id === 'pasteEntryPanel' ? n : null;
     }
 
+    // The paste trigger now lives in the input row (built by buildToDoRow via
+    // createPasteChipTrigger), not the date-chip strip. Mount it lazily against
+    // the row's item so the existing setup — makeBlankRow + attachMobileCreateChips
+    // for the strip — still exercises the same toggle wiring.
+    function pasteChipFor(row) {
+        let chip = row.querySelector('#createPasteChip');
+        if (!chip) {
+            chip = createPasteChipTrigger(row, row.__item);
+            row.appendChild(chip);
+        }
+        return chip;
+    }
+
     function tapPasteChip(row) {
-        chipsFor(row).querySelector('#createPasteChip').click();
+        pasteChipFor(row).click();
     }
 
     it('opens the inline panel and presses the chip on tap', async () => {
@@ -466,7 +511,7 @@ describe('Compose row paste-entry — inline panel', () => {
         expect(panel.querySelector('.pasteEntryInput')).not.toBeNull();
         expect(panel.querySelector('.pasteEntryAdd')).not.toBeNull();
         expect(panel.querySelector('.pasteEntryCancel')).not.toBeNull();
-        expect(chipsFor(row).querySelector('#createPasteChip')
+        expect(pasteChipFor(row)
             .classList.contains('createChipSelected')).toBe(true);
         expect(row.getAttribute('data-paste-open')).toBe('true');
         restoreClipboard();
@@ -484,7 +529,7 @@ describe('Compose row paste-entry — inline panel', () => {
         tapPasteChip(row);
         expect(panelFor(row)).toBeNull();
         expect(row.getAttribute('data-paste-open')).toBeNull();
-        expect(chipsFor(row).querySelector('#createPasteChip')
+        expect(pasteChipFor(row)
             .classList.contains('createChipSelected')).toBe(false);
         restoreClipboard();
     });

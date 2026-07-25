@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-24',
-        changed: [
-            "The compose row's paste chip now opens an editable panel to review a drafted entry before it becomes a task, and still works when clipboard access is blocked.",
+        date: '2026-07-25',
+        fixed: [
+            "The paste-entry button now sits in the \"Add a task\" row next to the microphone, instead of among the date chips.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-24',
         fixed: [
             "File paths in a task's description file picker now keep their full height when the list is long, so every path stays legible instead of squashing to a sliver as the list scrolls.",
             "A task's description file picker no longer stacks duplicate copies of itself each time the description is closed and reopened.",

@@ -237,6 +237,39 @@ function openPastePanel(toDoChild, item, pasteChip) {
 }
 
 
+// Build and wire the 📋 paste-entry trigger for a blank placeholder. The
+// button lives in the row's input line (mounted by buildToDoRow immediately
+// left of the voice mic), NOT in the date-chip strip — so it surfaces at every
+// width without waiting on focus. Only the trigger's location differs from
+// before; the inline panel it toggles (openPastePanel / closePastePanel, mounted
+// as the row's sibling) is unchanged. Tapping toggles the panel; the pressed
+// state mirrors the strip's via the shared .createChipSelected fill.
+export function createPasteChipTrigger(toDoChild, item) {
+    const pasteChip = document.createElement('button');
+    pasteChip.type = 'button';
+    pasteChip.id = 'createPasteChip';
+    // Reuses .micButton so it is pixel-identical to the mic beside it (a
+    // fixed 36×36 circle that fits the overflow:clip input row); addTaskPasteChip
+    // sizes the glyph and carries the open-state fill.
+    pasteChip.className = 'micButton addTaskPasteChip';
+    pasteChip.setAttribute('aria-label', 'Paste entry as a new task');
+    pasteChip.textContent = '📋';
+    // Stop mousedown from stealing focus off the title input before the click
+    // lands (mirrors the strip chips and the mic).
+    pasteChip.addEventListener('mousedown', function(e) { e.preventDefault(); });
+    pasteChip.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (pastePanelFor(toDoChild)) {
+            closePastePanel(toDoChild, pasteChip);
+        } else {
+            openPastePanel(toDoChild, item, pasteChip);
+        }
+    });
+    return pasteChip;
+}
+
+
 // Build and wire the chip row for a blank placeholder. Mounts the chip
 // row as the placeholder's NEXT SIBLING in #mainList — its own grid row
 // directly beneath the row, mirroring how #descSibling attaches — so CSS
@@ -279,26 +312,9 @@ export function attachMobileCreateChips(toDoChild, item) {
     const calChip      = makeChip('custom',   '📅');
     calChip.setAttribute('aria-label', 'Pick a date');
 
-    // Paste a full TODO.md entry (drafted in the Claude app) into a new task.
-    // Tapping toggles an inline panel below the compose row where the entry is
-    // shown and edited before it lands — headline becomes the title, whole entry
-    // the description.
-    const pasteChip = document.createElement('button');
-    pasteChip.type = 'button';
-    pasteChip.id = 'createPasteChip';
-    pasteChip.className = 'createChip createPasteChip';
-    pasteChip.setAttribute('aria-label', 'Paste entry as a new task');
-    pasteChip.textContent = '📋';
-    pasteChip.addEventListener('mousedown', function(e) { e.preventDefault(); });
-    pasteChip.addEventListener('click', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
-        if (pastePanelFor(toDoChild)) {
-            closePastePanel(toDoChild, pasteChip);
-        } else {
-            openPastePanel(toDoChild, item, pasteChip);
-        }
-    });
+    // NOTE: the 📋 paste-entry trigger no longer lives in this strip — it is
+    // built by createPasteChipTrigger and mounted into the row's input line
+    // (left of the mic) by buildToDoRow. The panel it opens is unchanged.
 
     const descChip = document.createElement('button');
     descChip.type = 'button';
@@ -368,7 +384,6 @@ export function attachMobileCreateChips(toDoChild, item) {
     chips.appendChild(todayChip);
     chips.appendChild(tomorrowChip);
     chips.appendChild(calChip);
-    chips.appendChild(pasteChip);
     chips.appendChild(descChip);
 
     // Mount the chips as the placeholder's next sibling rather than a child.
