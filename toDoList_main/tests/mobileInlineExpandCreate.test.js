@@ -431,7 +431,15 @@ describe('Compose row paste-entry — chip DOM', () => {
         // …it is built for the input row by createPasteChipTrigger.
         const chip = createPasteChipTrigger(row, row.__item);
         row.appendChild(chip);
-        expect(chip.textContent).toBe('📋');
+        // The glyph is a monochrome inline SVG (not the old 📋 emoji) so it
+        // inherits the button's currentColor and matches the mic's icon set.
+        const glyph = chip.querySelector('svg');
+        expect(glyph).not.toBeNull();
+        expect(chip.textContent).toBe('');
+        // No hardcoded colour on the SVG — it must inherit currentColor, so the
+        // stroke is "currentColor" and there is no own fill colour.
+        expect(glyph.getAttribute('stroke')).toBe('currentColor');
+        expect(glyph.getAttribute('fill')).toBe('none');
         expect(chip.getAttribute('aria-label')).toBe('Paste entry as a new task');
         // Reuses .micButton so it matches the mic's 36×36 box exactly.
         expect(chip.classList.contains('micButton')).toBe(true);

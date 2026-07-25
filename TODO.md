@@ -37,7 +37,7 @@
   - Completed: 2026-07-25
   <!-- id: b3a9f935-489c-4479-bdf7-3bbb7e15df55 -->
 
-- [ ] **[LOW]** Paste chip: replace the emoji glyph with a monochrome inline SVG
+- [x] **[LOW]** Paste chip: replace the emoji glyph with a monochrome inline SVG
   - Type: bug
   - Description: The paste chip renders its icon with `pasteChip.textContent = '📋'`, a literal clipboard emoji the OS draws in full color at its own metrics. Beside the mic — a monochrome inline SVG that inherits the button's text color — it reads as a foreign element rather than a sibling control, and it is the only full-color glyph on the page. The chip already reuses `.micButton` for its shape and size; swap the emoji for an inline SVG clipboard that inherits `currentColor`, matching the mic and the rest of the app's icon set.
   - Behavior: The paste chip shows a monochrome clipboard icon in the same muted tone as the mic glyph, at a matching optical size, centered in the 36×36 circle. On hover, focus, and the panel-open pressed state, the icon takes the same color treatment those states already apply to the chip, since it inherits `currentColor`. No change to the chip's size, circle, position, or behavior — only the glyph.
@@ -51,5 +51,5 @@
     - This is a visual-only change to one element; a computed-layout test is not required, but confirm the SVG inherits color by asserting the glyph element has no own `fill`/`stroke` color attribute other than `currentColor`.
   - Out of scope: The paste chip's size, circle, position, panel, and behavior. The mic button. The calendar and other create-strip chip emojis, noted for a possible follow-up but not changed here. The ⌖ file picker. The filter pills.
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-25
   <!-- id: cf5b0576-ed28-4997-8ad4-b798c87a1cbf -->
