@@ -25,6 +25,19 @@ import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 // shared with the chat reply "Create task" action.
 export { parsePastedEntry };
 
+// Monochrome clipboard glyph for the paste-entry trigger. Mirrors the mic's
+// build (voiceInput.js) — same 24×24 viewBox, fill:none, stroke:currentColor,
+// 2px round strokes — so the two controls read as one icon set. No width/height
+// baked in: the .addTaskPasteChip CSS sizes it to match the mic. Because it
+// inherits currentColor, the chip's hover / focus / open-state (createChipSelected)
+// treatments carry to the glyph for free.
+const PASTE_SVG =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" ' +
+    'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" ' +
+    'aria-hidden="true">' +
+    '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>' +
+    '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>';
+
 
 // "today" | "tomorrow" | "custom" — the user's last chip pick within the
 // current project visit. Reset by resetMobileCreateSession on every
@@ -253,7 +266,9 @@ export function createPasteChipTrigger(toDoChild, item) {
     // sizes the glyph and carries the open-state fill.
     pasteChip.className = 'micButton addTaskPasteChip';
     pasteChip.setAttribute('aria-label', 'Paste entry as a new task');
-    pasteChip.textContent = '📋';
+    // Inline SVG clipboard (not an emoji) so the glyph inherits the button's
+    // currentColor and matches the mic's monochrome icon set.
+    pasteChip.innerHTML = PASTE_SVG;
     // Stop mousedown from stealing focus off the title input before the click
     // lands (mirrors the strip chips and the mic).
     pasteChip.addEventListener('mousedown', function(e) { e.preventDefault(); });

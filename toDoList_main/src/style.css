@@ -2695,17 +2695,22 @@ body:has(#settingsMenu) #claudeLauncher {
   margin-left: 2px;
 }
 
-/* 📋 paste-entry trigger — sits in the blank "Add a task" placeholder's input
+/* Paste-entry trigger — sits in the blank "Add a task" placeholder's input
    row, immediately left of the voice mic. Reuses .micButton so it is
    pixel-identical to the mic (a 36×36 circle) and fits the fixed-height,
-   overflow: clip row without cropping or inflating it; font-size sizes the
-   glyph. It toggles the inline paste panel and takes the shared accent fill
-   (mirroring the chip strip's pressed state) while that panel is open. No new
-   colour tokens — the surface and accent are borrowed from the mic and chips. */
+   overflow: clip row without cropping or inflating it. Its inline SVG clipboard
+   glyph is sized here (to match the mic's 18×18) rather than baked into the SVG,
+   so one rule governs it. It toggles the inline paste panel and takes the shared
+   accent fill (mirroring the chip strip's pressed state) while that panel is
+   open. No new colour tokens — the surface and accent are borrowed from the mic
+   and chips. */
 .addTaskPasteChip {
   flex-shrink: 0;
   margin-left: 2px;
-  font-size: 16px;
+}
+.addTaskPasteChip svg {
+  width: 18px;
+  height: 18px;
 }
 .addTaskPasteChip.createChipSelected {
   background: var(--accent);
