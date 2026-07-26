@@ -10,12 +10,14 @@ export const changelog = [
             "The paste-entry button now sits in the \"Add a task\" row next to the microphone, instead of among the date chips.",
             "The paste-entry button now shows a monochrome clipboard icon that matches the microphone, instead of a full-colour emoji.",
         ],
+        changed: [
+            "Once a task has shipped and been acknowledged, its desktop description panel now hides the entry editor, file picker, Generate and Inject, leaving just the phase rail and Discuss.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-24',
         fixed: [
-            "A task's description file picker no longer stacks duplicate copies of itself each time the description is closed and reopened.",
             "The description file picker's panel now closes again when its button is tapped a second time, instead of staying open.",
             "The desktop description panel's phase rail and section label now align with the entry text, and the rail is capped so its four steps read as one sequence, instead of stretching flush to the panel's edges.",
         ],

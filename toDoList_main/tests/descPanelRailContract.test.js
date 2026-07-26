@@ -6,8 +6,10 @@ import { describe, it, expect } from 'vitest';
 import {
     mountDescRail,
     descPanelTopAnchor,
+    applyPhaseLayout,
     DESC_PANEL_CHILD_SELECTORS,
 } from '../src/toDoRow.js';
+import { PHASE } from '../src/phase.js';
 
 // Structural guard for the desktop description panel's grid-placement contract.
 //
@@ -160,5 +162,122 @@ describe('desc panel rail — idempotent mount + leading order', () => {
         // Before mountDescRail runs there is no rail; the anchor is the panel's
         // firstChild so early blocks still lead the panel.
         expect(descPanelTopAnchor(descSibling)).toBe(descInput);
+    });
+});
+
+describe('desc panel phase layout — applyPhaseLayout gates the authoring group', () => {
+    // The authoring group (hidden in the terminal `done` phase) and the retained
+    // controls (never touched by applyPhaseLayout, in any phase).
+    const AUTHORING = [
+        { sel: '#descInput', make: () => el('textarea', { id: 'descInput' }) },
+        { sel: '.filePickTrigger', make: () => el('button', { className: 'filePickTrigger' }) },
+        { sel: '.filePickPanel', make: () => el('div', { className: 'filePickPanel' }) },
+        { sel: '.generateBtn', make: () => el('button', { className: 'generateBtn' }) },
+        { sel: '.generateFailure', make: () => el('div', { className: 'generateFailure' }) },
+        { sel: '.injectBtn', make: () => el('button', { className: 'injectBtn' }) },
+        { sel: '.descSiblingEntryLabel', make: () => el('span', { className: 'descSiblingEntryLabel' }) },
+    ];
+    const RETAINED = [
+        { sel: '.phaseRail', make: () => el('div', { className: 'phaseRail' }) },
+        { sel: '.discussBtn', make: () => el('button', { className: 'discussBtn' }) },
+        { sel: '.askingBlock', make: () => el('div', { className: 'askingBlock' }) },
+        { sel: '.descEditorModalStuck', make: () => el('div', { className: 'descEditorModalStuck' }) },
+    ];
+
+    function el(tag, props) {
+        const node = document.createElement(tag);
+        Object.assign(node, props);
+        return node;
+    }
+
+    // A fully-populated panel with every authoring + retained child mounted, so
+    // applyPhaseLayout has something to resolve for each selector regardless of
+    // phase — the point is to catch a control that fails to hide in a phase the
+    // developer never opened by hand.
+    function makeFullPanel() {
+        const descSibling = document.createElement('div');
+        descSibling.id = 'descSibling';
+        [...AUTHORING, ...RETAINED].forEach(({ make }) => descSibling.appendChild(make()));
+        return descSibling;
+    }
+
+    // All eight values derivePhase can return — the switch must be exhaustive, not
+    // just correct for `done` and one non-terminal phase a human happened to open.
+    const ALL_PHASES = [
+        PHASE.NONE, PHASE.DRAFT, PHASE.ACCEPT, PHASE.DONE,
+        PHASE.ASKING, PHASE.DRAFTED, PHASE.STUCK, PHASE.MOCKUP,
+    ];
+
+    it('the eight-phase list matches the PHASE vocabulary exactly (no phase drifts unchecked)', () => {
+        expect(new Set(ALL_PHASES)).toEqual(new Set(Object.values(PHASE)));
+        expect(ALL_PHASES).toHaveLength(Object.values(PHASE).length);
+    });
+
+    it('hides every authoring-group control and THE ENTRY label in the `done` phase', () => {
+        const panel = makeFullPanel();
+        applyPhaseLayout(panel, PHASE.DONE);
+        AUTHORING.forEach(({ sel }) => {
+            expect(panel.querySelector(sel).hidden, `${sel} should be hidden in done`).toBe(true);
+        });
+    });
+
+    it('never touches the rail, Discuss, ASKING or STUCK blocks — even in `done`', () => {
+        const panel = makeFullPanel();
+        applyPhaseLayout(panel, PHASE.DONE);
+        RETAINED.forEach(({ sel }) => {
+            expect(panel.querySelector(sel).hidden, `${sel} must stay visible in done`).toBe(false);
+        });
+    });
+
+    it.each(ALL_PHASES.filter((p) => p !== PHASE.DONE))(
+        'shows the whole authoring group in the non-terminal `%s` phase',
+        (phase) => {
+            const panel = makeFullPanel();
+            // Pre-hide everything to prove applyPhaseLayout actively un-hides in a
+            // non-terminal phase rather than just leaving state alone.
+            AUTHORING.forEach(({ sel }) => { panel.querySelector(sel).hidden = true; });
+            applyPhaseLayout(panel, phase);
+            AUTHORING.forEach(({ sel }) => {
+                expect(panel.querySelector(sel).hidden, `${sel} should show in ${phase}`).toBe(false);
+            });
+        }
+    );
+
+    it('flips back to shown when a panel leaves `done` (live-refresh repaint)', () => {
+        const panel = makeFullPanel();
+        applyPhaseLayout(panel, PHASE.DONE);
+        expect(panel.querySelector('#descInput').hidden).toBe(true);
+        applyPhaseLayout(panel, PHASE.ACCEPT);
+        AUTHORING.forEach(({ sel }) => {
+            expect(panel.querySelector(sel).hidden).toBe(false);
+        });
+    });
+
+    it('is a no-op guard on a null panel', () => {
+        expect(() => applyPhaseLayout(null, PHASE.DONE)).not.toThrow();
+    });
+
+    it('the CSS re-asserts [hidden]:display:none for every author-styled group child', () => {
+        // The authoring controls set their own author-level `display`, which
+        // outranks the UA [hidden] rule — a hidden control would otherwise stay
+        // visible in a real browser (jsdom does not compute layout). Assert the
+        // explicit guard exists for each, scoped to #descSibling.
+        const css = read('style.css');
+        const guarded = [
+            '#descSibling #descInput[hidden]',
+            '#descSibling .filePickTrigger[hidden]',
+            '#descSibling .generateBtn[hidden]',
+            '#descSibling .generateFailure[hidden]',
+            '#descSibling .injectBtn[hidden]',
+            '#descSibling .descSiblingEntryLabel[hidden]',
+        ];
+        guarded.forEach((needle) => {
+            const body = ruleBodyContaining(css, needle);
+            expect(body, `${needle} needs a [hidden] guard`).not.toBeNull();
+            expect(body).toMatch(/display:\s*none/);
+        });
+        // .filePickPanel carries its own [hidden] guard (its open/close toggle);
+        // it serves the done-phase hide too.
+        expect(ruleBodyContaining(css, '.filePickPanel[hidden]')).toMatch(/display:\s*none/);
     });
 });

@@ -339,6 +339,55 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
 ]);
 
 
+// The authoring-control subset of the description panel: the entry textarea, the
+// File:-path picker (trigger + panel), Generate (and its failure notice), and
+// Inject. These are the controls that only make sense while a task's entry is
+// still being authored. The phase rail, THE ENTRY label, the ASKING/STUCK blocks,
+// and Discuss are deliberately NOT in this group.
+const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
+    '#descInput',
+    '.filePickTrigger',
+    '.filePickPanel',
+    '.generateBtn',
+    '.generateFailure',
+    '.injectBtn',
+]);
+
+
+// Gate the panel's authoring group by ONE derived phase — the first slice of
+// turning #descSibling into a per-phase face. In the terminal `done` phase (a
+// shipped-and-acknowledged entry) there is nothing left to author, so the whole
+// group is hidden, leaving the phase rail, the ASKING/STUCK blocks, and Discuss;
+// every other phase (`none`, `draft`, `accept`, `asking`, `drafted`, `stuck`,
+// `mockup`) renders the group exactly as before. THE ENTRY section label is hidden
+// alongside the group in `done` (there is no entry to author).
+//
+// Hides via the `[hidden]` attribute — never inline `style.display`, which would
+// fight refreshInjectButton's own display gating. The two compose cleanly:
+// applyPhaseLayout gates the WHOLE group by phase, refreshInjectButton gates
+// Inject WITHIN the shown case. The CSS `#descSibling …[hidden] { display: none }`
+// guards outrank the controls' author-level `display`, and refreshInjectButton
+// only ever sets inline display to '' or 'none' (never a visible value), so the
+// phase gate wins in `done`; outside `done` the [hidden] attribute is cleared and
+// refreshInjectButton's empty-description hide governs Inject as before.
+//
+// One switch, keyed by phase, in one place — deliberately not per-control
+// conditionals scattered through the mount block. Idempotent and repaint-safe:
+// called on panel open and on the live-refresh sweep, so a panel whose task
+// transitions into or out of `done` re-derives its layout without a re-render.
+export function applyPhaseLayout(descSibling, phase) {
+    if (!descSibling) return;
+    const hideAuthoring = phase === PHASE.DONE;
+    DESC_AUTHORING_GROUP_SELECTORS.forEach(function(selector) {
+        descSibling.querySelectorAll(selector).forEach(function(el) {
+            el.hidden = hideAuthoring;
+        });
+    });
+    const label = descSibling.querySelector('.descSiblingEntryLabel');
+    if (label) label.hidden = hideAuthoring;
+}
+
+
 // Build the ASKING question + answer block for a row's description panel. It
 // carries triage's pending question above a textarea, a Send action, and an
 // inline error slot. Sending routes the answer through listLogic.answerAgentTask
@@ -916,6 +965,16 @@ export function refreshDescStatusDots() {
             // row's live phase too, so a re-triage that leaves failed/no_change
             // clears it while the panel is open (and a fresh failure mounts it).
             syncStuckPanel(row, row.__item);
+            // Re-gate the authoring controls by the row's live phase so a panel
+            // whose task transitions into `done` (its entry acknowledged elsewhere)
+            // hides them on the next sweep, and one leaving `done` restores them —
+            // without a re-render. No-op when the panel isn't open. Hiding/showing
+            // the group changes the panel height, so re-snapshot an expanded viewer
+            // card below to match, mirroring mountDescRail / the sync panels.
+            if (openPanel) {
+                applyPhaseLayout(openPanel, phase);
+                refreshViewerExpandedHeight();
+            }
             if (row.__item.entryId && row.dataset && row.dataset.value) {
                 projectsToRefresh.add(row.dataset.value);
             }
@@ -2079,9 +2138,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             // Trigger the textarea's auto-grow handler now that it's in the
             // DOM — scrollHeight is only meaningful for an attached element.
             descInput.dispatchEvent(new Event("input"));
-            // Mount the shared File:-path picker above the textarea. It reads the
-            // active project's manifest synchronously and self-hides when there
-            // is none, so the control is simply absent for un-linked projects.
+            // Mount the shared File:-path picker above the textarea. Its manifest
+            // loads ON DEMAND (only when the picker panel opens), so mounting is
+            // cheap even in the `done` phase where applyPhaseLayout hides it below:
+            // a hidden picker never opens, so nothing loads, and the element is
+            // present to un-hide if the panel later leaves `done`.
             mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
             // Mount the read-only phase rail + THE ENTRY label at the head of the
             // panel (the desktop counterpart to the mobile modal's rail), driven
@@ -2098,6 +2159,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             // the chevron-path equivalent of the modal's stuck block. No-op for
             // every other row (and mutually exclusive with the ASKING block).
             syncStuckPanel(toDoChild, item);
+            // Gate the authoring controls by the derived phase — hidden in `done`,
+            // fully shown everywhere else. Runs last so every control it toggles is
+            // already mounted. The trailing viewer-height refresh below re-snapshots
+            // an expanded viewer card after this height change.
+            applyPhaseLayout(descSibling, derivePhase(item));
             descToggle.classList.add("open");
             switcher = 1;
         } else {
