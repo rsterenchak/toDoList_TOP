@@ -10,11 +10,11 @@ function read(relative) {
 }
 
 // Pins the contract for roving-tabindex ArrowLeft/ArrowRight navigation across
-// the three view-switcher pills (Task View / AGENT / STRUCTURE). The pills form
-// an ARIA tablist: exactly one is in the Tab order (tabindex 0) while the others
-// are tabindex -1, and Left/Right cycle among all three WITH wraparound (Right on
-// STRUCTURE lands on Task View; Left on Task View lands on STRUCTURE). This must
-// take priority over the header-wide nav Left/Right walk, so the handler stops
+// the two view-switcher pills (STREAM / STRUCTURE). The pills form an ARIA
+// tablist: exactly one is in the Tab order (tabindex 0) while the other is
+// tabindex -1, and Left/Right cycle among them WITH wraparound (Right on
+// STRUCTURE lands on STREAM; Left on STREAM lands on STRUCTURE). This must take
+// priority over the header-wide nav Left/Right walk, so the handler stops
 // propagation. Enter/Space activation is left to native <button> behaviour.
 describe('view-switcher roving-tabindex arrow-key navigation', () => {
     const main = read('main.js');
@@ -56,12 +56,13 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
         throw new Error('unterminated block for: ' + signature);
     }
 
-    it('wires the roving arrow-nav keydown handler on all three pills', () => {
+    it('wires the roving arrow-nav keydown handler on both pills', () => {
         // A tablist is only fully navigable if every tab responds to the arrow
-        // keys; wiring only two of the three would strand focus on the third.
+        // keys; wiring only one of the two would strand focus on the other. The
+        // AGENT pill was retired, so the switcher is STREAM + STRUCTURE.
         expect(main).toMatch(/viewPillProjects\.addEventListener\(\s*['"]keydown['"]\s*,\s*viewSwitcherArrowNav/);
-        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]keydown['"]\s*,\s*viewSwitcherArrowNav/);
         expect(main).toMatch(/viewPillStructure\.addEventListener\(\s*['"]keydown['"]\s*,\s*viewSwitcherArrowNav/);
+        expect(main).not.toMatch(/viewPillAgent\.addEventListener/);
     });
 
     it('the arrow-nav handler only acts on unmodified Left/Right and bails on modal/popover', () => {
@@ -117,12 +118,12 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
 
     it('applyActiveView keeps the active pill as the sole Tab stop', () => {
         const body = extractNamedFn('applyActiveView');
-        // The active view's pill must own tabindex 0 while the others drop to
+        // The active view's pill must own tabindex 0 while the other drops to
         // -1, so a Tab press into the header lands on the current view's pill —
         // the roving marker the nav walk also uses to enter the group.
         expect(body).toMatch(/pillProjects\.setAttribute\(\s*['"]tabindex['"]\s*,\s*safe === 'projects' \? '0' : '-1'\s*\)/);
-        expect(body).toMatch(/pillAgent\.setAttribute\(\s*['"]tabindex['"]\s*,\s*safe === 'agent' \? '0' : '-1'\s*\)/);
         expect(body).toMatch(/pillStructure\.setAttribute\(\s*['"]tabindex['"]\s*,\s*safe === 'structure' \? '0' : '-1'\s*\)/);
+        expect(body).not.toMatch(/pillAgent\.setAttribute/);
     });
 
     it('the header nav walk enters the switcher at the roving tab stop, not a fixed pill', () => {

@@ -215,15 +215,14 @@ describe('desktop header consolidation', () => {
     it('(f) clicking a view tab still updates the active state', () => {
         // The restyle is CSS-only; the click handlers and the active-class
         // toggle in applyActiveView are untouched, so a tab tap still flips
-        // which tab is active (and thus which one paints the underline).
-        // The AGENT pill routes to applyActiveView('agent') after an
-        // unavailable-repo guard, so the window is wider than the bare wiring.
-        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]click['"][\s\S]{0,600}applyActiveView\(\s*['"]agent['"]/);
+        // which tab is active (and thus which one paints the underline). The
+        // AGENT pill was retired, so the bar is STREAM (projects) + STRUCTURE.
+        expect(main).toMatch(/viewPillStructure\.addEventListener\(\s*['"]click['"][\s\S]{0,600}applyActiveView\(\s*['"]structure['"]/);
         const fnIdx = main.indexOf('function applyActiveView(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = main.slice(fnIdx, fnIdx + 1400);
         expect(fn).toMatch(/pillProjects\.classList\.toggle\(\s*['"]active['"]/);
-        expect(fn).toMatch(/pillAgent\.classList\.toggle\(\s*['"]active['"]/);
+        expect(fn).toMatch(/pillStructure\.classList\.toggle\(\s*['"]active['"]/);
     });
 
     it('(regression) the mobile bottom tab bar keeps its own pill styling, untouched by the desktop restyle', () => {

@@ -17,7 +17,7 @@ function read(relative) {
 // persisted legacy 'inbox' / 'today' value (from the retired Inbox view)
 // falls back to 'projects'. Clicking any project row auto-switches back to
 // PROJECTS so a project context always implies the PROJECTS pill is active.
-describe('Projects / Agent view switcher', () => {
+describe('Stream / Structure view switcher', () => {
     const main   = read('main.js');
     const prefs  = read('prefs.js');
     const css    = read('style.css');
@@ -72,16 +72,19 @@ describe('Projects / Agent view switcher', () => {
             expect(main).toMatch(/setActiveView/);
         });
 
-        it('renders #viewSwitcher with PROJECTS and AGENT pills', () => {
+        it('renders #viewSwitcher with STREAM and STRUCTURE pills', () => {
             expect(main).toMatch(/viewSwitcher\.id\s*=\s*['"]viewSwitcher['"]/);
             expect(main).toMatch(/viewPillProjects\.id\s*=\s*['"]viewPillProjects['"]/);
-            expect(main).toMatch(/viewPillAgent\.id\s*=\s*['"]viewPillAgent['"]/);
-            expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]Task View['"]/);
-            expect(main).toMatch(/viewPillAgent\.textContent\s*=\s*['"]AGENT['"]/);
+            expect(main).toMatch(/viewPillStructure\.id\s*=\s*['"]viewPillStructure['"]/);
+            expect(main).toMatch(/viewPillProjects\.textContent\s*=\s*['"]STREAM['"]/);
+            expect(main).toMatch(/viewPillStructure\.textContent\s*=\s*['"]STRUCTURE['"]/);
         });
 
-        it('does not render an INBOX pill', () => {
+        it('does not render an INBOX or AGENT pill', () => {
+            // The AGENT tab was retired: the board is reached by tapping a
+            // DRAFTED / STUCK / MOCKUP badge, not by a pill.
             expect(main).not.toMatch(/viewPillInbox/);
+            expect(main).not.toMatch(/viewPillAgent/);
         });
 
         it('mounts the pill bar in the desktop view sub-band beneath the header', () => {
@@ -98,18 +101,15 @@ describe('Projects / Agent view switcher', () => {
 
         it('wires both pill buttons to applyActiveView', () => {
             expect(main).toMatch(/viewPillProjects\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]projects['"]/);
-            // The AGENT pill routes to applyActiveView('agent') after an
-            // unavailable-repo guard, so the window is wider than the plain
-            // Projects pill's.
-            expect(main).toMatch(/viewPillAgent\.addEventListener\('click'[\s\S]{0,600}applyActiveView\(\s*['"]agent['"]/);
+            expect(main).toMatch(/viewPillStructure\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]structure['"]/);
         });
 
-        it('appends pills in PROJECTS, AGENT order', () => {
-            // Visual order in the top bar: PROJECTS first, then AGENT.
+        it('appends pills in STREAM, STRUCTURE order', () => {
+            // Visual order in the top bar: STREAM first, then STRUCTURE.
             // Pinned so a future refactor can't silently re-shuffle the
             // pill sequence.
             expect(main).toMatch(
-                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillAgent\s*\)/
+                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillStructure\s*\)/
             );
         });
     });
@@ -155,7 +155,7 @@ describe('Projects / Agent view switcher', () => {
 
         it('syncs .active and aria-pressed on both pills', () => {
             expect(body).toMatch(/pillProjects[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
-            expect(body).toMatch(/pillAgent[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
+            expect(body).toMatch(/pillStructure[\s\S]{0,200}classList\.toggle\(\s*['"]active['"]/);
             expect(body).toMatch(/aria-pressed/);
         });
 

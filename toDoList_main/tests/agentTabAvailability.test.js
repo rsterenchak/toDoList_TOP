@@ -152,19 +152,30 @@ describe('AGENT tab availability wiring', () => {
         // spinner's own repo re-resolution.
         expect(body).toMatch(/activeName\s*!==\s*projRunSpinnerLastProject/);
         expect(body).toMatch(/syncAgentAvailabilityForProject\s*\(/);
-        // Total call sites: two click hooks + this active-change chokepoint.
+        // Call sites: two click hooks + this active-change chokepoint + the
+        // badge-route handler's no-repo gate.
         const calls = main.match(/syncAgentAvailabilityForProject\(/g) || [];
         expect(calls.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('main.js AGENT entry points navigate unconditionally and carry the no-repo marker', () => {
+    it('main.js has no AGENT pill and gates the badge route on repo availability', () => {
         const main = read('main.js');
         // The old gate helpers are gone from main.js entirely.
         expect(main).not.toMatch(/isAgentUnavailable/);
         expect(main).not.toMatch(/showAgentUnavailableTooltip/);
-        // Both entry points get a real <span> marker toggled by CSS.
-        const markers = main.match(/agentNoRepoMarker/g) || [];
-        expect(markers.length).toBeGreaterThanOrEqual(2);
+        // The AGENT tab was retired — no pill is built for it. The Agent board is
+        // now reached only by tapping a DRAFTED / STUCK / MOCKUP badge, routed
+        // through the handler main.js registers.
+        expect(main).not.toMatch(/viewPillAgent/);
+        // The STRUCTURE pill still carries the hollow no-repo marker (it needs a
+        // repo too), so the marker lives on in main.js.
+        expect(main).toMatch(/viewPillStructureMarker[\s\S]{0,120}agentNoRepoMarker/);
+        // The badge-route handler refuses to open the board for a project with no
+        // routed repo, using the gate's return value as the guard.
+        const handlerIdx = main.indexOf('setAgentRouteBadgeTapHandler(function');
+        expect(handlerIdx).toBeGreaterThan(-1);
+        const handlerBody = main.slice(handlerIdx, handlerIdx + 300);
+        expect(handlerBody).toMatch(/if\s*\(\s*!syncAgentAvailabilityForProject\(\s*projectName\s*\)\s*\)\s*return/);
     });
 
     it('agentView paint() renders the unavailable message when the tab is gated', () => {

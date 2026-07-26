@@ -89,7 +89,7 @@ import {
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { createMobileUpdatePill } from './mobileUpdatePill.js';
-import { wireStatusLabelDelegation, setReviewBadgeTapHandler, setMockupBadgeTapHandler } from './todoStatus.js';
+import { wireStatusLabelDelegation, setReviewBadgeTapHandler, setAgentRouteBadgeTapHandler } from './todoStatus.js';
 import { buildTaskFilterBar, applyTaskFilter, firstFocusableInTaskFilterBar, taskFilterArrowTarget } from './taskFilter.js';
 import { dropFocusIntoMainView } from './viewFocusNav.js';
 import { updateAllProjectBadges, navigateToProjectByIndex } from './projectBadges.js';
@@ -939,31 +939,14 @@ function component() {
     viewPillProjects.className = 'viewPill';
     viewPillProjects.setAttribute('role', 'tab');
     viewPillProjects.setAttribute('aria-pressed', 'false');
-    viewPillProjects.textContent = 'Task View';
+    viewPillProjects.textContent = 'STREAM';
 
-    const viewPillAgent = document.createElement('button');
-    viewPillAgent.id = 'viewPillAgent';
-    viewPillAgent.type = 'button';
-    viewPillAgent.className = 'viewPill';
-    viewPillAgent.setAttribute('role', 'tab');
-    viewPillAgent.setAttribute('aria-pressed', 'false');
-    viewPillAgent.textContent = 'AGENT';
-    // Same hollow "no-repo" marker as the mobile tab, shown only while
-    // body.agentUnavailable is set. A real <span> (not a pseudo-element) because
-    // the pill's ::after is already the active-underline bar.
-    const viewPillAgentMarker = document.createElement('span');
-    viewPillAgentMarker.className = 'agentNoRepoMarker';
-    viewPillAgentMarker.setAttribute('aria-hidden', 'true');
-    viewPillAgent.appendChild(viewPillAgentMarker);
-    // Small filled "working" dot leading the AGENT label ("● AGENT"), shown only
-    // while body.agentWorking is set. The persistent working watch keeps that
-    // class live independent of the Agent view being mounted, so the dot pulses
-    // even after switching to Tasks or Structure. Inserted before the label so
-    // it reads as a leading indicator; CSS mirrors the agentNoRepoMarker pattern.
-    const viewPillAgentWorkingDot = document.createElement('span');
-    viewPillAgentWorkingDot.className = 'agentWorkingDot';
-    viewPillAgentWorkingDot.setAttribute('aria-hidden', 'true');
-    viewPillAgent.insertBefore(viewPillAgentWorkingDot, viewPillAgent.firstChild);
+    // The AGENT pill was retired: the Agent board's blocked-on-you states
+    // (DRAFTED / STUCK / MOCKUP) now reach the task row's phase badge, so the
+    // board is a routed destination reached by tapping those badges rather than
+    // a tab you navigate to. The bar collapses to STREAM + STRUCTURE. The Agent
+    // view itself stays mounted and fully functional (see #agentView below and
+    // the badge-route handler that calls applyActiveView('agent')).
 
     const viewPillStructure = document.createElement('button');
     viewPillStructure.id = 'viewPillStructure';
@@ -980,17 +963,10 @@ function component() {
     viewPillStructure.appendChild(viewPillStructureMarker);
 
     viewSwitcher.appendChild(viewPillProjects);
-    viewSwitcher.appendChild(viewPillAgent);
     viewSwitcher.appendChild(viewPillStructure);
 
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
-    });
-    viewPillAgent.addEventListener('click', function() {
-        // The AGENT tab always opens now — on a project with no routed repo the
-        // view renders an in-place "unavailable" message rather than a dead board,
-        // so there's no reason to intercept the tap.
-        applyActiveView('agent');
     });
     viewPillStructure.addEventListener('click', function() {
         applyActiveView('structure');
@@ -1000,14 +976,13 @@ function component() {
     // viewFocusNav.js (dropFocusIntoMainView); it mirrors the sidebarToggle →
     // first project row transition for the content directly beneath the pills.
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
-    viewPillAgent.addEventListener('keydown', dropFocusIntoMainView);
 
-    // Roving-tabindex ArrowLeft/ArrowRight navigation across the three view
+    // Roving-tabindex ArrowLeft/ArrowRight navigation across the two view
     // pills. The switcher is an ARIA tablist, so exactly one pill is in the Tab
     // order at a time (tabindex 0) while the others are tabindex -1; ArrowLeft /
     // ArrowRight move focus among them and hand the roving 0 to the newly-focused
     // pill. Movement wraps: ArrowRight on the last pill (STRUCTURE) lands on the
-    // first (Task View) and ArrowLeft on the first lands on the last. The active
+    // first (STREAM) and ArrowLeft on the first lands on the last. The active
     // pill's tabindex is kept in sync by applyActiveView; the baseline below just
     // seeds the pre-restore state (PROJECTS is the default view).
     //
@@ -1019,13 +994,11 @@ function component() {
     // those keys. The nav walk still enters the switcher as one group via
     // viewSwitcherEntryPill(), so from the header chrome the switcher reads as a
     // single, internally-navigable stop rather than one fixed tab stop.
-    const viewSwitcherPills = [viewPillProjects, viewPillAgent, viewPillStructure];
+    const viewSwitcherPills = [viewPillProjects, viewPillStructure];
     viewPillProjects.setAttribute('tabindex', '0');
-    viewPillAgent.setAttribute('tabindex', '-1');
     viewPillStructure.setAttribute('tabindex', '-1');
     const { viewSwitcherArrowNav } = createViewSwitcher({ viewSwitcherPills });
     viewPillProjects.addEventListener('keydown', viewSwitcherArrowNav);
-    viewPillAgent.addEventListener('keydown', viewSwitcherArrowNav);
     viewPillStructure.addEventListener('keydown', viewSwitcherArrowNav);
 
     // ── Agent view shell ──
@@ -3086,14 +3059,19 @@ setDiscussTaskHandler(function(todoId) {
     openChatWithTask(todoId);
 });
 
-// Wire the tasks-surface `⌁ MOCKUP` badge to jump to the Agent board scrolled to
-// the task's card. todoStatus.js owns the badge but must not import agentView.js /
-// main.js (module-cycle + inject.js isolation), so it invokes this registered
-// handler with the todo id. Switch to the Agent view first — that repaints the
-// board (synchronously when the queue is already loaded, otherwise after a fetch)
-// — then anchor: anchorAgentCardForTodo scrolls the card now if it exists, or lets
-// the next paint() flush the anchor once the card is rendered.
-setMockupBadgeTapHandler(function(todoId) {
+// Wire the tasks-surface `⌁ DRAFTED` / `⌁ STUCK` / `⌁ MOCKUP` badges to jump to
+// the Agent board scrolled to the task's card — now the only way into the board
+// since the AGENT tab was retired. todoStatus.js owns the badges but must not
+// import agentView.js / main.js (module-cycle + inject.js isolation), so it
+// invokes this registered handler with (todoId, projectName). Gate on the
+// project's repo first: with no routed repo there's no board to ship from, so the
+// tap is a no-op (this replaces the removed AGENT tab's no-repo gate). Then switch
+// to the Agent view — that repaints the board (synchronously when the queue is
+// already loaded, otherwise after a fetch) — and anchor: anchorAgentCardForTodo
+// scrolls the card now if it exists, or lets the next paint() flush the anchor
+// once the card is rendered.
+setAgentRouteBadgeTapHandler(function(todoId, projectName) {
+    if (!syncAgentAvailabilityForProject(projectName)) return;
     applyActiveView('agent');
     anchorAgentCardForTodo(todoId);
 });
@@ -3625,12 +3603,6 @@ function applyActiveView(view) {
         pillProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
         pillProjects.setAttribute('tabindex', safe === 'projects' ? '0' : '-1');
     }
-    const pillAgent = document.getElementById('viewPillAgent');
-    if (pillAgent) {
-        pillAgent.classList.toggle('active', safe === 'agent');
-        pillAgent.setAttribute('aria-pressed', safe === 'agent' ? 'true' : 'false');
-        pillAgent.setAttribute('tabindex', safe === 'agent' ? '0' : '-1');
-    }
     const pillStructure = document.getElementById('viewPillStructure');
     if (pillStructure) {
         pillStructure.classList.toggle('active', safe === 'structure');
@@ -3642,15 +3614,10 @@ function applyActiveView(view) {
     // applyActiveView call keeps both navigators in sync — desktop pills
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
-    const tabAgent = document.getElementById('mobileTabAgent');
     const tabStructure = document.getElementById('mobileTabStructure');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
-    }
-    if (tabAgent) {
-        tabAgent.classList.toggle('active', safe === 'agent');
-        tabAgent.setAttribute('aria-pressed', safe === 'agent' ? 'true' : 'false');
     }
     if (tabStructure) {
         tabStructure.classList.toggle('active', safe === 'structure');

@@ -19,7 +19,7 @@ import {
     hideStatusPopover,
     wireStatusLabelDelegation,
     setReviewBadgeTapHandler,
-    setMockupBadgeTapHandler,
+    setAgentRouteBadgeTapHandler,
 } from '../src/todoStatus.js';
 import { wireToDoRowClick } from '../src/toDoRow.js';
 import { listLogic } from '../src/listLogic.js';
@@ -296,6 +296,10 @@ describe('ASKING derived overlay', () => {
 
 
 describe('DRAFTED derived overlay', () => {
+    afterEach(() => {
+        setAgentRouteBadgeTapHandler(null);
+    });
+
     it('renders the ⌁ DRAFTED label with data-status="drafted" and no menu ARIA', () => {
         const label = buildStatusLabel({ status: 'active' }, 'drafted');
         expect(label.getAttribute('data-status')).toBe('drafted');
@@ -324,39 +328,43 @@ describe('DRAFTED derived overlay', () => {
         expect(label.getAttribute('data-status')).toBe('in_progress');
     });
 
-    it('tapping the DRAFTED badge opens the row description panel (no popover)', () => {
+    it('tapping the DRAFTED badge routes to the Agent board, not the description panel', () => {
         const container = document.createElement('div');
         container.id = 'mainList';
         document.body.appendChild(container);
         wireStatusLabelDelegation(container);
 
-        const item = { status: 'active' };
+        const routed = [];
+        setAgentRouteBadgeTapHandler(function (todoId, projectName) {
+            routed.push([todoId, projectName]);
+        });
+
+        const item = { id: 'todo-df', status: 'active' };
         const row = makeRow(item, 'Inbox');
-        // Overlay the label to DRAFTED and add a description-toggle caret.
         refreshTodoStatusUI(row, item, 'drafted');
+        // A description toggle is present — the DRAFTED tap must NOT open it now
+        // that Dispatch lives on the board.
         const descToggle = document.createElement('div');
         descToggle.id = 'descToggle';
         let opened = 0;
-        descToggle.addEventListener('click', function () {
-            opened += 1;
-            descToggle.classList.add('open');
-        });
+        descToggle.addEventListener('click', function () { opened += 1; });
         row.appendChild(descToggle);
         container.appendChild(row);
 
         row.querySelector('.todoStatusLabel').click();
-        expect(opened).toBe(1);
+        expect(routed).toEqual([['todo-df', 'Inbox']]);
+        expect(opened).toBe(0);
         // No status popover mounted for the drafted overlay.
         expect(document.getElementById('todoStatusPopover')).toBeNull();
-
-        // A second tap while open does not collapse the panel (no re-click).
-        row.querySelector('.todoStatusLabel').click();
-        expect(opened).toBe(1);
     });
 });
 
 
 describe('STUCK derived overlay', () => {
+    afterEach(() => {
+        setAgentRouteBadgeTapHandler(null);
+    });
+
     it('renders the ⌁ STUCK label with data-status="stuck" and no menu ARIA', () => {
         const label = buildStatusLabel({ status: 'active' }, 'stuck');
         expect(label.getAttribute('data-status')).toBe('stuck');
@@ -385,32 +393,33 @@ describe('STUCK derived overlay', () => {
         expect(label.getAttribute('data-status')).toBe('in_progress');
     });
 
-    it('tapping the STUCK badge opens the row description panel (no popover)', () => {
+    it('tapping the STUCK badge routes to the Agent board, not the description panel', () => {
         const container = document.createElement('div');
         container.id = 'mainList';
         document.body.appendChild(container);
         wireStatusLabelDelegation(container);
 
-        const item = { status: 'active' };
+        const routed = [];
+        setAgentRouteBadgeTapHandler(function (todoId, projectName) {
+            routed.push([todoId, projectName]);
+        });
+
+        const item = { id: 'todo-st', status: 'active' };
         const row = makeRow(item, 'Inbox');
         refreshTodoStatusUI(row, item, 'stuck');
+        // A description toggle is present — the STUCK tap must NOT open it now that
+        // Retry / re-dispatch lives on the board.
         const descToggle = document.createElement('div');
         descToggle.id = 'descToggle';
         let opened = 0;
-        descToggle.addEventListener('click', function () {
-            opened += 1;
-            descToggle.classList.add('open');
-        });
+        descToggle.addEventListener('click', function () { opened += 1; });
         row.appendChild(descToggle);
         container.appendChild(row);
 
         row.querySelector('.todoStatusLabel').click();
-        expect(opened).toBe(1);
+        expect(routed).toEqual([['todo-st', 'Inbox']]);
+        expect(opened).toBe(0);
         expect(document.getElementById('todoStatusPopover')).toBeNull();
-
-        // A second tap while open does not collapse the panel (no re-click).
-        row.querySelector('.todoStatusLabel').click();
-        expect(opened).toBe(1);
     });
 });
 
@@ -418,7 +427,7 @@ describe('STUCK derived overlay', () => {
 describe('MOCKUP derived overlay', () => {
     afterEach(() => {
         // Clear the module-level handler so it can't leak into other tests.
-        setMockupBadgeTapHandler(null);
+        setAgentRouteBadgeTapHandler(null);
     });
 
     it('renders the ⌁ MOCKUP label with data-status="mockup" and no menu ARIA', () => {
@@ -456,15 +465,15 @@ describe('MOCKUP derived overlay', () => {
         wireStatusLabelDelegation(container);
 
         const routed = [];
-        setMockupBadgeTapHandler(function (todoId, projectName) {
+        setAgentRouteBadgeTapHandler(function (todoId, projectName) {
             routed.push([todoId, projectName]);
         });
 
         const item = { id: 'todo-mk', status: 'active' };
         const row = makeRow(item, 'Inbox');
         refreshTodoStatusUI(row, item, 'mockup');
-        // A description toggle is present — the MOCKUP tap must NOT open it (unlike
-        // ASKING / DRAFTED / STUCK, whose taps do).
+        // A description toggle is present — the MOCKUP tap must NOT open it (like
+        // DRAFTED / STUCK, which now also route to the board; unlike ASKING).
         const descToggle = document.createElement('div');
         descToggle.id = 'descToggle';
         let opened = 0;

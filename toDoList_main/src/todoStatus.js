@@ -58,14 +58,15 @@ export const REVIEW_LABEL = '⌁ REVIEW';
 export const ASKING_LABEL = '⌁ ASKING';
 
 // A third derived, non-settable overlay: a committed row whose linked
-// `agent_queue` row is in `drafted` and whose landed draft the user hasn't opened
-// yet renders this amber label instead of its manual status. Like REVIEW and
-// ASKING it never appears in the popover, is never written to `status`, and never
-// drives the row-level stripe/muting — it is purely a display overlay. Its tap
-// opens the row's description panel (where the draft lands), matching ASKING; the
-// overlay clears once the task's description editor is opened. The caller supplies
-// the derived overlay descriptor (resolved from the shared agent-queue cache via
-// derivePhase at the row layer).
+// `agent_queue` row is in `drafted` and whose landed draft the user hasn't
+// dispatched yet renders this amber label instead of its manual status. Like
+// REVIEW and ASKING it never appears in the popover, is never written to
+// `status`, and never drives the row-level stripe/muting — it is purely a display
+// overlay. Its tap routes to the Agent board scrolled to this task's card, where
+// the Dispatch control lives (the draft text stays reachable via the row's
+// description chevron); the overlay clears once the linked row leaves drafted. The
+// caller supplies the derived overlay descriptor (resolved from the shared
+// agent-queue cache via derivePhase at the row layer).
 export const DRAFTED_LABEL = '⌁ DRAFTED';
 
 // A fourth derived, non-settable overlay: a committed row whose linked
@@ -73,8 +74,9 @@ export const DRAFTED_LABEL = '⌁ DRAFTED';
 // without changing anything. Unlike REVIEW / ASKING / DRAFTED (amber "waiting on
 // you"), this paints in danger red — "this went wrong" — but is otherwise the same
 // kind of overlay: never in the popover, never written to `status`, and never
-// driving the row stripe. Its tap opens the row's description panel, where the
-// run's failure reason is surfaced (matching ASKING). The caller supplies the
+// driving the row stripe. Its tap routes to the Agent board scrolled to this
+// task's card, where the Retry / re-dispatch controls live (the failure reason
+// stays reachable via the row's description chevron). The caller supplies the
 // derived overlay descriptor (resolved from the shared agent-queue cache via
 // derivePhase at the row layer).
 export const STUCK_LABEL = '⌁ STUCK';
@@ -83,11 +85,11 @@ export const STUCK_LABEL = '⌁ STUCK';
 // `agent_queue` row is parked in `needs_mockup` — the run is waiting on a mockup
 // decision. Like REVIEW / ASKING / DRAFTED it paints amber ("waiting on you") and
 // never appears in the popover, is never written to `status`, and never drives the
-// row-level stripe/muting. Unlike the other overlays its tap does NOT open the
+// row-level stripe/muting. Like DRAFTED and STUCK its tap does NOT open the
 // description panel: the choose-a-mockup flow lives on the Agent board, so the tap
 // switches to the Agent view and scrolls that task's card into view (routed through
-// a handler main.js registers — see setMockupBadgeTapHandler). It adds no block to
-// the description editor. The caller supplies the derived overlay descriptor
+// a handler main.js registers — see setAgentRouteBadgeTapHandler). It adds no block
+// to the description editor. The caller supplies the derived overlay descriptor
 // (resolved from the shared agent-queue cache via derivePhase at the row layer).
 export const MOCKUP_LABEL = '⌁ MOCKUP';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
@@ -117,15 +119,18 @@ export function invokeReviewBadgeTap(entryId, projectName) {
 }
 
 
-// Handler that jumps to the Agent board scrolled to a task's card when its
-// `⌁ MOCKUP` badge is tapped. Registered by main.js (which owns the view switch
-// and imports agentView.js's open-and-anchor entry point), the same indirection
-// setReviewBadgeTapHandler / setLocateTabSwitch use — so this module never imports
-// agentView.js or main.js and stays free of the module-cycle concerns the file
-// header documents. Invoked with (todoId, projectName).
-let mockupBadgeTapHandler = null;
-export function setMockupBadgeTapHandler(fn) {
-    mockupBadgeTapHandler = typeof fn === 'function' ? fn : null;
+// Handler that jumps to the Agent board scrolled to a task's card when a badge
+// whose action lives only on the board is tapped — `⌁ DRAFTED` (Dispatch),
+// `⌁ STUCK` (Retry), and `⌁ MOCKUP` (choose a variant) all route here now that
+// the Agent view has no tab of its own. Registered by main.js (which owns the
+// view switch, imports agentView.js's open-and-anchor entry point, and gates the
+// route on the project's repo), the same indirection setReviewBadgeTapHandler /
+// setLocateTabSwitch use — so this module never imports agentView.js or main.js
+// and stays free of the module-cycle concerns the file header documents. Invoked
+// with (todoId, projectName).
+let agentRouteBadgeTapHandler = null;
+export function setAgentRouteBadgeTapHandler(fn) {
+    agentRouteBadgeTapHandler = typeof fn === 'function' ? fn : null;
 }
 
 
@@ -199,12 +204,12 @@ function applyStatusLabelState(label, status, overlay) {
     } else if (derived === 'drafted') {
         label.setAttribute('data-status', 'drafted');
         label.removeAttribute('aria-haspopup');
-        label.setAttribute('aria-label', 'A draft landed — open to review it');
+        label.setAttribute('aria-label', 'A draft landed — open the board to dispatch it');
         label.textContent = DRAFTED_LABEL;
     } else if (derived === 'stuck') {
         label.setAttribute('data-status', 'stuck');
         label.removeAttribute('aria-haspopup');
-        label.setAttribute('aria-label', 'This run went wrong — open to see why');
+        label.setAttribute('aria-label', 'This run went wrong — open the board to retry');
         label.textContent = STUCK_LABEL;
     } else if (derived === 'mockup') {
         label.setAttribute('data-status', 'mockup');
@@ -455,37 +460,37 @@ export function wireStatusLabelDelegation(container) {
             if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;
         }
-        // DRAFTED badge: a landed draft this task hasn't been opened for. The
-        // draft text lives in the row's description, so a tap opens that panel —
-        // the same destination the ASKING badge reaches — rather than the status
-        // popover. No `status` write happens here; opening the description editor
-        // clears the badge on its own (showDescEditorModal stamps draftSeenAt and
-        // fires TODO_RUN_STATUS_EVENT). No-op when the panel is already open so a
-        // second tap doesn't collapse it shut.
+        // DRAFTED badge: a landed draft this task hasn't been dispatched. The
+        // Dispatch control that turns a draft into a run lives on the Agent board,
+        // not the description panel, so a tap routes to the Agent view and scrolls
+        // this task's card into view (via the handler main.js registers) rather
+        // than opening the panel or the status popover. The draft text is still
+        // reachable through the row's own description chevron. No `status` write
+        // happens; the badge clears on its own once the linked agent_queue row
+        // leaves drafted (dispatched / re-triaged).
         if (label.getAttribute('data-status') === 'drafted') {
-            const descToggle = row.querySelector('#descToggle');
-            if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
+            if (agentRouteBadgeTapHandler) agentRouteBadgeTapHandler(item.id, projectName);
             return;
         }
-        // STUCK badge: the linked run failed or changed nothing. Its failure reason
-        // lives in the row's description editor, so a tap opens that panel — the
-        // same destination ASKING and DRAFTED reach — rather than the status
-        // popover. No `status` write happens; the badge clears on its own once the
-        // linked agent_queue row leaves failed/no_change (re-triage / re-dispatch).
-        // No-op when the panel is already open so a second tap doesn't collapse it.
+        // STUCK badge: the linked run failed or changed nothing. The Retry /
+        // re-dispatch controls live on the Agent board, so a tap routes to the
+        // Agent view anchored to this task's card rather than opening the
+        // description panel or the status popover. The failure reason is still
+        // reachable through the row's own description chevron. No `status` write
+        // happens; the badge clears on its own once the linked agent_queue row
+        // leaves failed/no_change.
         if (label.getAttribute('data-status') === 'stuck') {
-            const descToggle = row.querySelector('#descToggle');
-            if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
+            if (agentRouteBadgeTapHandler) agentRouteBadgeTapHandler(item.id, projectName);
             return;
         }
         // MOCKUP badge: the linked run is parked waiting on a mockup decision. The
-        // choose-a-variant flow lives on the Agent board, not the description
-        // panel, so a tap routes to the Agent view and scrolls this task's card
-        // into view (via the handler main.js registers) rather than opening the
-        // panel or the status popover. No `status` write happens; the badge clears
-        // on its own once the linked agent_queue row leaves needs_mockup.
+        // choose-a-variant flow lives on the Agent board, so a tap routes to the
+        // Agent view and scrolls this task's card into view (via the handler
+        // main.js registers) rather than opening the panel or the status popover.
+        // No `status` write happens; the badge clears on its own once the linked
+        // agent_queue row leaves needs_mockup.
         if (label.getAttribute('data-status') === 'mockup') {
-            if (mockupBadgeTapHandler) mockupBadgeTapHandler(item.id, projectName);
+            if (agentRouteBadgeTapHandler) agentRouteBadgeTapHandler(item.id, projectName);
             return;
         }
         // Toggle off ONLY when the open popover belongs to THIS label; for any
