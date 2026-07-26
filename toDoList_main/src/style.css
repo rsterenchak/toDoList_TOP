@@ -1415,6 +1415,15 @@ body {
   flex-direction: column;
   gap: 6px;
   min-height: 0;
+  /* The textarea's min-height floor (180/220px) plus the phase rail, label,
+     and any ASKING/STUCK/REVIEW block can push the modal past its max-height
+     cap. Without an overflow here the body can't shrink below the textarea's
+     floor, so the textarea spilled out of the body box and painted over
+     #descEditorModalActions. `overflow-y: auto` (paired with the min-height: 0
+     above) lets the body scroll internally instead, keeping the actions and
+     MANUAL STATUS control — which live in the sibling actions container below,
+     outside this scroll region — always reachable. */
+  overflow-y: auto;
 }
 
 /* THE ENTRY label above the textarea — the SpaceMono uppercase accent label
@@ -1928,7 +1937,14 @@ body {
     max-height: 92vh;
   }
   #descEditorModalTextarea {
-    min-height: 220px;
+    /* Lowered from 220px: on a short phone the old floor plus the rail, label,
+       the six action controls (including the full-width REVIEW row), and the
+       status segments pushed the modal past its 92vh cap on every open, forcing
+       the body to scroll immediately. 160px keeps a comfortable ~6-line
+       drafting area above the single-line minimum while letting more of the
+       actions fit without scrolling. The body still scrolls when content genuinely
+       exceeds the cap; the textarea keeps its own internal scroll for long entries. */
+    min-height: 160px;
   }
   .descEditorModalBtn {
     font-size: 14px;
