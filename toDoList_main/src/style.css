@@ -17144,6 +17144,28 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 #descSibling .generateFailure {
   grid-column: 1 / -1;
 }
+
+/* PHASE-SWITCH HIDE GUARDS — applyPhaseLayout (toDoRow.js) gates the panel's
+   authoring group (#descInput, the File: picker trigger, Generate + its failure
+   notice, Inject) and THE ENTRY label by the row's derived phase, hiding them via
+   the `[hidden]` attribute in the terminal `done` phase where there is nothing
+   left to author. These controls set their own author-level `display`
+   (inline-flex / block), which outranks the UA `[hidden] { display: none }` rule,
+   so — exactly as the .filePickPanel, .claude*, and structure* families already
+   do — re-assert the hidden state explicitly, or a "hidden" control stays visible.
+   Scoped to #descSibling so the mobile description-editor modal's own Generate /
+   Inject are untouched, and placed AFTER every authoring child's grid-column rule
+   so the structural guard still resolves those first. (.filePickPanel[hidden] is
+   asserted above for its own open/close toggle and serves the `done`-phase hide
+   here too.) */
+#descSibling #descInput[hidden],
+#descSibling .filePickTrigger[hidden],
+#descSibling .generateBtn[hidden],
+#descSibling .generateFailure[hidden],
+#descSibling .injectBtn[hidden],
+#descSibling .descSiblingEntryLabel[hidden] {
+  display: none;
+}
 .generateFailureText {
   flex: 1 1 auto;
   font-size: 12px;
