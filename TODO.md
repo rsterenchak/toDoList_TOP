@@ -154,7 +154,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3ec5c491-e931-478e-9340-09733aa16264 -->
 
-- [ ] **[MEDIUM]** Collapse the tab bar to Stream and Structure
+- [x] **[MEDIUM]** Collapse the tab bar to Stream and Structure — Completed: 2026-07-26
   - Type: feature
   - Description: The tab bar carries TASKS VIEW / AGENT / STRUCTURE, but the Agent board's blocked-on-you states — ASKING, DRAFTED, STUCK, MOCKUP — all reach the task row now, so the board is no longer a place work is discovered. Collapse the bar to STREAM and STRUCTURE. The Agent VIEW is not deleted: Dispatch (drafted → run), Retry (failed), Accept, and the mockup A/B/C selection still live only there, and removing the view would leave a generated draft with no way to dispatch it. It becomes a routed destination reached from the badges that need it, rather than a tab you navigate to.
   - Behavior: The tab bar shows two tabs — STREAM (the renamed tasks view) and STRUCTURE. STREAM is the default. The Agent view remains mounted and fully functional but has no tab; it is reached by tapping a DRAFTED, STUCK, or MOCKUP badge on a row, each of which opens the board scrolled to that task's card. Returning from the board goes back to STREAM. Every existing Agent-board behavior — buckets, Dispatch, Retry, Accept, the mockup flow, its realtime updates — is unchanged. Task rows, the description panel, and Structure are unchanged apart from the two badge routes noted below.
@@ -172,3 +172,8 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 58e26831-1848-4aeb-941f-42fceec99bf7 -->
+
+- [ ] **[LOW]** Retire or relocate the orphaned agent working-dot indicator
+  - Type: feature
+  - Description: Collapsing the tab bar to Stream and Structure removed the AGENT desktop pill and mobile AGENT tab — the only two surfaces that painted the "agent is working" dot. The persistent working watch still toggles the `body.agentWorking` class on its 15s interval and on realtime `agent_queue` pushes, but nothing consumes that flag on screen anymore (its CSS rules were removed alongside the pill/tab). Decide the fate of the indicator: either relocate a "working" dot/pill onto a surviving surface (the STREAM pill, a sidebar project row, or reuse the Agent board header's status pill) so a live agent still reads as alive at a glance, or retire the watch and the `body.agentWorking` machinery entirely if the indicator is no longer wanted. The `agentDotBreathe` keyframes are shared with the Agent board header status pill, so keep them.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
