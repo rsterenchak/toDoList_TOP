@@ -85,7 +85,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 70fe7bcd-74d6-4490-a4a0-74861b7c555a -->
 
-- [ ] **[HIGH]** Desktop queue rail: title display span renders before the checkbox
+- [x] **[HIGH]** Desktop queue rail: title display span renders before the checkbox — Completed: 2026-07-26
   - Type: bug
   - Description: The read-mode title span added for desktop ellipsizing is inserted at the wrong position in the row. An unfocused committed row renders as title → checkbox → phase badge → controls, while the same row in edit mode renders correctly as checkbox → phase badge → title input. So focusing and blurring a row visibly reorders its contents, and the queue reads as two different layouts depending on which row has focus.
   - Behavior: The read-mode title span occupies exactly the same position in the row as the edit-mode input — after the completion checkbox and the phase badge, before the trailing controls — so swapping between read and edit changes only the element type, never the layout. Every row in the rail reads with the same left-to-right order regardless of focus state.
