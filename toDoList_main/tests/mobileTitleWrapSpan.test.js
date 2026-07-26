@@ -25,17 +25,31 @@ describe('Mobile tap-to-expand uses a wrappable span for the title', () => {
         expect(toDoRow).toMatch(/toDoTitleDisplay\.className\s*=\s*["']toDoTitleDisplay["']/);
     });
 
-    it('the span is appended to the row immediately before #toDoInput', () => {
-        // Per the task: "placed immediately before #toDoInput in
-        // buildToDoRow". DOM order matters for the visual title slot —
-        // the span needs to occupy the same flex column the input did.
+    it('the span is inserted immediately before #toDoInput, after the leading controls', () => {
+        // DOM order matters for the visual title slot — the span needs to
+        // occupy the same flex column the input does. The checkbox, phase
+        // badge, and status glyph all insertBefore(#toDoInput), so the span
+        // must be slotted in AFTER them (also via insertBefore) or it strands
+        // ahead of the checkbox while the edit-mode input sits after the badge,
+        // making read↔edit visibly reorder the row. Superseded criterion: the
+        // span used to be appended before the input at construction, which the
+        // later insertBefore calls then split apart.
         const fnIdx = toDoRow.indexOf('export function buildToDoRow');
         const fn = toDoRow.slice(fnIdx);
-        const spanIdx = fn.indexOf('toDoChild.appendChild(toDoTitleDisplay)');
-        const inputIdx = fn.indexOf('toDoChild.appendChild(toDoInput)');
-        expect(spanIdx).toBeGreaterThan(-1);
-        expect(inputIdx).toBeGreaterThan(-1);
-        expect(spanIdx).toBeLessThan(inputIdx);
+        // The span is never plain-appended anymore — that was the bug.
+        expect(fn).not.toMatch(/toDoChild\.appendChild\(toDoTitleDisplay\)/);
+        const spanInsertIdx = fn.indexOf('toDoChild.insertBefore(toDoTitleDisplay, toDoInput)');
+        const inputAppendIdx = fn.indexOf('toDoChild.appendChild(toDoInput)');
+        const checkboxIdx = fn.indexOf('wireCheckbox(');
+        const indicatorIdx = fn.indexOf('toDoChild.insertBefore(descIndicator, toDoInput)');
+        const badgeIdx = fn.indexOf('buildStatusLabel(');
+        expect(spanInsertIdx).toBeGreaterThan(-1);
+        // The span slot is established after the input exists and after every
+        // leading control has been inserted ahead of the input.
+        expect(spanInsertIdx).toBeGreaterThan(inputAppendIdx);
+        expect(spanInsertIdx).toBeGreaterThan(checkboxIdx);
+        expect(spanInsertIdx).toBeGreaterThan(indicatorIdx);
+        expect(spanInsertIdx).toBeGreaterThan(badgeIdx);
     });
 
     it('the span seeds its textContent from item.tit on construction', () => {
