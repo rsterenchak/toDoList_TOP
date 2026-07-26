@@ -13,7 +13,7 @@ export const changelog = [
             "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
         ],
         changed: [
-            "Desktop task rows no longer show a manual status badge — the in-progress row now shows an amber stripe and a task's status is set from the detail pane's status control.",
+            "The top tab bar is now Stream and Structure; the Agent board is reached by tapping a task's DRAFTED, STUCK, or MOCKUP badge instead of its own tab.",
         ],
     },
 ];

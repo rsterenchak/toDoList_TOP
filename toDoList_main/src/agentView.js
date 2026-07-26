@@ -3985,31 +3985,33 @@ function paint() {
     flushPendingAnchor();
 }
 
-// ── AGENT-TAB AVAILABILITY GATE ──
+// ── AGENT-VIEW AVAILABILITY GATE ──
 // A project with no routed repo can't draft, dispatch, or ship agent work —
-// there's nowhere to inject the TODO.md entry. The two AGENT tab entry points
-// (desktop pill #viewPillAgent, mobile tab #mobileTabAgent) stay fully tappable on
-// such a project, but carry a small hollow "no-repo" marker; opening the tab
-// renders an in-view unavailable message instead of a live board. A single
-// `agentUnavailable` body flag — toggled from the same project-switch hook points
-// that call syncClaudeSheetForProject — drives the marker's CSS and the paint()
-// branch. The flag clears the moment a repo-backed project becomes active. The
-// gate is the SAME one the sidebar thunderbolt uses: inject configured globally
-// AND this project carries a routed inject target.
+// there's nowhere to inject the TODO.md entry. The Agent view is no longer a tab;
+// it is reached by tapping a DRAFTED / STUCK / MOCKUP badge on a task row, and
+// main.js's badge-route handler consults this gate (via syncAgentAvailabilityForProject's
+// return value) to refuse the route on such a project. A single `agentUnavailable`
+// body flag — toggled from the same project-switch hook points that call
+// syncClaudeSheetForProject — also drives the hollow "no-repo" marker's CSS on the
+// STRUCTURE entry points and the paint() unavailable branch (rendered if the view
+// is opened anyway). The flag clears the moment a repo-backed project becomes
+// active. The gate is the SAME one the sidebar thunderbolt uses: inject configured
+// globally AND this project carries a routed inject target.
 export const AGENT_UNAVAILABLE_MSG =
     'Agent unavailable here — no repo configured for this project';
 
 function applyAgentAvailability(hasRepo) {
-    // Just toggle the body flag — the CSS keys the hollow "no-repo" marker on both
-    // AGENT entry points off it. The tab stays fully tappable (no aria-disabled,
-    // no swapped title); opening it renders the unavailable message in-view.
+    // Just toggle the body flag — the CSS keys the hollow "no-repo" marker off it
+    // and paint() renders the unavailable message in-view when the board is opened
+    // on a repo-less project.
     document.body.classList.toggle('agentUnavailable', !hasRepo);
 }
 
-// Recompute the AGENT tab's availability for the given project and apply it to
-// both entry points. Called from main.js's project-switch hooks alongside
-// syncClaudeSheetForProject so both gates derive from one source of truth and
-// clear together. Returns hasRepo so the caller can bail off a now-dead board.
+// Recompute the Agent view's availability for the given project and apply it.
+// Called from main.js's project-switch hooks alongside syncClaudeSheetForProject
+// so both gates derive from one source of truth and clear together, and from the
+// badge-route handler to refuse a route into a repo-less board. Returns hasRepo so
+// the caller can bail off a now-dead board.
 export function syncAgentAvailabilityForProject(projectName) {
     const hasRepo = isInjectConfigured()
         && !!listLogic.getProjectTargetId(projectName);
@@ -4024,7 +4026,7 @@ export function syncAgentAvailabilityForProject(projectName) {
     return hasRepo;
 }
 
-// True while the AGENT tab is gated off for the active project. paint() consults
+// True while the Agent view is gated off for the active project. paint() consults
 // this to render the in-view unavailable message instead of the queue board.
 export function isAgentUnavailable() {
     return document.body.classList.contains('agentUnavailable');

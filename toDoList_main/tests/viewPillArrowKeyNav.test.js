@@ -87,13 +87,15 @@ describe('view-pill arrow-key navigation into and out of the main pane', () => {
         throw new Error('todo arrow-nav handler not found in main.js');
     }
 
-    it('wires a keydown listener on the view pills that runs the pill-down handler', () => {
+    it('wires a keydown listener on the STREAM pill that runs the pill-down handler', () => {
         // Without a dedicated handler, the document-level todo arrow-nav
         // handler at best lands focus on a stale .todo-active row and at
         // worst silently no-ops — leaving the rendered items unreachable
-        // from the view pills.
+        // from the view pills. The drop-in only targets the STREAM (projects)
+        // pane's first focusable; the AGENT pill was retired and STRUCTURE has
+        // no list to drop into, so only the STREAM pill carries the handler.
         expect(main).toMatch(/viewPillProjects\.addEventListener\(\s*['"]keydown['"]/);
-        expect(main).toMatch(/viewPillAgent\.addEventListener\(\s*['"]keydown['"]/);
+        expect(main).not.toMatch(/viewPillAgent\.addEventListener\(\s*['"]keydown['"]/);
     });
 
     it('the pill drop-in handler bails on ArrowDown only and ignores modifier-key chords', () => {

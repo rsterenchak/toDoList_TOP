@@ -452,7 +452,7 @@ export function createMobileUtilitySheet(deps) {
     base.appendChild(bottomSheet);
 
     // ── Persistent bottom tab bar (mobile only) ──
-    // Two destinations — Projects, Agent — pinned to the
+    // Two destinations — Stream and Structure — pinned to the
     // bottom of the viewport at ≤1023px. Tapping a tab routes through
     // applyActiveView() so the same code path drives mobile tabs and the
     // desktop pill switcher; the active tab class is set in
@@ -486,9 +486,9 @@ export function createMobileUtilitySheet(deps) {
         btn.appendChild(icon);
         btn.appendChild(text);
         btn.addEventListener('click', function() {
-            // The AGENT tab always navigates now, even on projects with no routed
-            // repo — the view itself renders an in-place "unavailable" message
-            // instead of a dead board, so there's no early-return no-op here.
+            // Every tab navigates unconditionally through the canonical writer;
+            // the view itself renders any in-place "unavailable" message rather
+            // than the tap being a no-op.
             applyActiveView(viewKey);
         });
         return btn;
@@ -507,18 +507,6 @@ export function createMobileUtilitySheet(deps) {
         '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
         '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
         '</svg>';
-    // Agent — a robot glyph signalling the autonomous-agent work queue,
-    // built from path primitives like the others (no icon library).
-    const ICON_AGENT =
-        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<rect x="5" y="8" width="14" height="10" rx="2"/>' +
-        '<path d="M12 4 L12 8"/>' +
-        '<circle cx="12" cy="3" r="1"/>' +
-        '<path d="M9 12 L9 13"/>' +
-        '<path d="M15 12 L15 13"/>' +
-        '<path d="M2 12 L2 14"/>' +
-        '<path d="M22 12 L22 14"/>' +
-        '</svg>';
 
     // Structure — a layered-stack / sitemap glyph signalling the "map of the
     // source" intent, built from path primitives like the others (no icon
@@ -530,32 +518,17 @@ export function createMobileUtilitySheet(deps) {
         '<path d="M4 16.5 L12 20.5 L20 16.5"/>' +
         '</svg>';
 
-    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Tasks View');
-    const mobileTabAgent = buildMobileTab('agent', 'Agent', ICON_AGENT);
+    // Two destinations — Stream and Structure. The AGENT tab was retired: the
+    // Agent board's blocked-on-you states (DRAFTED / STUCK / MOCKUP) now reach
+    // the task row's phase badge, so the board is a routed destination reached
+    // by tapping those badges rather than a tab. The Agent view stays mounted
+    // and fully functional. The 'projects' viewKey (and the 'Projects'
+    // aria-label / selectors keyed off it) stay put; only the visible label
+    // changes to "Stream".
+    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Stream');
     const mobileTabStructure = buildMobileTab('structure', 'Structure', ICON_STRUCTURE);
     mobileTabProjects.id = 'mobileTabProjects';
-    mobileTabAgent.id = 'mobileTabAgent';
     mobileTabStructure.id = 'mobileTabStructure';
-
-    // Small hollow "no-repo" marker shown on the AGENT tab only while
-    // body.agentUnavailable is set (CSS toggles its display). The tab stays fully
-    // tappable — the marker signals the project has no routed repo, and tapping
-    // opens the in-view unavailable message rather than a live board.
-    const mobileTabAgentMarker = document.createElement('span');
-    mobileTabAgentMarker.className = 'agentNoRepoMarker';
-    mobileTabAgentMarker.setAttribute('aria-hidden', 'true');
-    mobileTabAgent.appendChild(mobileTabAgentMarker);
-
-    // Small filled "working" dot leading the AGENT tab, shown only while
-    // body.agentWorking is set (the persistent working watch toggles that class
-    // from mount-independent state, so the dot stays lit even after the user
-    // leaves the Agent tab). Inserted as the FIRST child so it reads as a
-    // leading indicator; CSS keys its display and pulse off body.agentWorking,
-    // mirroring the agentNoRepoMarker conditional-marker pattern.
-    const mobileTabAgentWorkingDot = document.createElement('span');
-    mobileTabAgentWorkingDot.className = 'agentWorkingDot';
-    mobileTabAgentWorkingDot.setAttribute('aria-hidden', 'true');
-    mobileTabAgent.insertBefore(mobileTabAgentWorkingDot, mobileTabAgent.firstChild);
 
     // Same hollow "no-repo" marker on the STRUCTURE tab — a repo-less project
     // can't be mapped, so the tab stays tappable (it opens the unlinked-repo
@@ -566,7 +539,6 @@ export function createMobileUtilitySheet(deps) {
     mobileTabStructure.appendChild(mobileTabStructureMarker);
 
     mobileTabBar.appendChild(mobileTabProjects);
-    mobileTabBar.appendChild(mobileTabAgent);
     mobileTabBar.appendChild(mobileTabStructure);
     base.appendChild(mobileTabBar);
 

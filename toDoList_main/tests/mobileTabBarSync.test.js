@@ -70,13 +70,15 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
         it('toggles .active on both mobile tabs in the same function', () => {
             // Mobile tab .active class is owned by applyActiveView so it
-            // cannot be toggled out of band from the data-view write.
+            // cannot be toggled out of band from the data-view write. The
+            // AGENT tab was retired, so the bar is STREAM + STRUCTURE.
             expect(body).toMatch(
                 /mobileTabProjects[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
             expect(body).toMatch(
-                /mobileTabAgent[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
+                /mobileTabStructure[\s\S]{0,400}classList\.toggle\(\s*['"]active['"]/
             );
+            expect(body).not.toMatch(/mobileTabAgent/);
         });
 
         it('writes data-view BEFORE toggling the mobile tab .active classes', () => {
@@ -103,9 +105,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             const builderIdx = sheet.indexOf('function buildMobileTab');
             expect(builderIdx).toBeGreaterThan(-1);
             const builderBody = sheet.slice(builderIdx, builderIdx + 1500);
-            // The click handler routes to applyActiveView(viewKey) after an
-            // AGENT-tab unavailable-repo guard, so the window is wider than the
-            // bare wiring it used to hold.
+            // The click handler routes unconditionally to applyActiveView(viewKey).
             expect(builderBody).toMatch(
                 /addEventListener\(\s*['"]click['"][\s\S]{0,600}applyActiveView\(\s*viewKey\s*\)/
             );
@@ -256,14 +256,14 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
     });
 
     describe('mobile Projects tab visible label vs accessible name', () => {
-        // The Projects tab's on-screen text reads "Tasks View" while its
+        // The Projects tab's on-screen text reads "Stream" while its
         // accessible name (aria-label) — and the 'projects' viewKey that
         // every selector and applyActiveView call keys off — stay put.
         // Decoupling the visible string from the aria-label is what keeps
         // the rename purely cosmetic.
-        it('builds the projects tab with a "Tasks View" visible label', () => {
+        it('builds the projects tab with a "Stream" visible label', () => {
             expect(sheet).toMatch(
-                /buildMobileTab\(\s*['"]projects['"]\s*,\s*['"]Projects['"]\s*,\s*ICON_LIST\s*,\s*['"]Tasks View['"]\s*\)/
+                /buildMobileTab\(\s*['"]projects['"]\s*,\s*['"]Projects['"]\s*,\s*ICON_LIST\s*,\s*['"]Stream['"]\s*\)/
             );
         });
 
@@ -292,7 +292,7 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             );
         });
 
-        it('renders "Tasks View" text and "Projects" aria-label at runtime', () => {
+        it('renders "Stream" text and "Projects" aria-label at runtime', () => {
             // Lift the buildMobileTab body and run it against a real DOM to
             // pin the BEHAVIOR, not just the source shape.
             const builderIdx = sheet.indexOf('function buildMobileTab');
@@ -317,15 +317,15 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
                 safeBody
             ).bind(null, document);
 
-            const btn = buildMobileTab('projects', 'Projects', '<svg></svg>', 'Tasks View');
+            const btn = buildMobileTab('projects', 'Projects', '<svg></svg>', 'Stream');
             expect(btn.getAttribute('aria-label')).toBe('Projects');
             expect(btn.dataset.view).toBe('projects');
-            expect(btn.querySelector('.mobileTabLabel').textContent).toBe('Tasks View');
+            expect(btn.querySelector('.mobileTabLabel').textContent).toBe('Stream');
 
             // Without a displayLabel the visible text falls back to label.
-            const fallback = buildMobileTab('agent', 'Agent', '<svg></svg>');
-            expect(fallback.querySelector('.mobileTabLabel').textContent).toBe('Agent');
-            expect(fallback.getAttribute('aria-label')).toBe('Agent');
+            const fallback = buildMobileTab('structure', 'Structure', '<svg></svg>');
+            expect(fallback.querySelector('.mobileTabLabel').textContent).toBe('Structure');
+            expect(fallback.getAttribute('aria-label')).toBe('Structure');
         });
     });
 });
