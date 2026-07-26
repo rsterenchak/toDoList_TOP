@@ -199,3 +199,20 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9c3abe6e-f2f1-4c57-b2a9-ab5c5ee7a237 -->
+
+- [ ] **[HIGH]** Description editor modal: textarea overflows its body and covers the action buttons
+  - Type: bug
+  - Description: In the mobile description-editor modal, the entry textarea visually overlaps the action buttons beneath it — the REVIEW SHIPPED CHANGE button renders half-hidden behind the textarea's lower edge. `#descEditorModal` is capped at `max-height: 86vh` (92vh on mobile) and lays out as a flex column of body plus a sibling actions container. `#descEditorModalBody` is `flex: 1 1 auto; min-height: 0` but declares no `overflow`, and `#descEditorModalTextarea` inside it has `min-height: 180px` (220px in the mobile block). When the modal's total content exceeds the cap, the body cannot shrink below the textarea's floor, and with `overflow: visible` the textarea spills out of the body's box and paints over the actions below rather than scrolling. Adding the full-width REVIEW SHIPPED CHANGE row (`flex: 0 0 100%`) made the actions taller and pushed the modal past the cap on common phone heights.
+  - Behavior: The modal never renders overlapping content at any viewport height. When the content exceeds the modal's cap, the body region scrolls internally while the action buttons and the MANUAL STATUS control stay reachable at the bottom. The phase rail, THE ENTRY label, and the textarea keep their current appearance and sizing; the textarea retains its own internal scroll for long entries. No button is ever obscured.
+  - Implementation notes:
+    - Add `overflow-y: auto` to `#descEditorModalBody`. It already has `min-height: 0`, which is the other half of making a flex child scrollable — without the overflow declaration the min-height only permits shrinking that the textarea's floor then blocks.
+    - Verify the actions container and MANUAL STATUS stay pinned outside the scrolling region. `#descEditorModalActions` is a sibling of the body with its own `padding` and `border-top`, so it should already sit below the scroll area — confirm it does not get swept into it.
+    - Re-check the textarea's `min-height` after the overflow fix. At 220px on a short phone, plus the rail, the label, six action controls including the full-width review row, and the status segments, the body may scroll on every open, which is worse than a slightly shorter textarea. Consider lowering the mobile floor; if you do, keep it comfortably above a single line and state the value chosen in the PR body.
+    - The textarea already declares `overflow: auto`, so it has its own scroll. Confirm the nested scroll behaves sanely — the body should scroll the modal's content, the textarea should scroll its own text, and neither should trap the other on touch.
+    - Check the auto-grow path. `descInput`-style auto-grow sets an inline height from `scrollHeight`; if the modal textarea does the same, an inline height can defeat `flex: 1 1 auto` and reintroduce the overflow even with the fix. Grep for where the modal textarea's height is set and confirm the two do not fight.
+    - Verify with a task in each phase that adds a block above the textarea — ASKING (question plus answer input), STUCK (failure reason), and REVIEW (the full-width route button) — since those are the cases that push the modal past its cap. Test on a short viewport, not just a tall one.
+    - Do not fix this by raising `max-height` past 92vh or by removing the review button's `flex: 0 0 100%`; both trade one overflow for another.
+  - Out of scope: The REVIEW SHIPPED CHANGE button, its colour, its ordering, and its route. The phase rail, the MANUAL STATUS control, and the action buttons' own styling. The desktop `#descSibling` panel, which is a grid and unaffected. Dispatch and Retry, correct as landed. The file picker.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9447ae11-5c7a-443d-bff7-2ea557ade723 -->
