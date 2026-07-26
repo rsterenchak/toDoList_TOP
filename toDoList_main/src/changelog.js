@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-26',
-        added: [
-            "On wide screens, clicking a task or moving keyboard focus to it now opens it in the detail panel, so arrowing through the queue walks the panel along.",
-        ],
         fixed: [
             "On wide screens, the open task's detail panel now grows to fill the space, with the task queue and chat pane held to fixed-width rails so widening the window widens the details.",
             "The TODO.md viewer's header controls now wrap onto another line in the narrow task-queue column instead of being cut off.",
             "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",
             "In the desktop task queue, an unfocused task title now stays in its normal position instead of jumping ahead of the checkbox.",
+            "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
         ],
     },
 ];
