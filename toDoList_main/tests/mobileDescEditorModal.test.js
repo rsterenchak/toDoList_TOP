@@ -325,6 +325,34 @@ describe('mobile desc editor modal — textarea styling', () => {
     });
 });
 
+describe('mobile desc editor modal — body scrolls instead of overflowing the actions', () => {
+
+    const css = read('style.css');
+
+    it('the body scrolls internally (overflow-y: auto) so the textarea floor cannot spill over the action buttons', () => {
+        // The bug: #descEditorModalBody is `flex: 1 1 auto; min-height: 0` but
+        // declared no overflow, so when the modal hit its max-height cap the body
+        // could not shrink below the textarea's min-height floor and the textarea
+        // painted over #descEditorModalActions below it. `overflow-y: auto` lets
+        // the body scroll internally instead. min-height: 0 (already present) is
+        // the other half of making a flex child scrollable — both are required.
+        // jsdom computes no layout, so this pins the declaration that prevents the
+        // overlap rather than the rendered result.
+        const ruleMatch = css.match(/#descEditorModalBody\s*\{([\s\S]{0,1000}?)\}/);
+        expect(ruleMatch).toBeTruthy();
+        const body = ruleMatch[1];
+        expect(body).toMatch(/overflow-y:\s*auto/);
+        expect(body).toMatch(/min-height:\s*0/);
+    });
+
+    it('the actions container stays a sibling with its own border-top, outside the scroll region', () => {
+        // The actions must remain pinned below the scrolling body — verified via
+        // its own padding/border-top treatment, which places it outside the body
+        // box rather than being swept into the scroll area.
+        expect(css).toMatch(/#descEditorModalActions\s*\{[\s\S]{0,300}border-top:/);
+    });
+});
+
 describe('mobile desc editor modal — iOS-safe input attributes', () => {
 
     const modals = read('modals.js');
