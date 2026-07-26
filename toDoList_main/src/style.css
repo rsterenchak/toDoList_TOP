@@ -10938,8 +10938,18 @@ body.row-dragging * { cursor: grabbing !important; }
 
 .todoMdViewerCheckRow {
   display: flex;
+  /* Let the per-entry action buttons (Run / Revert / Acknowledge / delete)
+     wrap onto their own line below the label when they can't fit beside it in
+     the narrow ~308px queue rail. Without this, the row stayed one line and
+     flex-shrink crushed the label toward zero width — text rendered one glyph
+     per line. Paired with the min-width floor on .todoMdViewerCheckText below;
+     wrap alone won't trigger because the browser prefers shrinking the label
+     over breaking the line. Self-gating: at wide widths the buttons still fit
+     on one line, so this is inert there. */
+  flex-wrap: wrap;
   align-items: flex-start;
-  gap: 8px;
+  /* row-gap keeps a wrapped button row off the text line; column-gap unchanged. */
+  gap: 6px 8px;
   padding: 3px 4px;
   border-radius: var(--radius-sm);
 }
@@ -11000,6 +11010,13 @@ body.row-dragging * { cursor: grabbing !important; }
 
 .todoMdViewerCheckText {
   flex: 1 1 auto;
+  /* Minimum readable width so flex-shrink can't compress the label toward
+     zero. `word-break: break-word` removes the min-content floor, so without
+     this floor the label collapses one-glyph-per-line rather than forcing the
+     action buttons to wrap (see .todoMdViewerCheckRow). Kept small (14ch) so
+     it never forces a wrap at wide widths where text + buttons fit on one
+     line. Keep word-break so a long unbroken path/URL still can't overflow. */
+  min-width: 14ch;
   word-break: break-word;
 }
 
