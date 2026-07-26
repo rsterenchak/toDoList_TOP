@@ -200,7 +200,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9c3abe6e-f2f1-4c57-b2a9-ab5c5ee7a237 -->
 
-- [ ] **[HIGH]** Description editor modal: textarea overflows its body and covers the action buttons
+- [x] **[HIGH]** Description editor modal: textarea overflows its body and covers the action buttons — Completed: 2026-07-26
   - Type: bug
   - Description: In the mobile description-editor modal, the entry textarea visually overlaps the action buttons beneath it — the REVIEW SHIPPED CHANGE button renders half-hidden behind the textarea's lower edge. `#descEditorModal` is capped at `max-height: 86vh` (92vh on mobile) and lays out as a flex column of body plus a sibling actions container. `#descEditorModalBody` is `flex: 1 1 auto; min-height: 0` but declares no `overflow`, and `#descEditorModalTextarea` inside it has `min-height: 180px` (220px in the mobile block). When the modal's total content exceeds the cap, the body cannot shrink below the textarea's floor, and with `overflow: visible` the textarea spills out of the body's box and paints over the actions below rather than scrolling. Adding the full-width REVIEW SHIPPED CHANGE row (`flex: 0 0 100%`) made the actions taller and pushed the modal past the cap on common phone heights.
   - Behavior: The modal never renders overlapping content at any viewport height. When the content exceeds the modal's cap, the body region scrolls internally while the action buttons and the MANUAL STATUS control stay reachable at the bottom. The phase rail, THE ENTRY label, and the textarea keep their current appearance and sizing; the textarea retains its own internal scroll for long entries. No button is ever obscured.
