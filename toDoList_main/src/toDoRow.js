@@ -2669,11 +2669,18 @@ export function buildToDoRow(item, toDoName) {
     swipeGlyphRight.textContent = '✕';
     swipePaneRight.appendChild(swipeGlyphRight);
 
-    // assemble DOM tree
+    // assemble DOM tree. The read-mode title span (#toDoTitleDisplay) is NOT
+    // appended here: the checkbox, phase badge, and status glyph all insert
+    // themselves before #toDoInput further down, so appending the span now
+    // would leave it stranded ahead of the checkbox while the edit-mode input
+    // sits after the badge — the two title slots would render at different
+    // positions and the read/edit swap would visibly reorder the row. Instead
+    // the span is slotted immediately before #toDoInput after those leading
+    // controls are in place (see below), so span and input are adjacent
+    // siblings and the swap is a pure visibility toggle.
     toDoChild.appendChild(swipePaneLeft);
     toDoChild.appendChild(swipePaneRight);
     if (addGlyph) toDoChild.appendChild(addGlyph);
-    toDoChild.appendChild(toDoTitleDisplay);
     toDoChild.appendChild(toDoInput);
     // Paste trigger renders to the mic's left: appended before it, both on the
     // row's trailing side.
@@ -2759,6 +2766,14 @@ export function buildToDoRow(item, toDoName) {
         applyTodoStatusClass(toDoChild, item.status);
         toDoChild.insertBefore(buildStatusLabel(item, overlayForPhase(phase)), descIndicator);
     }
+    // Slot the read-mode title span immediately before #toDoInput, now that the
+    // checkbox, phase badge, and status glyph have all been inserted ahead of
+    // the input. This keeps the span and the input adjacent siblings at the same
+    // position in the row, so the read↔edit swap only changes which element is
+    // visible — never the row's left-to-right order (checkbox · badge · glyph ·
+    // title). Built once at construction and only repositioned here, so it is
+    // not re-created on each blur.
+    toDoChild.insertBefore(toDoTitleDisplay, toDoInput);
     attachToDoDrag(toDoChild, toDoInput, toDoName, {
         checkToDo: checkToDo,
         closeButtonToDo: closeButtonToDo,
