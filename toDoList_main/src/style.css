@@ -11142,12 +11142,14 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* Split #mainSec into a queue column (left) and the task detail pane (right).
-     This split is NESTED inside #mainSec — #mainBar takes the 1fr queue track
-     and #descDetailPane the right track — so it never competes with the chat
-     pane (#desktopChatPane), which remains a flex sibling of #mainSec one level
-     up in #mainSplit. #sideBar is position:fixed and takes no grid cell. */
+     This split is NESTED inside #mainSec — #mainBar takes the fixed-width queue
+     rail (left track) and #descDetailPane the flexible 1fr track (right), so the
+     detail pane absorbs all leftover width while the queue stays a compact rail
+     of one-line titles. It never competes with the chat pane (#desktopChatPane),
+     which remains a flex sibling of #mainSec one level up in #mainSplit.
+     #sideBar is position:fixed and takes no grid cell. */
   #mainSec {
-    grid-template-columns: minmax(0, 1fr) minmax(320px, 38%);
+    grid-template-columns: minmax(260px, 308px) minmax(0, 1fr);
   }
   #mainBar { grid-column: 1; }
   #descDetailPane {
@@ -13465,8 +13467,9 @@ body.row-dragging * { cursor: grabbing !important; }
    D2 — DESKTOP TWO-PANE CHAT ≥ 1024px
    ──────────────────────────────────────────
    #mainSplit wraps the main task pane (#mainSec) and a persistent Claude
-   chat pane (#desktopChatPane). At desktop widths they sit side by side
-   (~60 / 40); the slide-up sheet and its launcher have no presence here —
+   chat pane (#desktopChatPane). At desktop widths they sit side by side — the
+   chat pane holds a fixed ~360px column and #mainSec (flex: 1 1 auto) absorbs
+   all remaining width; the slide-up sheet and its launcher have no presence here —
    the chat content node (#claudeSheetBody) is relocated into the pane by
    placeChatContent(). On mobile #mainSplit is display:contents, so #mainSec
    keeps its #outerContainer grid-row, the pane is hidden, and the chat is
@@ -13497,9 +13500,9 @@ body.row-dragging * { cursor: grabbing !important; }
        #desktopChatPane), so dropping the wrapper clip doesn't leak content. */
     overflow: visible;
   }
-  #mainSec { flex: 1 1 60%; min-width: 0; }
+  #mainSec { flex: 1 1 auto; min-width: 0; }
   #desktopChatPane {
-    flex: 0 0 40%;
+    flex: 0 0 360px;
     min-width: 0;
     display: flex;
     flex-direction: column;
