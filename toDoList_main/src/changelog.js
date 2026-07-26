@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-26',
-        changed: [
-            "On wide screens, opening a task now shows its details in a side panel instead of pushing the rest of your list down and out of view.",
+        added: [
+            "On wide screens, clicking a task or moving keyboard focus to it now opens it in the detail panel, so arrowing through the queue walks the panel along.",
         ],
         fixed: [
             "On wide screens, the open task's detail panel now grows to fill the space, with the task queue and chat pane held to fixed-width rails so widening the window widens the details.",

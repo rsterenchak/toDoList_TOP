@@ -415,6 +415,60 @@ export function openDescSiblingFor(toDoChild) {
 }
 
 
+// Open a committed row in the desktop detail pane by driving the SAME chevron
+// path a descToggle click uses, so placeDescPanel, openDescSiblingFor, the
+// ASKING/STUCK syncs, and the phase-switch layout all run identically regardless
+// of what initiated the open. Shared by the row-click branch and the keyboard
+// focus path so the two can never drift. Idempotent and self-gating:
+//   - a no-op outside detail-pane mode (inline mode owns its own open),
+//   - a no-op when the row has no toggle,
+//   - a no-op when this row's panel is ALREADY the one mounted in the pane —
+//     the load-bearing guard, since without it a re-trigger on the open row
+//     would call descToggle.click() and toggle it CLOSED.
+// Because the open runs through descToggle.click(), one interaction that both
+// clicks and focuses the row results in a single open: the first call opens and
+// records openDetail, the second sees it and returns.
+export function openRowInDetailPane(toDoChild, descToggle) {
+    if (!isDetailPaneMode()) return;
+    if (!descToggle) descToggle = toDoChild.querySelector('#descToggle');
+    if (!descToggle) return;
+    // Already the mounted detail (tracked) or already flagged open → nothing to do.
+    if (openDetail && openDetail.toDoChild === toDoChild) return;
+    if (descToggle.classList.contains('open')) return;
+    descToggle.click();
+}
+
+
+// A single delegated focusin listener on #mainList opens the focused committed
+// row in the desktop detail pane, so moving keyboard focus into a row — via Tab
+// or the arrow-key nav that focuses the row element — walks the pane with it.
+// Unlike the click path it must NOT set data-title-edit or focus the title
+// input: arrowing down the queue must not drop a caret into every title. The
+// open is idempotent (openRowInDetailPane), so a mouse click — which both fires
+// focusin on the input and runs the click branch's own open — still results in a
+// single open. Attached once behind a module flag: main.js evaluates twice across
+// the four webpack entry bundles, and a double-bound delegated listener on the
+// shared #mainList would open the pane twice per focus.
+let detailPaneFocusinAttached = false;
+export function ensureDetailPaneFocusListener() {
+    if (detailPaneFocusinAttached || typeof document === 'undefined') return;
+    const mainList = document.getElementById('mainList');
+    if (!mainList) return;
+    detailPaneFocusinAttached = true;
+    mainList.addEventListener('focusin', function(e) {
+        // Gate on pane mode so the handler no-ops (never throws) inline.
+        if (!isDetailPaneMode()) return;
+        const row = e.target && e.target.closest ? e.target.closest('#toDoChild') : null;
+        if (!row) return;
+        // The blank placeholder / compose row never opens the pane.
+        if (row.dataset && row.dataset.originalBlank === 'true') return;
+        const input = row.querySelector('#toDoInput');
+        if (!input || !input.value.trim()) return;
+        openRowInDetailPane(row, row.querySelector('#descToggle'));
+    });
+}
+
+
 // The single insertion anchor for the panel's leading blocks. The phase rail
 // always leads the panel; the ASKING and STUCK blocks mount immediately AFTER
 // it, and THE ENTRY label sits after those. Returning `rail.nextSibling` (the
@@ -1501,6 +1555,7 @@ export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
             if (el !== toDoChild) el.classList.remove('todo-active');
         });
         toDoChild.classList.add('todo-active');
+        openRowInDetailPane(toDoChild, descToggle); // also show it in the detail pane
 
         // one-click editing — focus with caret at end rather than selecting text
         if (document.activeElement !== toDoInput) {
@@ -1534,6 +1589,11 @@ export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
             }
         });
     }
+
+    // Attach the keyboard-focus → detail-pane delegation once (idempotent, lazy so
+    // it runs past #mainList's creation). Placed after the per-row listeners so it
+    // stays out of the click-handler body the source-inspection windows scan.
+    ensureDetailPaneFocusListener();
 }
 
 

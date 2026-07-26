@@ -100,7 +100,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 88183626-5346-4dc2-b7e3-2ffc3fc7dfbc -->
 
-- [ ] **[MEDIUM]** Desktop: selecting a row opens it in the detail pane
+- [x] **[MEDIUM]** Desktop: selecting a row opens it in the detail pane — Completed: 2026-07-26
   - Type: feature
   - Description: On desktop the detail pane only opens when the description chevron is clicked, even though the row already has a click handler that selects it — `toDoRow.js`'s committed-row branch (~line 1498) adds `.todo-active`, deactivates every other row, sets `data-title-edit`, and focuses the title input for one-click editing. Selection is therefore already happening; it simply does not drive the pane. Have that same branch open the row in the detail pane, and add a keyboard path so arrowing through the queue moves the pane with it. This is a small addition to an existing handler, not a new interaction model.
   - Behavior: At desktop widths, clicking a committed row opens it in the detail pane and marks it active, in addition to the one-click title editing it already does. Moving keyboard focus into a committed row — via tab or the existing arrow-key navigation — also opens it in the pane, but does NOT enter title-edit mode, so arrowing down the queue walks the detail pane without dropping a caret into every title. Opening a different row moves the pane and the active marker. The chevron keeps working exactly as it does. The blank placeholder row and the compose row never open the pane. Re-selecting the already-open row is a no-op rather than a re-render. Controls with their own action — the checkbox, the delete control, the phase badge, the copy chip — do not change what the pane shows. Mobile is untouched: the existing tap-to-read branch stays as is.
