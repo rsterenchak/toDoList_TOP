@@ -49,3 +49,21 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 2ccac7dc-cc83-489d-b113-c7f2d8c8118a -->
+
+- [ ] **[MEDIUM]** TODO.md viewer: header controls clip in the narrow queue rail
+  - Type: bug
+  - Description: The viewer card's action controls are cut off now that the queue column is a fixed ~308px rail. `.todoMdViewerHeader` is `display: flex; flex-wrap: wrap`, so the header itself can wrap — but `.todoMdViewerMeta`, which holds the synced label, Run backlog, Redeploy, the sync chip, the overflow chip, and the chevron, is a nested flex row with no `flex-wrap` and `margin-left: auto`. Its children cannot break, so the whole group overflows as a single unit and is clipped rather than wrapping onto a second line. The card was laid out when the queue column was roughly 535px wide; at 308px the group no longer fits.
+  - Behavior: At the queue rail's width, every viewer control remains visible and reachable — the Rendered / Raw markdown tabs, the synced timestamp, Run backlog, Redeploy, sync, overflow, and the expand chevron — wrapping onto additional lines as needed rather than clipping. Wrapped rows align to the card's left edge rather than being pushed right by a stale auto margin. Controls keep their existing sizes, order, and hit areas; the 36×36 chip convention is preserved. At wider widths, where the group still fits on one line, the header renders exactly as it does today with the meta group right-aligned.
+  - Implementation notes:
+    - Add `flex-wrap: wrap` to `.todoMdViewerMeta` and give it a row-gap so wrapped lines are not flush against each other. This alone fixes the clipping; everything below is about making the wrapped result read correctly.
+    - `margin-left: auto` pushes the group right, which is correct on one line and wrong once it wraps — a wrapped group ends up right-aligned against the card edge while the tabs sit left. Drop the auto margin at rail widths (a `max-width` media block, or `justify-content` on the header instead of the auto margin) so wrapped rows start at the left edge.
+    - `.todoMdViewerSynced` carries `white-space: nowrap` and a full relative timestamp. Confirm it does not force a wide line on its own — if "synced just now" is fine but "synced 3 days ago" is not, consider letting that one label shrink or truncate rather than reflowing the whole group.
+    - Do NOT solve this by moving controls into the existing overflow menu. That is a behavioral change to which actions are one tap versus two, and it should be a deliberate decision rather than a side effect of a layout fix.
+    - Do NOT reduce the chips below the 36×36 convention or shrink the Run backlog and Redeploy pills. Those are primary actions and the convention is established across the app.
+    - Check the card in its OTHER host: `#todoMdViewerMobileSheet` uses the same `.todoMdViewerCard` markup at a different width with its own `flex: 1 1 auto; min-height: 0` treatment. Verify the wrap changes do not alter the mobile sheet's header, and scope them to the `#mainList` host if they do.
+    - The card's expanded body height is cached and read by `refreshViewerExpandedHeight()`. A header that wraps to two lines changes the card's total height — confirm the cached measurement is taken after the wrap settles, or an expanded card will be short by one header row.
+    - Verify at the tightest case: 1024px viewport with the chat pane docked, where the queue rail is at its narrowest permitted width.
+  - Out of scope: Which controls live in the header versus the overflow menu. The viewer's tabs, its rendered and raw bodies, the per-entry pills, and the Acknowledge flow. The card's position in the queue column. Moving the viewer into the detail pane. The queue rail's width, which is correct as landed. Mobile sheet behavior beyond verifying no regression.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 56e3eaa0-b733-4dec-9d5a-1e0e66add52b -->
