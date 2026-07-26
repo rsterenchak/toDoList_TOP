@@ -145,7 +145,7 @@ describe('D2 — desktop chat pane (layout source)', () => {
             /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{[\s\S]*?#mainSplit\s*\{[^}]*display:\s*flex/
         );
         expect(css).toMatch(
-            /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{[\s\S]*?#mainSec\s*\{[^}]*flex:\s*1 1 60%/
+            /@media\s*\(\s*min-width:\s*1024px\s*\)\s*\{[\s\S]*?#mainSec\s*\{[^}]*flex:\s*1 1 auto/
         );
     });
 

@@ -9,6 +9,9 @@ export const changelog = [
         changed: [
             "On wide screens, opening a task now shows its details in a side panel instead of pushing the rest of your list down and out of view.",
         ],
+        fixed: [
+            "On wide screens, the open task's detail panel now grows to fill the space, with the task queue and chat pane held to fixed-width rails so widening the window widens the details.",
+        ],
     },
     {
         version: '1.1',
@@ -19,13 +22,6 @@ export const changelog = [
         ],
         changed: [
             "Once a task has shipped and been acknowledged, its desktop description panel now hides the entry editor, file picker, Generate and Inject, leaving just the phase rail and Discuss.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-24',
-        fixed: [
-            "The desktop description panel's phase rail and section label now align with the entry text, and the rail is capped so its four steps read as one sequence, instead of stretching flush to the panel's edges.",
         ],
     },
 ];

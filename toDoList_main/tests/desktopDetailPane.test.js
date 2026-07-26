@@ -301,9 +301,25 @@ describe('detail pane — host DOM + CSS wiring (source-structural)', () => {
 
     it('CSS splits #mainSec into queue + detail columns at ≥1024px', () => {
         const desktop = css.slice(css.indexOf('@media (min-width: 1024px)'));
-        // The split declares a two-track grid and places the detail pane in col 2.
-        expect(desktop).toMatch(/#mainSec\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)/);
+        // The split declares a two-track grid — a fixed-width queue rail on the
+        // left and a flexible detail track (1fr) on the right — and places the
+        // detail pane in col 2.
+        expect(desktop).toMatch(/#mainSec\s*\{[^}]*grid-template-columns:\s*minmax\(260px,\s*308px\)\s+minmax\(0,\s*1fr\)/);
         expect(desktop).toMatch(/#descDetailPane\s*\{[^}]*grid-column:\s*2/);
+    });
+
+    it('CSS gives the detail pane the flexible width: fixed chat pane + fluid #mainSec', () => {
+        // Width-allocation contract for the bug fix: the chat pane holds a fixed
+        // ~360px basis (not 40% of the viewport), #mainSec absorbs everything
+        // left over (flex: 1 1 auto), and inside #mainSec the queue is the fixed
+        // rail while the detail pane takes the 1fr track — so widening the window
+        // grows the detail pane and nothing else.
+        const desktop = css.slice(css.indexOf('@media (min-width: 1024px)'));
+        expect(desktop).toMatch(/#desktopChatPane\s*\{[^}]*flex:\s*0 0 360px/);
+        expect(desktop).toMatch(/#mainSec\s*\{[^}]*flex:\s*1 1 auto/);
+        // The old backwards allocation (chat at 40%, queue as the 1fr track) is gone.
+        expect(desktop).not.toMatch(/#desktopChatPane\s*\{[^}]*flex:\s*0 0 40%/);
+        expect(desktop).not.toMatch(/#mainSec\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+minmax\(320px/);
     });
 
     it('CSS hides #descDetailPane by default (inline mode below 1024px)', () => {
