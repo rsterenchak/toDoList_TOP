@@ -114,7 +114,7 @@
     - Exclusions resolved by walking up from the event target: `data-original-blank` rows, the compose row, the completion checkbox, the delete control,
   <!-- id: 400571b0-bef5-4955-9cfa-26e146e431a9 -->
 
-- [ ] **[HIGH]** TODO.md viewer: entry text crushes to one character per line in the narrow rail
+- [x] **[HIGH]** TODO.md viewer: entry text crushes to one character per line in the narrow rail — Completed: 2026-07-26
   - Type: bug
   - Description: In the viewer's rendered body, an entry's text renders one character per line — a vertical column of glyphs. `.todoMdViewerCheckRow` is `display: flex` with no `flex-wrap`, holding checkbox → label → Revert → Acknowledge → delete. The label (`.todoMdViewerCheckText`) has `flex: 1 1 auto; word-break: break-word` and no minimum width, and `word-break: break-word` removes its min-content floor — so when the action buttons cannot fit on one line, flex shrink compresses the label toward zero instead of wrapping anything. At the old ~535px task column the buttons fit and the bug was invisible; in the 308px queue rail they do not.
   - Behavior: An entry's text reads as normal wrapped prose at the rail's width, occupying the available line and wrapping to further lines as needed. When the per-entry action buttons cannot fit alongside it, they wrap onto their own line below the text rather than squeezing it. The text never compresses narrower than a readable minimum. Checkbox alignment, the amber review edge, the strikethrough on completed entries, and every button's size, order, and behavior are unchanged. At wider widths, where text and buttons fit on one line, the row renders as it does today.
