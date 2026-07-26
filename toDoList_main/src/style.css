@@ -3966,6 +3966,32 @@ body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   opacity: 0.85;
 }
 
+/* STREAM tab "agent working" dot — a live agent (a triage sweep or a ship run in
+   flight) reads as alive at a glance even after the Agent board was demoted from
+   a tab. A real <span> appended to the STREAM pill and its mobile tab, hidden by
+   default and revealed only while the persistent working watch sets the
+   `agentWorking` body flag. On the desktop pill it sits inline after the label; it
+   breathes via the shared agentDotBreathe keyframes (gated behind
+   prefers-reduced-motion below, matching the header status pill's dot). */
+.agentWorkingMarker {
+  display: none;
+}
+body.agentWorking #viewPillProjects .agentWorkingMarker {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-left: 6px;
+  border-radius: 50%;
+  background: #2ea043;
+  vertical-align: middle;
+}
+@media (prefers-reduced-motion: no-preference) {
+  body.agentWorking #viewPillProjects .agentWorkingMarker,
+  body.agentWorking #mobileTabProjects .agentWorkingMarker {
+    animation: agentDotBreathe 1.8s ease-in-out infinite;
+  }
+}
+
 /* ── AGENT VIEW ──
    The per-project agent-queue board: the selected project's name + an
    "Agent queue" chip, followed by grouped buckets (Needs you, Stuck, In
@@ -16788,6 +16814,21 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     border-radius: 50%;
     background: transparent;
     opacity: 0.85;
+  }
+
+  /* STREAM tab "agent working" dot on mobile — pinned to the top-right corner of
+     the vertical icon/label stack, mirroring the no-repo marker's placement. The
+     breathing animation is added by the top-level prefers-reduced-motion:
+     no-preference block, which also covers this selector. */
+  body.agentWorking #mobileTabProjects .agentWorkingMarker {
+    display: block;
+    position: absolute;
+    top: 6px;
+    right: 22%;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #2ea043;
   }
 
   .mobileTab:focus-visible {

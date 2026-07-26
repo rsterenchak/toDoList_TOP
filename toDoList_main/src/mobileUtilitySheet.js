@@ -538,6 +538,16 @@ export function createMobileUtilitySheet(deps) {
     mobileTabStructureMarker.setAttribute('aria-hidden', 'true');
     mobileTabStructure.appendChild(mobileTabStructureMarker);
 
+    // "Agent working" dot on the STREAM tab — the mobile counterpart to the
+    // desktop STREAM pill's dot. Hidden by default, revealed only while the
+    // persistent working watch sets `body.agentWorking`, so a live agent still
+    // reads as alive at a glance after the mobile AGENT tab that used to paint it
+    // was retired.
+    const mobileTabProjectsWorkingDot = document.createElement('span');
+    mobileTabProjectsWorkingDot.className = 'agentWorkingMarker';
+    mobileTabProjectsWorkingDot.setAttribute('aria-hidden', 'true');
+    mobileTabProjects.appendChild(mobileTabProjectsWorkingDot);
+
     mobileTabBar.appendChild(mobileTabProjects);
     mobileTabBar.appendChild(mobileTabStructure);
     base.appendChild(mobileTabBar);
