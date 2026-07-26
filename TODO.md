@@ -84,3 +84,18 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 70fe7bcd-74d6-4490-a4a0-74861b7c555a -->
+
+- [ ] **[HIGH]** Desktop queue rail: title display span renders before the checkbox
+  - Type: bug
+  - Description: The read-mode title span added for desktop ellipsizing is inserted at the wrong position in the row. An unfocused committed row renders as title → checkbox → phase badge → controls, while the same row in edit mode renders correctly as checkbox → phase badge → title input. So focusing and blurring a row visibly reorders its contents, and the queue reads as two different layouts depending on which row has focus.
+  - Behavior: The read-mode title span occupies exactly the same position in the row as the edit-mode input — after the completion checkbox and the phase badge, before the trailing controls — so swapping between read and edit changes only the element type, never the layout. Every row in the rail reads with the same left-to-right order regardless of focus state.
+  - Implementation notes:
+    - Insert the span at the input's position rather than prepending to the row. If the current code uses `toDoChild.prepend(...)` or `insertBefore(span, toDoChild.firstChild)`, replace it with an insert relative to `#toDoInput` — `toDoChild.insertBefore(span, toDoInput)` — so the two are always adjacent and the swap is purely a visibility toggle between siblings.
+    - Prefer building the span ONCE at row construction next to the input and toggling visibility, over creating and inserting it on each blur. A create-and-insert path on every blur is how the file picker ended up duplicating on reopen, and rows are rebuilt constantly by `addAllToDo_DOM` and `reorderToDoDOM`.
+    - Verify the mobile ≤420px path is unaffected — it already renders the span correctly, so the fix must not move it there. If the desktop and mobile inserts share a code path, confirm both positions after the change.
+    - The span carries `flex: 1 1 0; min-width: 0`, matching the input, so it must sit in the same flex position for the row's sizing to be identical in both states. Verify the phase badge and trailing controls do not shift horizontally when a row gains or loses focus.
+    - Add a test asserting the span and the input are adjacent siblings in the row, and that the span's index among the row's children matches the input's — this is a DOM-order assertion, not a layout one, so it works in jsdom.
+  - Out of scope: The ellipsis truncation itself, which is correct. The read/edit swap's focus handling, caret placement, and rename path. Row height, the phase badge, and the trailing controls. The rail's width. Row focus opening the detail pane, which is a separate unbuilt entry.
+  - File: `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 88183626-5346-4dc2-b7e3-2ffc3fc7dfbc -->
