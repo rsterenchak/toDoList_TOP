@@ -16,8 +16,8 @@ import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
-import { STATUS_META, STATUS_ORDER, normalizeStatus, refreshTodoStatusUI, invokeReviewBadgeTap } from './todoStatus.js';
-import { reorderToDoDOM, makeGenerateButton, syncGenerateControl } from './toDoRow.js';
+import { buildManualStatusControl, invokeReviewBadgeTap } from './todoStatus.js';
+import { makeGenerateButton, syncGenerateControl } from './toDoRow.js';
 import { derivePhase, PHASE } from './phase.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
@@ -561,77 +561,13 @@ export function showDescEditorModal(item, options) {
     // ── STATUS SEGMENTED CONTROL ──
     // On mobile the on-row status badge (`.todoStatusLabel` → showStatusPopover)
     // is hidden in favor of the left-edge color tab, so status is visible but
-    // not settable from the row. Surface a three-segment selector here — the
-    // same vocabulary the desktop popover uses, pulled from STATUS_META /
-    // STATUS_ORDER so the labels and order stay single-sourced. The selected
-    // segment fills with its status color, matched to the row edge tab.
-    //
-    // It sits BELOW the actions (last in the dialog) under its own label. The
-    // rail above renders the DERIVED pipeline phase; this control is the user's
-    // OWN annotation, so the label reads "Manual status" to keep the two from
-    // being read as one stacked control (their vocabularies even overlap — the
-    // rail's IDEA node vs. the status Idea option).
-    const statusRow = document.createElement('div');
-    statusRow.id = 'descEditorModalStatusRow';
-
-    const statusLabel = document.createElement('span');
-    statusLabel.id = 'descEditorModalStatusLabel';
-    statusLabel.textContent = 'Manual status';
-
-    const statusControl = document.createElement('div');
-    statusControl.id = 'descEditorModalStatusControl';
-    statusControl.setAttribute('role', 'radiogroup');
-    statusControl.setAttribute('aria-label', 'Task status');
-
-    const currentStatus = normalizeStatus(item && item.status);
-
-    function updateStatusSegments(status) {
-        const segs = statusControl.querySelectorAll('.descEditorModalStatusSeg');
-        for (let i = 0; i < segs.length; i++) {
-            const on = segs[i].getAttribute('data-status') === status;
-            segs[i].classList.toggle('selected', on);
-            segs[i].setAttribute('aria-checked', on ? 'true' : 'false');
-        }
-    }
-
-    function selectStatus(status) {
-        const projectName = opts.projectName || '';
-        // Route through the same mutation channel the desktop badge uses, so the
-        // localStorage write and the Supabase mirror both fire. A no-op (already
-        // this status) is harmless — setToDoStatus early-returns.
-        listLogic.setToDoStatus(projectName, item, status);
-        updateStatusSegments(status);
-        // Reflect the change on the underlying (still-mounted) row live: find it
-        // by its item identity in #mainList, repaint its status UI, then re-sort
-        // / re-filter the list so it moves to its new place when sort = Status.
-        if (!projectName) return;
-        const mainList = document.getElementById('mainList');
-        if (mainList) {
-            const rows = mainList.querySelectorAll('#toDoChild');
-            for (let i = 0; i < rows.length; i++) {
-                if (rows[i].__item === item) {
-                    refreshTodoStatusUI(rows[i], item);
-                    break;
-                }
-            }
-        }
-        reorderToDoDOM(projectName);
-    }
-
-    STATUS_ORDER.forEach(function(status) {
-        const seg = document.createElement('button');
-        seg.type = 'button';
-        seg.className = 'descEditorModalStatusSeg' + (status === currentStatus ? ' selected' : '');
-        seg.setAttribute('role', 'radio');
-        seg.setAttribute('data-status', status);
-        seg.setAttribute('aria-checked', status === currentStatus ? 'true' : 'false');
-        seg.textContent = STATUS_META[status].label;
-        seg.addEventListener('click', function() { selectStatus(status); });
-        statusControl.appendChild(seg);
-    });
-
-    statusRow.appendChild(statusLabel);
-    statusRow.appendChild(statusControl);
+    // not settable from the row. Surface the shared three-segment selector here.
+    // It is built by buildManualStatusControl (todoStatus.js) so the desktop
+    // detail pane, which mounts the very same control, can never drift from it.
+    // It sits BELOW the actions (last in the dialog) under its own label; the
+    // rail above renders the DERIVED pipeline phase, this control is the user's
+    // OWN annotation, so the label reads "Manual status".
+    const statusRow = buildManualStatusControl(item, opts.projectName || '');
 
     // Order: header, phase rail, entry body, actions (Generate / Inject /
     // Clear / Copy), then the manual STATUS control last — the derived phase now

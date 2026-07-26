@@ -1,6 +1,10 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest';
+
+import { buildManualStatusControl } from '../src/todoStatus.js';
+import { listLogic } from '../src/listLogic.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -9,65 +13,130 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the status segmented control added to the mobile description editor
+// Pins the status segmented control surfaced in the mobile description editor
 // modal. On `(pointer: coarse)` the on-row status badge (`.todoStatusLabel`
 // → showStatusPopover) is hidden in favor of the left-edge color tab, so
 // status is visible but not settable from the row. The modal grows a labeled
-// "Status" row with three connected segments (Active / In Progress / Idea)
-// that write through listLogic.setToDoStatus and reflect live on the row.
+// "Manual status" row with three connected segments (Active / In Progress /
+// Idea) that write through listLogic.setToDoStatus and reflect live on the row.
 //
-// Source-inspection only, matching the mobileDescEditorModal style — the
-// modal flow is too heavily wired to instantiate end-to-end here.
+// The control itself is built by the SHARED buildManualStatusControl helper in
+// todoStatus.js (the same extraction the phase rail and file picker needed), so
+// the mobile modal and the desktop detail pane can never drift. This file pins
+// the shared builder's contract plus the modal's call + placement.
 
-describe('mobile desc editor status selector — single-sourced vocabulary', () => {
+describe('shared manual-status control — single-sourced vocabulary', () => {
 
-    const modals = read('modals.js');
     const todoStatus = read('todoStatus.js');
 
-    it('todoStatus.js exports STATUS_ORDER so the modal does not re-hardcode it', () => {
+    it('todoStatus.js exports STATUS_ORDER so the control does not re-hardcode it', () => {
         expect(todoStatus).toMatch(/export\s+const\s+STATUS_ORDER\s*=/);
     });
 
-    it('modals.js imports STATUS_META / STATUS_ORDER / normalizeStatus from todoStatus.js', () => {
-        expect(modals).toMatch(
-            /import\s*\{[^}]*STATUS_META[^}]*\}\s*from\s*['"]\.\/todoStatus\.js['"]/
-        );
-        expect(modals).toMatch(
-            /import\s*\{[^}]*STATUS_ORDER[^}]*\}\s*from\s*['"]\.\/todoStatus\.js['"]/
-        );
-        expect(modals).toMatch(
-            /import\s*\{[^}]*normalizeStatus[^}]*\}\s*from\s*['"]\.\/todoStatus\.js['"]/
-        );
+    it('todoStatus.js exports the shared buildManualStatusControl builder', () => {
+        expect(todoStatus).toMatch(/export\s+function\s+buildManualStatusControl\s*\(/);
     });
 
     it('builds one segment per status by iterating STATUS_ORDER (not a hardcoded list)', () => {
-        expect(modals).toMatch(/STATUS_ORDER\.forEach\(/);
+        expect(todoStatus).toMatch(/STATUS_ORDER\.forEach\(/);
         // Each segment's label text comes from STATUS_META, keeping the
         // glyph + uppercase vocabulary single-sourced with the desktop badge.
-        expect(modals).toMatch(/STATUS_META\[\s*status\s*\]\.label/);
+        expect(todoStatus).toMatch(/STATUS_META\[\s*status\s*\]\.label/);
     });
 });
 
-describe('mobile desc editor status selector — markup + placement', () => {
+describe('shared manual-status control — markup + a11y', () => {
 
-    const modals = read('modals.js');
+    beforeEach(() => { document.body.innerHTML = ''; });
+    afterEach(() => { vi.restoreAllMocks(); });
 
-    it('renders a labeled status row with the segmented control', () => {
-        expect(modals).toMatch(/['"]descEditorModalStatusRow['"]/);
-        expect(modals).toMatch(/['"]descEditorModalStatusLabel['"]/);
-        expect(modals).toMatch(/['"]descEditorModalStatusControl['"]/);
-        const labelIdx = modals.indexOf("'descEditorModalStatusLabel'");
-        expect(labelIdx).toBeGreaterThan(-1);
-        const tail = modals.slice(labelIdx, labelIdx + 300);
-        // The label reads "Manual status" to distinguish this user annotation
-        // from the derived pipeline phase rendered by the rail above.
-        expect(tail).toMatch(/textContent\s*=\s*['"]Manual status['"]/);
+    it('renders a labeled status row (id + "Manual status" text) with the segmented control', () => {
+        const row = buildManualStatusControl({ status: 'active' }, 'Work');
+        expect(row.id).toBe('descEditorModalStatusRow');
+        const label = row.querySelector('#descEditorModalStatusLabel');
+        expect(label).not.toBeNull();
+        expect(label.textContent).toBe('Manual status');
+        expect(row.querySelector('#descEditorModalStatusControl')).not.toBeNull();
     });
 
     it('the segments are buttons in a radiogroup with role="radio"', () => {
-        expect(modals).toMatch(/['"]descEditorModalStatusSeg['"]/);
-        expect(modals).toMatch(/setAttribute\(\s*['"]role['"]\s*,\s*['"]radiogroup['"]\s*\)/);
-        expect(modals).toMatch(/setAttribute\(\s*['"]role['"]\s*,\s*['"]radio['"]\s*\)/);
+        const row = buildManualStatusControl({ status: 'active' }, 'Work');
+        const control = row.querySelector('#descEditorModalStatusControl');
+        expect(control.getAttribute('role')).toBe('radiogroup');
+        const segs = row.querySelectorAll('.descEditorModalStatusSeg');
+        expect(segs).toHaveLength(3);
+        segs.forEach((seg) => expect(seg.getAttribute('role')).toBe('radio'));
+    });
+
+    it('reflects the item\'s current status (normalized) as the selected segment', () => {
+        // Legacy / undefined status reads as active via normalizeStatus.
+        const row = buildManualStatusControl({ status: undefined }, 'Work');
+        const selected = row.querySelector('.descEditorModalStatusSeg.selected');
+        expect(selected.getAttribute('data-status')).toBe('active');
+        expect(selected.getAttribute('aria-checked')).toBe('true');
+    });
+});
+
+describe('shared manual-status control — write-through + live reflection', () => {
+
+    beforeEach(() => { document.body.innerHTML = ''; });
+    afterEach(() => { vi.restoreAllMocks(); });
+
+    it('tapping a segment writes through listLogic.setToDoStatus (the on-row badge channel)', () => {
+        const spy = vi.spyOn(listLogic, 'setToDoStatus').mockImplementation(() => {});
+
+        const item = { status: 'active', tit: 'Ship it' };
+        const mainList = document.createElement('div');
+        mainList.id = 'mainList';
+        document.body.appendChild(mainList);
+
+        const row = buildManualStatusControl(item, 'Work');
+        document.body.appendChild(row);
+        row.querySelector('.descEditorModalStatusSeg[data-status="in_progress"]').click();
+
+        expect(spy).toHaveBeenCalledWith('Work', item, 'in_progress');
+        // The tapped segment becomes selected + aria-checked.
+        const seg = row.querySelector('.descEditorModalStatusSeg[data-status="in_progress"]');
+        expect(seg.classList.contains('selected')).toBe(true);
+        expect(seg.getAttribute('aria-checked')).toBe('true');
+    });
+
+    it('resolves the underlying row by item identity in #mainList and refreshes its status UI', () => {
+        // The real setToDoStatus mutates item.status; mirror that so the
+        // in-place repaint (refreshTodoStatusUI) has the new value to paint.
+        vi.spyOn(listLogic, 'setToDoStatus').mockImplementation((p, it, s) => { it.status = s; });
+
+        const item = { status: 'active', tit: 'X' };
+        const mainList = document.createElement('div');
+        mainList.id = 'mainList';
+        document.body.appendChild(mainList);
+        const liveRow = document.createElement('div');
+        liveRow.id = 'toDoChild';
+        liveRow.__item = item;
+        liveRow.appendChild(document.createElement('span')).className = 'todoStatusLabel';
+        mainList.appendChild(liveRow);
+
+        const control = buildManualStatusControl(item, 'Work');
+        document.body.appendChild(control);
+        control.querySelector('.descEditorModalStatusSeg[data-status="idea"]').click();
+
+        // refreshTodoStatusUI repaints the live row's modifier class in place.
+        expect(liveRow.classList.contains('todo-row--idea')).toBe(true);
+    });
+});
+
+describe('mobile desc editor — calls the shared builder, placed LAST', () => {
+
+    const modals = read('modals.js');
+
+    it('imports buildManualStatusControl from todoStatus.js', () => {
+        expect(modals).toMatch(
+            /import\s*\{[^}]*buildManualStatusControl[^}]*\}\s*from\s*['"]\.\/todoStatus\.js['"]/
+        );
+    });
+
+    it('builds the status row via buildManualStatusControl (not a second inline copy)', () => {
+        expect(modals).toMatch(/statusRow\s*=\s*buildManualStatusControl\s*\(/);
     });
 
     it('places the status row LAST — below the actions row (demoted beneath Generate/Inject/Clear/Copy)', () => {
@@ -87,56 +156,7 @@ describe('mobile desc editor status selector — markup + placement', () => {
     });
 });
 
-describe('mobile desc editor status selector — initial reflection', () => {
-
-    const modals = read('modals.js');
-
-    it('reflects the item\'s current status (normalized) as the selected segment', () => {
-        // Legacy / undefined status reads as active via normalizeStatus.
-        expect(modals).toMatch(/normalizeStatus\(\s*item\s*&&\s*item\.status\s*\)/);
-        // The build loop marks the matching segment selected + aria-checked.
-        const forEachIdx = modals.indexOf('STATUS_ORDER.forEach(');
-        expect(forEachIdx).toBeGreaterThan(-1);
-        const loop = modals.slice(forEachIdx, forEachIdx + 800);
-        expect(loop).toMatch(/status\s*===\s*currentStatus/);
-        expect(loop).toMatch(/setAttribute\(\s*['"]aria-checked['"]/);
-    });
-});
-
-describe('mobile desc editor status selector — write-through + live reflection', () => {
-
-    const modals = read('modals.js');
-
-    it('tapping a segment writes through listLogic.setToDoStatus (the desktop badge channel)', () => {
-        // CLAUDE.md: mutations route through listLogic. The same channel the
-        // on-row popover uses — so localStorage + Supabase mirror come free.
-        const selIdx = modals.indexOf('function selectStatus(');
-        expect(selIdx).toBeGreaterThan(-1);
-        const fn = modals.slice(selIdx, selIdx + 1500);
-        expect(fn).toMatch(/listLogic\.setToDoStatus\s*\(\s*projectName\s*,\s*item\s*,\s*status\s*\)/);
-    });
-
-    it('resolves the underlying row by item identity in #mainList and refreshes its status UI', () => {
-        const selIdx = modals.indexOf('function selectStatus(');
-        const fn = modals.slice(selIdx, selIdx + 1500);
-        expect(fn).toMatch(/getElementById\(\s*['"]mainList['"]\s*\)/);
-        expect(fn).toMatch(/__item\s*===\s*item/);
-        expect(fn).toMatch(/refreshTodoStatusUI\s*\(/);
-    });
-
-    it('re-sorts / re-filters the list via reorderToDoDOM after the change', () => {
-        // Mirrors showStatusPopover: reorderToDoDOM moves the row to its new
-        // place when sort = Status and re-applies the status filter.
-        expect(modals).toMatch(
-            /import\s*\{[^}]*reorderToDoDOM[^}]*\}\s*from\s*['"]\.\/toDoRow\.js['"]/
-        );
-        const selIdx = modals.indexOf('function selectStatus(');
-        const fn = modals.slice(selIdx, selIdx + 1500);
-        expect(fn).toMatch(/reorderToDoDOM\s*\(\s*projectName\s*\)/);
-    });
-});
-
-describe('mobile desc editor status selector — styling', () => {
+describe('shared manual-status control — styling', () => {
 
     const css = read('style.css');
 

@@ -233,6 +233,87 @@ export function refreshTodoStatusUI(toDoChild, item, overlay) {
 }
 
 
+// ── SHARED MANUAL-STATUS SEGMENTED CONTROL ──
+// A labeled "Manual status" row with three connected segments (Active / In
+// Progress / Idea), single-sourced from STATUS_META / STATUS_ORDER. It is the
+// user's OWN annotation, distinct from the derived pipeline phase the rail
+// renders — hence the "Manual status" label. Built here (not in a UI file) so
+// the two surfaces that expose it stay in lockstep, the same extraction the
+// phase rail and file picker already needed:
+//   • the mobile description-editor modal (the on-row badge is hidden ≤1023px), and
+//   • the desktop detail pane (the badge's manual values are hidden ≥1024px).
+// Selecting a segment routes through listLogic.setToDoStatus — the same channel
+// the on-row popover and every other todo mutation use, so the localStorage
+// write and the Supabase mirror both come free — then repaints the live row in
+// #mainList and re-sorts / re-filters via reorderToDoDOM so a sort = Status move
+// and the status-filter counts stay correct. The markup + class names match the
+// stylesheet block (#descEditorModalStatusRow / -Label / -Control /
+// .descEditorModalStatusSeg) so one set of CSS styles both hosts.
+export function buildManualStatusControl(item, projectName) {
+    const statusRow = document.createElement('div');
+    statusRow.id = 'descEditorModalStatusRow';
+
+    const statusLabel = document.createElement('span');
+    statusLabel.id = 'descEditorModalStatusLabel';
+    statusLabel.textContent = 'Manual status';
+
+    const statusControl = document.createElement('div');
+    statusControl.id = 'descEditorModalStatusControl';
+    statusControl.setAttribute('role', 'radiogroup');
+    statusControl.setAttribute('aria-label', 'Task status');
+
+    const currentStatus = normalizeStatus(item && item.status);
+
+    function updateStatusSegments(status) {
+        const segs = statusControl.querySelectorAll('.descEditorModalStatusSeg');
+        for (let i = 0; i < segs.length; i++) {
+            const on = segs[i].getAttribute('data-status') === status;
+            segs[i].classList.toggle('selected', on);
+            segs[i].setAttribute('aria-checked', on ? 'true' : 'false');
+        }
+    }
+
+    function selectStatus(status) {
+        const name = projectName || '';
+        // Single mutation channel — same path the on-row popover uses. A no-op
+        // (already this status) is harmless: setToDoStatus early-returns.
+        listLogic.setToDoStatus(name, item, status);
+        updateStatusSegments(status);
+        // Reflect the change on the underlying (still-mounted) row live: find it
+        // by item identity in #mainList, repaint its status UI, then re-sort /
+        // re-filter the list so it moves to its new place when sort = Status.
+        if (!name) return;
+        const mainList = document.getElementById('mainList');
+        if (mainList) {
+            const rows = mainList.querySelectorAll('#toDoChild');
+            for (let i = 0; i < rows.length; i++) {
+                if (rows[i].__item === item) {
+                    refreshTodoStatusUI(rows[i], item);
+                    break;
+                }
+            }
+        }
+        reorderToDoDOM(name);
+    }
+
+    STATUS_ORDER.forEach(function (status) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'descEditorModalStatusSeg' + (status === currentStatus ? ' selected' : '');
+        seg.setAttribute('role', 'radio');
+        seg.setAttribute('data-status', status);
+        seg.setAttribute('aria-checked', status === currentStatus ? 'true' : 'false');
+        seg.textContent = STATUS_META[status].label;
+        seg.addEventListener('click', function () { selectStatus(status); });
+        statusControl.appendChild(seg);
+    });
+
+    statusRow.appendChild(statusLabel);
+    statusRow.appendChild(statusControl);
+    return statusRow;
+}
+
+
 // ── STATUS-CHANGE POPOVER ──
 // Anchored menu opened from a label tap. Dismiss on: option selection, outside
 // click, right-click elsewhere, Escape, resize, or scroll — mirroring the
