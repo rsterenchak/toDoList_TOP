@@ -85,6 +85,7 @@ import {
     reorderToDoDOM,
     setDiscussTaskHandler,
     setStuckReasonResolver,
+    syncDetailPaneForViewport,
 } from './toDoRow.js';
 import { resetMobileCreateSession } from './mobileTaskCreate.js';
 import { createMobileUpdatePill } from './mobileUpdatePill.js';
@@ -629,6 +630,27 @@ function component() {
 
     main.appendChild(main1);
     main.appendChild(main2);
+
+    // Desktop detail pane — the right-hand column of #mainSec at ≥1024px that
+    // hosts the open task's description panel (#descSibling) instead of
+    // expanding the row inline (which pushes the rest of the queue off-screen).
+    // At ≤1023px it is display:none and the panel mounts inline as a row sibling
+    // exactly as before — placeDescPanel() in toDoRow.js resolves the host by
+    // breakpoint, mirroring placeChatContent() for the chat surface. The split
+    // is NESTED inside #mainSec (queue | detail), not a third #mainSplit child,
+    // so it never competes with #desktopChatPane for flex space.
+    const descDetailPane = document.createElement('div');
+    descDetailPane.id = 'descDetailPane';
+    descDetailPane.setAttribute('aria-label', 'Task detail');
+    const descDetailEmpty = document.createElement('div');
+    descDetailEmpty.className = 'descDetailEmpty';
+    descDetailEmpty.textContent = 'Open a task to see its details here.';
+    descDetailPane.appendChild(descDetailEmpty);
+    main.appendChild(descDetailPane);
+    // Re-place an open panel into the host matching the current breakpoint when
+    // the viewport crosses 1024px, so a resize mid-open moves the panel between
+    // the inline slot and the detail pane without losing its handlers or state.
+    window.addEventListener('resize', syncDetailPaneForViewport);
 
     // Sidebar layout (flex column):
     //   sideTitle  — top: empty drawer header on mobile (holds the close X

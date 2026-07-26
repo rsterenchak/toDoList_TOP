@@ -113,17 +113,25 @@ describe('wireDescToggle nudges the viewer card to recompute its expanded height
         expect(body).toMatch(/refreshViewerExpandedHeight\s*\(\s*\)/);
     });
 
-    it('makes the recompute call after the descSibling insert and remove, so it fires for both open and close', () => {
+    it('makes the recompute call after both the open and close branches, so it fires for both', () => {
+        // The panel now mounts into a breakpoint-resolved host (the detail pane on
+        // desktop, the inline slot on mobile) via openPanel()/closePanel() rather
+        // than a literal insertBefore/removeChild in the handler. The invariant is
+        // unchanged: a single refresh runs after both branches so an expanded viewer
+        // card re-snapshots on open and on close alike.
         const body = wireDescToggleBody();
-        const insertIdx = body.indexOf('insertBefore(descSibling');
-        const removeIdx = body.indexOf('removeChild(descNode');
-        const refreshIdx = body.indexOf('refreshViewerExpandedHeight()');
-        expect(insertIdx).toBeGreaterThan(-1);
-        expect(removeIdx).toBeGreaterThan(-1);
+        const clickIdx = body.indexOf('descToggle.addEventListener("click"');
+        expect(clickIdx).toBeGreaterThan(-1);
+        const handler = body.slice(clickIdx);
+        const openIdx = handler.indexOf('openPanel()');
+        const closeIdx = handler.indexOf('closePanel()');
+        const refreshIdx = handler.indexOf('refreshViewerExpandedHeight()');
+        expect(openIdx).toBeGreaterThan(-1);
+        expect(closeIdx).toBeGreaterThan(-1);
         expect(refreshIdx).toBeGreaterThan(-1);
-        // The single refresh call sits after both mutation branches.
-        expect(refreshIdx).toBeGreaterThan(insertIdx);
-        expect(refreshIdx).toBeGreaterThan(removeIdx);
+        // The single refresh call sits after both branches of the toggle.
+        expect(refreshIdx).toBeGreaterThan(openIdx);
+        expect(refreshIdx).toBeGreaterThan(closeIdx);
     });
 
     it('todoMdViewer.js exports refreshViewerExpandedHeight, which drives the resize handler (the applyExpandedHeight seam)', () => {

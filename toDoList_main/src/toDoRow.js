@@ -254,12 +254,159 @@ function showRowToast(message) {
 }
 
 
+// ── DESKTOP DETAIL PANE ──
+// At desktop widths (≥1024px) the open task's description panel lives in a
+// dedicated right-hand column (#descDetailPane) rather than expanding the row
+// inline in #mainList — inline expansion pushes every row below it down and off
+// screen. Below 1024px the panel mounts inline as a row sibling exactly as
+// before. placeDescPanel() resolves the host by breakpoint (mirroring
+// placeChatContent() for the chat surface); the pane host is created in main.js.
+const DETAIL_MOBILE_MAX_WIDTH = 1023;
+
+// The single description panel currently mounted in the detail pane, tracked so
+// opening a different row can evict it (only one detail is shown at a time) and
+// a resize / reconcile can re-place or clear it. Null in inline mode and whenever
+// no panel is open. Shape: { toggle, descSibling, toDoChild, close }.
+let openDetail = null;
+
+function getDescDetailPane() {
+    return typeof document === 'undefined'
+        ? null
+        : document.getElementById('descDetailPane');
+}
+
+// Detail-pane mode is active only when BOTH the viewport is desktop-width AND the
+// pane host exists. Gating on the host's presence keeps unit tests that build
+// bare rows (no pane) in inline mode even at jsdom's default 1024px width, so the
+// inline insert path and its assertions are unaffected.
+function isDetailPaneMode() {
+    return typeof window !== 'undefined'
+        && window.innerWidth > DETAIL_MOBILE_MAX_WIDTH
+        && !!getDescDetailPane();
+}
+
+// Toggle the pane's empty-state message: shown when no panel occupies the pane,
+// hidden when one is mounted. An empty column reads as a rendering failure, so
+// the pane always says what it is waiting for when nothing is open.
+function updateDetailPaneEmptyState() {
+    const pane = getDescDetailPane();
+    if (!pane) return;
+    const empty = pane.querySelector('.descDetailEmpty');
+    if (empty) empty.hidden = !!pane.querySelector('#descSibling');
+}
+
+// Mount an OPEN row's description panel into the host matching the current
+// breakpoint. Desktop → the detail pane (moved with appendChild so handlers,
+// scroll position, and in-flight state survive); mobile (or no pane host) →
+// inline, directly after the row past the blank placeholder's leading siblings
+// (the mobile chip row and, when open, the paste-entry panel). Idempotent: a
+// no-op when the panel already lives in the resolved host.
+export function placeDescPanel(descSibling, toDoChild) {
+    if (isDetailPaneMode()) {
+        const pane = getDescDetailPane();
+        if (descSibling.parentNode !== pane) pane.appendChild(descSibling);
+        return;
+    }
+    const mainList = toDoChild.parentElement;
+    if (!mainList) return;
+    let descAnchor = toDoChild.nextSibling;
+    while (descAnchor && (descAnchor.id === 'createChipRow' || descAnchor.id === 'pasteEntryPanel')) {
+        descAnchor = descAnchor.nextSibling;
+    }
+    if (descSibling.parentNode !== mainList || descSibling.nextSibling !== descAnchor) {
+        mainList.insertBefore(descSibling, descAnchor);
+    }
+}
+
+// Tear down whatever panel occupies the detail pane and reset the open-detail
+// tracker. Called on a full row rebuild (project switch, delete re-render), where
+// the previously-open panel belongs to a now-detached row element.
+export function clearDetailPane() {
+    const pane = getDescDetailPane();
+    if (pane) {
+        const panel = pane.querySelector('#descSibling');
+        if (panel && panel.parentNode === pane) pane.removeChild(panel);
+    }
+    if (openDetail && openDetail.toggle) openDetail.toggle.classList.remove('open');
+    openDetail = null;
+    updateDetailPaneEmptyState();
+}
+
+// After a reorder (sort / filter / status flip reuses row elements), confirm the
+// open detail's row still lives in the list; if it was rebuilt or removed, clear
+// the pane so it never shows a task that no longer exists.
+export function reconcileDetailPane() {
+    if (!openDetail) { updateDetailPaneEmptyState(); return; }
+    const mainList = typeof document !== 'undefined'
+        ? document.getElementById('mainList') : null;
+    if (!mainList || !mainList.contains(openDetail.toDoChild)) {
+        clearDetailPane();
+    } else {
+        updateDetailPaneEmptyState();
+    }
+}
+
+// Re-place the currently open panel into the host matching the current
+// breakpoint — the resize counterpart to placeChatContent()'s viewport handler.
+// Moves the panel between the inline slot and the detail pane and keeps the
+// row's selected marker in step, without losing handlers or in-flight state.
+export function syncDetailPaneForViewport() {
+    if (typeof document === 'undefined') return;
+    // Find the open panel wherever it currently lives: tracked in the pane
+    // (preserve its existing tracker so its close/eviction hook survives a
+    // non-crossing resize), or walked from an inline-open row.
+    let existing = openDetail;
+    let descSibling = null;
+    let toDoChild = null;
+    if (existing) {
+        descSibling = existing.descSibling;
+        toDoChild = existing.toDoChild;
+    } else {
+        const mainList = document.getElementById('mainList');
+        const inlinePanel = mainList ? mainList.querySelector('#descSibling') : null;
+        if (inlinePanel && inlinePanel.__ownerRow) {
+            descSibling = inlinePanel;
+            toDoChild = inlinePanel.__ownerRow;
+        }
+    }
+    if (!descSibling || !toDoChild) return;
+    placeDescPanel(descSibling, toDoChild);
+    const paneMode = isDetailPaneMode();
+    toDoChild.classList.toggle('todo-detail-open', paneMode);
+    if (!paneMode) {
+        openDetail = null;
+    } else if (existing) {
+        openDetail = existing;
+    } else {
+        // Adopting an inline-opened panel crossing into pane mode: build a
+        // self-contained close so a later open of another row can still evict it.
+        openDetail = {
+            toggle: toDoChild.querySelector('#descToggle'),
+            descSibling: descSibling,
+            toDoChild: toDoChild,
+            close: function() {
+                if (descSibling.parentNode) descSibling.parentNode.removeChild(descSibling);
+                const tg = toDoChild.querySelector('#descToggle');
+                if (tg) tg.classList.remove('open');
+                toDoChild.classList.remove('todo-detail-open');
+                if (openDetail && openDetail.toDoChild === toDoChild) openDetail = null;
+                updateDetailPaneEmptyState();
+            },
+        };
+    }
+    updateDetailPaneEmptyState();
+}
+
 // Locate the OPEN description panel (`#descSibling`) belonging to a row, or null
-// when the row's panel isn't expanded. The panel is inserted directly after the
-// row — or past the blank placeholder's leading siblings (the mobile chip row
-// and, when open, the paste-entry panel) — mirroring wireDescToggle's own
-// insert/remove traversal.
-function openDescSiblingFor(toDoChild) {
+// when the row's panel isn't expanded. In detail-pane mode the panel lives in
+// #descDetailPane (linked to its row via `__ownerRow` / `__descSibling`), not
+// after the row; inline it is inserted directly after the row — or past the
+// blank placeholder's leading siblings (the mobile chip row and, when open, the
+// paste-entry panel) — mirroring wireDescToggle's own insert/remove traversal.
+export function openDescSiblingFor(toDoChild) {
+    const own = toDoChild.__descSibling;
+    const pane = getDescDetailPane();
+    if (own && pane && own.parentNode === pane) return own;
     let node = toDoChild.nextSibling;
     while (node && (node.id === 'createChipRow' || node.id === 'pasteEntryPanel')) {
         node = node.nextSibling;
@@ -2092,7 +2239,91 @@ function buildInfoGlyph() {
 // Replaces the old behaviour where clicking anywhere on the todo row expanded the description.
 function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn, generateBtn, discussBtn, item, projectName) {
 
-    let switcher = 0;
+    // Mount every panel child once the panel is in its host. Placement is
+    // handled by placeDescPanel (pane vs inline); this only fills the panel.
+    function mountPanelContents() {
+        // Every child is placed explicitly via CSS grid-column (see
+        // #descInput / #descSibling in style.css), so mount order no longer
+        // affects layout — the two gutter-filler spacers this panel used to
+        // carry are gone.
+        descSibling.appendChild(descInput);
+        if (injectBtn) {
+            descSibling.appendChild(injectBtn);
+            refreshInjectButton(injectBtn, item, projectName);
+        }
+        // Generate sits beside Inject, but only for a committed row — a blank
+        // placeholder has no task for the agent to draft from yet. Sync it
+        // from the linked queue row now (mounts Generating…/failure and lands
+        // a pending draft) after it's in the panel so the failure notice can
+        // slot in as a sibling.
+        if (generateBtn && item.id) {
+            descSibling.appendChild(generateBtn);
+            syncGenerateControl(generateBtn);
+        }
+        // Discuss sits after inject, but only for a committed row — a blank
+        // placeholder has no task to scope a conversation to yet.
+        if (discussBtn && item.id) {
+            descSibling.appendChild(discussBtn);
+        }
+        descInput.value = item["desc"] || "";
+        // Trigger the textarea's auto-grow handler now that it's in the
+        // DOM — scrollHeight is only meaningful for an attached element.
+        descInput.dispatchEvent(new Event("input"));
+        // Mount the shared File:-path picker above the textarea. Its manifest
+        // loads ON DEMAND (only when the picker panel opens), so mounting is
+        // cheap even in the `done` phase where applyPhaseLayout hides it below:
+        // a hidden picker never opens, so nothing loads, and the element is
+        // present to un-hide if the panel later leaves `done`.
+        mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
+        // Mount the read-only phase rail + THE ENTRY label at the head of the
+        // panel (the desktop counterpart to the mobile modal's rail), driven
+        // by the shared phaseRail.js builder. Runs before the ASKING/STUCK
+        // syncs so those blocks land immediately after the rail via
+        // descPanelTopAnchor.
+        mountDescRail(descSibling, item);
+        // Mount triage's ASKING question + answer block right after the rail
+        // when this task's linked agent_queue row is in needs_words. No-op for
+        // every other row.
+        syncAskingPanel(toDoChild, item, projectName);
+        // Mount triage's STUCK failure-reason block at the top of the panel
+        // when this task's linked agent_queue row is in failed / no_change —
+        // the chevron-path equivalent of the modal's stuck block. No-op for
+        // every other row (and mutually exclusive with the ASKING block).
+        syncStuckPanel(toDoChild, item);
+        // Gate the authoring controls by the derived phase — hidden in `done`,
+        // fully shown everywhere else. Runs last so every control it toggles is
+        // already mounted.
+        applyPhaseLayout(descSibling, derivePhase(item));
+    }
+
+    function openPanel() {
+        // Only one detail is shown at a time in pane mode — evict any other
+        // open panel and clear its selection before mounting this one.
+        if (isDetailPaneMode() && openDetail && openDetail.toggle !== descToggle && openDetail.close) {
+            openDetail.close();
+        }
+        // Resolve the host by breakpoint (detail pane on desktop, inline slot on
+        // mobile). On the blank placeholder the inline slot sits past the chip
+        // row and the paste-entry panel (the CSS reveal keys off that adjacency).
+        placeDescPanel(descSibling, toDoChild);
+        mountPanelContents();
+        descToggle.classList.add("open");
+        if (isDetailPaneMode()) {
+            toDoChild.classList.add('todo-detail-open');
+            openDetail = { toggle: descToggle, descSibling, toDoChild, close: closePanel };
+        }
+        updateDetailPaneEmptyState();
+    }
+
+    function closePanel() {
+        // Remove the panel from wherever it lives — the detail pane or the inline
+        // slot — via its parent, so one path covers both modes.
+        if (descSibling.parentNode) descSibling.parentNode.removeChild(descSibling);
+        descToggle.classList.remove("open");
+        toDoChild.classList.remove('todo-detail-open');
+        if (openDetail && openDetail.toggle === descToggle) openDetail = null;
+        updateDetailPaneEmptyState();
+    }
 
     descToggle.addEventListener("click", function(event) {
         event.stopPropagation();
@@ -2100,91 +2331,19 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         const mainList = toDoChild.parentElement;
         if (!mainList) return;
 
-        if (switcher === 0) {
-            // On the blank placeholder the chip row sits immediately after
-            // the row as its own sibling (and the CSS reveal keys off that
-            // adjacency), and the paste-entry panel — when open — sits after
-            // the chips, so slot the description panel AFTER both of those
-            // leading siblings; otherwise directly after the row.
-            let descAnchor = toDoChild.nextSibling;
-            while (descAnchor && (descAnchor.id === 'createChipRow' || descAnchor.id === 'pasteEntryPanel')) {
-                descAnchor = descAnchor.nextSibling;
-            }
-            mainList.insertBefore(descSibling, descAnchor);
-            // Every child is placed explicitly via CSS grid-column (see
-            // #descInput / #descSibling in style.css), so mount order no longer
-            // affects layout — the two gutter-filler spacers this panel used to
-            // carry are gone.
-            descSibling.appendChild(descInput);
-            if (injectBtn) {
-                descSibling.appendChild(injectBtn);
-                refreshInjectButton(injectBtn, item, projectName);
-            }
-            // Generate sits beside Inject, but only for a committed row — a blank
-            // placeholder has no task for the agent to draft from yet. Sync it
-            // from the linked queue row now (mounts Generating…/failure and lands
-            // a pending draft) after it's in the panel so the failure notice can
-            // slot in as a sibling.
-            if (generateBtn && item.id) {
-                descSibling.appendChild(generateBtn);
-                syncGenerateControl(generateBtn);
-            }
-            // Discuss sits after inject, but only for a committed row — a blank
-            // placeholder has no task to scope a conversation to yet.
-            if (discussBtn && item.id) {
-                descSibling.appendChild(discussBtn);
-            }
-            descInput.value = item["desc"] || "";
-            // Trigger the textarea's auto-grow handler now that it's in the
-            // DOM — scrollHeight is only meaningful for an attached element.
-            descInput.dispatchEvent(new Event("input"));
-            // Mount the shared File:-path picker above the textarea. Its manifest
-            // loads ON DEMAND (only when the picker panel opens), so mounting is
-            // cheap even in the `done` phase where applyPhaseLayout hides it below:
-            // a hidden picker never opens, so nothing loads, and the element is
-            // present to un-hide if the panel later leaves `done`.
-            mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
-            // Mount the read-only phase rail + THE ENTRY label at the head of the
-            // panel (the desktop counterpart to the mobile modal's rail), driven
-            // by the shared phaseRail.js builder. Runs before the ASKING/STUCK
-            // syncs so those blocks land immediately after the rail via
-            // descPanelTopAnchor.
-            mountDescRail(descSibling, item);
-            // Mount triage's ASKING question + answer block right after the rail
-            // when this task's linked agent_queue row is in needs_words. No-op for
-            // every other row.
-            syncAskingPanel(toDoChild, item, projectName);
-            // Mount triage's STUCK failure-reason block at the top of the panel
-            // when this task's linked agent_queue row is in failed / no_change —
-            // the chevron-path equivalent of the modal's stuck block. No-op for
-            // every other row (and mutually exclusive with the ASKING block).
-            syncStuckPanel(toDoChild, item);
-            // Gate the authoring controls by the derived phase — hidden in `done`,
-            // fully shown everywhere else. Runs last so every control it toggles is
-            // already mounted. The trailing viewer-height refresh below re-snapshots
-            // an expanded viewer card after this height change.
-            applyPhaseLayout(descSibling, derivePhase(item));
-            descToggle.classList.add("open");
-            switcher = 1;
+        if (!descToggle.classList.contains("open")) {
+            openPanel();
         } else {
-            // Mirror the insert: the panel may sit past the chip sibling and
-            // the paste-entry panel on the blank placeholder.
-            let descNode = toDoChild.nextSibling;
-            while (descNode && (descNode.id === 'createChipRow' || descNode.id === 'pasteEntryPanel')) {
-                descNode = descNode.nextSibling;
-            }
-            if (descNode && descNode.id === 'descSibling') {
-                mainList.removeChild(descNode);
-            }
-            descToggle.classList.remove("open");
-            switcher = 0;
+            closePanel();
         }
 
         // Inserting/removing #descSibling shifts every row below it in
         // #mainList, including an expanded TODO.md viewer card's header. That
         // card caches its body height from a one-time snapshot, so nudge it to
         // recompute against the live layout — otherwise its body overruns the
-        // room actually left and collides with neighboring rows.
+        // room actually left and collides with neighboring rows. In detail-pane
+        // mode the panel no longer occupies list space, so this is a harmless
+        // no-op for the list (it re-snapshots the same height).
         refreshViewerExpandedHeight();
     });
 
@@ -2396,6 +2555,13 @@ export function buildToDoRow(item, toDoName) {
 
     descSibling.id  = "descSibling";
     descInput.id    = "descInput";
+    // Cross-link the row and its panel so the detail pane (where the panel no
+    // longer sits as the row's sibling) can resolve one from the other:
+    // openDescSiblingFor walks row → panel, syncDetailPaneForViewport walks
+    // panel → row. Every row builds its own #descSibling (they share the id but
+    // only one is ever mounted at a time), so this link is unique per row.
+    toDoChild.__descSibling = descSibling;
+    descSibling.__ownerRow = toDoChild;
 
     // Inject-to-TODO.md button — appears at the bottom of the description
     // panel and posts the description text to a
@@ -2966,6 +3132,11 @@ export function addAllToDo_DOM(items, name) {
     if (!items) return;
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
+    // A full rebuild replaces every row element, so any panel open in the detail
+    // pane belongs to a now-detached row (its task may not even exist post-render,
+    // e.g. after a delete or project switch) — clear it so the pane never shows a
+    // stale detail.
+    clearDetailPane();
     const renderOrder = renderOrderForSort(items);
     renderOrder.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, name));
@@ -2998,6 +3169,8 @@ export function addToDos_restore(toDoArray, toDoName, opts) {
     const items = listLogic.listItems(toDoName);
     const mainListDiv = document.getElementById('mainList');
     if (!mainListDiv) return;
+    // Full rebuild — drop any open detail pane panel (its row is being replaced).
+    clearDetailPane();
     const renderOrder = renderOrderForSort(items);
     renderOrder.forEach(function(item) {
         mainListDiv.appendChild(buildToDoRow(item, toDoName));
@@ -3047,6 +3220,10 @@ export function reorderToDoDOM(projectName) {
 
     updateCompletedSection(mainDiv);
     applyTaskFilter();
+    // Reorder reuses row elements (selection class persists on them), but a row
+    // that had to be rebuilt — or the selected task being removed — leaves the
+    // detail pane pointing at a detached row; reconcile clears it in that case.
+    reconcileDetailPane();
 }
 
 

@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-26',
+        changed: [
+            "On wide screens, opening a task now shows its details in a side panel instead of pushing the rest of your list down and out of view.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-25',
         fixed: [
             "The paste-entry button now sits in the \"Add a task\" row next to the microphone, instead of among the date chips.",
@@ -18,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-24',
         fixed: [
-            "The description file picker's panel now closes again when its button is tapped a second time, instead of staying open.",
             "The desktop description panel's phase rail and section label now align with the entry text, and the rail is capped so its four steps read as one sequence, instead of stretching flush to the panel's edges.",
         ],
     },

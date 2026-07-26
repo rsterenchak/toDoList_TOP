@@ -9566,6 +9566,46 @@ body.row-dragging * { cursor: grabbing !important; }
   display: none;
 }
 
+/* DESKTOP DETAIL PANE — the right-hand column of #mainSec at ≥1024px that hosts
+   the open task's description panel (#descSibling) instead of expanding the row
+   inline. Hidden by default (below 1024px the panel mounts inline as a row
+   sibling exactly as before); the ≥1024px grid split is declared in the desktop
+   media block. Owns its own vertical scroll so a tall panel scrolls within the
+   pane rather than dragging the queue column. */
+#descDetailPane {
+  display: none;
+}
+/* Empty state — shown when nothing is open so the column never reads as a blank
+   rendering failure. Hidden (via the [hidden] attribute set in JS) once a panel
+   mounts. */
+.descDetailEmpty {
+  color: var(--text-muted);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-style: italic;
+  text-align: center;
+  padding: 24px 18px;
+  line-height: 1.6;
+}
+.descDetailEmpty[hidden] { display: none; }
+
+/* When #descSibling is hosted in the detail pane it stands alone rather than
+   visually merging with the row above it, so give it a full border + radius and
+   its own margin instead of the top-open, bottom-radius-only inline treatment. */
+#descDetailPane #descSibling {
+  margin: 0;
+  border-top: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+}
+
+/* Row selected into the detail pane — a subtle accent left-edge + fill so the
+   user can see which queue row the open panel belongs to. Desktop-only (the class
+   is only added in detail-pane mode). */
+#mainList #toDoChild.todo-detail-open {
+  background: var(--bg-hover);
+  box-shadow: inset 2px 0 0 0 var(--accent-dim);
+}
+
 /* DESCRIPTION ROW */
 #descSibling {
   display: grid;
@@ -11099,6 +11139,26 @@ body.row-dragging * { cursor: grabbing !important; }
     color: var(--text-primary);
     background: var(--bg-hover);
     outline: none;
+  }
+
+  /* Split #mainSec into a queue column (left) and the task detail pane (right).
+     This split is NESTED inside #mainSec — #mainBar takes the 1fr queue track
+     and #descDetailPane the right track — so it never competes with the chat
+     pane (#desktopChatPane), which remains a flex sibling of #mainSec one level
+     up in #mainSplit. #sideBar is position:fixed and takes no grid cell. */
+  #mainSec {
+    grid-template-columns: minmax(0, 1fr) minmax(320px, 38%);
+  }
+  #mainBar { grid-column: 1; }
+  #descDetailPane {
+    grid-column: 2;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    overflow-y: auto;
+    border-left: 0.5px solid var(--border-mid);
+    background: var(--bg-base);
+    padding: 12px;
   }
 }
 
