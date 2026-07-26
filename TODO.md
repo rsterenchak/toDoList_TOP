@@ -113,3 +113,23 @@
     - Gate everything on pane mode, resolved the same way `syncDetailPaneForViewport` and `placeChatContent` do (`window.innerWidth > MOBILE_MAX_WIDTH`), so one definition governs whether the pane exists and whether row-select applies. When the pane is not mounted the new code must no-op rather than throw.
     - Exclusions resolved by walking up from the event target: `data-original-blank` rows, the compose row, the completion checkbox, the delete control,
   <!-- id: 400571b0-bef5-4955-9cfa-26e146e431a9 -->
+
+- [ ] **[HIGH]** TODO.md viewer: entry text crushes to one character per line in the narrow rail
+  - Type: bug
+  - Description: In the viewer's rendered body, an entry's text renders one character per line — a vertical column of glyphs. `.todoMdViewerCheckRow` is `display: flex` with no `flex-wrap`, holding checkbox → label → Revert → Acknowledge → delete. The label (`.todoMdViewerCheckText`) has `flex: 1 1 auto; word-break: break-word` and no minimum width, and `word-break: break-word` removes its min-content floor — so when the action buttons cannot fit on one line, flex shrink compresses the label toward zero instead of wrapping anything. At the old ~535px task column the buttons fit and the bug was invisible; in the 308px queue rail they do not.
+  - Behavior: An entry's text reads as normal wrapped prose at the rail's width, occupying the available line and wrapping to further lines as needed. When the per-entry action buttons cannot fit alongside it, they wrap onto their own line below the text rather than squeezing it. The text never compresses narrower than a readable minimum. Checkbox alignment, the amber review edge, the strikethrough on completed entries, and every button's size, order, and behavior are unchanged. At wider widths, where text and buttons fit on one line, the row renders as it does today.
+  - Implementation notes:
+    - TWO changes are required and neither works alone. Add `flex-wrap: wrap` to `.todoMdViewerCheckRow`, AND give `.todoMdViewerCheckText` a real minimum width (`min-width: 14ch` or similar). Wrap alone will NOT fix it: the browser prefers shrinking a flex item over wrapping the line, and with no min-width the label shrinks to nothing, so the wrap never triggers. The min-width is what forces the buttons onto a second line.
+    - Do not remove `word-break: break-word`. It is there so a long unbroken path or URL in an entry does not overflow the container. Keep it and add the floor.
+    - Consider `flex-basis: 100%` on the label at rail widths as an alternative to the min-width, which would always give the text its own line with buttons below. Pick one approach; do not apply both, since together they will force a two-line layout even in wide hosts where one line is correct.
+    - Add a row-gap alongside the existing `gap: 8px` so wrapped button rows are not flush against the text line.
+    - `align-items: flex-start` on the row means the checkbox aligns to the text's first line — verify that still holds once the buttons wrap, and that the checkbox does not end up misaligned against a multi-line label.
+    - Check the row's OTHER variants after the change: `--done` (strikethrough), `--review` (amber left border with `padding-left: 8px`), and rows at `indent > 0` for nested sub-bullets, which have their own indentation and may compound the width squeeze.
+    - Check the card's OTHER host: `#todoMdViewerMobileSheet` renders the same markup at a different width. Verify the wrap changes read correctly there and scope them to the `#mainList` host if they do not.
+    - The card's expanded body height is cached and read by `refreshViewerExpandedHeight()`. Rows that now wrap to two lines make the body taller — confirm the measurement is taken after the wrap settles, or an expanded card will be short.
+    - Verify at the tightest case: 1024px viewport with the chat pane docked, where the queue rail is at its narrowest permitted width, on an entry that has all three action buttons present.
+    - The regression test must assert the OUTCOME, not the declarations — a stylesheet-text assertion would pass with the bug present, which is how the last several layout defects in this app shipped. If the test environment cannot compute layout, say so plainly in the PR body.
+  - Out of scope: Which per-entry actions exist and what they do. The Acknowledge flow, Revert, Run this entry, and the delete control. The viewer header's own wrapping, already fixed. The card's position in the queue rail, and the rail's width. Moving the viewer into the detail pane.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 2ae3cf7f-22df-4f30-a999-1a29ea4acec3 -->
