@@ -940,6 +940,16 @@ function component() {
     viewPillProjects.setAttribute('role', 'tab');
     viewPillProjects.setAttribute('aria-pressed', 'false');
     viewPillProjects.textContent = 'STREAM';
+    // "Agent working" dot — a live agent (a triage sweep or a ship run in flight)
+    // still reads as alive at a glance now that the AGENT pill that used to paint
+    // it is gone. A real <span> appended to the STREAM pill, hidden by default and
+    // revealed only while the persistent working watch sets `body.agentWorking`
+    // (startAgentWorkingWatch keeps toggling that flag). It breathes via the
+    // shared agentDotBreathe keyframes.
+    const viewPillProjectsWorkingDot = document.createElement('span');
+    viewPillProjectsWorkingDot.className = 'agentWorkingMarker';
+    viewPillProjectsWorkingDot.setAttribute('aria-hidden', 'true');
+    viewPillProjects.appendChild(viewPillProjectsWorkingDot);
 
     // The AGENT pill was retired: the Agent board's blocked-on-you states
     // (DRAFTED / STUCK / MOCKUP) now reach the task row's phase badge, so the

@@ -6,14 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-26',
+        added: [
+            "The Stream tab shows a pulsing dot while an agent is working on the project.",
+        ],
         fixed: [
             "The TODO.md viewer's header controls now wrap onto another line in the narrow task-queue column instead of being cut off.",
             "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",
             "In the desktop task queue, an unfocused task title now stays in its normal position instead of jumping ahead of the checkbox.",
             "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
-        ],
-        changed: [
-            "The top tab bar is now Stream and Structure; the Agent board is reached by tapping a task's DRAFTED, STUCK, or MOCKUP badge instead of its own tab.",
         ],
     },
 ];
