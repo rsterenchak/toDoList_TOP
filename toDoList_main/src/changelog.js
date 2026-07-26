@@ -12,13 +12,13 @@ export const changelog = [
         fixed: [
             "On wide screens, the open task's detail panel now grows to fill the space, with the task queue and chat pane held to fixed-width rails so widening the window widens the details.",
             "The TODO.md viewer's header controls now wrap onto another line in the narrow task-queue column instead of being cut off.",
+            "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-25',
         fixed: [
-            "The paste-entry button now sits in the \"Add a task\" row next to the microphone, instead of among the date chips.",
             "The paste-entry button now shows a monochrome clipboard icon that matches the microphone, instead of a full-colour emoji.",
         ],
     },
