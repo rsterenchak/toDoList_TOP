@@ -11,6 +11,7 @@ export const changelog = [
         ],
         fixed: [
             "On wide screens, the open task's detail panel now grows to fill the space, with the task queue and chat pane held to fixed-width rails so widening the window widens the details.",
+            "The TODO.md viewer's header controls now wrap onto another line in the narrow task-queue column instead of being cut off.",
         ],
     },
     {
@@ -19,9 +20,6 @@ export const changelog = [
         fixed: [
             "The paste-entry button now sits in the \"Add a task\" row next to the microphone, instead of among the date chips.",
             "The paste-entry button now shows a monochrome clipboard icon that matches the microphone, instead of a full-colour emoji.",
-        ],
-        changed: [
-            "Once a task has shipped and been acknowledged, its desktop description panel now hides the entry editor, file picker, Generate and Inject, leaving just the phase rail and Discuss.",
         ],
     },
 ];

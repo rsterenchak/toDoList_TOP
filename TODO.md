@@ -50,7 +50,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 2ccac7dc-cc83-489d-b113-c7f2d8c8118a -->
 
-- [ ] **[MEDIUM]** TODO.md viewer: header controls clip in the narrow queue rail
+- [x] **[MEDIUM]** TODO.md viewer: header controls clip in the narrow queue rail — Completed: 2026-07-26
   - Type: bug
   - Description: The viewer card's action controls are cut off now that the queue column is a fixed ~308px rail. `.todoMdViewerHeader` is `display: flex; flex-wrap: wrap`, so the header itself can wrap — but `.todoMdViewerMeta`, which holds the synced label, Run backlog, Redeploy, the sync chip, the overflow chip, and the chevron, is a nested flex row with no `flex-wrap` and `margin-left: auto`. Its children cannot break, so the whole group overflows as a single unit and is clipped rather than wrapping onto a second line. The card was laid out when the queue column was roughly 535px wide; at 308px the group no longer fits.
   - Behavior: At the queue rail's width, every viewer control remains visible and reachable — the Rendered / Raw markdown tabs, the synced timestamp, Run backlog, Redeploy, sync, overflow, and the expand chevron — wrapping onto additional lines as needed rather than clipping. Wrapped rows align to the card's left edge rather than being pushed right by a stale auto margin. Controls keep their existing sizes, order, and hit areas; the 36×36 chip convention is preserved. At wider widths, where the group still fits on one line, the header renders exactly as it does today with the meta group right-aligned.

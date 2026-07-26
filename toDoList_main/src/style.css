@@ -11162,6 +11162,23 @@ body.row-dragging * { cursor: grabbing !important; }
     background: var(--bg-base);
     padding: 12px;
   }
+
+  /* The TODO.md viewer card now lives in the narrow queue rail (~308px), where
+     its meta group — synced label, Run backlog, Redeploy, sync, overflow, and
+     the expand chevron — no longer fits on one line beside the tabs. The group
+     is a nested flex row, so without wrapping it overflows as a single unit and
+     is clipped. Let it wrap, and drop the base rule's `margin-left: auto` (which
+     right-aligns the group) so the wrapped rows start at the card's left edge
+     rather than being pushed right by a now-stale auto margin. The base rule's
+     `gap: 8px` already spaces wrapped rows vertically; row-gap is restated for
+     intent. Scoped to the #mainList host — the full-screen mobile sheet
+     (#todoMdViewerMobileSheet) and the <=1023px inline launcher keep their own
+     header rules and are untouched. */
+  #mainList .todoMdViewerMeta {
+    flex-wrap: wrap;
+    margin-left: 0;
+    row-gap: 8px;
+  }
 }
 
 /* ══════════════════════════════════════════
