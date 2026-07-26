@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-26',
         added: [
-            "The Stream tab shows a pulsing dot while an agent is working on the project.",
+            "Dispatch a generated draft and retry a failed run straight from a task's description panel, without opening the Agent board.",
         ],
         fixed: [
             "The TODO.md viewer's header controls now wrap onto another line in the narrow task-queue column instead of being cut off.",

@@ -328,12 +328,14 @@ describe('DRAFTED derived overlay', () => {
         expect(label.getAttribute('data-status')).toBe('in_progress');
     });
 
-    it('tapping the DRAFTED badge routes to the Agent board, not the description panel', () => {
+    it('tapping the DRAFTED badge opens the row description panel, not the Agent board', () => {
         const container = document.createElement('div');
         container.id = 'mainList';
         document.body.appendChild(container);
         wireStatusLabelDelegation(container);
 
+        // The Agent route handler must NOT fire now that Dispatch lives in the
+        // description panel; the tap opens the panel via the row's expand caret.
         const routed = [];
         setAgentRouteBadgeTapHandler(function (todoId, projectName) {
             routed.push([todoId, projectName]);
@@ -342,20 +344,25 @@ describe('DRAFTED derived overlay', () => {
         const item = { id: 'todo-df', status: 'active' };
         const row = makeRow(item, 'Inbox');
         refreshTodoStatusUI(row, item, 'drafted');
-        // A description toggle is present — the DRAFTED tap must NOT open it now
-        // that Dispatch lives on the board.
         const descToggle = document.createElement('div');
         descToggle.id = 'descToggle';
         let opened = 0;
-        descToggle.addEventListener('click', function () { opened += 1; });
+        descToggle.addEventListener('click', function () {
+            opened += 1;
+            descToggle.classList.add('open');
+        });
         row.appendChild(descToggle);
         container.appendChild(row);
 
         row.querySelector('.todoStatusLabel').click();
-        expect(routed).toEqual([['todo-df', 'Inbox']]);
-        expect(opened).toBe(0);
+        expect(opened).toBe(1);
+        expect(routed).toEqual([]);
         // No status popover mounted for the drafted overlay.
         expect(document.getElementById('todoStatusPopover')).toBeNull();
+
+        // A second tap while open does not collapse the panel (no re-click).
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
     });
 });
 
@@ -393,12 +400,14 @@ describe('STUCK derived overlay', () => {
         expect(label.getAttribute('data-status')).toBe('in_progress');
     });
 
-    it('tapping the STUCK badge routes to the Agent board, not the description panel', () => {
+    it('tapping the STUCK badge opens the row description panel, not the Agent board', () => {
         const container = document.createElement('div');
         container.id = 'mainList';
         document.body.appendChild(container);
         wireStatusLabelDelegation(container);
 
+        // Retry now lives in the description panel, so the Agent route handler must
+        // NOT fire; the tap opens the panel via the row's expand caret.
         const routed = [];
         setAgentRouteBadgeTapHandler(function (todoId, projectName) {
             routed.push([todoId, projectName]);
@@ -407,19 +416,24 @@ describe('STUCK derived overlay', () => {
         const item = { id: 'todo-st', status: 'active' };
         const row = makeRow(item, 'Inbox');
         refreshTodoStatusUI(row, item, 'stuck');
-        // A description toggle is present — the STUCK tap must NOT open it now that
-        // Retry / re-dispatch lives on the board.
         const descToggle = document.createElement('div');
         descToggle.id = 'descToggle';
         let opened = 0;
-        descToggle.addEventListener('click', function () { opened += 1; });
+        descToggle.addEventListener('click', function () {
+            opened += 1;
+            descToggle.classList.add('open');
+        });
         row.appendChild(descToggle);
         container.appendChild(row);
 
         row.querySelector('.todoStatusLabel').click();
-        expect(routed).toEqual([['todo-st', 'Inbox']]);
-        expect(opened).toBe(0);
+        expect(opened).toBe(1);
+        expect(routed).toEqual([]);
         expect(document.getElementById('todoStatusPopover')).toBeNull();
+
+        // A second tap while open does not collapse the panel (no re-click).
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
     });
 });
 

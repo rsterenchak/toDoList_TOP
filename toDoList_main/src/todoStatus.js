@@ -461,26 +461,20 @@ export function wireStatusLabelDelegation(container) {
             return;
         }
         // DRAFTED badge: a landed draft this task hasn't been dispatched. The
-        // Dispatch control that turns a draft into a run lives on the Agent board,
-        // not the description panel, so a tap routes to the Agent view and scrolls
-        // this task's card into view (via the handler main.js registers) rather
-        // than opening the panel or the status popover. The draft text is still
-        // reachable through the row's own description chevron. No `status` write
-        // happens; the badge clears on its own once the linked agent_queue row
-        // leaves drafted (dispatched / re-triaged).
-        if (label.getAttribute('data-status') === 'drafted') {
-            if (agentRouteBadgeTapHandler) agentRouteBadgeTapHandler(item.id, projectName);
-            return;
-        }
-        // STUCK badge: the linked run failed or changed nothing. The Retry /
-        // re-dispatch controls live on the Agent board, so a tap routes to the
-        // Agent view anchored to this task's card rather than opening the
-        // description panel or the status popover. The failure reason is still
-        // reachable through the row's own description chevron. No `status` write
-        // happens; the badge clears on its own once the linked agent_queue row
-        // leaves failed/no_change.
-        if (label.getAttribute('data-status') === 'stuck') {
-            if (agentRouteBadgeTapHandler) agentRouteBadgeTapHandler(item.id, projectName);
+        // Dispatch control now lives in the row's description panel (beneath the
+        // generated entry text), so a tap opens that panel via the row's expand
+        // caret — the same destination ASKING uses — rather than the Agent board
+        // or the status popover. No `status` write happens; the badge clears on
+        // its own once the linked agent_queue row leaves drafted (dispatched /
+        // re-triaged). No-op when the panel is already open so a second tap
+        // doesn't collapse it shut.
+        // STUCK badge: the linked run failed or changed nothing. The Retry control
+        // now lives in the description panel too (beneath its failure-reason
+        // block), so its tap opens the same panel rather than the Agent board.
+        const routeStatus = label.getAttribute('data-status');
+        if (routeStatus === 'drafted' || routeStatus === 'stuck') {
+            const descToggle = row.querySelector('#descToggle');
+            if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;
         }
         // MOCKUP badge: the linked run is parked waiting on a mockup decision. The

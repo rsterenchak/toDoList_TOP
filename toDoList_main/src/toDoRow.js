@@ -56,6 +56,7 @@ import {
     onQueueChange,
 } from './agentQueueStore.js';
 import { applyTaskFilter, setBlockedItemResolver } from './taskFilter.js';
+import { dispatchDraft } from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker } from './filePicker.js';
@@ -531,6 +532,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descSiblingEntryLabel',
     '#descSibling .askingBlock',
     '#descSibling .descEditorModalStuck',
+    '#descSibling .descDispatchBlock',
     '#descSibling .filePickTrigger',
     '#descSibling .filePickPanel',
     '#descSibling .injectBtn',
@@ -786,6 +788,134 @@ function syncStuckPanel(toDoChild, item) {
         existing.remove();
         refreshViewerExpandedHeight();
     }
+}
+
+
+// Build the Dispatch (drafted) / Retry (stuck) action block for a row's
+// description panel — the row-side counterpart to the Agent board's Dispatch and
+// Retry, so a generated draft can be shipped and a failed run retried without
+// leaving the list. Both run the SAME shared dispatch (dispatchDraft), passing the
+// row's existing `entry_id`: Retry MUST, so injectEntry dedup-skips the
+// already-present marker rather than appending a duplicate; Dispatch passes it too,
+// matching the board. No board tail is passed — the row's phase advances through
+// the shared queue store's realtime subscription and this action clears on the
+// next repaint, so nothing polls. In flight the button shows a pending label; a
+// failure surfaces inline beneath it without losing the panel's state.
+//
+// `mode` is 'dispatch' (drafted) or 'retry' (stuck). Retry can proceed on the
+// stored entry_id alone (the marker is already in TODO.md); Dispatch needs the
+// generated draft text to inject — the same empty-case guard the board applies.
+function buildDispatchBlock(item, queueRow, mode) {
+    const isRetry = mode === 'retry';
+    const block = document.createElement('div');
+    block.className = 'descDispatchBlock';
+    block.setAttribute('data-dispatch-row', String(queueRow.id));
+    block.setAttribute('data-dispatch-mode', mode);
+
+    const actions = document.createElement('div');
+    actions.className = 'descDispatchActions';
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'descDispatchError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'descDispatchButton' + (isRetry ? ' descDispatchButton--retry' : '');
+    const idleLabel = isRetry ? 'Retry' : 'Dispatch';
+    const pendingLabel = isRetry ? 'Retrying…' : 'Dispatching…';
+    btn.textContent = idleLabel;
+    actions.appendChild(btn);
+    block.appendChild(actions);
+
+    const draftText = (queueRow.draft || '').trim();
+    // Retry proceeds on the stored entry_id alone; Dispatch needs the draft text.
+    const canRun = isRetry ? !!(queueRow.entry_id || draftText) : !!draftText;
+    btn.disabled = !canRun;
+
+    function fail(message) {
+        btn.disabled = !canRun;
+        btn.classList.remove('is-pending');
+        btn.textContent = idleLabel;
+        errorEl.textContent = message
+            || (isRetry ? 'Could not retry. Try again.' : 'Could not dispatch. Try again.');
+        errorEl.hidden = false;
+    }
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        // Guard the empty case the board guards: no draft to dispatch fails with a
+        // message rather than dispatching nothing.
+        if (!isRetry && !draftText) { fail('No draft to dispatch.'); return; }
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        btn.disabled = true;
+        btn.classList.add('is-pending');
+        btn.textContent = pendingLabel;
+        Promise.resolve(dispatchDraft(queueRow, draftText, queueRow.entry_id)).then(function (res) {
+            if (res && res.ok) {
+                // The shared queue store's realtime subscription moves the row on
+                // and this action clears on the next repaint; nothing to do here.
+                return;
+            }
+            fail(res && res.error);
+        }).catch(function () {
+            fail(isRetry ? 'Could not retry. Try again.' : 'Could not dispatch. Try again.');
+        });
+    });
+
+    return block;
+}
+
+
+// Keep a row's open description panel in sync with its DRAFTED / STUCK phase —
+// mounts a Dispatch action beneath the generated entry text when the row's linked
+// agent_queue row is `drafted`, and a Retry action beneath the STUCK failure-reason
+// block when it is `failed` / `no_change`; removes the action in every other phase.
+// Mirrors syncAskingPanel / syncStuckPanel: open-panel guard, idempotent early
+// return (keep the mounted block if it already matches this row + mode so a live
+// sweep doesn't thrash the DOM or drop an in-flight button), and a
+// refreshViewerExpandedHeight() on add and remove. Repaints live off the same
+// onQueueChange sweep, so the action appears and clears as the phase changes while
+// the panel is open. Not part of DESC_AUTHORING_GROUP_SELECTORS, so applyPhaseLayout
+// never hides it (drafted / stuck are never the terminal `done` phase).
+function syncDispatchPanel(toDoChild, item) {
+    const panel = openDescSiblingFor(toDoChild);
+    if (!panel) return;
+    const existing = panel.querySelector('.descDispatchBlock');
+    const phase = item && item.id ? derivePhase(item) : PHASE.NONE;
+    const mode = phase === PHASE.DRAFTED ? 'dispatch'
+        : (phase === PHASE.STUCK ? 'retry' : null);
+    const queueRow = mode ? getQueueRowForTodo(item.id) : null;
+    if (!mode || !queueRow) {
+        if (existing) {
+            existing.remove();
+            refreshViewerExpandedHeight();
+        }
+        return;
+    }
+    if (existing) {
+        // Idempotent: keep the mounted block if it already matches this row + mode
+        // so a repaint doesn't drop an in-flight (pending) button or its error.
+        if (existing.getAttribute('data-dispatch-row') === String(queueRow.id)
+            && existing.getAttribute('data-dispatch-mode') === mode) return;
+        existing.remove();
+    }
+    const block = buildDispatchBlock(item, queueRow, mode);
+    // Dispatch sits beneath the generated entry text (#descInput); Retry beneath
+    // the STUCK failure-reason block. Fall back to appending at the panel's end.
+    let anchorAfter;
+    if (mode === 'retry') {
+        anchorAfter = panel.querySelector('.descEditorModalStuck');
+    } else {
+        anchorAfter = panel.querySelector('#descInput');
+    }
+    if (anchorAfter) panel.insertBefore(block, anchorAfter.nextSibling);
+    else panel.appendChild(block);
+    refreshViewerExpandedHeight();
 }
 
 
@@ -1167,6 +1297,10 @@ export function refreshDescStatusDots() {
             // row's live phase too, so a re-triage that leaves failed/no_change
             // clears it while the panel is open (and a fresh failure mounts it).
             syncStuckPanel(row, row.__item);
+            // Keep the Dispatch (drafted) / Retry (stuck) action in step with the
+            // row's live phase so it appears when a draft lands / a run fails and
+            // clears when the phase moves on — live, while the panel is open.
+            syncDispatchPanel(row, row.__item);
             // Re-gate the authoring controls by the row's live phase so a panel
             // whose task transitions into `done` (its entry acknowledged elsewhere)
             // hides them on the next sweep, and one leaving `done` restores them —
@@ -2352,6 +2486,10 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // the chevron-path equivalent of the modal's stuck block. No-op for
         // every other row (and mutually exclusive with the ASKING block).
         syncStuckPanel(toDoChild, item);
+        // Mount the Dispatch (drafted) / Retry (stuck) action so a draft can be
+        // shipped and a failed run retried without leaving the row. No-op in every
+        // other phase; runs the shared dispatch the Agent board uses.
+        syncDispatchPanel(toDoChild, item);
         // Gate the authoring controls by the derived phase — hidden in `done`,
         // fully shown everywhere else. Runs last so every control it toggles is
         // already mounted.

@@ -17230,6 +17230,75 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   grid-column: 1 / -1;
 }
 
+/* The Dispatch (drafted) / Retry (stuck) action — the row-side counterpart to
+   the Agent board's Dispatch/Retry (see syncDispatchPanel in toDoRow.js). Dispatch
+   mounts beneath the generated entry text, Retry beneath the STUCK failure-reason
+   block. Full-width in the 3-column #descSibling grid like the other panel blocks,
+   or it auto-places into the 14px gutter column. Deliberately NOT in the authoring
+   group applyPhaseLayout hides in `done` — drafted/stuck are never `done`. */
+#descSibling .descDispatchBlock {
+  grid-column: 1 / -1;
+}
+.descDispatchBlock {
+  margin: 0 12px 10px 12px;
+}
+.descDispatchActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.descDispatchError {
+  margin: 0;
+  flex: 1 1 auto;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-danger);
+}
+/* SpaceMono uppercase treatment matching the panel's other pipeline actions.
+   Dispatch reads as the dispatched action it is (accent); Retry carries the
+   stuck state's danger red. */
+.descDispatchButton {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.descDispatchButton:hover:not(:disabled) {
+  background: var(--accent);
+  color: #fff;
+}
+.descDispatchButton:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.descDispatchButton:disabled,
+.descDispatchButton.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+.descDispatchButton--retry {
+  color: var(--text-danger);
+  background: transparent;
+  border-color: var(--text-danger);
+}
+.descDispatchButton--retry:hover:not(:disabled) {
+  background: var(--text-danger);
+  color: #fff;
+}
+
 /* The shared File:-path picker (createFilePicker) mounts its trigger chip above
    the textarea and its searchable panel below it. Both are #descSibling children
    and would otherwise auto-place into the 14px gutter column — the same defect
