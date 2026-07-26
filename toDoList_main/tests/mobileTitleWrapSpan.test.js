@@ -180,8 +180,8 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
         expect(body).toMatch(/pointer-events:\s*none/);
     });
 
-    it('phone input becomes visible when the row carries data-mobile-edit', () => {
-        // Second tap on the active row sets data-mobile-edit="true" on
+    it('phone input becomes visible when the row carries data-title-edit', () => {
+        // Second tap on the active row sets data-title-edit="true" on
         // #toDoChild before calling toDoInput.focus() — at that moment
         // the span hides and the input takes over the visual slot for
         // editing. The previous implementation keyed the swap on the
@@ -193,7 +193,7 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
         const phoneIdx = css.indexOf('@media (max-width: 420px)');
         const phoneBlock = css.slice(phoneIdx);
         const inputEditRule = phoneBlock.match(
-            /#toDoChild\[data-mobile-edit="true"\]:not\(\[data-original-blank="true"\]\)\s+#toDoInput\s*\{([\s\S]{0,400}?)\}/
+            /#toDoChild\[data-title-edit="true"\]:not\(\[data-original-blank="true"\]\)\s+#toDoInput\s*\{([\s\S]{0,400}?)\}/
         );
         expect(inputEditRule).toBeTruthy();
         const body = inputEditRule[1];
@@ -202,7 +202,7 @@ describe('CSS surfaces the span on phones and hides it elsewhere', () => {
         expect(body).toMatch(/pointer-events:\s*auto/);
         // Sibling cascade hides the span when the row is in edit mode.
         expect(phoneBlock).toMatch(
-            /#toDoChild\[data-mobile-edit="true"\]:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{[\s\S]{0,120}display:\s*none/
+            /#toDoChild\[data-title-edit="true"\]:not\(\[data-original-blank="true"\]\)\s+\.toDoTitleDisplay\s*\{[\s\S]{0,120}display:\s*none/
         );
         // The buggy :focus-within rule on .toDoTitleDisplay must be gone
         // — its presence was the root cause of the read-mode title vanish.

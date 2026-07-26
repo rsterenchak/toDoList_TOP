@@ -13723,6 +13723,77 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* ══════════════════════════════════════════
+   DESKTOP QUEUE RAIL TITLE ≥ 1024px
+   The queue column is a fixed ~308px rail, so a committed row's title in the
+   single-line #toDoInput clips mid-word (an <input> can't paint an ellipsis).
+   Hand the visible title slot to the wrappable .toDoTitleDisplay span — the
+   same read/edit swap the phone layout uses (data-title-edit) — but truncate
+   to ONE line with a trailing ellipsis rather than the phone two-line clamp.
+   #toDoChild is height:var(--item-h) + overflow:clip, so a second line would
+   be cropped; nowrap + ellipsis keeps the row single-line. Focusing the row
+   flips data-title-edit and the real input takes back the slot for renaming.
+══════════════════════════════════════════ */
+@media (min-width: 1024px) {
+  /* Committed rows: show the span truncated to one line. flex:1 1 0 + the
+     easy-to-miss min-width:0 let it shrink inside the flex row instead of
+     forcing its max-content width and shoving the trailing controls off the
+     rail. 13px / 0.02em match #toDoInput so the swap is visually seamless. */
+  #toDoChild:not([data-original-blank="true"]) .toDoTitleDisplay {
+    display: block;
+    flex: 1 1 0;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 13px;
+    font-family: inherit;
+    color: var(--text-primary);
+    letter-spacing: 0.02em;
+    line-height: 1.3;
+    align-self: center;
+    cursor: text;
+    margin: 0;
+  }
+  #toDoChild.completed:not([data-original-blank="true"]) .toDoTitleDisplay {
+    text-decoration: line-through;
+    color: var(--text-muted);
+  }
+  /* The input stays in the DOM for focus/edit but is pulled out of flow and
+     hidden until it receives the edit swap. Absolute over the (position:
+     relative) row so it never occupies a flex slot while the span does. */
+  #toDoChild:not([data-original-blank="true"]) #toDoInput {
+    opacity: 0;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+  }
+  /* Override the base `.todo-active #toDoInput { pointer-events: auto }` rule:
+     while the input is the invisible full-row overlay it must NOT swallow
+     clicks meant for the checkbox, controls, or the display span. It re-earns
+     pointer-events in the data-title-edit rule below (which comes later and
+     wins on source order at equal specificity). */
+  #toDoChild.todo-active:not([data-original-blank="true"]) #toDoInput {
+    pointer-events: none;
+  }
+  /* Edit-mode swap — the row's title was clicked/focused: hide the span and
+     hand the slot back to the real input for renaming. Keyed on the shared
+     data-title-edit attribute set by wireToDoRowClick. */
+  #toDoChild[data-title-edit="true"]:not([data-original-blank="true"]) .toDoTitleDisplay {
+    display: none;
+  }
+  #toDoChild[data-title-edit="true"]:not([data-original-blank="true"]) #toDoInput {
+    opacity: 1;
+    position: static;
+    width: auto;
+    height: auto;
+    pointer-events: auto;
+  }
+}
+
+/* ══════════════════════════════════════════
    PHONE ≤ 420px
 ══════════════════════════════════════════ */
 @media (max-width: 420px) {
@@ -13784,16 +13855,17 @@ body.row-dragging * { cursor: grabbing !important; }
   #toDoChild.todo-active:not([data-original-blank="true"]) #toDoInput {
     pointer-events: none;
   }
-  /* Edit-mode swap is keyed on an explicit `data-mobile-edit` attribute
+  /* Edit-mode swap is keyed on an explicit `data-title-edit` attribute
      set by wireToDoRowClick on the second tap (rather than `:focus-within`,
      which spuriously matched whenever the first-tap descToggle button
      received focus and hid the title behind an empty band). The attribute
      is cleared on input blur and on descToggle close so read mode keeps
-     the wrappable span visible. */
-  #toDoChild[data-mobile-edit="true"]:not([data-original-blank="true"]) .toDoTitleDisplay {
+     the wrappable span visible. The same attribute drives the desktop
+     queue-rail swap in the ≥1024px block below. */
+  #toDoChild[data-title-edit="true"]:not([data-original-blank="true"]) .toDoTitleDisplay {
     display: none;
   }
-  #toDoChild[data-mobile-edit="true"]:not([data-original-blank="true"]) #toDoInput {
+  #toDoChild[data-title-edit="true"]:not([data-original-blank="true"]) #toDoInput {
     opacity: 1;
     position: static;
     width: auto;

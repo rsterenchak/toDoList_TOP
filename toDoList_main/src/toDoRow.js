@@ -1399,7 +1399,7 @@ function wireCheckbox(toDoChild, toDoInput, item) {
 // input can't host the multi-line markdown drafting the task brief calls
 // for. Extracted helpers keep the branch body small so the existing
 // 4000-char source-inspection windows in mobileReadModeTitleVisible.test.js
-// still cover the data-mobile-edit + toDoInput.focus() lines below.
+// still cover the data-title-edit + toDoInput.focus() lines below.
 function isCoarsePointerTap() {
     return typeof window !== 'undefined'
         && !!window.matchMedia
@@ -1504,11 +1504,12 @@ export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
 
         // one-click editing — focus with caret at end rather than selecting text
         if (document.activeElement !== toDoInput) {
-            // Set data-mobile-edit BEFORE calling focus(): on phones the
-            // input is opacity:0 / pointer-events:none until this attribute
-            // flips the CSS swap, so a focus() call without the attribute
-            // is a no-op. Cleared on the input's own blur handler below.
-            if (isMobile) toDoChild.setAttribute('data-mobile-edit', 'true');
+            // Set data-title-edit BEFORE focus(): the input is opacity:0 /
+            // pointer-events:none until this attribute flips the CSS swap, so
+            // focus() without it is a no-op. Set at every width — the swap now
+            // hosts the ellipsized title span in the desktop rail too, not just
+            // on phones (at 421–1023px no swap rule matches, so it is inert).
+            toDoChild.setAttribute('data-title-edit', 'true');
             const end = toDoInput.value.length;
             toDoInput.focus();
             toDoInput.setSelectionRange(end, end);
@@ -1529,7 +1530,7 @@ export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
                 // mode. The blur handler on toDoInput clears this too;
                 // doing it here as well covers the case where the user
                 // closes the description without ever blurring the input.
-                toDoChild.removeAttribute('data-mobile-edit');
+                toDoChild.removeAttribute('data-title-edit');
             }
         });
     }
@@ -2943,10 +2944,11 @@ export function buildToDoRow(item, toDoName) {
         }
         toDoInput.title = item.tit || "";
         toDoTitleDisplay.textContent = item.tit || "";
-        // Hand the visible slot back to the wrappable span on mobile —
-        // clearing data-mobile-edit re-applies the opacity:0 swap so the
-        // span (now showing the updated item.tit) is what the user sees.
-        toDoChild.removeAttribute('data-mobile-edit');
+        // Hand the visible slot back to the wrappable display span —
+        // clearing data-title-edit re-applies the opacity:0 swap so the
+        // span (now showing the updated item.tit) is what the user sees,
+        // on phones and in the desktop queue rail alike.
+        toDoChild.removeAttribute('data-title-edit');
     });
 
     // Escape on the title cancels the in-progress edit by restoring the
