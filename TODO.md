@@ -173,7 +173,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 58e26831-1848-4aeb-941f-42fceec99bf7 -->
 
-- [ ] **[LOW]** Retire or relocate the orphaned agent working-dot indicator
+- [x] **[LOW]** Retire or relocate the orphaned agent working-dot indicator — Completed: 2026-07-26
   - Type: feature
   - Description: Collapsing the tab bar to Stream and Structure removed the AGENT desktop pill and mobile AGENT tab — the only two surfaces that painted the "agent is working" dot. The persistent working watch still toggles the `body.agentWorking` class on its 15s interval and on realtime `agent_queue` pushes, but nothing consumes that flag on screen anymore (its CSS rules were removed alongside the pill/tab). Decide the fate of the indicator: either relocate a "working" dot/pill onto a surviving surface (the STREAM pill, a sidebar project row, or reuse the Agent board header's status pill) so a live agent still reads as alive at a glance, or retire the watch and the `body.agentWorking` machinery entirely if the indicator is no longer wanted. The `agentDotBreathe` keyframes are shared with the Agent board header status pill, so keep them.
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
