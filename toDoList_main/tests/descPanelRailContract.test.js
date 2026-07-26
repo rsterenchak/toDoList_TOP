@@ -90,6 +90,7 @@ describe('desc panel child contract — (b) every mount site is a listed child',
         'picker.panel',    // .filePickPanel
         'rail',            // .phaseRail
         'label',           // .descSiblingEntryLabel
+        'manualStatusRow', // #descEditorModalStatusRow (shared MANUAL STATUS control)
     ]);
 
     it('every descSibling.appendChild/insertBefore mounts a known, placed child', () => {

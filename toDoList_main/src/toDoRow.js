@@ -45,7 +45,7 @@ import {
     refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
-import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI } from './todoStatus.js';
+import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI, buildManualStatusControl } from './todoStatus.js';
 import { derivePhase, PHASE, isBlockedPhase } from './phase.js';
 import {
     getQueueRowForTodo,
@@ -537,6 +537,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .discussBtn',
     '#descSibling .generateBtn',
     '#descSibling .generateFailure',
+    '#descSibling #descEditorModalStatusRow',
 ]);
 
 
@@ -2355,6 +2356,21 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // fully shown everywhere else. Runs last so every control it toggles is
         // already mounted.
         applyPhaseLayout(descSibling, derivePhase(item));
+        // Mount the shared MANUAL STATUS control at the FOOT of the panel, below
+        // the action buttons — the desktop counterpart to the mobile modal's
+        // last-in-dialog placement. Committed rows only: a blank placeholder has
+        // no task to annotate yet. It reuses buildManualStatusControl so the two
+        // hosts stay in step. Deliberately NOT in DESC_AUTHORING_GROUP_SELECTORS,
+        // so applyPhaseLayout leaves it visible in `done` — manual status stays
+        // settable on a completed task. Reuse the existing node across reopens
+        // (children survive close — the file-picker duplication lesson) but
+        // re-append it so it stays last even after the actions above are moved
+        // back to the end by their own re-appends on reopen.
+        if (item.tit) {
+            let manualStatusRow = descSibling.querySelector('#descEditorModalStatusRow');
+            if (!manualStatusRow) manualStatusRow = buildManualStatusControl(item, projectName);
+            descSibling.appendChild(manualStatusRow);
+        }
     }
 
     function openPanel() {

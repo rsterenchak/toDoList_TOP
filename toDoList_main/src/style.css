@@ -8592,10 +8592,14 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--accent-text, var(--accent));
 }
 
-/* IN PROGRESS — purple left-stripe (inset so it never shifts the row layout)
-   over a slightly lifted background. */
+/* IN PROGRESS — amber left-stripe (inset so it never shifts the row layout)
+   over a slightly lifted background. The amber (--text-warning, #d9b86a) matches
+   the mobile left-edge status tab, so in-progress reads the same colour at every
+   width. Below 1024px this stripe is neutralised on resting rows (the ::before
+   tab carries the colour there) and overridden by the tap-to-read accent edge,
+   so the recolour is desktop-visible only. */
 #toDoChild.todo-row--in_progress {
-  box-shadow: inset 3px 0 0 #9D93EE;
+  box-shadow: inset 3px 0 0 var(--text-warning);
   background: var(--bg-hover);
 }
 /* IDEA — muted background + muted title text. */
@@ -9651,6 +9655,17 @@ body.row-dragging * { cursor: grabbing !important; }
 #descInput::placeholder { color: var(--text-muted); font-style: italic; }
 #descInput:focus { outline: none; color: var(--text-primary); border-bottom: 0.5px solid var(--accent-dim); }
 #descInput:focus::placeholder { color: transparent; }
+
+/* The shared MANUAL STATUS control mounted at the foot of the desktop detail
+   pane. #descSibling is a three-column grid (14px 1fr 14px); this block carries
+   its own padding (from the #descEditorModalStatusRow rule it shares with the
+   mobile modal), so it spans the full width (1 / -1) rather than sitting in the
+   1fr content column — matching how the ASKING / STUCK padded blocks are placed.
+   Scoped to #descSibling so the mobile modal's instance (which lives in the
+   dialog, not the panel) is untouched. */
+#descSibling #descEditorModalStatusRow {
+  grid-column: 1 / -1;
+}
 
 /* PASTE-ENTRY PANEL — the 📋 compose-row chip opens this inline panel below the
    blank placeholder. It mounts as the placeholder's SIBLING in #mainList (like
@@ -11178,6 +11193,25 @@ body.row-dragging * { cursor: grabbing !important; }
     border-left: 0.5px solid var(--border-mid);
     background: var(--bg-base);
     padding: 12px;
+  }
+
+  /* Drop the manual status text from desktop rows, mirroring the ≤1023px mobile
+     rule. The manual status is carried by the row's own treatment (the amber
+     in-progress stripe, the idea muting) and settable from the detail pane's
+     MANUAL STATUS control, so the badge no longer spends rail width on a value
+     the row already conveys. Hide by default and expose ONLY the blocked-phase
+     overlay words — never enumerate the three manual values as exceptions, so a
+     future phase word can't be accidentally hidden. A word on a desktop row now
+     always means the same thing: act on this. A hidden badge is display:none,
+     so it also drops out of the tab order rather than becoming a dead stop. */
+  .todoStatusLabel { display: none; }
+  .todoStatusLabel[data-status="review"],
+  .todoStatusLabel[data-status="asking"],
+  .todoStatusLabel[data-status="drafted"],
+  .todoStatusLabel[data-status="stuck"],
+  .todoStatusLabel[data-status="mockup"] {
+    display: inline-flex;
+    align-items: center;
   }
 
   /* The TODO.md viewer card now lives in the narrow queue rail (~308px), where
