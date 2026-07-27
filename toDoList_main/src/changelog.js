@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-26',
-        added: [
-            "The file target picker now lists on-screen UI regions above the file paths, so a target can be chosen by what it is on screen rather than by knowing its file.",
-        ],
         fixed: [
             "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",
             "In the desktop task queue, an unfocused task title now stays in its normal position instead of jumping ahead of the checkbox.",
             "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
             "In the mobile description editor, the entry text area no longer overlaps the action buttons — the modal now scrolls internally so every button stays reachable.",
+            "In the file target picker, UI regions now group under their owning file — the file path leads each row with its region labels beneath — instead of listing near-identical labels as separate rows.",
         ],
     },
 ];

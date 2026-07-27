@@ -1602,12 +1602,12 @@ body {
   color: var(--accent-text);
 }
 
-/* A two-line UI-region row: the human-readable label over its owning file. The
-   shared .filePickRow assumes one line (white-space: nowrap and a single-line
-   height), so region rows take their own class rather than overriding it.
-   flex-shrink:0 plus a real min-height keeps the two lines from squashing when
-   the list overflows .filePickPanel's 240px cap — the same failure the plain
-   rows already guard against. */
+/* A two-line UI-region row grouped by owning file: the file path leads on top,
+   its region labels beneath at reduced emphasis. The shared .filePickRow assumes
+   one line (white-space: nowrap and a single-line height), so region rows take
+   their own class rather than overriding it. flex-shrink:0 plus a real min-height
+   keeps the two lines from squashing when the list overflows .filePickPanel's
+   240px cap — the same failure the plain rows already guard against. */
 .filePickRegionRow {
   display: flex;
   flex-direction: column;
@@ -1632,22 +1632,28 @@ body {
   background: var(--accent-dim);
   color: var(--accent-text);
 }
-.filePickRegionLabel {
+/* The owning file — the row's primary line. It is a long repo-relative path, so
+   it ellipsizes on ONE line rather than wrapping. */
+.filePickRegionFile {
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* The owning file, at reduced emphasis beneath the label. On focus it inherits
-   the row's accent text so it stays legible against the highlighted background. */
-.filePickRegionFile {
+/* The grouped region labels, at reduced emphasis beneath the file. May wrap to at
+   most one additional line before truncating with an ellipsis; the "+N more" cap
+   in formatRegionLabels keeps it from growing unbounded. On focus it inherits the
+   row's accent text so it stays legible against the highlighted background. */
+.filePickRegionLabel {
   font-size: 11px;
   color: var(--text-muted);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
 }
-.filePickRegionRow:focus-visible .filePickRegionFile { color: inherit; }
+.filePickRegionRow:focus-visible .filePickRegionLabel { color: inherit; }
 
 /* The "UI regions" / "Files" separating headings. Muted, uppercase, and shrink-
    proof so they hold their height alongside overflowing rows, mirroring
