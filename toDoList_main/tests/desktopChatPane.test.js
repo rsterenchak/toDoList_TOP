@@ -155,20 +155,15 @@ describe('D2 — desktop chat pane (layout source)', () => {
         );
     });
 
-    it('(e) the chat pane is raised above the view-tab sub-band so its CHAT/RUNS tabs stay visible', () => {
-        // After #desktopViewSubBand was repainted var(--bg-base) it kept its
-        // z-index: 9 / position: relative. The band spans the full viewport
-        // width, so on its z-9 layer it painted ON TOP of the chat pane's
-        // CHAT/RUNS tab strip where they overlap — burying the tabs. A 1px
-        // border between the panes (the prior "boundary" attempt) never touched
-        // the stacking, so it's removed here; the real fix raises the pane to
-        // z-index: 10 — just above the sub-band's 9 — using the
-        // position:relative it already declares. The pane's tab chrome (#15151e)
-        // then reads as its own surface against the sub-band's --bg-base, which
-        // doubles as the seam between the two header bands.
+    it('(e) the chat pane is flush with the task pane top — no lift, no z-index raise', () => {
+        // The view-tab sub-band is retired (the STREAM / STRUCTURE tabs moved
+        // into the header row), so there is no band to align a sub-header
+        // against and nothing to stack above. The margin-top:-32px lift and the
+        // z-index:10 raise that the old alignment required are both removed;
+        // position:relative stays because it anchors the collapse button.
         //
-        // Slice the D2 desktop region first so we target the lifted pane rule,
-        // not the base `#desktopChatPane { display:none }` or the collapsed-state
+        // Slice the D2 desktop region so we target the pane's desktop rule, not
+        // the base `#desktopChatPane { display:none }` or the collapsed-state
         // rule. Same region boundaries as chatPaneSubHeaderAlign's d2Block.
         const regionStart = css.indexOf('D2 — DESKTOP TWO-PANE CHAT');
         expect(regionStart).toBeGreaterThan(-1);
@@ -181,44 +176,22 @@ describe('D2 — desktop chat pane (layout source)', () => {
         const m = d2.match(/#desktopChatPane\s*\{([^}]*)\}/);
         expect(m).not.toBeNull();
         const body = m[1];
-        // The pane is raised to z-index: 10 — one layer above the sub-band's 9.
-        const z = body.match(/z-index:\s*(\d+)/);
-        expect(z).not.toBeNull();
-        expect(parseInt(z[1], 10)).toBe(10);
-        // z-index needs the position the pane already declares.
+        // No alignment lift and no stacking raise remain.
+        expect(body).not.toMatch(/margin-top:\s*-\d+px/);
+        expect(body).not.toMatch(/z-index:/);
+        // position:relative survives — the collapse button anchors to it.
         expect(body).toMatch(/position:\s*relative/);
-
-        // The numeric ordering holds against the sub-band's own z-index: the
-        // pane must stack strictly above it. Slice the sub-band rule from the
-        // header-consolidation region the same way chatPaneSubHeaderAlign does.
-        const consolidationStart = css.indexOf('DESKTOP HEADER CONSOLIDATION');
-        expect(consolidationStart).toBeGreaterThan(-1);
-        const consolidationEnd = css.indexOf('D2 — DESKTOP TWO-PANE CHAT', consolidationStart);
-        expect(consolidationEnd).toBeGreaterThan(consolidationStart);
-        const subBand = css.slice(consolidationStart, consolidationEnd).match(/#desktopViewSubBand\s*\{([^}]*)\}/);
-        expect(subBand).not.toBeNull();
-        const subZ = subBand[1].match(/z-index:\s*(\d+)/);
-        expect(subZ).not.toBeNull();
-        expect(parseInt(z[1], 10)).toBeGreaterThan(parseInt(subZ[1], 10));
-
-        // The prior boundary border is gone — the stacking fix subsumes it.
-        expect(body).not.toMatch(/border-left:\s*1px\s+solid/);
-
-        // Load-bearing geometry the stacking fix must NOT disturb: the -32px
-        // lift and the hard-edged --bg-base box-shadow overhang both survive.
-        expect(body).toMatch(/margin-top:\s*-32px/);
-        expect(body).toMatch(/box-shadow:[^;]*-16px/);
-        expect(body).toMatch(/box-shadow:[^;]*var\(--bg-base\)/);
+        // The band it aligned to is gone entirely.
+        expect(css).not.toMatch(/#desktopViewSubBand\s*\{/);
     });
 
     it('(f) a 1px vertical separator marks the chat pane left edge without a border-left', () => {
-        // The z-10 stacking fix restored the CHAT/RUNS tabs to view, but the
-        // pane's own chrome reads too weakly against the sub-band's --bg-base to
-        // register as a seam — the two header bands looked like one continuous
-        // strip. A 1px vertical separator restores the boundary. It must NOT be
-        // a `border-left` (forbidden above — it would shift layout and the prior
-        // boundary border was removed), so it ships as a hard-edged box-shadow
-        // stripe painted outside the pane's left edge instead.
+        // The seam between the task pane and the chat pane is a 1px vertical
+        // separator. It must NOT be a `border-left` (it would shift layout), so
+        // it ships as a hard-edged box-shadow stripe painted just outside the
+        // pane's left edge. With the sub-band gone, the gap-fill overhang that
+        // used to lead the box-shadow declaration is removed — the separator is
+        // now the only shadow.
         const regionStart = css.indexOf('D2 — DESKTOP TWO-PANE CHAT');
         const mediaStart = css.indexOf('@media (min-width: 1024px)', regionStart);
         const regionEnd = css.indexOf('D3 — DESKTOP CHAT PANE COLLAPSE', mediaStart);
@@ -229,27 +202,18 @@ describe('D2 — desktop chat pane (layout source)', () => {
         // mistaken for the actual declaration when matching below.
         const body = m[1].replace(/\/\*[\s\S]*?\*\//g, '');
 
-        // Still no border-left (the prior boundary attempt) — the stripe is a
-        // shadow, so it adds the seam with zero layout impact.
+        // No border-left — the stripe is a shadow, so it adds the seam with
+        // zero layout impact.
         expect(body).not.toMatch(/border-left:\s*1px\s+solid/);
 
-        // The box-shadow now carries TWO shadows: the existing --bg-base
-        // overhang AND a 1px separator stripe. The overhang must stay first so
-        // the gap-fill test (navbarGapPaneBackground) still matches it leading
-        // the value.
+        // The 1px vertical stripe (offset-x -1px, no blur/spread) is present,
+        // in a non-transparent colour that is not the page bg.
         const shadow = body.match(/box-shadow:\s*([^;]+);/);
         expect(shadow).not.toBeNull();
         const value = shadow[1];
-        // Overhang leads the declaration.
-        expect(value).toMatch(/^\s*0\s+-16px\s+0\s+0\s+var\(--bg-base\)/);
-        // ...and a 1px vertical stripe (offset-x -1px, no blur/spread) follows,
-        // in a non-transparent colour that is not the page bg.
         expect(value).toMatch(/-1px\s+0\s+0\s+0\s+rgba\(108,\s*93,\s*245,\s*0\.18\)/);
-
-        // The z-10 stacking from the previous entry is preserved, so the
-        // separator sits on a pane that is already above the sub-band and never
-        // covers the tab strip.
-        expect(body).toMatch(/z-index:\s*10/);
+        // The retired gap-fill overhang no longer leads the declaration.
+        expect(value).not.toMatch(/0\s+-16px\s+0\s+0\s+var\(--bg-base\)/);
     });
 
     it('main.js wraps the main pane and the chat pane in #mainSplit', () => {

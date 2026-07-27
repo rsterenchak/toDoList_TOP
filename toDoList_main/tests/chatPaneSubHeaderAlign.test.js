@@ -10,20 +10,24 @@ function read(relative) {
 }
 
 // Pins the contract that at desktop widths (>=1024px) the chat pane's
-// sub-header row — collapse button + CHAT/RUNS tabs + repo workspace pill — is
-// a single horizontal row aligned with the task pane's view-tab sub-band
-// (#desktopViewSubBand), so both panes have a peer "first row under the main
-// header" at the same y. Previously the collapse `›` sat on its own row above
-// the tabs, and the whole chat sub-header sat one sub-band height below the
-// view tabs. Verified via source inspection because jsdom does no layout and
-// main.js is too large to instantiate (per CLAUDE.md guidance).
+// sub-header row — collapse button + CHAT/RUNS tabs + repo workspace pill —
+// sits FLUSH with the task pane's top edge: both panes start at #mainSplit's
+// top (grid row 3, directly under the header) with no compensating offset.
+// This suite previously pinned the pane's -32px lift into a dedicated view-tab
+// sub-band and the z-index / pointer-events plumbing that alignment required;
+// with the sub-band retired (the view tabs moved into the header row) it is
+// rewritten to pin the DECOUPLING — no negative top margin, no z-index raise,
+// no #desktopViewSubBand rule — while position:relative and the collapse
+// button's inline placement survive. Verified via source inspection because
+// jsdom does no layout and main.js is too large to instantiate (per CLAUDE.md
+// guidance).
 describe('chat pane sub-header alignment (desktop)', () => {
     const css = read('style.css');
     const main = read('main.js');
 
-    // The desktop (>=1024px) portion of the D2 two-pane region — the pane lift
-    // and tab-row compaction. Sliced from the media query so the base
-    // (mobile) #mainSplit / #desktopChatPane rules above it aren't matched.
+    // The desktop (>=1024px) portion of the D2 two-pane region — the pane
+    // decoupling and tab-row compaction. Sliced from the media query so the
+    // base (mobile) #mainSplit / #desktopChatPane rules above it aren't matched.
     function d2Block() {
         const regionStart = css.indexOf('D2 — DESKTOP TWO-PANE CHAT');
         expect(regionStart).toBeGreaterThan(-1);
@@ -43,15 +47,6 @@ describe('chat pane sub-header alignment (desktop)', () => {
         return css.slice(start, end);
     }
 
-    // The desktop header consolidation region holds the sub-band rules.
-    function consolidationBlock() {
-        const start = css.indexOf('DESKTOP HEADER CONSOLIDATION');
-        expect(start).toBeGreaterThan(-1);
-        const end = css.indexOf('D2 — DESKTOP TWO-PANE CHAT', start);
-        expect(end).toBeGreaterThan(start);
-        return css.slice(start, end);
-    }
-
     function ruleBody(block, selector) {
         const re = new RegExp(
             selector.replace(/[#.]/g, m => '\\' + m).replace(/\s+/g, '\\s+') +
@@ -62,18 +57,15 @@ describe('chat pane sub-header alignment (desktop)', () => {
         return m[1];
     }
 
-    it('(a) the chat pane is pulled up by exactly the sub-band height so the rows align', () => {
-        // The lift magnitude must equal the band's height, or the two
-        // sub-headers would not start at the same y. Pin both halves.
-        const subBand = ruleBody(consolidationBlock(), '#desktopViewSubBand');
-        const minH = subBand.match(/min-height:\s*(\d+)px/);
-        expect(minH).not.toBeNull();
-        const bandHeight = parseInt(minH[1], 10);
-
+    it('(a) the chat pane is flush with the task pane top — no negative lift, no z-index raise', () => {
+        // With the sub-band gone there is nothing to lift the pane into: the
+        // old margin-top:-32px alignment offset and the z-10 raise that kept the
+        // CHAT/RUNS tabs above the band are both removed.
         const pane = ruleBody(d2Block(), '#desktopChatPane');
-        const lift = pane.match(/margin-top:\s*-(\d+)px/);
-        expect(lift).not.toBeNull();
-        expect(parseInt(lift[1], 10)).toBe(bandHeight);
+        expect(pane).not.toMatch(/margin-top:\s*-\d+px/);
+        expect(pane).not.toMatch(/z-index:/);
+        // ...and the retired band leaves no rule behind.
+        expect(css).not.toMatch(/#desktopViewSubBand\s*\{/);
     });
 
     it('(b) the pane is position:relative so the collapse button can anchor to it', () => {
@@ -81,7 +73,7 @@ describe('chat pane sub-header alignment (desktop)', () => {
         expect(pane).toMatch(/position:\s*relative/);
     });
 
-    it('(c) #mainSplit does not clip the pane overhang (overflow:visible at desktop)', () => {
+    it('(c) #mainSplit does not clip the pane left-edge separator (overflow:visible at desktop)', () => {
         const split = ruleBody(d2Block(), '#mainSplit');
         expect(split).toMatch(/overflow:\s*visible/);
     });
@@ -102,12 +94,15 @@ describe('chat pane sub-header alignment (desktop)', () => {
         expect(parseInt(pad[1], 10)).toBeGreaterThanOrEqual(36);
     });
 
-    it('(f) the sub-band lets clicks fall through its empty area to the sub-header beneath', () => {
-        const subBand = ruleBody(consolidationBlock(), '#desktopViewSubBand');
-        expect(subBand).toMatch(/pointer-events:\s*none/);
-        // ...while the view tabs themselves stay interactive.
-        const viewSwitcher = ruleBody(consolidationBlock(), '#desktopViewSubBand #viewSwitcher');
-        expect(viewSwitcher).toMatch(/pointer-events:\s*auto/);
+    it('(f) the left-edge separator stripe survives the decoupling', () => {
+        // The 1px vertical seam between the task pane and chat pane is a
+        // hard-edged box-shadow painted outside the pane's left edge (never a
+        // border-left). The gap-fill overhang shadow that used to lead the
+        // declaration is gone with the sub-band, so the separator is now the
+        // only shadow.
+        const pane = ruleBody(d2Block(), '#desktopChatPane');
+        expect(pane).toMatch(/box-shadow:[^;]*-1px\s+0\s+0\s+0\s+rgba\(108,\s*93,\s*245,\s*0\.18\)/);
+        expect(pane).not.toMatch(/border-left:\s*1px\s+solid/);
     });
 
     it('(g) mobile is untouched — the base tab row keeps its full 12px padding', () => {

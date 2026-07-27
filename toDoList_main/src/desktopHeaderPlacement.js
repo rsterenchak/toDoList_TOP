@@ -6,18 +6,17 @@
 // swipe-to-navigate) and the single updateMobileProjHeader writer that
 // drives the counts all survive the move. Idempotent: a no-op when the
 // nodes already sit in the container matching the current breakpoint, so it
-// is safe to call on every resize. The view tabs already have a permanent
-// home in the desktop sub-band; only the pill + counts shuttle across the
-// 1024px boundary.
+// is safe to call on every resize. The view tabs (#viewSwitcher) have a
+// permanent home in #navBar; the pill + counts are inserted just before them
+// at desktop, so the header reads pill → counts → view tabs → chip cluster.
 //
-// Behaviour-preserving extraction from main.js: the seven closed-over DOM
-// nodes it reads (the two nodes that shuttle plus the four containers/anchors
-// they move between) arrive as factory deps, so the returned placeDesktopHeader
-// body is identical to the inline original.
+// Behaviour-preserving: the closed-over DOM nodes it reads (the two nodes that
+// shuttle plus the containers/anchors they move between, including the
+// #viewSwitcher insertion anchor) arrive as factory deps.
 export function createDesktopHeaderPlacement({
     nav,
     main2,
-    pomodoroToggle,
+    viewSwitcher,
     mobileProjHeader,
     mobileProjStats,
     mobileProjMain,
@@ -27,13 +26,13 @@ export function createDesktopHeaderPlacement({
         const desktop = window.innerWidth >= 1024;
         if (desktop) {
             if (mobileProjHeader.parentNode !== nav) {
-                nav.insertBefore(mobileProjHeader, pomodoroToggle);
+                nav.insertBefore(mobileProjHeader, viewSwitcher);
             }
-            // Counts sit inline to the right of the pill, ahead of the chip
-            // cluster — lifted out of the pill so they read as header text
+            // Counts sit inline to the right of the pill, ahead of the view
+            // tabs — lifted out of the pill so they read as header text
             // rather than part of the clickable drawer trigger.
             if (mobileProjStats.parentNode !== nav) {
-                nav.insertBefore(mobileProjStats, pomodoroToggle);
+                nav.insertBefore(mobileProjStats, viewSwitcher);
             }
         } else {
             if (mobileProjHeader.parentNode !== main2) {

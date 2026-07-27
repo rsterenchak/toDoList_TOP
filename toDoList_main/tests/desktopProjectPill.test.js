@@ -130,10 +130,11 @@ describe('D1c — desktop project pill', () => {
 });
 
 // The desktop header consolidation: at >=1024px the workspace pill + open/done
-// counts move up into the top header (#navBar), the view tabs move into a thin
-// sub-band below it (restyled as underlined text), and SORT BY DUE / EXPAND ALL
-// drop onto the status-filter row. Verified via source + CSS inspection because
-// main.js is too large to instantiate in jsdom (per CLAUDE.md guidance).
+// counts move up into the top header (#navBar), the STREAM / STRUCTURE view
+// tabs sit inline in that same header row (restyled as underlined text), and
+// SORT BY DUE / EXPAND ALL drop onto the status-filter row. Verified via source
+// + CSS inspection because main.js is too large to instantiate in jsdom (per
+// CLAUDE.md guidance).
 describe('desktop header consolidation', () => {
     const css  = read('style.css');
     const main = read('main.js');
@@ -151,25 +152,28 @@ describe('desktop header consolidation', () => {
         return css.slice(start, end);
     }
 
-    it('(a) the desktop view sub-band is visible (display != none) at desktop', () => {
+    it('(a) the view tabs ride in #navBar — no sub-band element survives', () => {
+        // The dedicated #desktopViewSubBand is retired; the tablist is seated
+        // in the header row instead, and its base auto margin is cleared there.
+        expect(css).not.toMatch(/#desktopViewSubBand\s*\{/);
         const block = consolidationBlock();
-        const m = block.match(/#desktopViewSubBand\s*\{([^}]*)\}/);
+        const m = block.match(/#navBar\s+#viewSwitcher\s*\{([^}]*)\}/);
         expect(m).not.toBeNull();
-        expect(m[1]).toMatch(/display:\s*flex/);
-        expect(m[1]).toMatch(/grid-row:\s*3/);
-        // And it's hidden at mobile widths.
-        expect(css).toMatch(/@media \(max-width:\s*1023px\)[\s\S]*?#desktopViewSubBand\s*\{\s*display:\s*none/);
+        expect(m[1]).toMatch(/margin-right:\s*0/);
+        // Still hidden at mobile widths (bottom tab bar is the sole navigator).
+        expect(css).toMatch(/@media \(max-width:\s*1023px\)[\s\S]*?#viewSwitcher\s*\{\s*display:\s*none/);
     });
 
     it('(b) the workspace pill is moved into the top header (#navBar) at desktop', () => {
         // placeDesktopHeader() re-parents #mobileProjHeader into #navBar at
-        // desktop widths (and back into #mainBar at mobile). The pill is MOVED,
-        // not duplicated, so its drawer/swipe wiring survives.
+        // desktop widths (and back into #mainBar at mobile), inserting it just
+        // before #viewSwitcher so the header reads pill → view tabs → chips.
+        // The pill is MOVED, not duplicated, so its drawer/swipe wiring survives.
         const fnIdx = dhp.indexOf('function placeDesktopHeader(');
         expect(fnIdx).toBeGreaterThan(-1);
         const fn = dhp.slice(fnIdx, dhp.indexOf('return {', fnIdx));
         expect(fn).toMatch(/window\.innerWidth\s*>=\s*1024/);
-        expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjHeader\s*,\s*pomodoroToggle\s*\)/);
+        expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjHeader\s*,\s*viewSwitcher\s*\)/);
         // Mobile branch returns it to the task pane (#mainBar / main2).
         expect(fn).toMatch(/main2\.insertBefore\(\s*mobileProjHeader\s*,\s*taskFilterBar\s*\)/);
         // Re-placed on every viewport-crossing resize.
@@ -178,11 +182,11 @@ describe('desktop header consolidation', () => {
 
     it('(c) the active view tab is purple with an underline at desktop', () => {
         const block = consolidationBlock();
-        const active = block.match(/#desktopViewSubBand\s+\.viewPill\.active\s*\{([^}]*)\}/);
+        const active = block.match(/#navBar\s+\.viewPill\.active\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
         expect(active[1]).toMatch(/color:\s*#9D93EE/);
         // The underline is drawn with an ::after pseudo-element (purple, 2px).
-        const after = block.match(/#desktopViewSubBand\s+\.viewPill\.active::after\s*\{([^}]*)\}/);
+        const after = block.match(/#navBar\s+\.viewPill\.active::after\s*\{([^}]*)\}/);
         expect(after).not.toBeNull();
         expect(after[1]).toMatch(/height:\s*2px/);
         expect(after[1]).toMatch(/background:\s*#9D93EE/);
@@ -199,7 +203,7 @@ describe('desktop header consolidation', () => {
         expect(block).toMatch(/#navBar\s+#mobileProjStats\s*\{[^}]*display:\s*none/);
         const fnIdx = dhp.indexOf('function placeDesktopHeader(');
         const fn = dhp.slice(fnIdx, dhp.indexOf('return {', fnIdx));
-        expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjStats\s*,\s*pomodoroToggle\s*\)/);
+        expect(fn).toMatch(/nav\.insertBefore\(\s*mobileProjStats\s*,\s*viewSwitcher\s*\)/);
         expect(fn).toMatch(/mobileProjMain\.appendChild\(\s*mobileProjStats\s*\)/);
     });
 
@@ -226,10 +230,10 @@ describe('desktop header consolidation', () => {
     });
 
     it('(regression) the mobile bottom tab bar keeps its own pill styling, untouched by the desktop restyle', () => {
-        // The underlined-text restyle is scoped to #desktopViewSubBand .viewPill
-        // only; the mobile #mobileTabBar / .mobileTab buttons are a separate
-        // element set and must not be affected. Guard that .mobileTab still
-        // carries its own styling and is not pulled into the sub-band scope.
+        // The underlined-text restyle is scoped to #navBar .viewPill only; the
+        // mobile #mobileTabBar / .mobileTab buttons are a separate element set
+        // and must not be affected. Guard that .mobileTab still carries its own
+        // styling and is not pulled into the consolidation scope.
         expect(css).toMatch(/\.mobileTab\s*\{/);
         const block = consolidationBlock();
         expect(block).not.toMatch(/mobileTab/);

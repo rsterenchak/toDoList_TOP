@@ -485,16 +485,6 @@ function component() {
     const mainSplit = document.createElement('div');
     mainSplit.id = 'mainSplit';
 
-    // Desktop header consolidation — a thin sub-band that sits directly
-    // beneath the top header (#navBar) at desktop widths and carries the
-    // PROJECTS / INBOX / CALENDAR view tabs as underlined text (the pills
-    // are restyled via CSS inside this container). Collapsed to a 0-height
-    // display:none track on mobile, where the persistent #mobileTabBar is
-    // the sole navigator. The #viewSwitcher tablist is relocated into it
-    // below (it used to sit inside #navBar).
-    const desktopViewSubBand = document.createElement('div');
-    desktopViewSubBand.id = 'desktopViewSubBand';
-
     const desktopChatPane = document.createElement('div');
     desktopChatPane.id = 'desktopChatPane';
     desktopChatPane.setAttribute('aria-label', 'Claude assistant');
@@ -541,10 +531,6 @@ function component() {
     base.appendChild(nav);
     base.appendChild(musicUI.nowPlayingStrip);
     base.appendChild(mainSplit);
-    // The view sub-band is placed by explicit grid-row (row 3) so its DOM
-    // position among the grid children is free; append it after #mainSplit to
-    // keep the nav → strip → main ordering the now-playing strip contract pins.
-    base.appendChild(desktopViewSubBand);
     base.appendChild(chatExpandBtn);
     base.appendChild(foot);
     base.appendChild(sidebarOverlay);
@@ -1027,11 +1013,15 @@ function component() {
     const structureView = document.createElement('div');
     structureView.id = 'structureView';
 
-    // The view tabs ride in the desktop sub-band beneath the top header, not
-    // in #navBar. They are desktop-only (display:none on mobile, where
-    // #mobileTabBar owns navigation), so a single permanent home in the
-    // sub-band is correct at every breakpoint.
-    desktopViewSubBand.appendChild(viewSwitcher);
+    // The view tabs ride inside the top header row (#navBar), seated between
+    // the workspace pill and the pomodoro/music/settings chip cluster. Insert
+    // before pomodoroToggle (the chip cluster's leftmost member) so the DOM
+    // order is pill → view tabs → chips; placeDesktopHeader() then inserts the
+    // workspace pill + counts before #viewSwitcher, landing them to its left.
+    // The tabs are desktop-only (display:none on mobile, where #mobileTabBar
+    // owns navigation), so this single permanent home in the header is correct
+    // at every breakpoint.
+    nav.insertBefore(viewSwitcher, pomodoroToggle);
     const taskFilterBar = buildTaskFilterBar();
 
     main2.appendChild(agentView);
@@ -1383,12 +1373,13 @@ function component() {
     // drives the counts all survive the move. Idempotent: a no-op when the
     // nodes already sit in the container matching the current breakpoint, so it
     // is safe to call on every resize. The view tabs already have a permanent
-    // home in the desktop sub-band; only the pill + counts shuttle across the
-    // 1024px boundary.
+    // home in the top header (#viewSwitcher); the pill + counts are inserted
+    // just before them at desktop and only they shuttle across the 1024px
+    // boundary.
     const { placeDesktopHeader } = createDesktopHeaderPlacement({
         nav,
         main2,
-        pomodoroToggle,
+        viewSwitcher,
         mobileProjHeader,
         mobileProjStats,
         mobileProjMain,
