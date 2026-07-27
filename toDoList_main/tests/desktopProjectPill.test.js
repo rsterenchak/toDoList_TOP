@@ -68,16 +68,23 @@ describe('D1c — desktop project pill', () => {
         expect(rule(desktopPillBlock(), '#sidebarToggle')).toMatch(/display:\s*none/);
     });
 
-    it('(c) the ‹ › carousel chevrons are hidden at desktop (pill is name + ▾ only)', () => {
+    it('(c) the ‹ › carousel chevrons are hidden at desktop, but the eyebrow is now shown', () => {
         const block = desktopPillBlock();
         // #mobileProjPrev / #mobileProjNext both carry the .mobileProjChev
-        // class, which is set to display:none in the pill block alongside the
-        // PROJECT N OF M label. The open/done counts (#mobileProjStats) are NO
-        // longer hidden here — the desktop header consolidation lifts them out
-        // of the pill and seats them inline in the top header.
-        expect(block).toMatch(
+        // class, still set to display:none in the pill block. The open/done
+        // counts (#mobileProjStats) are NOT hidden here — the desktop header
+        // consolidation lifts them out of the pill into the top header.
+        expect(block).toMatch(/\.mobileProjChev\s*\{\s*display:\s*none/);
+        // The PROJECT n OF m label is NO LONGER hidden on desktop — it is now
+        // the top line (eyebrow) of the two-line desktop project block, so the
+        // old combined `#mobileProjLabel, .mobileProjChev { display:none }` rule
+        // is gone and the label carries real eyebrow styling instead.
+        expect(block).not.toMatch(
             /#mobileProjLabel,\s*\.mobileProjChev\s*\{\s*display:\s*none/
         );
+        const eyebrow = rule(block, '#mobileProjLabel');
+        expect(eyebrow).not.toMatch(/display:\s*none/);
+        expect(eyebrow).toMatch(/text-transform:\s*uppercase/);
         // The dropdown indicator (▾) stays visible — it advertises the drawer.
         expect(rule(block, '.mobileProjDropdownChev')).not.toMatch(/display:\s*none/);
     });

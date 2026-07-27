@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-26',
+        date: '2026-07-27',
         changed: [
-            "On wide screens, the STREAM and STRUCTURE view tabs now sit in the top header row instead of a separate band beneath it, reclaiming that row of vertical space.",
+            "On wide screens, the header now shows the active project as a two-line block — a \"PROJECT n OF m\" position line above the project name — and drops the redundant inline count badge.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-26',
         fixed: [
             "In the desktop task queue, an unfocused task title now stays in its normal position instead of jumping ahead of the checkbox.",
             "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
