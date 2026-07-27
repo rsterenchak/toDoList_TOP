@@ -404,3 +404,20 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6ddef8f1-2bb4-4a93-ab57-ecfea2fd8398 -->
+
+- [ ] **[MEDIUM]** Desktop queue rail: give the phase filters their own row so labels stop truncating
+  - Type: bug
+  - Description: The four phase filter pills render as "ALL 18 / I… 18 / RU… 0" with DONE pushed out of view. `.taskPhaseFilters` is `flex: 1 1 auto` sharing `#taskFilterBar` with the SORT: STATUS control, and each `.taskPhaseFilterPill` is `flex: 1 1 0` with `text-overflow: ellipsis`. At the ~308px queue rail, after the sort control and gaps, each pill gets well under 60px — enough for two characters and a count. The truncation is working as written; the row simply cannot hold five controls at that width. Move the pills onto their own full-width row above the sort control.
+  - Behavior: At desktop widths the queue rail shows the four phase pills on their own row spanning the rail's full width, with every label readable in full — ALL, IDEAS, RUNNING, DONE — each with its count. The sort control sits on the row beneath them, aligned as it is today. Neither row scrolls horizontally at the rail's normal width. Mobile is unchanged: its cycle pill, blocked chip, and sort keep sharing one row.
+  - Implementation notes:
+    - Put the pills in their own container row rather than making `#taskFilterBar` wrap. A wrapping flex would let the pills and sort reflow into arbitrary arrangements at intermediate widths; an explicit second row is predictable.
+    - The pills stay `flex: 1 1 0` so they share the full rail width evenly. At ~308px minus padding, four pills plus gaps give roughly 70px each, which fits "RUNNING" at the current 10px uppercase type — verify against the longest label with its count rather than assuming, and reduce letter-spacing before reducing font-size if it is tight.
+    - Keep `overflow-x: auto` with hidden scrollbars as the last-resort fallback, and keep the ellipsis on `.taskPhaseFilterLabel`. Both are correct safety nets; this change is about giving them enough width that they never engage.
+    - Scope the new row to desktop. `.taskPhaseFilters` is already `display: none` by default and revealed in the desktop block — the row container needs the same gating so mobile's single-row bar is untouched.
+    - The blocked chip currently sits in `#taskFilterBar` anchored right via `margin-left: auto` on the leftmost member of the right-hand cluster. Confirm which row it belongs on after the split — it is an overlay filter, not a phase, so it likely belongs with sort rather than with the phase pills. Whichever row it lands on must keep exactly one auto margin, or the cluster separates.
+    - Verify at the narrowest permitted rail width with the chat pane docked, which is the tightest case, and confirm the added row does not push the compose row or the task list below the fold.
+    - Check `firstFocusableInTaskFilterBar` and `taskFilterArrowTarget` in `taskFilter.js`, both exported and consumed by `viewFocusNav.js` and `main.js` — arrow-key navigation now walks two rows instead of one and must still enter and traverse the controls in a sensible order.
+  - Out of scope: The phase vocabulary, the filters' predicates, and their counts. The sort control's own behavior and appearance. The blocked chip's behavior. Mobile's filter bar layout. The compose row and the task list.
+  - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 42ddcd2e-2b3d-4931-a066-828ad35ea955 -->
