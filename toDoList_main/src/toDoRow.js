@@ -294,6 +294,67 @@ function updateDetailPaneEmptyState() {
     if (!pane) return;
     const empty = pane.querySelector('.descDetailEmpty');
     if (empty) empty.hidden = !!pane.querySelector('#descSibling');
+    syncDetailPaneHeader();
+}
+
+// Mount / refresh / clear the detail-pane HEADER — a title + entry-marker line
+// shown ABOVE the relocated #descSibling panel so a master-detail layout names
+// the open task without the user cross-referencing which queue row is active.
+// The header is a SIBLING of the panel, never a #descSibling child: a child would
+// travel with the panel to the mobile inline host and duplicate the modal's own
+// title, and would owe an explicit grid-column plus a DESC_PANEL_CHILD_SELECTORS
+// entry. Pane-owned keeps it desktop-only (the pane is display:none below 1024px)
+// and out of that contract entirely. Populated from the panel's owner row's
+// __item so the two can never disagree about which task is open, and removed
+// whenever the pane is empty — it rides the same empty-state toggle that calls it,
+// so it clears on close, on a full row rebuild, and when the open task is gone.
+// The marker line reads item.entryId in full (a truncated id is useless for the
+// diagnostic case of comparing it against a marker in TODO.md); a task not yet
+// injected shows a "not yet injected" note in place of an id rather than a blank.
+export function syncDetailPaneHeader() {
+    const pane = getDescDetailPane();
+    if (!pane) return;
+    const panel = pane.querySelector('#descSibling');
+    const item = panel && panel.__ownerRow ? panel.__ownerRow.__item : null;
+    let header = pane.querySelector('.descDetailHeader');
+    if (!panel || !item) {
+        if (header) header.remove();
+        return;
+    }
+    if (!header) {
+        header = document.createElement('div');
+        header.className = 'descDetailHeader';
+        const title = document.createElement('h2');
+        title.className = 'descDetailHeaderTitle';
+        const marker = document.createElement('div');
+        marker.className = 'descDetailHeaderMarker';
+        header.appendChild(title);
+        header.appendChild(marker);
+    }
+    // The header must lead the pane, directly before the panel — assert it on
+    // every sync so an adoption / re-place that appended the panel after a stale
+    // header still ends with header → panel order.
+    if (header.parentNode !== pane || header.nextSibling !== panel) {
+        pane.insertBefore(header, panel);
+    }
+    header.querySelector('.descDetailHeaderTitle').textContent = item.tit || '';
+    const marker = header.querySelector('.descDetailHeaderMarker');
+    marker.textContent = '';
+    const label = document.createElement('span');
+    label.className = 'descDetailHeaderMarkerLabel';
+    label.textContent = 'Entry';
+    marker.appendChild(label);
+    if (item.entryId) {
+        const id = document.createElement('code');
+        id.className = 'descDetailHeaderMarkerId';
+        id.textContent = item.entryId;
+        marker.appendChild(id);
+    } else {
+        const none = document.createElement('span');
+        none.className = 'descDetailHeaderMarkerNone';
+        none.textContent = 'not yet injected';
+        marker.appendChild(none);
+    }
 }
 
 // Mount an OPEN row's description panel into the host matching the current
@@ -3157,6 +3218,10 @@ export function buildToDoRow(item, toDoName) {
             toDoInput.title = val;
             toDoTitleDisplay.textContent = val;
             listLogic.saveToStorage();
+            // Keep the detail-pane header's title in step with a live rename —
+            // it reads this row's __item, so a stale header after a rename is the
+            // most likely defect. No-op unless this row is the one open in the pane.
+            syncDetailPaneHeader();
         }
     });
 
@@ -3173,6 +3238,7 @@ export function buildToDoRow(item, toDoName) {
         }
         toDoInput.title = item.tit || "";
         toDoTitleDisplay.textContent = item.tit || "";
+        syncDetailPaneHeader();
         // Hand the visible slot back to the wrappable display span —
         // clearing data-title-edit re-applies the opacity:0 swap so the
         // span (now showing the updated item.tit) is what the user sees,
@@ -3190,6 +3256,7 @@ export function buildToDoRow(item, toDoName) {
         listLogic.saveToStorage();
         toDoInput.title = savedTitle;
         toDoTitleDisplay.textContent = savedTitle;
+        syncDetailPaneHeader();
         toDoInput.blur();
         event.preventDefault();
     });

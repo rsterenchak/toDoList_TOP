@@ -217,7 +217,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9447ae11-5c7a-443d-bff7-2ea557ade723 -->
 
-- [ ] **[MEDIUM]** Detail pane: lead with the task title and its entry marker
+- [x] **[MEDIUM]** Detail pane: lead with the task title and its entry marker — Completed: 2026-07-26
   - Type: feature
   - Description: The desktop detail pane renders only the relocated `#descSibling` panel, which opens straight into the phase rail and THE ENTRY label. Nothing in the pane names the task being viewed, so in a master-detail layout the only way to know which item is open is to look back at which queue row is active. Add a header at the top of the pane carrying the task title as a heading and, beneath it, the entry marker with its provenance. The marker line has diagnostic value beyond matching the reviewed design: a task's `entryId` is currently invisible everywhere in the UI, and a task silently losing it orphans it from its TODO.md entry with no way to see that has happened.
   - Behavior: When a task is open in the detail pane, the pane shows its title as a heading above the panel, with a second line reading the entry marker in monospace at reduced emphasis. A task that has been injected shows its marker id; a task that has not shows a short "not yet injected" style note in place of an id rather than an empty line. The header updates when a different task is opened and clears with the pane's empty state when nothing is open. The title is display-only — renaming still happens on the queue row, which already has one-click editing — and it truncates with an ellipsis rather than wrapping to more than two lines. Mobile is unaffected: the description-editor modal already carries the title in its own header.
