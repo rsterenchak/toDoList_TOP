@@ -275,7 +275,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6e5bc77c-a14e-404f-88a2-101b91f05e64 -->
 
-- [ ] **[LOW]** File picker: lead region rows with the owning file, group by file
+- [x] **[LOW]** File picker: lead region rows with the owning file, group by file — Completed: 2026-07-26
   - Type: bug
   - Description: Region rows in the picker lead with a label derived by `prettify()` from an element id, so the list reads "Add Glyph / Add Proj / Add Project" — three near-identical strings that describe DOM elements rather than places in the UI, and give no basis for choosing between them. The generator cannot do better; it has only the identifier. But the picker already knows each region's owning file, which is the thing actually being inserted into the `- File:` line and the thing that distinguishes these rows. Invert the row so the file leads and the label is supporting detail, and group regions under their owning file so a file with several regions reads as one entry rather than three lookalikes.
   - Behavior: The UI REGIONS section lists one row per owning FILE, showing the file path as the row's primary text with its region labels beneath as a comma-separated secondary line, truncated with an ellipsis when there are many. Selecting the row inserts that file exactly as a plain file row does. Filtering matches the file path and every label grouped under it, so typing a label still finds its row. A region whose file already appears in the section is folded into that row rather than adding another. Regions remain listed above the plain file list. A manifest with no regions is unchanged.
