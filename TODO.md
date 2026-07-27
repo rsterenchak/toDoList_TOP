@@ -480,7 +480,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 89a0ebc1-4e68-4264-a094-1cc22739aa85 -->
 
-- [ ] **[LOW]** Detail pane: strip the drawer chrome from the panel and drop the redundant section label
+- [x] **[LOW]** Detail pane: strip the drawer chrome from the panel and drop the redundant section label — Completed: 2026-07-27
   - Type: bug
   - Description: Inside `#descDetailPane` the description panel still renders as a drawer — `#descDetailPane #descSibling` keeps a border, a 6px radius, and inherits the base rule's `border-left: 2px solid var(--accent-dim)` and elevated background. That framing existed to tie the panel to the row it hung beneath in the inline layout; in a dedicated pane it is a card inside a card, and the reviewed layout has no outer frame at all — content sits on the pane background with individual blocks (triage, target) as the only cards. Separately, the "THE ENTRY" section label sits between the rail and the WRITE / PASTE / GENERATE strip, where it now labels a region whose mode the strip already names; the render has no such label.
   - Behavior: In the detail pane the description panel renders with no outer border, no radius, no accent left-edge, and no elevated background — its content sits directly on the pane's background. Padding and internal spacing are preserved so the content does not sit flush against the pane's edges. The "THE ENTRY" label is not rendered in the detail pane; the mode strip follows the phase rail directly. The ASKING block, the STUCK block, and the triage-running block keep their own card treatments, which is what the render shows. Mobile is unchanged: the inline `#descSibling` drawer keeps its border, radius, accent edge, and background, and the description-editor modal keeps its label.
