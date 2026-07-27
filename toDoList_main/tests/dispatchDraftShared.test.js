@@ -134,7 +134,10 @@ describe('dispatchDraft is shared, not copied (both surfaces route through it)',
 
     it('the row layer imports the same shared dispatch (no agentView import)', () => {
         const toDoRow = read('toDoRow.js');
-        expect(toDoRow).toMatch(/import \{ dispatchDraft \} from '\.\/dispatchDraft\.js'/);
+        // Tolerant of additional named imports from the shared module (the review
+        // surface also pulls resolveDispatchTarget from here); what matters is that
+        // dispatchDraft comes from dispatchDraft.js and agentView is never imported.
+        expect(toDoRow).toMatch(/import \{[^}]*\bdispatchDraft\b[^}]*\} from '\.\/dispatchDraft\.js'/s);
         expect(toDoRow).not.toMatch(/from '\.\/agentView\.js'/);
     });
 

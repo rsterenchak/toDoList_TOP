@@ -44,8 +44,9 @@ import {
     refreshInjectButton,
     refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
+    revertEntry,
 } from './inject.js';
-import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI, buildManualStatusControl } from './todoStatus.js';
+import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI, buildManualStatusControl, invokeReviewBadgeTap } from './todoStatus.js';
 import { derivePhase, PHASE, isBlockedPhase } from './phase.js';
 import {
     getQueueRowForTodo,
@@ -56,7 +57,7 @@ import {
     onQueueChange,
 } from './agentQueueStore.js';
 import { applyTaskFilter, setBlockedItemResolver, setItemPhaseResolver } from './taskFilter.js';
-import { dispatchDraft } from './dispatchDraft.js';
+import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker, parseFilePathsFromEntry } from './filePicker.js';
@@ -619,6 +620,8 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descPasteBody',
     '#descSibling .descGenerateBody',
     '#descSibling .descTriageBlock',
+    '#descSibling .descReviewBlock',
+    '#descSibling .descReviewActions',
 ]);
 
 
@@ -1001,6 +1004,234 @@ function syncDispatchPanel(toDoChild, item) {
     }
     if (anchorAfter) panel.insertBefore(block, anchorAfter.nextSibling);
     else panel.appendChild(block);
+    refreshViewerExpandedHeight();
+}
+
+
+// ── REVIEW (ACCEPT-PHASE) DECISION SURFACE ───────────────────────────────
+// A task in the `accept` phase (shipped, unacknowledged) can be accepted or
+// reverted straight from the desktop detail pane, without routing to the TODO.md
+// viewer first. Two grid children: a WHAT CHANGED card (the PR number, the entry's
+// own Description as a change summary, and a note that deciding is free) and an
+// action row — ACCEPT & CLOSE, REVERT, and OPEN IN TODO.MD. Both reuse the
+// EXISTING writers so there is exactly one path each: acknowledging goes through
+// listLogic.markEntryReviewed (the same writer the viewer's Acknowledge pill uses)
+// and reverting through revertEntry (the same Worker `revert` route the viewer's
+// Revert pill uses). OPEN IN TODO.MD reaches the viewer through the shared
+// invokeReviewBadgeTap entry point the REVIEW badge already uses. Desktop-only —
+// syncReviewPanel gates on detail-pane mode so nothing mounts on mobile, where the
+// modal keeps its single route action.
+
+// Build the WHAT CHANGED card for the review surface. PR number/link comes from the
+// linked queue row (mirroring the Agent board's shipped secondary); the change
+// summary is the entry's own Description (no network fetch — the honest local
+// source), omitted when empty. Always carries the costs-nothing note.
+function buildReviewBlock(item, queueRow) {
+    const block = document.createElement('div');
+    block.className = 'descReviewBlock';
+
+    const heading = document.createElement('span');
+    heading.className = 'descReviewHeading';
+    heading.textContent = 'What changed';
+    block.appendChild(heading);
+
+    const prNumber = queueRow && queueRow.pr_number;
+    const prUrl = queueRow && queueRow.pr_url;
+    if (prUrl) {
+        const a = document.createElement('a');
+        a.className = 'descReviewPr';
+        a.href = prUrl;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        a.textContent = prNumber ? ('PR #' + prNumber) : 'View PR';
+        a.addEventListener('click', function (e) { e.stopPropagation(); });
+        block.appendChild(a);
+    } else {
+        const p = document.createElement('p');
+        p.className = 'descReviewPr descReviewPrMuted';
+        p.textContent = prNumber ? ('PR #' + prNumber) : 'Shipped';
+        block.appendChild(p);
+    }
+
+    // Change summary from the entry's Description line (already in the textarea —
+    // no per-open GitHub request). Omitted when empty; the PR line + note remain.
+    const summary = ((item && item.desc) || '').trim();
+    if (summary) {
+        const s = document.createElement('p');
+        s.className = 'descReviewSummary';
+        s.textContent = summary;
+        block.appendChild(s);
+    }
+
+    const note = document.createElement('p');
+    note.className = 'descReviewNote';
+    note.textContent = 'Deciding costs nothing — the run is already paid for.';
+    block.appendChild(note);
+
+    return block;
+}
+
+
+// Confirm, then roll a shipped change back through the SAME Worker `revert` route
+// the viewer's and the Agent board's Revert controls use (revertEntry), targeting
+// the active project's dispatch target. Handles the three Worker outcomes exactly
+// as performRevert / performAgentRevert do: `merged:true` ships the rollback and
+// leaves the control disabled (a new build is deploying); `merged:false` opens the
+// pending revert PR and surfaces the reason; `ok:false` surfaces the error and
+// re-enables the control so it can retry.
+function performReviewRevert(item, btn, errorEl) {
+    errorEl.hidden = true;
+    errorEl.textContent = '';
+    const idleLabel = btn.textContent;
+    btn.disabled = true;
+    btn.classList.add('is-pending');
+    btn.textContent = 'Reverting…';
+    return Promise.resolve(revertEntry(item.entryId, resolveDispatchTarget())).then(function (res) {
+        if (res && res.ok && res.merged === true) {
+            // Rollback merged — a new build is deploying. Leave the control
+            // disabled so it can't be triggered a second time (a second merged
+            // revert re-applies the original change).
+            showRowToast('Reverted — new build shipping');
+            return;
+        }
+        if (res && res.ok && res.merged === false) {
+            // The revert PR opened but didn't auto-merge — open it so the user can
+            // finish it in GitHub, and re-enable so a genuine retry is possible.
+            if (res.revert_pr_url) {
+                try { window.open(res.revert_pr_url, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
+            }
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+            btn.textContent = idleLabel;
+            errorEl.textContent = res.reason
+                ? ('Revert needs attention: ' + res.reason)
+                : 'Revert PR opened — finish it in GitHub';
+            errorEl.hidden = false;
+            return;
+        }
+        btn.disabled = false;
+        btn.classList.remove('is-pending');
+        btn.textContent = idleLabel;
+        errorEl.textContent = (res && res.reason) ? ('Revert failed: ' + res.reason) : 'Revert failed';
+        errorEl.hidden = false;
+    }).catch(function () {
+        btn.disabled = false;
+        btn.classList.remove('is-pending');
+        btn.textContent = idleLabel;
+        errorEl.textContent = 'Revert failed';
+        errorEl.hidden = false;
+    });
+}
+
+
+// Build the review action row: ACCEPT & CLOSE (amber, primary), REVERT (danger
+// red), OPEN IN TODO.MD (ghost). Tagged with the entry id so syncReviewPanel's
+// idempotent guard can keep an in-flight Revert button across a live repaint.
+function buildReviewActions(item, projectName) {
+    const actions = document.createElement('div');
+    actions.className = 'descReviewActions';
+    actions.setAttribute('data-review-entry', String((item && (item.entryId || item.id)) || ''));
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'descReviewError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    actions.appendChild(errorEl);
+
+    const accept = document.createElement('button');
+    accept.type = 'button';
+    accept.className = 'descReviewBtn descReviewBtn--accept';
+    accept.textContent = 'Accept & close';
+    accept.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (accept.disabled || !item || !item.id) return;
+        // The SAME writer the viewer's Acknowledge pill uses — one path for
+        // entry_reviewed_at. Emitting the run-status event re-derives the row's
+        // phase to `done`; the sweep then clears this block via syncReviewPanel.
+        listLogic.markEntryReviewed(item.id);
+        document.dispatchEvent(new CustomEvent(TODO_RUN_STATUS_EVENT));
+    });
+    actions.appendChild(accept);
+
+    const revert = document.createElement('button');
+    revert.type = 'button';
+    revert.className = 'descReviewBtn descReviewBtn--revert';
+    revert.textContent = 'Revert';
+    revert.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (revert.disabled) return;
+        if (!item || !item.entryId) {
+            errorEl.textContent = 'No entry to revert.';
+            errorEl.hidden = false;
+            return;
+        }
+        const named = item.tit ? ' “' + item.tit + '”' : '';
+        showConfirmModal({
+            message: 'Revert this change' + named + '? This ships a rollback — a new build will deploy.',
+            confirmLabel: 'Revert',
+            onConfirm: function () { performReviewRevert(item, revert, errorEl); },
+        });
+    });
+    actions.appendChild(revert);
+
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'descReviewBtn descReviewBtn--open';
+    open.textContent = 'Open in TODO.md';
+    open.addEventListener('click', function (e) {
+        e.stopPropagation();
+        // The same route the REVIEW badge takes — the project's TODO.md viewer,
+        // anchored to this entry — via the shared registered entry point.
+        invokeReviewBadgeTap(item && item.entryId, projectName);
+    });
+    actions.appendChild(open);
+
+    return actions;
+}
+
+
+// Keep a row's open detail pane in sync with its ACCEPT phase — mounts the WHAT
+// CHANGED card and the accept/revert/open action row when the row's derived phase
+// is `accept` (shipped but unacknowledged), and removes both in every other phase.
+// DESKTOP-ONLY: gated on detail-pane mode so nothing mounts on mobile, where the
+// description-editor modal keeps its single route action (inlining these controls
+// would push the authoring region below the fold in a 92vh-capped dialog). Mirrors
+// syncDispatchPanel: open-panel guard, idempotent early return (keep the mounted
+// controls if they already point at this entry so a live sweep doesn't drop an
+// in-flight Revert button), and a refreshViewerExpandedHeight() on add and remove.
+// Repaints live off the same refreshDescStatusDots sweep (TODO_RUN_STATUS_EVENT +
+// onQueueChange), so accepting from the viewer on another device clears it here.
+// NOT part of DESC_AUTHORING_GROUP_SELECTORS — accepting is what moves a task INTO
+// `done`, so sweeping these in would make them vanish mid-interaction.
+function syncReviewPanel(toDoChild, item, projectName) {
+    if (!isDetailPaneMode()) return;
+    const panel = openDescSiblingFor(toDoChild);
+    if (!panel) return;
+    const existingBlock = panel.querySelector('.descReviewBlock');
+    const existingActions = panel.querySelector('.descReviewActions');
+    const phase = item && item.id ? derivePhase(item) : PHASE.NONE;
+    const wantReview = phase === PHASE.ACCEPT;
+    if (!wantReview) {
+        let changed = false;
+        if (existingBlock) { existingBlock.remove(); changed = true; }
+        if (existingActions) { existingActions.remove(); changed = true; }
+        if (changed) refreshViewerExpandedHeight();
+        return;
+    }
+    const entryKey = String(item.entryId || item.id);
+    if (existingActions && existingActions.getAttribute('data-review-entry') === entryKey) {
+        // Same entry already mounted — leave the controls (and any in-flight
+        // Revert) untouched so a repaint doesn't thrash the DOM.
+        return;
+    }
+    if (existingBlock) existingBlock.remove();
+    if (existingActions) existingActions.remove();
+    const queueRow = getQueueRowForTodo(item.id);
+    // Both mount immediately after the phase rail (via descPanelTopAnchor): the
+    // WHAT CHANGED card first, the action row right after it.
+    const anchor = descPanelTopAnchor(panel);
+    panel.insertBefore(buildReviewBlock(item, queueRow), anchor);
+    panel.insertBefore(buildReviewActions(item, projectName), anchor);
     refreshViewerExpandedHeight();
 }
 
@@ -1897,6 +2128,11 @@ export function refreshDescStatusDots() {
             // row's live phase so it appears when a draft lands / a run fails and
             // clears when the phase moves on — live, while the panel is open.
             syncDispatchPanel(row, row.__item);
+            // Keep the REVIEW (accept-phase) decision surface in step too, so a
+            // draft → accept flip mounts it and an acknowledge from the viewer (or
+            // another device) clears it — live, while the pane is open. Desktop-
+            // pane-only; a no-op below the breakpoint and outside the accept phase.
+            syncReviewPanel(row, row.__item, row.getAttribute('data-value'));
             // Re-gate the authoring controls by the row's live phase so a panel
             // whose task transitions into `done` (its entry acknowledged elsewhere)
             // hides them on the next sweep, and one leaving `done` restores them —
@@ -3128,6 +3364,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // shipped and a failed run retried without leaving the row. No-op in every
         // other phase; runs the shared dispatch the Agent board uses.
         syncDispatchPanel(toDoChild, item);
+        // Mount the REVIEW (accept-phase) decision surface — the WHAT CHANGED card
+        // plus Accept / Revert / Open-in-TODO.md — so a shipped change can be
+        // decided from the detail pane. Desktop-pane-only and accept-phase-only;
+        // reuses the viewer's acknowledge writer and the shared revert route.
+        syncReviewPanel(toDoChild, item, projectName);
         // Mount the WRITE / PASTE / GENERATE authoring mode strip above the entry
         // region and its PASTE / GENERATE bodies beside the textarea. Committed
         // rows only — a blank placeholder has no task to paste into or generate
