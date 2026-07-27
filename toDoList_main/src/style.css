@@ -9800,12 +9800,36 @@ body.row-dragging * { cursor: grabbing !important; }
   border-radius: 6px;
 }
 
-/* Row selected into the detail pane — a subtle accent left-edge + fill so the
-   user can see which queue row the open panel belongs to. Desktop-only (the class
-   is only added in detail-pane mode). */
+/* Row selected into the detail pane — a subtle accent RIGHT-edge marker + fill
+   so the user can see which queue row the open panel belongs to. The marker is
+   drawn as a ::after pseudo-element and NOT as a box-shadow on purpose: box-shadow
+   does not compose across rules (the winning declaration replaces the other
+   entirely), and this selector out-specifies the manual-status stripe
+   (`#toDoChild.todo-row--in_progress`, an inset LEFT box-shadow), so a selection
+   box-shadow would erase the amber status stripe on a selected row. Keeping
+   selection on the right edge via a different property lets the selection state
+   and the manual-status stripe both read at once. Desktop-only (the class is
+   only added in detail-pane mode). */
 #mainList #toDoChild.todo-detail-open {
   background: var(--bg-hover);
-  box-shadow: inset 2px 0 0 0 var(--accent-dim);
+}
+#mainList #toDoChild.todo-detail-open::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-dim);
+  pointer-events: none;
+  z-index: 2;
+}
+/* IDEA's muted background survives selection — the selection fill above would
+   otherwise mask the muted treatment (this compound selector out-specifies the
+   base idea rule). The right-edge marker still carries selection, so both axes
+   stay readable on a selected idea row. */
+#mainList #toDoChild.todo-detail-open.todo-row--idea {
+  background: rgba(90, 90, 106, 0.10);
 }
 
 /* DESCRIPTION ROW */
