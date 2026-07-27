@@ -9,12 +9,14 @@ export const changelog = [
         changed: [
             "On wide screens, the header now shows the active project as a two-line block — a \"PROJECT n OF m\" position line above the project name — and drops the redundant inline count badge.",
         ],
+        fixed: [
+            "On wide screens, the STREAM and STRUCTURE header tabs render as bordered pills again instead of flat underlined text, and the two-line project block gets more breathing room from the header edges and the tabs.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-26',
         fixed: [
-            "In the desktop task queue, an unfocused task title now stays in its normal position instead of jumping ahead of the checkbox.",
             "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
             "In the mobile description editor, the entry text area no longer overlaps the action buttons — the modal now scrolls internally so every button stays reachable.",
             "In the file target picker, UI regions now group under their owning file — the file path leads each row with its region labels beneath — instead of listing near-identical labels as separate rows.",

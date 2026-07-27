@@ -187,16 +187,21 @@ describe('desktop header consolidation', () => {
         expect(main).toMatch(/addEventListener\(\s*['"]resize['"]\s*,\s*placeDesktopHeader\s*\)/);
     });
 
-    it('(c) the active view tab is purple with an underline at desktop', () => {
+    it('(c) the active view tab is a filled bordered pill at desktop (no #navBar override, no underline)', () => {
+        // The flat underlined-text override was retired; the tabs fall through
+        // to the base .viewPill bordered-pill treatment beside the bordered
+        // project block. No #navBar-scoped pill override or ::after underline
+        // remains in the desktop header region.
         const block = consolidationBlock();
-        const active = block.match(/#navBar\s+\.viewPill\.active\s*\{([^}]*)\}/);
+        expect(block).not.toMatch(/#navBar\s+\.viewPill\s*\{/);
+        expect(block).not.toMatch(/\.viewPill\.active::after/);
+        // The base active-pill treatment carries the accent — filled tint,
+        // accent text, and a solid purple border.
+        const active = css.match(/\n\.viewPill\.active\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
         expect(active[1]).toMatch(/color:\s*#9D93EE/);
-        // The underline is drawn with an ::after pseudo-element (purple, 2px).
-        const after = block.match(/#navBar\s+\.viewPill\.active::after\s*\{([^}]*)\}/);
-        expect(after).not.toBeNull();
-        expect(after[1]).toMatch(/height:\s*2px/);
-        expect(after[1]).toMatch(/background:\s*#9D93EE/);
+        expect(active[1]).toMatch(/background:\s*rgba\(108, 93, 245/);
+        expect(active[1]).toMatch(/border-color:\s*#6C5DF5/);
     });
 
     it('(d) the desktop counts collapse into the in-pill count badge', () => {
