@@ -87,15 +87,13 @@ describe('Stream / Structure view switcher', () => {
             expect(main).not.toMatch(/viewPillAgent/);
         });
 
-        it('mounts the pill bar in the desktop view sub-band beneath the header', () => {
-            // The view tabs ride in the thin sub-band (#desktopViewSubBand)
-            // directly below the top header rather than inside #navBar — the
-            // desktop header consolidation moved them there and restyles them
-            // as underlined text. They are desktop-only (display:none on
-            // mobile), so a single permanent home in the sub-band is correct
-            // at every breakpoint; the chip cluster's own margin-left:auto
-            // keeps it right-anchored in #navBar without the tabs present.
-            expect(main).toMatch(/desktopViewSubBand\.appendChild\(\s*viewSwitcher\s*\)/);
+        it('mounts the pill bar inside the top header row (#navBar)', () => {
+            // The view tabs ride inside #navBar, inserted before the chip
+            // cluster (pomodoroToggle) so the header reads pill → view tabs →
+            // chips. They are desktop-only (display:none on mobile), so a single
+            // permanent home in the header is correct at every breakpoint; the
+            // chip cluster's own margin-left:auto keeps it right-anchored.
+            expect(main).toMatch(/nav\.insertBefore\(\s*viewSwitcher\s*,\s*pomodoroToggle\s*\)/);
             expect(main).toMatch(/main2\.appendChild\(\s*agentView\s*\)/);
         });
 

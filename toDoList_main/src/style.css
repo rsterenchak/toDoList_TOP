@@ -126,12 +126,12 @@ body {
 /* OUTER SHELL */
 #outerContainer {
   display: grid;
-  /* Five tracks: header, the optional now-playing strip (collapses to 0 when
-     hidden), the desktop view sub-band (also `auto` — collapses to 0 when its
-     #desktopViewSubBand is display:none at mobile widths), the main pane, and
-     the footer. Children are placed by explicit grid-row so a collapsed track
-     never reshuffles the others. */
-  grid-template-rows: var(--nav-h) auto auto 1fr var(--foot-h);
+  /* Four tracks: header, the optional now-playing strip (collapses to 0 when
+     hidden), the main pane, and the footer. The STREAM / STRUCTURE view tabs
+     ride inside the header row (#navBar) now, so there is no separate view
+     sub-band track. Children are placed by explicit grid-row so a collapsed
+     track never reshuffles the others. */
+  grid-template-rows: var(--nav-h) auto 1fr var(--foot-h);
   height: calc(100dvh - 32px);
   border: 0.5px solid var(--border-mid);
   border-radius: 10px;
@@ -317,7 +317,7 @@ body {
 
 /* FOOTER */
 #footBar {
-  grid-row: 5;
+  grid-row: 4;
   background: var(--bg-elevated);
   border-top: 0.5px solid var(--border-dim);
   display: flex;
@@ -431,7 +431,7 @@ body {
 
 /* MAIN SECTION */
 #mainSec {
-  grid-row: 4;
+  grid-row: 3;
   display: grid;
   /* The projects sidebar is an overlay drawer (position:fixed) at every
      breakpoint, so the main content owns the full width of #mainSec — no
@@ -11390,13 +11390,12 @@ body.row-dragging * { cursor: grabbing !important; }
        prevents the todo list's intrinsic max-content height from
        inflating that track past its fair share. The second track holds the
        now-playing strip — `auto` so it collapses to 0 while hidden and takes
-       only its own ~32px when music is active. The third track is the desktop
-       view sub-band, collapsed to 0 here (its #desktopViewSubBand is
-       display:none at this breakpoint — #mobileTabBar is the sole navigator). */
+       only its own ~32px when music is active. The view tabs live inside the
+       (zero-height) header row here — #mobileTabBar is the sole navigator on
+       mobile — so there is no separate view-sub-band track to collapse. */
     grid-template-rows:
       0
       auto
-      0
       minmax(0, 1fr)
       0;
   }
@@ -11436,14 +11435,6 @@ body.row-dragging * { cursor: grabbing !important; }
      the collapsed mobile nav. Hide it entirely on mobile — the bottom
      tab bar is the sole navigator at this breakpoint. */
   #viewSwitcher {
-    display: none;
-  }
-
-  /* The desktop view sub-band collapses entirely on mobile — its grid track is
-     pinned to 0 above and the band itself is removed from paint so it can't
-     leave a sliver of chrome below the (zero-height) nav. The #mobileTabBar is
-     the sole navigator at this breakpoint. */
-  #desktopViewSubBand {
     display: none;
   }
 
@@ -13488,72 +13479,27 @@ body.row-dragging * { cursor: grabbing !important; }
 /* ══════════════════════════════════════════
    DESKTOP HEADER CONSOLIDATION ≥ 1024px
    ──────────────────────────────────────────
-   Two rows of header chrome instead of three:
-     • Top header (#navBar): workspace pill on the LEFT, open/done counts
-       inline beside it, the pomodoro / music / settings chip cluster pushed
-       to the far RIGHT.
-     • Thin sub-band (#desktopViewSubBand) directly beneath: the PROJECTS /
-       INBOX / CALENDAR view tabs, restyled from pills into underlined text —
-       purple text + a 2px purple underline on the active tab, muted gray on
-       the inactive ones.
+   A single row of header chrome: the top header (#navBar) carries, left to
+   right, the workspace pill, the open/done counts inline beside it, the
+   STREAM / STRUCTURE view tabs (restyled from pills into underlined text —
+   purple text + a 2px purple underline on the active tab, muted gray on the
+   inactive ones), and the pomodoro / music / settings chip cluster pushed to
+   the far RIGHT by the pomodoro chip's margin-left:auto.
    The SORT BY DUE / EXPAND ALL overlay drops down to share the status-filter
-   pill row inside the task pane. Mobile UX is untouched: the sub-band is
-   display:none below 1024px and the pill + counts return to the stacked
-   #mobileProjHeader via placeDesktopHeader().
-══════════════════════════════════════════ */
+   pill row inside the task pane. Mobile UX is untouched: the view tabs are
+   display:none below 1024px (the bottom tab bar is the sole navigator) and the
+   pill + counts return to the stacked #mobileProjHeader via
+   placeDesktopHeader(). */
 @media (min-width: 1024px) {
-  /* ── Thin view-tab sub-band ── */
-  #desktopViewSubBand {
-    grid-row: 3;
-    display: flex;
-    align-items: center;
-    min-height: 32px;
-    /* ~16px of breathing room between the top header (#navBar) and this
-       sub-header row, so the two header regions read as distinct rather than
-       flush. The band's `auto` grid track grows by this margin, which pushes
-       #mainSplit (and the chat pane lifted into this row by margin-top:-32px)
-       down by the same amount — so the chat pane's sub-header row stays aligned
-       with these view tabs while both gain the gap. */
-    margin-top: 16px;
-    padding: 0 16px;
-    /* Paint the band with --bg-base so it matches the filter+sort band
-       (#taskFilterBar) below, which is transparent but falls through to
-       #mainBar's --bg-base. Both bands now resolve to the same colour, with no
-       visible seam, while the top project-switcher row keeps #outerContainer's
-       greyer chrome. No borders: no lighter "stripe" shows in the gap below. */
-    background: var(--bg-base);
-    /* The 16px margin-top above leaves a gap that renders in #outerContainer's
-       greyer --bg-elevated chrome — a faint seam above the view tabs now that
-       the band itself paints --bg-base. Mirror the chat pane's fix
-       (#desktopChatPane): a hard-edged box-shadow (offset up 16px, no blur, no
-       spread) extends the band's --bg-base up over that gap so --bg-base paints
-       the band's whole grid row continuously, with no grey slack above the view
-       tabs. Pure paint: the 16px margin-top, the 32px min-height, and the
-       chat-pane alignment that keys off them all stay untouched, and it's inert
-       at mobile where the band is display:none. A mirrored downward shadow
-       (offset down 16px, same token, no blur, no spread) covers the symmetric
-       16px of grey slack BELOW the band: the band's grid row 3 is 48px tall but
-       the band is only 32px, leaving 16px at the row's bottom that otherwise
-       falls through to #outerContainer's greyer chrome. Two-shadow paint mirrors
-       the pattern already on #desktopChatPane. */
-    box-shadow: 0 -16px 0 0 var(--bg-base), 0 16px 0 0 var(--bg-base);
-    position: relative;
-    z-index: 9;
-    /* The band spans the full viewport, but only its left half holds the view
-       tabs; the chat pane's sub-header now sits one z-layer beneath its empty
-       right half (the pane overhangs up into this row — see #desktopChatPane).
-       Let clicks fall through the band's empty area to that sub-header, while
-       the tablist itself stays interactive (re-enabled below). */
-    pointer-events: none;
-  }
-
-  /* The relocated tablist fills the band, left-aligned; no margin-right:auto
-     spacer is needed now that it owns its own row. Re-enable pointer events the
-     band suppresses so the view tabs stay clickable. */
-  #desktopViewSubBand #viewSwitcher {
+  /* ── View tabs, seated in the top header row ──
+     The tablist sits between the workspace pill and the chip cluster. Its base
+     margin-right:auto is cleared here so it hugs the pill on the left; the
+     chip cluster stays right-anchored via the pomodoro chip's own
+     margin-left:auto, so there is a single auto margin (not two competing
+     ones) shaping the row. */
+  #navBar #viewSwitcher {
     margin-right: 0;
     gap: 4px;
-    pointer-events: auto;
   }
 
   /* View tabs as underlined text rather than pills. The pill chrome
@@ -13561,7 +13507,7 @@ body.row-dragging * { cursor: grabbing !important; }
      purple plus a short underline drawn with ::after so it never reflows the
      row. Higher specificity (#id .class) keeps these ahead of the base
      .viewPill / .viewPill.active rules. */
-  #desktopViewSubBand .viewPill {
+  #navBar .viewPill {
     background: transparent;
     border: none;
     border-radius: 0;
@@ -13571,16 +13517,16 @@ body.row-dragging * { cursor: grabbing !important; }
     letter-spacing: 0.10em;
     position: relative;
   }
-  #desktopViewSubBand .viewPill:hover {
+  #navBar .viewPill:hover {
     color: var(--text-primary);
     background: transparent;
   }
-  #desktopViewSubBand .viewPill.active {
+  #navBar .viewPill.active {
     color: #9D93EE;
     background: transparent;
     font-weight: 700;
   }
-  #desktopViewSubBand .viewPill.active::after {
+  #navBar .viewPill.active::after {
     content: '';
     position: absolute;
     left: 10%;
@@ -13593,10 +13539,9 @@ body.row-dragging * { cursor: grabbing !important; }
 
   /* ── Filter+sort band background, cleared to the page bg ──
      The status-filter row (#taskFilterBar, which also hosts the Sort dropdown
-     overlay #bulkDescActions) sits directly below #desktopViewSubBand. Clear
-     its background to transparent so it falls through to its parent #mainBar's
-     --bg-base page bg and reads as one continuous band with the view-tab
-     sub-band above it. (A previous entry painted this band --bg-elevated — the
+     overlay #bulkDescActions) is the task pane's top band. Clear its
+     background to transparent so it falls through to its parent #mainBar's
+     --bg-base page bg. (A previous entry painted this band --bg-elevated — the
      greyer chrome colour from #outerContainer — which shipped the inverse of
      what was wanted and made the seam more pronounced.) The top project-switcher
      row keeps its greyer chrome from #outerContainer, untouched. Mobile is
@@ -13607,9 +13552,8 @@ body.row-dragging * { cursor: grabbing !important; }
 
   /* The chip cluster (pomodoro / music / settings) stays anchored at the right
      edge via the pre-existing `margin-left: auto` on the leftmost chip — it
-     absorbs the nav slack whether or not a project pill + counts sit on the
-     left, so no extra spacer is needed now that the view tabs have moved out
-     of #navBar into the sub-band. */
+     absorbs the nav slack whether or not a project pill + counts + view tabs
+     sit on the left, so no extra spacer is needed. */
 
   /* Stats container — hidden at desktop. The open/done counts are now carried
      by the in-pill "open/total" badge (.mobileProjCountBadge), so the separate
@@ -13634,14 +13578,14 @@ body.row-dragging * { cursor: grabbing !important; }
     height: 36px;
   }
 
-  /* ── Vertical rhythm between the desktop header rows ──
-     The top header (#navBar) and the view-tab sub-band sit flush as one
-     header region; below them the task-pane chrome needs breathing room so
-     the sections read as distinct (per header-option-b.svg). The gaps are
-     applied as padding-top on the RECEIVING containers so the giving rows
-     keep their own box untouched and margin-collapse can't bite.
+  /* ── Vertical rhythm below the desktop header row ──
+     The top header (#navBar) now carries the view tabs inline; below it the
+     task-pane chrome needs breathing room so the sections read as distinct
+     (per header-option-b.svg). The gaps are applied as padding-top on the
+     RECEIVING containers so the giving rows keep their own box untouched and
+     margin-collapse can't bite.
 
-     - sub-band → filter pills: padding-top on #mainSec drops the whole task
+     - header → filter pills: padding-top on #mainSec drops the whole task
        pane (#mainBar + its absolutely-positioned SORT/EXPAND overlay) down
        together, so the overlay stays centered on the filter row. The chat
        pane (#desktopChatPane) is a flex sibling and is unaffected.
@@ -13684,14 +13628,15 @@ body.row-dragging * { cursor: grabbing !important; }
 
 @media (min-width: 1024px) {
   #mainSplit {
-    grid-row: 4;
+    grid-row: 3;
     display: flex;
     flex-direction: row;
     min-height: 0;
-    /* visible (not hidden) so the chat pane's negative-margin overhang into
-       the view-tab sub-band's row isn't clipped — see #desktopChatPane below.
-       Both panes own their own overflow:hidden + internal scroll (#mainSec,
-       #desktopChatPane), so dropping the wrapper clip doesn't leak content. */
+    /* visible (not hidden) so the chat pane's 1px left-edge separator shadow,
+       painted just OUTSIDE the pane's left edge, isn't clipped — see
+       #desktopChatPane below. Both panes own their own overflow:hidden +
+       internal scroll (#mainSec, #desktopChatPane), so dropping the wrapper
+       clip doesn't leak content. */
     overflow: visible;
   }
   #mainSec { flex: 1 1 auto; min-width: 0; }
@@ -13702,46 +13647,21 @@ body.row-dragging * { cursor: grabbing !important; }
     flex-direction: column;
     overflow: hidden;
     background: var(--bg-base);
-    /* Align the chat pane's sub-header row (collapse + CHAT/RUNS tabs + repo
-       pill) with the task pane's view-tab sub-band. #mainSplit sits at grid
-       row 4, exactly one sub-band height (#desktopViewSubBand min-height: 32px)
-       below the sub-band; pull the pane up by that height so its first row
-       starts at the same y as the view tabs. align-items:stretch grows the
-       pane's height to compensate, so it still fills down to the footer.
-       position:relative anchors the absolutely-placed collapse button. */
-    margin-top: -32px;
+    /* The chat pane's top edge sits flush with the task pane's top edge: both
+       start at #mainSplit's top (grid row 3, directly under the header). With
+       the view sub-band retired there is no band to lift the pane into, so the
+       old -32px alignment lift and the z-10 raise that kept the CHAT/RUNS tabs
+       above that band are both gone. position:relative stays — it anchors the
+       absolutely-placed collapse button. */
     position: relative;
-    /* Raise the pane above the view-tab sub-band. #desktopViewSubBand sits on a
-       z-9 stacking layer and spans the full viewport width; painting --bg-base
-       on that layer, it was covering the chat pane's CHAT/RUNS tab strip where
-       the two overlap. With position:relative already set above, lifting the
-       pane to the z-10 layer puts its tabs one layer above the sub-band so they
-       stay visible. The tabs' own #15151e chrome then reads as a distinct
-       surface against the sub-band's --bg-base — which doubles as the seam
-       between the two header bands, so no separate border is needed. */
-    z-index: 10;
-    /* Paint the 16px gap above the pane's sub-header row with the pane's own
-       --bg-base. That gap is #desktopViewSubBand's margin-top (16px), which
-       renders in #outerContainer's lighter --bg-elevated, leaving a faint
-       color seam above the chat sub-header. A hard-edged box-shadow (offset up
-       16px, no blur, no spread) extends the pane background up over that strip:
-       box-shadow is NOT clipped by the pane's own overflow:hidden, adds no
-       layout (the 16px spacing and the -32px lift/alignment stay untouched),
-       and disappears with the pane when the chat is collapsed (display:none).
-       The task pane needs no equivalent — it shares #outerContainer's
-       --bg-elevated, so its gap already matches its content.
-
-       A second hard-edged shadow paints a 1px vertical separator at the pane's
-       left edge. The z-10 stacking fix restored the CHAT/RUNS tabs to view, but
-       the pane's own #15151e chrome reads too weakly against the sub-band's
-       --bg-base to register as a seam, so the two header bands looked like one
-       continuous strip. The `-1px 0 0 0` offset paints the line OUTSIDE the
-       pane's left edge (no layout shift, unlike a border), in the same subtle
-       purple the rest of the chrome uses for boundary lines. It is listed after
-       the overhang so the overhang stays the first value (the gap-fill test
-       keys off `box-shadow: 0 -16px ...` leading the declaration), and like the
-       overhang it disappears with the pane when the chat is collapsed. */
-    box-shadow: 0 -16px 0 0 var(--bg-base), -1px 0 0 0 rgba(108, 93, 245, 0.18);
+    /* A 1px vertical separator at the pane's left edge marks the seam between
+       the task pane and the chat pane. The `-1px 0 0 0` offset paints the line
+       just OUTSIDE the pane's left edge (no layout shift, unlike a border), in
+       the same subtle purple the rest of the chrome uses for boundary lines,
+       and it disappears with the pane when the chat is collapsed
+       (display:none). #mainSplit is overflow:visible so this stripe isn't
+       clipped. */
+    box-shadow: -1px 0 0 0 rgba(108, 93, 245, 0.18);
   }
   /* The relocated tab row IS the chat pane's sub-header. Compress it to the
      sub-band's height, vertically center it, and reserve room at the start for

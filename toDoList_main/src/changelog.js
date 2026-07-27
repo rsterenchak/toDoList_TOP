@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-26',
+        changed: [
+            "On wide screens, the STREAM and STRUCTURE view tabs now sit in the top header row instead of a separate band beneath it, reclaiming that row of vertical space.",
+        ],
         fixed: [
-            "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",
             "In the desktop task queue, an unfocused task title now stays in its normal position instead of jumping ahead of the checkbox.",
             "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
             "In the mobile description editor, the entry text area no longer overlaps the action buttons — the modal now scrolls internally so every button stays reachable.",

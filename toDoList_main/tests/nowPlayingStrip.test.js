@@ -128,12 +128,13 @@ describe('now-playing strip — CSS presentation', () => {
 
     it('reserves a dedicated grid track for the strip beneath the header', () => {
         // The outer container's second track stays `auto` so the strip
-        // collapses to 0 when hidden; the third `auto` track is the desktop
-        // view sub-band (also collapsible). Explicit grid-row placement keeps
-        // the other rows from reshuffling regardless of which tracks collapse.
+        // collapses to 0 when hidden. Explicit grid-row placement keeps the
+        // other rows from reshuffling regardless of which tracks collapse. The
+        // view tabs ride in the header row now, so there is no separate view
+        // sub-band track — four tracks: header, strip, main pane, footer.
         const idx = css.indexOf('#outerContainer {');
         const block = css.slice(idx, idx + 700);
-        expect(block).toMatch(/grid-template-rows:\s*var\(--nav-h\)\s+auto\s+auto\s+1fr\s+var\(--foot-h\)/);
+        expect(block).toMatch(/grid-template-rows:\s*var\(--nav-h\)\s+auto\s+1fr\s+var\(--foot-h\)/);
         expect(css).toMatch(/#nowPlayingStrip\s*\{[\s\S]*?grid-row:\s*2/);
     });
 });

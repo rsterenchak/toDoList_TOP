@@ -52,27 +52,18 @@ describe('two-pane sub-header polish (desktop)', () => {
         return m[1];
     }
 
-    // ── (a) + (d) Roomier gap that preserves alignment ──
-    it('(a) the sub-header rows stay aligned — the pane lift equals the band height', () => {
-        const subBand = ruleBody(consolidationBlock(), '#desktopViewSubBand');
-        const minH = subBand.match(/min-height:\s*(\d+)px/);
-        expect(minH).not.toBeNull();
-        const bandHeight = parseInt(minH[1], 10);
-
+    // ── (a) + (d) The sub-band is retired; the pane sits flush ──
+    it('(a) the chat pane sits flush with the task pane — no alignment lift remains', () => {
+        // The pane used to be lifted by the band height to align its sub-header
+        // with the view tabs. With the view tabs moved into the header row and
+        // the band retired, there is nothing to lift into: the negative top
+        // margin is gone and both panes start at #mainSplit's top.
         const pane = ruleBody(d2Block(), '#desktopChatPane');
-        const lift = pane.match(/margin-top:\s*-(\d+)px/);
-        expect(lift).not.toBeNull();
-        // The chat pane is lifted into the band's row by exactly the band height,
-        // so adding a gap above the band drops both rows together and keeps them
-        // aligned (the gap is the band's own margin-top, which grows the track).
-        expect(parseInt(lift[1], 10)).toBe(bandHeight);
+        expect(pane).not.toMatch(/margin-top:\s*-\d+px/);
     });
 
-    it('(d) there is a >=12px gap between the top header and the sub-header row', () => {
-        const subBand = ruleBody(consolidationBlock(), '#desktopViewSubBand');
-        const gap = subBand.match(/margin-top:\s*(\d+)px/);
-        expect(gap).not.toBeNull();
-        expect(parseInt(gap[1], 10)).toBeGreaterThanOrEqual(12);
+    it('(d) no #desktopViewSubBand rule survives — the view tabs live in the header', () => {
+        expect(css).not.toMatch(/#desktopViewSubBand\s*\{/);
     });
 
     // ── (b) + (e) Segmented control structure + behavior (live DOM) ──
