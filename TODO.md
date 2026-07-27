@@ -332,7 +332,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 191ef979-16f0-405b-ab66-bfbc399b2e33 -->
 
-- [ ] **[LOW]** Header: restore bordered pills for STREAM / STRUCTURE and open up the project block
+- [x] **[LOW]** Header: restore bordered pills for STREAM / STRUCTURE and open up the project block — Completed: 2026-07-27
   - Type: bug
   - Description: Two header issues from the sub-band retirement. First, `#navBar .viewPill` (style.css:13520) overrides the base `.viewPill` treatment to `border: none; border-radius: 0` with an `::after` underline on the active tab — a tab-strip look that made sense when the pills sat in their own band, but now reads as flat text beside a bordered project block. The base rule already carries the reviewed treatment: a `0.5px` purple border, `6px` radius, and a filled accent background when active. Second, the two-line project block sits tight against the header's top edge and its neighbours, so the header reads cramped now that it holds a taller block plus the pills plus the action icons.
   - Behavior: STREAM and STRUCTURE render as bordered pills — a thin purple outline with rounded corners, the inactive one transparent with muted text, the active one filled with the accent tint, brighter text, and a solid border. No underline marker on the active pill. The project block has breathing room above, below, and to its right, so the eyebrow is not flush against the header's top edge and the pills do not crowd the project name. The header's overall height grows only as much as the added spacing requires, and the pills and action icons stay vertically centred against the taller project block.
