@@ -387,3 +387,20 @@
   - File: `toDoList_main/src/phase.js`, `toDoList_main/src/taskFilter.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 889f254f-dcf5-4845-a991-b80987885989 -->
+
+- [ ] **[MEDIUM]** Queue row: selection stripe hides the manual status stripe
+  - Type: bug
+  - Description: Setting a task to IN PROGRESS from the detail pane appears to do nothing until another row is selected. The status write and the row repaint are both working — the conflict is in CSS. `#mainList #toDoChild.todo-detail-open` sets `box-shadow: inset 2px 0 0 0 var(--accent-dim)` for the selected row, and `#toDoChild.todo-row--in_progress` sets `box-shadow: inset 3px 0 0 #d9b86a` for the status stripe. `box-shadow` does not compose across rules — the winning declaration replaces the other entirely — and the detail-open selector has higher specificity, so an open row shows the selection stripe instead of its status stripe. Deselecting reveals the amber, which is why it appears only after clicking away.
+  - Behavior: A selected row shows both its selection state and its manual status stripe at the same time. Changing status from the detail pane updates the open row's appearance immediately, with no need to select another row. An unselected row is unchanged. The IDEA muted-background treatment continues to coexist with selection.
+  - Implementation notes:
+    - Preferred fix: give the two treatments different properties so they cannot clobber each other. Move the SELECTION indicator off `box-shadow` — the selected row already has `background: var(--bg-hover)`, so an outline, a border, or a right-edge marker can carry selection while `box-shadow` stays reserved for status. Do NOT solve it by combining both into one comma-separated `box-shadow` in a `.todo-detail-open.todo-row--in_progress` compound rule: that requires a compound selector per status value, and every future status or phase treatment has to be added to each one.
+    - If a compound approach is chosen anyway, it must cover all three manual statuses plus the default, and the PR body must say why the property-separation approach was rejected.
+    - Check the interaction with `.todo-row--idea`, which uses `background` rather than `box-shadow`. `.todo-detail-open` also sets `background: var(--bg-hover)` and will override the idea muting on a selected row — verify whether that is acceptable or whether idea's muted treatment should survive selection too, and state the decision.
+    - Verify the selected row is still clearly distinguishable from an unselected in-progress row after the change. Selection and status are different axes and both need to read at a glance.
+    - The mobile row uses a `::before` left-edge tab rather than an inset box-shadow for status, and mobile has no detail-open selection state. Confirm mobile is unaffected and that any new selection treatment is scoped so it does not leak below the breakpoint.
+    - Check `focus-visible` on the row as well — if the focus ring is also a box-shadow it will collide with whichever property selection ends up using.
+    - Add a test asserting that `.todo-detail-open` and each `.todo-row--*` treatment use different CSS properties, so a future change cannot reintroduce the clobber. This is a stylesheet-structure assertion and works without layout computation.
+  - Out of scope: The manual status write path, `setToDoStatus`, and `refreshTodoStatusUI`, all working correctly. The detail pane's MANUAL STATUS control. `derivePhase` and the phase badges. Row selection behavior itself. The filter pills.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6ddef8f1-2bb4-4a93-ab57-ecfea2fd8398 -->
