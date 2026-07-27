@@ -81,6 +81,30 @@ function filesFromManifest(result) {
     return result.files.map(function (file) { return joinSrcRootPath(srcRoot, file); });
 }
 
+// The UI regions carried by a manifest result, or [] when absent/failed. A
+// region maps a human-readable on-screen label to its owning source file, so a
+// target can be chosen by what it is ("Filter & sort strip") rather than by
+// path. `regions` is `undefined` for older manifests that predate the build-time
+// UI index; the parse in claudeSheet.js already keeps only entries with a string
+// `selector`, but an entry may still lack `label` or `file`. Skip any region
+// with no `file` — it cannot produce a `File:` line — and fall back to the
+// selector as the display label when `label` is missing. The owning file needs
+// the same `srcRoot` prefix as a plain file, so it is joined HERE, once, so the
+// rendered label, the filter text, the dedup comparison, and the inserted string
+// all use the full repo-relative path.
+function regionsFromManifest(result) {
+    if (!(result && result.ok && Array.isArray(result.regions))) return [];
+    const srcRoot = result.srcRoot;
+    return result.regions
+        .filter(function (r) { return r && typeof r.file === 'string' && r.file; })
+        .map(function (r) {
+            return {
+                label: (typeof r.label === 'string' && r.label) ? r.label : r.selector,
+                path: joinSrcRootPath(srcRoot, r.file),
+            };
+        });
+}
+
 // Split a `File:` line value on commas and report whether `path` is already one
 // of its comma-separated tokens once backticks and surrounding whitespace are
 // stripped. Used to make re-selecting an already-listed path a no-op.
@@ -207,6 +231,7 @@ export function createFilePicker(options) {
     // empty message can say which case it is.
     const primed = getCachedManifest(repo);
     let manifestFiles = filesFromManifest(primed);
+    let manifestRegions = regionsFromManifest(primed);
     let loadStatus = primed ? 'loaded' : 'idle';
     let loadOk = primed ? !!primed.ok : true;
 
@@ -259,6 +284,47 @@ export function createFilePicker(options) {
         list.appendChild(p);
     }
 
+    // A muted section heading separating the UI-region rows from the plain file
+    // list. Only emitted when regions exist, so a manifest with none renders as a
+    // bare file list exactly as it did before this feature.
+    function appendSectionLabel(text) {
+        const p = document.createElement('p');
+        p.className = 'filePickSectionLabel';
+        p.textContent = text;
+        list.appendChild(p);
+    }
+
+    // A one-line file row: the full repo-relative path, inserted on click.
+    function appendFileRow(path) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'filePickRow';
+        row.setAttribute('role', 'option');
+        row.textContent = path;
+        row.addEventListener('click', function () { applyFilePick(path); });
+        list.appendChild(row);
+    }
+
+    // A two-line region row: the human-readable label over its owning file at
+    // reduced emphasis. Selecting it inserts the owning file exactly as a plain
+    // file row does — same dedup, same insertion position, same backtick wrap.
+    function appendRegionRow(region) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'filePickRegionRow';
+        row.setAttribute('role', 'option');
+        const label = document.createElement('span');
+        label.className = 'filePickRegionLabel';
+        label.textContent = region.label;
+        const file = document.createElement('span');
+        file.className = 'filePickRegionFile';
+        file.textContent = region.path;
+        row.appendChild(label);
+        row.appendChild(file);
+        row.addEventListener('click', function () { applyFilePick(region.path); });
+        list.appendChild(row);
+    }
+
     function renderList() {
         list.innerHTML = '';
         if (loadStatus === 'loading') {
@@ -268,34 +334,54 @@ export function createFilePicker(options) {
             list.appendChild(loading);
             return;
         }
-        // Loaded but the manifest carried no files — distinguish a genuinely
-        // empty manifest from a fetch failure so the message reads correctly
-        // (a bare "no files match" hid both cases before).
-        if (!manifestFiles.length) {
+        // Loaded but the manifest carried neither files nor regions — distinguish
+        // a genuinely empty manifest from a fetch failure so the message reads
+        // correctly (a bare "no files match" hid both cases before).
+        if (!manifestFiles.length && !manifestRegions.length) {
             appendMessage(loadOk
                 ? 'No source files in this project’s manifest.'
                 : 'Couldn’t load the file list — a temporary problem fetching the manifest.');
             return;
         }
         const q = (search.value || '').trim().toLowerCase();
-        const matches = q
+        // Filtering matches region labels, region file paths, and plain file
+        // paths together, so typing "sort" surfaces both a "Filter & sort strip"
+        // region and any file whose path contains it.
+        const regionMatches = q
+            ? manifestRegions.filter(function (r) {
+                return r.label.toLowerCase().indexOf(q) !== -1
+                    || r.path.toLowerCase().indexOf(q) !== -1;
+            })
+            : manifestRegions;
+        const fileMatches = q
             ? manifestFiles.filter(function (p) { return p.toLowerCase().indexOf(q) !== -1; })
             : manifestFiles;
-        if (!matches.length) {
+        if (!regionMatches.length && !fileMatches.length) {
             appendMessage('No files match');
             return;
         }
-        matches.slice(0, TARGET_PICK_CAP).forEach(function (path) {
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'filePickRow';
-            row.setAttribute('role', 'option');
-            row.textContent = path;
-            row.addEventListener('click', function () { applyFilePick(path); });
-            list.appendChild(row);
-        });
-        if (matches.length > TARGET_PICK_CAP) {
-            appendMessage('Keep typing to narrow ' + matches.length + ' matches');
+        // Regions and files share the ONE row cap — regions come first, then
+        // whatever remains of the cap goes to files — so the "keep typing to
+        // narrow" hint reflects the true combined match count.
+        const shownRegions = regionMatches.slice(0, TARGET_PICK_CAP);
+        const fileRoom = TARGET_PICK_CAP - shownRegions.length;
+        const shownFiles = fileRoom > 0 ? fileMatches.slice(0, fileRoom) : [];
+
+        if (shownRegions.length) {
+            appendSectionLabel('UI regions');
+            shownRegions.forEach(appendRegionRow);
+        }
+        if (shownFiles.length) {
+            // The separating label only precedes the files when regions were
+            // shown above them; with no regions the list is a bare file list.
+            if (shownRegions.length) appendSectionLabel('Files');
+            shownFiles.forEach(appendFileRow);
+        }
+
+        const totalMatches = regionMatches.length + fileMatches.length;
+        const totalShown = shownRegions.length + shownFiles.length;
+        if (totalMatches > totalShown) {
+            appendMessage('Keep typing to narrow ' + totalMatches + ' matches');
         }
     }
 
@@ -315,6 +401,7 @@ export function createFilePicker(options) {
                 loadStatus = 'loaded';
                 loadOk = !!(result && result.ok);
                 manifestFiles = filesFromManifest(result);
+                manifestRegions = regionsFromManifest(result);
                 renderList();
                 onRender();
             });
