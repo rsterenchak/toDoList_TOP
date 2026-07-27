@@ -388,7 +388,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 889f254f-dcf5-4845-a991-b80987885989 -->
 
-- [ ] **[MEDIUM]** Queue row: selection stripe hides the manual status stripe
+- [x] **[MEDIUM]** Queue row: selection stripe hides the manual status stripe — Completed: 2026-07-27
   - Type: bug
   - Description: Setting a task to IN PROGRESS from the detail pane appears to do nothing until another row is selected. The status write and the row repaint are both working — the conflict is in CSS. `#mainList #toDoChild.todo-detail-open` sets `box-shadow: inset 2px 0 0 0 var(--accent-dim)` for the selected row, and `#toDoChild.todo-row--in_progress` sets `box-shadow: inset 3px 0 0 #d9b86a` for the status stripe. `box-shadow` does not compose across rules — the winning declaration replaces the other entirely — and the detail-open selector has higher specificity, so an open row shows the selection stripe instead of its status stripe. Deselecting reveals the amber, which is why it appears only after clicking away.
   - Behavior: A selected row shows both its selection state and its manual status stripe at the same time. Changing status from the detail pane updates the open row's appearance immediately, with no need to select another row. An unselected row is unchanged. The IDEA muted-background treatment continues to coexist with selection.
