@@ -17392,14 +17392,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    10px 12px) spans `1 / -1` gutter-to-gutter; content that should align with
    the textarea's edges — the rail, the section label, #descInput — sits in the
    `2` content column instead, so it never lands flush against the panel border.
-   The rail is additionally capped and left-aligned so its connectors stay short
-   and the four nodes read as one sequence rather than stretching edge to edge;
-   the max-width/margins live on the panel host (not the shared .phaseRail) so
-   the mobile modal's narrower rail is unaffected. */
+   The rail stretches to fill the content column so its `flex: 1 1 0` connectors
+   absorb the extra width — the four nodes read as one left-to-right sequence with
+   long connectors across the now-wide detail pane, rather than clustering at the
+   left. The stretch lives on the panel host (not the shared .phaseRail) so the
+   mobile modal's narrower rail keeps its own compact treatment. */
 #descSibling .phaseRail {
   grid-column: 2;
-  justify-self: start;
-  max-width: 440px;
+  justify-self: stretch;
   margin-top: 4px;
   padding: 4px 0 6px;
 }
@@ -17630,8 +17630,18 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    toggles the inactive-mode bodies + WRITE-only controls via [hidden] — each sets
    its own author-level `display`, which outranks the UA [hidden] rule, so
    re-assert the hidden state explicitly, scoped to #descSibling. */
+/* In the wide detail pane the strip spans the content column with its three
+   segments as equal thirds, rather than the base inline-flex/fit-content that
+   the narrower modal host keeps. Scoped to #descSibling so the modal is untouched. */
 #descSibling .descModeStrip {
   grid-column: 2;
+  display: flex;
+  width: auto;
+}
+#descSibling .descModeStripSeg {
+  flex: 1 1 0;
+  min-width: 0;
+  text-align: center;
 }
 #descSibling .descPasteBody,
 #descSibling .descGenerateBody {

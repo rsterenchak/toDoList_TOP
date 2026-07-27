@@ -422,7 +422,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 42ddcd2e-2b3d-4931-a066-828ad35ea955 -->
 
-- [ ] **[LOW]** Detail pane: let the phase rail and mode strip span the pane's width
+- [x] **[LOW]** Detail pane: let the phase rail and mode strip span the pane's width — Completed: 2026-07-27
   - Type: bug
   - Description: The phase rail and the WRITE / PASTE / GENERATE strip both render compressed at the left of the detail pane while the pane itself is now the widest column on screen. `#descSibling .phaseRail` is capped at `max-width: 440px` with `justify-self: start` and fixed 52px nodes, so its connectors stay short and the four nodes cluster; `.descModeStrip` is `display: inline-flex`, so it shrinks to its content rather than spanning. The reviewed layout has both stretching across the pane — the rail reading as one left-to-right sequence with long connectors, and the three mode buttons as equal thirds of the content width.
   - Behavior: In the detail pane the phase rail spans the content column's full width, with its four nodes evenly distributed and long visible connectors between them. The mode strip spans the same width with WRITE, PASTE, and GENERATE as three equal segments. Both keep their current type, colours, states, and behavior — only their width and distribution change. The mobile description-editor modal is unchanged: its narrower non-grid host keeps the current compact treatment.
