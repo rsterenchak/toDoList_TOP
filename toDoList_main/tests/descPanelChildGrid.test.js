@@ -59,18 +59,26 @@ describe('desktop description panel — every child is explicitly grid-placed', 
         expect(body).toMatch(/grid-column:\s*2\s*;/);
     });
 
-    it('the Discuss action spans the full grid row like Inject and Generate', () => {
-        const body = ruleBodyContaining(css, '#descSibling .discussBtn');
-        expect(body).not.toBeNull();
-        expect(body).toMatch(/grid-column:\s*1\s*\/\s*-1\s*;/);
+    it('Inject / Generate / Discuss are grouped in the actions row, not each full-width', () => {
+        // The three actions live inside `.descActionsRow` (grid-column: 2) now,
+        // so the wrapper carries the placement and the buttons flow at natural
+        // width — they no longer each span the panel full-width as a stacked bar.
+        const row = ruleBodyContaining(css, '#descSibling .descActionsRow');
+        expect(row).not.toBeNull();
+        expect(row).toMatch(/grid-column:\s*2\s*;/);
+        expect(row).toMatch(/flex-wrap:\s*wrap\s*;/);
     });
 
-    // Audit: every element that can mount into #descSibling must resolve to an
-    // explicit grid-column, so insertion order can never displace anything.
+    it('the FILE readout sits in the content column beneath the actions row', () => {
+        const body = ruleBodyContaining(css, '#descSibling .descFileReadout');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/grid-column:\s*2\s*;/);
+    });
+
+    // Audit: every remaining full-width block that can mount into #descSibling
+    // must resolve to an explicit full-row placement, so insertion order can
+    // never displace anything.
     const fullWidthChildren = [
-        '#descSibling .injectBtn',
-        '#descSibling .discussBtn',
-        '#descSibling .generateBtn',
         '#descSibling .generateFailure',
         '#descSibling .askingBlock',
         '#descSibling .descEditorModalStuck',

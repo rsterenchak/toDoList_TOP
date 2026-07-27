@@ -53,8 +53,14 @@ describe('desktop inject button — icon/label alignment hardening', () => {
         expect(rule).toMatch(/display:\s*block\s*;/);
     });
 
-    it('#descSibling .injectBtn spans the full grid row so it isn\'t squeezed into the 14px gutter column', () => {
-        const rule = extractTopLevelRule('#descSibling .injectBtn');
-        expect(rule).toMatch(/grid-column:\s*1\s*\/\s*-1\s*;/);
+    it('the actions row that holds Inject sits in the content column and flows its buttons horizontally', () => {
+        // Inject / Generate / Discuss are grouped into one `.descActionsRow`
+        // wrapper (grid-column: 2) rather than each spanning the panel full-width,
+        // so the wrapper carries the placement and the buttons flow at natural
+        // width — not `flex: 1` equal thirds, which is just full-width restacked.
+        const rule = extractTopLevelRule('#descSibling .descActionsRow');
+        expect(rule).toMatch(/grid-column:\s*2\s*;/);
+        expect(rule).toMatch(/display:\s*flex\s*;/);
+        expect(rule).toMatch(/flex-wrap:\s*wrap\s*;/);
     });
 });

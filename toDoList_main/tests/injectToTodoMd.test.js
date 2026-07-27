@@ -372,13 +372,15 @@ describe('inject feature — wired into desktop description panel', () => {
         );
     });
 
-    it('buildToDoRow creates an inject button and appends it inside the descSibling panel', () => {
-        // injectBtn factory call + appended into descSibling alongside
-        // the existing spacer1, descInput, spacer2. The factory call
-        // now also passes a projectName option for per-project routing;
-        // tests of that wiring live in projectInjectRouting.test.js.
+    it('buildToDoRow creates an inject button and mounts it inside the descSibling panel', () => {
+        // injectBtn factory call + appended into the `.descActionsRow` wrapper
+        // that groups Inject / Generate / Discuss, which itself mounts into
+        // descSibling. The factory call now also passes a projectName option for
+        // per-project routing; tests of that wiring live in
+        // projectInjectRouting.test.js.
         expect(toDoRow).toMatch(/makeInjectButton\s*\(\s*item\s*,/);
-        expect(toDoRow).toMatch(/descSibling\.appendChild\(\s*injectBtn\s*\)/);
+        expect(toDoRow).toMatch(/actionsRow\.appendChild\(\s*injectBtn\s*\)/);
+        expect(toDoRow).toMatch(/descSibling\.appendChild\(\s*actionsRow\s*\)/);
     });
 
     it('refreshInjectButton is called on every keystroke and blur so the empty/non-empty visibility tracks the textarea', () => {

@@ -105,12 +105,14 @@ describe('desktop detail pane — mounts the shared MANUAL STATUS control below 
         );
     });
 
-    it('mounts it via descSibling.appendChild AFTER the Discuss button', () => {
-        const discussIdx = toDoRow.indexOf('descSibling.appendChild(discussBtn)');
+    it('mounts it via descSibling.appendChild AFTER the actions row', () => {
+        // Inject / Generate / Discuss now live inside the `.descActionsRow`
+        // wrapper; MANUAL STATUS still mounts below that whole row at the foot.
+        const actionsIdx = toDoRow.indexOf('descSibling.appendChild(actionsRow)');
         const statusIdx = toDoRow.indexOf('descSibling.appendChild(manualStatusRow)');
-        expect(discussIdx).toBeGreaterThan(-1);
+        expect(actionsIdx).toBeGreaterThan(-1);
         expect(statusIdx).toBeGreaterThan(-1);
-        expect(statusIdx).toBeGreaterThan(discussIdx);
+        expect(statusIdx).toBeGreaterThan(actionsIdx);
     });
 
     it('reuses an existing status row across reopens rather than re-creating it', () => {

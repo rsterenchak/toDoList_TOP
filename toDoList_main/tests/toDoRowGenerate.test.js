@@ -115,9 +115,12 @@ describe('Generate-with-triage — mobile description-editor modal (modals.js)',
 });
 
 describe('Generate-with-triage — style.css', () => {
-    it('styles Generate as a sibling of .injectBtn spanning the descSibling grid row', () => {
+    it('groups Generate with Inject / Discuss in the descSibling actions row', () => {
         expect(css).toMatch(/\.generateBtn\s*\{/);
-        expect(css).toMatch(/#descSibling\s+\.generateBtn\s*\{[^}]*grid-column:\s*1\s*\/\s*-1/);
+        // Generate no longer spans the grid full-width on its own — it flows at
+        // natural width inside `.descActionsRow` (grid-column: 2) beside Inject.
+        expect(css).toMatch(/#descSibling\s+\.descActionsRow\s*\{[^}]*grid-column:\s*2/);
+        expect(css).not.toMatch(/#descSibling\s+\.generateBtn\s*\{[^}]*grid-column/);
     });
 
     it('dims the disabled inject button during generation', () => {

@@ -83,9 +83,8 @@ describe('desc panel child contract — (b) every mount site is a listed child',
     // is an unplaced child and must fail this test.
     const ALLOWED_MOUNT_ARGS = new Set([
         'descInput',       // #descInput
-        'injectBtn',       // .injectBtn
-        'generateBtn',     // .generateBtn
-        'discussBtn',      // .discussBtn
+        'actionsRow',      // .descActionsRow (Inject / Generate / Discuss wrapper)
+        'fileReadout',     // .descFileReadout (read-only FILE readout)
         'picker.trigger',  // .filePickTrigger
         'picker.panel',    // .filePickPanel
         'rail',            // .phaseRail
