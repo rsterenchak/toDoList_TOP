@@ -293,3 +293,22 @@
   - File: `toDoList_main/src/filePicker.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5f0976f4-1e99-4c8d-97b3-88b141343bf6 -->
+
+- [ ] **[LOW]** Move the STREAM / STRUCTURE pills into the top header row
+  - Type: feature
+  - Description: The view switcher renders on its own band below the project header, costing a full row of vertical space to hold two pills. The reviewed layout puts them inline in the top header — project title on the left, view pills beside it, header actions on the right — recovering that row for the task list and the detail pane. `#viewSwitcher` is already a self-contained flex group with `margin-right: auto` and a comment at `main.js:493` describing it as relocated into the top nav, so this is a repositioning of an existing group rather than a restructure.
+  - Behavior: The top header row carries, left to right: the project title with its count badge and dropdown caret, then the STREAM and STRUCTURE pills, then the existing header action icons pushed to the right edge. The band the switcher previously occupied is gone and the content below moves up by that height. Both pills keep their labels, active styling, click behavior, no-repo markers, and arrow-key navigation. At mobile widths the switcher stays where it is today — the bottom tab bar and mobile header are unaffected.
+  - Implementation notes:
+    - Move `#viewSwitcher` in the DOM to sit inside the header row, after the project title element and before the header action group. Do this in `main.js` at construction rather than by absolute-positioning it from CSS, so DOM order matches visual order for keyboard navigation.
+    - `#viewSwitcher` carries `margin-right: auto`, which pushed it left in its old band. In the header row that same rule will push the action icons to the right edge — verify that is what happens rather than assuming; if the header already uses its own spacer or auto margin, two auto margins will split the free space and separate the pills from the title.
+    - Scope the move to desktop if the mobile header differs. Check whether `#viewSwitcher` is hidden or restyled below 1024px — the bottom tab bar shows STREAM and STRUCTURE on mobile, so the switcher may already be desktop-only; if it is, this is a pure desktop change and the media gating needs no edit.
+    - The header row's height is set for the title's type size. Confirm the pills fit without growing it, and that they align to the title's optical centre rather than its baseline.
+    - Arrow-key navigation treats the switcher as one group entered via `viewSwitcherEntryPill()`, with `tabindex` 0 on the first pill and -1 on the second. Verify the tab order through the header still reaches the group in the right sequence after the move, and that `main.js:452`'s `#viewSwitcher .viewPill[tabindex="0"]` lookup still resolves.
+    - Removing the band means deleting its container and any grid row or padding reserved for it. Grep for what wrapped the switcher and remove it rather than leaving an empty element with collapsed height.
+    - `#outerContainer` is a five-row grid. If the switcher's band was one of those rows, the template needs one fewer row and every subsequent `grid-row` reference has to shift — grep every `grid-row:` in the stylesheet before changing the template, since a stale row index will silently place an element in the wrong band.
+    - Verify the project dropdown still opens correctly anchored now that the title has a sibling to its right.
+    - Test: both pills render in the header row; switching views still works; the no-repo marker still shows; arrow navigation enters and traverses the group; and the removed band leaves no residual height.
+  - Out of scope: The filter pills at the top of the queue column, which are a separate change. The header's action icons, the project dropdown, and the count badge. The mobile bottom tab bar. The detail pane, the chat pane, and the queue column's own layout.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 64b5f2e0-e6f3-4289-9e64-4ddd596884a4 -->
