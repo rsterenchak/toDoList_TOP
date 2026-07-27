@@ -255,3 +255,22 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/entryParse.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 792ef9a7-5ddd-42ab-b714-83960c17d0a0 -->
+
+- [ ] **[MEDIUM]** File picker: offer UI regions alongside file paths
+  - Type: feature
+  - Description: The target picker lists raw file paths, so writing a `- File:` line still means knowing which file owns the thing you want changed. The manifest already carries a `regions` array of `{ selector, label, file, line, files }`, and `structureView.js` builds a `regionsIndex` from it that powers "Find in code" — mapping a human-readable region label to its owning file. Surface those regions in the picker so a target can be chosen by what it is on screen ("Filter & sort strip") rather than by path, with the file resolved underneath. This is the prototype's ⌖ gesture, and it needs no runtime instrumentation: the index exists and is keyed by label.
+  - Behavior: The picker lists the active repo's UI regions above its file paths, each showing its label with the owning file beneath it at reduced emphasis, followed by the plain file list under a separating label. Filtering matches region labels, region file paths, and plain file paths together. Selecting a region inserts its owning file into the entry's `- File:` line exactly as selecting a file does — same dedup, same insertion position, same backtick wrapping. A repo whose manifest predates regions, or declares none, shows only the file list with no empty section. Everything else is unchanged: the on-demand manifest load, the row cap, both hosts.
+  - Implementation notes:
+    - Read regions from the SAME `loadManifest` result the picker already consumes — the parsed `regions` array is on that object. Do NOT import `structureView.js` into the picker or reach into its module-level `regionsIndex`; the picker must not depend on the Structure view having been opened.
+    - `regions` is `undefined` for older manifests and filtered to entries with a string `selector` on parse, so an entry may still lack `label` or `file`. Skip any region with no `file` — it cannot produce a `File:` line — and fall back to the selector as the display label when `label` is missing.
+    - Regions resolve to a file that still needs the `srcRoot` prefix, same as plain files. Reuse the existing join rather than adding a second — a region path that does not match what entries already use is the bug this repeats.
+    - Several regions can share one owning file. Do not deduplicate them into one row — the labels are the point — but the insertion must still dedup against the `File:` line, so picking two regions from the same file adds that path once.
+    - Keep the row cap. Regions and files share one list, so count both against it and keep the "keep typing to narrow" message accurate.
+    - Region rows are two-line (label over file) while file rows are one-line. `.filePickRow` currently sets `white-space: nowrap` and a height that assumes one line; a two-line row needs its own class rather than overriding the shared one. This list has already produced a width defect and a flex-shrink defect — give the new row type `flex-shrink: 0` and a real minimum height rather than relying on content.
+    - Do not use `line` yet. It is in the record and would let a future entry write a more precise target, but the `File:` line takes paths only.
+    - Both hosts share `filePicker.js`, so this lands in the modal and the detail panel together. Verify the two-line rows render correctly at the mobile modal's narrower width.
+    - Test: a manifest with regions lists them above files with their owning file shown; filtering matches labels and paths; selecting a region inserts its prefixed file path; two regions sharing a file insert it once; a manifest with no regions renders only files with no section header; and a region lacking a file is skipped.
+  - Out of scope: Rendering the running UI as a visual tappable canvas — this is the list form of the same gesture; the visual form is separate. Using `line` for a more precise target. Structure's UI lens, its "Find in code", and its `regionsIndex`. The manifest generator and the `manifest-*.yml` workflows. The picker's on-demand load, insertion position, and row cap logic.
+  - File: `toDoList_main/src/filePicker.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6e5bc77c-a14e-404f-88a2-101b91f05e64 -->
