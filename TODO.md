@@ -349,7 +349,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 34fd6074-6195-4510-8793-6bc0678b083b -->
 
-- [ ] **[LOW]** Header: remove the pill chrome from the desktop project block
+- [x] **[LOW]** Header: remove the pill chrome from the desktop project block — Completed: 2026-07-27
   - Type: bug
   - Description: At desktop widths `#mobileProjHeader` renders as a raised pill — `background: var(--bg-elevated)` plus a `0.5px solid var(--border-mid)` border and a radius. The reviewed layout has the project block as bare text sitting directly on the header background, with only the eyebrow and the name plus caret; the surrounding box makes it read as a control competing with the STREAM / STRUCTURE pills beside it rather than as the header's title. Strip the chrome at desktop only.
   - Behavior: At desktop widths the project block shows the "PROJECT n OF m" eyebrow above the project name and caret with no background fill, no border, and no rounded box — it sits flush on the header background. It remains a button: it still opens the project dropdown, still shows a hover affordance (a subtle text or caret colour shift rather than a background fill), and keeps its focus-visible outline for keyboard users. Its spacing from the header edge and from the pill group is unchanged. Mobile is unaffected — the mobile project header keeps its own treatment.
