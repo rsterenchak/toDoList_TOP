@@ -497,3 +497,26 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b1284ecf-34b6-4937-a169-4fd0805f3499 -->
+
+- [ ] **[MEDIUM]** Detail pane: accept, revert, or open a shipped entry without leaving the pane
+  - Type: feature
+  - Description: A task in the REVIEW phase currently offers only a route to the TODO.md viewer, where acknowledging happens in front of the real file. That rule existed because the pane could not show what shipped — but the pane now has room for the PR number, a summary of the change, and the changed files, which is enough context to decide against. Add accept and revert to the detail pane for `accept`-phase tasks, keeping the route to the viewer as a third option for reading the entry text itself. DESKTOP ONLY: the mobile modal keeps its single route action, because inlining these controls costs roughly 210px and pushes the entry textarea, mode strip, picker and Generate below the fold in a dialog already capped at 92vh.
+  - Behavior: When a task's phase is `accept`, the detail pane shows a WHAT CHANGED block with the PR number, the changed files beneath it, and three actions: ACCEPT & CLOSE as the primary, REVERT, and OPEN IN TODO.MD. Accepting stamps `entry_reviewed_at` through the same path the viewer's Acknowledge pill uses, the phase moves to `done`, and the pane repaints. Revert runs the existing revert path. Opening in TODO.md does what the badge route does today. A short line notes that deciding costs nothing since the run is already paid for. In every other phase the block and its actions are absent. The viewer's own Acknowledge pill continues to work unchanged — this adds a second place to decide, it does not remove the first. The mobile description-editor modal is untouched.
+  - Implementation notes:
+    - Reuse the EXISTING acknowledge write — grep the viewer's Acknowledge pill and call the same `listLogic` function. A second stamp path that drifts from the first is the failure mode; there must be exactly one writer for `entry_reviewed_at`.
+    - Reuse the existing revert path the same way. Grep the viewer's Revert pill; do not reimplement.
+    - PR number comes from the linked queue row's `pr_number` / `pr_url`, already fetched by `select('*')` and reachable through the shared store's per-todo lookup. Render the number as text; if `pr_url` is present, make it a link.
+    - WHAT CHANGED has no local source. The honest options are the PR body (a GitHub fetch per open) or the entry's own Description line (already in the textarea). Prefer the entry's Description — it needs no network, it is what the run was told to do, and it is already correct in the common case. If it is empty, omit the block rather than fetching; do NOT introduce a per-open GitHub request in this entry.
+    - The FILE list already exists as the readout mirroring the entry's `- File:` line. Reuse it rather than adding a second file display; if it currently renders in every phase, that is fine and it simply sits above the actions here.
+    - Mount idempotently, mirroring `syncAskingPanel`: remove any existing block before mounting, use the shared insertion anchor, re-mount on panel open, since `#descSibling`'s children survive a close.
+    - `grid-column: 1 / -1` for the WHAT CHANGED card (it carries its own padding), `grid-column: 2` for the action row, both registered in `DESC_PANEL_CHILD_SELECTORS` or the structural guard fails.
+    - These actions must NOT join `DESC_AUTHORING_GROUP_SELECTORS`. That group is hidden in the `done` phase, and accepting is precisely what moves a task INTO `done` — sweeping them in would make the controls vanish mid-interaction. Confirm `applyPhaseLayout` leaves them alone.
+    - Repaint on `TODO_RUN_STATUS_EVENT` and on `onQueueChange` so the block appears and disappears live, including when the same entry is acknowledged from the viewer on another device while the pane is open.
+    - Call `refreshViewerExpandedHeight()` when the block mounts and unmounts.
+    - Gate on pane mode the same way `syncDetailPaneForViewport` does, so nothing renders below the breakpoint.
+    - Style ACCEPT & CLOSE in the amber already carrying the review state, REVERT in the danger red, and OPEN IN TODO.MD as a ghost action, all in the SpaceMono uppercase treatment the panel's other actions use.
+    - Test: the block renders only in the `accept` phase; accepting calls the same writer as the viewer's pill and moves the phase to `done`; the block clears on that transition; it survives the `done`-phase authoring sweep long enough to complete the interaction; the viewer's pill still works; and nothing renders on mobile.
+  - Out of scope: The BEFORE / AFTER visual diff from the render — it requires rendering the app at two commits, which nothing in the pipeline can produce; dropped permanently rather than deferred. The "KEPT IT — BUT IT MADE THINGS WORSE" marker, which needs a `regressed_at` column and is deferred by decision. Fetching the PR body for a richer change summary. The mobile description-editor modal. The TODO.md viewer's own pills. `derivePhase` and the phase vocabulary.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9a489f39-1949-4768-96a4-a6af8234a8dc -->
