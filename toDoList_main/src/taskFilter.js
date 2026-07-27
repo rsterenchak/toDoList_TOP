@@ -18,8 +18,52 @@
 // (see todoStatus.js). Row hiding uses a class rather than an inline style so
 // the known fragile inline-style override pattern is avoided.
 
-import { getTaskFilter, setTaskFilter, getBlockedFilter, setBlockedFilter } from './prefs.js';
+import {
+    getTaskFilter, setTaskFilter,
+    getPhaseFilter, setPhaseFilter,
+    getBlockedFilter, setBlockedFilter,
+} from './prefs.js';
 import { sizeMainListGhostSpacer } from './emptyState.js';
+
+
+// The bar hosts TWO status-vocabulary controls that switch by breakpoint:
+//   • Mobile (≤1023px): the manual-STATUS controls — the cycle pill and the
+//     segmented control — filter on a row's workflow status (ALL / Active /
+//     Ideas), persisting under `todoapp_taskFilter`.
+//   • Desktop (≥1024px): a four-pill PHASE control (ALL / IDEAS / RUNNING /
+//     DONE) filters on a row's DERIVED pipeline phase, persisting under its own
+//     `todoapp_phaseFilter` key. The two vocabularies never share a key, so
+//     crossing the breakpoint can't write a phase token into the status filter.
+// The blocked-on-you chip is a third, width-agnostic overlay filter present at
+// both breakpoints. CSS gates which status control is visible; applyTaskFilter
+// picks the matching predicate from the live viewport width so the visible
+// control and the running predicate always agree.
+const DESKTOP_MIN_WIDTH = 1024;
+function isDesktopFilterMode() {
+    return typeof window !== 'undefined' && window.innerWidth >= DESKTOP_MIN_WIDTH;
+}
+
+
+// The desktop phase filter keys off a row's DERIVED phase, but taskFilter.js
+// must not import phase.js — that would close the same import cycle the blocked
+// resolver dodges (taskFilter → phase → inject → modals → toDoRow → taskFilter).
+// toDoRow.js, which already imports both, registers `derivePhase` here. Until it
+// does, the resolver is absent and every phase resolves to null, so the desktop
+// pills count zero and ALL still shows everything (never hides the list).
+let itemPhaseResolver = null;
+
+export function setItemPhaseResolver(fn) {
+    itemPhaseResolver = typeof fn === 'function' ? fn : null;
+}
+
+function phaseOf(item) {
+    if (!itemPhaseResolver || !item) return null;
+    try {
+        return itemPhaseResolver(item);
+    } catch (e) {
+        return null;
+    }
+}
 
 
 // The blocked-on-you chip filters on a row's DERIVED phase (see phase.js's
@@ -75,13 +119,30 @@ const FILTERS = [
     { key: 'ideas',  label: 'Ideas',  seg: 'Ideas',  match: function (s) { return s === 'idea'; } },
 ];
 
+// Desktop phase filter: order + display label for each pill. `match` decides
+// whether a given DERIVED phase is visible; ALL matches everything. The phase
+// strings mirror phase.js's PHASE map (inlined rather than imported to keep this
+// module's only hard dependency `prefs`). IDEAS is phase `none` (no entry yet),
+// RUNNING is phase `running` (an in-flight agent run), DONE is phase `done`
+// (shipped and acknowledged — NOT the checkbox-completed COMPLETED section).
+const PHASE_FILTERS = [
+    { key: 'all',     label: 'ALL',     match: function () { return true; } },
+    { key: 'ideas',   label: 'IDEAS',   match: function (p) { return p === 'none'; } },
+    { key: 'running', label: 'RUNNING', match: function (p) { return p === 'running'; } },
+    { key: 'done',    label: 'DONE',    match: function (p) { return p === 'done'; } },
+];
+
 // Empty-state copy shown when the active filter hides every task (but the
 // project still has tasks under other filters). ALL is omitted — it can only
 // be empty when the project itself is empty, which the project empty-state
-// already covers.
+// already covers. `ideas` is shared by the mobile status filter and the desktop
+// phase filter (both mean "nothing to show under Ideas"); `running` and `done`
+// are the desktop-only phase additions.
 const EMPTY_MESSAGES = {
     active: 'Nothing active right now.',
     ideas: 'No ideas captured yet.',
+    running: 'No runs in flight.',
+    done: 'Nothing shipped and acknowledged yet.',
     blocked: 'Nothing is blocked on you right now.',
 };
 
@@ -103,6 +164,11 @@ function rowStatus(row) {
 // stored value is unrecognised.
 function filterFor(key) {
     return FILTERS.filter(function (f) { return f.key === key; })[0] || FILTERS[0];
+}
+
+// Look up a PHASE_FILTERS entry by key, falling back to the first (ALL).
+function phaseFilterFor(key) {
+    return PHASE_FILTERS.filter(function (f) { return f.key === key; })[0] || PHASE_FILTERS[0];
 }
 
 
@@ -154,9 +220,15 @@ export function buildTaskFilterBar() {
 
     bar.appendChild(pill);
     bar.appendChild(buildSegmentedControl());
+    // The desktop phase-filter pills sit between the mobile status controls and
+    // the blocked chip so the chip stays the bar's LAST child — main.js appends
+    // the in-row Sort trigger directly after the chip, and that right-edge
+    // cluster anchoring depends on the chip being last.
+    bar.appendChild(buildPhaseFilterControl());
     bar.appendChild(buildBlockedChip());
     paintCyclePill(bar);
     paintSegmented(bar);
+    paintPhasePills(bar);
 
     bar.addEventListener('click', function (event) {
         if (!event.target.closest) return;
@@ -171,9 +243,28 @@ export function buildTaskFilterBar() {
             if (chip.disabled) return;
             const engaging = !getBlockedFilter();
             setBlockedFilter(engaging);
-            if (engaging) setTaskFilter('all');
+            // Snap BOTH status vocabularies to ALL so neither the mobile status
+            // filter nor the desktop phase filter composes with the blocked
+            // overlay (no invisible AND).
+            if (engaging) { setTaskFilter('all'); setPhaseFilter('all'); }
             paintCyclePill(bar);
             paintSegmented(bar);
+            paintPhasePills(bar);
+            applyTaskFilter();
+            return;
+        }
+
+        // Desktop phase pill — set the phase filter directly. Selecting a phase
+        // releases the blocked filter so the two never compose. The phase filter
+        // keys off its own pref, independent of the mobile status filter.
+        const phasePill = event.target.closest('.taskPhaseFilterPill');
+        if (phasePill && bar.contains(phasePill)) {
+            const key = phasePill.getAttribute('data-phase');
+            setBlockedFilter(false);
+            if (key && key !== getPhaseFilter()) setPhaseFilter(key);
+            paintCyclePill(bar);
+            paintSegmented(bar);
+            paintPhasePills(bar);
             applyTaskFilter();
             return;
         }
@@ -241,7 +332,7 @@ export function firstFocusableInTaskFilterBar() {
     const bar = document.getElementById('taskFilterBar');
     if (!bar) return null;
     const candidates = bar.querySelectorAll(
-        '.taskCyclePill, .taskFilterSeg, #taskSortBtn, #taskSortBtnMobile'
+        '.taskPhaseFilterPill, .taskCyclePill, .taskFilterSeg, #taskSortBtn, #taskSortBtnMobile'
     );
     for (let i = 0; i < candidates.length; i++) {
         if (isOnScreenFocusable(candidates[i])) return candidates[i];
@@ -252,7 +343,7 @@ export function firstFocusableInTaskFilterBar() {
 
 // Ordered, on-screen filter/sort controls for Left/Right roving focus. The bar
 // pairs a status filter with a Sort trigger; the horizontal arrows walk between
-// them left-to-right. Desktop resolves to [cycle pill, #taskSortBtn]; mobile to
+// them left-to-right. Desktop resolves to [phase pill…, #taskSortBtn]; mobile to
 // [segment…, #taskSortBtnMobile]. The desktop Sort trigger lives in the sibling
 // #bulkDescActions overlay (not inside the bar), so it is looked up by id here
 // rather than queried within the bar. Only on-screen, focusable controls are
@@ -261,10 +352,17 @@ function taskFilterArrowOrder() {
     const order = [];
     const bar = document.getElementById('taskFilterBar');
     if (bar) {
+        // Desktop: the four phase pills are the on-screen filter group.
+        const phasePills = bar.querySelectorAll('.taskPhaseFilterPill');
+        phasePills.forEach(function (p) {
+            if (isOnScreenFocusable(p)) order.push(p);
+        });
+        // Mobile: the cycle pill (or, when it is the on-screen control, the
+        // segments). These are CSS-hidden on desktop, so only one group lands.
         const pill = bar.querySelector('.taskCyclePill');
         if (isOnScreenFocusable(pill)) {
             order.push(pill);
-        } else {
+        } else if (order.length === 0) {
             bar.querySelectorAll('.taskFilterSeg').forEach(function (seg) {
                 if (isOnScreenFocusable(seg)) order.push(seg);
             });
@@ -329,6 +427,42 @@ function buildSegmentedControl() {
     });
 
     return seg;
+}
+
+
+// Build the desktop phase-filter control: four always-visible pills (ALL /
+// IDEAS / RUNNING / DONE), each with its own live count, that set the phase
+// filter directly on tap. CSS hides the whole group on mobile (the cycle pill
+// owns that breakpoint) and reveals it on desktop, where the cycle pill hides —
+// so exactly one status-vocabulary control is visible per breakpoint. Tapping a
+// pill routes through the bar's delegated handler.
+function buildPhaseFilterControl() {
+    const group = document.createElement('div');
+    group.className = 'taskPhaseFilters';
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', 'Filter tasks by phase');
+
+    PHASE_FILTERS.forEach(function (f) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'taskPhaseFilterPill';
+        btn.setAttribute('data-phase', f.key);
+        btn.setAttribute('aria-pressed', 'false');
+
+        const label = document.createElement('span');
+        label.className = 'taskPhaseFilterLabel';
+        label.textContent = f.label;
+        btn.appendChild(label);
+
+        const count = document.createElement('span');
+        count.className = 'taskPhaseFilterCount';
+        count.textContent = '0';
+        btn.appendChild(count);
+
+        group.appendChild(btn);
+    });
+
+    return group;
 }
 
 
@@ -401,6 +535,21 @@ function paintSegmented(bar) {
 }
 
 
+// Reflect the persisted phase filter onto the desktop pills: tint the active
+// pill and set aria-pressed. Counts are refreshed separately by applyTaskFilter →
+// updateCounts. Runs in lockstep with the status paints so a repaint keeps every
+// control consistent regardless of which breakpoint is visible.
+function paintPhasePills(bar) {
+    const active = phaseFilterFor(getPhaseFilter()).key;
+    const pills = bar.querySelectorAll('.taskPhaseFilterPill');
+    pills.forEach(function (pill) {
+        const isActive = pill.getAttribute('data-phase') === active;
+        pill.classList.toggle('selected', isActive);
+        pill.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+
 // Apply the current filter to #mainList: update pill counts from the full task
 // list, toggle each committed row's visibility (carrying any open description /
 // stats drawer with it), and show a filter-specific empty state when the
@@ -411,10 +560,18 @@ export function applyTaskFilter() {
     if (!mainList) return;
 
     const blockedActive = getBlockedFilter();
+    // Which status vocabulary governs visibility is decided by the live viewport
+    // width, matching the CSS that shows the status controls on mobile and the
+    // phase pills on desktop — so the visible control and the running predicate
+    // always agree, and a resize re-applies to swap them (see main.js).
+    const desktop = isDesktopFilterMode();
     const active = getTaskFilter();
     const activeFilter = FILTERS.filter(function (f) { return f.key === active; })[0] || FILTERS[0];
+    const phaseKey = getPhaseFilter();
+    const activePhaseFilter = phaseFilterFor(phaseKey);
 
     const counts = { all: 0, active: 0, ideas: 0 };
+    const phaseCounts = { all: 0, ideas: 0, running: 0, done: 0 };
     let blockedCount = 0;
     let total = 0;
     let visible = 0;
@@ -433,25 +590,39 @@ export function applyTaskFilter() {
         // set — matching how the status counts are computed — not the visible
         // subset.
         const blocked = !isCompleted && isBlockedItem(row.__item);
+        // The row's derived phase drives the desktop pills. Resolved once here and
+        // reused for both the phase counts and the visibility predicate. Null when
+        // no resolver is registered (unit rows) — no phase pill then matches, so
+        // ALL still shows everything.
+        const phase = phaseOf(row.__item);
         if (!isCompleted) {
             total += 1;
             counts.all += 1;
             if (status === 'active' || status === 'in_progress') counts.active += 1;
             if (status === 'idea') counts.ideas += 1;
+            phaseCounts.all += 1;
+            if (phase === 'none') phaseCounts.ideas += 1;
+            if (phase === 'running') phaseCounts.running += 1;
+            if (phase === 'done') phaseCounts.done += 1;
             if (blocked) blockedCount += 1;
         }
 
-        // When the blocked filter is engaged the status pill is on ALL, so
-        // visibility keys purely on blocked membership; otherwise the status
-        // filter governs as before.
-        const show = blockedActive ? blocked : activeFilter.match(status);
+        // When the blocked filter is engaged both status vocabularies are on ALL,
+        // so visibility keys purely on blocked membership; otherwise the desktop
+        // phase filter governs at desktop widths and the mobile status filter
+        // below them.
+        const show = blockedActive
+            ? blocked
+            : (desktop ? activePhaseFilter.match(phase) : activeFilter.match(status));
         if (show && !isCompleted) visible += 1;
         setRowHidden(row, !show);
     });
 
     updateCounts(counts);
+    updatePhaseCounts(phaseCounts);
     updateBlockedChip(blockedCount, blockedActive);
-    updateFilterEmptyState(mainList, blockedActive ? 'blocked' : active, total, visible);
+    const emptyKey = blockedActive ? 'blocked' : (desktop ? phaseKey : active);
+    updateFilterEmptyState(mainList, emptyKey, total, visible);
 
     // Filtering hides/shows rows via a class with no DOM mutation or resize, so
     // re-size the ghost spacer here too — otherwise hiding rows could shrink the
@@ -544,6 +715,22 @@ function updateCounts(counts) {
         const segKey = seg.getAttribute('data-seg');
         const segCount = seg.querySelector('.taskFilterSegCount');
         if (segCount) segCount.textContent = String(counts[segKey] != null ? counts[segKey] : 0);
+    });
+}
+
+
+// Desktop phase pills — every pill shows its own live count, drawn from the full
+// committed set (matching the status pills). Called from applyTaskFilter with the
+// phase-count tally so all four pills stay accurate whether or not they are the
+// visible control.
+function updatePhaseCounts(phaseCounts) {
+    const bar = document.getElementById('taskFilterBar');
+    if (!bar) return;
+    const pills = bar.querySelectorAll('.taskPhaseFilterPill');
+    pills.forEach(function (pill) {
+        const key = pill.getAttribute('data-phase');
+        const countSpan = pill.querySelector('.taskPhaseFilterCount');
+        if (countSpan) countSpan.textContent = String(phaseCounts[key] != null ? phaseCounts[key] : 0);
     });
 }
 

@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-27',
+        added: [
+            "On wide screens, the queue rail has ALL / IDEAS / RUNNING / DONE filter pills that narrow the list by pipeline phase, each with a live count.",
+        ],
         changed: [
             "On wide screens, the header now shows the active project as a two-line block — a \"PROJECT n OF m\" position line above the project name — and drops the redundant inline count badge.",
         ],
@@ -18,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-26',
         fixed: [
-            "In the mobile description editor, the entry text area no longer overlaps the action buttons — the modal now scrolls internally so every button stays reachable.",
             "In the file target picker, UI regions now group under their owning file — the file path leads each row with its region labels beneath — instead of listing near-identical labels as separate rows.",
         ],
     },

@@ -48,9 +48,18 @@ function isHidden(row) {
     return row.classList.contains('taskFilterHidden');
 }
 
+// The blocked chip is width-agnostic (visible at both breakpoints), but the
+// non-blocked baseline in these tests keys on the MOBILE status predicate. jsdom
+// defaults to 1024 (desktop, where the phase pills govern), so pin a mobile width.
+const realInnerWidth = window.innerWidth;
+function setWidth(w) {
+    Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
+}
+
 beforeEach(() => {
     document.body.innerHTML = '';
     try { localStorage.clear(); } catch (e) { /* ignore */ }
+    setWidth(800);
     // Default resolver for these tests: a row is blocked iff its __item.blk flag
     // is set. Individual tests may override it.
     setBlockedItemResolver(item => !!(item && item.blk));
@@ -59,6 +68,7 @@ beforeEach(() => {
 afterEach(() => {
     vi.restoreAllMocks();
     setBlockedItemResolver(null);
+    setWidth(realInnerWidth);
 });
 
 

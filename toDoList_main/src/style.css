@@ -3855,6 +3855,78 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
+/* ── DESKTOP PHASE FILTER PILLS (ALL / IDEAS / RUNNING / DONE) ──
+   The desktop-only counterpart to the mobile cycle pill: four always-visible
+   pills that filter the queue by a row's DERIVED pipeline phase rather than its
+   manual status. Hidden by default (mobile owns the cycle pill); revealed at the
+   desktop breakpoint below, where the cycle pill is hidden — so exactly one
+   status-vocabulary control shows per breakpoint. The four pills share the row's
+   width (flex: 1 1 0) so they stay compact in the ~308px queue rail, and the row
+   scrolls horizontally as a last resort rather than wrapping. */
+.taskPhaseFilters {
+  display: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.taskPhaseFilters::-webkit-scrollbar { display: none; }
+
+.taskPhaseFilterPill {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  background: #15151e;
+  color: var(--text-muted);
+  border: 0.5px solid #2a2a3a;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+}
+
+.taskPhaseFilterPill:hover {
+  color: var(--text-primary);
+  border-color: var(--accent-text);
+}
+
+.taskPhaseFilterPill:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.taskPhaseFilterPill.selected {
+  background: var(--bg-elevated);
+  color: var(--accent-text);
+  border-color: var(--border-bright);
+}
+
+.taskPhaseFilterLabel {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.taskPhaseFilterCount {
+  flex: 0 0 auto;
+  font-size: 10px;
+  font-weight: 700;
+  opacity: 0.85;
+}
+
 /* ── BLOCKED-ON-YOU FILTER CHIP ──
    A small amber glyph-and-count chip in #taskFilterBar (before the Sort control)
    that filters the list to tasks whose derived phase is blocked on the user
@@ -13560,6 +13632,12 @@ body.row-dragging * { cursor: grabbing !important; }
   #taskFilterBar {
     background: transparent;
   }
+
+  /* At desktop widths the four phase pills own the filter bar and the mobile
+     cycle pill hides — the reverse of the max-width:1023px block, so exactly one
+     status-vocabulary control is visible per breakpoint. */
+  .taskPhaseFilters { display: flex; }
+  .taskCyclePill    { display: none; }
 
   /* The chip cluster (pomodoro / music / settings) stays anchored at the right
      edge via the pre-existing `margin-left: auto` on the leftmost chip — it

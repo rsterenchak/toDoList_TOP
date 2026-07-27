@@ -55,7 +55,7 @@ import {
     startAgentQueueSubscription,
     onQueueChange,
 } from './agentQueueStore.js';
-import { applyTaskFilter, setBlockedItemResolver } from './taskFilter.js';
+import { applyTaskFilter, setBlockedItemResolver, setItemPhaseResolver } from './taskFilter.js';
 import { dispatchDraft } from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
@@ -94,6 +94,11 @@ export function setStuckReasonResolver(fn) {
 setBlockedItemResolver(function (item) {
     return isBlockedPhase(derivePhase(item));
 });
+
+// The desktop queue-rail phase filter (ALL / IDEAS / RUNNING / DONE) keys off a
+// row's derived phase. taskFilter.js can't import phase.js (the same cycle the
+// blocked resolver dodges), so register derivePhase here as the phase seam.
+setItemPhaseResolver(derivePhase);
 
 
 // Default due-date offset used when a row is committed without a user-chosen
@@ -211,7 +216,11 @@ const RUN_STATUS_PENDING_SVG = '<svg viewBox="0 0 16 16" width="15" height="15" 
 //   'mockup' → '' — the ⌁ MOCKUP badge is the row's single mark; no glyph.
 //   'none'   → '' — nothing to show.
 function glyphStateForPhase(phase) {
-    if (phase === PHASE.DRAFT) return 'pending';
+    // RUNNING is a queue-derived overlay on what would otherwise read as DRAFT
+    // (a dispatched run's injected marker). It carries no row badge of its own,
+    // so it paints the same pending glyph DRAFT does — keeping a running task's
+    // row and rail visually identical to before RUNNING existed.
+    if (phase === PHASE.DRAFT || phase === PHASE.RUNNING) return 'pending';
     if (phase === PHASE.DONE) return 'shipped';
     return '';
 }

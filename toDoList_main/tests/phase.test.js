@@ -6,7 +6,7 @@ import {
     refreshShippedMarkers,
     initInjectConfig,
 } from '../src/inject.js';
-import { derivePhase, PHASE, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS } from '../src/phase.js';
+import { derivePhase, PHASE, PHASE_RAIL_ORDER, PHASE_RAIL_LABELS, isBlockedPhase } from '../src/phase.js';
 import { setQueueRows } from '../src/agentQueueStore.js';
 
 // derivePhase is the single source of truth for a task row's pipeline phase:
@@ -46,7 +46,7 @@ afterEach(() => {
 });
 
 describe('PHASE constants', () => {
-    it('exposes the eight phases (four pipeline + asking + drafted + stuck + mockup), and no run phase', () => {
+    it('exposes the nine phases (four pipeline + asking + drafted + stuck + mockup + running), and no run phase', () => {
         expect(PHASE).toEqual({
             NONE: 'none',
             DRAFT: 'draft',
@@ -56,7 +56,9 @@ describe('PHASE constants', () => {
             DRAFTED: 'drafted',
             STUCK: 'stuck',
             MOCKUP: 'mockup',
+            RUNNING: 'running',
         });
+        // 'running' is a phase, but there is still no bare 'run' phase.
         expect(Object.values(PHASE)).not.toContain('run');
     });
 });
@@ -69,6 +71,7 @@ describe('PHASE_RAIL_ORDER / PHASE_RAIL_LABELS — read-only rail vocabulary', (
         expect(PHASE_RAIL_ORDER).not.toContain(PHASE.DRAFTED);
         expect(PHASE_RAIL_ORDER).not.toContain(PHASE.STUCK);
         expect(PHASE_RAIL_ORDER).not.toContain(PHASE.MOCKUP);
+        expect(PHASE_RAIL_ORDER).not.toContain(PHASE.RUNNING);
         expect(PHASE_RAIL_ORDER).not.toContain('run');
     });
 
@@ -232,6 +235,52 @@ describe('derivePhase — mockup (a needs_mockup run) outranks the marker phases
         setQueueRows([{ id: 'qm5', todo_id: 'someone-else', state: 'needs_mockup' }]);
         expect(derivePhase({ id: 'unlinked' })).toBe(PHASE.NONE);
         expect(derivePhase({})).toBe(PHASE.NONE);
+    });
+});
+
+describe('derivePhase — running (an in-flight dispatched run) outranks the marker phases', () => {
+    it("returns 'running' when the linked queue row is dispatched", () => {
+        setQueueRows([{ id: 'qr1', todo_id: 'todo-disp', state: 'dispatched' }]);
+        expect(derivePhase({ id: 'todo-disp' })).toBe(PHASE.RUNNING);
+    });
+
+    it("returns 'running' when the linked queue row is running", () => {
+        setQueueRows([{ id: 'qr2', todo_id: 'todo-run', state: 'running' }]);
+        expect(derivePhase({ id: 'todo-run' })).toBe(PHASE.RUNNING);
+    });
+
+    it('outranks a pending (present-but-unchecked) marker — a dispatched run injects its entry first', () => {
+        markEntryPresentLocally('owner/running-repo', 'phase-running-pending');
+        // Without a queue row the still-unchecked marker reads as DRAFT…
+        expect(derivePhase({ id: 'todo-rp', entryId: 'phase-running-pending' })).toBe(PHASE.DRAFT);
+        // …but a dispatched queue row on the same todo takes precedence.
+        setQueueRows([{ id: 'qr3', todo_id: 'todo-rp', state: 'running' }]);
+        expect(derivePhase({ id: 'todo-rp', entryId: 'phase-running-pending' })).toBe(PHASE.RUNNING);
+    });
+
+    it('yields to the four user-blocking queue states (they outrank running)', () => {
+        // A single row is only ever in one state, but the ranking is pinned by
+        // check order: needs_words / drafted / failed / needs_mockup are all
+        // tested before dispatched|running.
+        setQueueRows([{ id: 'qr4', todo_id: 'todo-rank', state: 'needs_words' }]);
+        expect(derivePhase({ id: 'todo-rank' })).toBe(PHASE.ASKING);
+        setQueueRows([{ id: 'qr4', todo_id: 'todo-rank', state: 'failed' }]);
+        expect(derivePhase({ id: 'todo-rank' })).toBe(PHASE.STUCK);
+        setQueueRows([{ id: 'qr4', todo_id: 'todo-rank', state: 'needs_mockup' }]);
+        expect(derivePhase({ id: 'todo-rank' })).toBe(PHASE.MOCKUP);
+    });
+
+    it('is NOT a blocked phase and NOT a rail node', () => {
+        expect(isBlockedPhase(PHASE.RUNNING)).toBe(false);
+        expect(PHASE_RAIL_ORDER).not.toContain(PHASE.RUNNING);
+    });
+
+    it('clears when the queue row leaves dispatched/running', () => {
+        setQueueRows([{ id: 'qr5', todo_id: 'todo-rclear', state: 'dispatched' }]);
+        expect(derivePhase({ id: 'todo-rclear' })).toBe(PHASE.RUNNING);
+        // A run that completes moves the row on — with no marker it collapses to NONE.
+        setQueueRows([{ id: 'qr5', todo_id: 'todo-rclear', state: 'triaging' }]);
+        expect(derivePhase({ id: 'todo-rclear' })).toBe(PHASE.NONE);
     });
 });
 
