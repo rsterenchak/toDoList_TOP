@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "On wide screens, the STREAM and STRUCTURE header tabs render as bordered pills again instead of flat underlined text, and the two-line project block gets more breathing room from the header edges and the tabs.",
+            "On wide screens, the header's project block is now bare text sitting on the header rather than a raised bordered pill, so it reads as the page title instead of a control competing with the STREAM / STRUCTURE tabs.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-26',
         fixed: [
-            "In the TODO.md viewer's narrow task-queue column, an entry's text now wraps as normal prose with its action buttons dropping below instead of being crushed to one character per line.",
             "In the mobile description editor, the entry text area no longer overlaps the action buttons — the modal now scrolls internally so every button stays reachable.",
             "In the file target picker, UI regions now group under their owning file — the file path leads each row with its region labels beneath — instead of listing near-identical labels as separate rows.",
         ],
