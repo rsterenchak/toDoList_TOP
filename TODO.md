@@ -348,3 +348,20 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 34fd6074-6195-4510-8793-6bc0678b083b -->
+
+- [ ] **[LOW]** Header: remove the pill chrome from the desktop project block
+  - Type: bug
+  - Description: At desktop widths `#mobileProjHeader` renders as a raised pill — `background: var(--bg-elevated)` plus a `0.5px solid var(--border-mid)` border and a radius. The reviewed layout has the project block as bare text sitting directly on the header background, with only the eyebrow and the name plus caret; the surrounding box makes it read as a control competing with the STREAM / STRUCTURE pills beside it rather than as the header's title. Strip the chrome at desktop only.
+  - Behavior: At desktop widths the project block shows the "PROJECT n OF m" eyebrow above the project name and caret with no background fill, no border, and no rounded box — it sits flush on the header background. It remains a button: it still opens the project dropdown, still shows a hover affordance (a subtle text or caret colour shift rather than a background fill), and keeps its focus-visible outline for keyboard users. Its spacing from the header edge and from the pill group is unchanged. Mobile is unaffected — the mobile project header keeps its own treatment.
+  - Implementation notes:
+    - Remove `background`, `border`, and `border-radius` from the DESKTOP `#mobileProjHeader` rule (style.css ~13057, inside the desktop media block). Do not touch the mobile rule at ~12056, which uses the same id and needs its chrome.
+    - The `transition: background 0.15s ease, border-color 0.15s ease` on that rule becomes dead once both properties are gone. Replace it with a transition on whatever the new hover affordance animates, or drop it — a transition on properties that never change is noise.
+    - There is almost certainly a `:hover` and possibly a `:focus-visible` rule that sets a background or border colour on this block. Grep them in the same media block and update together, or hover will paint a background on an otherwise chromeless element. Keep a visible hover — a chromeless button with no hover feedback is not obviously clickable.
+    - `focus-visible` must stay clearly visible. If the current focus ring relies on the border colour changing, it needs replacing with an actual outline, or keyboard users lose the indicator entirely.
+    - `#mobileProjHeader[data-empty="true"]` at ~13086 handles the no-active-project case with its own contract ("no bare pill"). Check whether that rule assumes the pill chrome exists; if it hides the block by removing the background, it needs adjusting now that there is none.
+    - Removing the padding is not required and probably should not happen — the block's `padding: 4px 10px 4px 12px` still governs its spacing from the header edge and from the pill group. Keep it unless it visibly misaligns the block's left edge against the queue column below.
+    - Check the `--proj-accent` custom property referenced around ~12109. If the project's accent colour is expressed through the border or background at desktop, that signal disappears with the chrome — confirm whether it is used here and, if so, where it should surface instead.
+  - Out of scope: The mobile project header's styling. The eyebrow's content and index logic. The STREAM / STRUCTURE pills, the header action icons, and the header's spacing and height. The project dropdown's contents and behavior.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: fb026cc1-e32c-4843-983c-183cb6f71333 -->
