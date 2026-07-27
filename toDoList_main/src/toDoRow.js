@@ -618,13 +618,15 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descModeStrip',
     '#descSibling .descPasteBody',
     '#descSibling .descGenerateBody',
+    '#descSibling .descTriageBlock',
 ]);
 
 
 // The authoring-control subset of the description panel: the WRITE/PASTE/GENERATE
 // mode strip and its PASTE / GENERATE mode bodies, the entry textarea, the
-// File:-path picker (trigger + panel), Generate (and its failure notice), and
-// Inject. These are the controls that only make sense while a task's entry is
+// File:-path picker (trigger + panel), Generate (and its failure notice), Inject,
+// and the TRIAGE RUNNING block that replaces the entry region while a derive is in
+// flight. These are the controls that only make sense while a task's entry is
 // still being authored, so all of them are hidden together in the terminal `done`
 // phase. The phase rail, THE ENTRY label, the ASKING/STUCK blocks, and Discuss are
 // deliberately NOT in this group.
@@ -638,6 +640,7 @@ const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
     '.descModeStrip',
     '.descPasteBody',
     '.descGenerateBody',
+    '.descTriageBlock',
 ]);
 
 
@@ -999,6 +1002,201 @@ function syncDispatchPanel(toDoChild, item) {
     if (anchorAfter) panel.insertBefore(block, anchorAfter.nextSibling);
     else panel.appendChild(block);
     refreshViewerExpandedHeight();
+}
+
+
+// ── TRIAGE-RUNNING BLOCK ─────────────────────────────────────────────────
+// While a derive is in flight (the linked agent_queue row sits in `triaging`)
+// the panel's entry region is REPLACED by a dedicated running block — a "TRIAGE
+// RUNNING" heading, a live elapsed clock, an indeterminate activity bar, and a
+// spend line naming which budget the run draws on — instead of only swapping the
+// Generate button's label to "Generating…". The block is driven ENTIRELY by the
+// queue row's state via the shared store's per-todo lookup: no second pending
+// store, no localStorage key, no give-up timer — the row IS the state, so a
+// close-and-reopen (or a dispatch from another device) shows it still running
+// with the clock continuing. The Generate control is not shown separately in this
+// state (syncGenerateControl hides the desktop panel button while triaging); the
+// block is the state.
+
+// Resolve the timestamp the elapsed clock counts up from. Prefers a
+// state-transition timestamp (`updated_at`) when the schema carries one, since it
+// bumps on a re-triage and so stays correct across the answer → triaging loop.
+// Falls back to `created_at`, which equals dispatch time ONLY for a first
+// Generate (it is stale after a re-triage). When only `created_at` is available
+// and the row has been answered (a non-empty `thread` marks a re-triage), the
+// elapsed would be misleading, so returns null and the block renders with no
+// clock rather than a wrong one.
+export function resolveTriageStart(row) {
+    if (!row) return null;
+    const iso = row.updated_at || row.created_at || null;
+    if (!iso) return null;
+    const t = Date.parse(iso);
+    if (!isFinite(t)) return null;
+    const answered = Array.isArray(row.thread) && row.thread.length > 0;
+    if (!row.updated_at && answered) return null;
+    return t;
+}
+
+// Format an elapsed millisecond span as m:ss (minutes uncapped so a long run
+// reads 74:05 rather than wrapping). Never negative.
+export function formatTriageElapsed(ms) {
+    const totalSec = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+    const m = Math.floor(totalSec / 60);
+    const s = totalSec % 60;
+    return String(m) + ':' + String(s).padStart(2, '0');
+}
+
+// Repaint the block's elapsed label from its recorded start (data-triage-start).
+// Hides the label when there is no start (the re-triage-without-a-transition-
+// timestamp case), so the block shows without a misleading clock.
+function paintTriageElapsed(block) {
+    if (!block) return;
+    const el = block.querySelector('.descTriageElapsed');
+    if (!el) return;
+    const startAttr = block.getAttribute('data-triage-start');
+    const start = startAttr != null && startAttr !== '' ? Number(startAttr) : NaN;
+    if (!isFinite(start)) { el.hidden = true; el.textContent = ''; return; }
+    el.hidden = false;
+    el.textContent = formatTriageElapsed(Date.now() - start);
+}
+
+// Start the block's client-side clock (a 1s setInterval), idempotently — a block
+// whose timer is already running, or which carries no start timestamp, is left
+// alone. The tick self-terminates once the block is detached (any panel-close
+// path removes #descSibling from the document), a belt-and-suspenders guard
+// against a leaked interval ticking on a rebuilt/closed panel; clearTriageClock
+// clears it explicitly on unmount and on close.
+function startTriageClock(block) {
+    if (!block || block._triageTimer) return;
+    const startAttr = block.getAttribute('data-triage-start');
+    if (startAttr == null || startAttr === '') return;
+    paintTriageElapsed(block);
+    if (typeof setInterval !== 'function') return;
+    block._triageTimer = setInterval(function () {
+        if (!block.isConnected) {
+            clearInterval(block._triageTimer);
+            block._triageTimer = null;
+            return;
+        }
+        paintTriageElapsed(block);
+    }, 1000);
+}
+
+// Clear the block's clock. Accepts either the block itself or a panel to search
+// within, so callers can pass #descSibling directly (the close path).
+function clearTriageClock(scope) {
+    if (!scope) return;
+    const block = scope.classList && scope.classList.contains('descTriageBlock')
+        ? scope
+        : (scope.querySelector ? scope.querySelector('.descTriageBlock') : null);
+    if (block && block._triageTimer) {
+        clearInterval(block._triageTimer);
+        block._triageTimer = null;
+    }
+}
+
+// Build the TRIAGE RUNNING block. Styled with the panel's existing SpaceMono
+// uppercase treatment and accent tokens; the spend line reuses the Max-plan-quota
+// wording the Generate control already carries.
+function buildTriageBlock(row) {
+    const block = document.createElement('div');
+    block.className = 'descTriageBlock';
+    block.setAttribute('role', 'status');
+    block.setAttribute('data-triage-row', String(row.id));
+
+    const heading = document.createElement('span');
+    heading.className = 'descTriageHeading';
+    heading.textContent = 'Triage running';
+    block.appendChild(heading);
+
+    const meta = document.createElement('div');
+    meta.className = 'descTriageMeta';
+
+    const bar = document.createElement('div');
+    bar.className = 'descTriageBar';
+    bar.setAttribute('aria-hidden', 'true');
+    const fill = document.createElement('span');
+    fill.className = 'descTriageBarFill';
+    bar.appendChild(fill);
+    meta.appendChild(bar);
+
+    const elapsed = document.createElement('span');
+    elapsed.className = 'descTriageElapsed';
+    elapsed.setAttribute('aria-live', 'off');
+    elapsed.hidden = true;
+    meta.appendChild(elapsed);
+
+    block.appendChild(meta);
+
+    const spend = document.createElement('p');
+    spend.className = 'descTriageSpend';
+    spend.textContent = 'Runs on Actions — spends your Max-plan quota. Nothing waits on it.';
+    block.appendChild(spend);
+
+    return block;
+}
+
+// Hide the entry region's textarea and File: picker while triage runs, so a
+// landing draft can't overwrite text typed mid-flight. Uses the `[hidden]`
+// attribute (never inline display) so it composes with applyPhaseLayout /
+// applyAuthoringMode rather than fighting them: those run BEFORE syncTriageBlock
+// at every call site, establishing the base visibility, and this re-asserts the
+// triage hide on top — so when the run completes and this stops hiding, the base
+// gates (applyAuthoringMode restoring WRITE's textarea) govern again.
+function hideEntryRegionForTriage(panel) {
+    if (!panel) return;
+    const descInput = panel.querySelector('#descInput');
+    const trigger = panel.querySelector('.filePickTrigger');
+    const pickPanel = panel.querySelector('.filePickPanel');
+    if (descInput) descInput.hidden = true;
+    if (trigger) trigger.hidden = true;
+    if (pickPanel) pickPanel.hidden = true;
+}
+
+// Keep a row's open description panel in sync with its `triaging` state — mounts
+// the TRIAGE RUNNING block (and hides the entry region) when the linked queue row
+// is in `triaging`, and removes it (clearing the clock) otherwise. Mirrors
+// syncAskingPanel / syncDispatchPanel: open-panel guard, idempotent early return
+// (keep the mounted block and its live clock when it already matches this run so a
+// repaint doesn't reset the timer), and a refreshViewerExpandedHeight() on add and
+// remove. Repaints live off the same onQueueChange sweep, so the block appears and
+// clears as the row enters / leaves `triaging` while the panel is open. Runs AFTER
+// applyAuthoringMode at every call site so its entry-region hide wins.
+export function syncTriageBlock(toDoChild, item) {
+    const panel = openDescSiblingFor(toDoChild);
+    if (!panel) return;
+    const existing = panel.querySelector('.descTriageBlock');
+    const row = item && item.id ? getQueueRowForTodo(item.id) : null;
+    const wantTriage = !!(row && row.state === 'triaging');
+    if (wantTriage) {
+        if (existing) {
+            // Same run — keep the mounted block and its live clock (restart it if a
+            // close cleared the interval), and re-assert the entry-region hide that
+            // applyAuthoringMode may have un-done on this sweep.
+            if (existing.getAttribute('data-triage-row') === String(row.id)) {
+                startTriageClock(existing);
+                hideEntryRegionForTriage(panel);
+                return;
+            }
+            clearTriageClock(existing);
+            existing.remove();
+        }
+        const block = buildTriageBlock(row);
+        const startMs = resolveTriageStart(row);
+        if (startMs != null) block.setAttribute('data-triage-start', String(startMs));
+        // Sits where the entry region is — before the File: picker trigger /
+        // textarea it replaces. Falls back to appending at the panel's end.
+        const anchor = panel.querySelector('.filePickTrigger') || panel.querySelector('#descInput');
+        if (anchor) panel.insertBefore(block, anchor);
+        else panel.appendChild(block);
+        startTriageClock(block);
+        hideEntryRegionForTriage(panel);
+        refreshViewerExpandedHeight();
+    } else if (existing) {
+        clearTriageClock(existing);
+        existing.remove();
+        refreshViewerExpandedHeight();
+    }
 }
 
 
@@ -1603,13 +1801,18 @@ export function syncGenerateControl(btn) {
         clearGenerateFailure(btn);
     }
 
-    // Visuals: Generating… while triaging; hidden when no target or when a queue
-    // row already owns the lifecycle (drafted/failed/needs_words/dispatched/…);
-    // the plain Generate action only in the true idle state.
+    // Visuals: while triaging, the desktop description panel shows the in-flight
+    // state through the dedicated TRIAGE RUNNING block (syncTriageBlock), so the
+    // Generate button is HIDDEN there rather than showing a "Generating…" label —
+    // the block is the state. The mobile description-editor modal has no such
+    // block, so its button keeps the Generating… label. Hidden when no target or
+    // when a queue row already owns the lifecycle (drafted/failed/needs_words/
+    // dispatched/…); the plain Generate action only in the true idle state.
+    const inDescPanel = !!(btn.closest && btn.closest('#descSibling'));
     if (!hasTarget) {
         setGenerateVisual(btn, 'hidden');
     } else if (generating) {
-        setGenerateVisual(btn, 'generating');
+        setGenerateVisual(btn, inDescPanel ? 'hidden' : 'generating');
     } else if (row) {
         setGenerateVisual(btn, 'hidden');
     } else {
@@ -1711,6 +1914,11 @@ export function refreshDescStatusDots() {
                     applyAuthoringMode(openPanel, openPanel.dataset.authorMode || 'write');
                     syncGenerateBody(openPanel, row.__item, row.getAttribute('data-value'));
                 }
+                // Replace the entry region with the TRIAGE RUNNING block live as the
+                // row enters `triaging`, and restore the authoring layout when it
+                // leaves — the row is the state, so a dispatch from another device
+                // flips this too. Runs after applyAuthoringMode so its hide wins.
+                syncTriageBlock(row, row.__item);
                 refreshViewerExpandedHeight();
             }
             if (row.__item.entryId && row.dataset && row.dataset.value) {
@@ -2939,6 +3147,16 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             applyAuthoringMode(descSibling, 'write');
             syncGenerateBody(descSibling, item, projectName);
         }
+        // Replace the entry region with the TRIAGE RUNNING block while the linked
+        // queue row is in `triaging` — a running heading, a live elapsed clock, an
+        // indeterminate bar, and the spend line — instead of only swapping
+        // Generate's label. Hides the textarea + picker so a landing draft can't
+        // overwrite text typed mid-flight. Runs AFTER applyAuthoringMode so its
+        // entry-region hide wins; a no-op in every non-triaging state. Committed
+        // rows only — a blank placeholder has no queue row to be triaging.
+        if (item.id) {
+            syncTriageBlock(toDoChild, item);
+        }
         // Mount the shared MANUAL STATUS control at the FOOT of the panel, below
         // the action buttons — the desktop counterpart to the mobile modal's
         // last-in-dialog placement. Committed rows only: a blank placeholder has
@@ -2976,6 +3194,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
     }
 
     function closePanel() {
+        // Stop the TRIAGE RUNNING block's elapsed clock before detaching the panel
+        // — #descSibling's children survive a close, so a leaked interval would
+        // keep ticking on the removed panel. syncTriageBlock restarts it on reopen
+        // if the run is still live.
+        clearTriageClock(descSibling);
         // Remove the panel from wherever it lives — the detail pane or the inline
         // slot — via its parent, so one path covers both modes.
         if (descSibling.parentNode) descSibling.parentNode.removeChild(descSibling);

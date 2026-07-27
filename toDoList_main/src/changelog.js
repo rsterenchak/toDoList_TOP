@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-27',
         changed: [
-            "On wide screens, the detail panel now lays out its Inject, Generate, and Discuss actions on one row and shows the entry's target files beneath them.",
+            "On wide screens, while the agent drafts an entry the detail panel now shows a dedicated triage-running block with a live elapsed timer instead of only a “Generating…” button label.",
         ],
         fixed: [
             "On wide screens, the header's project block is now bare text sitting on the header rather than a raised bordered pill, so it reads as the page title instead of a control competing with the STREAM / STRUCTURE tabs.",
