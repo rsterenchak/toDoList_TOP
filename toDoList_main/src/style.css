@@ -17491,6 +17491,162 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 #descSibling .descSiblingEntryLabel[hidden] {
   display: none;
 }
+
+/* WRITE / PASTE / GENERATE AUTHORING MODE STRIP — a three-segment control above
+   the entry region grouping the three ways an entry gets written. The strip sits
+   in the content column (grid-column: 2) so it aligns with the textarea like the
+   phase rail; the two mode bodies carry their own padding and span full-width
+   (1 / -1) like the ASKING / STUCK / Dispatch blocks. Every one of these is in
+   DESC_PANEL_CHILD_SELECTORS, so each needs an explicit grid-column or it
+   auto-places into a 14px gutter. All three are in the authoring group that
+   applyPhaseLayout hides in `done`, and the mode controller (applyAuthoringMode)
+   toggles the inactive-mode bodies + WRITE-only controls via [hidden] — each sets
+   its own author-level `display`, which outranks the UA [hidden] rule, so
+   re-assert the hidden state explicitly, scoped to #descSibling. */
+#descSibling .descModeStrip {
+  grid-column: 2;
+}
+#descSibling .descPasteBody,
+#descSibling .descGenerateBody {
+  grid-column: 1 / -1;
+}
+#descSibling .descModeStrip[hidden],
+#descSibling .descPasteBody[hidden],
+#descSibling .descGenerateBody[hidden] {
+  display: none;
+}
+
+.descModeStrip {
+  display: inline-flex;
+  gap: 2px;
+  width: fit-content;
+  margin: 2px 0 6px;
+  padding: 2px;
+  background: var(--bg-base);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+}
+.descModeStripSeg {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.descModeStripSeg:hover { color: var(--text-secondary); }
+.descModeStripSeg:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.descModeStripSeg.is-active {
+  color: var(--accent-text);
+  background: var(--bg-elevated);
+}
+
+.descPasteBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px 10px;
+}
+.descPasteInput {
+  /* 16px keeps iOS Safari from auto-zooming on focus; monospace so pasted
+     markdown lines up and indentation reads correctly, matching #descInput. */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.5;
+  min-height: 96px;
+  padding: 8px 10px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+  white-space: pre-wrap;
+  resize: vertical;
+}
+.descPasteInput::placeholder { color: var(--text-muted); font-style: italic; }
+.descPasteActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.descPasteReport {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+.descPasteReport[hidden] { display: none; }
+.descPasteParse {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.descPasteParse:hover { background: var(--bg-hover); }
+.descPasteParse:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.descGenerateBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px 10px;
+  padding: 10px 12px;
+  background: var(--bg-hover);
+  border-left: 3px solid var(--accent-dim);
+  border-radius: 8px;
+}
+.descGenerateState {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+.descGenerateAction {
+  align-self: flex-start;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 8px;
+  padding: 8px 14px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.descGenerateAction:hover { background: var(--bg-hover); }
+.descGenerateAction:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.descGenerateAction--cancel { color: var(--text-secondary); }
+
 .generateFailureText {
   flex: 1 1 auto;
   font-size: 12px;

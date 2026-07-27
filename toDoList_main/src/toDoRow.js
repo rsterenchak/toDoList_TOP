@@ -61,6 +61,8 @@ import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker } from './filePicker.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
+import { buildAuthoringModeStrip, setAuthoringModeStripActive } from './authoringModeStrip.js';
+import { parsePastedEntry, recognizedEntryFields } from './entryParse.js';
 
 
 // The row-side "Discuss" action opens the Claude sheet scoped to this task.
@@ -601,14 +603,19 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .generateBtn',
     '#descSibling .generateFailure',
     '#descSibling #descEditorModalStatusRow',
+    '#descSibling .descModeStrip',
+    '#descSibling .descPasteBody',
+    '#descSibling .descGenerateBody',
 ]);
 
 
-// The authoring-control subset of the description panel: the entry textarea, the
+// The authoring-control subset of the description panel: the WRITE/PASTE/GENERATE
+// mode strip and its PASTE / GENERATE mode bodies, the entry textarea, the
 // File:-path picker (trigger + panel), Generate (and its failure notice), and
 // Inject. These are the controls that only make sense while a task's entry is
-// still being authored. The phase rail, THE ENTRY label, the ASKING/STUCK blocks,
-// and Discuss are deliberately NOT in this group.
+// still being authored, so all of them are hidden together in the terminal `done`
+// phase. The phase rail, THE ENTRY label, the ASKING/STUCK blocks, and Discuss are
+// deliberately NOT in this group.
 const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
     '#descInput',
     '.filePickTrigger',
@@ -616,6 +623,9 @@ const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
     '.generateBtn',
     '.generateFailure',
     '.injectBtn',
+    '.descModeStrip',
+    '.descPasteBody',
+    '.descGenerateBody',
 ]);
 
 
@@ -1023,6 +1033,244 @@ export function mountDescFilePicker(descSibling, descInput, item, projectName, i
 }
 
 
+// ── WRITE / PASTE / GENERATE AUTHORING MODE STRIP ────────────────────────
+// A three-segment strip above the entry region grouping the three ways an entry
+// gets written: WRITE (today's textarea + File: picker), PASTE (parse a pasted
+// entry into the open task), and GENERATE (render the agent's triage state large,
+// with a dispatch / cancel). The strip is built by the shared authoringModeStrip
+// module so the mobile modal can adopt it later without a second implementation.
+// The mode is transient view state — never persisted per task — reset to WRITE on
+// every open (see mountAuthoringModeStrip). Switching modes never touches the
+// entry text: it only shows / hides entry-region bodies, so the textarea keeps its
+// value across switches.
+
+// Apply one authoring mode's entry-region visibility to an open panel. The strip
+// and Inject / Discuss / MANUAL STATUS always stay (Inject/Discuss/status are not
+// touched here — they show in every mode). This governs which entry-region body
+// is shown for the active mode:
+//   write    — the textarea + File: picker trigger + Generate (today's panel).
+//   paste    — the paste field + Parse; textarea, picker, Generate hidden.
+//   generate — the triage state body; textarea, picker, Generate hidden.
+// Runs AFTER applyPhaseLayout at every call site (mount + live sweep): in a
+// non-`done` phase applyPhaseLayout un-hides the whole authoring group and this
+// re-hides the two inactive-mode elements; in `done` applyPhaseLayout hides
+// everything and this is skipped, so the group stays hidden. Uses the [hidden]
+// attribute (never inline display) so it composes with syncGenerateControl's own
+// display gating, exactly as applyPhaseLayout does. Records the active mode on the
+// panel (data-author-mode) so a live repaint can re-assert it with no state kept
+// elsewhere. The File: picker trigger shows in WRITE only (no textarea to insert a
+// path into in the other modes).
+export function applyAuthoringMode(descSibling, mode) {
+    if (!descSibling) return;
+    const m = (mode === 'paste' || mode === 'generate') ? mode : 'write';
+    descSibling.dataset.authorMode = m;
+    const isWrite = m === 'write';
+    setAuthoringModeStripActive(descSibling.querySelector('.descModeStrip'), m);
+    const descInput = descSibling.querySelector('#descInput');
+    const trigger = descSibling.querySelector('.filePickTrigger');
+    const pickPanel = descSibling.querySelector('.filePickPanel');
+    const genBtn = descSibling.querySelector('.generateBtn');
+    const pasteBody = descSibling.querySelector('.descPasteBody');
+    const genBody = descSibling.querySelector('.descGenerateBody');
+    if (descInput) descInput.hidden = !isWrite;
+    if (trigger) trigger.hidden = !isWrite;
+    // Force-close the picker's searchable panel away from WRITE; in WRITE its own
+    // open/close toggle governs, so leave it alone there.
+    if (pickPanel && !isWrite) pickPanel.hidden = true;
+    if (genBtn) genBtn.hidden = !isWrite;
+    if (pasteBody) pasteBody.hidden = m !== 'paste';
+    if (genBody) genBody.hidden = m !== 'generate';
+}
+
+
+// Parse a pasted entry and write it into the OPEN task's description — reusing the
+// shared parser (entryParse.parsePastedEntry) and the same listLogic description
+// path descInput's blur handler uses. Unlike the compose-row paste chip's
+// commitEntryToActiveProject, this NEVER creates a new task: it fills the current
+// item's desc, mirrors it into the live textarea (firing auto-grow), and
+// re-evaluates Inject. Reports the recognised fields, then returns the panel to
+// WRITE with the entry populated for review. Guards the empty case.
+function applyPastedEntryToOpenTask(descSibling, descInput, item, projectName, injectBtn, raw, reportEl) {
+    const parsed = parsePastedEntry(raw);
+    if (!parsed.title && !(parsed.description || '').trim()) {
+        if (reportEl) {
+            reportEl.textContent = 'Nothing to parse — paste an entry first.';
+            reportEl.hidden = false;
+        }
+        return;
+    }
+    item.desc = parsed.description;
+    listLogic.saveToStorage();
+    if (projectName) listLogic.editToDoItem(projectName, item);
+    if (descInput) {
+        descInput.value = parsed.description;
+        // Auto-grow reads scrollHeight off the synthetic input event.
+        descInput.dispatchEvent(new Event('input'));
+    }
+    if (injectBtn) refreshInjectButton(injectBtn, item, projectName);
+
+    const fields = recognizedEntryFields(raw);
+    const summary = fields.length
+        ? 'Recognised: ' + fields.join(', ')
+        : 'Entry filled — no labelled fields recognised.';
+    if (reportEl) {
+        reportEl.textContent = summary;
+        reportEl.hidden = false;
+    }
+    showRowToast(summary);
+    // Return to WRITE with the entry populated for review.
+    applyAuthoringMode(descSibling, 'write');
+    refreshViewerExpandedHeight();
+}
+
+
+// Build the PASTE mode body — a paste field + Parse action driving
+// applyPastedEntryToOpenTask. Hidden unless PASTE is the active mode.
+function buildPasteBody(descSibling, descInput, item, projectName, injectBtn) {
+    const body = document.createElement('div');
+    body.className = 'descPasteBody';
+    body.hidden = true;
+
+    const input = document.createElement('textarea');
+    input.className = 'descPasteInput';
+    input.rows = 4;
+    input.placeholder = 'Paste a TODO.md entry here…';
+    input.setAttribute('aria-label', 'Paste an entry');
+    // 16px avoids iOS Safari's focus auto-zoom (per the mobile input convention).
+    input.style.fontSize = '16px';
+    input.spellcheck = false;
+    input.setAttribute('autocorrect', 'off');
+    input.autocapitalize = 'off';
+    input.addEventListener('click', function(e) { e.stopPropagation(); });
+    body.appendChild(input);
+
+    const actions = document.createElement('div');
+    actions.className = 'descPasteActions';
+
+    const report = document.createElement('p');
+    report.className = 'descPasteReport';
+    report.setAttribute('role', 'status');
+    report.hidden = true;
+    actions.appendChild(report);
+
+    const parseBtn = document.createElement('button');
+    parseBtn.type = 'button';
+    parseBtn.className = 'descPasteParse';
+    parseBtn.textContent = 'Parse';
+    actions.appendChild(parseBtn);
+    body.appendChild(actions);
+
+    parseBtn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        applyPastedEntryToOpenTask(descSibling, descInput, item, projectName, injectBtn, input.value, report);
+    });
+
+    return body;
+}
+
+
+// Build the GENERATE mode body — renders the linked agent_queue row's triage
+// state LARGER (the mode does NOT own the state; the queue row is the state, and
+// derivePhase already returns `drafted` when a draft lands). While a run is live
+// it shows an in-flight line + a Cancel that returns to WRITE (the run keeps going
+// and its draft lands into the textarea when ready); when idle it shows a one-line
+// explanation + a Dispatch that triggers the EXISTING Generate path by clicking
+// the panel's own Generate button — no second trigger, no second pending store.
+// Its content is (re)painted by syncGenerateBody. Hidden unless GENERATE is active.
+function buildGenerateBody(generateBtn) {
+    const body = document.createElement('div');
+    body.className = 'descGenerateBody';
+    body.hidden = true;
+
+    const state = document.createElement('p');
+    state.className = 'descGenerateState';
+    body.appendChild(state);
+
+    const action = document.createElement('button');
+    action.type = 'button';
+    action.className = 'descGenerateAction';
+    action.addEventListener('click', function(e) {
+        e.stopPropagation();
+        if (action.getAttribute('data-action') === 'cancel') {
+            // Dismiss the generate view; the live run keeps going and lands into
+            // the textarea when the draft is ready.
+            const panel = body.closest('#descSibling') || body.parentNode;
+            applyAuthoringMode(panel, 'write');
+            refreshViewerExpandedHeight();
+            return;
+        }
+        // Dispatch: reuse the existing Generate trigger (no second trigger).
+        if (generateBtn) generateBtn.click();
+    });
+    body.appendChild(action);
+
+    return body;
+}
+
+
+// Repaint the GENERATE mode body from the task's linked agent_queue row so it
+// reflects the live triage state. No-op when the body isn't mounted. Reads the
+// shared store synchronously, exactly as syncGenerateControl does.
+export function syncGenerateBody(descSibling, item, projectName) {
+    if (!descSibling) return;
+    const body = descSibling.querySelector('.descGenerateBody');
+    if (!body) return;
+    const state = body.querySelector('.descGenerateState');
+    const action = body.querySelector('.descGenerateAction');
+    const row = item && item.id ? getQueueRowForTodo(item.id) : null;
+    const generating = !!row && row.state === 'triaging';
+    if (generating) {
+        if (state) state.textContent = 'Generating an entry from this task…';
+        if (action) {
+            action.className = 'descGenerateAction descGenerateAction--cancel';
+            action.setAttribute('data-action', 'cancel');
+            action.textContent = 'Cancel';
+        }
+    } else {
+        if (state) state.textContent = 'Have the agent draft an entry from this task’s title and description.';
+        if (action) {
+            action.className = 'descGenerateAction';
+            action.setAttribute('data-action', 'dispatch');
+            action.textContent = 'Generate';
+        }
+    }
+}
+
+
+// Mount (idempotently) the WRITE / PASTE / GENERATE strip and its PASTE / GENERATE
+// mode bodies into an OPEN description panel. #descSibling children survive a
+// close, so drop any prior strip + bodies first (the file-picker duplication
+// lesson) and rebuild — which also resets the transient mode to WRITE on every
+// open. The strip leads the entry region (mounted after THE ENTRY label); the two
+// mode bodies mount in the entry region beside the textarea. Every node carries an
+// explicit grid-column (style.css) and is listed in DESC_PANEL_CHILD_SELECTORS.
+// The caller applies the initial mode (applyAuthoringMode) AFTER applyPhaseLayout
+// so it wins over the group un-hide.
+export function mountAuthoringModeStrip(descSibling, descInput, item, projectName, injectBtn, generateBtn) {
+    descSibling.querySelectorAll('.descModeStrip, .descPasteBody, .descGenerateBody')
+        .forEach(function(el) { el.remove(); });
+
+    const modeStrip = buildAuthoringModeStrip(function(mode) {
+        applyAuthoringMode(descSibling, mode);
+        if (mode === 'generate') syncGenerateBody(descSibling, item, projectName);
+        refreshViewerExpandedHeight();
+    });
+    const pasteBody = buildPasteBody(descSibling, descInput, item, projectName, injectBtn);
+    const generateBody = buildGenerateBody(generateBtn);
+
+    // Strip leads the entry region: after THE ENTRY label when present (so the
+    // phase rail + ASKING/STUCK blocks still lead the panel), else before the
+    // textarea.
+    const label = descSibling.querySelector('.descSiblingEntryLabel');
+    descSibling.insertBefore(modeStrip, label ? label.nextSibling : descInput);
+    // The mode bodies replace the textarea visually, so mount them right after it.
+    descSibling.insertBefore(pasteBody, descInput.nextSibling);
+    descSibling.insertBefore(generateBody, pasteBody.nextSibling);
+
+    descSibling.dataset.authorMode = 'write';
+}
+
+
 // ── GENERATE-WITH-TRIAGE CONTROL ─────────────────────────────────────────
 // A "Generate" action that sits beside Inject in a task's description panel.
 // Tapping it flags the task for the agent (listLogic.flagTaskForAgent) and fires
@@ -1370,6 +1618,15 @@ export function refreshDescStatusDots() {
             // card below to match, mirroring mountDescRail / the sync panels.
             if (openPanel) {
                 applyPhaseLayout(openPanel, phase);
+                // Re-assert the active authoring mode after the phase gate (which
+                // un-hides the whole group in a non-`done` phase) so the two
+                // inactive-mode bodies stay hidden, and repaint the GENERATE body
+                // from the live queue-row state (triaging → idle). Skipped in
+                // `done`, where the whole group stays hidden.
+                if (phase !== PHASE.DONE) {
+                    applyAuthoringMode(openPanel, openPanel.dataset.authorMode || 'write');
+                    syncGenerateBody(openPanel, row.__item, row.getAttribute('data-value'));
+                }
                 refreshViewerExpandedHeight();
             }
             if (row.__item.entryId && row.dataset && row.dataset.value) {
@@ -2551,10 +2808,25 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // shipped and a failed run retried without leaving the row. No-op in every
         // other phase; runs the shared dispatch the Agent board uses.
         syncDispatchPanel(toDoChild, item);
+        // Mount the WRITE / PASTE / GENERATE authoring mode strip above the entry
+        // region and its PASTE / GENERATE bodies beside the textarea. Committed
+        // rows only — a blank placeholder has no task to paste into or generate
+        // from. Resets to WRITE on every open (the mode is transient view state).
+        if (item.id) {
+            mountAuthoringModeStrip(descSibling, descInput, item, projectName, injectBtn, generateBtn);
+        }
         // Gate the authoring controls by the derived phase — hidden in `done`,
-        // fully shown everywhere else. Runs last so every control it toggles is
-        // already mounted.
-        applyPhaseLayout(descSibling, derivePhase(item));
+        // fully shown everywhere else. Runs after every authoring control it
+        // toggles (including the mode strip + bodies) is mounted.
+        const derivedPhase = derivePhase(item);
+        applyPhaseLayout(descSibling, derivedPhase);
+        // Apply the active authoring mode AFTER the phase gate so it wins over the
+        // group un-hide in a non-`done` phase (the strip + inactive-mode bodies are
+        // in the authoring group). In `done` the whole group stays hidden, so skip.
+        if (item.id && derivedPhase !== PHASE.DONE) {
+            applyAuthoringMode(descSibling, 'write');
+            syncGenerateBody(descSibling, item, projectName);
+        }
         // Mount the shared MANUAL STATUS control at the FOOT of the panel, below
         // the action buttons — the desktop counterpart to the mobile modal's
         // last-in-dialog placement. Committed rows only: a blank placeholder has
@@ -2865,6 +3137,9 @@ export function buildToDoRow(item, toDoName) {
             // Auto-grow reads scrollHeight off the synthetic input event.
             descInput.dispatchEvent(new Event("input"));
             refreshInjectButton(injectBtn, item, toDoName);
+            // A draft landing from GENERATE mode returns the strip to WRITE with
+            // the generated entry in the textarea; a no-op if already in WRITE.
+            applyAuthoringMode(descSibling, "write");
             refreshViewerExpandedHeight();
         },
     });

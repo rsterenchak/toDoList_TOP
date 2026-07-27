@@ -51,6 +51,27 @@ export function parsePastedEntry(raw) {
 }
 
 
+// Report which recognisable TODO-entry fields a pasted blob carries, for the
+// PASTE authoring mode's "recognised: …" feedback. This is a field-PRESENCE
+// report, NOT a second parser: it delegates the title / description / marker
+// detection to parsePastedEntry above and only scans for the common sub-bullet
+// labels (Type, Description, File) and the priority marker so the user can see
+// at a glance what the parse picked up before it lands in the entry. Returns the
+// recognised field names in a stable display order (empty when nothing parses).
+export function recognizedEntryFields(raw) {
+    const text = String(raw == null ? '' : raw);
+    const parsed = parsePastedEntry(text);
+    const fields = [];
+    if (parsed.title) fields.push('title');
+    if (/\*\*\[(?:HIGH|MEDIUM|LOW)\]\*\*/i.test(text)) fields.push('priority');
+    if (/^\s*[-*]?\s*Type:\s*\S/im.test(text)) fields.push('type');
+    if (/^\s*[-*]?\s*Description:\s*\S/im.test(text)) fields.push('description');
+    if (/^\s*[-*]?\s*File:\s*\S/im.test(text)) fields.push('file');
+    if (parsed.hasMarker) fields.push('marker id');
+    return fields;
+}
+
+
 // Commit a parsed entry into the ACTIVE project by driving its blank
 // placeholder through the same Enter path a typed task uses — so the committed
 // row gets its status badge, a fresh blank placeholder, and persistence, and
