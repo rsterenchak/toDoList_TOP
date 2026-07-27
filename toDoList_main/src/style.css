@@ -13056,17 +13056,24 @@ body.row-dragging * { cursor: grabbing !important; }
 
   #mobileProjHeader {
     display: inline-flex;
-    flex-direction: row;
-    align-items: center;
+    /* Two-line project block: the PROJECT n OF m eyebrow stacks above the
+       name + ▾ title row. #mobileProjMain is display:contents here, so the
+       eyebrow (#mobileProjLabel) and the title row (#mobileProjTitleRow) are
+       the header's direct flex items and stack in this column. */
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
     justify-self: start;
-    gap: 4px;
+    gap: 2px;
     width: auto;
     max-width: 280px;
+    min-width: 0;
     min-height: 0;
-    /* Vertically centered inside the 44px nav band; #navBar's gap/padding own
-       the horizontal spacing now that the pill rides in the header. */
+    /* Vertically centered inside the nav band by #navBar's align-items:center;
+       #navBar's gap/padding own the horizontal spacing now that the block
+       rides in the header. */
     margin: 0;
-    padding: 6px 10px 6px 12px;
+    padding: 4px 10px 4px 12px;
     background: var(--bg-elevated);
     border: 0.5px solid var(--border-mid);
     border-radius: var(--radius-md);
@@ -13085,12 +13092,31 @@ body.row-dragging * { cursor: grabbing !important; }
     border-color: var(--accent);
   }
 
-  /* The pill shows name + ▾ only: the PROJECT N OF M label and the ‹ ›
-     carousel chevrons are mobile affordances. The open/done counts
-     (#mobileProjStats) are NOT hidden here — placeDesktopHeader() lifts them
-     out of the pill and seats them inline in the top header (styled below). */
-  #mobileProjLabel,
+  /* The ‹ › carousel chevrons are a mobile affordance and stay hidden here.
+     The open/done counts (#mobileProjStats) are NOT hidden in this block —
+     placeDesktopHeader() lifts them out of the pill and seats them inline in
+     the top header (styled below). */
   .mobileProjChev { display: none; }
+
+  /* PROJECT n OF m eyebrow — a small uppercase muted-monospace line sitting
+     above the project name to form the two-line desktop project block. Its
+     text is written by the shared updateMobileProjHeader writer (same element
+     the mobile header uses), and it is marked aria-hidden in JS so it is not
+     announced as part of the pill's accessible name. */
+  #mobileProjLabel {
+    display: block;
+    max-width: 100%;
+    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    line-height: 1.2;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   #mobileProjTitleRow {
     /* The base mobile `display: flex` lives in the max-width:1023px block, so
@@ -13148,27 +13174,11 @@ body.row-dragging * { cursor: grabbing !important; }
     user-select: none;
   }
 
-  /* Icon-first pill: a small rounded "open/total" count badge (e.g. "7/19")
-     sits inline between the name and the ▾ chevron, replacing the separate
-     open/done counts row that formerly rode in the top header. */
-  .mobileProjCountBadge {
-    display: inline-flex;
-    align-items: center;
-    flex: 0 0 auto;
-    margin: 0 2px;
-    padding: 1px 7px;
-    border-radius: 999px;
-    background: rgba(157, 147, 238, 0.14);
-    color: rgba(157, 147, 238, 0.9);
-    font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-    font-size: 11px;
-    font-weight: 700;
-    line-height: 1.4;
-    letter-spacing: 0.02em;
-  }
-  /* No count badge when there is no active project — matches the empty-state
-     pill contract (the whole header hides on data-empty anyway). */
-  #mobileProjHeader[data-empty="true"] .mobileProjCountBadge { display: none; }
+  /* The inline "open/total" count badge is not shown on desktop: the
+     open/done counts already read on the footer ("20 OPEN · 448 DONE"), so
+     the badge is redundant here and is dropped from the two-line block. It
+     stays in the DOM (and visible on mobile) for the mobile pill. */
+  .mobileProjCountBadge { display: none; }
 
   /* The hamburger is retired as a desktop trigger — the pill owns
      opening the drawer now. The button stays in the DOM (Ctrl+Backspace

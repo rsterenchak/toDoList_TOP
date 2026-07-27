@@ -713,6 +713,12 @@ function component() {
     mobileProjPrev.setAttribute('aria-label', 'Previous project');
     mobileProjNext.setAttribute('aria-label', 'Next project');
 
+    // The PROJECT n OF m line is a positional eyebrow (mobile header line, and
+    // the desktop two-line project block); it is decorative relative to the
+    // project name, so keep it out of the pill's accessible name — the name
+    // itself carries the meaningful label on both breakpoints.
+    mobileProjLabel.setAttribute('aria-hidden', 'true');
+
     mobileProjStats.appendChild(mobileProjCounts);
 
     // Dense-mobile-header affordance (≤1023px only — hidden on desktop

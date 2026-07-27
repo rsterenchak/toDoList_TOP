@@ -314,7 +314,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e2b5fa7b-7821-415e-9c84-9507b9957aa1 -->
 
-- [ ] **[MEDIUM]** Header: render the project as a two-line block with a "PROJECT n OF m" eyebrow
+- [x] **[MEDIUM]** Header: render the project as a two-line block with a "PROJECT n OF m" eyebrow — Completed: 2026-07-27
   - Type: feature
   - Description: The desktop header renders the active project through the mobile project-header block — a single line of name plus a `20/466` count badge and a caret (`mobileProjCountBadge`, main.js:2623). The reviewed desktop layout uses a two-line block instead: a small uppercase monospace eyebrow reading "PROJECT n OF m" above the project name in larger purple monospace. Build that desktop treatment. The open/done counts already appear in the footer ("20 OPEN · 448 DONE"), so the inline badge is redundant on desktop and its information is not lost.
   - Behavior: At desktop widths the header's project control renders two stacked lines: an eyebrow reading "PROJECT n OF m" — n being the active project's 1-based position in the sidebar's order, m the total — in small uppercase monospace at muted emphasis, and beneath it the project name in the larger purple monospace treatment with its dropdown caret. The inline count badge is not shown on desktop. Both lines are part of the same control, so the whole block opens the project dropdown, and it keeps its current keyboard focus behavior and accessible name. The eyebrow updates when a project is added, deleted, reordered, or switched. Mobile is unchanged: it keeps the single-line name, count badge, and caret exactly as they are.
