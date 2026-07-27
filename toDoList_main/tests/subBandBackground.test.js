@@ -14,10 +14,10 @@ function read(relative) {
 // header row (#navBar) rather than in a dedicated sub-band beneath it. This
 // suite previously pinned the sub-band's --bg-base paint and its box-shadow
 // row-fill; it is rewritten to pin the removal — no #desktopViewSubBand rule
-// survives anywhere, and the view tabs keep their underlined-accent active
-// styling now that they are #navBar-scoped. Verified via source inspection
-// because jsdom does no layout and main.js is too large to instantiate (per
-// CLAUDE.md guidance).
+// survives anywhere, and the view tabs keep the base bordered-pill treatment
+// (the flat underlined-text override was retired) now that they are
+// #navBar-scoped. Verified via source inspection because jsdom does no layout
+// and main.js is too large to instantiate (per CLAUDE.md guidance).
 describe('desktop view sub-band retired (view tabs moved into the header)', () => {
     const css = read('style.css');
 
@@ -48,12 +48,20 @@ describe('desktop view sub-band retired (view tabs moved into the header)', () =
         expect(m[1]).toMatch(/margin-right:\s*0/);
     });
 
-    it('(c) the view tabs keep their active accent styling, now #navBar-scoped', () => {
-        // The active tab purple text + 2px purple underline indicator survive
-        // the move — re-scoped from #desktopViewSubBand to #navBar.
+    it('(c) the view tabs keep the base bordered-pill treatment, with no #navBar override', () => {
+        // The flat underlined-text override (#navBar .viewPill / .active /
+        // .active::after) is retired; the tabs fall through to the base
+        // .viewPill bordered-pill rules so they read as pills beside the
+        // bordered project block.
         const block = consolidationBlock();
-        expect(block).toMatch(/#navBar \.viewPill\.active\s*\{[^}]*color:\s*#9D93EE/);
-        expect(block).toMatch(/#navBar \.viewPill\.active::after\s*\{[^}]*background:\s*#9D93EE/);
+        expect(block).not.toMatch(/#navBar\s+\.viewPill\s*\{/);
+        expect(block).not.toMatch(/\.viewPill\.active::after/);
+        // The base active-pill treatment carries the accent — a filled tint,
+        // accent text, and a solid purple border.
+        const active = css.match(/\n\.viewPill\.active\s*\{([^}]*)\}/);
+        expect(active).not.toBeNull();
+        expect(active[1]).toMatch(/color:\s*#9D93EE/);
+        expect(active[1]).toMatch(/border-color:\s*#6C5DF5/);
     });
 
     it('(d) main.js seats #viewSwitcher in #navBar, never in a sub-band', () => {

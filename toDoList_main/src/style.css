@@ -13491,9 +13491,9 @@ body.row-dragging * { cursor: grabbing !important; }
    ──────────────────────────────────────────
    A single row of header chrome: the top header (#navBar) carries, left to
    right, the workspace pill, the open/done counts inline beside it, the
-   STREAM / STRUCTURE view tabs (restyled from pills into underlined text —
-   purple text + a 2px purple underline on the active tab, muted gray on the
-   inactive ones), and the pomodoro / music / settings chip cluster pushed to
+   STREAM / STRUCTURE view tabs (rendered as bordered pills via the base
+   .viewPill treatment — a thin purple outline with a filled accent tint on
+   the active tab), and the pomodoro / music / settings chip cluster pushed to
    the far RIGHT by the pomodoro chip's margin-left:auto.
    The SORT BY DUE / EXPAND ALL overlay drops down to share the status-filter
    pill row inside the task pane. Mobile UX is untouched: the view tabs are
@@ -13501,51 +13501,35 @@ body.row-dragging * { cursor: grabbing !important; }
    pill + counts return to the stacked #mobileProjHeader via
    placeDesktopHeader(). */
 @media (min-width: 1024px) {
+  /* ── Header height ──
+     The top header now carries a two-line project block (the PROJECT n OF m
+     eyebrow above the name) alongside the view pills and the action icons, so
+     the nav row is given a little extra height over its 44px mobile value. The
+     block, pills, and icons stay vertically centred within it via #navBar's
+     align-items:center, giving the block breathing room above and below rather
+     than sitting flush against the header's top and bottom edges. */
+  :root {
+    --nav-h: 52px;
+  }
+
   /* ── View tabs, seated in the top header row ──
      The tablist sits between the workspace pill and the chip cluster. Its base
      margin-right:auto is cleared here so it hugs the pill on the left; the
      chip cluster stays right-anchored via the pomodoro chip's own
      margin-left:auto, so there is a single auto margin (not two competing
-     ones) shaping the row. */
+     ones) shaping the row. A fixed margin-left opens a gap between the project
+     block and the pill group so the pills do not crowd the project name — a
+     fixed value, never `auto`, so it doesn't split the row's free space. */
   #navBar #viewSwitcher {
     margin-right: 0;
+    margin-left: 12px;
     gap: 4px;
   }
 
-  /* View tabs as underlined text rather than pills. The pill chrome
-     (background, border, radius) is stripped; the active tab takes the accent
-     purple plus a short underline drawn with ::after so it never reflows the
-     row. Higher specificity (#id .class) keeps these ahead of the base
-     .viewPill / .viewPill.active rules. */
-  #navBar .viewPill {
-    background: transparent;
-    border: none;
-    border-radius: 0;
-    padding: 8px 6px;
-    color: #8a8a99;
-    font-weight: 600;
-    letter-spacing: 0.10em;
-    position: relative;
-  }
-  #navBar .viewPill:hover {
-    color: var(--text-primary);
-    background: transparent;
-  }
-  #navBar .viewPill.active {
-    color: #9D93EE;
-    background: transparent;
-    font-weight: 700;
-  }
-  #navBar .viewPill.active::after {
-    content: '';
-    position: absolute;
-    left: 10%;
-    right: 10%;
-    bottom: 2px;
-    height: 2px;
-    background: #9D93EE;
-    border-radius: 1px;
-  }
+  /* The STREAM / STRUCTURE tabs keep the base bordered-pill treatment (a thin
+     purple outline, rounded corners, and a filled accent tint on the active
+     tab) — no per-navBar override is added here, so the pills read as pills
+     rather than as flat underlined text beside the bordered project block. */
 
   /* ── Filter+sort band background, cleared to the page bg ──
      The status-filter row (#taskFilterBar, which also hosts the Sort dropdown
