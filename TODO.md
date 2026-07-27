@@ -331,3 +331,20 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 191ef979-16f0-405b-ab66-bfbc399b2e33 -->
+
+- [ ] **[LOW]** Header: restore bordered pills for STREAM / STRUCTURE and open up the project block
+  - Type: bug
+  - Description: Two header issues from the sub-band retirement. First, `#navBar .viewPill` (style.css:13520) overrides the base `.viewPill` treatment to `border: none; border-radius: 0` with an `::after` underline on the active tab — a tab-strip look that made sense when the pills sat in their own band, but now reads as flat text beside a bordered project block. The base rule already carries the reviewed treatment: a `0.5px` purple border, `6px` radius, and a filled accent background when active. Second, the two-line project block sits tight against the header's top edge and its neighbours, so the header reads cramped now that it holds a taller block plus the pills plus the action icons.
+  - Behavior: STREAM and STRUCTURE render as bordered pills — a thin purple outline with rounded corners, the inactive one transparent with muted text, the active one filled with the accent tint, brighter text, and a solid border. No underline marker on the active pill. The project block has breathing room above, below, and to its right, so the eyebrow is not flush against the header's top edge and the pills do not crowd the project name. The header's overall height grows only as much as the added spacing requires, and the pills and action icons stay vertically centred against the taller project block.
+  - Implementation notes:
+    - Delete the `#navBar .viewPill` override block entirely — including its `:hover`, `.active`, and `.active::after` variants — rather than patching individual declarations. The base `.viewPill` and `.viewPill.active` rules are what the reviewed design specifies, and leaving a partial override is how the two treatments drift again.
+    - The `::after` underline is a separate element in the cascade; confirm removing the rule leaves no residual pseudo-element, and check the STRUCTURE pill's `.agentNoRepoMarker` and the STREAM pill's `.agentWorkingMarker` still position correctly against a bordered pill — they were positioned against a borderless one.
+    - Add horizontal spacing between the project block and the pill group, and vertical padding above and below the project block. Prefer padding on the header row or a gap on its flex container over margins on the block itself, so the pills and icons stay centred rather than being pushed by a one-sided margin.
+    - `#viewSwitcher` carries `margin-right: auto`, which is what pushes the action icons to the right edge. Adding a gap must not introduce a second auto margin — verify the spacing comes from padding or `gap`, not from a competing auto.
+    - The pills must stay vertically centred against a two-line block. If the header row uses `align-items: center` this is free; if it uses `stretch` or `baseline`, the pills will align to the eyebrow or the name rather than the block's centre.
+    - Check the mobile breakpoint. The `#navBar .viewPill` override may be inside a desktop media block or may apply at all widths — if mobile relies on the flat tab look anywhere, scope the removal rather than deleting globally. Grep the enclosing media query before removing.
+    - Verify at the narrowest desktop width with the chat pane docked, where the header holds the project block, both pills, and four action icons in the least space.
+  - Out of scope: The project eyebrow's content and its index logic. The count badge's mobile behavior. The header action icons themselves. The mobile bottom tab bar. The queue column's filter controls and the detail pane.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 34fd6074-6195-4510-8793-6bc0678b083b -->
