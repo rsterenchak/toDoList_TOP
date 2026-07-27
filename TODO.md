@@ -405,7 +405,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6ddef8f1-2bb4-4a93-ab57-ecfea2fd8398 -->
 
-- [ ] **[MEDIUM]** Desktop queue rail: give the phase filters their own row so labels stop truncating
+- [x] **[MEDIUM]** Desktop queue rail: give the phase filters their own row so labels stop truncating — Completed: 2026-07-27
   - Type: bug
   - Description: The four phase filter pills render as "ALL 18 / I… 18 / RU… 0" with DONE pushed out of view. `.taskPhaseFilters` is `flex: 1 1 auto` sharing `#taskFilterBar` with the SORT: STATUS control, and each `.taskPhaseFilterPill` is `flex: 1 1 0` with `text-overflow: ellipsis`. At the ~308px queue rail, after the sort control and gaps, each pill gets well under 60px — enough for two characters and a count. The truncation is working as written; the row simply cannot hold five controls at that width. Move the pills onto their own full-width row above the sort control.
   - Behavior: At desktop widths the queue rail shows the four phase pills on their own row spanning the rail's full width, with every label readable in full — ALL, IDEAS, RUNNING, DONE — each with its count. The sort control sits on the row beneath them, aligned as it is today. Neither row scrolls horizontally at the rail's normal width. Mobile is unchanged: its cycle pill, blocked chip, and sort keep sharing one row.

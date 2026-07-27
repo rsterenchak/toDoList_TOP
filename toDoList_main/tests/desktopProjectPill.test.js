@@ -221,8 +221,11 @@ describe('desktop header consolidation', () => {
 
     it('(e) the SORT BY DUE / EXPAND ALL overlay drops onto the filter row, body data-view mirror stays wired', () => {
         const block = consolidationBlock();
-        // The overlay is pulled up to align on the ~36px status-filter row.
-        expect(block).toMatch(/#bulkDescActions\s*\{[^}]*top:\s*0/);
+        // The phase pills now own the filter bar's first row, so the overlay
+        // drops onto the SECOND row (top: 40px) to align with the blocked chip
+        // rather than overlapping the pills at the bar's top edge.
+        expect(block).toMatch(/#bulkDescActions\s*\{[^}]*top:\s*40px/);
+        expect(block).not.toMatch(/#bulkDescActions\s*\{[^}]*top:\s*0\b/);
         // applyActiveView still mirrors the routing attribute onto <body> so
         // any body-scoped data-view hooks stay in lockstep with #mainBar.
         expect(main).toMatch(/document\.body\.setAttribute\(\s*['"]data-view['"]/);
