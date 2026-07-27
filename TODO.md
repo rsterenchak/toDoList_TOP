@@ -274,3 +274,22 @@
   - File: `toDoList_main/src/filePicker.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6e5bc77c-a14e-404f-88a2-101b91f05e64 -->
+
+- [ ] **[LOW]** File picker: lead region rows with the owning file, group by file
+  - Type: bug
+  - Description: Region rows in the picker lead with a label derived by `prettify()` from an element id, so the list reads "Add Glyph / Add Proj / Add Project" — three near-identical strings that describe DOM elements rather than places in the UI, and give no basis for choosing between them. The generator cannot do better; it has only the identifier. But the picker already knows each region's owning file, which is the thing actually being inserted into the `- File:` line and the thing that distinguishes these rows. Invert the row so the file leads and the label is supporting detail, and group regions under their owning file so a file with several regions reads as one entry rather than three lookalikes.
+  - Behavior: The UI REGIONS section lists one row per owning FILE, showing the file path as the row's primary text with its region labels beneath as a comma-separated secondary line, truncated with an ellipsis when there are many. Selecting the row inserts that file exactly as a plain file row does. Filtering matches the file path and every label grouped under it, so typing a label still finds its row. A region whose file already appears in the section is folded into that row rather than adding another. Regions remain listed above the plain file list. A manifest with no regions is unchanged.
+  - Implementation notes:
+    - Group by resolved file path AFTER the `srcRoot` prefix is applied, not by the raw manifest value, so grouping and insertion agree on identity.
+    - Sort labels within a row for stable ordering, and cap the visible labels with a "+N more" style suffix rather than letting the secondary line grow unbounded. Keep ALL labels in the filter-match text even when only some are displayed.
+    - This changes the row's information hierarchy, not its structure — it stays the two-line row type added with the regions work. Keep its `flex-shrink: 0` and minimum height; this list has already produced a width defect and a flex-shrink defect.
+    - The primary line is now a path, which is long and should ellipsize on one line rather than wrapping. The secondary label line can wrap to at most one additional line before truncating.
+    - Grouping reduces the row count, so re-check the shared row cap: regions and files still count together, and the "keep typing to narrow" message must reflect the grouped count.
+    - Dedup against the `File:` line is unchanged — a grouped row inserts one path, which was already the behavior when two regions shared a file.
+    - Do not change `prettify()` or the manifest generator. The labels are faithful to the identifiers; the problem is which one leads the row.
+    - Both hosts share `filePicker.js`. Verify the inverted row reads correctly at the mobile modal's narrower width, where a full path plus a label line is tight.
+    - Test: two regions in one file produce one row; the row's primary text is the prefixed path; filtering by a label that is not displayed still matches its row; selecting inserts the path once; and the row cap counts grouped rows.
+  - Out of scope: `prettify()`, `scanRegions`, and `gen-src-manifest.js` — the generator is doing what it can with an identifier. Structure's UI lens and its own label rendering. Using the region's `line` for a more precise target. The plain file list's rows. The picker's on-demand load and insertion position.
+  - File: `toDoList_main/src/filePicker.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5f0976f4-1e99-4c8d-97b3-88b141343bf6 -->
