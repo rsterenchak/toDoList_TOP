@@ -17839,6 +17839,86 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 .descGenerateAction--cancel { color: var(--text-secondary); }
 
+/* ── TRIAGE RUNNING BLOCK ──
+   Replaces the entry region (textarea + File: picker) while the linked
+   agent_queue row sits in `triaging`: a running heading, a live elapsed clock,
+   an indeterminate activity bar, and the spend line. Driven by syncTriageBlock
+   in toDoRow.js; the row is the state, so it persists across a close/reopen.
+   Full-width in the panel's three-column grid (it carries its own padding), and
+   [hidden]-guarded so applyPhaseLayout's author-level display cannot outrank the
+   UA rule in the `done` phase. */
+#descSibling .descTriageBlock {
+  grid-column: 1 / -1;
+}
+#descSibling .descTriageBlock[hidden] {
+  display: none;
+}
+.descTriageBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 12px 10px;
+  padding: 12px;
+  background: var(--bg-hover);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+}
+.descTriageHeading {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.descTriageMeta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+/* Indeterminate activity bar — a short accent segment sweeping the track, since
+   no run progress is reported. Falls back to a static filled track under reduced
+   motion. */
+.descTriageBar {
+  flex: 1 1 auto;
+  position: relative;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--accent-dim);
+  overflow: hidden;
+}
+.descTriageBarFill {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--accent);
+  animation: descTriageSweep 1.3s ease-in-out infinite;
+}
+@keyframes descTriageSweep {
+  0%   { left: -40%; }
+  100% { left: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .descTriageBarFill { animation: none; left: 0; width: 100%; opacity: 0.5; }
+}
+.descTriageElapsed {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+.descTriageElapsed[hidden] { display: none; }
+.descTriageSpend {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .generateFailureText {
   flex: 1 1 auto;
   font-size: 12px;
