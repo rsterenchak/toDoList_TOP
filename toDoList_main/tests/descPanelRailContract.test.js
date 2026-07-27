@@ -91,6 +91,9 @@ describe('desc panel child contract — (b) every mount site is a listed child',
         'rail',            // .phaseRail
         'label',           // .descSiblingEntryLabel
         'manualStatusRow', // #descEditorModalStatusRow (shared MANUAL STATUS control)
+        'modeStrip',       // .descModeStrip (WRITE / PASTE / GENERATE strip)
+        'pasteBody',       // .descPasteBody (PASTE mode body)
+        'generateBody',    // .descGenerateBody (GENERATE mode body)
     ]);
 
     it('every descSibling.appendChild/insertBefore mounts a known, placed child', () => {

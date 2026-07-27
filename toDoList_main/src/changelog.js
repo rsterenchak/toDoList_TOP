@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-26',
         added: [
-            "The desktop detail pane now leads with the open task's title and its entry marker, so the open item is clear at a glance.",
+            "The desktop detail pane now offers a Write / Paste / Generate strip for authoring an entry — paste an entry to parse it into the task, or watch the agent generate one in place.",
         ],
         fixed: [
             "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",
