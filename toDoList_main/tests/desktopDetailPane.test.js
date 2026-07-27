@@ -9,6 +9,7 @@ import {
     clearDetailPane,
     reconcileDetailPane,
     syncDetailPaneForViewport,
+    syncDetailPaneHeader,
 } from '../src/toDoRow.js';
 
 // Desktop detail pane (D-pane): at ≥1024px the open task's description panel
@@ -329,5 +330,133 @@ describe('detail pane — host DOM + CSS wiring (source-structural)', () => {
         expect(baseIdx).toBeGreaterThan(-1);
         const base = css.slice(baseIdx, css.indexOf('}', baseIdx));
         expect(base).toMatch(/display:\s*none/);
+    });
+});
+
+// The detail pane leads with a header naming the open task: its title as a
+// heading and, beneath it, the entry marker in monospace with its provenance.
+// The header is a SIBLING of #descSibling (never a child) so it stays desktop-only
+// and out of the panel's grid-column contract; it is populated from the panel's
+// owner row's __item and cleared with the pane's empty state.
+describe('detail pane — header names the open task', () => {
+    beforeEach(() => { document.body.innerHTML = ''; });
+    afterEach(() => { setWidth(realInnerWidth); document.body.innerHTML = ''; clearDetailPane(); });
+
+    function makeRowWithItem(id, item) {
+        const parts = makeRow(id);
+        parts.row.__item = item;
+        return parts;
+    }
+
+    it('mounts a header that PRECEDES #descSibling and shows the title + full entry id', () => {
+        setWidth(1280);
+        const { pane } = mountPaneHost();
+        const list = mountList();
+        const { row, panel } = makeRowWithItem('a', {
+            tit: 'Wire the pane',
+            entryId: 'e0f5804a-862f-43bf-a401-1c80d8e08cc3',
+        });
+        list.appendChild(row);
+
+        placeDescPanel(panel, row);
+        syncDetailPaneHeader();
+
+        const header = pane.querySelector('.descDetailHeader');
+        expect(header).toBeTruthy();
+        // DOM-order contract: the header sits immediately before the panel.
+        expect(header.nextSibling).toBe(panel);
+        expect(pane.querySelector('.descDetailHeaderTitle').textContent).toBe('Wire the pane');
+        // The id is shown in FULL — a truncated id is useless for the diagnostic
+        // case of comparing it against a marker in TODO.md.
+        expect(pane.querySelector('.descDetailHeaderMarkerId').textContent)
+            .toBe('e0f5804a-862f-43bf-a401-1c80d8e08cc3');
+        expect(pane.querySelector('.descDetailHeaderMarkerNone')).toBeNull();
+    });
+
+    it('shows a not-yet-injected note in place of an id when the task has no entryId', () => {
+        setWidth(1280);
+        const { pane } = mountPaneHost();
+        const list = mountList();
+        const { row, panel } = makeRowWithItem('a', { tit: 'Fresh task' });
+        list.appendChild(row);
+
+        placeDescPanel(panel, row);
+        syncDetailPaneHeader();
+
+        expect(pane.querySelector('.descDetailHeaderMarkerId')).toBeNull();
+        expect(pane.querySelector('.descDetailHeaderMarkerNone').textContent).toBe('not yet injected');
+    });
+
+    it('updates the header text when a different task opens in the pane', () => {
+        setWidth(1280);
+        const { pane } = mountPaneHost();
+        const list = mountList();
+        const a = makeRowWithItem('a', { tit: 'First', entryId: 'id-a' });
+        const b = makeRowWithItem('b', { tit: 'Second', entryId: 'id-b' });
+        list.appendChild(a.row);
+        list.appendChild(b.row);
+
+        placeDescPanel(a.panel, a.row);
+        syncDetailPaneHeader();
+        expect(pane.querySelector('.descDetailHeaderTitle').textContent).toBe('First');
+
+        // Opening b evicts a's panel (only one detail is shown at a time); the real
+        // open path removes the prior panel before placing, so mirror that here.
+        if (a.panel.parentNode) a.panel.parentNode.removeChild(a.panel);
+        placeDescPanel(b.panel, b.row);
+        syncDetailPaneHeader();
+        expect(pane.querySelector('.descDetailHeaderTitle').textContent).toBe('Second');
+        expect(pane.querySelector('.descDetailHeaderMarkerId').textContent).toBe('id-b');
+    });
+
+    it('reflects a live title rename through __item on the next sync', () => {
+        setWidth(1280);
+        const { pane } = mountPaneHost();
+        const list = mountList();
+        const item = { tit: 'Before', entryId: 'id' };
+        const { row, panel } = makeRowWithItem('a', item);
+        list.appendChild(row);
+
+        placeDescPanel(panel, row);
+        syncDetailPaneHeader();
+        expect(pane.querySelector('.descDetailHeaderTitle').textContent).toBe('Before');
+
+        item.tit = 'After';
+        syncDetailPaneHeader();
+        expect(pane.querySelector('.descDetailHeaderTitle').textContent).toBe('After');
+    });
+
+    it('removes the header when the pane returns to its empty state', () => {
+        setWidth(1280);
+        const { pane } = mountPaneHost();
+        const list = mountList();
+        const { row, panel } = makeRowWithItem('a', { tit: 'Open', entryId: 'id' });
+        list.appendChild(row);
+
+        placeDescPanel(panel, row);
+        syncDetailPaneHeader();
+        expect(pane.querySelector('.descDetailHeader')).toBeTruthy();
+
+        // clearDetailPane() tears the panel out and runs the empty-state toggle,
+        // which the header rides — so the header is removed with it.
+        clearDetailPane();
+        expect(pane.querySelector('.descDetailHeader')).toBeNull();
+        expect(pane.querySelector('.descDetailEmpty').hidden).toBe(false);
+    });
+
+    it('mounts no header in inline (mobile) mode — the panel is not in the pane', () => {
+        setWidth(800);
+        const { pane } = mountPaneHost();
+        const list = mountList();
+        const { row, panel } = makeRowWithItem('a', { tit: 'Mobile', entryId: 'id' });
+        list.appendChild(row);
+
+        placeDescPanel(panel, row);
+        syncDetailPaneHeader();
+
+        // The panel mounted inline in the list, so the pane holds no #descSibling
+        // and therefore no header — the header is a desktop-pane affordance only.
+        expect(panel.parentNode).toBe(list);
+        expect(pane.querySelector('.descDetailHeader')).toBeNull();
     });
 });
