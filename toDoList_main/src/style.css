@@ -1602,6 +1602,67 @@ body {
   color: var(--accent-text);
 }
 
+/* A two-line UI-region row: the human-readable label over its owning file. The
+   shared .filePickRow assumes one line (white-space: nowrap and a single-line
+   height), so region rows take their own class rather than overriding it.
+   flex-shrink:0 plus a real min-height keeps the two lines from squashing when
+   the list overflows .filePickPanel's 240px cap — the same failure the plain
+   rows already guard against. */
+.filePickRegionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  text-align: left;
+  padding: 6px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  cursor: pointer;
+  align-self: stretch;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  flex-shrink: 0;
+}
+.filePickRegionRow:hover { background: var(--bg-hover); }
+.filePickRegionRow:focus-visible {
+  outline: none;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+}
+.filePickRegionLabel {
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* The owning file, at reduced emphasis beneath the label. On focus it inherits
+   the row's accent text so it stays legible against the highlighted background. */
+.filePickRegionFile {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.filePickRegionRow:focus-visible .filePickRegionFile { color: inherit; }
+
+/* The "UI regions" / "Files" separating headings. Muted, uppercase, and shrink-
+   proof so they hold their height alongside overflowing rows, mirroring
+   .filePickEmpty. */
+.filePickSectionLabel {
+  margin: 0;
+  padding: 6px 10px 2px;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
 .filePickEmpty {
   margin: 0;
   padding: 8px 10px;

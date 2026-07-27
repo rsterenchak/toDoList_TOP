@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-26',
         added: [
-            "The desktop detail pane now offers a Write / Paste / Generate strip for authoring an entry — paste an entry to parse it into the task, or watch the agent generate one in place.",
+            "The file target picker now lists on-screen UI regions above the file paths, so a target can be chosen by what it is on screen rather than by knowing its file.",
         ],
         fixed: [
             "In the desktop task queue, long task titles now truncate with a trailing ellipsis instead of being cut off mid-word.",

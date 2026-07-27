@@ -202,7 +202,7 @@ describe('File:-path picker — shared module (filePicker.js)', () => {
         expect(filePicker).toMatch(/TARGET_PICK_CAP/);
         const idx = filePicker.indexOf('function renderList');
         expect(idx).toBeGreaterThan(-1);
-        const fn = filePicker.slice(idx, idx + 2200);
+        const fn = filePicker.slice(idx, idx + 3200);
         expect(fn).toMatch(/slice\(\s*0\s*,\s*TARGET_PICK_CAP\s*\)/);
         expect(fn).toMatch(/Keep typing to narrow/);
     });
