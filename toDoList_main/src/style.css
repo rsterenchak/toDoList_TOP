@@ -9793,13 +9793,31 @@ body.row-dragging * { cursor: grabbing !important; }
   font-style: italic;
 }
 
-/* When #descSibling is hosted in the detail pane it stands alone rather than
-   visually merging with the row above it, so give it a full border + radius and
-   its own margin instead of the top-open, bottom-radius-only inline treatment. */
+/* When #descSibling is hosted in the detail pane it is not a drawer hanging off a
+   row but content sitting directly on the pane background, so strip the base rule's
+   card chrome entirely — border (including the accent left-edge), radius, and the
+   elevated background. The pane (#descDetailPane) supplies the surface; the panel's
+   own grid gutters keep the content inset from the edge. `border: none` here
+   overrides all four sides of the base rule, which sets `border` + a 2px accent
+   `border-left`. The base #descSibling chrome is left intact for the mobile inline
+   host, which still mounts the panel as a row drawer and needs every bit of it. */
 #descDetailPane #descSibling {
   margin: 0;
-  border-top: 0.5px solid var(--border-mid);
-  border-radius: 6px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+}
+
+/* THE ENTRY section label is redundant in the detail pane — the phase rail and the
+   WRITE / PASTE / GENERATE mode strip already name the entry region, and the pane's
+   own header names the task, so the mode strip follows the rail directly. Hide the
+   label in pane mode only; the mobile inline drawer and the desc-editor modal keep
+   it. The element still renders (keeping its grid-column declaration so the
+   structural guard holds) — it is only visually removed. Scoped display:none on the
+   pane host so it wins over the UA rule regardless of the phase-layout [hidden]
+   state, matching the guard convention used elsewhere in this panel. */
+#descDetailPane .descSiblingEntryLabel {
+  display: none;
 }
 
 /* Row selected into the detail pane — a subtle accent RIGHT-edge marker + fill
