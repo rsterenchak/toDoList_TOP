@@ -25,7 +25,10 @@ describe('toDoRow Dispatch / Retry action wiring', () => {
     });
 
     it('runs the SHARED dispatch, never importing the Agent view into the row layer', () => {
-        expect(toDoRow).toMatch(/import \{ dispatchDraft \} from '\.\/dispatchDraft\.js'/);
+        // Tolerant of additional named imports from the shared module (the review
+        // surface also pulls resolveDispatchTarget from here); what matters is that
+        // dispatchDraft comes from dispatchDraft.js and agentView is never imported.
+        expect(toDoRow).toMatch(/import \{[^}]*\bdispatchDraft\b[^}]*\} from '\.\/dispatchDraft\.js'/s);
         expect(toDoRow).not.toMatch(/from '\.\/agentView\.js'/);
     });
 

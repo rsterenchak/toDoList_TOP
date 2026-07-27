@@ -17564,6 +17564,137 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: #fff;
 }
 
+/* The REVIEW (accept-phase) decision surface — desktop detail pane only (see
+   syncReviewPanel in toDoRow.js). A WHAT CHANGED card (PR number, the entry's
+   Description as a change summary, and a costs-nothing note) above an action row:
+   ACCEPT & CLOSE (amber, the review state's colour), REVERT (danger red), and
+   OPEN IN TODO.MD (ghost). The card carries its own padding so it spans the full
+   3-column #descSibling grid; the action row aligns with the content column. Both
+   are deliberately OUT of the authoring group applyPhaseLayout hides in `done` —
+   accepting is what moves a task INTO `done`, so sweeping them in would make the
+   controls vanish mid-interaction. */
+#descSibling .descReviewBlock {
+  grid-column: 1 / -1;
+}
+.descReviewBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 10px;
+  padding: 12px;
+  background: var(--bg-hover);
+  border-left: 3px solid var(--text-warning);
+  border-radius: 8px;
+}
+.descReviewHeading {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-warning);
+}
+.descReviewPr {
+  align-self: flex-start;
+  margin: 0;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--accent-text, var(--accent));
+  text-decoration: none;
+}
+.descReviewPr:not(.descReviewPrMuted):hover {
+  text-decoration: underline;
+}
+.descReviewPrMuted {
+  color: var(--text-muted);
+}
+.descReviewSummary {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.descReviewNote {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
+#descSibling .descReviewActions {
+  grid-column: 2;
+}
+.descReviewActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 0;
+}
+.descReviewError {
+  flex: 1 1 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-danger);
+}
+/* SpaceMono uppercase treatment matching the panel's other pipeline actions. */
+.descReviewBtn {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 14px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  line-height: 1;
+  cursor: pointer;
+  border: 0.5px solid transparent;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.descReviewBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.descReviewBtn:disabled,
+.descReviewBtn.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+/* ACCEPT & CLOSE — the amber the review state carries, as the primary action;
+   matches the mobile modal's REVIEW SHIPPED CHANGE fill. */
+.descReviewBtn--accept {
+  background: #ffbd5e;
+  color: #1a1408;
+  border-color: #ffbd5e;
+}
+.descReviewBtn--accept:hover:not(:disabled) {
+  background: #ffcb7f;
+  border-color: #ffcb7f;
+}
+/* REVERT — danger red, matching the STUCK Retry and the viewer's Revert pill. */
+.descReviewBtn--revert {
+  color: var(--text-danger);
+  background: transparent;
+  border-color: var(--text-danger);
+}
+.descReviewBtn--revert:hover:not(:disabled) {
+  background: var(--text-danger);
+  color: #fff;
+}
+/* OPEN IN TODO.MD — a ghost/tertiary action reading the entry text in the viewer. */
+.descReviewBtn--open {
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: var(--border-bright);
+}
+.descReviewBtn--open:hover:not(:disabled) {
+  color: var(--text-primary);
+}
+
 /* The shared File:-path picker (createFilePicker) mounts its trigger chip above
    the textarea and its searchable panel below it. Both are #descSibling children
    and would otherwise auto-place into the 14px gutter column — the same defect
