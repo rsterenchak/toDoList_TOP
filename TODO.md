@@ -421,3 +421,21 @@
   - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 42ddcd2e-2b3d-4931-a066-828ad35ea955 -->
+
+- [ ] **[LOW]** Detail pane: let the phase rail and mode strip span the pane's width
+  - Type: bug
+  - Description: The phase rail and the WRITE / PASTE / GENERATE strip both render compressed at the left of the detail pane while the pane itself is now the widest column on screen. `#descSibling .phaseRail` is capped at `max-width: 440px` with `justify-self: start` and fixed 52px nodes, so its connectors stay short and the four nodes cluster; `.descModeStrip` is `display: inline-flex`, so it shrinks to its content rather than spanning. The reviewed layout has both stretching across the pane — the rail reading as one left-to-right sequence with long connectors, and the three mode buttons as equal thirds of the content width.
+  - Behavior: In the detail pane the phase rail spans the content column's full width, with its four nodes evenly distributed and long visible connectors between them. The mode strip spans the same width with WRITE, PASTE, and GENERATE as three equal segments. Both keep their current type, colours, states, and behavior — only their width and distribution change. The mobile description-editor modal is unchanged: its narrower non-grid host keeps the current compact treatment.
+  - Implementation notes:
+    - Raise or remove the rail's `max-width: 440px` in the `#descSibling` rule and let it fill `grid-column: 2`. If a cap is kept for very wide windows, set it high enough that the rail spans the pane at typical desktop sizes — the point is long connectors, not a centred cluster.
+    - The rail's connectors must be the flexible element. `.phaseRailNode` is `flex: 0 0 auto` at a fixed 52px, which is correct; verify the segment between nodes is `flex: 1` so the extra width goes to the connectors rather than the nodes. If it is not, that is the actual fix and the max-width is secondary.
+    - `.phaseRail` sets `justify-content: center` while the `#descSibling` rule sets `justify-self: start`. Once the rail fills its column those two no longer conflict, but confirm the nodes distribute evenly rather than bunching at one end.
+    - Change `.descModeStrip` from `inline-flex` to `flex` in the `#descSibling` host only, and give the three buttons `flex: 1 1 0` with `min-width: 0` so they divide the width equally. Scope it to `#descSibling` — the modal's strip should keep its compact inline treatment at the narrower width.
+    - The mode strip is a `radiogroup`-style control; equal-width segments must not break its keyboard navigation or its selected-state styling. Verify arrow-key movement between segments still works.
+    - Both elements live in `#descSibling` and already carry `grid-column: 2`, so their placement is correct — this is width distribution inside that column, not a placement change.
+    - Verify at the narrowest desktop case: 1024px viewport with the chat pane docked, where the detail column is at its tightest. The rail's four 52px nodes plus connectors and the three mode segments must still fit without overflow or truncating labels.
+    - Call `refreshViewerExpandedHeight()` is not needed here — neither change affects the panel's height — but confirm the rail's height is unchanged, since a taller rail would shift everything below it.
+  - Out of scope: The rail's node states, labels, colours, and inertness. The phase vocabulary and `derivePhase`. The mode strip's behavior, its three bodies, and their contents. The two-column body arrangement in the reviewed GENERATE state, which is a separate layout change. The entry textarea, file picker, action buttons, and MANUAL STATUS control. The mobile modal.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: cf4e495e-ac31-4ac6-b054-f24352653ebf -->
