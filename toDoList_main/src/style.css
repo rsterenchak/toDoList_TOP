@@ -13073,23 +13073,27 @@ body.row-dragging * { cursor: grabbing !important; }
        #navBar's gap/padding own the horizontal spacing now that the block
        rides in the header. */
     margin: 0;
+    /* No background, border, or radius: the desktop project block is the
+       header's title, bare text on the header background — not a pill
+       competing with the STREAM / STRUCTURE pills beside it. The padding is
+       retained; it still governs the block's spacing from the header edge and
+       from the pill group. */
     padding: 4px 10px 4px 12px;
-    background: var(--bg-elevated);
-    border: 0.5px solid var(--border-mid);
-    border-radius: var(--radius-md);
     cursor: pointer;
-    transition: background 0.15s ease, border-color 0.15s ease;
   }
 
-  /* No bare pill when there's no active project — matches the mobile
+  /* No bare block when there's no active project — matches the mobile
      empty-state contract. */
   #mobileProjHeader[data-empty="true"] {
     display: none;
   }
 
-  #mobileProjHeader:hover {
-    background: var(--bg-hover);
-    border-color: var(--accent);
+  /* Keyboard focus needs an actual outline now that there is no border to
+     change colour — the previous chrome carried the UA default ring. */
+  #mobileProjHeader:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: var(--radius-md);
   }
 
   /* The ‹ › carousel chevrons are a mobile affordance and stay hidden here.
@@ -13160,6 +13164,7 @@ body.row-dragging * { cursor: grabbing !important; }
     text-overflow: ellipsis;
     white-space: nowrap;
     cursor: pointer;
+    transition: color 0.15s ease;
   }
 
   .mobileProjDropdownChev {
@@ -13172,6 +13177,18 @@ body.row-dragging * { cursor: grabbing !important; }
     line-height: 1;
     cursor: pointer;
     user-select: none;
+    transition: color 0.15s ease;
+  }
+
+  /* Chromeless hover: with no background fill to shift, the affordance is a
+     brighter name + chevron so the block still reads as clickable. Placed
+     after the base name/chevron rules so their declarations win the cascade
+     tie only on :hover. */
+  #mobileProjHeader:hover #mobileProjName {
+    color: #b3abf2;
+  }
+  #mobileProjHeader:hover .mobileProjDropdownChev {
+    color: var(--accent);
   }
 
   /* The inline "open/total" count badge is not shown on desktop: the
