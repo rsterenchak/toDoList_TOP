@@ -131,13 +131,41 @@ function formatRegionLabels(labels) {
         + ' +' + (labels.length - REGION_LABEL_DISPLAY_CAP) + ' more';
 }
 
-// Split a `File:` line value on commas and report whether `path` is already one
-// of its comma-separated tokens once backticks and surrounding whitespace are
-// stripped. Used to make re-selecting an already-listed path a no-op.
+// Tolerant `- File:` line matcher — leading whitespace, `- File:`,
+// case-insensitive. Capture group 1 is the leading indent, group 2 the value.
+// The SINGLE source of truth for what a File: line looks like: both the
+// insertion logic (insertFilePathIntoEntry) and the read-only readout
+// (parseFilePathsFromEntry) match with it, so a readout can never disagree with
+// what a pick writes.
+const FILE_LINE_RE = /^(\s*)-\s*File:\s*(.*)$/i;
+
+// Split a `File:` line value into its comma-separated paths, backticks and
+// surrounding whitespace stripped, empty tokens dropped.
+function splitFileTokens(fileValue) {
+    return String(fileValue || '').split(',')
+        .map(function (token) { return token.replace(/`/g, '').trim(); })
+        .filter(function (token) { return token.length > 0; });
+}
+
+// Report whether `path` is already one of a `File:` line value's comma-separated
+// tokens. Used to make re-selecting an already-listed path a no-op.
 function filePathPresent(fileValue, path) {
-    return String(fileValue || '').split(',').some(function (token) {
-        return token.replace(/`/g, '').trim() === path;
+    return splitFileTokens(fileValue).some(function (token) {
+        return token === path;
     });
+}
+
+// Parse the repo-relative paths from an entry's `- File:` line, using the SAME
+// matcher and token-splitting insertFilePathIntoEntry inserts with. Returns the
+// paths of the first `File:` line found, or [] when the entry has no File: line
+// or the line names none. Read-only: never mutates the entry.
+export function parseFilePathsFromEntry(text) {
+    const lines = String(text || '').split('\n');
+    for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(FILE_LINE_RE);
+        if (m) return splitFileTokens(m[2]);
+    }
+    return [];
 }
 
 // Detect the indentation used by the entry's sub-bullets so a freshly-inserted
@@ -167,10 +195,10 @@ export function insertFilePathIntoEntry(text, path) {
     const wrapped = '`' + raw + '`';
     const lines = source.split('\n');
 
-    // Tolerant File: matcher — leading whitespace, `- File:`, case-insensitive.
-    const fileLineRe = /^(\s*)-\s*File:\s*(.*)$/i;
+    // Tolerant File: matcher — shared with the read-only readout so the two
+    // can never disagree about what the entry's File: line contains.
     for (let i = 0; i < lines.length; i++) {
-        const m = lines[i].match(fileLineRe);
+        const m = lines[i].match(FILE_LINE_RE);
         if (!m) continue;
         if (filePathPresent(m[2], raw)) return source;
         const trimmedEnd = lines[i].replace(/\s+$/, '');

@@ -72,7 +72,9 @@ describe('desktop descInput — textarea element + multi-line semantics', () => 
         expect(keyupBlock[0]).not.toMatch(/item\.desc\s*=\s*descInput\.value\.trim\(/);
 
         const blurBlock = toDoRow.match(
-            /descInput\.addEventListener\(\s*["']blur["'][\s\S]{0,400}?\}\s*\)/
+            // Window widened: the blur handler now also repaints the FILE readout
+            // (a programmatic Escape-revert fires no `input`), so its body is longer.
+            /descInput\.addEventListener\(\s*["']blur["'][\s\S]{0,600}?\}\s*\)/
         );
         expect(blurBlock).toBeTruthy();
         expect(blurBlock[0]).toMatch(/item\.desc\s*=\s*descInput\.value\b/);

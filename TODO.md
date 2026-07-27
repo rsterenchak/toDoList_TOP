@@ -440,7 +440,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cf4e495e-ac31-4ac6-b054-f24352653ebf -->
 
-- [ ] **[MEDIUM]** Detail panel: group the actions in a row and add a FILE readout
+- [x] **[MEDIUM]** Detail panel: group the actions in a row and add a FILE readout — Completed: 2026-07-27
   - Type: feature
   - Description: Inject, Generate, and Discuss each carry `grid-column: 1 / -1` in `#descSibling`, so each spans the panel's full width as its own stacked bar — roughly 900px wide in the desktop detail pane. The reviewed layout never uses full-width action bars; its controls are sized to their labels and grouped horizontally. Wrap the three in a single actions row so they sit side by side at natural width. Add, beneath that row, a read-only `FILE` readout mirroring the paths on the entry's `- File:` line, so the target the entry will act on is visible without scrolling the textarea.
   - Behavior: The detail panel shows Inject, Generate, and Discuss on one row, each sized to its label rather than stretched, left-aligned in the content column, wrapping to a second line only if the pane is too narrow to hold them. Beneath the row sits a `FILE` label with the paths parsed from the entry's `- File:` line rendered in monospace at reduced emphasis; multiple comma-separated paths each render on their own line. When the entry has no `File:` line the readout shows a short note that no target is set rather than an empty block. The readout is read-only — it reflects the entry text and is never the source of truth — and it updates as the entry is edited, including when the file picker inserts a path. Every button keeps its current behavior, states, disabled handling, and ordering. The mobile modal is unchanged.

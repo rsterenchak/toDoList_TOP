@@ -59,7 +59,7 @@ import { applyTaskFilter, setBlockedItemResolver, setItemPhaseResolver } from '.
 import { dispatchDraft } from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
-import { createFilePicker } from './filePicker.js';
+import { createFilePicker, parseFilePathsFromEntry } from './filePicker.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { buildAuthoringModeStrip, setAuthoringModeStripActive } from './authoringModeStrip.js';
 import { parsePastedEntry, recognizedEntryFields } from './entryParse.js';
@@ -597,7 +597,11 @@ export function mountDescRail(descSibling, item) {
 // single source of truth for that contract: the structural guard test asserts (a)
 // every needle here has a grid-column rule in style.css, and (b) every
 // `descSibling.appendChild(` / `descSibling.insertBefore(` call site in this file
-// mounts one of these. Adding a new panel child means adding it here.
+// mounts one of these. Adding a new panel child means adding it here. The
+// Inject / Generate / Discuss buttons are NOT direct grid children — they live
+// inside the `.descActionsRow` wrapper (grid-column: 2) that groups them into one
+// horizontal row, so the wrapper carries the placement and the buttons flow
+// inside it at natural width.
 export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descInput',
     '#descSibling .phaseRail',
@@ -607,9 +611,8 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descDispatchBlock',
     '#descSibling .filePickTrigger',
     '#descSibling .filePickPanel',
-    '#descSibling .injectBtn',
-    '#descSibling .discussBtn',
-    '#descSibling .generateBtn',
+    '#descSibling .descActionsRow',
+    '#descSibling .descFileReadout',
     '#descSibling .generateFailure',
     '#descSibling #descEditorModalStatusRow',
     '#descSibling .descModeStrip',
@@ -1042,6 +1045,63 @@ export function mountDescFilePicker(descSibling, descInput, item, projectName, i
 }
 
 
+// ── READ-ONLY FILE READOUT ───────────────────────────────────────────────
+// A read-only mirror of the entry's `- File:` line, sitting beneath the actions
+// row so the target the entry will act on is visible without scrolling the
+// textarea. The entry text is the single source of truth — this readout is never
+// the source, only a reflection. It is a #descSibling grid child (grid-column: 2,
+// aligning with the textarea) and is registered in DESC_PANEL_CHILD_SELECTORS.
+
+// Build the readout's DOM once (a FILE label above a paths container). Populated
+// by refreshFileReadout, which is called on mount and on every entry-text edit.
+export function buildFileReadout() {
+    const block = document.createElement('div');
+    block.className = 'descFileReadout';
+    const label = document.createElement('span');
+    label.className = 'descFileReadoutLabel';
+    label.textContent = 'File';
+    const paths = document.createElement('div');
+    paths.className = 'descFileReadoutPaths';
+    block.appendChild(label);
+    block.appendChild(paths);
+    return block;
+}
+
+// Repaint the readout from the current entry text, parsed with the SAME matcher
+// the picker inserts with (parseFilePathsFromEntry), so the readout can never
+// disagree with what a pick writes. One path per line; a "no target set" note
+// when the entry names none. No-op when the panel carries no readout (a blank
+// placeholder, or a closed panel). Cheap enough to run on every keystroke — the
+// height is only re-measured when the rendered path set actually changes, so a
+// keystroke that doesn't touch the File: line does no layout work.
+export function refreshFileReadout(descSibling, text) {
+    if (!descSibling) return;
+    const readout = descSibling.querySelector('.descFileReadout');
+    if (!readout) return;
+    const paths = parseFilePathsFromEntry(text);
+    const signature = paths.join('\n');
+    if (readout.getAttribute('data-paths') === signature) return;
+    readout.setAttribute('data-paths', signature);
+    const list = readout.querySelector('.descFileReadoutPaths');
+    if (!list) return;
+    list.textContent = '';
+    if (!paths.length) {
+        const none = document.createElement('span');
+        none.className = 'descFileReadoutEmpty';
+        none.textContent = 'No target set';
+        list.appendChild(none);
+    } else {
+        paths.forEach(function (p) {
+            const line = document.createElement('span');
+            line.className = 'descFileReadoutPath';
+            line.textContent = p;
+            list.appendChild(line);
+        });
+    }
+    refreshViewerExpandedHeight();
+}
+
+
 // ── WRITE / PASTE / GENERATE AUTHORING MODE STRIP ────────────────────────
 // A three-segment strip above the entry region grouping the three ways an entry
 // gets written: WRITE (today's textarea + File: picker), PASTE (parse a pasted
@@ -1344,9 +1404,22 @@ function setGenerateVisual(btn, state) {
 // the SAME failed row doesn't re-surface it; a genuinely new failure (different
 // row id) shows again. Kept idempotent — an existing notice for the same row is
 // left in place with only its text refreshed.
+// Resolve where a Generate-adjacent sibling (the failure notice) mounts. In the
+// desktop panel the Generate button lives inside the `.descActionsRow` wrapper,
+// but the failure notice is a full-width #descSibling grid child, so it must sit
+// AFTER the wrapper, not inside it. In the mobile modal (no wrapper) it sits
+// directly after the button as before.
+function generateNoticeAnchor(btn) {
+    const row = btn && btn.closest ? btn.closest('.descActionsRow') : null;
+    if (row && row.parentNode) return { parent: row.parentNode, before: row.nextSibling };
+    return { parent: btn ? btn.parentNode : null, before: btn ? btn.nextSibling : null };
+}
+
 function showGenerateFailure(btn, message, rowId) {
-    if (!btn || !btn.parentNode) return;
-    let notice = btn.parentNode.querySelector('.generateFailure');
+    if (!btn) return;
+    const anchor = generateNoticeAnchor(btn);
+    if (!anchor.parent) return;
+    let notice = anchor.parent.querySelector('.generateFailure');
     if (notice && notice.getAttribute('data-generate-failure') === String(rowId)) {
         const text = notice.querySelector('.generateFailureText');
         if (text) text.textContent = message;
@@ -1376,15 +1449,17 @@ function showGenerateFailure(btn, message, rowId) {
     });
     notice.appendChild(dismiss);
 
-    btn.parentNode.insertBefore(notice, btn.nextSibling);
+    anchor.parent.insertBefore(notice, anchor.before);
     refreshViewerExpandedHeight();
 }
 
 // Remove any mounted failure notice for this button (the row left the failed
 // state, or the panel is idle again).
 function clearGenerateFailure(btn) {
-    if (!btn || !btn.parentNode) return;
-    const notice = btn.parentNode.querySelector('.generateFailure');
+    if (!btn) return;
+    const anchor = generateNoticeAnchor(btn);
+    if (!anchor.parent) return;
+    const notice = anchor.parent.querySelector('.generateFailure');
     if (notice) {
         notice.remove();
         refreshViewerExpandedHeight();
@@ -2770,23 +2845,51 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // affects layout — the two gutter-filler spacers this panel used to
         // carry are gone.
         descSibling.appendChild(descInput);
+        // Group Inject / Generate / Discuss into ONE horizontal actions row so
+        // they sit side by side at their natural label width, rather than each
+        // spanning the panel full-width as its own stacked bar. The wrapper takes
+        // grid-column: 2 (the content column, aligning with the textarea) and the
+        // buttons flow inside it with wrap. Reuse the persistent wrapper across
+        // reopens (children survive close) and clear it before refilling so opens
+        // never stack duplicates.
+        let actionsRow = descSibling.querySelector('.descActionsRow');
+        if (!actionsRow) {
+            actionsRow = document.createElement('div');
+            actionsRow.className = 'descActionsRow';
+        }
+        while (actionsRow.firstChild) actionsRow.removeChild(actionsRow.firstChild);
         if (injectBtn) {
-            descSibling.appendChild(injectBtn);
-            refreshInjectButton(injectBtn, item, projectName);
+            actionsRow.appendChild(injectBtn);
         }
         // Generate sits beside Inject, but only for a committed row — a blank
-        // placeholder has no task for the agent to draft from yet. Sync it
-        // from the linked queue row now (mounts Generating…/failure and lands
-        // a pending draft) after it's in the panel so the failure notice can
-        // slot in as a sibling.
+        // placeholder has no task for the agent to draft from yet.
         if (generateBtn && item.id) {
-            descSibling.appendChild(generateBtn);
-            syncGenerateControl(generateBtn);
+            actionsRow.appendChild(generateBtn);
         }
         // Discuss sits after inject, but only for a committed row — a blank
         // placeholder has no task to scope a conversation to yet.
         if (discussBtn && item.id) {
-            descSibling.appendChild(discussBtn);
+            actionsRow.appendChild(discussBtn);
+        }
+        descSibling.appendChild(actionsRow);
+        if (injectBtn) {
+            refreshInjectButton(injectBtn, item, projectName);
+        }
+        // Sync Generate from the linked queue row now the button is in the DOM
+        // (mounts Generating…/failure and lands a pending draft) — its dismissible
+        // failure notice slots in as a #descSibling child after the actions row,
+        // not inside it (see generateNoticeAnchor).
+        if (generateBtn && item.id) {
+            syncGenerateControl(generateBtn);
+        }
+        // Read-only FILE readout beneath the actions row, mirroring the entry's
+        // `- File:` line so the target is visible without scrolling the textarea.
+        // Committed rows only (a placeholder has no entry to target). Reuse the
+        // persistent node across reopens, then populate from the entry text.
+        if (item.tit) {
+            let fileReadout = descSibling.querySelector('.descFileReadout');
+            if (!fileReadout) fileReadout = buildFileReadout();
+            descSibling.appendChild(fileReadout);
         }
         descInput.value = item["desc"] || "";
         // Trigger the textarea's auto-grow handler now that it's in the
@@ -3197,6 +3300,14 @@ export function buildToDoRow(item, toDoName) {
     }
     descInput.addEventListener("input", autoGrowDescInput);
 
+    // Keep the read-only FILE readout in step with the entry text. Both edit
+    // paths — keystrokes and the file picker's insertion — dispatch `input` on
+    // the textarea, so one listener covers both. Cheap: it re-measures the panel
+    // height only when the parsed File: path set actually changes.
+    descInput.addEventListener("input", function() {
+        refreshFileReadout(descSibling, descInput.value);
+    });
+
     // Run-status indicator — occupies the leading slot between the checkbox and
     // the title. Empty at build time; `applyRunStatusGlyph` fills it with the
     // shipped (green check) or pending (amber dashed ring) glyph, or leaves it
@@ -3584,6 +3695,9 @@ export function buildToDoRow(item, toDoName) {
         listLogic.saveToStorage();
         if (toDoName) listLogic.editToDoItem(toDoName, item);
         refreshInjectButton(injectBtn, item, toDoName);
+        // A programmatic revert (Escape) sets .value without firing `input`, so
+        // repaint the readout here too — blur is the other persist signal.
+        refreshFileReadout(descSibling, descInput.value);
     });
 
     // Escape on the description cancels the in-progress edit by restoring

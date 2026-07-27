@@ -17375,14 +17375,71 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    button, the ASKING block, and #descInput itself in turn. Full-width action
    controls and blocks span `1 / -1`; the textarea sits in the `2` content
    column (see #descInput). */
-#descSibling .injectBtn {
-  grid-column: 1 / -1;
+/* Inject / Generate / Discuss are grouped into ONE horizontal actions row rather
+   than each spanning the panel full-width as its own stacked bar. The wrapper
+   sits in the content column (grid-column: 2, aligning with the textarea); the
+   buttons flow inside it at their natural label width and wrap to a second line
+   only when the pane is too narrow to hold them. No `flex: 1` on the buttons —
+   equal thirds is just full-width stacking in a different shape. */
+#descSibling .descActionsRow {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px 0;
+}
+/* Drop the buttons' own horizontal margins inside the row so spacing comes from
+   the row's gap alone, and left-align them to the content column's edge. */
+#descSibling .descActionsRow .injectBtn,
+#descSibling .descActionsRow .generateBtn,
+#descSibling .descActionsRow .discussBtn {
+  margin: 0;
 }
 
-/* The Discuss action sits beside Inject in the panel; span it full-width for
-   the same reason — an auto-placed action button lands in the 14px gutter. */
-#descSibling .discussBtn {
-  grid-column: 1 / -1;
+/* Read-only FILE readout beneath the actions row — mirrors the entry's `- File:`
+   line so the target the entry will act on is visible without scrolling the
+   textarea. A #descSibling grid child in the content column (grid-column: 2), so
+   it aligns with the textarea and the actions row above it. The entry text is the
+   source of truth; this only reflects it. */
+#descSibling .descFileReadout {
+  grid-column: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0 0 10px 0;
+  min-width: 0;
+}
+.descFileReadoutLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+.descFileReadoutPaths {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+/* Each path on its own line, ellipsized rather than forcing horizontal scroll —
+   long repo-relative paths are common. */
+.descFileReadoutPath,
+.descFileReadoutEmpty {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.descFileReadoutEmpty {
+  color: var(--text-muted);
+  font-style: italic;
 }
 
 /* The read-only phase rail and THE ENTRY section label lead the desktop
@@ -17567,11 +17624,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 @media (prefers-reduced-motion: reduce) {
   .generateBtnSpinner { animation: none; }
 }
-/* Full-width in the 3-column descSibling grid, like the inject button, so it
-   isn't crushed into the 14px gutter column. */
-#descSibling .generateBtn {
-  grid-column: 1 / -1;
-}
+/* Generate is grouped with Inject and Discuss inside `.descActionsRow` (see its
+   rule above), so it flows at natural width there rather than spanning the panel
+   full-width — no #descSibling grid placement of its own. */
 
 /* While Generate is in flight, Inject is disabled and visibly dimmed so the
    user can't commit mid-generation (syncGenerateControl restores it when the

@@ -307,7 +307,9 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
     it('mounts the picker on every panel open (rebuilt each time), not once at build', () => {
         expect(toDoRow).toMatch(/mountDescFilePicker\(descSibling,\s*descInput,\s*item,\s*projectName,\s*injectBtn\)/);
         const openIdx = toDoRow.indexOf('function wireDescToggle(');
-        const openBlock = toDoRow.slice(openIdx, openIdx + 3000);
+        // Window widened to cover the panel's mount block, which now also groups
+        // the actions row and mounts the FILE readout before the picker call.
+        const openBlock = toDoRow.slice(openIdx, openIdx + 4500);
         expect(openBlock).toMatch(/mountDescFilePicker\(/);
     });
 
