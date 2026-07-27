@@ -58,6 +58,17 @@ import { getQueueRowForTodo } from './agentQueueStore.js';
 //             on the Agent board). Outranks the marker-derived phases like the
 //             other queue states. Independent of the marker; clears when the queue
 //             row leaves needs_mockup (a mockup is chosen or the row re-triaged).
+//   'running'— the item's linked agent_queue row is in `dispatched` or `running`:
+//             an agent-dispatched run is in flight. Like the other queue-derived
+//             states it outranks the marker-derived phases (a dispatched run's
+//             injected marker would otherwise read as DRAFT), but it is NOT a
+//             blocked-on-you state — a run in flight is waiting on the agent, not
+//             the user — so it stays out of `isBlockedPhase` and out of the rail
+//             vocabulary, resolving to its underlying DRAFT stage there. It ranks
+//             BELOW asking/drafted/stuck/mockup so those user-blocking states keep
+//             winning, and above the marker phases. It exists so the desktop queue
+//             rail's RUNNING filter can isolate in-flight runs; it is blind to
+//             backlog runs, which are per-file and can't be attributed to a row.
 export const PHASE = Object.freeze({
     NONE: 'none',
     DRAFT: 'draft',
@@ -67,6 +78,7 @@ export const PHASE = Object.freeze({
     DRAFTED: 'drafted',
     STUCK: 'stuck',
     MOCKUP: 'mockup',
+    RUNNING: 'running',
 });
 
 
@@ -92,6 +104,10 @@ export function derivePhase(item) {
     if (queueRow && queueRow.state === 'drafted' && !item.draftSeenAt) return PHASE.DRAFTED;
     if (queueRow && (queueRow.state === 'failed' || queueRow.state === 'no_change')) return PHASE.STUCK;
     if (queueRow && queueRow.state === 'needs_mockup') return PHASE.MOCKUP;
+    // RUNNING ranks below the four user-blocking queue states above but above the
+    // marker-derived phases: an in-flight run's injected marker would otherwise
+    // read as DRAFT.
+    if (queueRow && (queueRow.state === 'dispatched' || queueRow.state === 'running')) return PHASE.RUNNING;
     if (!item.entryId) return PHASE.NONE;
     const runState = resolveEntryRunState(item.entryId);
     if (runState === 'pending') return PHASE.DRAFT;
@@ -130,7 +146,7 @@ export function isBlockedPhase(phase) {
 //
 // PHASE_RAIL_ORDER is the left → right node order. It intentionally lists only
 // the FOUR pipeline phases, not the queue-derived states (`asking`, `drafted`,
-// `stuck`, `mockup`): those are triage-queue facts, not pipeline nodes, so they
+// `stuck`, `mockup`, `running`): those are triage-queue facts, not pipeline nodes, so they
 // have no rail node of their own — a rail renderer resolves each to its underlying
 // pipeline stage rather than inventing an extra node. There is
 // deliberately no RUN node: per-row run state is not tracked, and a permanently

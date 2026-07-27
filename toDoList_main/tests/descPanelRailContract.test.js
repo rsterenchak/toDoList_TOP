@@ -205,14 +205,14 @@ describe('desc panel phase layout — applyPhaseLayout gates the authoring group
         return descSibling;
     }
 
-    // All eight values derivePhase can return — the switch must be exhaustive, not
+    // All nine values derivePhase can return — the switch must be exhaustive, not
     // just correct for `done` and one non-terminal phase a human happened to open.
     const ALL_PHASES = [
         PHASE.NONE, PHASE.DRAFT, PHASE.ACCEPT, PHASE.DONE,
-        PHASE.ASKING, PHASE.DRAFTED, PHASE.STUCK, PHASE.MOCKUP,
+        PHASE.ASKING, PHASE.DRAFTED, PHASE.STUCK, PHASE.MOCKUP, PHASE.RUNNING,
     ];
 
-    it('the eight-phase list matches the PHASE vocabulary exactly (no phase drifts unchecked)', () => {
+    it('the phase list matches the PHASE vocabulary exactly (no phase drifts unchecked)', () => {
         expect(new Set(ALL_PHASES)).toEqual(new Set(Object.values(PHASE)));
         expect(ALL_PHASES).toHaveLength(Object.values(PHASE).length);
     });

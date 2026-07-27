@@ -55,13 +55,26 @@ function isHidden(row) {
     return row.classList.contains('taskFilterHidden');
 }
 
+// applyTaskFilter now picks its predicate by viewport width: the DESKTOP phase
+// pills (≥1024px) or the MOBILE status controls (≤1023px). jsdom defaults to
+// 1024 (desktop), but every test in this file exercises the mobile status
+// controls (cycle pill + segmented control), so pin a mobile width here so the
+// status predicate governs. The desktop phase-pill behaviour is covered in
+// desktopPhaseFilter.test.js.
+const realInnerWidth = window.innerWidth;
+function setWidth(w) {
+    Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
+}
+
 beforeEach(() => {
     document.body.innerHTML = '';
     try { localStorage.clear(); } catch (e) { /* ignore */ }
+    setWidth(800);
 });
 
 afterEach(() => {
     vi.restoreAllMocks();
+    setWidth(realInnerWidth);
 });
 
 
@@ -92,10 +105,10 @@ describe('buildTaskFilterBar — cycle pill + segmented control', () => {
             expect(s.querySelector('.taskFilterSegLabel')).not.toBeNull();
             expect(s.querySelector('.taskFilterSegCount')).not.toBeNull();
         });
-        // Cycle pill (1) + three segments (3) + blocked-on-you chip (1) = five
-        // buttons total (the mobile Sort trigger is appended later by main.js,
-        // not by buildTaskFilterBar).
-        expect(bar.querySelectorAll('button').length).toBe(5);
+        // Cycle pill (1) + three segments (3) + four desktop phase pills (4) +
+        // blocked-on-you chip (1) = nine buttons total (the mobile Sort trigger is
+        // appended later by main.js, not by buildTaskFilterBar).
+        expect(bar.querySelectorAll('button').length).toBe(9);
     });
 
     // (2) Default state proves the prefs round-trip still drives the pill.

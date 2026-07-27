@@ -637,6 +637,10 @@ function component() {
     // the viewport crosses 1024px, so a resize mid-open moves the panel between
     // the inline slot and the detail pane without losing its handlers or state.
     window.addEventListener('resize', syncDetailPaneForViewport);
+    // The task filter runs the desktop phase predicate above 1024px and the
+    // mobile status predicate below it; re-apply on resize so crossing the
+    // breakpoint swaps predicates rather than leaving a stale filtered set.
+    window.addEventListener('resize', applyTaskFilter);
 
     // Sidebar layout (flex column):
     //   sideTitle  — top: empty drawer header on mobile (holds the close X

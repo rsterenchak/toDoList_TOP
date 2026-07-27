@@ -18,6 +18,7 @@ export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
 export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
 export const TASK_FILTER_KEY = 'todoapp_taskFilter';
+export const PHASE_FILTER_KEY = 'todoapp_phaseFilter';
 export const BLOCKED_FILTER_KEY = 'todoapp_blockedFilter';
 export const TASK_SORT_KEY = 'todoapp_taskSort';
 export const CHAT_PANE_COLLAPSED_KEY = 'todoapp_chatPaneCollapsed';
@@ -115,6 +116,34 @@ export function setTaskFilter(filter) {
     try {
         const stored = (filter === 'active' || filter === 'ideas') ? filter : 'all';
         localStorage.setItem(TASK_FILTER_KEY, stored);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── task phase filter (ALL / IDEAS / RUNNING / DONE) ──
+// The DESKTOP-only pill row above the compose row filters visible rows by their
+// DERIVED pipeline phase (see phase.js), a different vocabulary from the manual
+// status the mobile cycle pill filters on — so it persists under its OWN key
+// rather than sharing TASK_FILTER_KEY. Keeping them separate means resizing
+// across the breakpoint can never write a phase token into the status filter (or
+// vice versa) and blank the list. 'all' shows every uncompleted task, 'ideas'
+// shows phase `none`, 'running' shows in-flight runs (phase `running`), 'done'
+// shows shipped-and-acknowledged work (phase `done`). Any stored value other than
+// the four known tokens falls back to 'all' so a stale or hand-edited pref can't
+// desync the list.
+export function getPhaseFilter() {
+    try {
+        const v = localStorage.getItem(PHASE_FILTER_KEY);
+        if (v === 'ideas' || v === 'running' || v === 'done') return v;
+        return 'all';
+    } catch (e) {
+        return 'all';
+    }
+}
+
+export function setPhaseFilter(filter) {
+    try {
+        const stored = (filter === 'ideas' || filter === 'running' || filter === 'done') ? filter : 'all';
+        localStorage.setItem(PHASE_FILTER_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

@@ -20,13 +20,23 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
+// applyTaskFilter picks its predicate by viewport width; the status-filter
+// composition test below exercises the MOBILE status control, so pin a mobile
+// width (jsdom defaults to 1024 = desktop, where the phase pills govern instead).
+const realInnerWidth = window.innerWidth;
+function setWidth(w) {
+    Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
+}
+
 beforeEach(() => {
     document.body.innerHTML = '';
     try { localStorage.clear(); } catch (e) { /* ignore */ }
+    setWidth(800);
 });
 
 afterEach(() => {
     vi.restoreAllMocks();
+    setWidth(realInnerWidth);
 });
 
 
