@@ -256,7 +256,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 792ef9a7-5ddd-42ab-b714-83960c17d0a0 -->
 
-- [ ] **[MEDIUM]** File picker: offer UI regions alongside file paths
+- [x] **[MEDIUM]** File picker: offer UI regions alongside file paths — Completed: 2026-07-26
   - Type: feature
   - Description: The target picker lists raw file paths, so writing a `- File:` line still means knowing which file owns the thing you want changed. The manifest already carries a `regions` array of `{ selector, label, file, line, files }`, and `structureView.js` builds a `regionsIndex` from it that powers "Find in code" — mapping a human-readable region label to its owning file. Surface those regions in the picker so a target can be chosen by what it is on screen ("Filter & sort strip") rather than by path, with the file resolved underneath. This is the prototype's ⌖ gesture, and it needs no runtime instrumentation: the index exists and is keyed by label.
   - Behavior: The picker lists the active repo's UI regions above its file paths, each showing its label with the owning file beneath it at reduced emphasis, followed by the plain file list under a separating label. Filtering matches region labels, region file paths, and plain file paths together. Selecting a region inserts its owning file into the entry's `- File:` line exactly as selecting a file does — same dedup, same insertion position, same backtick wrapping. A repo whose manifest predates regions, or declares none, shows only the file list with no empty section. Everything else is unchanged: the on-demand manifest load, the row cap, both hosts.
