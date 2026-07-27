@@ -6,9 +6,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-27',
-        added: [
-            "On wide screens, the queue rail has ALL / IDEAS / RUNNING / DONE filter pills that narrow the list by pipeline phase, each with a live count.",
-        ],
         changed: [
             "On wide screens, the header now shows the active project as a two-line block — a \"PROJECT n OF m\" position line above the project name — and drops the redundant inline count badge.",
         ],
@@ -16,6 +13,7 @@ export const changelog = [
             "On wide screens, the STREAM and STRUCTURE header tabs render as bordered pills again instead of flat underlined text, and the two-line project block gets more breathing room from the header edges and the tabs.",
             "On wide screens, the header's project block is now bare text sitting on the header rather than a raised bordered pill, so it reads as the page title instead of a control competing with the STREAM / STRUCTURE tabs.",
             "On wide screens, a selected task row now shows its in-progress amber stripe alongside the selection highlight, so setting a task to IN PROGRESS from the detail pane updates the open row right away.",
+            "On wide screens, the queue rail's phase filter pills now sit on their own row so every label — ALL, IDEAS, RUNNING, DONE — reads in full instead of truncating.",
         ],
     },
 ];

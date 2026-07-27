@@ -3890,7 +3890,9 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-family: inherit;
   font-size: 10px;
   font-weight: 700;
-  letter-spacing: 0.06em;
+  /* Tightened from 0.06em so the longest label ("RUNNING") plus its count fits
+     an even quarter of the full-width row without engaging the ellipsis. */
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1;
   white-space: nowrap;
@@ -13655,13 +13657,36 @@ body.row-dragging * { cursor: grabbing !important; }
      untouched — the base rule still applies there. */
   #taskFilterBar {
     background: transparent;
+    /* Give the four phase pills their OWN full-width row: at the ~308px queue
+       rail four pills sharing one row with the Sort overlay leaves each pill
+       well under 60px, truncating "RUNNING" to "RU…" and pushing DONE out of
+       view. Stack the bar into two rows — phase pills on top, the Sort overlay +
+       blocked chip beneath — so every label reads in full. Desktop-only; mobile
+       keeps the base single row (flex-direction: row). */
+    flex-direction: column;
+    align-items: stretch;
+    gap: 6px;
   }
 
   /* At desktop widths the four phase pills own the filter bar and the mobile
      cycle pill hides — the reverse of the max-width:1023px block, so exactly one
-     status-vocabulary control is visible per breakpoint. */
-  .taskPhaseFilters { display: flex; }
+     status-vocabulary control is visible per breakpoint. The pills sit on their
+     own row (the first of the two-row bar): flex 0 0 auto so they don't grow
+     vertically, and a fixed row height so the Sort overlay below can be
+     positioned deterministically. */
+  .taskPhaseFilters {
+    display: flex;
+    flex: 0 0 auto;
+    height: 26px;
+    align-items: center;
+  }
   .taskCyclePill    { display: none; }
+
+  /* The blocked chip drops to the second row with the Sort overlay; its base
+     margin-left:auto is a no-op in a column, so pin its right alignment
+     explicitly (align-items: stretch on the bar would otherwise stretch it
+     full-width). */
+  .taskFilterBlockedChip { align-self: flex-end; }
 
   /* The chip cluster (pomodoro / music / settings) stays anchored at the right
      edge via the pre-existing `margin-left: auto` on the leftmost chip — it
@@ -13683,12 +13708,14 @@ body.row-dragging * { cursor: grabbing !important; }
     display: none;
   }
 
-  /* The Sort dropdown shares the status-filter row (the pane's top auto track)
-     — pull the overlay up to center on that ~36px row instead of the old pill
-     row. */
+  /* The Sort dropdown shares the status-filter band. Now that the phase pills
+     own the first row, drop the overlay onto the SECOND row so it aligns with
+     the blocked chip rather than overlapping the pills:
+       8px bar padding-top + 26px phase-pill row + 6px inter-row gap = 40px.
+     Its 28px height centres the Sort button on the 28px chip row's midline. */
   #bulkDescActions {
-    top: 0;
-    height: 36px;
+    top: 40px;
+    height: 28px;
   }
 
   /* ── Vertical rhythm below the desktop header row ──
