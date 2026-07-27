@@ -81,28 +81,54 @@ function filesFromManifest(result) {
     return result.files.map(function (file) { return joinSrcRootPath(srcRoot, file); });
 }
 
-// The UI regions carried by a manifest result, or [] when absent/failed. A
-// region maps a human-readable on-screen label to its owning source file, so a
-// target can be chosen by what it is ("Filter & sort strip") rather than by
-// path. `regions` is `undefined` for older manifests that predate the build-time
-// UI index; the parse in claudeSheet.js already keeps only entries with a string
-// `selector`, but an entry may still lack `label` or `file`. Skip any region
-// with no `file` — it cannot produce a `File:` line — and fall back to the
-// selector as the display label when `label` is missing. The owning file needs
-// the same `srcRoot` prefix as a plain file, so it is joined HERE, once, so the
-// rendered label, the filter text, the dedup comparison, and the inserted string
-// all use the full repo-relative path.
+// The UI regions carried by a manifest result, GROUPED BY OWNING FILE, or []
+// when absent/failed. A region maps a human-readable on-screen label to its
+// owning source file; the picker leads each row with the file (the thing
+// actually inserted into the `- File:` line) and lists that file's region
+// labels beneath as supporting detail, so a file with several regions reads as
+// one entry rather than several near-identical lookalikes. `regions` is
+// `undefined` for older manifests that predate the build-time UI index; the
+// parse in claudeSheet.js already keeps only entries with a string `selector`,
+// but an entry may still lack `label` or `file`. Skip any region with no `file`
+// — it cannot produce a `File:` line — and fall back to the selector as the
+// display label when `label` is missing. The owning file needs the same
+// `srcRoot` prefix as a plain file, so it is joined HERE, once, and grouping is
+// keyed on that resolved path so grouping, filtering, dedup, and insertion all
+// agree on file identity. Each returned group is { path, labels } with labels
+// deduped and sorted for stable ordering. First-seen file order is preserved.
 function regionsFromManifest(result) {
     if (!(result && result.ok && Array.isArray(result.regions))) return [];
     const srcRoot = result.srcRoot;
-    return result.regions
-        .filter(function (r) { return r && typeof r.file === 'string' && r.file; })
-        .map(function (r) {
-            return {
-                label: (typeof r.label === 'string' && r.label) ? r.label : r.selector,
-                path: joinSrcRootPath(srcRoot, r.file),
-            };
-        });
+    const byPath = new Map();
+    const order = [];
+    result.regions.forEach(function (r) {
+        if (!(r && typeof r.file === 'string' && r.file)) return;
+        const path = joinSrcRootPath(srcRoot, r.file);
+        const label = (typeof r.label === 'string' && r.label) ? r.label : r.selector;
+        let group = byPath.get(path);
+        if (!group) {
+            group = { path: path, labels: [] };
+            byPath.set(path, group);
+            order.push(group);
+        }
+        if (label && group.labels.indexOf(label) === -1) group.labels.push(label);
+    });
+    order.forEach(function (group) { group.labels.sort(); });
+    return order;
+}
+
+// How many of a file's region labels to spell out on the secondary line before
+// collapsing the rest into a "+N more" suffix, so the line never grows unbounded
+// while ALL labels stay in the filter-match text (see the filter in renderList).
+const REGION_LABEL_DISPLAY_CAP = 4;
+
+// Render a grouped row's labels as the comma-separated secondary line, capping
+// the visible count with a "+N more" suffix.
+function formatRegionLabels(labels) {
+    if (!labels.length) return '';
+    if (labels.length <= REGION_LABEL_DISPLAY_CAP) return labels.join(', ');
+    return labels.slice(0, REGION_LABEL_DISPLAY_CAP).join(', ')
+        + ' +' + (labels.length - REGION_LABEL_DISPLAY_CAP) + ' more';
 }
 
 // Split a `File:` line value on commas and report whether `path` is already one
@@ -305,23 +331,26 @@ export function createFilePicker(options) {
         list.appendChild(row);
     }
 
-    // A two-line region row: the human-readable label over its owning file at
-    // reduced emphasis. Selecting it inserts the owning file exactly as a plain
-    // file row does — same dedup, same insertion position, same backtick wrap.
-    function appendRegionRow(region) {
+    // A two-line region row grouped by owning file: the file path leads as the
+    // row's primary text, with its region labels beneath at reduced emphasis as a
+    // comma-separated secondary line. Selecting it inserts the owning file exactly
+    // as a plain file row does — same dedup, same insertion position, same
+    // backtick wrap — so a grouped row inserts one path even when it folds several
+    // regions.
+    function appendRegionRow(group) {
         const row = document.createElement('button');
         row.type = 'button';
         row.className = 'filePickRegionRow';
         row.setAttribute('role', 'option');
-        const label = document.createElement('span');
-        label.className = 'filePickRegionLabel';
-        label.textContent = region.label;
         const file = document.createElement('span');
         file.className = 'filePickRegionFile';
-        file.textContent = region.path;
-        row.appendChild(label);
+        file.textContent = group.path;
+        const label = document.createElement('span');
+        label.className = 'filePickRegionLabel';
+        label.textContent = formatRegionLabels(group.labels);
         row.appendChild(file);
-        row.addEventListener('click', function () { applyFilePick(region.path); });
+        row.appendChild(label);
+        row.addEventListener('click', function () { applyFilePick(group.path); });
         list.appendChild(row);
     }
 
@@ -344,13 +373,15 @@ export function createFilePicker(options) {
             return;
         }
         const q = (search.value || '').trim().toLowerCase();
-        // Filtering matches region labels, region file paths, and plain file
-        // paths together, so typing "sort" surfaces both a "Filter & sort strip"
-        // region and any file whose path contains it.
+        // Filtering matches a grouped row's owning file path and EVERY label
+        // folded under it — including labels the "+N more" cap hides from the
+        // secondary line — as well as plain file paths, so typing "sort" surfaces
+        // both a "Filter & sort strip" region's file and any file whose path
+        // contains it.
         const regionMatches = q
-            ? manifestRegions.filter(function (r) {
-                return r.label.toLowerCase().indexOf(q) !== -1
-                    || r.path.toLowerCase().indexOf(q) !== -1;
+            ? manifestRegions.filter(function (g) {
+                return g.path.toLowerCase().indexOf(q) !== -1
+                    || g.labels.some(function (l) { return l.toLowerCase().indexOf(q) !== -1; });
             })
             : manifestRegions;
         const fileMatches = q

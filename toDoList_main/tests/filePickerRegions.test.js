@@ -137,7 +137,25 @@ describe('file picker — UI regions', () => {
         expect(picker.panel.hidden).toBe(true);
     });
 
-    it('dedups the File: line when two regions share one owning file', () => {
+    it('folds two regions sharing one owning file into a single row', () => {
+        withManifest({
+            files: [],
+            regions: [
+                { selector: '#a', label: 'Header', file: 'src/main.js' },
+                { selector: '#b', label: 'Footer', file: 'src/main.js' },
+            ],
+        });
+        const picker = openPicker();
+
+        // One grouped row for the shared file, with both labels on its
+        // secondary line (sorted for stable ordering).
+        const regionRows = picker.panel.querySelectorAll('.filePickRegionRow');
+        expect(regionRows.length).toBe(1);
+        expect(regionRows[0].querySelector('.filePickRegionFile').textContent).toBe('src/main.js');
+        expect(regionRows[0].querySelector('.filePickRegionLabel').textContent).toBe('Footer, Header');
+    });
+
+    it('inserts the grouped file once when its row is picked', () => {
         withManifest({
             files: [],
             regions: [
@@ -147,18 +165,72 @@ describe('file picker — UI regions', () => {
         });
         const textarea = document.createElement('textarea');
         textarea.value = '- [ ] **[MEDIUM]** Do a thing\n  - Type: feature';
-
-        // Two rows are rendered (labels are the point) but they share a file.
-        let picker = openPicker(textarea);
-        expect(picker.panel.querySelectorAll('.filePickRegionRow').length).toBe(2);
-        picker.panel.querySelectorAll('.filePickRegionRow')[0].click();
-
-        // Re-open and pick the second region sharing the same file.
-        picker.trigger.click();
-        picker.panel.querySelectorAll('.filePickRegionRow')[1].click();
+        const picker = openPicker(textarea);
+        picker.panel.querySelector('.filePickRegionRow').click();
 
         const occurrences = textarea.value.split('`src/main.js`').length - 1;
         expect(occurrences).toBe(1);
+    });
+
+    it('leads the grouped row with the prefixed owning file path', () => {
+        withManifest({
+            srcRoot: 'toDoList_main/src',
+            files: [],
+            regions: [{ selector: '#bar', label: 'Bar', file: 'taskFilter.js' }],
+        });
+        const picker = openPicker();
+        expect(picker.panel.querySelector('.filePickRegionFile').textContent)
+            .toBe('toDoList_main/src/taskFilter.js');
+    });
+
+    it('matches a grouped row by a label the "+N more" cap hides from view', () => {
+        // Five labels on one file: only four display, but all five stay
+        // filter-matchable.
+        withManifest({
+            files: [],
+            regions: [
+                { selector: '#a', label: 'Alpha', file: 'src/main.js' },
+                { selector: '#b', label: 'Bravo', file: 'src/main.js' },
+                { selector: '#c', label: 'Charlie', file: 'src/main.js' },
+                { selector: '#d', label: 'Delta', file: 'src/main.js' },
+                { selector: '#e', label: 'Zulu', file: 'src/main.js' },
+            ],
+        });
+        const picker = openPicker();
+
+        // Secondary line shows the first four (sorted) plus a "+1 more" suffix.
+        const secondary = picker.panel.querySelector('.filePickRegionLabel').textContent;
+        expect(secondary).toBe('Alpha, Bravo, Charlie, Delta +1 more');
+        expect(secondary).not.toContain('Zulu');
+
+        // Filtering by the hidden label still finds the row.
+        setSearch(picker, 'zulu');
+        expect(picker.panel.querySelectorAll('.filePickRegionRow').length).toBe(1);
+        expect(picker.panel.querySelector('.filePickRegionFile').textContent).toBe('src/main.js');
+    });
+
+    it('counts grouped rows against the shared row cap', () => {
+        // 30 files, each carrying 3 regions → 30 grouped region rows, not 90.
+        const regions = [];
+        for (let i = 0; i < 30; i++) {
+            for (let j = 0; j < 3; j++) {
+                regions.push({ selector: '#r' + i + '_' + j, label: 'R' + i + '_' + j, file: 'src/region-' + i + '.js' });
+            }
+        }
+        const files = Array.from({ length: 40 }, (_, i) => 'src/file-' + i + '.js');
+        withManifest({ files, regions });
+        const picker = openPicker();
+
+        const regionRows = picker.panel.querySelectorAll('.filePickRegionRow');
+        const fileRows = picker.panel.querySelectorAll('.filePickRow');
+        // 30 grouped region rows + 40 files = 70 candidates, capped at 60 total.
+        expect(regionRows.length).toBe(30);
+        expect(fileRows.length).toBe(30);
+
+        const hint = [...picker.panel.querySelectorAll('.filePickEmpty')]
+            .find((p) => /narrow/i.test(p.textContent));
+        expect(hint).toBeTruthy();
+        expect(hint.textContent).toContain('70');
     });
 
     it('renders only files with no section header when the manifest declares no regions', () => {
