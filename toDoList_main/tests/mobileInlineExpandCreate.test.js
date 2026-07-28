@@ -90,14 +90,20 @@ describe('STACK mobile inline-expand task creation — chip row DOM', () => {
         expect(row.getAttribute('data-blank-placeholder')).toBe('true');
     });
 
-    it('renders four chips — Today, Tomorrow, 📅 calendar, and + ¶ description toggle', () => {
+    it('renders four chips — Today, Tomorrow, calendar icon, and + ¶ description toggle', () => {
         const row = makeBlankRow();
         attachMobileCreateChips(row, row.__item);
         const chips = chipsFor(row);
         expect(chips).not.toBeNull();
         expect(chips.querySelector('[data-chip="today"]').textContent).toBe('Today');
         expect(chips.querySelector('[data-chip="tomorrow"]').textContent).toBe('Tomorrow');
-        expect(chips.querySelector('[data-chip="custom"]').textContent).toBe('📅');
+        // The calendar chip now carries a themed currentColor SVG icon rather
+        // than a raw 📅 emoji glyph, so it recolors with the theme.
+        const calChip = chips.querySelector('[data-chip="custom"]');
+        expect(calChip.classList.contains('calChip')).toBe(true);
+        expect(calChip.querySelector('svg')).not.toBeNull();
+        expect(calChip.textContent).not.toContain('📅');
+        expect(calChip.getAttribute('aria-label')).toBe('Pick a date');
         expect(chips.querySelector('#createDescChip')).not.toBeNull();
         // The 📋 paste trigger no longer lives in the strip — it moved to the
         // input row (built by buildToDoRow, left of the mic).
