@@ -16,3 +16,25 @@
   - File: `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/agentView.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 25490845-fe60-4256-aec1-af3266dcada4 -->
+
+- [ ] **[MEDIUM]** Mount the mockup A/B/C flow in the detail pane, three variants across
+  - Type: feature
+  - Description: The mockup flow now lives in `mockupFlow.js` but is still only reachable through the Agent board, whose card stacks the three variants full-width at a fixed 180px each — an arrangement sized for a narrow card, where only two fit before scrolling. Mount the flow in the desktop detail pane for `mockup`-phase tasks and lay the variants out three across, so all three are visible at once, which is the entire point of A/B/C. Route the MOCKUP badge to the pane instead of the board. This is the second of three steps toward removing the Agent view.
+  - Behavior: A task whose phase is `mockup` shows, in the detail pane above the authoring region, a block explaining that triage needs a visual direction, with a Generate action when no variants exist yet. Once generated, the three variants render side by side, each with its option label, a preview frame, and a Use action; choosing one produces its finished entry and moves the row to `drafted` exactly as the board does. Regenerate and Open in chat sit beneath the row. The authoring region stays visible, matching the ASKING phase, since the entry has not been written yet. Tapping a MOCKUP badge opens the task in the detail pane rather than switching to the Agent view. The Agent board's own mockup card keeps working unchanged. Mobile is deliberately not covered — see Out of scope.
+    - PREVIEW SCALING IS THE HARD PART. Frames are `srcdoc` with `injectPreviewStyle`, and nothing scales the content — a variant authored at desktop width already clips inside today's full-card frame, and at roughly 270px in a three-across grid it would show only its top-left corner, making the previews useless. Render each variant at a sensible authoring width and scale it down to fit with a CSS `transform: scale()` on a wrapper, sizing the wrapper so the scaled result fills the tile. Verify against a real generated variant, not a placeholder — a tile that shows a corner is worse than the stacked arrangement it replaces.
+  - Implementation notes:
+    - Import from `mockupFlow.js`; do not reach into `agentView.js`. If `renderMockupPreviews` hardcodes the stacked container shape, add an option or a second renderer in `mockupFlow.js` rather than restyling from the pane — both hosts should keep sharing one implementation, since the board is not being deleted in this entry.
+    - Do NOT change the prompts, `parseMockupVariants`, or the entry the flow produces. This entry changes where the flow renders and how the variants are arranged.
+    - Mount idempotently, mirroring `syncAskingPanel`: remove any existing block first, use the shared insertion anchor so the phase rail stays first, and re-mount on panel open, since `#descSibling`'s children survive a close.
+    - `grid-column: 1 / -1` for the block (it carries its own padding), registered in `DESC_PANEL_CHILD_SELECTORS` or the structural guard fails.
+    - Do NOT add it to `DESC_AUTHORING_GROUP_SELECTORS` — that group is hidden in `accept` and `done`, and `mockup` is neither, but the block must not be swept if a task somehow reaches those phases.
+    - Repaint on `onQueueChange` so the block appears, updates, and clears live as the row moves through `needs_mockup` → `drafted`, including generation completing while the pane is open.
+    - Call `refreshViewerExpandedHeight()` on mount, on unmount, and when variants first render — three tiles are considerably taller than the empty state.
+    - Route the badge by changing only the `mockup` branch in `todoStatus.js` to open the description panel, the destination `asking` already uses. Leave every other branch alone.
+    - Gate on pane mode the same way `syncDetailPaneForViewport` does, so nothing mounts below the breakpoint.
+    - Generation is a long API call. Show a pending state on the Generate action and disable it while in flight; if the flow already exposes one, reuse it rather than adding a second.
+    - Verify at 1024px with the chat pane docked, where each tile drops to roughly 110px — decide there whether the grid should fall back to stacking below some width, and state the choice in the PR body.
+  - Out of scope: MOBILE. Three variants across at 393px is unusable, and the modal needs its own arrangement — but note plainly in the PR body that the Agent view CANNOT be deleted until mobile has a home for this flow, or tapping a MOCKUP badge on a phone will strand. That is the third entry in this sequence. Also out: the prompts, variant parsing, the generated entry, the Agent board's own card, the bucket overview, and `derivePhase`. Click-to-enlarge on a preview tile, a natural follow-up once the scaling above is working.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 6cac09a7-9544-4c65-8e9e-47c3af96a769 -->
