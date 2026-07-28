@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[LOW]** Clear the stale needs_mockup queue row when a deferred-mockup task is injected directly
+- [x] **[LOW]** Clear the stale needs_mockup queue row when a deferred-mockup task is injected directly — Completed: 2026-07-28
   - Type: bug
   - Description: The pending-glyph fix (entry `e77e77b4`) made `getQueueRowForTodo` prefer the most recent linked `agent_queue` row, so a todo that carries both a stale `needs_mockup` row and a newer `dispatched` row now resolves to the dispatched one and paints its pending glyph correctly. That is a read-side fix only — the stale `needs_mockup` row is never cleaned up in the database, it just stops being read, so the queue accumulates orphaned rows. Follow up by settling or clearing the linked `needs_mockup` row when the user leaves the mockup flow via direct injection, so the write side matches the read side. Hook the mockup card's defer / "Open Claude" hand-off (`agentView.js`, around the `needs_mockup` card and the paste-to-Claude row) and the shared dispatch path (`dispatchDraft.js` / wherever the direct-inject `dispatched` row is created) to transition the linked `needs_mockup` row out of that state via `listLogic.setAgentRunState`. Confirm no todo is left with two in-flight-competing rows after a direct inject from a deferred mockup.
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/agentQueueStore.js`
