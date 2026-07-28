@@ -2590,6 +2590,20 @@ export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
             const end = toDoInput.value.length;
             toDoInput.focus();
             toDoInput.setSelectionRange(end, end);
+            // Caret-at-end keeps typing appending at the end, but the browser
+            // scrolls the input to reveal that caret, so at the 308px rail the
+            // start of a long title is hidden and the selected row shows only
+            // its tail. Reset the horizontal scroll so the title reads from the
+            // beginning while the caret stays parked at the end. The reset must
+            // run AFTER focus()/setSelectionRange(), and focus scrolling settles
+            // on the next frame, so defer it with requestAnimationFrame (not a
+            // timeout) as well as setting it now. Only this programmatic
+            // caret-at-end branch resets scroll; clicking directly on a
+            // character sets the caret there and never runs this block.
+            toDoInput.scrollLeft = 0;
+            if (typeof requestAnimationFrame === 'function') {
+                requestAnimationFrame(function() { toDoInput.scrollLeft = 0; });
+            }
         }
     });
 

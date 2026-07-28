@@ -541,7 +541,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: be8b37c5-19b2-44c5-9c8e-7625520f4359 -->
 
-- [ ] **[LOW]** Queue rail: selecting a row scrolls its title out of view
+- [x] **[LOW]** Queue rail: selecting a row scrolls its title out of view — Completed: 2026-07-27
   - Type: bug
   - Description: Clicking a committed row enters title-edit mode and calls `toDoInput.setSelectionRange(end, end)`, placing the caret at the end of the title. For any title longer than the rail's width the input scrolls right to reveal the caret, so the selected row shows the tail of its title — "he accept phase" instead of "Detail pane: trim the WHAT CHANGED summary…". The one row being worked on is the only one whose title is unreadable. Caret-at-end was the right default when the task column was ~535px and most titles fit; at the 308px rail it hides the beginning of nearly every title.
   - Behavior: Clicking a row selects it, opens it in the detail pane, and enters title-edit mode as it does today, but the input remains scrolled to the START so the title reads from its beginning. Typing still appends at the end — the caret stays at the end of the text, only the visible scroll position differs — and clicking directly on a character places the caret there as normal. Pressing End, or typing, scrolls to the caret as any input would. Blurring returns to the ellipsized read span. Blank placeholder rows are unaffected.
