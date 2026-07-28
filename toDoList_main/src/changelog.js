@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-28',
         changed: [
-            "On wide screens, the Structure view now fills the whole pane — a navigator rail beside a detail column — instead of being squeezed into the narrow queue track.",
             "The Generate and Discuss buttons on a task now fill with a solid accent color and white text on hover, instead of a dim tint.",
         ],
         fixed: [
             "A task whose automated change just merged now flips to its review state immediately, instead of staying on its pending indicator for up to a minute.",
             "The Inject button on a task now fills with a solid accent color and white text on hover, matching the Generate and Discuss buttons instead of showing only a dim tint.",
             "A task's automated run now finishes and flips to its review state even when it was started from the task's detail pane rather than the Agent board.",
+            "The file-attach picker's open panel now has spacing below it, separating it from the task's action buttons instead of sitting flush against them.",
         ],
     },
 ];

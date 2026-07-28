@@ -89,7 +89,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3cbb22d9-03cd-403f-88e1-57f4f9b043a2 -->
 
-- [ ] **[LOW]** Add spacing between the file-attach picker panel and the actions row
+- [x] **[LOW]** Add spacing between the file-attach picker panel and the actions row
   - Type: bug
   - Description: The file-attach picker's dropdown panel (`.filePickPanel`) currently has no margin, so when it's open it sits flush against the Inject/Generate/Discuss actions row (`.descActionsRow`) that follows it in DOM order, giving zero visual separation. Add `margin-bottom: 10px` to `#descSibling .filePickPanel`, matching the existing bottom-only spacing convention already used by `.descActionsRow` and `.descFileReadout`. No JS or markup changes are needed since the fix is purely a CSS margin addition.
   - File: `toDoList_main/src/style.css`
