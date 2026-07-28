@@ -306,8 +306,42 @@ function mockupChatRepo(projectName) {
     return target && target.repo ? target.repo : null;
 }
 
-// Render the A/B/C variants into the previews container as stacked tiles, each
-// a sandboxed <iframe> (scripts OFF via an empty `sandbox`, so pure-CSS motion
+// Authoring dimensions a scaled preview renders at before being shrunk to fit
+// its (much narrower) three-across pane tile. The frame is sized to these px in
+// CSS and a CSS transform scales it down; the wrapper is sized to the scaled
+// result. The board's stacked, full-width tiles don't scale, so these apply only
+// in the scaled (pane) path.
+const MOCKUP_SCALED_WIDTH = 1024;
+const MOCKUP_SCALED_HEIGHT = 720;
+
+// Fit a fixed-size preview frame to its wrapper: scale = wrapperWidth /
+// authoringWidth, applied as a CSS transform, with the wrapper's height set to
+// the scaled content height so the tile is exactly as tall as the shrunk mockup.
+// A zero width (an unmeasured / headless node) is left alone, so it's a harmless
+// no-op under jsdom.
+function applyMockupScale(scaler, frame) {
+    const w = scaler.clientWidth || scaler.offsetWidth || 0;
+    if (!w) return;
+    const scale = w / MOCKUP_SCALED_WIDTH;
+    frame.style.transform = 'scale(' + scale + ')';
+    scaler.style.height = (MOCKUP_SCALED_HEIGHT * scale) + 'px';
+}
+
+// Wire a scaled preview frame: observe its wrapper so a pane resize (e.g. docking
+// the chat) re-fits the mockup live when ResizeObserver is available, plus a
+// one-shot measure for the initial paint and the ResizeObserver-absent case.
+function mountScaledFrame(scaler, frame) {
+    if (typeof ResizeObserver !== 'undefined') {
+        try {
+            const ro = new ResizeObserver(function () { applyMockupScale(scaler, frame); });
+            ro.observe(scaler);
+        } catch (e) { /* no-op: the one-shot measure below still fits it once */ }
+    }
+    applyMockupScale(scaler, frame);
+}
+
+// Render the A/B/C variants into the previews container as tiles, each a
+// sandboxed <iframe> (scripts OFF via an empty `sandbox`, so pure-CSS motion
 // still runs) whose srcdoc is the variant HTML with the app cascade injected.
 // Replaces any prior tiles.
 //
@@ -316,7 +350,17 @@ function mockupChatRepo(projectName) {
 // chat Worker) and writes it to the row's draft, flipping the row to `drafted`
 // at the existing Dispatch gate. The row is omitted only by view-only callers
 // (older/test call sites), keeping the tiles inert there.
-function renderMockupPreviews(container, variants, row) {
+//
+// `options` lets a host share this one renderer while laying the tiles out
+// differently: `options.scaled` wraps each frame in a clipping scaler and shrinks
+// a desktop-width variant to fit a narrow three-across tile (the detail pane),
+// while the board omits it for its stacked full-width frames; `options.onRender`
+// is invoked after the tiles mount so a host can re-snapshot its layout (the pane
+// re-measures its expanded height — three tiles are much taller than the empty
+// state). Both default off, so the board's call is byte-for-byte unchanged.
+function renderMockupPreviews(container, variants, row, options) {
+    const opts = (options && typeof options === 'object') ? options : {};
+    const scaled = !!opts.scaled;
     container.textContent = '';
     const useButtons = [];
     ['A', 'B', 'C'].forEach(function (k) {
@@ -337,7 +381,18 @@ function renderMockupPreviews(container, variants, row) {
         frame.setAttribute('title', 'Mockup option ' + k);
         frame.setAttribute('loading', 'lazy');
         frame.srcdoc = injectPreviewStyle(variants[k]);
-        tile.appendChild(frame);
+        if (scaled) {
+            // Fixed authoring width inside a clipping wrapper, shrunk to fit the
+            // narrow tile — otherwise a desktop-width mockup shows only its
+            // top-left corner at ~270px (or ~110px with the chat pane docked).
+            const scaler = document.createElement('div');
+            scaler.className = 'agentMockupFrameScaler';
+            scaler.appendChild(frame);
+            mountScaledFrame(scaler, frame);
+            tile.appendChild(scaler);
+        } else {
+            tile.appendChild(frame);
+        }
 
         if (row) {
             const useRow = document.createElement('div');
@@ -411,6 +466,8 @@ function renderMockupPreviews(container, variants, row) {
 
         container.appendChild(tile);
     });
+    // Let the host re-snapshot its layout now the tiles (or none) have mounted.
+    if (typeof opts.onRender === 'function') opts.onRender(container);
 }
 
 // Secondary content for a `needs_mockup` card. Two paths stacked top-to-bottom:
@@ -431,10 +488,21 @@ function renderMockupPreviews(container, variants, row) {
 // (no Worker change). Each preview tile also carries a "use this" control that
 // turns the chosen variant into the finished entry and flips the row to
 // `drafted`; the fallback paste-back stays as the manual escape hatch.
-function buildMockupSecondary(row) {
+// `options` (both optional, defaulting off so the board's `buildMockupSecondary(row)`
+// call is unchanged) let a second host — the desktop detail pane — reuse this one
+// implementation with a different preview layout: `options.grid` lays the variants
+// three across (via the `agentMockup--grid` class) and scales each preview to fit
+// its narrow tile; `options.onRender` is threaded to renderMockupPreviews so the
+// host can re-snapshot its height whenever variants (re)render.
+function buildMockupSecondary(row, options) {
+    const opts = (options && typeof options === 'object') ? options : {};
+    const renderOpts = {
+        scaled: !!opts.grid,
+        onRender: (typeof opts.onRender === 'function') ? opts.onRender : null,
+    };
     const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
     const wrap = document.createElement('div');
-    wrap.className = 'agentSecondary agentMockup';
+    wrap.className = 'agentSecondary agentMockup' + (opts.grid ? ' agentMockup--grid' : '');
 
     // ── In-app A/B/C generation ──
     // Generate calls the chat Worker with buildMockupGenPrompt, parses the reply
@@ -463,7 +531,7 @@ function buildMockupSecondary(row) {
     // the user's mockups.
     const cachedVariants = _mockupVariants.get(row.id);
     if (cachedVariants) {
-        renderMockupPreviews(previews, cachedVariants, row);
+        renderMockupPreviews(previews, cachedVariants, row, renderOpts);
         genBtn.textContent = 'Regenerate';
     }
 
@@ -521,7 +589,7 @@ function buildMockupSecondary(row) {
                 paint();
                 return;
             }
-            renderMockupPreviews(previews, variants, row);
+            renderMockupPreviews(previews, variants, row, renderOpts);
             genBtn.disabled = false;
             genBtn.classList.remove('is-pending');
             genBtn.textContent = 'Regenerate';

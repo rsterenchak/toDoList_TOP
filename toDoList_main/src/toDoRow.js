@@ -64,6 +64,7 @@ import { createFilePicker, parseFilePathsFromEntry } from './filePicker.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { buildAuthoringModeStrip, setAuthoringModeStripActive } from './authoringModeStrip.js';
 import { parsePastedEntry, recognizedEntryFields } from './entryParse.js';
+import { buildMockupSecondary } from './mockupFlow.js';
 
 
 // The row-side "Discuss" action opens the Claude sheet scoped to this task.
@@ -622,6 +623,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descTriageBlock',
     '#descSibling .descReviewBlock',
     '#descSibling .descReviewActions',
+    '#descSibling .descMockupBlock',
 ]);
 
 
@@ -1272,6 +1274,81 @@ function syncReviewPanel(toDoChild, item, projectName) {
     const anchor = descPanelTopAnchor(panel);
     panel.insertBefore(buildReviewBlock(item, queueRow), anchor);
     panel.insertBefore(buildReviewActions(item, projectName), anchor);
+    refreshViewerExpandedHeight();
+}
+
+
+// ── MOCKUP-PHASE FLOW (DETAIL PANE) ──────────────────────────────────────
+// A task in the `mockup` phase (its linked agent_queue row is in needs_mockup)
+// needs a visual direction chosen before its entry can be authored. The A/B/C
+// mockup flow — the SAME buildMockupSecondary the Agent board mounts — now mounts
+// in the desktop detail pane, above the authoring region, laid out three variants
+// across (options.grid) so all three previews are visible at once. Choosing one
+// produces its finished entry and moves the row to `drafted` exactly as the board
+// does; the shared _mockupVariants cache means variants generated on either surface
+// show on the other.
+
+// Build the mockup block: a short intro naming why a direction is needed, above
+// the shared flow. `options.grid` lays the three previews across and scales each
+// to fit its narrow tile; `options.onRender` re-snapshots the expanded-viewer
+// height when variants (re)render (three tiles are much taller than the empty
+// Generate state), both routed through the one shared renderer so the pane and the
+// board never diverge.
+function buildMockupPanelBlock(queueRow) {
+    const block = document.createElement('div');
+    block.className = 'descMockupBlock';
+    block.setAttribute('data-mockup-row', String(queueRow.id));
+
+    const intro = document.createElement('p');
+    intro.className = 'descMockupIntro';
+    intro.textContent = 'Triage needs a visual direction before this entry can be written. '
+        + 'Generate A/B/C mockups, then choose one to finish the entry.';
+    block.appendChild(intro);
+
+    block.appendChild(buildMockupSecondary(queueRow, {
+        grid: true,
+        onRender: refreshViewerExpandedHeight,
+    }));
+    return block;
+}
+
+// Keep a row's open detail pane in sync with its MOCKUP phase — mounts the block
+// when the row's derived phase is `mockup`, and removes it in every other phase.
+// DESKTOP-ONLY: gated on detail-pane mode so nothing mounts on mobile, where three
+// variants across at phone width is unusable and the flow has no home yet (the
+// Agent board stays the mobile route until a mobile arrangement ships — see the
+// entry's Out of scope). Mirrors syncReviewPanel / syncDispatchPanel: open-panel
+// guard, idempotent early return (keep the mounted block if it already points at
+// this queue row so a live sweep doesn't drop an in-flight Generate / rendered
+// previews), and a refreshViewerExpandedHeight() on add and remove. Repaints live
+// off the same refreshDescStatusDots sweep (TODO_RUN_STATUS_EVENT + onQueueChange),
+// so the block appears, updates, and clears as the row moves needs_mockup → drafted
+// while the pane is open. NOT part of DESC_AUTHORING_GROUP_SELECTORS: `mockup` is
+// never the terminal `done` / `accept` phase, so applyPhaseLayout never sweeps it,
+// and the authoring region stays visible beneath it (the entry isn't written yet).
+function syncMockupPanel(toDoChild, item) {
+    if (!isDetailPaneMode()) return;
+    const panel = openDescSiblingFor(toDoChild);
+    if (!panel) return;
+    const existing = panel.querySelector('.descMockupBlock');
+    const phase = item && item.id ? derivePhase(item) : PHASE.NONE;
+    const queueRow = phase === PHASE.MOCKUP ? getQueueRowForTodo(item.id) : null;
+    if (!queueRow) {
+        if (existing) {
+            existing.remove();
+            refreshViewerExpandedHeight();
+        }
+        return;
+    }
+    if (existing) {
+        // Same queue row already mounted — leave the block (and any in-flight
+        // Generate / rendered previews) untouched so a repaint doesn't thrash it.
+        if (existing.getAttribute('data-mockup-row') === String(queueRow.id)) return;
+        existing.remove();
+    }
+    // Mount immediately after the phase rail (via descPanelTopAnchor), above the
+    // authoring region — matching where ASKING / STUCK / REVIEW lead the panel.
+    panel.insertBefore(buildMockupPanelBlock(queueRow), descPanelTopAnchor(panel));
     refreshViewerExpandedHeight();
 }
 
@@ -2173,6 +2250,11 @@ export function refreshDescStatusDots() {
             // another device) clears it — live, while the pane is open. Desktop-
             // pane-only; a no-op below the breakpoint and outside the accept phase.
             syncReviewPanel(row, row.__item, row.getAttribute('data-value'));
+            // Keep the MOCKUP-phase A/B/C flow in step so it mounts when a run parks
+            // in needs_mockup and clears once a mockup is chosen (needs_mockup →
+            // drafted) — live, while the pane is open. Desktop-pane-only; a no-op
+            // below the breakpoint and outside the mockup phase.
+            syncMockupPanel(row, row.__item);
             // Re-gate the authoring controls by the row's live phase so a panel
             // whose task transitions into `done` (its entry acknowledged elsewhere)
             // hides them on the next sweep, and one leaving `done` restores them —
@@ -3424,6 +3506,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // decided from the detail pane. Desktop-pane-only and accept-phase-only;
         // reuses the viewer's acknowledge writer and the shared revert route.
         syncReviewPanel(toDoChild, item, projectName);
+        // Mount the MOCKUP-phase A/B/C flow — the shared board flow laid out three
+        // variants across — above the authoring region for a `needs_mockup` task,
+        // so a visual direction can be chosen from the detail pane. Desktop-pane-only
+        // and mockup-phase-only; a no-op in every other phase and below the breakpoint.
+        syncMockupPanel(toDoChild, item);
         // Mount the WRITE / PASTE / GENERATE authoring mode strip above the entry
         // region and its PASTE / GENERATE bodies beside the textarea. Committed
         // rows only — a blank placeholder has no task to paste into or generate

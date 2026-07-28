@@ -17,7 +17,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 25490845-fe60-4256-aec1-af3266dcada4 -->
 
-- [ ] **[MEDIUM]** Mount the mockup A/B/C flow in the detail pane, three variants across
+- [x] **[MEDIUM]** Mount the mockup A/B/C flow in the detail pane, three variants across
   - Type: feature
   - Description: The mockup flow now lives in `mockupFlow.js` but is still only reachable through the Agent board, whose card stacks the three variants full-width at a fixed 180px each — an arrangement sized for a narrow card, where only two fit before scrolling. Mount the flow in the desktop detail pane for `mockup`-phase tasks and lay the variants out three across, so all three are visible at once, which is the entire point of A/B/C. Route the MOCKUP badge to the pane instead of the board. This is the second of three steps toward removing the Agent view.
   - Behavior: A task whose phase is `mockup` shows, in the detail pane above the authoring region, a block explaining that triage needs a visual direction, with a Generate action when no variants exist yet. Once generated, the three variants render side by side, each with its option label, a preview frame, and a Use action; choosing one produces its finished entry and moves the row to `drafted` exactly as the board does. Regenerate and Open in chat sit beneath the row. The authoring region stays visible, matching the ASKING phase, since the entry has not been written yet. Tapping a MOCKUP badge opens the task in the detail pane rather than switching to the Agent view. The Agent board's own mockup card keeps working unchanged. Mobile is deliberately not covered — see Out of scope.

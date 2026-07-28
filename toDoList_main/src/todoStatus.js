@@ -85,12 +85,11 @@ export const STUCK_LABEL = '⌁ STUCK';
 // `agent_queue` row is parked in `needs_mockup` — the run is waiting on a mockup
 // decision. Like REVIEW / ASKING / DRAFTED it paints amber ("waiting on you") and
 // never appears in the popover, is never written to `status`, and never drives the
-// row-level stripe/muting. Like DRAFTED and STUCK its tap does NOT open the
-// description panel: the choose-a-mockup flow lives on the Agent board, so the tap
-// switches to the Agent view and scrolls that task's card into view (routed through
-// a handler main.js registers — see setAgentRouteBadgeTapHandler). It adds no block
-// to the description editor. The caller supplies the derived overlay descriptor
-// (resolved from the shared agent-queue cache via derivePhase at the row layer).
+// row-level stripe/muting. Its tap opens the row's description panel (the same
+// destination ASKING / DRAFTED / STUCK use), where the desktop detail pane now
+// mounts the choose-a-mockup A/B/C flow above the authoring region. The caller
+// supplies the derived overlay descriptor (resolved from the shared agent-queue
+// cache via derivePhase at the row layer).
 export const MOCKUP_LABEL = '⌁ MOCKUP';
 const ALL_ROW_CLASSES = STATUS_ORDER.map(function (s) { return STATUS_META[s].rowClass; });
 
@@ -471,20 +470,17 @@ export function wireStatusLabelDelegation(container) {
         // STUCK badge: the linked run failed or changed nothing. The Retry control
         // now lives in the description panel too (beneath its failure-reason
         // block), so its tap opens the same panel rather than the Agent board.
+        // MOCKUP badge: the linked run is parked waiting on a mockup decision. The
+        // choose-a-variant flow now mounts in the desktop detail pane's description
+        // panel (above the authoring region), so its tap opens that same panel —
+        // the destination ASKING uses — rather than routing to the Agent board. No
+        // `status` write happens; the badge clears on its own once the linked
+        // agent_queue row leaves drafted / failed / needs_mockup. No-op when the
+        // panel is already open so a second tap doesn't collapse it shut.
         const routeStatus = label.getAttribute('data-status');
-        if (routeStatus === 'drafted' || routeStatus === 'stuck') {
+        if (routeStatus === 'drafted' || routeStatus === 'stuck' || routeStatus === 'mockup') {
             const descToggle = row.querySelector('#descToggle');
             if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
-            return;
-        }
-        // MOCKUP badge: the linked run is parked waiting on a mockup decision. The
-        // choose-a-variant flow lives on the Agent board, so a tap routes to the
-        // Agent view and scrolls this task's card into view (via the handler
-        // main.js registers) rather than opening the panel or the status popover.
-        // No `status` write happens; the badge clears on its own once the linked
-        // agent_queue row leaves needs_mockup.
-        if (label.getAttribute('data-status') === 'mockup') {
-            if (agentRouteBadgeTapHandler) agentRouteBadgeTapHandler(item.id, projectName);
             return;
         }
         // Toggle off ONLY when the open popover belongs to THIS label; for any
