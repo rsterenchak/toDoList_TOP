@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-28',
         changed: [
             "On wide screens, the Structure view now fills the whole pane — a navigator rail beside a detail column — instead of being squeezed into the narrow queue track.",
+            "The Generate and Discuss buttons on a task now fill with a solid accent color and white text on hover, instead of a dim tint.",
         ],
         added: [
             "On wide screens, a task awaiting a mockup decision now shows the A/B/C mockup flow in the detail pane, with all three variants previewed side by side to choose from.",
@@ -17,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-27',
         fixed: [
-            "On wide screens, the detail pane's description panel now sits directly on the pane background without a drawer border, accent edge, or a redundant “THE ENTRY” label, so it reads as part of the pane rather than a card inside a card.",
             "On wide screens, a shipped change awaiting review now shows a short description summary instead of the entire entry text, and the entry editor is hidden while you accept or revert it.",
             "In the queue rail, selecting a task now keeps its title scrolled to the start, so a long title reads from the beginning instead of showing only its tail.",
         ],

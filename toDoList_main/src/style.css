@@ -17412,7 +17412,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .discussBtn:hover {
-  background: var(--accent-dim);
+  background: var(--accent);
+  color: #fff;
 }
 .discussBtn:focus {
   outline: none;
@@ -17885,7 +17886,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
 }
 .generateBtn:hover:not(:disabled) {
-  background: var(--accent-dim);
+  background: var(--accent);
+  color: #fff;
 }
 .generateBtn:focus {
   outline: none;

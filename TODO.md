@@ -39,7 +39,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6cac09a7-9544-4c65-8e9e-47c3af96a769 -->
 
-- [ ] **[LOW]** Change generate/discuss button hover state to solid accent fill instead of dim tint
+- [x] **[LOW]** Change generate/discuss button hover state to solid accent fill instead of dim tint — Completed: 2026-07-28
   - Type: feature
   - Description: Update the `.generateBtn:hover:not(:disabled)` and `.discussBtn:hover` rules in style.css so hover swaps to a solid `var(--accent)` background with white (`#fff`) text, replacing the current `var(--accent-dim)` hover tint, while keeping the idle state (transparent background, `0.5px solid var(--accent)` border, `var(--accent-text)` color, `var(--radius-sm)` radius, 6px 10px padding, 12px font, 6px gap) unchanged for both buttons. Keep the discuss button's emoji glyph and the generate button's sparkle SVG icon as-is, and preserve the existing `:focus` box-shadow ring on both. Also add a text-color transition alongside the existing background transition so the hover swap animates smoothly.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
