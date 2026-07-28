@@ -161,3 +161,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3a311e97-0804-416f-be19-306074c27334 -->
+
+- [ ] **[MEDIUM]** Fix pending glyph never appearing when a deferred-mockup task is injected directly
+  - Type: bug
+  - Description: When a task's mockup generation is deferred and the user then pivots to the "Open Claude" flow and injects directly, the run executes but `#descIndicator` never paints the amber pending ring for its whole duration — the row stays visually idle (still showing the `⌁ MOCKUP` badge overlay) instead of signalling in-flight work. Expected: once the task is injected and dispatched, the row shows the pending glyph until the run settles to shipped. Root cause is in `derivePhase` (`phase.js` ~100-118): the `needs_mockup → PHASE.MOCKUP` check at ~106 returns before both the `dispatched`/`running → PHASE.RUNNING` check at ~110 and the `item.entryId → resolveEntryRunState → PHASE.DRAFT` path at ~111-113, and `glyphStateForPhase` maps `PHASE.MOCKUP` to `''`, so `applyRunStatusGlyph` clears the innerHTML and leaves the element at its default `display: none`. Compounding it, `getQueueRowForTodo` (`agentQueueStore.js` ~125-133) returns the **first** row whose `todo_id` matches with no recency or state ordering — so when direct injection creates a second `agent_queue` row alongside the stale `needs_mockup` one, the stale row wins the lookup and pins the task in `PHASE.MOCKUP` indefinitely. Fix both: make `getQueueRowForTodo` prefer the most recent (or the non-terminal in-flight) row rather than first-match, and settle or clear the `needs_mockup` row when the user leaves that flow via direct injection (`agentView.js`, the "Open Claude" path ~1420 and the `needs_mockup` card ~738). Confirm the fix by asserting `derivePhase` returns `PHASE.RUNNING` — not `PHASE.MOCKUP` — for a todo holding both a stale `needs_mockup` row and a newer `dispatched` row.
+  - File: `toDoList_main/src/phase.js`, `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e77e77b4-6467-49e0-8a87-f7aab46498cb -->
