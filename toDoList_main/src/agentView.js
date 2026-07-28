@@ -28,6 +28,7 @@ import {
     setTriageInFlight,
     startAgentQueueSubscription,
     onQueueChange,
+    notifyQueueChange,
     setTriageDispatcher,
     kickDispatchReconciler,
 } from './agentQueueStore.js';
@@ -536,22 +537,29 @@ function getSelectedProjectName() {
 // Re-scope and reload the queue for the given project, then repaint. Delegates
 // the cache + stale-guard to the shared store's loadQueueRows (only the most
 // recent load for the still-selected project is applied, so a stale in-flight
-// fetch from a since-abandoned project can't clobber the board), then paints from
-// cache and — when `options.settle` is set — kicks the shared store's mount-
-// independent dispatch reconciler (kickDispatchReconciler) so any dispatched/
-// running row that already shipped on main settles promptly instead of waiting on
-// the reconciler's own interval. Settle is set only on view mount and project
-// switch, NOT on the realtime pushes / post-action refreshes, so a marker read is
-// forced once per mount rather than on every board repaint. The task-row badges
-// track the same store and update on the realtime push (or the next list render),
-// so they need no explicit notify from here. The board no longer runs its own
-// pollers — it is a consumer of the store's single reconciler, so two pollers can
-// never race and double-settle a row.
+// fetch from a since-abandoned project can't clobber the board), then notifies the
+// shared store's onQueueChange listeners and — when `options.settle` is set —
+// kicks the shared store's mount-independent dispatch reconciler
+// (kickDispatchReconciler) so any dispatched/running row that already shipped on
+// main settles promptly instead of waiting on the reconciler's own interval.
+// Settle is set only on view mount and project switch, NOT on the realtime pushes
+// / post-action refreshes, so a marker read is forced once per mount rather than
+// on every board repaint.
+//
+// We notifyQueueChange() rather than paint() directly: the board's own paint is
+// registered as an onQueueChange listener (ensureBoardQueueListener), so it still
+// repaints — exactly once, not twice — while the row layer's detail-pane sync
+// (refreshDescStatusDots, also an onQueueChange listener) now re-runs too. That is
+// what lets an open desktop detail pane re-sync after a board-side mutation (e.g.
+// the mockup flow's "use this" saving a drafted entry) instead of hanging on the
+// pre-mutation view until the row is closed and reopened. The guard keeps the
+// notify scoped to the still-selected project so a stale in-flight fetch from a
+// since-abandoned project can't drive a repaint against the wrong rows.
 function refreshAgentQueue(projectName, options) {
     const settle = !!(options && options.settle);
     return loadQueueRows(projectName).then(function () {
         if (getSelectedProjectName() === getLoadedProjectName()) {
-            paint();
+            notifyQueueChange();
             if (settle) kickDispatchReconciler();
         }
     });

@@ -59,6 +59,7 @@ vi.mock('../src/claudeSheet.js', () => ({
 }));
 
 import { listLogic } from '../src/listLogic.js';
+import { onQueueChange } from '../src/agentQueueStore.js';
 import {
     renderAgentView,
     subscribeAgentView,
@@ -654,6 +655,29 @@ describe('AGENT view — Give to agent action', () => {
         expect(err).toBeTruthy();
         expect(err.hidden).toBe(false);
         expect(err.textContent).toMatch(/boom/);
+    });
+
+    // Regression: a board-side mutation must notify the shared onQueueChange
+    // listeners, not just repaint the board directly. The desktop detail pane's
+    // live-update sync (refreshDescStatusDots) is registered as an onQueueChange
+    // listener, so a board refresh that only paint()s the board leaves an open
+    // detail pane stale — the bug this fixes for the mockup "use this" flow.
+    it('notifies shared onQueueChange listeners after a board refresh so the detail pane re-syncs', async () => {
+        seedTodos('ThetaNotify', ['Ship it']);
+        mountDom('ThetaNotify');
+        queueRows = [];
+        await loadBoard();
+
+        const listener = vi.fn();
+        const unsubscribe = onQueueChange(listener);
+        try {
+            const btn = document.querySelector('.agentCard--unassigned .agentGiveButton');
+            btn.click();
+            await flush();
+            expect(listener).toHaveBeenCalled();
+        } finally {
+            unsubscribe();
+        }
     });
 });
 
