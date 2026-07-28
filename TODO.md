@@ -540,3 +540,20 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: be8b37c5-19b2-44c5-9c8e-7625520f4359 -->
+
+- [ ] **[LOW]** Queue rail: selecting a row scrolls its title out of view
+  - Type: bug
+  - Description: Clicking a committed row enters title-edit mode and calls `toDoInput.setSelectionRange(end, end)`, placing the caret at the end of the title. For any title longer than the rail's width the input scrolls right to reveal the caret, so the selected row shows the tail of its title — "he accept phase" instead of "Detail pane: trim the WHAT CHANGED summary…". The one row being worked on is the only one whose title is unreadable. Caret-at-end was the right default when the task column was ~535px and most titles fit; at the 308px rail it hides the beginning of nearly every title.
+  - Behavior: Clicking a row selects it, opens it in the detail pane, and enters title-edit mode as it does today, but the input remains scrolled to the START so the title reads from its beginning. Typing still appends at the end — the caret stays at the end of the text, only the visible scroll position differs — and clicking directly on a character places the caret there as normal. Pressing End, or typing, scrolls to the caret as any input would. Blurring returns to the ellipsized read span. Blank placeholder rows are unaffected.
+  - Implementation notes:
+    - After `setSelectionRange(end, end)`, reset `toDoInput.scrollLeft = 0`. The caret stays at the end for typing while the view shows the start.
+    - Browsers scroll the input to the caret during focus, so the reset must run AFTER `focus()` and `setSelectionRange()`. If it does not take effect synchronously, defer it with `requestAnimationFrame` rather than a timeout — and verify in a real browser, since jsdom does not implement input scrolling and a unit test will pass either way.
+    - Do not solve this by moving the caret to position 0. That changes where typing inserts, which would be a worse regression than the one being fixed.
+    - Do not remove one-click editing. That is a separate decision about whether selection should enter rename at all, and this fix makes the current behavior tolerable at rail width.
+    - The click path that places the caret at the clicked character (native behavior when clicking directly on the input's text) must not be overridden — only the programmatic selection path sets caret-at-end, so scope the scroll reset to that branch.
+    - Check the keyboard focus path too. If arrow navigation focuses the row without entering edit mode, it is unaffected; if it enters edit mode, it needs the same reset.
+    - Verify at the 308px rail with the longest title currently in the list, and confirm the read span still ellipsizes from the start when the row is blurred.
+  - Out of scope: Whether row selection should enter title-edit mode at all. The read/edit swap, `data-title-edit`, and the rename commit path. The rail's width. The detail pane. Mobile's tap-to-open-modal branch.
+  - File: `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 106c85f8-ec53-411f-8b24-2d615e257f8c -->
