@@ -119,16 +119,47 @@ export function setQueueRows(rows, projectName) {
     if (projectName !== undefined) _loadedProjectName = projectName;
 }
 
+// Recency key for a queue row, used to break ties when a single todo links more
+// than one agent_queue row (see getQueueRowForTodo). `created_at` reflects when
+// the row was created, which is the signal we want: a fresh direct-injection
+// dispatch row is created AFTER the stale row it should supersede. Falls back to
+// `updated_at`, then to -Infinity when neither is present or parseable — a row
+// with a timestamp always outranks one without, and two timestamp-less rows tie
+// (so the first-encountered wins, preserving the original first-match behavior).
+function queueRowRecency(row) {
+    const raw = (row && (row.created_at || row.updated_at)) || null;
+    if (!raw) return -Infinity;
+    const t = Date.parse(raw);
+    return Number.isNaN(t) ? -Infinity : t;
+}
+
 // Synchronous lookup of a todo's linked agent_queue row (agent_queue.todo_id ===
 // todoId). Used by derivePhase on the render path — returns null when nothing is
 // cached or nothing links, so a row with no queue row is unaffected.
+//
+// A todo can accumulate MORE THAN ONE queue row: e.g. a task whose mockup
+// generation is deferred leaves a stale `needs_mockup` row, and pivoting to a
+// direct inject then creates a second, newer `dispatched` row. First-match would
+// return whichever the cache happened to list first — often the stale one — which
+// pins derivePhase in PHASE.MOCKUP so the row never paints its pending glyph.
+// Return the MOST RECENT matching row instead (by created_at, then updated_at),
+// so the current run wins; a strictly-greater comparison keeps the
+// first-encountered row on a tie, so the single-row common case is unchanged.
 export function getQueueRowForTodo(todoId) {
     if (!todoId) return null;
     const rows = getQueueRows();
+    let best = null;
+    let bestTs = -Infinity;
     for (let i = 0; i < rows.length; i++) {
-        if (rows[i] && rows[i].todo_id === todoId) return rows[i];
+        const row = rows[i];
+        if (!row || row.todo_id !== todoId) continue;
+        const ts = queueRowRecency(row);
+        if (best === null || ts > bestTs) {
+            best = row;
+            bestTs = ts;
+        }
     }
-    return null;
+    return best;
 }
 
 export function isTriageInFlight() { return _triageInFlight; }
