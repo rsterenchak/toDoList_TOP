@@ -17,13 +17,27 @@ let updateError = null;
 vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
         from: () => ({
-            select: () => ({
-                eq: () => Promise.resolve({ data: queueRows, error: queueError }),
-            }),
+            // `.select('*')` is awaited directly by fetchAllQueueRows (all
+            // projects) and chained through `.eq()` by fetchQueueRows (one
+            // project) — so the returned value is BOTH a thenable resolving to the
+            // rows and an object carrying `.eq`.
+            select: () => {
+                const result = Promise.resolve({ data: queueRows, error: queueError });
+                result.eq = () => Promise.resolve({ data: queueRows, error: queueError });
+                return result;
+            },
             insert: (row) => Promise.resolve({ data: [row], error: null }),
             update: (patch) => ({
                 eq: (col, val) => {
                     updateCalls.push({ patch, id: val });
+                    // Mirror the persisted patch back onto the cached row so a
+                    // reload (loadAllQueueRows) reflects the new state — the store's
+                    // mount-independent reconciler discovers in-flight rows from that
+                    // cache, so without this the dispatched row would never surface.
+                    if (!updateError) {
+                        const row = queueRows.find((r) => r && r.id === val);
+                        if (row) Object.assign(row, patch);
+                    }
                     return Promise.resolve({ data: updateError ? null : [patch], error: updateError });
                 },
             }),
@@ -57,6 +71,39 @@ let dispatchCalls = [];
 let pollCalls = [];
 let resolveCalls = [];
 let readTodoCalls = [];
+// Emulated shipped-marker cache: the store's dispatch reconciler resolves the
+// checkbox ship signal through refreshShippedMarkersForProject (populate) +
+// resolveEntryRunState (read), NOT a raw TODO.md read. The mock drives those from
+// the SAME readTodoResult/todoBody scripting the board poller used before the
+// reconciler moved into the store, so the existing checkbox scenarios still hold.
+let markerPresent = new Set();
+let markerShipped = new Set();
+
+// Parse a scripted TODO.md body into present/shipped marker sets, mirroring
+// inject's parseTodoMdMarkers: each `<!-- id: X -->` records X as present, and as
+// shipped when its nearest preceding checkbox line is `- [x]`.
+function parseScriptedMarkers(content) {
+    markerPresent = new Set();
+    markerShipped = new Set();
+    if (typeof content !== 'string') return;
+    const lines = content.split('\n');
+    const checkboxRe = /^\s*- \[[ xX]\]/;
+    for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(/<!-- id: ([^\s]+) -->/);
+        if (!m) continue;
+        markerPresent.add(m[1]);
+        let j = i;
+        while (j >= 0 && !checkboxRe.test(lines[j])) j--;
+        if (j >= 0 && /^\s*- \[[xX]\]/.test(lines[j])) markerShipped.add(m[1]);
+    }
+}
+
+function readScriptedTodo() {
+    if (Array.isArray(readTodoResults) && readTodoResults.length) {
+        return readTodoResults.shift();
+    }
+    return readTodoResult;
+}
 
 vi.mock('../src/inject.js', () => ({
     mintEntryId: () => 'mint-' + (mintCounter++),
@@ -69,20 +116,48 @@ vi.mock('../src/inject.js', () => ({
     fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
     readTodoMdFromWorker: (target) => {
         readTodoCalls.push(target);
-        if (Array.isArray(readTodoResults) && readTodoResults.length) {
-            return Promise.resolve(readTodoResults.shift());
-        }
-        return Promise.resolve(readTodoResult);
+        return Promise.resolve(readScriptedTodo());
     },
+    // The reconciler's checkbox path: read the scripted TODO.md (counting as a
+    // worker read, like the real refresher) and parse it into the marker sets.
+    refreshShippedMarkersForProject: () => {
+        readTodoCalls.push(null);
+        const res = readScriptedTodo();
+        if (res && res.ok && typeof res.content === 'string') parseScriptedMarkers(res.content);
+        return Promise.resolve();
+    },
+    resolveEntryRunState: (id) => (
+        markerShipped.has(id) ? 'shipped' : (markerPresent.has(id) ? 'pending' : 'none')
+    ),
     findTargetById: () => null,
 }));
 
 import { listLogic } from '../src/listLogic.js';
 import {
+    setDispatchReconcilerDeps,
+    stopDispatchReconciler,
+} from '../src/agentQueueStore.js';
+import * as inject from '../src/inject.js';
+import {
     renderAgentView,
     subscribeAgentView,
     unsubscribeAgentView,
 } from '../src/agentView.js';
+
+// Wire the store's mount-independent dispatch reconciler to the mocked inject
+// helpers, exactly as inject.js does in production (via setDispatchReconcilerDeps).
+// The Agent board is now a consumer of this single shared reconciler rather than
+// owning its own poller, so this is what lets a board dispatch/mount settle a run.
+function wireReconciler() {
+    setDispatchReconcilerDeps({
+        pollRunStatus: inject.pollRunStatus,
+        fetchRunResult: inject.fetchRunResult,
+        resolveEntryByMarker: inject.resolveEntryByMarker,
+        findTargetById: inject.findTargetById,
+        refreshShippedMarkersForProject: inject.refreshShippedMarkersForProject,
+        resolveEntryRunState: inject.resolveEntryRunState,
+    });
+}
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 8) {
@@ -121,11 +196,16 @@ beforeEach(() => {
     pollCalls = [];
     resolveCalls = [];
     readTodoCalls = [];
+    markerPresent = new Set();
+    markerShipped = new Set();
     document.body.innerHTML = '';
+    wireReconciler();
 });
 
 afterEach(() => {
     unsubscribeAgentView();
+    stopDispatchReconciler();
+    setDispatchReconcilerDeps(null);
 });
 
 describe('listLogic.setAgentRunState', () => {
@@ -351,8 +431,11 @@ describe('AGENT view — Dispatch action', () => {
         expect(dispatched.patch.entry_id).toBe('mint-0');
         // A console.warn flagged the unconfirmed dispatch; no blocking error shown.
         expect(warnSpy).toHaveBeenCalled();
+        // No blocking error was surfaced: the row advanced to dispatched, so its
+        // draft card (with the error slot) has been replaced by the in-flight row;
+        // if the draft card is still present its error must be hidden.
         const err = document.querySelector('.agentDraftError');
-        expect(err.hidden).toBe(true);
+        expect(err === null || err.hidden === true).toBe(true);
         warnSpy.mockRestore();
     });
 
@@ -552,6 +635,7 @@ describe('AGENT view — mount-time settle of in-flight rows', () => {
         queueRows = [{
             id: 'r1', state: 'dispatched', context: { title: 'Away run' },
             entry_id: 'ent-away', correlation_id: 'corr-away',
+            project_id: listLogic.getProjectId('Resumely'),
         }];
         pollResult = { ok: true, found: false };
         readTodoResult = { ok: true, content: todoBody('ent-away', true) };
@@ -570,6 +654,7 @@ describe('AGENT view — mount-time settle of in-flight rows', () => {
         queueRows = [{
             id: 'r1', state: 'dispatched', context: { title: 'Still running' },
             entry_id: 'ent-run', correlation_id: 'corr-run',
+            project_id: listLogic.getProjectId('Resumely'),
         }];
         pollResult = { ok: true, found: false };
         readTodoResult = { ok: true, content: todoBody('ent-run', false) };

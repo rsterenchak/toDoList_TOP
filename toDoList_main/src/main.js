@@ -106,6 +106,7 @@ import {
 } from './agentView.js';
 import {
     startAgentQueueSubscription,
+    startDispatchReconciler,
     loadAllQueueRows,
     getWaitingQuestionCounts,
     onQueueChange,
@@ -2727,6 +2728,13 @@ function component() {
     startAgentQueueSubscription();
     loadAllQueueRows().then(updateAllProjectQuestionCounts);
     onQueueChange(updateAllProjectQuestionCounts);
+
+    // Start the persistent, mount-independent dispatch reconciler. It settles a
+    // dispatched run — to shipped (with a PR link) or no_change (with the closing
+    // summary) — regardless of which surface dispatched it or what is on screen,
+    // and reconciles any stranded rows from earlier dispatches on startup. Like the
+    // working watch it is guarded against double-init and is never torn down.
+    startDispatchReconciler();
 
     // Mount the desktop companion on first boot when the pref allows and
     // the viewport qualifies. Deferred by a tick so document.body exists

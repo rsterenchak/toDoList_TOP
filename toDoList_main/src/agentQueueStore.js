@@ -93,6 +93,18 @@ export function setShippedMarkerRefresher(fn) {
     _shippedMarkerRefresher = typeof fn === 'function' ? fn : null;
 }
 
+// The Worker-call helpers the persistent dispatch reconciler needs, registered by
+// inject.js at module load (same setter idiom, and for the same TDZ-avoidance
+// reason, as setShippedMarkerRefresher above — the store must not statically
+// import inject.js). The bundle carries `pollRunStatus`, `fetchRunResult`,
+// `resolveEntryByMarker`, `findTargetById`, `refreshShippedMarkersForProject`, and
+// `resolveEntryRunState`. Null until inject registers, so the reconciler degrades
+// to a no-op before then (and under a stub that never registers).
+let _reconcilerDeps = null;
+export function setDispatchReconcilerDeps(deps) {
+    _reconcilerDeps = (deps && typeof deps === 'object') ? deps : null;
+}
+
 // Read-only view of the cache; always an array.
 export function getQueueRows() {
     return Array.isArray(_rows) ? _rows : [];
@@ -366,4 +378,351 @@ export function stopAgentQueueSubscription() {
         try { supabase.removeChannel(_channel); } catch (e) { /* ignore */ }
     }
     _channel = null;
+}
+
+// ── PERSISTENT DISPATCH RECONCILER ────────────────────────────────────
+// A mount-INDEPENDENT poller that settles dispatched runs no matter which surface
+// dispatched them or what is on screen. It was extracted here out of agentView.js,
+// whose per-row pollers only ran while the Agent BOARD was mounted — so a run
+// dispatched from the task row or the detail pane (the normal path now) never
+// settled: its queue row stayed `dispatched` forever, the nav working dot stayed
+// lit, and the row never flipped to REVIEW. Mirroring the persistent working
+// watch's shape (one module-level started flag, one interval, no dependence on a
+// mounted view), it lives in the store — the shared owner of the queue cache and
+// the realtime channel — so the board and the row layer both reach ONE poller
+// rather than racing two. The reconciliation LOGIC is unchanged from the board's:
+// a completed run is proven shipped by the entry's checkbox on main (didEntryShip),
+// else settled to no_change with the run's closing summary.
+
+// Poll cadence and give-up window for a dispatched run. Match the board poller
+// they replace: a completed run is normally observed within minutes, and a run
+// that GitHub Actions no longer surfaces (aged out of the status window) can only
+// be settled by the checkbox signal, which the startup/mount backlog pass covers.
+const RECONCILE_POLL_MS = 5000;
+const RECONCILE_GIVE_UP_MS = 15 * 60 * 1000;
+
+// Workflow conclusions that positively mean the run failed — mirrors the board's
+// FAILURE_CONCLUSIONS. Any other completed conclusion (neutral / skipped / none)
+// keeps the row in-progress rather than asserting failure.
+const RECONCILE_FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
+
+let _reconcilerStarted = false;
+let _reconcilePoller = null;
+// rowId → ms first watched; the give-up window's anchor. Set the first tick a row
+// is seen in flight (its real dispatch time is unknown for a stranded row).
+const _rowStartedAt = new Map();
+// rowIds past the give-up window: skip status-polling them, but the checkbox
+// backlog pass can still settle a genuinely-shipped one.
+const _rowGaveUp = new Set();
+// rowIds with a settle in flight — the double-settle guard. A row being settled by
+// one path (a poll tick) must not be settled again by another (a concurrent
+// backlog pass, or the board's mount kick), so both consult this set.
+const _settleInFlight = new Set();
+
+// Every in-flight (dispatched/running) row across ALL projects, read from the
+// all-projects cache so a run finishing for a project the user is not looking at
+// still settles.
+function getInFlightRows() {
+    return getAllQueueRows().filter(function (r) {
+        return r && (r.state === 'dispatched' || r.state === 'running');
+    });
+}
+
+// Resolve a queue row's project name from its own `project_id` (NOT the selected
+// project — a background reconcile spans projects). '' when unresolvable.
+function resolveRowProjectName(row) {
+    if (!row || row.project_id == null) return '';
+    const idToName = buildProjectIdToNameMap();
+    return idToName[row.project_id] || '';
+}
+
+// Resolve a queue row's routed inject target (repo/filePath) from its project,
+// via the same getProjectTargetId → findTargetById path resolveDispatchTarget
+// uses. null when there's no routing (the Worker then falls back to its default
+// repo), mirroring the board's target resolution.
+function resolveRowTarget(row) {
+    if (!_reconcilerDeps) return null;
+    const name = resolveRowProjectName(row);
+    if (!name) return null;
+    const targetId = listLogic.getProjectTargetId(name);
+    return targetId ? _reconcilerDeps.findTargetById(targetId) : null;
+}
+
+// Run `fn` under the row's settle guard: skip if a settle is already in flight for
+// the row, otherwise mark it in-flight, run, and clear on resolve OR reject. This
+// is what keeps a poll tick and a concurrent backlog/mount pass from double-
+// settling the same row.
+function withSettleGuard(rowId, fn) {
+    if (_settleInFlight.has(rowId)) return Promise.resolve();
+    _settleInFlight.add(rowId);
+    return Promise.resolve().then(fn).then(function (v) {
+        _settleInFlight.delete(rowId);
+        return v;
+    }, function () {
+        _settleInFlight.delete(rowId);
+    });
+}
+
+// Reload BOTH caches and notify listeners so a mounted board / the task rows
+// repaint after a settle even where realtime isn't observed (the stub client).
+// notifyQueueChange also re-runs evaluateReconciler (registered as a listener),
+// which prunes tracking for the just-settled row and stops the interval when
+// nothing is left in flight.
+function refreshQueueAndNotify() {
+    return Promise.all([
+        loadQueueRows(resolveSelectedProjectName()),
+        loadAllQueueRows(),
+    ]).then(function () {
+        notifyQueueChange();
+    });
+}
+
+// Whether a completed dispatched run actually shipped. The lag-free signal is the
+// entry's checkbox on main: force the project's shipped-marker cache current
+// (coalesced per repo with any concurrent refresh via inject's in-flight map, so
+// this REUSES the marker path rather than issuing a second TODO.md read), then read
+// the checkbox from the cache — 'shipped' → true, 'pending' → false. Only when the
+// marker is absent from the cache (a failed read, or the entry is gone) do we fall
+// back to the merged-PR marker search, so a transient miss never mislabels a real
+// ship as no_change.
+function didEntryShip(projectName, entryId) {
+    if (!_reconcilerDeps) return Promise.resolve(false);
+    return Promise.resolve(_reconcilerDeps.refreshShippedMarkersForProject(projectName, true))
+        .then(function () {
+            const state = _reconcilerDeps.resolveEntryRunState(entryId);
+            if (state === 'shipped') return true;
+            if (state === 'pending') return false;
+            return null; // absent — fall back to the PR-marker search
+        }, function () { return null; })
+        .then(function (decided) {
+            if (decided !== null) return decided;
+            return Promise.resolve(_reconcilerDeps.resolveEntryByMarker(entryId)).then(function (resolved) {
+                return !!(resolved && resolved.ok && resolved.found === true && resolved.merge_commit_sha);
+            }, function () { return false; });
+        });
+}
+
+// Best-effort PR link for a shipped entry. Resolving the marker to a closed PR lags
+// GitHub's index, so this only decorates the Shipped card's link — the shipped
+// transition is never gated on it; a missing link fills in on a later poll.
+function bestEffortPrLink(entryId) {
+    if (!_reconcilerDeps) return Promise.resolve({ pr_url: '', pr_number: undefined });
+    return Promise.resolve(_reconcilerDeps.resolveEntryByMarker(entryId)).then(function (resolved) {
+        if (resolved && resolved.ok && resolved.found === true) {
+            return {
+                pr_url: resolved.pr_url || resolved.html_url || '',
+                pr_number: resolved.pr_number != null ? resolved.pr_number : undefined,
+            };
+        }
+        return { pr_url: '', pr_number: undefined };
+    }, function () { return { pr_url: '', pr_number: undefined }; });
+}
+
+// A completed run's closing summary (the agent's verdict), surfaced on a no_change
+// / failed row. Keyed by run id when known, else the correlation id (the Worker
+// resolves either). Degrades to '' on any failure so the row falls back to a
+// friendly default line.
+function fetchClosingSummary(runId, correlationId, target) {
+    if (!_reconcilerDeps) return Promise.resolve('');
+    const key = (runId != null && runId !== '') ? runId : correlationId;
+    return Promise.resolve(_reconcilerDeps.fetchRunResult(key, target || null)).then(function (res) {
+        if (res && res.ok && typeof res.result === 'string') return res.result.trim();
+        return '';
+    }, function () { return ''; });
+}
+
+// Persist a row to `shipped`, attaching the run id and a best-effort PR link
+// (resolved without blocking the ship — a missing link still ships).
+function settleShipped(rowId, entryId, runId) {
+    const patch = { state: 'shipped' };
+    if (runId != null) patch.run_id = runId;
+    return bestEffortPrLink(entryId).then(function (link) {
+        if (link.pr_url) patch.pr_url = link.pr_url;
+        if (link.pr_number != null) patch.pr_number = link.pr_number;
+        return listLogic.setAgentRunState(rowId, patch);
+    });
+}
+
+// Reconcile a completed run into a terminal state. A green conclusion alone isn't
+// proof of a ship — the routine can exit clean having merged nothing — so consult
+// the entry's checkbox on main: checked → shipped + a best-effort PR link; still
+// unchecked → a no-change run whose closing summary we surface.
+function reconcileShipped(row, runId) {
+    const projectName = resolveRowProjectName(row);
+    const target = resolveRowTarget(row);
+    return didEntryShip(projectName, row.entry_id).then(function (shipped) {
+        if (shipped) return settleShipped(row.id, row.entry_id, runId);
+        return fetchClosingSummary(runId, row.correlation_id, target).then(function (summary) {
+            return listLogic.setAgentRunState(row.id, {
+                state: 'no_change',
+                failure_reason: summary || 'The run finished without merging any changes.',
+                run_id: runId,
+            });
+        });
+    }).then(refreshQueueAndNotify);
+}
+
+// One poll tick for a single dispatched row. Mirrors the board's pollDispatchOnce:
+// completed+success reconciles success against the checkbox proof; a recognized
+// failure conclusion flips to failed with the closing summary; any other completed
+// conclusion (neutral/skipped/none) is NOT a positive failure and keeps the row
+// in-progress; queued/running reflect the live state. Exported so a test can drive
+// one reconcile without the interval.
+export function reconcileDispatchRow(row) {
+    if (!_reconcilerDeps || !row || !row.id) return Promise.resolve();
+    const rowId = row.id;
+    if (_settleInFlight.has(rowId)) return Promise.resolve();
+    const target = resolveRowTarget(row);
+    return Promise.resolve(_reconcilerDeps.pollRunStatus({ correlationId: row.correlation_id, target: target || null }))
+        .then(function (res) {
+            if (!res || res.ok === false) return; // transient — keep polling
+            if (res.found === false) return; // run not surfaced yet — stay dispatched
+            if (res.status === 'completed') {
+                if (res.conclusion === 'success') {
+                    _rowGaveUp.delete(rowId);
+                    return withSettleGuard(rowId, function () { return reconcileShipped(row, res.runId); });
+                }
+                if (RECONCILE_FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
+                    _rowGaveUp.delete(rowId);
+                    return withSettleGuard(rowId, function () {
+                        return fetchClosingSummary(res.runId, row.correlation_id, target).then(function (summary) {
+                            return listLogic.setAgentRunState(rowId, {
+                                state: 'failed',
+                                failure_reason: summary || 'The run failed.',
+                                run_id: res.runId,
+                            });
+                        }).then(refreshQueueAndNotify);
+                    });
+                }
+                return; // neutral / skipped / no conclusion — keep polling
+            }
+            const desired = res.status === 'queued' ? 'dispatched' : 'running';
+            if (row.state !== desired) {
+                return listLogic.setAgentRunState(rowId, { state: desired }).then(refreshQueueAndNotify);
+            }
+        })
+        .catch(function () { /* transient — keep polling */ });
+}
+
+// One interval tick: poll every in-flight row across all projects. Sets each row's
+// give-up anchor on first sight, skips rows past the window (or already settling),
+// and reconciles the rest.
+function reconcileTick() {
+    const rows = getInFlightRows();
+    const now = Date.now();
+    rows.forEach(function (row) {
+        if (!row || !row.correlation_id || !row.entry_id) return;
+        if (_rowGaveUp.has(row.id) || _settleInFlight.has(row.id)) return;
+        if (!_rowStartedAt.has(row.id)) _rowStartedAt.set(row.id, now);
+        if (now - _rowStartedAt.get(row.id) >= RECONCILE_GIVE_UP_MS) {
+            _rowGaveUp.add(row.id);
+            return;
+        }
+        reconcileDispatchRow(row);
+    });
+}
+
+// Settle any already-shipped in-flight rows from the lag-free checkbox signal — a
+// run that merged while every surface was closed (possibly aged out of the status
+// window, so its poller could never observe completion) still settles to shipped
+// here with no poll. Refreshes each involved project's marker cache ONCE (one
+// GitHub read per repo, not per row) then reads each row's checkbox from the cache.
+// Rows still unchecked are left to the poller — an unchecked in-flight row may
+// simply still be running. Exported for the startup/mount backlog pass and tests.
+export function settleShippedRows(rows) {
+    if (!_reconcilerDeps) return Promise.resolve(0);
+    const inFlight = (Array.isArray(rows) ? rows : []).filter(function (r) {
+        return r && r.entry_id && (r.state === 'dispatched' || r.state === 'running');
+    });
+    if (!inFlight.length) return Promise.resolve(0);
+    const projectNames = new Set();
+    inFlight.forEach(function (r) {
+        const n = resolveRowProjectName(r);
+        if (n) projectNames.add(n);
+    });
+    const refreshes = [];
+    projectNames.forEach(function (n) {
+        refreshes.push(Promise.resolve(_reconcilerDeps.refreshShippedMarkersForProject(n, true)).catch(function () {}));
+    });
+    return Promise.all(refreshes).then(function () {
+        const settles = [];
+        inFlight.forEach(function (row) {
+            if (_settleInFlight.has(row.id)) return;
+            if (_reconcilerDeps.resolveEntryRunState(row.entry_id) !== 'shipped') return;
+            settles.push(withSettleGuard(row.id, function () {
+                return settleShipped(row.id, row.entry_id, row.run_id);
+            }));
+        });
+        if (!settles.length) return 0;
+        return Promise.all(settles).then(function () {
+            refreshQueueAndNotify();
+            return settles.length;
+        });
+    });
+}
+
+// Reconcile the interval against what's in flight: prune tracking for rows that
+// have left the in-flight states, then arm the interval when at least one pollable
+// row remains (in flight, carrying its ids, not given up) and clear it when none
+// do — so an idle app performs no work. `rowsOverride` lets a test drive the
+// decision without populating the cache.
+export function evaluateReconciler(rowsOverride) {
+    const inFlight = Array.isArray(rowsOverride) ? rowsOverride : getInFlightRows();
+    const liveIds = new Set();
+    inFlight.forEach(function (r) { if (r && r.id != null) liveIds.add(r.id); });
+    Array.from(_rowStartedAt.keys()).forEach(function (id) {
+        if (!liveIds.has(id)) _rowStartedAt.delete(id);
+    });
+    Array.from(_rowGaveUp).forEach(function (id) {
+        if (!liveIds.has(id)) _rowGaveUp.delete(id);
+    });
+    const pollable = inFlight.some(function (r) {
+        return r && r.correlation_id && r.entry_id && !_rowGaveUp.has(r.id);
+    });
+    if (pollable) {
+        if (!_reconcilePoller) _reconcilePoller = setInterval(reconcileTick, RECONCILE_POLL_MS);
+    } else if (_reconcilePoller) {
+        clearInterval(_reconcilePoller);
+        _reconcilePoller = null;
+    }
+}
+
+// Whether the reconcile interval is currently armed. Exposed for tests.
+export function isReconcilePollerActive() {
+    return !!_reconcilePoller;
+}
+
+// Refresh the all-projects cache, settle any already-shipped stranded rows, then
+// (re)evaluate the interval and fire one immediate tick. The board's mount and the
+// board dispatch tail call this so a run settles promptly without waiting for the
+// interval; startDispatchReconciler shares the same body on app init.
+export function kickDispatchReconciler() {
+    return loadAllQueueRows().then(function () {
+        return settleShippedRows(getInFlightRows());
+    }).then(function () {
+        evaluateReconciler();
+        reconcileTick();
+    });
+}
+
+// Start the persistent dispatch reconciler. Idempotent (guarded against double-
+// init, like startAgentWorkingWatch). Registers an onQueueChange listener so every
+// realtime push re-evaluates what's in flight — the one signal that arms the poller
+// when a run is dispatched from ANY surface and stops it when the last run settles —
+// then runs the startup backlog reconcile.
+export function startDispatchReconciler() {
+    if (_reconcilerStarted) return;
+    _reconcilerStarted = true;
+    onQueueChange(function () { evaluateReconciler(); });
+    kickDispatchReconciler();
+}
+
+// Tear down the reconciler and clear its tracking. Production never calls this
+// (the reconciler is app-lifetime); it exists for test isolation.
+export function stopDispatchReconciler() {
+    if (_reconcilePoller) { clearInterval(_reconcilePoller); _reconcilePoller = null; }
+    _reconcilerStarted = false;
+    _rowStartedAt.clear();
+    _rowGaveUp.clear();
+    _settleInFlight.clear();
 }
