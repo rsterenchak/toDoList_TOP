@@ -128,3 +128,10 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 0c7344c0-1ae7-479e-98e0-97d9bd8e7dc5 -->
+
+- [ ] **[LOW]** Replace calendar chip emoji with a themed currentColor SVG icon
+  - Type: bug
+  - Description: The calendar chip in the mobile task-create row renders a raw 📅 emoji glyph instead of a monochrome icon, so it doesn't recolor with the app's dark/light theme or the accent-filled selected state like the rest of the icon set (e.g. CALENDAR_SVG, PASTE_SVG in dueDate.js). Replace the emoji in `makeChip('custom', '📅')` with an inline currentColor SVG calendar icon (18x18, viewBox 0 0 24 24, stroke-width 2, matching the app's existing icon style) and size the chip to a fixed 44px circular touch target via a `.calChip` class. Keep `aria-label="Pick a date"` on the button, and leave the Today/Tomorrow chips as plain text labels — icons for them are not in scope for this fix.
+  - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: dba1768d-042e-436a-9f08-db88a868537b -->
