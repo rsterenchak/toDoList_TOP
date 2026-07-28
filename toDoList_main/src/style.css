@@ -12202,6 +12202,27 @@ body.row-dragging * { cursor: grabbing !important; }
     padding-left: 12px;
   }
 
+  /* At this breakpoint #checkToDo is display:none, so the run-status glyph
+     (#descIndicator) becomes the row's first flex item and inherits #toDoChild's
+     bare 4px content padding — leaving it ~4.5px from the row edge while titles
+     sit ~16.5px in. Push the glyph onto the same 16px rail as the titles. Only
+     applies visually when the indicator is shown (pending/shipped state); the
+     stateless #descIndicator is display:none, so the margin is inert otherwise. */
+  #descIndicator {
+    margin-left: 12px;
+  }
+
+  /* When the glyph IS shown it already provides the tab-clearance the title
+     padding above added, so reclaim those 12px from the title — this matters
+     against the ≤420px two-line-clamped titles. The state classes in :has() are
+     required: #descIndicator exists on every row and is only display:none when
+     stateless, so a bare :has(#descIndicator) would strip padding from every row
+     including glyph-less ones. */
+  #toDoChild:has(#descIndicator.runStatusGlyph--pending, #descIndicator.runStatusGlyph--shipped) #toDoInput,
+  #toDoChild:has(#descIndicator.runStatusGlyph--pending, #descIndicator.runStatusGlyph--shipped) .toDoTitleDisplay {
+    padding-left: 0;
+  }
+
   /* The tap-to-read accent edge (data-mobile-read, an inset box-shadow above)
      takes visual precedence over the resting status tab while a row is
      expanded for reading, so hide the tab in that state. The right-cluster
