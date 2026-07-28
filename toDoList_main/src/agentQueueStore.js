@@ -162,6 +162,57 @@ export function getQueueRowForTodo(todoId) {
     return best;
 }
 
+// The terminal state (and its summary line) a stale `needs_mockup` row is settled
+// to when its todo pivots to a direct dispatch. `no_change` is the honest terminal
+// for a mockup decision that never produced an in-app change — the entry was
+// dispatched without one — and, unlike `needs_mockup`, it is NOT an in-flight state
+// (see IN_FLIGHT / getInFlightRows), so the todo is left with a single in-flight
+// row rather than two competing ones.
+const STALE_MOCKUP_SETTLE_STATE = 'no_change';
+const STALE_MOCKUP_SETTLE_REASON = 'Superseded by a direct injection — the entry was dispatched without choosing a mockup.';
+
+// Settle any OTHER `needs_mockup` rows linked to `todoId` (excluding
+// `exceptRowId`, the row that just dispatched). The pending-glyph fix made the
+// synchronous read-path lookup (getQueueRowForTodo) prefer the newest row, so a
+// todo that pivots to a direct dispatch stops PAINTING its stale `needs_mockup`
+// row — but that row is never settled on the write side, so it sits orphaned in
+// the queue forever and the queue accumulates it. This is the write-side match:
+// when a client dispatch supersedes a deferred mockup, move each sibling
+// `needs_mockup` row out of that state through listLogic.setAgentRunState so no
+// todo is left with two in-flight-competing rows.
+//
+// Scoped to the loaded project's cache exactly like getQueueRowForTodo — a todo
+// belongs to one project, so both the dispatched row and its stale mockup sibling
+// live in the same project's rows. Best-effort: each settle failure is swallowed
+// so it can never fail the dispatch that triggered it. Returns a promise resolving
+// to the ids of the rows actually settled (empty when there were none).
+export function settleStaleMockupRows(todoId, exceptRowId) {
+    if (!todoId) return Promise.resolve([]);
+    const rows = getQueueRows();
+    const stale = [];
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.id == null) continue;
+        if (row.todo_id !== todoId) continue;
+        if (row.state !== 'needs_mockup') continue;
+        if (exceptRowId != null && row.id === exceptRowId) continue;
+        stale.push(row);
+    }
+    if (!stale.length) return Promise.resolve([]);
+    return Promise.all(stale.map(function (row) {
+        return Promise.resolve(
+            listLogic.setAgentRunState(row.id, {
+                state: STALE_MOCKUP_SETTLE_STATE,
+                failure_reason: STALE_MOCKUP_SETTLE_REASON,
+            })
+        ).then(function (res) {
+            return (res && res.ok !== false) ? row.id : null;
+        }, function () { return null; });
+    })).then(function (ids) {
+        return ids.filter(function (id) { return id != null; });
+    });
+}
+
 export function isTriageInFlight() { return _triageInFlight; }
 export function setTriageInFlight(v) { _triageInFlight = !!v; }
 

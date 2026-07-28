@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-28',
         fixed: [
-            "The task detail pane now updates immediately after choosing a mockup variant, instead of appearing to hang until the task is closed and reopened.",
             "On mobile, a task waiting on a mockup now lets you generate and choose an A/B/C variant right in its editor, comparing the three through tabs above a single preview.",
             "The calendar chip in the mobile task-create row now uses a themed icon that recolors with light and dark mode instead of a fixed-color emoji.",
             "On mobile, a task row's run-status glyph now aligns with the title rail instead of hugging the row's left edge.",
             "A task that skips its mockup step and is sent to the agent directly now shows a pending indicator while it runs, instead of staying on its mockup badge.",
+            "A task dispatched directly after deferring its mockup no longer leaves a stale “needs mockup” item lingering in the queue.",
         ],
     },
 ];
