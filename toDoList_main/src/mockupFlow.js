@@ -1,5 +1,11 @@
 import { listLogic } from './listLogic.js';
 import { findTargetById, chatWithWorker, showInjectToast } from './inject.js';
+// wireModalDismiss centralizes the modal close contract (close button, backdrop
+// tap, Escape) + focus restoration. Imported from its own leaf module (NOT
+// modals.js, which imports buildMockupSecondary from here — a static modals.js
+// import would form a modals ↔ mockupFlow init cycle); the leaf has no app
+// imports, so this stays clean.
+import { wireModalDismiss } from './modalDismiss.js';
 
 // The `needs_mockup` A/B/C mockup flow, extracted from agentView.js so it can be
 // mounted outside the Agent board later. It owns the prompt builders, the reply
@@ -340,6 +346,175 @@ function mountScaledFrame(scaler, frame) {
     applyMockupScale(scaler, frame);
 }
 
+// The tap-to-enlarge overlay: one mockup variant rendered large — wider than any
+// pane or the mobile modal — and layered above whatever opened it. RE-RENDERS the
+// variant HTML at a scale suited to the overlay's own (much wider) width via the
+// shared scaler machinery, rather than upscaling the tile's already-shrunk frame,
+// so a dense mockup reads at ~1:1 instead of blurring. Carries the same "use this"
+// action the tiles do — choosing here produces the entry, flips the row to
+// `drafted`, and closes the overlay. Reuses wireModalDismiss for the close-button /
+// backdrop / Escape contract and focus restoration, traps focus while open, and
+// removes any prior overlay first so a second open never leaves the first's iframe
+// in the document. `row` omitted keeps it a pure viewer (no Use control). Returns
+// the guarded close fn. Never throws.
+function openMockupOverlay(key, html, row) {
+    if (!html) return function () {};
+    // Never stack two overlays; a stale one would strand its iframe in the DOM.
+    const prior = document.getElementById('mockupOverlayBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    // Restore focus to whatever opened the overlay (the tapped tile / tab) on close.
+    const previouslyFocused = document.activeElement;
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'mockupOverlayBackdrop';
+    backdrop.className = 'mockupOverlayBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.className = 'mockupOverlay';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-label', 'Mockup option ' + key + ' preview');
+
+    const header = document.createElement('div');
+    header.className = 'mockupOverlayHeader';
+
+    const label = document.createElement('span');
+    label.className = 'mockupOverlayLabel';
+    label.textContent = 'Option ' + key;
+    header.appendChild(label);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'mockupOverlayClose';
+    closeBtn.setAttribute('aria-label', 'Close preview');
+    closeBtn.textContent = '×';
+    header.appendChild(closeBtn);
+    dialog.appendChild(header);
+
+    // Large preview: a FRESH scaler + iframe re-rendered from the variant HTML and
+    // scaled to the overlay's width — not the shrunk tile frame reused. Same
+    // maximum-restriction sandbox as the tiles; do not relax it for the larger view.
+    const scaler = document.createElement('div');
+    scaler.className = 'agentMockupFrameScaler mockupOverlayScaler';
+    const frame = document.createElement('iframe');
+    frame.className = 'agentMockupFrame';
+    frame.setAttribute('sandbox', '');
+    frame.setAttribute('title', 'Mockup option ' + key);
+    frame.srcdoc = injectPreviewStyle(html);
+    scaler.appendChild(frame);
+    dialog.appendChild(scaler);
+
+    // ── "use this": the same createMockupEntry path the tiles use, closing the
+    // overlay on success. Omitted for view-only (no-row) callers. ──
+    let useBtn = null;
+    if (row) {
+        const useRow = document.createElement('div');
+        useRow.className = 'agentMockupUseRow mockupOverlayUseRow';
+
+        const useErr = document.createElement('p');
+        useErr.className = 'agentMockupUseError';
+        useErr.setAttribute('role', 'alert');
+        useErr.hidden = true;
+
+        useBtn = document.createElement('button');
+        useBtn.type = 'button';
+        useBtn.className = 'agentMockupUse';
+        useBtn.textContent = 'use this';
+
+        let failed = false;
+        const useFail = function (message) {
+            failed = true;
+            useBtn.disabled = false;
+            useBtn.classList.remove('is-pending');
+            useBtn.textContent = 'use this';
+            useErr.textContent = message || 'Couldn’t create the entry. Try again.';
+            useErr.hidden = false;
+        };
+
+        useBtn.addEventListener('click', function () {
+            if (useBtn.disabled) return;
+            failed = false;
+            useErr.hidden = true;
+            useErr.textContent = '';
+            useBtn.disabled = true;
+            useBtn.classList.add('is-pending');
+            useBtn.textContent = 'Creating entry…';
+            createMockupEntry(row, key, html, useFail).then(function () {
+                // Success: the row is now drafted — close. On failure useFail has
+                // already re-enabled the button and surfaced the error, so hold.
+                if (!failed) close();
+            });
+        });
+
+        useRow.appendChild(useBtn);
+        useRow.appendChild(useErr);
+        dialog.appendChild(useRow);
+    }
+
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const close = wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeBtn],
+        onClose: function () {
+            if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
+        },
+    });
+
+    // Trap focus inside the overlay while open — it holds actionable controls, so
+    // Tab must not reach the pane/modal beneath. Cycles between the close control
+    // and (when present) the enabled Use button.
+    dialog.addEventListener('keydown', function (e) {
+        if (e.key !== 'Tab') return;
+        const focusables = [closeBtn, useBtn].filter(function (b) { return b && !b.disabled; });
+        if (!focusables.length) return;
+        const first = focusables[0];
+        const last = focusables[focusables.length - 1];
+        const active = document.activeElement;
+        if (e.shiftKey) {
+            if (active === first || !dialog.contains(active)) { e.preventDefault(); last.focus(); }
+        } else {
+            if (active === last || !dialog.contains(active)) { e.preventDefault(); first.focus(); }
+        }
+    });
+
+    // Fit the preview to the overlay's width now it's measurable in the DOM.
+    mountScaledFrame(scaler, frame);
+
+    // Land focus on the close control so Escape/Enter work at once and the trap
+    // has a starting point inside the overlay.
+    try { closeBtn.focus(); } catch (e) { /* defensive */ }
+
+    return close;
+}
+
+// Layer a tap-to-enlarge affordance over a scaled preview `scaler`: a transparent
+// button ON TOP of the pointer-inert sandboxed iframe (which swallows clicks), so
+// a tap or Enter/Space opens the variant in the overlay. A small corner glyph
+// surfaces on hover/focus to signal it's interactive. `describe` names the variant
+// for the accessible label; `onEnlarge` opens the overlay for whatever variant is
+// current at click time (fixed for a tile, the selected tab for the tabbed host).
+function addMockupEnlarge(scaler, describe, onEnlarge) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'agentMockupEnlarge';
+    btn.setAttribute('aria-label', 'Enlarge ' + describe + ' preview');
+
+    const hint = document.createElement('span');
+    hint.className = 'agentMockupEnlargeHint';
+    hint.setAttribute('aria-hidden', 'true');
+    hint.textContent = '⤢';
+    btn.appendChild(hint);
+
+    btn.addEventListener('click', function () { onEnlarge(); });
+    scaler.appendChild(btn);
+    return btn;
+}
+
 // Turn a chosen A/B/C variant into a finished TODO.md entry and write it to the
 // row's draft, flipping the row to `drafted` at the existing Dispatch gate. The
 // chat round-trip → fence strip → save → refresh sequence is identical for every
@@ -425,6 +600,12 @@ function renderMockupPreviews(container, variants, row, options) {
             scaler.className = 'agentMockupFrameScaler';
             scaler.appendChild(frame);
             mountScaledFrame(scaler, frame);
+            // Tap the (necessarily small) scaled preview to open it large — the
+            // grid tiles are too small to read a dense mockup. Not added to the
+            // board's unscaled full-width frames (out of scope).
+            addMockupEnlarge(scaler, 'Option ' + k, function () {
+                openMockupOverlay(k, variants[k], row);
+            });
             tile.appendChild(scaler);
         } else {
             tile.appendChild(frame);
@@ -603,6 +784,13 @@ function renderMockupTabs(container, variants, row, options) {
         useRow.appendChild(useErr);
         container.appendChild(useRow);
     }
+
+    // Tap the single tabbed preview to open the CURRENTLY-selected variant large —
+    // the modal-width preview is too narrow to read a dense mockup. Reads
+    // selectedKey at click time so it always enlarges the visible tab.
+    addMockupEnlarge(scaler, 'the selected option', function () {
+        openMockupOverlay(selectedKey, variants[selectedKey], row);
+    });
 
     // Paint the first preview and wire the scale observer so a viewport / modal
     // resize re-fits it live.
@@ -916,5 +1104,6 @@ export {
     mockupChatRepo,
     renderMockupPreviews,
     renderMockupTabs,
+    openMockupOverlay,
     buildMockupSecondary,
 };

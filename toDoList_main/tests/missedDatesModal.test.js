@@ -16,6 +16,9 @@ function read(relative) {
 // and inherits their close vocabulary (X / backdrop / Escape).
 describe('missed dates modal', () => {
     const modals = read('modals.js');
+    // The shared wireModalDismiss helper was extracted to its own leaf module
+    // (re-exported from modals.js), so its implementation now lives here.
+    const modalDismiss = read('modalDismiss.js');
     const toDoRow = read('toDoRow.js');
     // The stats payload (renderStatsContent) that draws the miss callout and
     // the `+ N more` chip was extracted verbatim into statsDrawerPanel.js;
@@ -75,9 +78,9 @@ describe('missed dates modal', () => {
         expect(call).not.toBeNull();
         expect(call[0]).toMatch(/closeButtons:\s*\[\s*closeX\s*,\s*closeBtn\s*\]/);
         expect(call[0]).toMatch(/backdrop:\s*backdrop/);
-        expect(modals).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
-        expect(modals).toMatch(/event\.target\s*===\s*backdrop/);
-        expect(modals).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
+        expect(modalDismiss).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+        expect(modalDismiss).toMatch(/event\.target\s*===\s*backdrop/);
+        expect(modalDismiss).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
     });
 
     it('removes any prior missed-dates modal backdrop before mounting a new one', () => {

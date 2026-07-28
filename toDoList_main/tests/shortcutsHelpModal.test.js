@@ -18,6 +18,9 @@ function read(relative) {
 describe('help modal + triggers', () => {
     const main = read('main.js');
     const modals = read('modals.js');
+    // wireModalDismiss was extracted to its own leaf module (re-exported from
+    // modals.js); the helper's internals are asserted against it.
+    const modalDismiss = read('modalDismiss.js');
     // The desktop ghost-menu Help item lives in settingsMenu.js after the
     // closure-to-factory extraction; main.js keeps the gear trigger + `?` key.
     const settingsMenu = read('settingsMenu.js');
@@ -174,9 +177,9 @@ describe('help modal + triggers', () => {
         expect(call).not.toBeNull();
         expect(call[0]).toMatch(/closeButtons:\s*\[\s*closeX\s*,\s*closeBtn\s*\]/);
         expect(call[0]).toMatch(/backdrop:\s*backdrop/);
-        expect(modals).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
-        expect(modals).toMatch(/event\.target\s*===\s*backdrop/);
-        expect(modals).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
+        expect(modalDismiss).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+        expect(modalDismiss).toMatch(/event\.target\s*===\s*backdrop/);
+        expect(modalDismiss).toMatch(/event\.key\s*===\s*['"]Escape['"]/);
     });
 
     it('removes any prior help modal backdrop before mounting a new one', () => {
