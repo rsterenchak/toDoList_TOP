@@ -34,6 +34,10 @@ function extractFunction(source, signature) {
 // Desktop (>420px) keeps the inline drawer unchanged.
 describe('recurring-task stats use a full-screen modal on phone viewports', () => {
     const toDoRow = read('toDoRow.js');
+    // renderStatsContent / openStatsModal were extracted verbatim from
+    // wireStatsToggle into statsDrawerPanel.js; wireStatsToggle itself and
+    // buildFallbackStrip still live in toDoRow.js.
+    const statsDrawer = read('statsDrawerPanel.js');
     const css = read('style.css');
     const modals = read('modals.js');
 
@@ -49,7 +53,7 @@ describe('recurring-task stats use a full-screen modal on phone viewports', () =
     });
 
     it('openStatsModal builds the dialog shell with backdrop, dialog, header (title + close X), and a body', () => {
-        const fn = extractFunction(toDoRow, 'function openStatsModal(');
+        const fn = extractFunction(statsDrawer, 'function openStatsModal(');
         expect(fn).toMatch(/statsModalBackdrop/);
         expect(fn).toMatch(/['"]statsModal['"]/);
         expect(fn).toMatch(/statsModalHeader/);
@@ -63,7 +67,7 @@ describe('recurring-task stats use a full-screen modal on phone viewports', () =
     });
 
     it('openStatsModal wires the three close affordances — X click, backdrop click, Escape', () => {
-        const fn = extractFunction(toDoRow, 'function openStatsModal(');
+        const fn = extractFunction(statsDrawer, 'function openStatsModal(');
         // X click
         expect(fn).toMatch(/closeX\.addEventListener\(\s*['"]click['"]/);
         // Backdrop click — close only when target IS backdrop (not bubbled from dialog)
@@ -73,12 +77,12 @@ describe('recurring-task stats use a full-screen modal on phone viewports', () =
     });
 
     it('openStatsModal resets the window selection to 30d on every open', () => {
-        const fn = extractFunction(toDoRow, 'function openStatsModal(');
+        const fn = extractFunction(statsDrawer, 'function openStatsModal(');
         expect(fn).toMatch(/currentWindow\s*=\s*['"]30d['"]/);
     });
 
     it('renderStatsContent always uses buildContributionsGrid for non-month/year cadences regardless of viewport', () => {
-        const fn = extractFunction(toDoRow, 'function renderStatsContent(');
+        const fn = extractFunction(statsDrawer, 'function renderStatsContent(');
         // The previous mobile branch that swapped in buildFallbackStrip
         // with a `true` mobile flag must be gone — the modal renders the
         // full contributions grid at desktop dimensions.
