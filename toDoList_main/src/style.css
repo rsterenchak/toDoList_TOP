@@ -17613,6 +17613,12 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-secondary);
+  /* Only the entry's Description line lands here, but an unusually long one must
+     not push the decision buttons below the fold — clamp to ~3 lines. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
 }
 .descReviewNote {
   margin: 0;

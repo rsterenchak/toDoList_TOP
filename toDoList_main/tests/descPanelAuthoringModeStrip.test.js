@@ -150,8 +150,10 @@ describe('authoring mode strip — done phase hides strip and both bodies', () =
         const { descSibling } = makePanel({ id: 't1' });
         applyPhaseLayout(descSibling, PHASE.DONE);
         // Leaving `done`: the phase gate un-hides the whole group, then the mode
-        // controller re-hides the two inactive-mode bodies (WRITE active).
-        applyPhaseLayout(descSibling, PHASE.ACCEPT);
+        // controller re-hides the two inactive-mode bodies (WRITE active). DRAFT is
+        // a genuinely non-terminal phase — `accept` now hides the group too, so it
+        // can no longer stand in for "a non-terminal phase" here.
+        applyPhaseLayout(descSibling, PHASE.DRAFT);
         applyAuthoringMode(descSibling, descSibling.dataset.authorMode || 'write');
         expect(descSibling.querySelector('.descModeStrip').hidden).toBe(false);
         expect(descSibling.querySelector('#descInput').hidden).toBe(false);

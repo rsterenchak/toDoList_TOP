@@ -169,8 +169,10 @@ describe('desc panel rail — idempotent mount + leading order', () => {
 });
 
 describe('desc panel phase layout — applyPhaseLayout gates the authoring group', () => {
-    // The authoring group (hidden in the terminal `done` phase) and the retained
-    // controls (never touched by applyPhaseLayout, in any phase).
+    // The authoring group (hidden in the `done` AND `accept` phases — a shipped
+    // entry has nothing left to author, and in `accept` the decision surface owns
+    // the space) and the retained controls (never touched by applyPhaseLayout, in
+    // any phase).
     const AUTHORING = [
         { sel: '#descInput', make: () => el('textarea', { id: 'descInput' }) },
         { sel: '.filePickTrigger', make: () => el('button', { className: 'filePickTrigger' }) },
@@ -216,23 +218,33 @@ describe('desc panel phase layout — applyPhaseLayout gates the authoring group
         expect(ALL_PHASES).toHaveLength(Object.values(PHASE).length);
     });
 
-    it('hides every authoring-group control and THE ENTRY label in the `done` phase', () => {
-        const panel = makeFullPanel();
-        applyPhaseLayout(panel, PHASE.DONE);
-        AUTHORING.forEach(({ sel }) => {
-            expect(panel.querySelector(sel).hidden, `${sel} should be hidden in done`).toBe(true);
-        });
-    });
+    // Both phases where the authoring group is hidden — `done` (nothing left to
+    // author) and `accept` (the WHAT CHANGED card + decision actions own the space).
+    const HIDE_PHASES = [PHASE.DONE, PHASE.ACCEPT];
 
-    it('never touches the rail, Discuss, ASKING or STUCK blocks — even in `done`', () => {
-        const panel = makeFullPanel();
-        applyPhaseLayout(panel, PHASE.DONE);
-        RETAINED.forEach(({ sel }) => {
-            expect(panel.querySelector(sel).hidden, `${sel} must stay visible in done`).toBe(false);
-        });
-    });
+    it.each(HIDE_PHASES)(
+        'hides every authoring-group control and THE ENTRY label in the `%s` phase',
+        (phase) => {
+            const panel = makeFullPanel();
+            applyPhaseLayout(panel, phase);
+            AUTHORING.forEach(({ sel }) => {
+                expect(panel.querySelector(sel).hidden, `${sel} should be hidden in ${phase}`).toBe(true);
+            });
+        }
+    );
 
-    it.each(ALL_PHASES.filter((p) => p !== PHASE.DONE))(
+    it.each(HIDE_PHASES)(
+        'never touches the rail, Discuss, ASKING or STUCK blocks — even in `%s`',
+        (phase) => {
+            const panel = makeFullPanel();
+            applyPhaseLayout(panel, phase);
+            RETAINED.forEach(({ sel }) => {
+                expect(panel.querySelector(sel).hidden, `${sel} must stay visible in ${phase}`).toBe(false);
+            });
+        }
+    );
+
+    it.each(ALL_PHASES.filter((p) => p !== PHASE.DONE && p !== PHASE.ACCEPT))(
         'shows the whole authoring group in the non-terminal `%s` phase',
         (phase) => {
             const panel = makeFullPanel();
@@ -250,7 +262,9 @@ describe('desc panel phase layout — applyPhaseLayout gates the authoring group
         const panel = makeFullPanel();
         applyPhaseLayout(panel, PHASE.DONE);
         expect(panel.querySelector('#descInput').hidden).toBe(true);
-        applyPhaseLayout(panel, PHASE.ACCEPT);
+        // DRAFT is genuinely non-terminal — `accept` now also hides the group, so it
+        // can no longer be the "leaves done" target here.
+        applyPhaseLayout(panel, PHASE.DRAFT);
         AUTHORING.forEach(({ sel }) => {
             expect(panel.querySelector(sel).hidden).toBe(false);
         });

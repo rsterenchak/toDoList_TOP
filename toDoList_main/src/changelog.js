@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-27',
-        added: [
-            "On wide screens, a shipped change awaiting review can now be accepted, reverted, or opened in TODO.md straight from the detail pane, without switching to the TODO.md view first.",
-        ],
         fixed: [
             "On wide screens, a selected task row now shows its in-progress amber stripe alongside the selection highlight, so setting a task to IN PROGRESS from the detail pane updates the open row right away.",
             "On wide screens, the queue rail's phase filter pills now sit on their own row so every label — ALL, IDEAS, RUNNING, DONE — reads in full instead of truncating.",
             "On wide screens, the detail pane's phase progress rail and its WRITE / PASTE / GENERATE mode strip now span the pane's full width instead of clustering at the left.",
             "On wide screens, the detail pane's description panel now sits directly on the pane background without a drawer border, accent edge, or a redundant “THE ENTRY” label, so it reads as part of the pane rather than a card inside a card.",
+            "On wide screens, a shipped change awaiting review now shows a short description summary instead of the entire entry text, and the entry editor is hidden while you accept or revert it.",
         ],
     },
 ];

@@ -521,7 +521,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9a489f39-1949-4768-96a4-a6af8234a8dc -->
 
-- [ ] **[MEDIUM]** Detail pane: trim the WHAT CHANGED summary and hide authoring in the accept phase
+- [x] **[MEDIUM]** Detail pane: trim the WHAT CHANGED summary and hide authoring in the accept phase — Completed: 2026-07-27
   - Type: bug
   - Description: The WHAT CHANGED card renders `item.desc` verbatim, but that field holds the ENTIRE entry — headline, Type, Description, Implementation notes, Out of scope, File, Completed — so the card dumps the full entry text. The authoring textarea directly below shows the same text again, putting two complete copies of the entry on screen and burying the decision controls. Two fixes: parse only the `- Description:` line for the summary, and hide the authoring group in the `accept` phase as well as `done`, matching the reviewed layout, whose ACCEPT state has no mode strip and no textarea. A shipped entry cannot be usefully edited from a local copy — OPEN IN TODO.MD is the route to the real text.
   - Behavior: The WHAT CHANGED card shows the PR line and, beneath it, only the entry's Description text — one short paragraph, clamped to a few lines with an ellipsis if long. When the entry has no `- Description:` line the summary is omitted and the PR line plus the costs-nothing note remain. In the `accept` phase the panel shows the phase rail, the WHAT CHANGED card, the FILE readout, the three decision actions, Discuss, and MANUAL STATUS — the mode strip, the entry textarea, the file picker, Generate, and Inject are hidden. Accepting moves the task to `done`, where the authoring group stays hidden as it does today. Every other phase is unchanged, and the mobile modal is untouched.
