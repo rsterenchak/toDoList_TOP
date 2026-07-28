@@ -558,7 +558,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 106c85f8-ec53-411f-8b24-2d615e257f8c -->
 
-- [ ] **[HIGH]** Structure view: span the full pane and arrange as navigator + detail
+- [x] **[HIGH]** Structure view: span the full pane and arrange as navigator + detail — Completed: 2026-07-28
   - Type: feature
   - Description: On desktop the Structure view renders inside `#mainBar`, which occupies the fixed ~308px queue track of `#mainSec`'s two-column split, so its repository header, lens toggle, refactor card, filter, region cards, captured canvas, and node tree are all crammed into the rail — while `#descDetailPane` sits beside it showing "Open a task to see its details here", an empty state that cannot apply in this view. `#mainBar[data-view="structure"]` hides the task list and filter bar but nothing collapses the split. Give Structure the full pane and lay it out as a navigator rail plus a detail column, mirroring the Stream tab's grammar: lens toggle, filter, tree and refactor card on the left; a compact selected-region inspector above a large capture canvas on the right.
   - Behavior: With STRUCTURE active at desktop widths the view fills the entire main pane — no queue rail, no detail pane, no leftover empty state. Inside it, a fixed-width left rail holds the repository header, the UI / Code lens toggle, the handle filter with Expand all, the node tree (scrolling independently), and the NEXT REFACTOR card beneath it. The right column holds a compact inspector for the selected region — its name, selector, dimensions and source location, and its actions in one wrapping row — above the capture canvas, which takes all remaining height with its captured-at line, Mobile / Desktop toggle, and Re-capture control. The "Not in this layout" chips sit beneath the canvas. Selecting a node in the tree updates the inspector and highlights the region on the canvas, and vice versa, exactly as they do today. Switching back to STREAM restores the queue rail and detail pane with the open task intact. Mobile is unchanged.
@@ -577,3 +577,13 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d402be77-1cdf-4083-aea4-cdb8b4fcc8b4 -->
+
+- [ ] **[MEDIUM]** Agent view: span the full pane instead of the narrow queue rail
+  - Type: bug
+  - Description: `#agentView` overlays `#mainBar` (`grid-row: 1 / -1; grid-column: 1`) exactly the way `#structureView` does, so at desktop widths it is boxed into the fixed ~308px queue track of `#mainSec`'s queue|detail split while `#descDetailPane` sits beside it showing its "open a task" empty state — the same squeeze the Structure view had before it was given the full pane. The Agent view is now reached only by DRAFTED / STUCK / MOCKUP badge routes, but when it is shown its board is crammed into the rail. Give it the full pane the same way Structure got it: collapse the `#mainSec` split and hide the detail pane while AGENT is active.
+  - Behavior: With AGENT active at desktop widths the board fills the entire main pane — no queue rail beside it, no leftover detail pane. Switching back to STREAM restores the queue rail and detail pane with the open task intact. Mobile is unchanged.
+  - Implementation notes:
+    - Mirror the Structure collapse gate: it is keyed off `body[data-view="structure"] #mainSec` (an ancestor of `#mainBar`, since CSS can't select an ancestor by a descendant's attribute). Add the identical `body[data-view="agent"] #mainSec { grid-template-columns: minmax(0, 1fr); }` rule.
+    - Hide `#descDetailPane` while AGENT is active. `applyActiveView` already toggles `descDetailPane.hidden` for `structure`; extend that to also hide it for `agent` (the `#descDetailPane[hidden] { display: none }` guard already exists). Do NOT unmount `#descSibling` — hide the pane so returning to STREAM restores the open task.
+    - Verify the Agent board's own internal layout reads correctly at the full pane width — it was only ever seen in the rail, so its cards may need their own max-width or grid tuning; report what you find and keep any board-internal change minimal.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
