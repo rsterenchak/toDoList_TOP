@@ -648,12 +648,15 @@ const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
 
 
 // Gate the panel's authoring group by ONE derived phase — the first slice of
-// turning #descSibling into a per-phase face. In the terminal `done` phase (a
-// shipped-and-acknowledged entry) there is nothing left to author, so the whole
-// group is hidden, leaving the phase rail, the ASKING/STUCK blocks, and Discuss;
-// every other phase (`none`, `draft`, `accept`, `asking`, `drafted`, `stuck`,
-// `mockup`) renders the group exactly as before. THE ENTRY section label is hidden
-// alongside the group in `done` (there is no entry to author).
+// turning #descSibling into a per-phase face. The group is hidden in the terminal
+// `done` phase (a shipped-and-acknowledged entry, nothing left to author) AND in
+// the `accept` phase (a shipped entry awaiting a decision — the WHAT CHANGED card
+// and the decision actions take the space, and a shipped entry cannot be usefully
+// edited from a local copy; OPEN IN TODO.MD routes to the real text). Both leave
+// the phase rail, the REVIEW / ASKING / STUCK blocks, and Discuss; every other
+// phase (`none`, `draft`, `asking`, `drafted`, `stuck`, `mockup`) renders the group
+// exactly as before. THE ENTRY section label is hidden alongside the group in those
+// two phases (there is no entry to author).
 //
 // Hides via the `[hidden]` attribute — never inline `style.display`, which would
 // fight refreshInjectButton's own display gating. The two compose cleanly:
@@ -670,7 +673,7 @@ const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
 // transitions into or out of `done` re-derives its layout without a re-render.
 export function applyPhaseLayout(descSibling, phase) {
     if (!descSibling) return;
-    const hideAuthoring = phase === PHASE.DONE;
+    const hideAuthoring = phase === PHASE.DONE || phase === PHASE.ACCEPT;
     DESC_AUTHORING_GROUP_SELECTORS.forEach(function(selector) {
         descSibling.querySelectorAll(selector).forEach(function(el) {
             el.hidden = hideAuthoring;
@@ -1022,10 +1025,46 @@ function syncDispatchPanel(toDoChild, item) {
 // syncReviewPanel gates on detail-pane mode so nothing mounts on mobile, where the
 // modal keeps its single route action.
 
+// Pull ONLY the `- Description:` sub-bullet text out of a full TODO.md entry blob.
+// `item.desc` holds the ENTIRE entry (headline, Type, Description, Implementation
+// notes, Out of scope, File, Completed, marker), so the WHAT CHANGED card must not
+// render it verbatim — that dumps the whole entry and duplicates the textarea below.
+// parsePastedEntry does NOT help here: its `description` field is the whole
+// fence-stripped blob, not the Description sub-bullet, so reusing it would reproduce
+// the very bug. Tolerant of leading whitespace and a `-`/`*` bullet marker; folds
+// wrapped continuation lines that follow the Description line until the next
+// labelled sub-bullet, a checkbox headline, or the id marker. Returns '' when there
+// is no Description line, so the caller omits the summary rather than falling back
+// to the raw entry.
+export function extractEntryDescription(raw) {
+    const text = String(raw == null ? '' : raw);
+    const lines = text.split('\n');
+    const descRe = /^\s*[-*]?\s*Description:\s*(.*)$/i;
+    // A new labelled sub-bullet (`- Type:`, `- File:`, `- Out of scope:`), a task
+    // checkbox headline, or the id marker ends the Description; any other line that
+    // follows it is a wrapped continuation of the same paragraph.
+    const stopRe = /^\s*(?:[-*]\s+[A-Za-z][\w /]*:|- \[[ xX]\]|<!-- id:)/;
+    let start = -1;
+    let first = '';
+    for (let i = 0; i < lines.length; i++) {
+        const m = lines[i].match(descRe);
+        if (m) { start = i; first = m[1]; break; }
+    }
+    if (start === -1) return '';
+    const parts = [first];
+    for (let i = start + 1; i < lines.length; i++) {
+        if (stopRe.test(lines[i])) break;
+        parts.push(lines[i]);
+    }
+    return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+
 // Build the WHAT CHANGED card for the review surface. PR number/link comes from the
 // linked queue row (mirroring the Agent board's shipped secondary); the change
-// summary is the entry's own Description (no network fetch — the honest local
-// source), omitted when empty. Always carries the costs-nothing note.
+// summary is the entry's own `- Description:` line (extractEntryDescription — no
+// network fetch, the honest local source), omitted when the entry carries no
+// Description line. Always carries the costs-nothing note.
 function buildReviewBlock(item, queueRow) {
     const block = document.createElement('div');
     block.className = 'descReviewBlock';
@@ -1053,9 +1092,10 @@ function buildReviewBlock(item, queueRow) {
         block.appendChild(p);
     }
 
-    // Change summary from the entry's Description line (already in the textarea —
-    // no per-open GitHub request). Omitted when empty; the PR line + note remain.
-    const summary = ((item && item.desc) || '').trim();
+    // Change summary from the entry's `- Description:` line only (not the whole
+    // entry blob) — no per-open GitHub request. Omitted when the entry has no
+    // Description line; the PR line + note remain.
+    const summary = extractEntryDescription(item && item.desc);
     if (summary) {
         const s = document.createElement('p');
         s.className = 'descReviewSummary';
@@ -2142,11 +2182,12 @@ export function refreshDescStatusDots() {
             if (openPanel) {
                 applyPhaseLayout(openPanel, phase);
                 // Re-assert the active authoring mode after the phase gate (which
-                // un-hides the whole group in a non-`done` phase) so the two
+                // un-hides the whole group in a non-terminal phase) so the two
                 // inactive-mode bodies stay hidden, and repaint the GENERATE body
-                // from the live queue-row state (triaging → idle). Skipped in
-                // `done`, where the whole group stays hidden.
-                if (phase !== PHASE.DONE) {
+                // from the live queue-row state (triaging → idle). Skipped in `done`
+                // AND `accept`, where the whole group stays hidden for the decision
+                // surface — re-asserting would re-show the controls the gate hid.
+                if (phase !== PHASE.DONE && phase !== PHASE.ACCEPT) {
                     applyAuthoringMode(openPanel, openPanel.dataset.authorMode || 'write');
                     syncGenerateBody(openPanel, row.__item, row.getAttribute('data-value'));
                 }
@@ -3382,9 +3423,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         const derivedPhase = derivePhase(item);
         applyPhaseLayout(descSibling, derivedPhase);
         // Apply the active authoring mode AFTER the phase gate so it wins over the
-        // group un-hide in a non-`done` phase (the strip + inactive-mode bodies are
-        // in the authoring group). In `done` the whole group stays hidden, so skip.
-        if (item.id && derivedPhase !== PHASE.DONE) {
+        // group un-hide in a non-terminal phase (the strip + inactive-mode bodies are
+        // in the authoring group). In `done` AND `accept` the whole group stays
+        // hidden — the decision surface owns the space — so skip, or applyAuthoringMode
+        // would re-show the textarea/picker/Generate the phase gate just hid.
+        if (item.id && derivedPhase !== PHASE.DONE && derivedPhase !== PHASE.ACCEPT) {
             applyAuthoringMode(descSibling, 'write');
             syncGenerateBody(descSibling, item, projectName);
         }
