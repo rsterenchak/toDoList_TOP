@@ -70,7 +70,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
     captureRemote: vi.fn(function () { return Promise.resolve({ ok: true, passes: 2 }); }),
 }));
 
-import { renderStructureView, captureStructureSnapshot, buildUiTree } from '../src/structureView.js';
+import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport } from '../src/structureView.js';
 import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { captureRemote } from '../src/structureRemoteCapture.js';
@@ -994,6 +994,98 @@ describe('renderStructureView — guest deployed-site capture trigger (UI lens)'
         expect(captureRemote).toHaveBeenCalled();
         // Measured against the self repo (its own deployed Pages site).
         expect(captureRemote.mock.calls[0][0]).toBe('rsterenchak/toDoList_TOP');
+    });
+});
+
+describe('renderStructureView — desktop navigator/detail canvas host', () => {
+    // At desktop widths the Structure view lays out as a rail (header, filter, tree,
+    // refactor + capture cards) beside a detail column (inspector + block canvas). The
+    // block canvas is relocated out of the tree into a dedicated flat child
+    // (.structureCanvasHost) so the rows stay in the rail while the canvas fills the
+    // detail column. On mobile the host stays empty and the canvas mounts inline atop
+    // the tree, so the single-column stack is unchanged. jsdom defaults to 1024px wide
+    // (desktop); the mobile cases set innerWidth explicitly and restore it after.
+    const realInnerWidth = window.innerWidth;
+    function setWidth(w) {
+        Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
+    }
+    function mountSelfUiDom() {
+        document.body.innerHTML =
+            '<div id="structureView"></div>' +
+            '<div class="selectedProject"><input id="projInput" value="My Project"></div>' +
+            '<main id="mainPanel" data-region="Tasks"></main>';
+    }
+
+    beforeEach(() => {
+        setStructureLens('ui');
+    });
+    afterEach(() => {
+        setWidth(realInnerWidth);
+    });
+
+    it('mounts a .structureCanvasHost as a flat child of #structureView, after the tree', async () => {
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        const view = document.getElementById('structureView');
+        const host = view.querySelector(':scope > .structureCanvasHost');
+        expect(host).toBeTruthy();
+        const tree = view.querySelector(':scope > .structureTree');
+        expect(tree).toBeTruthy();
+        // Source order: the tree precedes the host, so mobile's single-column stack
+        // (tree, then the empty host) matches the pre-change layout.
+        expect(tree.compareDocumentPosition(host) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('mounts the block canvas into the detail-column host (not the tree) at desktop widths', async () => {
+        setWidth(1280);
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        const host = document.querySelector('#structureView > .structureCanvasHost');
+        const tree = document.querySelector('#structureView > .structureTree');
+        expect(host.querySelector('.structureCanvasPane')).toBeTruthy();
+        expect(tree.querySelector('.structureCanvasPane')).toBeFalsy();
+    });
+
+    it('mounts the block canvas inline atop the tree on mobile, leaving the host empty', async () => {
+        setWidth(800);
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        const host = document.querySelector('#structureView > .structureCanvasHost');
+        const tree = document.querySelector('#structureView > .structureTree');
+        expect(tree.querySelector('.structureCanvasPane')).toBeTruthy();
+        expect(host.querySelector('.structureCanvasPane')).toBeFalsy();
+    });
+
+    it('re-homes the canvas across the breakpoint when the viewport resizes', async () => {
+        setWidth(1280);
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        let host = document.querySelector('#structureView > .structureCanvasHost');
+        let tree = document.querySelector('#structureView > .structureTree');
+        expect(host.querySelector('.structureCanvasPane')).toBeTruthy();
+
+        // Shrink below 1024px and sync: the canvas moves out of the detail column and
+        // back inline atop the tree.
+        setWidth(800);
+        syncStructureCanvasForViewport();
+        await flush();
+        host = document.querySelector('#structureView > .structureCanvasHost');
+        tree = document.querySelector('#structureView > .structureTree');
+        expect(tree.querySelector('.structureCanvasPane')).toBeTruthy();
+        expect(host.querySelector('.structureCanvasPane')).toBeFalsy();
+
+        // Grow back to desktop and sync: the canvas returns to the detail column.
+        setWidth(1280);
+        syncStructureCanvasForViewport();
+        await flush();
+        host = document.querySelector('#structureView > .structureCanvasHost');
+        tree = document.querySelector('#structureView > .structureTree');
+        expect(host.querySelector('.structureCanvasPane')).toBeTruthy();
+        expect(tree.querySelector('.structureCanvasPane')).toBeFalsy();
     });
 });
 

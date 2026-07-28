@@ -113,7 +113,33 @@ let regionsIndex = new Map();
 let currentSrcRoot = null;
 let currentSha = null;
 let currentTreeEl = null;
+// At desktop widths the Structure view lays out as a navigator rail (header, lens
+// toggle, filter, node tree, refactor + capture cards) beside a detail column
+// (selected-region inspector above the block canvas). The block canvas is mounted
+// into this dedicated host — a flat child of #structureView placed in the detail
+// column by CSS — rather than into the tree, so the rows stay in the rail while the
+// canvas fills the detail column. Below 1024px there is no detail column, so the
+// canvas mounts inline at the top of the tree exactly as before (resolveCanvasHost).
+let currentCanvasHost = null;
+// Tracks the breakpoint the active lens last painted its canvas at, so a resize
+// across 1024px can re-home the canvas between the rail (mobile, inside the tree)
+// and the detail column (desktop, #structureView > .structureCanvasHost).
+let canvasHostDesktop = false;
 let lensToggleGroup = null;
+
+// The desktop navigator/detail split (and the block canvas's detail-column home)
+// applies at the same >1023px breakpoint the detail pane and chat surface use.
+function structureIsDesktop() {
+    return typeof window !== 'undefined' && window.innerWidth > 1023;
+}
+
+// Where the block canvas mounts for the current viewport: the detail-column host at
+// desktop widths (so the canvas sits beside the rail), the tree itself on mobile (so
+// it stays inline above the rows, unchanged). Falls back to the tree if the host was
+// never built (defensive — an empty-state render leaves currentCanvasHost null).
+function resolveCanvasHost() {
+    return (structureIsDesktop() && currentCanvasHost) ? currentCanvasHost : currentTreeEl;
+}
 
 // The active repo's manifest-declared second lens and its type outline:
 //   • currentLens — which lens fills the toggle's second (non-Code) slot for this
@@ -1570,7 +1596,12 @@ function renderUiLens(repo, treeEl) {
         // the tree, sized from the live layout snapshot; ghost rows go amber.
         if (repo === SELF_REPO) {
             canvasActive = true;
-            const pane = renderStructureCanvas(treeEl, {
+            // Desktop mounts the canvas in the detail column; mobile inline atop the
+            // tree. The status control + capture status ride with the canvas into
+            // whichever host is active, so their placement stays symmetric.
+            const canvasHost = resolveCanvasHost();
+            if (canvasHost !== treeEl) clear(canvasHost);
+            const pane = renderStructureCanvas(canvasHost, {
                 repo: repo,
                 tree: tree,
                 onSelect: selectFromCanvas,
@@ -1584,9 +1615,9 @@ function renderUiLens(repo, treeEl) {
             });
             markGhostRows(treeEl);
             // The capture affordance now lives in the snapshot chip (via onRecapture),
-            // so the tree-top control carries only the status/error line — placed above
-            // the canvas, right by the chip, so progress stays visible near the button.
-            insertCaptureControlAtTop(treeEl, buildCaptureControl(repo, treeEl, false), pane);
+            // so the control carries only the status/error line — placed above the
+            // canvas, right by the chip, so progress stays visible near the button.
+            insertCaptureControlAtTop(canvasHost, buildCaptureControl(repo, treeEl, false), pane);
         }
         return;
     }
@@ -2149,7 +2180,10 @@ function renderSecondLens(repo, treeEl) {
 // a repo whose manifest reports no UI surface at all.
 function renderGuestUiLens(repo, result, treeEl) {
     canvasActive = false;
-    const canvas = renderStructureCanvas(treeEl, {
+    // Same detail-column vs inline placement as the self repo (resolveCanvasHost).
+    const canvasHost = resolveCanvasHost();
+    if (canvasHost !== treeEl) clear(canvasHost);
+    const canvas = renderStructureCanvas(canvasHost, {
         repo: repo,
         onSelect: selectFromCanvas,
         onReference: selectFromCanvas,
@@ -2168,7 +2202,7 @@ function renderGuestUiLens(repo, result, treeEl) {
         // Placed above the canvas via the shared helper so the control's DOM position
         // stays symmetric with the self repo (with no canvas mounted the helper falls
         // back to appending, which keeps the buttoned control at the top as before).
-        insertCaptureControlAtTop(treeEl, buildCaptureControl(repo, treeEl, !canvas), canvas);
+        insertCaptureControlAtTop(canvasHost, buildCaptureControl(repo, treeEl, !canvas), canvas);
     }
 
     renderPublishedUiMap(repo, result, treeEl);
@@ -2269,6 +2303,12 @@ function startGuestCapture(repo, treeEl) {
 // adaptive: the running app is always the live UI map; any other repo resolves
 // its second lens (UI or Types) from the manifest via renderSecondLens.
 function renderLens(repo, treeEl) {
+    // Each repaint re-mounts the canvas via resolveCanvasHost(); clear the detail-
+    // column host first so a prior canvas can't linger there (the tree host is
+    // cleared by each lens's own render). Record the breakpoint this paint targets
+    // so a later resize can tell the host would change and re-home the canvas.
+    canvasHostDesktop = structureIsDesktop();
+    if (currentCanvasHost) clear(currentCanvasHost);
     if (lens === 'code') {
         // Return the paint promise so callers that chain on it (filter re-apply,
         // find-in-code flash, the collapse-all pill refresh) run after the tree
@@ -2859,6 +2899,7 @@ export function renderStructureView() {
         // late "Find in code" can't act against a tree that's no longer shown.
         selectedRepo = null;
         currentTreeEl = null;
+        currentCanvasHost = null;
         collapseToolbarEl = null;
         collapseAllBtn = null;
         actionToolbarEl = null;
@@ -2873,6 +2914,7 @@ export function renderStructureView() {
         // where to link one, the same place the ⚡ inject routing is configured.
         selectedRepo = null;
         currentTreeEl = null;
+        currentCanvasHost = null;
         collapseToolbarEl = null;
         collapseAllBtn = null;
         actionToolbarEl = null;
@@ -3013,8 +3055,32 @@ export function renderStructureView() {
 
     view.appendChild(tree);
 
+    // Detail-column host for the block canvas at desktop widths. Kept a flat child
+    // of #structureView (in mobile source order, after the tree) so the ≤1023px
+    // single-column stack is byte-identical to before — CSS both hides it on mobile
+    // and places it in the detail column on desktop. renderLens mounts the canvas
+    // into whichever host resolveCanvasHost() picks for the current breakpoint.
+    const canvasHost = document.createElement('div');
+    canvasHost.className = 'structureCanvasHost';
+    currentCanvasHost = canvasHost;
+    view.appendChild(canvasHost);
+
     Promise.resolve(renderLens(selectedRepo, tree)).then(function () {
         refreshCollapseAllPill();
         refreshActionToolbar();
     });
+}
+
+// Re-home the block canvas when the viewport crosses the 1024px breakpoint while
+// the Structure view is showing its UI lens. Desktop mounts the canvas in the
+// detail column, mobile inline atop the tree; a live resize would otherwise strand
+// the canvas in the wrong (now-hidden) host. Only the UI lens carries a canvas, and
+// re-painting the lens re-reads persisted fold/selection state, so nothing is lost.
+// A no-op when Structure isn't rendered, when no repo is resolved, or when the host
+// wouldn't change — so it's cheap to call from a shared resize listener.
+export function syncStructureCanvasForViewport() {
+    if (!currentTreeEl || !selectedRepo) return;
+    if (currentLens !== 'ui') return;
+    if (structureIsDesktop() === canvasHostDesktop) return;
+    renderLens(selectedRepo, currentTreeEl);
 }
