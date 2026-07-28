@@ -13,12 +13,14 @@ export const changelog = [
         added: [
             "On wide screens, a task awaiting a mockup decision now shows the A/B/C mockup flow in the detail pane, with all three variants previewed side by side to choose from.",
         ],
+        fixed: [
+            "A task whose automated change just merged now flips to its review state immediately, instead of staying on its pending indicator for up to a minute.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-27',
         fixed: [
-            "On wide screens, a shipped change awaiting review now shows a short description summary instead of the entire entry text, and the entry editor is hidden while you accept or revert it.",
             "In the queue rail, selecting a task now keeps its title scrolled to the start, so a long title reads from the beginning instead of showing only its tail.",
         ],
     },

@@ -10,6 +10,7 @@
 import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { supabase } from './supabaseClient.js';
+import { setShippedMarkerRefresher } from './agentQueueStore.js';
 
 const URL_KEY              = 'todoapp_injectWorkerUrl';
 const SECRET_KEY           = 'todoapp_injectSharedSecret';
@@ -611,6 +612,19 @@ function parseTodoMdMarkers(text) {
 // read it dispatches TODO_RUN_STATUS_EVENT so rendered glyphs re-evaluate; a
 // missing/malformed read stores two empty sets (no glyph) and never throws.
 // Returns a promise that settles when the cache is up to date.
+// Seed a repo's marker cache with empty sets ONLY when it has no entry yet, so a
+// first-ever failed read still reads as "no glyph" (fresh timestamp, so the TTL
+// still governs the retry) without clobbering a previously-good cache on a
+// transient failure.
+function seedEmptyMarkersIfAbsent(repo) {
+    if (shippedMarkerCache.has(repo)) return;
+    shippedMarkerCache.set(repo, {
+        present: new Set(),
+        shipped: new Set(),
+        fetchedAt: Date.now(),
+    });
+}
+
 export function refreshShippedMarkers(target, force) {
     if (!target || !target.repo || !target.file_path) return Promise.resolve();
     const repo = target.repo;
@@ -621,9 +635,13 @@ export function refreshShippedMarkers(target, force) {
     const inFlight = shippedMarkersInFlight.get(repo);
     if (inFlight) return inFlight;
     const p = readTodoMdFromWorker(target).then(function(res) {
-        const markers = (res && res.ok && typeof res.content === 'string')
-            ? parseTodoMdMarkers(res.content)
-            : { present: new Set(), shipped: new Set() };
+        if (!res || !res.ok || typeof res.content !== 'string') {
+            // Failed read: preserve any good cache (see seedEmptyMarkersIfAbsent).
+            seedEmptyMarkersIfAbsent(repo);
+            emitTodoRunStatusChange();
+            return;
+        }
+        const markers = parseTodoMdMarkers(res.content);
         shippedMarkerCache.set(repo, {
             present: markers.present,
             shipped: markers.shipped,
@@ -631,11 +649,7 @@ export function refreshShippedMarkers(target, force) {
         });
         emitTodoRunStatusChange();
     }).catch(function() {
-        shippedMarkerCache.set(repo, {
-            present: new Set(),
-            shipped: new Set(),
-            fetchedAt: Date.now(),
-        });
+        seedEmptyMarkersIfAbsent(repo);
     }).then(function() {
         shippedMarkersInFlight.delete(repo);
     });
@@ -657,6 +671,12 @@ export function refreshShippedMarkersForProject(projectName, force) {
     if (!target) return Promise.resolve();
     return refreshShippedMarkers(target, force);
 }
+
+// Register the project-scoped refresher with the agent-queue store so a queue
+// row transitioning into the terminal shipped state can force a marker refresh
+// (see refreshMarkersForShippedTransitions). Done via a setter rather than the
+// store importing this module, which would form an init-time cycle.
+setShippedMarkerRefresher(refreshShippedMarkersForProject);
 
 
 // Mutate the target repo's TODO.md through the Worker's `rewrite` branch.

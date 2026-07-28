@@ -20,6 +20,12 @@
 import { supabase } from './supabaseClient.js';
 import { listLogic } from './listLogic.js';
 
+// The terminal `agent_queue` state that means a dispatched run merged. A row
+// reaching it is the one event that guarantees the target repo's TODO.md just
+// changed (the entry's checkbox flipped to `[x]`), so it is the trigger for a
+// forced shipped-marker refresh — see refreshMarkersForShippedTransitions.
+const SHIPPED_STATE = 'shipped';
+
 // The rows last loaded for a project, and which project they belong to. The
 // realtime channel is app-lifetime (see startAgentQueueSubscription) so the
 // task-row badges stay live on the list view, not just while the Agent tab is
@@ -73,6 +79,18 @@ export function setTriageDispatcher(fn) {
 export function fireTriageSweep(projectName) {
     if (_triageDispatcher) return Promise.resolve(_triageDispatcher(projectName));
     return Promise.resolve(null);
+}
+
+// The project-scoped shipped-marker refresher (`refreshShippedMarkersForProject`
+// in inject.js), registered by inject.js at module load. Held via a setter — not
+// a static import — because inject.js pulls in modals → agentView, whose
+// top-level `setTriageDispatcher` call reaches back into this module: importing
+// inject here would re-enter this file before its own `let`s initialize (a TDZ
+// crash). Same registration idiom as the triage dispatcher above. Null until
+// inject registers, so the refresh is a safe no-op before then.
+let _shippedMarkerRefresher = null;
+export function setShippedMarkerRefresher(fn) {
+    _shippedMarkerRefresher = typeof fn === 'function' ? fn : null;
 }
 
 // Read-only view of the cache; always an array.
@@ -243,6 +261,62 @@ function resolveSelectedProjectName() {
     return input ? (input.value || '').trim() : '';
 }
 
+// Reverse-map project id → name from the in-memory model, so a queue row's
+// `project_id` resolves to the project it belongs to. A name whose id is not
+// yet known simply never enters the map (reads as unresolvable downstream).
+function buildProjectIdToNameMap() {
+    const idToName = {};
+    const names = (listLogic.listProjectsArray && listLogic.listProjectsArray()) || [];
+    for (let i = 0; i < names.length; i++) {
+        const pid = listLogic.getProjectId(names[i]);
+        if (pid) idToName[pid] = names[i];
+    }
+    return idToName;
+}
+
+// After a realtime push has reloaded the all-projects cache, force a
+// shipped-marker refresh for any project whose queue row just transitioned INTO
+// the terminal `shipped` state. This is the one event that guarantees TODO.md
+// changed: a run that merges on Actions never goes through the client ship
+// path's forced refresh (`shipEntry.js`), so without this the row keeps reading
+// the pre-merge marker cache (up to a TTL stale) and shows its pending glyph
+// instead of flipping to `⌁ REVIEW`.
+//
+// Fires ONLY on the transition edge (prev state !== shipped, new state ===
+// shipped) so ordinary triage churn does not put a GitHub read behind every
+// push. Dedups by project so several rows shipping together produce one forced
+// refresh per project (and `refreshShippedMarkers` further coalesces per repo
+// via its in-flight map). Resolves each row's project from its own
+// `project_id`, NOT the selected project, since a run can finish for a project
+// the user is not looking at. Never throws — a push handler must not break.
+export function refreshMarkersForShippedTransitions(prevRows, currentRows) {
+    try {
+        const prevState = new Map();
+        const pRows = Array.isArray(prevRows) ? prevRows : [];
+        for (let i = 0; i < pRows.length; i++) {
+            const r = pRows[i];
+            if (r && r.id != null) prevState.set(r.id, r.state);
+        }
+        const cRows = Array.isArray(currentRows) ? currentRows : [];
+        const projectIds = new Set();
+        for (let i = 0; i < cRows.length; i++) {
+            const row = cRows[i];
+            if (!row || row.state !== SHIPPED_STATE) continue;
+            // Skip rows that were already shipped before this push — only a
+            // fresh transition into shipped warrants a fetch.
+            if (row.id != null && prevState.get(row.id) === SHIPPED_STATE) continue;
+            if (row.project_id != null) projectIds.add(row.project_id);
+        }
+        if (!projectIds.size) return;
+        if (!_shippedMarkerRefresher) return;
+        const idToName = buildProjectIdToNameMap();
+        projectIds.forEach(function (pid) {
+            const name = idToName[pid];
+            if (name) _shippedMarkerRefresher(name, true);
+        });
+    } catch (e) { /* never let a realtime push handler throw */ }
+}
+
 // Open the realtime subscription on agent_queue. Idempotent. On each push it
 // reloads the selected project's rows ONCE, then notifies listeners to repaint
 // from cache — so the board and the task rows update from a single fetch. The
@@ -263,10 +337,24 @@ export function startAgentQueueSubscription() {
                     // question counts); listeners then repaint both surfaces from
                     // cache. Reuses this single app-lifetime channel rather than
                     // opening a second subscription for the switcher counts.
+                    //
+                    // Snapshot the all-projects rows BEFORE the reload so a row's
+                    // transition into the terminal shipped state can be detected
+                    // against the prior cache (loadAllQueueRows REPLACES `_allRows`
+                    // rather than mutating it, so this reference stays the old set).
+                    const prevAllRows = getAllQueueRows();
                     Promise.all([
                         loadQueueRows(resolveSelectedProjectName()),
                         loadAllQueueRows(),
-                    ]).then(notifyQueueChange);
+                    ]).then(function () {
+                        // A run that merges on Actions flips its queue row to
+                        // `shipped` without the client ship path's forced marker
+                        // refresh, so force one here for any project whose row just
+                        // reached shipped — the row then repaints to `⌁ REVIEW` via
+                        // the TODO_RUN_STATUS_EVENT refreshShippedMarkers emits.
+                        refreshMarkersForShippedTransitions(prevAllRows, getAllQueueRows());
+                        notifyQueueChange();
+                    });
                 })
             .subscribe();
     } catch (e) {

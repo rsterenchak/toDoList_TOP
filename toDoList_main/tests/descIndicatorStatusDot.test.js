@@ -143,6 +143,24 @@ describe('hasShippedRunForEntry — shipped-marker correlation from TODO.md', ()
         await expect(refreshShippedMarkers(null)).resolves.toBeUndefined();
         await expect(refreshShippedMarkers({ repo: 'x' })).resolves.toBeUndefined();
     });
+
+    it('a failed forced read leaves a previously-good cache intact rather than blanking it', async () => {
+        // The forced-refresh path now fires on every shipped queue-row
+        // transition, so a transient failed read must not poison a good cache:
+        // that would drop every row's glyph in the repo for a full TTL.
+        const target = { repo: 'owner/poison-repo', file_path: 'TODO.md' };
+        const md = [
+            '- [x] Shipped entry',
+            '  <!-- id: poison-shipped -->',
+        ].join('\n');
+        mockTodoMd(md);
+        await refreshShippedMarkers(target, true);
+        expect(resolveEntryRunState('poison-shipped')).toBe('shipped');
+        // A subsequent forced read that FAILS must preserve the shipped marker.
+        mockReadFailure();
+        await refreshShippedMarkers(target, true);
+        expect(resolveEntryRunState('poison-shipped')).toBe('shipped');
+    });
 });
 
 describe('resolveEntryRunState — three-way shipped / pending / none', () => {
