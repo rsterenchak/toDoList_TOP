@@ -70,3 +70,21 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-07-28
   <!-- id: 81fdcdb5-fda7-4f7d-8652-08ed819c1247 -->
+
+- [ ] **[HIGH]** Run the dispatched-run reconciler outside the Agent board
+  - Type: bug
+  - Description: A run dispatched from the detail pane never settles: its `agent_queue` row stays in `dispatched` forever, so the nav working dot stays lit, the RUNNING filter counts it indefinitely, and the row never flips to REVIEW. The reconciliation logic is not missing — `reconcileShipped` already checks the entry's checkbox on main via `didEntryShip` and settles the row to `shipped` with a PR link, or to `no_change` with the run's closing summary. The problem is ownership: it is driven by a poll tick that lives in `agentView.js` and only runs while the Agent board is MOUNTED. Dispatch now happens from the row and the detail pane, and the board is reached only by badge routes, so in normal use nothing ever polls. Move the poller out of the view so a dispatched run settles regardless of which surface dispatched it or what is on screen. This also makes the previously-landed marker force-refresh effective, since it hooks the transition to a terminal state that currently never happens.
+  - Behavior: A run dispatched from any surface settles on its own. Its queue row moves to `shipped` when the entry's marker is checked on main, or to `no_change` with the closing summary when the run finished without merging, exactly as it does today when the board is open. The nav working dot clears, the RUNNING pill's count drops, and the row's phase resolves to REVIEW. Polling runs whenever the app is open with at least one row in `dispatched` or `running`, and stops when none remain, so an idle app performs no work.
+  - Implementation notes:
+    - MOVE the poller, do not duplicate it. `reconcileShipped`, `settleShipped`, `didEntryShip`, `fetchClosingSummary`, and `bestEffortPrLink` should relocate into a module the row layer and the board can both reach — `agentQueueStore.js` is the natural home since it already owns the queue's fetch, cache, and realtime channel. `agentView.js` then calls into it. Two pollers racing on the same row would produce duplicate settles and duplicate PR-link fetches.
+    - The persistent working watch in `agentView.js` is the precedent for exactly this: it was extracted from the mounted board specifically so it holds off-tab (`_workingWatchStarted`, `WORKING_WATCH_POLL_MS`). Follow its shape — module-level started flag, one interval, no dependence on a mounted view.
+    - Start the poller when a row enters `dispatched`/`running` and stop it when none remain, resolved from the store's existing cache and its `onQueueChange` subscription. Do not poll on a fixed schedule regardless of state.
+    - There are almost certainly rows already stranded in `dispatched` from earlier dispatches. The poller must reconcile the existing backlog on startup, not just rows it sees transition. Report how many it found in the PR body.
+    - `didEntryShip` reads the entry's checkbox on main, so it needs the marker data. Sequence it after the forced marker refresh that already landed, and reuse that path rather than adding another GitHub read.
+    - Guard against duplicate settles: a row already in a terminal state must be skipped, and a settle in flight for a row must not be started twice if the board is also open.
+    - The board must keep working when mounted. After the move, verify its cards still settle and its Runs tab still reflects the same states — the board should be a second consumer of the shared poller, not a competing one.
+    - Test: a row in `dispatched` settles with the board closed; a checked marker yields `shipped` with a PR link; an unchecked marker yields `no_change` with the closing summary; the poller stops when no rows are in flight; stranded rows reconcile on startup; and opening the board alongside does not double-settle.
+  - Out of scope: The reconciliation LOGIC itself — `reconcileShipped`'s decision rules are correct and must not change. The working watch's own cadence and seed logic. `derivePhase` and the phase vocabulary. The mockup flow and the Agent board's rendering.
+  - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3cbb22d9-03cd-403f-88e1-57f4f9b043a2 -->
