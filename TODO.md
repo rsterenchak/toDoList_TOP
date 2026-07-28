@@ -154,3 +154,10 @@
   - File: `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: be2da494-1ea8-43ed-9494-446769b47186 -->
+
+- [ ] **[MEDIUM]** Align run-status glyph to the mobile title rail
+  - Type: bug
+  - Description: On mobile (≤1023px) `#checkToDo` is `display: none`, so `#descIndicator` becomes the row's first flex item and inherits `#toDoChild`'s bare 4px left padding — the pending/shipped glyph renders ~4.5px from the row's left edge while every title sits at ~16.5px, because the `padding-left: 12px` tab-clearance rule in the ≤1023px block targets only `#toDoInput` / `.toDoTitleDisplay` and never included the indicator. Add `#descIndicator { margin-left: 12px }` inside that same ≤1023px block so the glyph lands on the existing 16px rail instead of hugging the row edge, then drop the title's now-redundant clearance with `#toDoChild:has(#descIndicator.runStatusGlyph--pending, #descIndicator.runStatusGlyph--shipped) #toDoInput, #toDoChild:has(...) .toDoTitleDisplay { padding-left: 0 }` — the glyph already provides the clearance, and reclaiming those 12px matters against the ≤420px two-line-clamped titles. The state classes in the `:has()` are required, not optional: `#descIndicator` is created on every row and is only `display: none` when stateless, so a bare `:has(#descIndicator)` would strip the padding from every row including glyph-less ones. Scope both rules to the existing ≤1023px breakpoint — don't introduce a new one, and leave desktop (≥1024px) untouched, where the checkbox is visible and the glyph already sits at 38px. `:has()` is already used in this block by the `[data-blank-placeholder]:has(#descToggle.open)` rule, so no new pattern is introduced.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3a311e97-0804-416f-be19-306074c27334 -->
