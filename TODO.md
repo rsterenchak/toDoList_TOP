@@ -109,7 +109,7 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/agentQueueStore.js`
   <!-- id: 0accce18-b1d8-467c-a3df-045ee2bc10af -->
 
-- [ ] **[MEDIUM]** Mobile: mount the mockup A/B/C flow in the description editor modal
+- [x] **[MEDIUM]** Mobile: mount the mockup A/B/C flow in the description editor modal — Completed: 2026-07-28
   - Type: bug
   - Description: The MOCKUP badge routes to the description panel at every width, but the mockup flow only mounts in detail-pane mode. On mobile, tapping `⌁ MOCKUP` opens the modal with no variants, no Generate, and no way to choose — a dead end, and the badge's `aria-label` still reads "open the Agent board", a destination it no longer goes to. Mount the flow in the mobile modal too, using tabs rather than the pane's three-across grid: at 393px three variants would be roughly 120px each, unreadable, and stacking them means scrolling back and forth to compare, which is the problem A/B/C exists to avoid. This must land before the Agent view is deleted, or mobile loses the flow entirely.
   - Behavior: On mobile, a task whose phase is `mockup` shows in its description-editor modal the same explanatory block and Generate action the pane shows. Once variants exist they render as three tabs — OPTION A / B / C — above a single preview sized to the modal's width, with a Use action for the selected variant and Regenerate and Open in chat beneath. Choosing a variant produces its entry and moves the row to `drafted`, identical to the pane and the board. The badge's accessible label names the description panel rather than the Agent board, at both breakpoints.

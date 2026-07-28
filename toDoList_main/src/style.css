@@ -17848,6 +17848,69 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
+/* ── Mobile tabbed mockup layout (agentMockup--tabbed / renderMockupTabs) ──
+   The mobile description-editor modal hosts the flow as an OPTION A/B/C tab strip
+   above a SINGLE scaled preview — three frames across at phone width are
+   unreadable, and stacking them would overflow the modal's height cap. The
+   previews container keeps its default column flow (tabs, one preview, the Use
+   row), so no override of .agentMockupPreviews is needed here. */
+.agentMockupTabs {
+  display: flex;
+  gap: 6px;
+}
+
+/* Each tab is a radio in the radiogroup: an equal-width segment that fills the
+   strip. The selected one fills solid accent; the rest read as outlined chips. */
+.agentMockupTab {
+  flex: 1 1 0;
+  min-height: 32px;
+  padding: 0 8px;
+  /* 16px avoids the iOS focus zoom the modal's other inputs already guard
+     against — a tab is tappable, not typable, but keep the rule uniform. */
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: transparent;
+  border: 0.5px solid var(--accent);
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+.agentMockupTab:hover {
+  background: var(--accent-dim);
+}
+
+.agentMockupTab.is-selected {
+  background: var(--accent);
+  color: #fff;
+}
+
+.agentMockupTab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* ── Mobile modal mockup block (descEditorModalMockup) ──
+   The shared flow leads the modal body above the authoring textarea when the task
+   is in the mockup phase, with a short intro naming why a direction is needed —
+   the mobile counterpart of the pane's .descMockupBlock. */
+.descEditorModalMockup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 4px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+.descEditorModalMockupIntro {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 /* The shared File:-path picker (createFilePicker) mounts its trigger chip above
    the textarea and its searchable panel below it. Both are #descSibling children
    and would otherwise auto-place into the 14px gutter column — the same defect

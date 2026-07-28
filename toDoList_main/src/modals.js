@@ -22,6 +22,11 @@ import { derivePhase, PHASE } from './phase.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
 import { stuckReasonText } from './agentView.js';
+// The A/B/C mockup flow — the SAME implementation the Agent board and the desktop
+// detail pane mount. The mobile modal reuses it in its tabbed layout (three OPTION
+// A/B/C tabs above one scaled preview) rather than reimplementing generation,
+// variant parsing, or the Use path here.
+import { buildMockupSecondary } from './mockupFlow.js';
 // The File:-path picker (trigger chip + searchable manifest panel) and its
 // `File:`-line insertion logic are shared with the desktop description panel
 // (toDoRow.js) so the two hosts can never diverge — modals.js only mounts the
@@ -363,6 +368,7 @@ export function showDescEditorModal(item, options) {
         const phase = renderRail();
         syncReviewAction(phase);
         renderStuckBlock(phase);
+        renderMockupBlock(phase);
     }
 
     // Repaint when the phase changes while the modal is open — an entry can ship
@@ -425,6 +431,52 @@ export function showDescEditorModal(item, options) {
         reasonEl.className = 'descEditorModalStuckReason';
         reasonEl.textContent = reason;
         block.appendChild(reasonEl);
+
+        body.insertBefore(block, body.firstChild);
+    }
+
+    // ── MOCKUP FLOW BLOCK ──
+    // When the task's derived phase is `mockup` (its linked agent_queue row is in
+    // needs_mockup), the run is waiting on a visual direction before its entry can
+    // be authored. Mount the SHARED A/B/C mockup flow at the top of the body, above
+    // the authoring textarea — mirroring the desktop pane — but in the TABBED layout
+    // (options.tabbed): three OPTION A/B/C tabs above a single scaled preview, since
+    // three frames across at phone width are unreadable and stacking them would blow
+    // the modal's height cap. Choosing a variant produces its finished entry and
+    // moves the row to `drafted`, identical to the pane and the board.
+    //
+    // Idempotent, mirroring renderStuckBlock: mount only in the mockup phase and
+    // clear the moment the queue row moves on, but keep an already-mounted block for
+    // the SAME queue row so a live repaint (refreshPhaseUI runs on every
+    // TODO_RUN_STATUS_EVENT / onQueueChange) never wipes an in-flight Generate or the
+    // rendered previews — buildMockupSecondary repaints its own previews internally.
+    // The block sits at body.firstChild; STUCK and MOCKUP are different phases, so
+    // the two blocks never contend for that slot.
+    function renderMockupBlock(phase) {
+        const existing = body.querySelector('#descEditorModalMockup');
+        const queueRow = (phase === PHASE.MOCKUP && item && item.id)
+            ? getQueueRowForTodo(item.id) : null;
+        if (!queueRow) {
+            if (existing) existing.remove();
+            return;
+        }
+        // Same queue row already mounted — leave the block (and any in-flight
+        // Generate / rendered previews) untouched so a repaint doesn't thrash it.
+        if (existing && existing.getAttribute('data-mockup-row') === String(queueRow.id)) return;
+        if (existing) existing.remove();
+
+        const block = document.createElement('div');
+        block.id = 'descEditorModalMockup';
+        block.className = 'descEditorModalMockup';
+        block.setAttribute('data-mockup-row', String(queueRow.id));
+
+        const intro = document.createElement('p');
+        intro.className = 'descEditorModalMockupIntro';
+        intro.textContent = 'Triage needs a visual direction before this entry can be written. '
+            + 'Generate A/B/C mockups, then choose one to finish the entry.';
+        block.appendChild(intro);
+
+        block.appendChild(buildMockupSecondary(queueRow, { tabbed: true }));
 
         body.insertBefore(block, body.firstChild);
     }

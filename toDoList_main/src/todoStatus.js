@@ -86,8 +86,9 @@ export const STUCK_LABEL = '⌁ STUCK';
 // decision. Like REVIEW / ASKING / DRAFTED it paints amber ("waiting on you") and
 // never appears in the popover, is never written to `status`, and never drives the
 // row-level stripe/muting. Its tap opens the row's description panel (the same
-// destination ASKING / DRAFTED / STUCK use), where the desktop detail pane now
-// mounts the choose-a-mockup A/B/C flow above the authoring region. The caller
+// destination ASKING / DRAFTED / STUCK use), where the choose-a-mockup A/B/C flow
+// mounts above the authoring region — three variants across in the desktop detail
+// pane, an OPTION A/B/C tab strip in the mobile description-editor modal. The caller
 // supplies the derived overlay descriptor (resolved from the shared agent-queue
 // cache via derivePhase at the row layer).
 export const MOCKUP_LABEL = '⌁ MOCKUP';
@@ -203,17 +204,17 @@ function applyStatusLabelState(label, status, overlay) {
     } else if (derived === 'drafted') {
         label.setAttribute('data-status', 'drafted');
         label.removeAttribute('aria-haspopup');
-        label.setAttribute('aria-label', 'A draft landed — open the board to dispatch it');
+        label.setAttribute('aria-label', 'A draft landed — open the description panel to dispatch it');
         label.textContent = DRAFTED_LABEL;
     } else if (derived === 'stuck') {
         label.setAttribute('data-status', 'stuck');
         label.removeAttribute('aria-haspopup');
-        label.setAttribute('aria-label', 'This run went wrong — open the board to retry');
+        label.setAttribute('aria-label', 'This run went wrong — open the description panel to retry');
         label.textContent = STUCK_LABEL;
     } else if (derived === 'mockup') {
         label.setAttribute('data-status', 'mockup');
         label.removeAttribute('aria-haspopup');
-        label.setAttribute('aria-label', 'Waiting on a mockup decision — open the Agent board');
+        label.setAttribute('aria-label', 'Waiting on a mockup decision — open the description panel to choose one');
         label.textContent = MOCKUP_LABEL;
     } else {
         label.setAttribute('data-status', status);
