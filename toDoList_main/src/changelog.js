@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-28',
         fixed: [
-            "The Inject button on a task now fills with a solid accent color and white text on hover, matching the Generate and Discuss buttons instead of showing only a dim tint.",
             "A task's automated run now finishes and flips to its review state even when it was started from the task's detail pane rather than the Agent board.",
             "The file-attach picker's open panel now has spacing below it, separating it from the task's action buttons instead of sitting flush against them.",
             "The task detail pane now updates immediately after choosing a mockup variant, instead of appearing to hang until the task is closed and reopened.",
             "On mobile, a task waiting on a mockup now lets you generate and choose an A/B/C variant right in its editor, comparing the three through tabs above a single preview.",
+            "The calendar chip in the mobile task-create row now uses a themed icon that recolors with light and dark mode instead of a fixed-color emoji.",
         ],
     },
 ];

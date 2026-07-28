@@ -38,6 +38,20 @@ const PASTE_SVG =
     '<path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path>' +
     '<rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect></svg>';
 
+// Monochrome calendar glyph for the "pick a date" chip. Same 24×24 viewBox,
+// fill:none, stroke:currentColor, 2px round strokes as PASTE_SVG and the mic,
+// so the chip recolors with the theme and the accent-filled selected state
+// instead of the flat-color 📅 emoji it replaces. width/height baked in at
+// 18 so the glyph sits centered in the .calChip touch target.
+const CAL_SVG =
+    '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" ' +
+    'stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true">' +
+    '<rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>' +
+    '<line x1="16" y1="2" x2="16" y2="6"></line>' +
+    '<line x1="8" y1="2" x2="8" y2="6"></line>' +
+    '<line x1="3" y1="10" x2="21" y2="10"></line></svg>';
+
 
 // "today" | "tomorrow" | "custom" — the user's last chip pick within the
 // current project visit. Reset by resetMobileCreateSession on every
@@ -324,7 +338,9 @@ export function attachMobileCreateChips(toDoChild, item) {
 
     const todayChip    = makeChip('today',    'Today');
     const tomorrowChip = makeChip('tomorrow', 'Tomorrow');
-    const calChip      = makeChip('custom',   '📅');
+    const calChip      = makeChip('custom',   '');
+    calChip.classList.add('calChip');
+    calChip.innerHTML = CAL_SVG;
     calChip.setAttribute('aria-label', 'Pick a date');
 
     // NOTE: the 📋 paste-entry trigger no longer lives in this strip — it is
