@@ -562,15 +562,44 @@ function fetchClosingSummary(runId, correlationId, target) {
     }, function () { return ''; });
 }
 
+// Stamp `shipped_at` on the settled row's linked todo via listLogic (never a
+// direct Supabase write — the store owns queue rows, listLogic owns todos). Best-
+// effort and non-blocking in the SAME sense as the PR link: a missing todo id or a
+// stamp failure is SURFACED with a warning but must not prevent the row reaching
+// `shipped`, and a silently-unstamped ship is the exact regression this guards, so
+// the failure is never swallowed quietly. listLogic makes the stamp idempotent, so
+// a re-settling tick won't overwrite an earlier ship time. Never throws.
+function stampShippedTodo(todoId) {
+    if (!todoId) {
+        console.warn('settleShipped: settled row has no todo_id; shipped_at not stamped');
+        return;
+    }
+    try {
+        const res = listLogic.stampEntryShipped(todoId);
+        if (!res || res.ok !== true) {
+            console.warn('settleShipped: failed to stamp shipped_at on todo '
+                + todoId + ': ' + ((res && res.error) || 'unknown error'));
+        }
+    } catch (e) {
+        console.warn('settleShipped: error stamping shipped_at on todo ' + todoId, e);
+    }
+}
+
 // Persist a row to `shipped`, attaching the run id and a best-effort PR link
-// (resolved without blocking the ship — a missing link still ships).
-function settleShipped(rowId, entryId, runId) {
+// (resolved without blocking the ship — a missing link still ships), and record
+// the ship in the database by stamping `shipped_at` on the linked todo so the
+// derived REVIEW/DONE phase survives a TODO.md rewrite. Takes the full row (like
+// resolveRowProjectName / resolveRowTarget) so it can read `row.todo_id` without a
+// new parameter threaded through the callers. The stamp is best-effort and does
+// NOT gate the ship: a failed stamp is surfaced but the row still reaches shipped.
+function settleShipped(row, entryId, runId) {
     const patch = { state: 'shipped' };
     if (runId != null) patch.run_id = runId;
     return bestEffortPrLink(entryId).then(function (link) {
         if (link.pr_url) patch.pr_url = link.pr_url;
         if (link.pr_number != null) patch.pr_number = link.pr_number;
-        return listLogic.setAgentRunState(rowId, patch);
+        stampShippedTodo(row.todo_id);
+        return listLogic.setAgentRunState(row.id, patch);
     });
 }
 
@@ -582,7 +611,7 @@ function reconcileShipped(row, runId) {
     const projectName = resolveRowProjectName(row);
     const target = resolveRowTarget(row);
     return didEntryShip(projectName, row.entry_id).then(function (shipped) {
-        if (shipped) return settleShipped(row.id, row.entry_id, runId);
+        if (shipped) return settleShipped(row, row.entry_id, runId);
         return fetchClosingSummary(runId, row.correlation_id, target).then(function (summary) {
             return listLogic.setAgentRunState(row.id, {
                 state: 'no_change',
@@ -681,7 +710,7 @@ export function settleShippedRows(rows) {
             if (_settleInFlight.has(row.id)) return;
             if (_reconcilerDeps.resolveEntryRunState(row.entry_id) !== 'shipped') return;
             settles.push(withSettleGuard(row.id, function () {
-                return settleShipped(row.id, row.entry_id, row.run_id);
+                return settleShipped(row, row.entry_id, row.run_id);
             }));
         });
         if (!settles.length) return 0;

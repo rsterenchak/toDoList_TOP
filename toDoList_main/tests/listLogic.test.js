@@ -317,6 +317,52 @@ describe('listLogic — getEntryReviewInfo (viewer acknowledge lookup)', () => {
 });
 
 
+// stampEntryShipped records a ship in the database (shipped_at on the todo) so the
+// derived REVIEW/DONE phase survives a TODO.md rewrite. It mirrors markEntryReviewed
+// but is idempotent — a re-settling reconciler tick must never overwrite an earlier
+// ship time with a later one.
+describe('listLogic — stampEntryShipped (ship recorded in the DB)', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Groceries');
+    });
+
+    it('stamps shippedAt on the linked todo', () => {
+        listLogic.addToDo('Groceries', 'Milk');
+        const milk = listLogic.listItems('Groceries').find(i => i.tit === 'Milk');
+        expect(milk.shippedAt).toBeUndefined();
+
+        const res = listLogic.stampEntryShipped(milk.id);
+        expect(res.ok).toBe(true);
+
+        const after = listLogic.listItems('Groceries').find(i => i.id === milk.id);
+        expect(typeof after.shippedAt).toBe('string');
+        expect(after.shippedAt.length).toBeGreaterThan(0);
+    });
+
+    it('is idempotent — a second stamp never overwrites the first ship time', () => {
+        listLogic.addToDo('Groceries', 'Bread');
+        const bread = listLogic.listItems('Groceries').find(i => i.tit === 'Bread');
+
+        const first = listLogic.stampEntryShipped(bread.id);
+        expect(first.ok).toBe(true);
+        const firstStamp = listLogic.listItems('Groceries').find(i => i.id === bread.id).shippedAt;
+
+        const second = listLogic.stampEntryShipped(bread.id);
+        expect(second.ok).toBe(true);
+        expect(second.alreadyStamped).toBe(true);
+        const secondStamp = listLogic.listItems('Groceries').find(i => i.id === bread.id).shippedAt;
+        expect(secondStamp).toBe(firstStamp);
+    });
+
+    it('surfaces a failure (ok:false) for a missing id or an unresolvable todo', () => {
+        expect(listLogic.stampEntryShipped(null).ok).toBe(false);
+        expect(listLogic.stampEntryShipped('').ok).toBe(false);
+        expect(listLogic.stampEntryShipped('no-such-todo').ok).toBe(false);
+    });
+});
+
+
 // ── COMPLETED-SORT INVARIANT ─────────────────────────────────────────
 describe('listLogic — completed sorting', () => {
     beforeEach(() => {

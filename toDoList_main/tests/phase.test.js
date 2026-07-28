@@ -336,3 +336,50 @@ describe('derivePhase — one phase per item', () => {
         expect(derivePhase({ entryId: 'phase-forget-id' })).toBe(PHASE.NONE);
     });
 });
+
+
+describe('derivePhase — a stamped ship survives a TODO.md rewrite (shippedAt)', () => {
+    it("returns 'accept' for a stamped, unreviewed task with NO marker present", () => {
+        // No marker anywhere in the cache — the file was cleared — yet the DB stamp
+        // keeps the task reporting REVIEW rather than collapsing to IDEA/NONE.
+        expect(derivePhase({
+            id: 'todo-stamped', entryId: 'gone-from-file',
+            shippedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.ACCEPT);
+    });
+
+    it("returns 'done' when both shippedAt and entryReviewedAt are set, marker absent", () => {
+        expect(derivePhase({
+            id: 'todo-stamped2', entryId: 'gone-from-file',
+            shippedAt: '2026-07-28T00:00:00.000Z',
+            entryReviewedAt: '2026-07-28T01:00:00.000Z',
+        })).toBe(PHASE.DONE);
+    });
+
+    it('resolves REVIEW from the stamp even with no entryId at all', () => {
+        expect(derivePhase({
+            id: 'todo-stamped3', shippedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.ACCEPT);
+    });
+
+    it('a task with NO stamp still resolves from the marker (fallback preserved)', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: phase-nostamp-id -->');
+        await refreshShippedMarkers(freshTarget());
+        // Unstamped (pre-migration) ship — the marker path still drives ACCEPT/DONE.
+        expect(derivePhase({ id: 'todo-nostamp', entryId: 'phase-nostamp-id' }))
+            .toBe(PHASE.ACCEPT);
+        expect(derivePhase({
+            id: 'todo-nostamp', entryId: 'phase-nostamp-id',
+            entryReviewedAt: '2026-07-28T01:00:00.000Z',
+        })).toBe(PHASE.DONE);
+    });
+
+    it('yields to the queue-derived phases (a live queue row still outranks the stamp)', () => {
+        // A stamped ship plus an in-flight/blocked queue row: the queue state wins,
+        // exactly as it outranks the marker-derived terminal phases.
+        setQueueRows([{ id: 'qsh', todo_id: 'todo-stamp-q', state: 'needs_words' }]);
+        expect(derivePhase({
+            id: 'todo-stamp-q', shippedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.ASKING);
+    });
+});

@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Record shipped-ness in the database so clearing TODO.md can't erase it
+- [x] **[MEDIUM]** Record shipped-ness in the database so clearing TODO.md can't erase it
   - Type: feature
   - Description: A task's shipped state exists only as a `[x]` marker in `TODO.md`, so any rewrite of that file destroys it. Clearing all entries left previously-shipped tasks resolving to `PHASE.NONE` — they read as IDEA with no record that they ever shipped, and it is unrecoverable. Acknowledged tasks survived because `entry_reviewed_at` is a database column; only the window between shipped and acknowledged is fragile. Close it: stamp `shipped_at` on the todo when the reconciler settles a row to `shipped`, and derive the terminal phases from database fields rather than from a marker read. The `shipped_at timestamptz` column already exists on `todos` — treat it as present and wire to it exactly as `entry_reviewed_at` is wired; do not gate on verifying it, since the repo cannot see the live schema and a previous run stalled indefinitely trying.
   - Behavior: When the reconciler settles a queue row to `shipped`, the linked todo's `shipped_at` is stamped. `derivePhase` then resolves REVIEW from `shipped_at set AND entryReviewedAt null`, and DONE from both set — so a task that has shipped keeps reporting REVIEW even if `TODO.md` is cleared, and an acknowledged task keeps reporting DONE as it already does. The DRAFT (pending) phase continues to come from the marker cache, since an unshipped entry's only evidence is its presence in the file. Tasks that shipped BEFORE this lands have no stamp and will keep resolving from the marker; they are not backfilled.
@@ -15,5 +15,5 @@
     - Tests: settling a row stamps `shipped_at` on the linked todo; a second settle does not overwrite it; `derivePhase` returns ACCEPT for a stamped, unreviewed task with NO marker present; it returns DONE when both fields are set; and a task with no stamp still resolves from the marker.
   - Out of scope: Backfilling tasks that shipped before this lands — nothing recorded their ship and they cannot be recovered. Removing the marker cache or the pending-phase marker read. The `RUNNING` phase masking terminal states. Clearing the orphaned tasks left by the earlier clear-all, which is manual cleanup. The Agent view deletion, which is a separate pending entry.
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/phase.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-28
   <!-- id: 2735f0f9-d970-47a7-931d-5b35085658cd -->

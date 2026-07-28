@@ -175,6 +175,47 @@ describe('settleShippedRows — stranded-backlog reconcile', () => {
     });
 });
 
+describe('settleShipped — records the ship in the DB (shipped_at stamp)', () => {
+    it('stamps shipped_at on the linked todo when a row settles to shipped', async () => {
+        listLogic.addProject('Alpha');
+        listLogic.addToDo('Alpha', 'Ship me');
+        const todo = listLogic.listItems('Alpha').find((i) => i.tit === 'Ship me');
+        deps.resolveEntryRunState.mockReturnValue('shipped');
+
+        await settleShippedRows([
+            { id: 'row1', todo_id: todo.id, state: 'dispatched', entry_id: 'e1' },
+        ]);
+
+        // The row reached shipped AND the linked todo carries a ship stamp.
+        expect(findCall('row1', 'shipped')).toBeTruthy();
+        const after = listLogic.listItems('Alpha').find((i) => i.id === todo.id);
+        expect(typeof after.shippedAt).toBe('string');
+        expect(after.shippedAt.length).toBeGreaterThan(0);
+    });
+
+    it('a second settle does not overwrite the earlier shipped_at', async () => {
+        listLogic.addProject('Alpha');
+        listLogic.addToDo('Alpha', 'Ship once');
+        const todo = listLogic.listItems('Alpha').find((i) => i.tit === 'Ship once');
+        deps.resolveEntryRunState.mockReturnValue('shipped');
+
+        await settleShippedRows([{ id: 'row2', todo_id: todo.id, state: 'dispatched', entry_id: 'e1' }]);
+        const firstStamp = listLogic.listItems('Alpha').find((i) => i.id === todo.id).shippedAt;
+        expect(firstStamp).toBeTruthy();
+
+        await settleShippedRows([{ id: 'row2', todo_id: todo.id, state: 'dispatched', entry_id: 'e1' }]);
+        const secondStamp = listLogic.listItems('Alpha').find((i) => i.id === todo.id).shippedAt;
+        expect(secondStamp).toBe(firstStamp);
+    });
+
+    it('still ships when the row carries no todo_id (stamp is best-effort, non-blocking)', async () => {
+        deps.resolveEntryRunState.mockReturnValue('shipped');
+        await settleShippedRows([{ id: 'row3', state: 'dispatched', entry_id: 'e1' }]);
+        // A missing todo_id must not block the ship — the row still reaches shipped.
+        expect(findCall('row3', 'shipped')).toBeTruthy();
+    });
+});
+
 describe('evaluateReconciler — the interval follows what is in flight', () => {
     it('arms the poller while a pollable row is in flight and stops when none remain', () => {
         expect(isReconcilePollerActive()).toBe(false);
