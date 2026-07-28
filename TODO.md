@@ -95,3 +95,10 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a440c99f-8335-482b-a510-d12ba8ce009e -->
+
+- [ ] **[MEDIUM]** Extract renderStatsContent from toDoRow.js into statsDrawerPanel.js
+  - Type: feature
+  - Description: Mechanical, behaviour-preserving extraction only — no logic may change. Extract the function `renderStatsContent` from `toDoList_main/src/toDoRow.js` into a new module `toDoList_main/src/statsDrawerPanel.js`. The scan located it around lines 2748–2913; that span is from the scan and may have drifted, so locate the function by name and treat the span as a hint only. Import the extracted module back into `toDoList_main/src/toDoRow.js` and keep every call site unchanged. Rationale: Only 3 closure refs (row element, item, transient window state) despite being huge, so it moves cheaply once those are passed as params; its size makes the payoff large. Move these sibling functions in the same entry so the file isn’t touched by two runs: replaceContentInPlace, openStatsModal.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/statsDrawerPanel.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3e373ed4-df53-4e3c-8c1a-1a7153b7cb88 -->
