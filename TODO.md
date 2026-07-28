@@ -46,7 +46,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 2c86dd00-3f2d-43ce-8cd6-74eee3a289e2 -->
 
-- [ ] **[MEDIUM]** Force a marker refresh when a queue row reaches a terminal shipped state
+- [x] **[MEDIUM]** Force a marker refresh when a queue row reaches a terminal shipped state — Completed: 2026-07-28
   - Type: bug
   - Description: After a dispatched run merges, the task row keeps showing its pending glyph instead of flipping to `⌁ REVIEW`. `derivePhase` returns `ACCEPT` only when `resolveEntryRunState` finds the entry's marker checked in TODO.md, which reads `shippedMarkerCache` — populated by `refreshShippedMarkers` with a 60s TTL and refreshed from row render WITHOUT `force`, so a repaint reuses whatever was last fetched. The app learns a run finished through the `agent_queue` realtime push, and that push repaints the row against a cache that can be up to a minute stale, so the row reports the pre-merge state. The client-side ship path already force-refreshes (`shipEntry.js` calls `refreshShippedMarkers(target, true)`), but a run that merges on Actions never goes through it. Force a refresh on the queue-row transition, which is the one event that guarantees TODO.md just changed.
   - Behavior: When a task's linked `agent_queue` row transitions into a terminal shipped state, the project's shipped-marker cache is refreshed immediately, bypassing the TTL, and the row repaints — flipping from the pending glyph to `⌁ REVIEW` without waiting out the cache or requiring a manual re-render. Rows in every other state are unaffected, and a queue push that is not a shipped transition must NOT trigger a refresh, so ordinary state churn does not generate a fetch per push.
