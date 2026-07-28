@@ -1,6 +1,6 @@
 # TODO LIST
 
-- [ ] **[MEDIUM]** Extract the mockup A/B/C flow out of agentView.js into its own module
+- [x] **[MEDIUM]** Extract the mockup A/B/C flow out of agentView.js into its own module
   - Type: feature
   - Description: `agentView.js` is 4,253 lines and the mockup flow is roughly 10 functions and ~103 references inside it — `mockupRepoLabel`, `mockupPathHint`, `buildMockupPrompt`, `buildMockupGenPrompt`, `parseMockupVariants`, `buildMockupEntryPrompt`, `mockupChatRepo`, `renderMockupPreviews`, `buildMockupSecondary` and their helpers. It is now the ONLY thing the Agent board uniquely owns: Send, Dispatch, Retry and the board's Accept all resolve to `dispatchDraft` and are already reachable from the task row and detail pane, and the cross-project bucket overview is not used. Extract the flow into its own module with the board still calling it, changing nothing a user can see. This is the prerequisite that makes mounting the flow elsewhere and then deleting the board safe; doing those without it would mean moving code and changing behavior in the same step.
   - Behavior: Identical to today in every respect. The Agent board's `needs_mockup` cards render the same prompts, generate the same A/B/C variants, preview them the same way, and produce the same entry on selection. No visible change, no change to what is generated or how it is dispatched.
