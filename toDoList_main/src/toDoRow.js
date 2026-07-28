@@ -65,6 +65,7 @@ import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { buildAuthoringModeStrip, setAuthoringModeStripActive } from './authoringModeStrip.js';
 import { parsePastedEntry, recognizedEntryFields } from './entryParse.js';
 import { buildMockupSecondary } from './mockupFlow.js';
+import { createStatsDrawer } from './statsDrawerPanel.js';
 
 
 // The row-side "Discuss" action opens the Claude sheet scoped to this task.
@@ -2737,304 +2738,33 @@ const MISS_PILL_THRESHOLD = 7;
 // from keyboard focus.
 function wireStatsToggle(statsToggle, toDoChild, item) {
 
-    let currentWindow = '30d';
-    // Tracks where the current stats payload is rendered so the window-toggle
-    // buttons (and any future re-render trigger) know which container to
-    // replace — the inline #statsSibling drawer on desktop, or the body of
-    // the mobile modal. Set on open, cleared on close.
-    let openMode = null; // null | 'drawer' | 'modal'
-    let modalBody = null;
+    // Shared mutable surface state. This object is passed by reference into
+    // the extracted stats-drawer factory AND read/written by the click
+    // handler below, so both sides observe the same values:
+    //   currentWindow — active stats window (14d/30d/90d/all; default 30d).
+    //   openMode      — where the payload is rendered (null | 'drawer' | 'modal'),
+    //                   so window-toggle re-renders target the right container.
+    //   modalBody     — the mobile modal's body element while it is open.
+    const state = { currentWindow: '30d', openMode: null, modalBody: null };
 
-    function renderStatsContent(forModal) {
-        const projectName = toDoChild.dataset.value;
-        if (!projectName || !item.recurrence) return null;
-
-        const container = document.createElement('div');
-        if (forModal) {
-            container.className = 'statsModalContent';
-        } else {
-            container.id = 'statsSibling';
-        }
-
-        const stats = listLogic.getRecurringTaskStats(projectName, item, currentWindow);
-
-        // Stat-card strip: streak / hit rate / best / completions in window.
-        const strip = document.createElement('div');
-        strip.className = 'statsCardStrip';
-        const cards = [
-            { label: 'Streak',      value: stats.currentStreak + '' },
-            { label: 'Hit rate',    value: Math.round(stats.hitRate * 100) + '%' },
-            { label: 'Best',        value: stats.bestStreak + '' },
-            { label: 'Done',        value: stats.completedCount + '' },
-        ];
-        cards.forEach(function(c) {
-            const card = document.createElement('div');
-            card.className = 'statsCard';
-            const v = document.createElement('div');
-            v.className = 'statsCardValue';
-            v.textContent = c.value;
-            const l = document.createElement('div');
-            l.className = 'statsCardLabel';
-            l.textContent = c.label;
-            card.appendChild(v);
-            card.appendChild(l);
-            strip.appendChild(card);
-        });
-        container.appendChild(strip);
-
-        // Approximate-dates note for completion-basis recurrences — the
-        // expected sequence is reconstructed from `nextDueDate`, not from
-        // authoritative per-occurrence records.
-        if (item.recurrence.basis === 'completionDate') {
-            const note = document.createElement('div');
-            note.className = 'statsApproximateNote';
-            note.textContent = 'completion-based — dates approximate';
-            container.appendChild(note);
-        }
-
-        // Window toggle row.
-        const toggleRow = document.createElement('div');
-        toggleRow.className = 'statsWindowToggle';
-        const windows = [
-            { key: '14d', label: '14d' },
-            { key: '30d', label: '30d' },
-            { key: '90d', label: '90d' },
-            { key: 'all', label: 'All' },
-        ];
-        windows.forEach(function(w) {
-            const btn = document.createElement('button');
-            btn.type = 'button';
-            btn.className = 'statsWindowBtn' + (w.key === currentWindow ? ' selected' : '');
-            btn.textContent = w.label;
-            btn.setAttribute('aria-pressed', w.key === currentWindow ? 'true' : 'false');
-            btn.addEventListener('click', function(ev) {
-                ev.stopPropagation();
-                if (currentWindow === w.key) return;
-                currentWindow = w.key;
-                replaceContentInPlace();
-            });
-            toggleRow.appendChild(btn);
-        });
-        container.appendChild(toggleRow);
-
-        // Grid (or fallback strip for month/year cadences). The modal always
-        // renders the full contributions grid — its full-window layout gives
-        // the grid room to breathe regardless of viewport, which is the whole
-        // reason this path exists.
-        const useFallback =
-            item.recurrence.pattern === 'monthly' ||
-            item.recurrence.pattern === 'yearly' ||
-            item.recurrence.intervalUnit === 'month' ||
-            item.recurrence.intervalUnit === 'year';
-        container.appendChild(
-            useFallback
-                ? buildFallbackStrip(stats)
-                : buildContributionsGrid(stats)
-        );
-
-        // Pattern callout — a one-sentence summary of the miss set,
-        // priority-ordered (abandoned → weekday → recentSlip →
-        // fallback) so a long pile of dates collapses into one signal
-        // the user can act on. Always renders when there are misses,
-        // regardless of count.
-        const summary = listLogic.summarizeRecurringMissPattern(stats);
-        if (summary && summary.text) {
-            const callout = document.createElement('div');
-            callout.className = 'statsMissCallout';
-            callout.setAttribute('data-kind', summary.kind);
-
-            const icon = buildInfoGlyph();
-            const text = document.createElement('span');
-            text.className = 'statsMissCalloutText';
-            text.textContent = summary.text;
-
-            callout.appendChild(icon);
-            callout.appendChild(text);
-            container.appendChild(callout);
-        }
-
-        // Missed-dates list. Up to MISS_PILL_THRESHOLD misses render
-        // inline — the user can scan every date without taking a
-        // second action. Beyond the threshold the inline list shrinks
-        // to the 5 newest dates plus a `+ N more` chip that opens the
-        // full-history modal, so the drawer stays compact even after a
-        // long abandonment.
-        if (stats.misses.length > 0) {
-            const missed = document.createElement('div');
-            missed.className = 'statsMissedList';
-
-            const newestFirst = stats.misses.slice().sort(function(a, b) {
-                return b.getTime() - a.getTime();
-            });
-
-            if (stats.misses.length <= MISS_PILL_THRESHOLD) {
-                const label = document.createElement('span');
-                label.className = 'statsMissedLabel';
-                label.textContent = 'Missed:';
-                missed.appendChild(label);
-                // Preserve the prior chronological order when the inline
-                // list is short enough to scan — the existing
-                // expected-order rendering reads naturally for ≤ 7.
-                stats.misses.forEach(function(d) {
-                    const pill = document.createElement('span');
-                    pill.className = 'statsMissedPill';
-                    pill.textContent = formatShortDate(d);
-                    missed.appendChild(pill);
-                });
-            } else {
-                const label = document.createElement('span');
-                label.className = 'statsMissedLabel';
-                label.textContent = 'Most recent misses:';
-                missed.appendChild(label);
-                newestFirst.slice(0, 5).forEach(function(d) {
-                    const pill = document.createElement('span');
-                    pill.className = 'statsMissedPill';
-                    pill.textContent = formatShortDate(d);
-                    missed.appendChild(pill);
-                });
-                const remaining = stats.misses.length - 5;
-                const moreBtn = document.createElement('button');
-                moreBtn.type = 'button';
-                moreBtn.className = 'statsMissedMoreBtn';
-                moreBtn.textContent = '+ ' + remaining + ' more';
-                moreBtn.setAttribute('aria-label',
-                    'Show all ' + stats.misses.length + ' missed dates');
-                moreBtn.addEventListener('click', function(ev) {
-                    ev.stopPropagation();
-                    showMissedDatesModal(item.tit, newestFirst);
-                });
-                missed.appendChild(moreBtn);
-            }
-
-            container.appendChild(missed);
-        }
-
-        return container;
-    }
-
-    // Re-render the stats payload after a window-toggle click. Picks the
-    // right container based on whichever surface (inline drawer or
-    // full-screen modal) is currently open.
-    function replaceContentInPlace() {
-        if (openMode === 'drawer') {
-            const mainList = toDoChild.parentElement;
-            if (!mainList) return;
-            let existing = toDoChild.nextSibling;
-            while (existing && existing.id !== 'statsSibling') existing = existing.nextSibling;
-            if (!existing) return;
-            const fresh = renderStatsContent(false);
-            if (!fresh) return;
-            mainList.replaceChild(fresh, existing);
-            return;
-        }
-        if (openMode === 'modal' && modalBody) {
-            const fresh = renderStatsContent(true);
-            if (!fresh) return;
-            modalBody.innerHTML = '';
-            modalBody.appendChild(fresh);
-        }
-    }
-
-    // Full-screen stats modal — mobile-only surface that sidesteps the
-    // #mainList grid track sizing fight by rendering the full stats
-    // payload (cards, window toggle, contributions grid, miss callout,
-    // missed pills) outside the row entirely. Closes via X / backdrop /
-    // Escape per CLAUDE.md. The chart-icon button's open/aria state is
-    // cleared on close so a second tap re-opens cleanly.
-    function openStatsModal() {
-        // Defensive: tear down any prior instance so we never stack two
-        // stats modals (e.g. on a rapid double-tap).
-        const prior = document.getElementById('statsModalBackdrop');
-        if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
-
-        currentWindow = '30d';
-
-        const backdrop = document.createElement('div');
-        backdrop.id = 'statsModalBackdrop';
-
-        const dialog = document.createElement('div');
-        dialog.id = 'statsModal';
-        dialog.setAttribute('role', 'dialog');
-        dialog.setAttribute('aria-modal', 'true');
-        dialog.setAttribute('aria-labelledby', 'statsModalTitle');
-
-        const header = document.createElement('div');
-        header.id = 'statsModalHeader';
-
-        const titleWrap = document.createElement('div');
-        titleWrap.id = 'statsModalTitleWrap';
-
-        const titleEl = document.createElement('div');
-        titleEl.id = 'statsModalTitle';
-        titleEl.textContent = item.tit || '';
-
-        const subtitleEl = document.createElement('div');
-        subtitleEl.id = 'statsModalSubtitle';
-        subtitleEl.textContent = formatCadenceSubtitle(item.recurrence);
-
-        titleWrap.appendChild(titleEl);
-        titleWrap.appendChild(subtitleEl);
-
-        const closeX = document.createElement('button');
-        closeX.id = 'statsModalClose';
-        closeX.type = 'button';
-        closeX.setAttribute('aria-label', 'Close stats');
-        closeX.textContent = '×';
-
-        header.appendChild(titleWrap);
-        header.appendChild(closeX);
-
-        const body = document.createElement('div');
-        body.id = 'statsModalBody';
-        modalBody = body;
-
-        openMode = 'modal';
-        const content = renderStatsContent(true);
-        if (content) body.appendChild(content);
-
-        dialog.appendChild(header);
-        dialog.appendChild(body);
-        backdrop.appendChild(dialog);
-        document.body.appendChild(backdrop);
-
-        const previouslyFocused = document.activeElement;
-        closeX.focus();
-
-        statsToggle.classList.add('open');
-        statsToggle.setAttribute('aria-expanded', 'true');
-        statsToggle.setAttribute('aria-label', 'Hide stats');
-
-        let closed = false;
-        function close() {
-            if (closed) return;
-            closed = true;
-            document.removeEventListener('keydown', onKeydown, true);
-            if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-            openMode = null;
-            modalBody = null;
-            statsToggle.classList.remove('open');
-            statsToggle.setAttribute('aria-expanded', 'false');
-            statsToggle.setAttribute('aria-label', 'Show stats');
-            if (previouslyFocused &&
-                typeof previouslyFocused.focus === 'function' &&
-                document.contains(previouslyFocused)) {
-                previouslyFocused.focus();
-            }
-        }
-
-        function onKeydown(event) {
-            if (event.key === 'Escape') {
-                event.stopPropagation();
-                close();
-            }
-        }
-
-        closeX.addEventListener('click', close);
-        backdrop.addEventListener('click', function(event) {
-            if (event.target === backdrop) close();
-        });
-        document.addEventListener('keydown', onKeydown, true);
-    }
+    // renderStatsContent / replaceContentInPlace / openStatsModal now live in
+    // ./statsDrawerPanel.js; the factory binds them to this row's context and
+    // the shared `state` above. Behaviour is identical to the former inline
+    // closure — the toDoRow-local builders are handed over as `deps`.
+    const { renderStatsContent, openStatsModal } = createStatsDrawer({
+        statsToggle,
+        toDoChild,
+        item,
+        state,
+        deps: {
+            buildContributionsGrid,
+            buildFallbackStrip,
+            buildInfoGlyph,
+            formatShortDate,
+            formatCadenceSubtitle,
+            MISS_PILL_THRESHOLD,
+        },
+    });
 
     statsToggle.addEventListener('click', function(event) {
         event.stopPropagation();
@@ -3072,17 +2802,17 @@ function wireStatsToggle(statsToggle, toDoChild, item) {
 
         if (existing && existing.id === 'statsSibling') {
             mainList.removeChild(existing);
-            openMode = null;
+            state.openMode = null;
             statsToggle.classList.remove('open');
             statsToggle.setAttribute('aria-expanded', 'false');
             statsToggle.setAttribute('aria-label', 'Show stats');
             return;
         }
 
-        openMode = 'drawer';
+        state.openMode = 'drawer';
         const drawer = renderStatsContent(false);
         if (!drawer) {
-            openMode = null;
+            state.openMode = null;
             return;
         }
         // Slot after descSibling when it's open so both panels stack

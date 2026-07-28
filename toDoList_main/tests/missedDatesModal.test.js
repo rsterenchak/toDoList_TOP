@@ -17,6 +17,10 @@ function read(relative) {
 describe('missed dates modal', () => {
     const modals = read('modals.js');
     const toDoRow = read('toDoRow.js');
+    // The stats payload (renderStatsContent) that draws the miss callout and
+    // the `+ N more` chip was extracted verbatim into statsDrawerPanel.js;
+    // MISS_PILL_THRESHOLD is still defined in toDoRow.js and handed over as a dep.
+    const statsDrawer = read('statsDrawerPanel.js');
 
     it('exports showMissedDatesModal from modals.js', () => {
         expect(modals).toMatch(/export\s+function\s+showMissedDatesModal\s*\(/);
@@ -90,25 +94,25 @@ describe('missed dates modal', () => {
         expect(body).toMatch(/previouslyFocused\.focus\(\s*\)/);
     });
 
-    it('toDoRow wires the `+ N more` chip to the modal beyond the pill threshold', () => {
-        // Threshold constant is one-line tunable.
+    it('the stats drawer wires the `+ N more` chip to the modal beyond the pill threshold', () => {
+        // Threshold constant is one-line tunable, defined in toDoRow.js.
         expect(toDoRow).toMatch(/MISS_PILL_THRESHOLD\s*=\s*7/);
         // The chip opens the modal with the task title and the miss list.
-        expect(toDoRow).toMatch(/showMissedDatesModal\(\s*item\.tit/);
+        expect(statsDrawer).toMatch(/showMissedDatesModal\(\s*item\.tit/);
         // Inline list label switches to "Most recent misses:" beyond the
         // threshold so the abbreviated 5-pill preview reads correctly.
-        expect(toDoRow).toMatch(/Most recent misses:/);
+        expect(statsDrawer).toMatch(/Most recent misses:/);
         // The chip label is a `+ N more` button with an accessible
         // aria-label.
-        expect(toDoRow).toMatch(/statsMissedMoreBtn/);
+        expect(statsDrawer).toMatch(/statsMissedMoreBtn/);
     });
 
-    it('toDoRow renders the pattern callout below the contributions grid', () => {
+    it('the stats drawer renders the pattern callout below the contributions grid', () => {
         // The callout uses summarizeRecurringMissPattern from listLogic so
         // the rendering logic stays a thin wrapper around the pure helper.
-        expect(toDoRow).toMatch(/summarizeRecurringMissPattern/);
-        expect(toDoRow).toMatch(/statsMissCallout/);
+        expect(statsDrawer).toMatch(/summarizeRecurringMissPattern/);
+        expect(statsDrawer).toMatch(/statsMissCallout/);
         // The info-glyph SVG prefix is built inline; no new icon assets.
-        expect(toDoRow).toMatch(/buildInfoGlyph/);
+        expect(statsDrawer).toMatch(/buildInfoGlyph/);
     });
 });
