@@ -15,13 +15,7 @@ export const changelog = [
         ],
         fixed: [
             "A task whose automated change just merged now flips to its review state immediately, instead of staying on its pending indicator for up to a minute.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-27',
-        fixed: [
-            "In the queue rail, selecting a task now keeps its title scrolled to the start, so a long title reads from the beginning instead of showing only its tail.",
+            "The Inject button on a task now fills with a solid accent color and white text on hover, matching the Generate and Discuss buttons instead of showing only a dim tint.",
         ],
     },
 ];

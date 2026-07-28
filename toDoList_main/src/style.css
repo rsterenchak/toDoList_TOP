@@ -17379,7 +17379,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
 }
 .injectBtn:hover:not(:disabled) {
-  background: var(--accent-dim);
+  background: var(--accent);
+  color: #fff;
 }
 .injectBtn:focus {
   outline: none;

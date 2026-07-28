@@ -64,9 +64,9 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: da2ded18-df6b-4b2b-9083-349a88d4b405 -->
 
-- [ ] **[LOW]** Fix injectBtn hover state to match generateBtn/discussBtn solid fill
+- [x] **[LOW]** Fix injectBtn hover state to match generateBtn/discussBtn solid fill
   - Type: bug
   - Description: The injectBtn's hover rule only tints the background with var(--accent-dim) and leaves text color unchanged, while generateBtn and discussBtn both fill solid with background: var(--accent) and color: #fff on hover. Base styling across all three buttons is already identical, so update .injectBtn:hover:not(:disabled) to use background: var(--accent); color: #fff; to match. Do not modify the semantic state variants (.injectBtn--unconfigured, .injectBtn--injected, .injectBtn--no-target, .injectBtn--generating), which intentionally use different colors.
   - File: `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-28
   <!-- id: 81fdcdb5-fda7-4f7d-8652-08ed819c1247 -->
