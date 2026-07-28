@@ -86,6 +86,13 @@ function toTodoRowPayload(item, projectId) {
         // on one device clears the badge everywhere. Nullable; forwarded only when
         // set (see persistMutation) so a pre-migration server degrades cleanly.
         draft_seen_at: item.draftSeenAt || null,
+        // Ship timestamp, stamped when the reconciler settles this todo's queue row
+        // to `shipped`. Recorded in the database so the derived REVIEW/DONE phase
+        // survives a TODO.md rewrite (a cleared file can no longer erase the ship).
+        // Synced so the phase reads identically across devices. Nullable; forwarded
+        // only when set (see persistMutation) so a pre-migration server degrades
+        // cleanly.
+        shipped_at: item.shippedAt || null,
     };
 }
 
@@ -1640,6 +1647,56 @@ export const listLogic = (function () {
     }
 
 
+    // Record that a todo's linked queue row shipped by stamping `shipped_at` onto
+    // the todo, so the derived REVIEW/DONE phase is backed by a database field and
+    // survives a TODO.md rewrite (a cleared file can no longer erase the ship).
+    // Mirrors markEntryReviewed — a single-field write on a todo keyed by id: scans
+    // every project for the matching id, stamps an ISO timestamp, saves locally, and
+    // mirrors to Supabase (shipped_at rides in toTodoRowPayload). Unlike the
+    // acknowledgement writers this one is IDEMPOTENT: a todo already carrying a
+    // `shippedAt` is left untouched and reported as such, so a re-settling reconciler
+    // tick never overwrites an earlier ship time with a later one. Returns
+    // { ok:true } (with `alreadyStamped: true` on the no-op skip) on success and
+    // { ok:false, error } when the id is missing or the todo isn't found — the
+    // caller surfaces a genuine failure rather than swallowing it, since a silently
+    // unstamped ship is the exact failure mode this exists to prevent. Called by the
+    // dispatch reconciler's settle path, not by a user action, but shares the
+    // unconditional-persist-and-mirror shape of the acknowledgement writers: it must
+    // always save AND mirror to Supabase (recording the ship in the DB is the whole
+    // point), so it takes no `opts` and never forwards a fromSync flag.
+    // @category: user-mutation-only
+    function stampEntryShipped(todoId) {
+        if (!todoId) return { ok: false, error: 'Missing id.' };
+        let found = null;
+        let foundProject = null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) { return it && it.id === todoId; });
+            if (hit) { found = hit; foundProject = names[i]; break; }
+        }
+        if (!found) return { ok: false, error: 'Todo not found.' };
+        // Idempotent: an already-stamped todo keeps its original ship time.
+        if (found.shippedAt) return { ok: true, alreadyStamped: true };
+
+        found.shippedAt = new Date().toISOString();
+        saveToStorage();
+
+        if (found.id && found.tit && found.tit !== '') {
+            persistMutation({
+                op: 'update',
+                table: 'todos',
+                payload: toTodoRowPayload(
+                    found,
+                    allProjects[foundProject].id || null
+                ),
+            });
+        }
+        return { ok: true };
+    }
+
+
     // Resolve a TODO.md entry marker id to its source todo and report whether
     // that entry has been acknowledged. Scans every project for a todo whose
     // `entryId` matches the marker (marker ids are globally unique, mirroring
@@ -3123,6 +3180,8 @@ export const listLogic = (function () {
                     if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
                     // Same contract for the draft first-look timestamp.
                     if (payload.draft_seen_at) row.draft_seen_at = payload.draft_seen_at;
+                    // Same contract for the ship timestamp.
+                    if (payload.shipped_at) row.shipped_at = payload.shipped_at;
                 } else {
                     return;
                 }
@@ -3185,6 +3244,7 @@ export const listLogic = (function () {
                     if (payload.entry_id) row.entry_id = payload.entry_id;
                     if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
                     if (payload.draft_seen_at) row.draft_seen_at = payload.draft_seen_at;
+                    if (payload.shipped_at) row.shipped_at = payload.shipped_at;
                 } else {
                     return;
                 }
@@ -3445,6 +3505,13 @@ export const listLogic = (function () {
                         draftSeenAt: t.draft_seen_at
                             || (localTodosById[t.id] && localTodosById[t.id].draftSeenAt)
                             || undefined,
+                        // Round-trip the ship timestamp so the derived REVIEW/DONE
+                        // phase holds cross-device and survives a TODO.md rewrite.
+                        // Falls back to a locally-known value when the server column
+                        // is null (server predates the migration).
+                        shippedAt: t.shipped_at
+                            || (localTodosById[t.id] && localTodosById[t.id].shippedAt)
+                            || undefined,
                         created_at: t.created_at || null,
                     });
                 });
@@ -3697,6 +3764,9 @@ export const listLogic = (function () {
             if (evt.new.entry_reviewed_at) mapped.entryReviewedAt = evt.new.entry_reviewed_at;
             // Same guard for the draft first-look timestamp.
             if (evt.new.draft_seen_at) mapped.draftSeenAt = evt.new.draft_seen_at;
+            // Same guard for the ship timestamp: carry it only when present so an
+            // unrelated UPDATE never clears a local ship stamp.
+            if (evt.new.shipped_at) mapped.shippedAt = evt.new.shipped_at;
             if (idx === -1) {
                 proj.items.push(mapped);
             } else {
@@ -3770,6 +3840,7 @@ export const listLogic = (function () {
         stampTodoEntryId,
         markEntryReviewed,
         markDraftSeen,
+        stampEntryShipped,
         getEntryReviewInfo,
         getTodoById,
         unflagAgentTask,

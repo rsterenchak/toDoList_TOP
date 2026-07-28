@@ -92,11 +92,13 @@ export const PHASE = Object.freeze({
 // the marker phases while yielding to `asking`; `stuck` (a `failed`/`no_change`
 // queue row) and `mockup` (a `needs_mockup` queue row) are checked alongside them,
 // above the `entryId` guard, so a broken run or a mockup-parked run outranks the
-// DRAFT its still-unchecked entry would otherwise read as. The
-// remaining mapping then mirrors
-// the three-way run state resolver — 'pending' → draft, 'shipped' splits on the
-// acknowledgement stamp into accept (unreviewed) or done (reviewed), and both the
-// falsy-id and cache-miss cases collapse to 'none'.
+// DRAFT its still-unchecked entry would otherwise read as. A database-recorded
+// ship (`item.shippedAt`) is then checked ahead of the marker: once set it resolves
+// the terminal phase from the row itself — accept (unreviewed) / done (reviewed) —
+// so the state survives a TODO.md rewrite. The remaining mapping mirrors the
+// three-way run state resolver as the FALLBACK for pre-stamp ships — 'pending' →
+// draft, 'shipped' splits on the acknowledgement stamp into accept (unreviewed) or
+// done (reviewed), and both the falsy-id and cache-miss cases collapse to 'none'.
 export function derivePhase(item) {
     if (!item) return PHASE.NONE;
     const queueRow = item.id ? getQueueRowForTodo(item.id) : null;
@@ -108,6 +110,9 @@ export function derivePhase(item) {
     // marker-derived phases: an in-flight run's injected marker would otherwise
     // read as DRAFT.
     if (queueRow && (queueRow.state === 'dispatched' || queueRow.state === 'running')) return PHASE.RUNNING;
+    if (item.shippedAt) {
+        return item.entryReviewedAt ? PHASE.DONE : PHASE.ACCEPT;
+    }
     if (!item.entryId) return PHASE.NONE;
     const runState = resolveEntryRunState(item.entryId);
     if (runState === 'pending') return PHASE.DRAFT;
