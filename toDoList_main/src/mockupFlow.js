@@ -340,6 +340,42 @@ function mountScaledFrame(scaler, frame) {
     applyMockupScale(scaler, frame);
 }
 
+// Turn a chosen A/B/C variant into a finished TODO.md entry and write it to the
+// row's draft, flipping the row to `drafted` at the existing Dispatch gate. The
+// chat round-trip → fence strip → save → refresh sequence is identical for every
+// host (the board's stacked tiles, the pane's three-across tiles, the mobile
+// modal's tabbed preview); only the pending / error UI differs, so each host
+// passes an `onFail(message)` and drives its own button state. Returns the
+// promise so a caller can chain; never throws (rejections route to onFail).
+function createMockupEntry(row, key, html, onFail) {
+    const fail = (typeof onFail === 'function') ? onFail : function () {};
+    const repo = mockupChatRepo(getSelectedProjectName());
+    return Promise.resolve().then(function () {
+        return chatWithWorker(
+            [{ role: 'user', content: buildMockupEntryPrompt(row.context, key, html, repo) }],
+            null, null, repo,
+        );
+    }).then(function (res) {
+        const draft = stripEntryFence((res && typeof res.reply === 'string') ? res.reply : '');
+        if (!draft) {
+            fail('The reply was empty — try again.');
+            return null;
+        }
+        return Promise.resolve(listLogic.setAgentRunState(row.id, { draft: draft, state: 'drafted' }))
+            .then(function (saved) {
+                if (saved && saved.ok) {
+                    // Realtime moves the card to In progress; force a refresh so
+                    // the drafted row lands promptly.
+                    refreshAgentQueue(getSelectedProjectName());
+                    return;
+                }
+                fail(saved && saved.error);
+            });
+    }).catch(function () {
+        fail('Couldn’t create the entry. Try again.');
+    });
+}
+
 // Render the A/B/C variants into the previews container as tiles, each a
 // sandboxed <iframe> (scripts OFF via an empty `sandbox`, so pure-CSS motion
 // still runs) whose srcdoc is the variant HTML with the app cascade injected.
@@ -432,31 +468,7 @@ function renderMockupPreviews(container, variants, row, options) {
                 useBtn.classList.add('is-pending');
                 useBtn.textContent = 'Creating entry…';
 
-                const repo = mockupChatRepo(getSelectedProjectName());
-                Promise.resolve().then(function () {
-                    return chatWithWorker(
-                        [{ role: 'user', content: buildMockupEntryPrompt(row.context, k, variants[k], repo) }],
-                        null, null, repo,
-                    );
-                }).then(function (res) {
-                    const draft = stripEntryFence((res && typeof res.reply === 'string') ? res.reply : '');
-                    if (!draft) {
-                        useFail('The reply was empty — try again.');
-                        return null;
-                    }
-                    return Promise.resolve(listLogic.setAgentRunState(row.id, { draft: draft, state: 'drafted' }))
-                        .then(function (saved) {
-                            if (saved && saved.ok) {
-                                // Realtime moves the card to In progress; force a
-                                // refresh so the drafted row lands promptly.
-                                refreshAgentQueue(getSelectedProjectName());
-                                return;
-                            }
-                            useFail(saved && saved.error);
-                        });
-                }).catch(function () {
-                    useFail('Couldn’t create the entry. Try again.');
-                });
+                createMockupEntry(row, k, variants[k], useFail);
             });
 
             useRow.appendChild(useBtn);
@@ -467,6 +479,136 @@ function renderMockupPreviews(container, variants, row, options) {
         container.appendChild(tile);
     });
     // Let the host re-snapshot its layout now the tiles (or none) have mounted.
+    if (typeof opts.onRender === 'function') opts.onRender(container);
+}
+
+// The A/B/C variants laid out as a TABBED selector for a narrow host — the mobile
+// description-editor modal. Three variants across (the pane's grid) is unusable at
+// phone width (~120px each), and stacking three frames blows the modal's height cap
+// and forces scroll-to-compare — the very thing A/B/C exists to avoid. So the tabs
+// render OPTION A / B / C as a `radiogroup` above a SINGLE scaled preview, re-pointed
+// as the selected tab changes, with one "use this" action acting on the selection.
+// Shares the entry-creation path (createMockupEntry) and the preview scaling
+// (mountScaledFrame, sized to the modal's width) with the tile renderer; only the
+// arrangement differs, so the flow — generation, parsing, the Use path — is never
+// reimplemented. `row` omitted keeps the tabs inert (view-only). `options.onRender`
+// fires after mount so a host can re-measure. Never throws.
+function renderMockupTabs(container, variants, row, options) {
+    const opts = (options && typeof options === 'object') ? options : {};
+    container.textContent = '';
+    const keys = ['A', 'B', 'C'].filter(function (k) { return !!variants[k]; });
+    if (!keys.length) {
+        if (typeof opts.onRender === 'function') opts.onRender(container);
+        return;
+    }
+
+    // ── Tab strip — a radiogroup: one radio per available variant, arrow-key
+    // navigation, exactly one selected (roving tabindex). ──
+    const tabs = document.createElement('div');
+    tabs.className = 'agentMockupTabs';
+    tabs.setAttribute('role', 'radiogroup');
+    tabs.setAttribute('aria-label', 'Mockup options');
+
+    // ── Single preview — one clipping scaler + iframe, re-pointed on tab change.
+    // Scaled the same way the pane's tiles are, so a desktop-width variant fits
+    // the modal rather than showing only its top-left corner. ──
+    const scaler = document.createElement('div');
+    scaler.className = 'agentMockupFrameScaler';
+    const frame = document.createElement('iframe');
+    frame.className = 'agentMockupFrame';
+    // Empty sandbox = maximum restriction (scripts/forms/same-origin off);
+    // pure-CSS animation still runs. Matches the tile renderer's frames.
+    frame.setAttribute('sandbox', '');
+    frame.setAttribute('title', 'Mockup preview');
+    frame.setAttribute('loading', 'lazy');
+    scaler.appendChild(frame);
+
+    let selectedKey = keys[0];
+    const tabButtons = {};
+
+    function selectKey(k) {
+        if (!variants[k]) return;
+        selectedKey = k;
+        keys.forEach(function (kk) {
+            const b = tabButtons[kk];
+            const on = kk === k;
+            b.setAttribute('aria-checked', on ? 'true' : 'false');
+            b.tabIndex = on ? 0 : -1;
+            b.classList.toggle('is-selected', on);
+        });
+        // Re-point the single preview at the selected variant and re-fit it.
+        frame.srcdoc = injectPreviewStyle(variants[k]);
+        applyMockupScale(scaler, frame);
+    }
+
+    keys.forEach(function (k, i) {
+        const tab = document.createElement('button');
+        tab.type = 'button';
+        tab.className = 'agentMockupTab';
+        tab.setAttribute('role', 'radio');
+        tab.textContent = 'Option ' + k;
+        tab.addEventListener('click', function () { selectKey(k); });
+        tab.addEventListener('keydown', function (e) {
+            let next = null;
+            if (e.key === 'ArrowRight' || e.key === 'ArrowDown') next = keys[(i + 1) % keys.length];
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') next = keys[(i - 1 + keys.length) % keys.length];
+            if (next) {
+                e.preventDefault();
+                selectKey(next);
+                try { tabButtons[next].focus(); } catch (err) { /* defensive */ }
+            }
+        });
+        tabButtons[k] = tab;
+        tabs.appendChild(tab);
+    });
+
+    container.appendChild(tabs);
+    container.appendChild(scaler);
+
+    // ── "use this": acts on the CURRENT selection, generating its finished entry
+    // and flipping the row to `drafted` — omitted for view-only (no-row) callers. ──
+    if (row) {
+        const useRow = document.createElement('div');
+        useRow.className = 'agentMockupUseRow';
+
+        const useErr = document.createElement('p');
+        useErr.className = 'agentMockupUseError';
+        useErr.setAttribute('role', 'alert');
+        useErr.hidden = true;
+
+        const useBtn = document.createElement('button');
+        useBtn.type = 'button';
+        useBtn.className = 'agentMockupUse';
+        useBtn.textContent = 'use this';
+
+        function useFail(message) {
+            useBtn.disabled = false;
+            useBtn.classList.remove('is-pending');
+            useBtn.textContent = 'use this';
+            useErr.textContent = message || 'Couldn’t create the entry. Try again.';
+            useErr.hidden = false;
+        }
+
+        useBtn.addEventListener('click', function () {
+            if (useBtn.disabled) return;
+            useErr.hidden = true;
+            useErr.textContent = '';
+            useBtn.disabled = true;
+            useBtn.classList.add('is-pending');
+            useBtn.textContent = 'Creating entry…';
+            createMockupEntry(row, selectedKey, variants[selectedKey], useFail);
+        });
+
+        useRow.appendChild(useBtn);
+        useRow.appendChild(useErr);
+        container.appendChild(useRow);
+    }
+
+    // Paint the first preview and wire the scale observer so a viewport / modal
+    // resize re-fits it live.
+    selectKey(selectedKey);
+    mountScaledFrame(scaler, frame);
+
     if (typeof opts.onRender === 'function') opts.onRender(container);
 }
 
@@ -488,21 +630,34 @@ function renderMockupPreviews(container, variants, row, options) {
 // (no Worker change). Each preview tile also carries a "use this" control that
 // turns the chosen variant into the finished entry and flips the row to
 // `drafted`; the fallback paste-back stays as the manual escape hatch.
-// `options` (both optional, defaulting off so the board's `buildMockupSecondary(row)`
-// call is unchanged) let a second host — the desktop detail pane — reuse this one
-// implementation with a different preview layout: `options.grid` lays the variants
-// three across (via the `agentMockup--grid` class) and scales each preview to fit
-// its narrow tile; `options.onRender` is threaded to renderMockupPreviews so the
-// host can re-snapshot its height whenever variants (re)render.
+// `options` (all optional, defaulting off so the board's `buildMockupSecondary(row)`
+// call is unchanged) let other hosts reuse this one implementation with a different
+// preview layout: `options.grid` (the desktop detail pane) lays the variants three
+// across (via the `agentMockup--grid` class) and scales each preview to fit its
+// narrow tile; `options.tabbed` (the mobile description-editor modal) renders the
+// variants as an OPTION A/B/C radiogroup above a single scaled preview (via the
+// `agentMockup--tabbed` class and renderMockupTabs), so three frames don't blow the
+// modal's height cap; `options.onRender` is threaded to the active renderer so the
+// host can re-snapshot its height whenever variants (re)render. grid and tabbed are
+// mutually exclusive; tabbed wins if both are set.
 function buildMockupSecondary(row, options) {
     const opts = (options && typeof options === 'object') ? options : {};
+    const useTabs = !!opts.tabbed;
     const renderOpts = {
-        scaled: !!opts.grid,
+        scaled: !useTabs && !!opts.grid,
         onRender: (typeof opts.onRender === 'function') ? opts.onRender : null,
     };
+    // Route to the tabbed (single scaled preview) renderer or the tile renderer
+    // (stacked on the board, three-across when scaled) from one call site, so the
+    // Generate / Regenerate / cache-restore paths below never branch on layout.
+    function renderInto(cont, vars) {
+        if (useTabs) renderMockupTabs(cont, vars, row, { onRender: renderOpts.onRender });
+        else renderMockupPreviews(cont, vars, row, renderOpts);
+    }
     const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
     const wrap = document.createElement('div');
-    wrap.className = 'agentSecondary agentMockup' + (opts.grid ? ' agentMockup--grid' : '');
+    wrap.className = 'agentSecondary agentMockup'
+        + (useTabs ? ' agentMockup--tabbed' : (opts.grid ? ' agentMockup--grid' : ''));
 
     // ── In-app A/B/C generation ──
     // Generate calls the chat Worker with buildMockupGenPrompt, parses the reply
@@ -531,7 +686,7 @@ function buildMockupSecondary(row, options) {
     // the user's mockups.
     const cachedVariants = _mockupVariants.get(row.id);
     if (cachedVariants) {
-        renderMockupPreviews(previews, cachedVariants, row, renderOpts);
+        renderInto(previews, cachedVariants);
         genBtn.textContent = 'Regenerate';
     }
 
@@ -589,7 +744,7 @@ function buildMockupSecondary(row, options) {
                 paint();
                 return;
             }
-            renderMockupPreviews(previews, variants, row, renderOpts);
+            renderInto(previews, variants);
             genBtn.disabled = false;
             genBtn.classList.remove('is-pending');
             genBtn.textContent = 'Regenerate';
@@ -760,5 +915,6 @@ export {
     buildMockupEntryPrompt,
     mockupChatRepo,
     renderMockupPreviews,
+    renderMockupTabs,
     buildMockupSecondary,
 };
