@@ -472,12 +472,16 @@ describe('MOCKUP derived overlay', () => {
         expect(label.getAttribute('data-status')).toBe('in_progress');
     });
 
-    it('tapping the MOCKUP badge routes to the Agent view, not the description panel', () => {
+    it('tapping the MOCKUP badge opens the row description panel, not the Agent board', () => {
         const container = document.createElement('div');
         container.id = 'mainList';
         document.body.appendChild(container);
         wireStatusLabelDelegation(container);
 
+        // The choose-a-mockup flow now mounts in the detail pane's description
+        // panel (above the authoring region), so the tap opens that panel via the
+        // row's expand caret — the same destination ASKING / DRAFTED / STUCK use —
+        // rather than routing to the Agent board.
         const routed = [];
         setAgentRouteBadgeTapHandler(function (todoId, projectName) {
             routed.push([todoId, projectName]);
@@ -486,19 +490,25 @@ describe('MOCKUP derived overlay', () => {
         const item = { id: 'todo-mk', status: 'active' };
         const row = makeRow(item, 'Inbox');
         refreshTodoStatusUI(row, item, 'mockup');
-        // A description toggle is present — the MOCKUP tap must NOT open it (like
-        // DRAFTED / STUCK, which now also route to the board; unlike ASKING).
         const descToggle = document.createElement('div');
         descToggle.id = 'descToggle';
         let opened = 0;
-        descToggle.addEventListener('click', function () { opened += 1; });
+        descToggle.addEventListener('click', function () {
+            opened += 1;
+            descToggle.classList.add('open');
+        });
         row.appendChild(descToggle);
         container.appendChild(row);
 
         row.querySelector('.todoStatusLabel').click();
-        expect(routed).toEqual([['todo-mk', 'Inbox']]);
-        expect(opened).toBe(0);
+        expect(opened).toBe(1);
+        expect(routed).toEqual([]);
+        // No status popover mounted for the mockup overlay.
         expect(document.getElementById('todoStatusPopover')).toBeNull();
+
+        // A second tap while open does not collapse the panel (no re-click).
+        row.querySelector('.todoStatusLabel').click();
+        expect(opened).toBe(1);
     });
 });
 

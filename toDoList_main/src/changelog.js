@@ -9,12 +9,14 @@ export const changelog = [
         changed: [
             "On wide screens, the Structure view now fills the whole pane — a navigator rail beside a detail column — instead of being squeezed into the narrow queue track.",
         ],
+        added: [
+            "On wide screens, a task awaiting a mockup decision now shows the A/B/C mockup flow in the detail pane, with all three variants previewed side by side to choose from.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-27',
         fixed: [
-            "On wide screens, the detail pane's phase progress rail and its WRITE / PASTE / GENERATE mode strip now span the pane's full width instead of clustering at the left.",
             "On wide screens, the detail pane's description panel now sits directly on the pane background without a drawer border, accent edge, or a redundant “THE ENTRY” label, so it reads as part of the pane rather than a card inside a card.",
             "On wide screens, a shipped change awaiting review now shows a short description summary instead of the entire entry text, and the entry editor is hidden while you accept or revert it.",
             "In the queue rail, selecting a task now keeps its title scrolled to the start, so a long title reads from the beginning instead of showing only its tail.",
