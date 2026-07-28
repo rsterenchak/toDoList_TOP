@@ -45,3 +45,21 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 2c86dd00-3f2d-43ce-8cd6-74eee3a289e2 -->
+
+- [ ] **[MEDIUM]** Force a marker refresh when a queue row reaches a terminal shipped state
+  - Type: bug
+  - Description: After a dispatched run merges, the task row keeps showing its pending glyph instead of flipping to `⌁ REVIEW`. `derivePhase` returns `ACCEPT` only when `resolveEntryRunState` finds the entry's marker checked in TODO.md, which reads `shippedMarkerCache` — populated by `refreshShippedMarkers` with a 60s TTL and refreshed from row render WITHOUT `force`, so a repaint reuses whatever was last fetched. The app learns a run finished through the `agent_queue` realtime push, and that push repaints the row against a cache that can be up to a minute stale, so the row reports the pre-merge state. The client-side ship path already force-refreshes (`shipEntry.js` calls `refreshShippedMarkers(target, true)`), but a run that merges on Actions never goes through it. Force a refresh on the queue-row transition, which is the one event that guarantees TODO.md just changed.
+  - Behavior: When a task's linked `agent_queue` row transitions into a terminal shipped state, the project's shipped-marker cache is refreshed immediately, bypassing the TTL, and the row repaints — flipping from the pending glyph to `⌁ REVIEW` without waiting out the cache or requiring a manual re-render. Rows in every other state are unaffected, and a queue push that is not a shipped transition must NOT trigger a refresh, so ordinary state churn does not generate a fetch per push.
+  - Implementation notes:
+    - Hook the queue store's existing `onQueueChange` subscription rather than adding a second one. Compare the incoming row's state against its previous state and force the refresh ONLY on a transition INTO the terminal shipped state — refreshing on every push would put a GitHub read behind every triage tick.
+    - Call the project-scoped refresher with force: `refreshShippedMarkersForProject(projectName, true)`. Grep its signature to confirm it forwards a force flag through to `refreshShippedMarkers`; if it does not, add the pass-through rather than calling the lower-level function directly from the store.
+    - `refreshShippedMarkers` already emits `TODO_RUN_STATUS_EVENT` after updating the cache, which the row layer's sweep listens to — so the repaint should follow for free. Verify that holds rather than adding a second dispatch.
+    - Resolve the project from the queue row, not from the currently selected project. A run can finish for a project the user is not looking at, and refreshing the wrong repo's markers would leave the original stale while burning a fetch.
+    - Guard against duplicate in-flight fetches. `refreshShippedMarkers` has an in-flight map (`shippedMarkersInFlight`) that returns the pending promise; confirm the forced path uses it, so several rows finishing together produce one fetch per repo rather than one per row.
+    - A failed fetch caches empty sets with a fresh timestamp for 60s, which would make every row in that project read as having no marker. Confirm the forced path degrades to leaving the previous cache intact rather than poisoning it, and if it does not, that is worth fixing here since this entry makes the path fire more often.
+    - Do not shorten `SHIPPED_MARKERS_TTL_MS` or add polling as an alternative. The TTL is correct for the passive case; this is about the one event that makes it wrong.
+    - Test: a queue row transitioning to shipped triggers a forced refresh for that row's project; a transition between two non-terminal states does not; several rows finishing at once produce one fetch per repo; and the row's phase moves to `accept` after the refresh without a re-render.
+  - Out of scope: The `body.agentWorking` nav dot and the working watch's 15s poll cadence — a separate signal with its own grace and hard-cap settle logic. The marker cache's TTL for passive reads. `derivePhase` and the phase vocabulary. The Agent board. The mockup flow.
+  - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/inject.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: da2ded18-df6b-4b2b-9083-349a88d4b405 -->
