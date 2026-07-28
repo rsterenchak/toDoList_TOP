@@ -136,7 +136,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: dba1768d-042e-436a-9f08-db88a868537b -->
 
-- [ ] **[MEDIUM]** Mockup previews: tap a variant to open it large
+- [x] **[MEDIUM]** Mockup previews: tap a variant to open it large — Completed: 2026-07-28
   - Type: feature
   - Description: The three-across grid in the detail pane gives each variant roughly 270px, and the mobile modal's tabbed preview is capped by the modal's width — both are enough to judge layout and proportion but too small to read anything inside a dense mockup. Add a click-to-enlarge: tapping a preview opens that variant at or near full size in an overlay, with its Use action available there, so comparison stays the default arrangement and detail is one tap away rather than a tradeoff against it.
   - Behavior: Tapping a variant's preview opens it in an overlay filling most of the viewport — wider than any pane, since the overlay is not constrained by the pane or modal it was opened from. The overlay shows the variant's option label, the preview rendered at or near 1:1, a Use action for that variant, and a close control. Escape closes it, as does tapping the backdrop. Closing returns to the grid or tabs with nothing else changed. Using the variant from the overlay does exactly what Use does in the grid — produces its entry, moves the row to `drafted` — and closes the overlay. Available from both the desktop pane's grid and the mobile modal's tabs.

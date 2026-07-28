@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-28',
+        added: [
+            "Tap a mockup preview to open it enlarged in an overlay — near full size, with its Use action — from both the detail pane and the mobile editor.",
+        ],
         fixed: [
-            "A task's automated run now finishes and flips to its review state even when it was started from the task's detail pane rather than the Agent board.",
             "The file-attach picker's open panel now has spacing below it, separating it from the task's action buttons instead of sitting flush against them.",
             "The task detail pane now updates immediately after choosing a mockup variant, instead of appearing to hang until the task is closed and reopened.",
             "On mobile, a task waiting on a mockup now lets you generate and choose an A/B/C variant right in its editor, comparing the three through tabs above a single preview.",

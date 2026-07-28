@@ -111,6 +111,9 @@ describe('mobile desc editor modal — toolbar Copy + Clear actions', () => {
 describe('mobile desc editor modal — close affordances (X / backdrop / Escape)', () => {
 
     const modals = read('modals.js');
+    // wireModalDismiss's implementation lives in its own leaf module (re-exported
+    // from modals.js); assertions on the helper's internals read it from there.
+    const modalDismiss = read('modalDismiss.js');
 
     it('the close X button is wired through the shared dismiss helper', () => {
         expect(modals).toMatch(/['"]descEditorModalClose['"]/);
@@ -122,7 +125,7 @@ describe('mobile desc editor modal — close affordances (X / backdrop / Escape)
         expect(call).not.toBeNull();
         expect(call[0]).toMatch(/closeButtons:\s*\[\s*closeX\s*\]/);
         // The helper wires each supplied close control's click to close().
-        expect(modals).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
+        expect(modalDismiss).toMatch(/closeButtons\[i\]\.addEventListener\(\s*['"]click['"]\s*,\s*close\s*\)/);
     });
 
     it('clicks on the backdrop close the modal (but inside-dialog clicks do not)', () => {
@@ -134,7 +137,7 @@ describe('mobile desc editor modal — close affordances (X / backdrop / Escape)
         const call = fn.match(/wireModalDismiss\(\{[\s\S]*?\}\)/);
         expect(call).not.toBeNull();
         expect(call[0]).toMatch(/backdrop:\s*backdrop/);
-        expect(modals).toMatch(
+        expect(modalDismiss).toMatch(
             /backdrop\.addEventListener\(\s*['"]click['"]\s*,\s*function\s*\(\s*event\s*\)\s*\{\s*if\s*\(\s*event\.target\s*===\s*backdrop\s*\)\s*close\(\)/
         );
     });
@@ -145,7 +148,7 @@ describe('mobile desc editor modal — close affordances (X / backdrop / Escape)
         const fnIdx = modals.indexOf('function showDescEditorModal(');
         const fn = modals.slice(fnIdx);
         expect(fn).toMatch(/wireModalDismiss\(\{/);
-        expect(modals).toMatch(
+        expect(modalDismiss).toMatch(
             /event\.key\s*===\s*['"]Escape['"][\s\S]{0,80}close\(\)/
         );
     });

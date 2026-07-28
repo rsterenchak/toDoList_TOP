@@ -36,48 +36,13 @@ import { createFilePicker, insertFilePathIntoEntry } from './filePicker.js';
 
 export { insertFilePathIntoEntry };
 
-
-// ── SHARED MODAL DISMISS WIRING ──
-// The dismissible modals in this file all close the same three ways — an
-// explicit close control, a backdrop click, and Escape — guarded so the close
-// runs only once, tearing down the keydown listener and detaching the backdrop
-// on the way out (CLAUDE.md: "modals must close on close-button, backdrop
-// click, and Escape"). This helper centralizes that contract so the modals
-// can't drift apart. Callers pass the backdrop, their close control(s) via
-// `closeButtons`, and an optional `onClose` hook for the modal-specific tail
-// (focus restoration, persistence) that runs after teardown. Returns the
-// guarded close function so callers can invoke it from other handlers.
-export function wireModalDismiss(options) {
-    const backdrop = options.backdrop;
-    const closeButtons = options.closeButtons || [];
-    const onClose = options.onClose;
-
-    let closed = false;
-    function close() {
-        if (closed) return;
-        closed = true;
-        document.removeEventListener('keydown', onKeydown, true);
-        if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
-        if (typeof onClose === 'function') onClose();
-    }
-
-    function onKeydown(event) {
-        if (event.key === 'Escape') {
-            event.stopPropagation();
-            close();
-        }
-    }
-
-    for (let i = 0; i < closeButtons.length; i++) {
-        if (closeButtons[i]) closeButtons[i].addEventListener('click', close);
-    }
-    backdrop.addEventListener('click', function(event) {
-        if (event.target === backdrop) close();
-    });
-    document.addEventListener('keydown', onKeydown, true);
-
-    return close;
-}
+// The shared modal dismiss wiring (close-button / backdrop / Escape + focus
+// restoration) lives in its own leaf module so it can be reused without dragging
+// modals.js's view import graph along. Imported here for this file's own modals
+// AND re-exported to preserve the existing `from './modals.js'` import path for
+// all its callers/tests.
+import { wireModalDismiss } from './modalDismiss.js';
+export { wireModalDismiss };
 
 
 // ── CONFIRM MODAL ──
