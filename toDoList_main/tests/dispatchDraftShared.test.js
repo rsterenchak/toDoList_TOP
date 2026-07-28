@@ -44,16 +44,11 @@ vi.mock('../src/listLogic.js', () => ({
 }));
 
 import { dispatchDraft, resolveDispatchTarget } from '../src/dispatchDraft.js';
-import { setQueueRows } from '../src/agentQueueStore.js';
 
 beforeEach(() => {
     shipCalls = [];
     runStateCalls = [];
     shipResult = { ok: true, entryId: 'ent-keep', correlationId: 'corr-1', runId: 111 };
-    // Reset the shared queue cache the sibling-mockup sweep reads (see the
-    // "settles a stale needs_mockup sibling" tests) so no seeded rows leak between
-    // cases and the plain-dispatch tests above see no siblings.
-    setQueueRows([]);
 });
 
 describe('shared dispatchDraft core', () => {
@@ -119,68 +114,6 @@ describe('shared dispatchDraft core', () => {
 
     it('resolveDispatchTarget returns null when no project is selected', () => {
         expect(resolveDispatchTarget()).toBeNull();
-    });
-});
-
-describe('dispatchDraft settles a stale needs_mockup sibling on a direct-inject pivot', () => {
-    it('moves a sibling needs_mockup row for the same todo out of that state (to no_change)', async () => {
-        // The bug scenario: a todo carries BOTH a stale needs_mockup row and the
-        // newer drafted row that the direct-inject pivot dispatches. Dispatching
-        // the drafted row must settle the stale sibling so the todo is not left
-        // with two in-flight-competing rows.
-        setQueueRows([
-            { id: 'mockA', todo_id: 't1', state: 'needs_mockup' },
-            { id: 'q1', todo_id: 't1', state: 'drafted' },
-        ]);
-        const row = { id: 'q1', todo_id: 't1', entry_id: 'ent-keep' };
-        const res = await dispatchDraft(row, 'entry body', row.entry_id);
-
-        expect(res).toEqual({ ok: true });
-        // Two writes: the dispatched persist for q1, then the sibling settle.
-        expect(runStateCalls).toHaveLength(2);
-        expect(runStateCalls[0].id).toBe('q1');
-        expect(runStateCalls[0].patch).toMatchObject({ state: 'dispatched' });
-        const settle = runStateCalls.find((c) => c.id === 'mockA');
-        expect(settle).toBeTruthy();
-        expect(settle.patch.state).toBe('no_change');
-        expect(settle.patch.state).not.toBe('needs_mockup');
-        expect(typeof settle.patch.failure_reason).toBe('string');
-    });
-
-    it('leaves needs_mockup rows of OTHER todos untouched', async () => {
-        setQueueRows([
-            { id: 'mockB', todo_id: 't2', state: 'needs_mockup' },
-            { id: 'q1', todo_id: 't1', state: 'drafted' },
-        ]);
-        const row = { id: 'q1', todo_id: 't1', entry_id: 'ent-keep' };
-        await dispatchDraft(row, 'entry body', row.entry_id);
-
-        // Only the dispatched persist — the other todo's mockup row is not swept.
-        expect(runStateCalls).toHaveLength(1);
-        expect(runStateCalls[0].id).toBe('q1');
-    });
-
-    it('is a no-op sweep for the normal single-row dispatch (no sibling to settle)', async () => {
-        setQueueRows([{ id: 'q1', todo_id: 't1', state: 'drafted' }]);
-        const row = { id: 'q1', todo_id: 't1', entry_id: 'ent-keep' };
-        await dispatchDraft(row, 'entry body', row.entry_id);
-
-        expect(runStateCalls).toHaveLength(1);
-        expect(runStateCalls[0].id).toBe('q1');
-    });
-
-    it('does not settle siblings when the ship itself fails (no dispatched row created)', async () => {
-        shipResult = { ok: false, error: 'Inject failed — boom' };
-        setQueueRows([
-            { id: 'mockA', todo_id: 't1', state: 'needs_mockup' },
-            { id: 'q1', todo_id: 't1', state: 'drafted' },
-        ]);
-        const row = { id: 'q1', todo_id: 't1', entry_id: 'ent-keep' };
-        const res = await dispatchDraft(row, 'entry body', row.entry_id);
-
-        expect(res).toEqual({ ok: false, error: 'Inject failed — boom' });
-        // No dispatched persist and no sweep — the pivot never completed.
-        expect(runStateCalls).toHaveLength(0);
     });
 });
 

@@ -1,7 +1,6 @@
 import { listLogic } from './listLogic.js';
 import { findTargetById } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
-import { settleStaleMockupRows } from './agentQueueStore.js';
 
 // Shared dispatch core for a drafted/stuck agent_queue row's entry. Extracted out
 // of agentView so BOTH the Agent board and the task-row description panel ship a
@@ -74,17 +73,6 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     };
     if (res.runId != null) patch.run_id = res.runId;
     await listLogic.setAgentRunState(rowId, patch);
-
-    // This dispatch may be the "direct inject" pivot for a todo that still carries
-    // a stale `needs_mockup` row from a deferred mockup: the read-path lookup
-    // already prefers this newer dispatched row, but the stale sibling is never
-    // settled on the write side, so settle it now — otherwise the todo is left with
-    // two in-flight-competing rows and the queue accumulates the orphan. Best-effort
-    // and awaited only so a same-tick repaint sees the settled sibling; a failure
-    // here never fails the dispatch (the run has already shipped).
-    try {
-        await settleStaleMockupRows(row.todo_id, rowId);
-    } catch (e) { /* best-effort: a settle failure never fails a successful dispatch */ }
 
     if (tail && typeof tail.onDispatched === 'function') {
         tail.onDispatched(rowId, res.entryId, res.correlationId, target);

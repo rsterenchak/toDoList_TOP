@@ -32,7 +32,6 @@ import {
     getLoadedProjectName,
     setQueueRows,
     getQueueRowForTodo,
-    settleStaleMockupRows,
     loadQueueRows,
     fetchQueueRows,
     pendingAnswers,
@@ -115,81 +114,6 @@ describe('cache accessors', () => {
             { id: 'q2', todo_id: 't1', state: 'dispatched', created_at: '2026-07-02T00:00:00Z' },
         ]);
         expect(getQueueRowForTodo('t1').id).toBe('q2');
-    });
-});
-
-describe('settleStaleMockupRows (write-side cleanup for the pending-glyph read fix)', () => {
-    it('settles sibling needs_mockup rows for the todo to no_change, excluding the dispatched row', async () => {
-        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
-        setQueueRows([
-            { id: 'mockA', todo_id: 't1', state: 'needs_mockup' },
-            { id: 'q1', todo_id: 't1', state: 'dispatched' },
-            { id: 'mockOther', todo_id: 't2', state: 'needs_mockup' },
-        ]);
-
-        const settled = await settleStaleMockupRows('t1', 'q1');
-
-        expect(settled).toEqual(['mockA']);
-        expect(spy).toHaveBeenCalledTimes(1);
-        expect(spy).toHaveBeenCalledWith('mockA', expect.objectContaining({
-            state: 'no_change',
-        }));
-        expect(spy.mock.calls[0][1].failure_reason).toEqual(expect.any(String));
-        spy.mockRestore();
-    });
-
-    it('excludes the dispatched row itself even if it is somehow still needs_mockup', async () => {
-        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
-        setQueueRows([{ id: 'q1', todo_id: 't1', state: 'needs_mockup' }]);
-
-        const settled = await settleStaleMockupRows('t1', 'q1');
-
-        expect(settled).toEqual([]);
-        expect(spy).not.toHaveBeenCalled();
-        spy.mockRestore();
-    });
-
-    it('is a no-op (no writes) when the todo has no sibling needs_mockup row', async () => {
-        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
-        setQueueRows([
-            { id: 'q1', todo_id: 't1', state: 'drafted' },
-            { id: 'q2', todo_id: 't1', state: 'dispatched' },
-        ]);
-
-        const settled = await settleStaleMockupRows('t1', 'q2');
-
-        expect(settled).toEqual([]);
-        expect(spy).not.toHaveBeenCalled();
-        spy.mockRestore();
-    });
-
-    it('returns [] without writing for a falsy todo id', async () => {
-        const spy = vi.spyOn(listLogic, 'setAgentRunState').mockResolvedValue({ ok: true });
-        setQueueRows([{ id: 'mockA', todo_id: 't1', state: 'needs_mockup' }]);
-
-        const settled = await settleStaleMockupRows(null, 'q1');
-
-        expect(settled).toEqual([]);
-        expect(spy).not.toHaveBeenCalled();
-        spy.mockRestore();
-    });
-
-    it('omits a row whose settle write fails, keeping the sweep best-effort', async () => {
-        const spy = vi.spyOn(listLogic, 'setAgentRunState')
-            .mockResolvedValueOnce({ ok: false, error: 'Update failed.' })
-            .mockResolvedValueOnce({ ok: true });
-        setQueueRows([
-            { id: 'mockA', todo_id: 't1', state: 'needs_mockup' },
-            { id: 'mockB', todo_id: 't1', state: 'needs_mockup' },
-            { id: 'q1', todo_id: 't1', state: 'dispatched' },
-        ]);
-
-        const settled = await settleStaleMockupRows('t1', 'q1');
-
-        // Both rows attempted; only the one whose write returned ok is reported.
-        expect(spy).toHaveBeenCalledTimes(2);
-        expect(settled).toEqual(['mockB']);
-        spy.mockRestore();
     });
 });
 
