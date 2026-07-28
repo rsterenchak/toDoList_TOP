@@ -110,7 +110,7 @@ import {
     getWaitingQuestionCounts,
     onQueueChange,
 } from './agentQueueStore.js';
-import { renderStructureView, captureStructureSnapshot } from './structureView.js';
+import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';
 import { maybeStartFirstRunTour } from './coachmark.js';
@@ -641,6 +641,10 @@ function component() {
     // mobile status predicate below it; re-apply on resize so crossing the
     // breakpoint swaps predicates rather than leaving a stale filtered set.
     window.addEventListener('resize', applyTaskFilter);
+    // The Structure view's block canvas lives in the detail column at desktop widths
+    // and inline atop the tree on mobile; re-home it when a resize crosses 1024px so
+    // it never strands in the now-hidden host.
+    window.addEventListener('resize', syncStructureCanvasForViewport);
 
     // Sidebar layout (flex column):
     //   sideTitle  — top: empty drawer header on mobile (holds the close X
@@ -3634,6 +3638,15 @@ function applyActiveView(view) {
         tabStructure.classList.toggle('active', safe === 'structure');
         tabStructure.setAttribute('aria-pressed', safe === 'structure' ? 'true' : 'false');
     }
+
+    // Structure takes the full main pane at desktop widths — the queue|detail split
+    // on #mainSec collapses (CSS, keyed off body[data-view="structure"]) and the
+    // detail pane is hidden here so its "open a task" empty state can't show through
+    // in a view it doesn't apply to. Hide via the [hidden] attribute (its CSS guard
+    // beats the pane's own display:flex); #descSibling stays mounted inside so
+    // returning to Stream restores the open task without re-opening it.
+    const detailPane = document.getElementById('descDetailPane');
+    if (detailPane) detailPane.hidden = (safe === 'structure');
 
     if (safe === 'agent') {
         // The sidebar selection persists across the switch but is hidden

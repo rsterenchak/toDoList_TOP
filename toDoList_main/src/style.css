@@ -4212,6 +4212,12 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   display: none;
 }
 
+/* The detail-column canvas host — a flat child of #structureView, in mobile source
+   order after the tree. On mobile it stays empty (the block canvas mounts inline
+   atop the tree, resolveCanvasHost) and is hidden so the single-column stack is
+   unchanged; the desktop navigator/detail block reveals it in the right column. */
+.structureCanvasHost { display: none; }
+
 /* NEXT REFACTOR card — a panel above the Structure tree surfacing the single
    cheapest extraction candidate for the repo. Mirrors .todoMdViewerCard's panel
    treatment (surface fill, dim border, md radius). */
@@ -11435,6 +11441,80 @@ body.row-dragging * { cursor: grabbing !important; }
     border-left: 0.5px solid var(--border-mid);
     background: var(--bg-base);
     padding: 12px;
+  }
+
+  /* STRUCTURE takes the full main pane: collapse the queue|detail split to a
+     single track so #mainBar (which hosts #structureView) spans the whole width,
+     and hide the detail pane whose "open a task" empty state can't apply here. The
+     gate is keyed off body[data-view="structure"] — NOT #mainBar[data-view], since
+     the split lives on #mainSec (an ancestor of #mainBar) and CSS can't select an
+     ancestor by a descendant's attribute. applyActiveView mirrors data-view onto
+     <body> in lockstep with #mainBar, so the two can't disagree. The [hidden]
+     attribute (set in applyActiveView) plus this display:none guard beats the
+     pane's own display:flex above; #descSibling stays mounted inside it. */
+  body[data-view="structure"] #mainSec {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  #descDetailPane[hidden] { display: none; }
+
+  /* ═══ DESKTOP STRUCTURE — navigator rail + detail column ═══
+     With the split collapsed above, Structure fills the whole pane. Lay it out as a
+     fixed-width left rail (repo header + lens toggle, filter, node tree, refactor +
+     capture cards) beside a flexible right column (selected-region inspector above
+     the block canvas). The children are flat children of #structureView in mobile
+     source order; explicit grid placement re-homes them into the two columns without
+     disturbing the ≤1023px single-column stack. The block canvas is a JS-relocated
+     child (renderStructureView / resolveCanvasHost) so its rows stay in the rail
+     while it fills the detail column. The container rule is scoped under
+     #mainBar[data-view="structure"] to out-specify the base `display:flex` the
+     active view sets (which must stay flex on mobile). */
+  #mainBar[data-view="structure"] #structureView {
+    display: grid;
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    column-gap: 20px;
+    row-gap: 12px;
+    padding: 16px 20px 20px;
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  /* Left rail — vertical stack; only the tree scrolls, so a long tree can't push
+     the refactor / capture cards below it off-screen. */
+  #structureView > .structureHeader     { grid-column: 1; grid-row: 1; }
+  #structureView > .structureControlRow { grid-column: 1; grid-row: 2; }
+  #structureView > .structureTree {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  #structureView > .refactorCard { grid-column: 1; grid-row: 4; }
+  #structureView > .captureCard  { grid-column: 1; grid-row: 5; }
+
+  /* Right column — a compact inspector (top of the column) above the block canvas,
+     which absorbs the remaining height. min-height:0 is what lets the canvas
+     shrink/scroll rather than overflow the column. */
+  #structureView > .structureActionToolbar {
+    grid-column: 2;
+    grid-row: 1;
+    align-self: start;
+    margin: 0;
+  }
+  #structureView > .structureCanvasHost {
+    grid-column: 2;
+    grid-row: 2 / -1;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  #structureView > .structureCanvasHost > .structureCanvasPane {
+    flex: 1 1 auto;
+    min-height: 0;
   }
 
   /* Drop the manual status text from desktop rows, mirroring the ≤1023px mobile
