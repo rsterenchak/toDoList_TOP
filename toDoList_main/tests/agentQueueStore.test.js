@@ -78,6 +78,43 @@ describe('cache accessors', () => {
         expect(getQueueRowForTodo('')).toBeNull();
         expect(getQueueRowForTodo(undefined)).toBeNull();
     });
+
+    it('getQueueRowForTodo prefers the most recent row when a todo links more than one', () => {
+        // A stale needs_mockup row plus a newer direct-inject dispatch row for the
+        // same todo: the newer row must win, or the stale one pins the phase.
+        setQueueRows([
+            { id: 'stale', todo_id: 't1', state: 'needs_mockup', created_at: '2026-07-01T00:00:00Z' },
+            { id: 'fresh', todo_id: 't1', state: 'dispatched', created_at: '2026-07-02T00:00:00Z' },
+        ]);
+        expect(getQueueRowForTodo('t1').id).toBe('fresh');
+        // Order in the cache must not change the outcome — recency decides.
+        setQueueRows([
+            { id: 'fresh', todo_id: 't1', state: 'dispatched', created_at: '2026-07-02T00:00:00Z' },
+            { id: 'stale', todo_id: 't1', state: 'needs_mockup', created_at: '2026-07-01T00:00:00Z' },
+        ]);
+        expect(getQueueRowForTodo('t1').id).toBe('fresh');
+    });
+
+    it('getQueueRowForTodo falls back to updated_at, then first-match on a tie', () => {
+        // No created_at: updated_at breaks the tie.
+        setQueueRows([
+            { id: 'older', todo_id: 't1', state: 'needs_mockup', updated_at: '2026-07-01T00:00:00Z' },
+            { id: 'newer', todo_id: 't1', state: 'dispatched', updated_at: '2026-07-03T00:00:00Z' },
+        ]);
+        expect(getQueueRowForTodo('t1').id).toBe('newer');
+        // Neither row carries a timestamp → first-encountered wins (unchanged behavior).
+        setQueueRows([
+            { id: 'q1', todo_id: 't1', state: 'needs_mockup' },
+            { id: 'q2', todo_id: 't1', state: 'dispatched' },
+        ]);
+        expect(getQueueRowForTodo('t1').id).toBe('q1');
+        // A row WITH a timestamp outranks a timestamp-less one regardless of order.
+        setQueueRows([
+            { id: 'q1', todo_id: 't1', state: 'needs_mockup' },
+            { id: 'q2', todo_id: 't1', state: 'dispatched', created_at: '2026-07-02T00:00:00Z' },
+        ]);
+        expect(getQueueRowForTodo('t1').id).toBe('q2');
+    });
 });
 
 describe('loadQueueRows', () => {

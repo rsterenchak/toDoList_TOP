@@ -282,6 +282,24 @@ describe('derivePhase — running (an in-flight dispatched run) outranks the mar
         setQueueRows([{ id: 'qr5', todo_id: 'todo-rclear', state: 'triaging' }]);
         expect(derivePhase({ id: 'todo-rclear' })).toBe(PHASE.NONE);
     });
+
+    it('resolves RUNNING, not MOCKUP, for a todo holding a stale needs_mockup row and a newer dispatched row', () => {
+        // A deferred-mockup task that is then injected directly ends up with TWO
+        // queue rows: the stale needs_mockup one and a newer dispatched one.
+        // getQueueRowForTodo must return the newer (dispatched) row so the row
+        // paints its pending glyph instead of hanging on the ⌁ MOCKUP overlay.
+        setQueueRows([
+            { id: 'stale', todo_id: 'todo-defer', state: 'needs_mockup', created_at: '2026-07-01T00:00:00Z' },
+            { id: 'fresh', todo_id: 'todo-defer', state: 'dispatched', created_at: '2026-07-02T00:00:00Z' },
+        ]);
+        expect(derivePhase({ id: 'todo-defer' })).toBe(PHASE.RUNNING);
+        // Cache order must not change the outcome.
+        setQueueRows([
+            { id: 'fresh', todo_id: 'todo-defer', state: 'dispatched', created_at: '2026-07-02T00:00:00Z' },
+            { id: 'stale', todo_id: 'todo-defer', state: 'needs_mockup', created_at: '2026-07-01T00:00:00Z' },
+        ]);
+        expect(derivePhase({ id: 'todo-defer' })).toBe(PHASE.RUNNING);
+    });
 });
 
 describe('derivePhase — one phase per item', () => {
