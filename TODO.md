@@ -520,3 +520,23 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9a489f39-1949-4768-96a4-a6af8234a8dc -->
+
+- [ ] **[MEDIUM]** Detail pane: trim the WHAT CHANGED summary and hide authoring in the accept phase
+  - Type: bug
+  - Description: The WHAT CHANGED card renders `item.desc` verbatim, but that field holds the ENTIRE entry — headline, Type, Description, Implementation notes, Out of scope, File, Completed — so the card dumps the full entry text. The authoring textarea directly below shows the same text again, putting two complete copies of the entry on screen and burying the decision controls. Two fixes: parse only the `- Description:` line for the summary, and hide the authoring group in the `accept` phase as well as `done`, matching the reviewed layout, whose ACCEPT state has no mode strip and no textarea. A shipped entry cannot be usefully edited from a local copy — OPEN IN TODO.MD is the route to the real text.
+  - Behavior: The WHAT CHANGED card shows the PR line and, beneath it, only the entry's Description text — one short paragraph, clamped to a few lines with an ellipsis if long. When the entry has no `- Description:` line the summary is omitted and the PR line plus the costs-nothing note remain. In the `accept` phase the panel shows the phase rail, the WHAT CHANGED card, the FILE readout, the three decision actions, Discuss, and MANUAL STATUS — the mode strip, the entry textarea, the file picker, Generate, and Inject are hidden. Accepting moves the task to `done`, where the authoring group stays hidden as it does today. Every other phase is unchanged, and the mobile modal is untouched.
+  - Implementation notes:
+    - Parse the Description with a tolerant matcher — leading whitespace, `- Description:` — capturing that line's text plus any wrapped continuation lines that follow it until the next `- Key:` sub-bullet. The entry format wraps long descriptions across lines, so a single-line match will truncate mid-sentence.
+    - Reuse an existing parser if one already handles this. `entryParse.js`'s `parsePastedEntry` already extracts Description with continuation folding for the PASTE path — import it rather than writing a second matcher, so the two cannot disagree about what an entry's Description is.
+    - When the entry has no Description line — a hand-typed task, or a title-only entry — omit the summary rather than falling back to the raw text. The raw text is exactly what caused this.
+    - Clamp the summary to roughly three lines with `-webkit-line-clamp` plus `overflow: hidden`, so an unusually long Description cannot push the decision buttons below the fold.
+    - `applyPhaseLayout` currently computes `hideAuthoring = phase === PHASE.DONE`. Extend it to `PHASE.DONE || PHASE.ACCEPT`. Do NOT add the review block or the review actions to `DESC_AUTHORING_GROUP_SELECTORS` — they must stay visible in exactly the phase the group is now hidden in.
+    - Verify the mode strip and its PASTE / GENERATE bodies are in the authoring group so they hide too; the strip was added to that group when it landed, so confirm rather than assume.
+    - Check the interaction with `refreshInjectButton`, which hides Inject via inline `style.display` while `applyPhaseLayout` uses the `hidden` attribute. In `accept` the phase gate must win — an inline `display: ''` from a description-non-empty refresh would otherwise reveal Inject on a shipped entry.
+    - `syncReviewPanel` mounts via `descPanelTopAnchor`, so the review surface sits above the now-hidden authoring region; confirm the panel's remaining children still read in a sensible order with the middle removed, and that no empty wrapper leaves a gap.
+    - Call `refreshViewerExpandedHeight()` after the phase layout runs — hiding the authoring group in a new phase changes the panel height.
+    - Test: an entry with a Description renders only that text in the card; an entry without one renders no summary; the raw entry text never appears in the card; the authoring group is hidden in `accept` and in `done` and visible in every other phase; Inject stays hidden in `accept` even with a non-empty description; and the decision actions remain visible throughout.
+  - Out of scope: The decision actions themselves and their behavior. The FILE readout. The PR link. Fetching the PR body for a richer summary. The mobile description-editor modal. The phase rail, MANUAL STATUS, and Discuss. `derivePhase` and the phase vocabulary.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: be8b37c5-19b2-44c5-9c8e-7625520f4359 -->
