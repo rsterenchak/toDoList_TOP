@@ -135,3 +135,22 @@
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: dba1768d-042e-436a-9f08-db88a868537b -->
+
+- [ ] **[MEDIUM]** Mockup previews: tap a variant to open it large
+  - Type: feature
+  - Description: The three-across grid in the detail pane gives each variant roughly 270px, and the mobile modal's tabbed preview is capped by the modal's width — both are enough to judge layout and proportion but too small to read anything inside a dense mockup. Add a click-to-enlarge: tapping a preview opens that variant at or near full size in an overlay, with its Use action available there, so comparison stays the default arrangement and detail is one tap away rather than a tradeoff against it.
+  - Behavior: Tapping a variant's preview opens it in an overlay filling most of the viewport — wider than any pane, since the overlay is not constrained by the pane or modal it was opened from. The overlay shows the variant's option label, the preview rendered at or near 1:1, a Use action for that variant, and a close control. Escape closes it, as does tapping the backdrop. Closing returns to the grid or tabs with nothing else changed. Using the variant from the overlay does exactly what Use does in the grid — produces its entry, moves the row to `drafted` — and closes the overlay. Available from both the desktop pane's grid and the mobile modal's tabs.
+  - Implementation notes:
+    - The overlay lives in `mockupFlow.js` alongside the renderers, so both hosts get it from one implementation. Do not build a pane version and a modal version.
+    - RENDER AT A LARGER SCALE, do not upscale a small frame. The tile frames are `srcdoc` with a wrapper `transform: scale()` sized to fit the tile; the overlay must re-render with a scale suited to its own width, or it will show a blurry enlargement of an already-shrunk render. Reuse the variant HTML and `injectPreviewStyle`; only the wrapper's scale and dimensions differ.
+    - Follow the existing modal conventions rather than inventing an overlay: `showConfirmModal` and the description-editor modal already establish backdrop, dismiss, and focus handling in `modals.js`, and `wireModalDismiss` is exported for exactly this. Reuse it so Escape, backdrop taps, and focus restoration behave consistently.
+    - Focus must return to the tile that opened the overlay on close, and focus must be trapped inside the overlay while open — it contains an actionable control.
+    - Mount and tear down cleanly. A second open must not leave the first overlay's iframe in the document; the file picker duplicating on reopen came from exactly this.
+    - On mobile the overlay should fill nearly the whole viewport, since the modal beneath it is already narrow. Verify it is not constrained by the description-editor modal's own `max-height: 92vh` — it should layer above, not nest inside.
+    - The preview is an iframe with a `srcdoc` of generated HTML. Keep whatever sandboxing the tile frames already use; do not relax it for the larger view.
+    - Do not add zoom, pan, or a variant-to-variant swipe inside the overlay. One variant, larger, with a way out.
+    - Test: tapping a tile opens the overlay with that variant; the preview renders at the overlay's scale rather than an upscaled tile; Use produces the entry and closes; Escape and backdrop close; focus returns to the tile; and opening twice leaves one overlay in the DOM.
+  - Out of scope: The three-across grid and the mobile tabs, both of which stay as the default arrangements. The prompts, variant parsing, and the generated entry. Zoom, pan, or navigation between variants inside the overlay. The Agent board's own card. Deleting the Agent view.
+  - File: `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: be2da494-1ea8-43ed-9494-446769b47186 -->
