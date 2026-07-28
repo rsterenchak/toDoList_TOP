@@ -5,10 +5,7 @@ import {
     dispatchTriage,
     dispatchDerive,
     pollRunStatus,
-    resolveEntryByMarker,
-    fetchRunResult,
     fetchActiveRuns,
-    readTodoMdFromWorker,
     readAssignmentFromWorker,
     readRepoFile,
     findTargetById,
@@ -32,6 +29,7 @@ import {
     startAgentQueueSubscription,
     onQueueChange,
     setTriageDispatcher,
+    kickDispatchReconciler,
 } from './agentQueueStore.js';
 import { buildMockupSecondary, configureMockupFlow } from './mockupFlow.js';
 
@@ -105,13 +103,6 @@ const STATE_CHIP = {
 // keeps the row in-progress rather than asserting failure.
 const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 
-// Dispatch-poll cadence and give-up window, matching the Runs-tab poller's
-// shape. The poll runs while the tab is open; if the tab closes mid-run the row
-// stalls at dispatched/running until reopened (paint() re-arms the poller for
-// any dispatched/running row that still carries its correlation + entry ids).
-const DISPATCH_POLL_MS = 5000;
-const DISPATCH_GIVE_UP_MS = 15 * 60 * 1000;
-
 // Triage-sweep tracking cadence and windows. Tapping Run fires a
 // `claude-triage.yml` sweep — a GitHub Actions workflow that isn't represented
 // by any lasting agent_queue row state — so the header pill is driven from the
@@ -138,13 +129,8 @@ const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
 // project the cache belongs to so mount/project-switch fetch exactly once.
 let _assignment = null;
 let _assignmentProject = null;
-// Active dispatch-status pollers, keyed by agent_queue row id → interval handle.
-// Module-level so a poller survives re-renders (a realtime push repaints the
-// board without tearing down an in-flight poll) and so paint() can re-arm one
-// for a dispatched/running row after a tab reopen.
-const _dispatchPollers = {};
 // Row ids that have been handed off to the Claude chat via a needs_words card's
-// "Discuss in chat" link. Module-level (mirroring _dispatchPollers) so the
+// "Discuss in chat" link. Module-level so the
 // collapsed "Continue in chat" state survives realtime pushes and refreshAgentQueue
 // re-renders within the session — buildSecondary/paint consult it on every render.
 // Session-scoped only; resets on reload (acceptable per the task scope).
@@ -380,7 +366,7 @@ function finishSweep() {
 // finished, flip each still-'triaging' row for the swept project to a visible
 // 'failed' state (surfaced in the Stuck bucket) with an explanatory reason, so
 // the user can remove it and flag the task again rather than stall unseen. This
-// mirrors the settleInFlightRows / pollDispatchOnce reconcile pattern used for
+// mirrors the reconcile pattern the shared store's dispatch reconciler uses for
 // in-flight ship rows. The queue is read fresh (not the possibly-stale render
 // cache) so a row the sweep DID resolve is never clobbered, and the board
 // repaints only when the swept project is still the one on screen.
@@ -551,18 +537,22 @@ function getSelectedProjectName() {
 // the cache + stale-guard to the shared store's loadQueueRows (only the most
 // recent load for the still-selected project is applied, so a stale in-flight
 // fetch from a since-abandoned project can't clobber the board), then paints from
-// cache and — when `options.settle` is set — runs the mount-time reconcile pass
-// (settleInFlightRows). Settle is set only on view mount and project switch, NOT
-// on the realtime pushes / post-action refreshes, so TODO.md is read once per
-// mount rather than on every board repaint. The task-row badges track the same
-// store and update on the realtime push (or the next list render), so they need
-// no explicit notify from here.
+// cache and — when `options.settle` is set — kicks the shared store's mount-
+// independent dispatch reconciler (kickDispatchReconciler) so any dispatched/
+// running row that already shipped on main settles promptly instead of waiting on
+// the reconciler's own interval. Settle is set only on view mount and project
+// switch, NOT on the realtime pushes / post-action refreshes, so a marker read is
+// forced once per mount rather than on every board repaint. The task-row badges
+// track the same store and update on the realtime push (or the next list render),
+// so they need no explicit notify from here. The board no longer runs its own
+// pollers — it is a consumer of the store's single reconciler, so two pollers can
+// never race and double-settle a row.
 function refreshAgentQueue(projectName, options) {
     const settle = !!(options && options.settle);
     return loadQueueRows(projectName).then(function () {
         if (getSelectedProjectName() === getLoadedProjectName()) {
             paint();
-            if (settle) settleInFlightRows(getQueueRows());
+            if (settle) kickDispatchReconciler();
         }
     });
 }
@@ -1113,48 +1103,27 @@ function buildStuckSecondary(row) {
     return wrap;
 }
 
-// The state of the cached row with this id (or null when absent). Used by the
-// poller to avoid re-writing a state that hasn't actually changed on every tick.
-function currentRowState(rowId) {
-    const rows = getQueueRows();
-    const r = rows.find(function (x) { return x && x.id === rowId; });
-    return r ? r.state : null;
-}
-
 // The Agent board's dispatch tail, passed to the shared dispatchDraft by every
 // board Dispatch / Retry / Accept. After the shared core ships the entry and
-// persists the `dispatched` state, this arms the status poller (so the card
-// settles to shipped / failed / no_change even where realtime isn't observed) and
-// repaints the board so the card leaves Drafted. The row-layer Dispatch/Retry pass
-// no tail — their phase advances through the shared queue store's realtime
-// subscription, so nothing polls there. (dispatchDraft + resolveDispatchTarget now
-// live in dispatchDraft.js so the board and the row layer share one implementation
-// and cannot drift.)
+// persists the `dispatched` state, this kicks the shared store's dispatch
+// reconciler (so the card settles to shipped / failed / no_change even where
+// realtime isn't observed) and repaints the board so the card leaves Drafted. The
+// row-layer Dispatch/Retry pass no tail — the store's app-lifetime realtime
+// subscription arms the same reconciler for them, so nothing surface-specific
+// polls. (dispatchDraft + resolveDispatchTarget now live in dispatchDraft.js so the
+// board and the row layer share one implementation and cannot drift.)
 const boardDispatchTail = {
     onDispatched: function (rowId, entryId, correlationId, target) {
-        startDispatchPoller(rowId, entryId, correlationId, target);
+        kickDispatchReconciler();
         // Refresh so the card leaves Drafted even where realtime isn't observed.
         refreshAgentQueue(getSelectedProjectName());
     },
 };
 
-// Fetch a completed run's closing summary (the agent's verdict) to surface on a
-// no_change / failed card. Degrades to '' on any failure so the card falls back
-// to a friendly default line. The run is keyed by run id when known, else the
-// correlation id (the Worker resolves either), mirroring the Runs tab.
-async function fetchClosingSummary(runId, correlationId, target) {
-    const key = (runId != null && runId !== '') ? runId : correlationId;
-    try {
-        const res = await fetchRunResult(key, target || null);
-        if (res && res.ok && typeof res.result === 'string') return res.result.trim();
-    } catch (e) { /* degrade to no summary */ }
-    return '';
-}
-
-// The read target (repo/filePath) for the active project's TODO.md. Mirrors the
-// TODO.md viewer's resolution — the project's configured inject target — so the
-// checkbox read hits the same repo the runs land in. Returns null when the
-// project has no routing, which degrades the checkbox settle to poll-only.
+// The read target (repo/filePath) for the active project. Mirrors the TODO.md
+// viewer's resolution — the project's configured inject target — so the assignment
+// read hits the same repo the runs land in. Returns null when the project has no
+// routing (the assignment card then resolves to absent).
 function resolveReadTarget() {
     const projectName = getSelectedProjectName();
     if (!projectName) return null;
@@ -1303,226 +1272,6 @@ function refreshAssignment(target) {
         _assignment = describeAssignment(res && res.ok ? res.content : null);
         paint();
     });
-}
-
-// The entry's checkbox state within a TODO.md body, keyed off its id marker:
-// 'checked' when the task line is `- [x]`, 'unchecked' when `- [ ]`, or null
-// when the marker isn't present. Mirrors the block walk extractEntryBlock (and
-// the Worker's fetchEntryFromTodoMd) use: find the marker line, walk back to the
-// nearest preceding checkbox line, and read its box.
-function entryCheckboxState(content, entryId) {
-    if (typeof content !== 'string' || !entryId) return null;
-    const lines = content.split('\n');
-    const checkboxRe = /^\s*- \[[ xX]\]/;
-    let markerIdx = -1;
-    for (let i = 0; i < lines.length; i++) {
-        if (lines[i].indexOf('<!-- id: ' + entryId) !== -1) { markerIdx = i; break; }
-    }
-    if (markerIdx === -1) return null;
-    let start = markerIdx;
-    while (start >= 0 && !checkboxRe.test(lines[start])) start--;
-    if (start < 0) return null;
-    return /^\s*- \[[xX]\]/.test(lines[start]) ? 'checked' : 'unchecked';
-}
-
-// Whether a completed dispatched run actually shipped. The primary, lag-free
-// signal is the entry's checkbox on main: the routine marks its TODO.md entry
-// `- [x]` in the same merge that lands the change, so a checked box is positive
-// proof it shipped where GitHub's closed-PR index (resolveEntryByMarker) still
-// lags a fresh merge. Only when TODO.md can't be read — or its marker is gone —
-// do we fall back to the merged-PR marker search, so a transient read failure
-// never mislabels a real ship as no_change.
-async function didEntryShip(entryId) {
-    try {
-        const read = await readTodoMdFromWorker(resolveReadTarget());
-        if (read && read.ok !== false && typeof read.content === 'string') {
-            const box = entryCheckboxState(read.content, entryId);
-            if (box === 'checked') return true;
-            if (box === 'unchecked') return false;
-        }
-    } catch (e) { /* fall through to the PR-marker search */ }
-    try {
-        const resolved = await resolveEntryByMarker(entryId);
-        return !!(resolved && resolved.ok && resolved.found === true && resolved.merge_commit_sha);
-    } catch (e) {
-        return false;
-    }
-}
-
-// Best-effort PR link for a shipped entry. Resolving the marker to a closed PR
-// lags GitHub's index, so this is only for the Shipped card's link — never gate
-// the shipped transition on it; the link fills in on a later poll if it's not
-// ready yet. Returns { pr_url, pr_number } with empty/undefined fields on miss.
-async function bestEffortPrLink(entryId) {
-    try {
-        const resolved = await resolveEntryByMarker(entryId);
-        if (resolved && resolved.ok && resolved.found === true) {
-            return {
-                pr_url: resolved.pr_url || resolved.html_url || '',
-                pr_number: resolved.pr_number != null ? resolved.pr_number : undefined,
-            };
-        }
-    } catch (e) { /* link fills in on a later poll */ }
-    return { pr_url: '', pr_number: undefined };
-}
-
-// Persist a row to `shipped`, attaching the run id and a best-effort PR link.
-// The link is resolved without blocking the ship: a missing link still ships.
-async function settleShipped(rowId, entryId, runId) {
-    const patch = { state: 'shipped' };
-    if (runId != null) patch.run_id = runId;
-    const link = await bestEffortPrLink(entryId);
-    if (link.pr_url) patch.pr_url = link.pr_url;
-    if (link.pr_number != null) patch.pr_number = link.pr_number;
-    await listLogic.setAgentRunState(rowId, patch);
-}
-
-// Reconcile a completed run into a terminal state. A green conclusion alone
-// isn't proof of a ship — the routine can exit clean having merged nothing — so
-// consult the entry's checkbox on main (didEntryShip): checked → shipped + a
-// best-effort PR link; still unchecked → a no-change run whose closing summary
-// we surface (→ Stuck).
-async function reconcileShipped(rowId, entryId, correlationId, runId, target) {
-    if (await didEntryShip(entryId)) {
-        await settleShipped(rowId, entryId, runId);
-    } else {
-        const summary = await fetchClosingSummary(runId, correlationId, target);
-        await listLogic.setAgentRunState(rowId, {
-            state: 'no_change',
-            failure_reason: summary || 'The run finished without merging any changes.',
-            run_id: runId,
-        });
-    }
-    refreshAgentQueue(getSelectedProjectName());
-}
-
-// One poll tick for a dispatched run. Mirrors the Runs-tab poller: in-progress
-// reflects queued/running; completed reconciles success against the merged-PR
-// proof, flips only a recognized failure conclusion to failed, and leaves any
-// other completed conclusion in-progress rather than asserting failure. Past the
-// give-up window it stops watching and leaves the last-known state.
-async function pollDispatchOnce(rowId, entryId, correlationId, target, startedAt) {
-    if (Date.now() - startedAt >= DISPATCH_GIVE_UP_MS) {
-        stopDispatchPoller(rowId);
-        return;
-    }
-    const res = await pollRunStatus({ correlationId: correlationId, target: target || null });
-    if (!res || res.ok === false) return; // transient — keep polling
-    if (res.found === false) return; // run not surfaced yet — stay dispatched
-    if (res.status === 'completed') {
-        if (res.conclusion === 'success') {
-            stopDispatchPoller(rowId);
-            await reconcileShipped(rowId, entryId, correlationId, res.runId, target);
-            return;
-        }
-        if (FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
-            stopDispatchPoller(rowId);
-            const summary = await fetchClosingSummary(res.runId, correlationId, target);
-            await listLogic.setAgentRunState(rowId, {
-                state: 'failed',
-                failure_reason: summary || 'The run failed.',
-                run_id: res.runId,
-            });
-            refreshAgentQueue(getSelectedProjectName());
-            return;
-        }
-        // Neutral / skipped / no conclusion: not a positive failure — keep
-        // polling; the row stays in-progress.
-        return;
-    }
-    const desired = res.status === 'queued' ? 'dispatched' : 'running';
-    if (currentRowState(rowId) !== desired) {
-        await listLogic.setAgentRunState(rowId, { state: desired });
-        refreshAgentQueue(getSelectedProjectName());
-    }
-}
-
-// Start (or no-op if already running) a status poller for a dispatched row.
-// Fires an immediate tick, then on the poll cadence, until a terminal outcome
-// or the give-up window. Keyed by row id so a re-render never double-arms it.
-function startDispatchPoller(rowId, entryId, correlationId, target) {
-    if (!rowId || !entryId || !correlationId) return;
-    if (_dispatchPollers[rowId]) return;
-    const startedAt = Date.now();
-    _dispatchPollers[rowId] = setInterval(function () {
-        pollDispatchOnce(rowId, entryId, correlationId, target, startedAt);
-    }, DISPATCH_POLL_MS);
-    pollDispatchOnce(rowId, entryId, correlationId, target, startedAt);
-}
-
-// Stop and forget a row's poller. Idempotent.
-function stopDispatchPoller(rowId) {
-    if (_dispatchPollers[rowId]) {
-        clearInterval(_dispatchPollers[rowId]);
-        delete _dispatchPollers[rowId];
-    }
-}
-
-// Terminal states a dispatched row can settle into — once a row reaches one of
-// these there is nothing left to poll.
-const TERMINAL_STATES = ['shipped', 'failed', 'no_change'];
-
-// Reconcile the live poller set against the currently rendered rows: stop any
-// poller whose row has reached a terminal state (or vanished), and arm one for
-// each dispatched/running row that still carries its correlation + entry ids
-// (so a tab reopen resumes polling a run dispatched earlier). A row that reads
-// transiently as `drafted` while its dispatch write propagates does NOT stop an
-// already-running poller — only a terminal/absent row does — so the poll started
-// at dispatch time isn't torn down by a stale read a beat later. Called from
-// paint.
-function syncDispatchPollers(rows) {
-    const active = Array.isArray(rows) ? rows : [];
-    const byId = {};
-    active.forEach(function (r) { if (r && r.id) byId[r.id] = r; });
-    Object.keys(_dispatchPollers).forEach(function (rowId) {
-        const r = byId[rowId];
-        if (!r || TERMINAL_STATES.indexOf(r.state) !== -1) {
-            stopDispatchPoller(rowId);
-        }
-    });
-    active.forEach(function (r) {
-        if (!r || (r.state !== 'dispatched' && r.state !== 'running')) return;
-        if (r.correlation_id && r.entry_id) {
-            startDispatchPoller(r.id, r.entry_id, r.correlation_id, resolveDispatchTarget());
-        }
-    });
-}
-
-// Mount-time reconcile: settle any dispatched/running row whose entry is already
-// checked off on main. A run that completed while the tab was closed — possibly
-// after ageing out of the status window, so its poller can never observe the
-// completion — still settles to shipped here from the lag-free checkbox signal,
-// with no poll required. Rows still unchecked are left to their pollers (armed
-// by syncDispatchPollers in paint), since an unchecked in-flight row may simply
-// still be running — only a *completed* poll may flip it to no_change. Reads
-// TODO.md once for the whole batch, and no-ops entirely when nothing is
-// in-flight, so it's cheap on the common (nothing-dispatched) mount.
-async function settleInFlightRows(rows) {
-    const inFlight = (Array.isArray(rows) ? rows : []).filter(function (r) {
-        return r && (r.state === 'dispatched' || r.state === 'running') && r.entry_id;
-    });
-    if (!inFlight.length) return;
-
-    let content = null;
-    try {
-        const read = await readTodoMdFromWorker(resolveReadTarget());
-        if (read && read.ok !== false && typeof read.content === 'string') content = read.content;
-    } catch (e) { /* no read → leave every row to its poller */ }
-    if (content == null) return;
-
-    let settledAny = false;
-    for (let i = 0; i < inFlight.length; i++) {
-        const r = inFlight[i];
-        // A poller may have settled this row in the interim — never re-settle a
-        // row that's already reached a terminal state.
-        if (TERMINAL_STATES.indexOf(currentRowState(r.id)) !== -1) continue;
-        if (entryCheckboxState(content, r.entry_id) === 'checked') {
-            stopDispatchPoller(r.id);
-            await settleShipped(r.id, r.entry_id, r.run_id);
-            settledAny = true;
-        }
-    }
-    if (settledAny) refreshAgentQueue(getSelectedProjectName());
 }
 
 // One card for a single queue row: title, a state chip, and state-appropriate
@@ -3245,10 +2994,10 @@ function paint() {
         counts.flagged + ' flagged · ' + counts.running + ' running · ' + counts.shippedToday + ' shipped today';
     view.appendChild(countsLine);
 
-    // Keep the dispatch pollers in step with what's on the board: stop pollers
-    // for rows that have left the in-flight states and resume one for any
-    // dispatched/running row carrying its ids (e.g. after a tab reopen).
-    syncDispatchPollers(rows);
+    // Dispatched/running rows are settled by the shared store's mount-independent
+    // reconciler (started at app init), not by a board-local poller — so a run
+    // settles whether or not this board is on screen, and there is nothing to arm
+    // or tear down here.
     const board = document.createElement('div');
     board.className = 'agentBoard';
     let rendered = false;
@@ -3403,14 +3152,13 @@ export function subscribeAgentView() {
 
 // Board-exit teardown. The agent_queue realtime channel now lives in the shared
 // store and stays open app-lifetime (the task-row badges depend on it on the list
-// view), so it is deliberately NOT torn down here — only the board's own pollers
-// and pill trackers are. The board's repaint listener is left registered too:
-// paint() no-ops off-tab, so an idle push is cheap. Idempotent.
+// view), so it is deliberately NOT torn down here — only the board's own pill
+// trackers are. The dispatch reconciler likewise lives in the store and runs
+// app-lifetime, so a backgrounded board keeps settling its runs — there is no
+// board-local dispatch poller to stop. The board's repaint listener is left
+// registered too: paint() no-ops off-tab, so an idle push is cheap. Idempotent.
 export function unsubscribeAgentView() {
-    // Stop every in-flight dispatch poller — a backgrounded board shouldn't keep
-    // polling. A reopen re-arms them from paint() via syncDispatchPollers.
-    Object.keys(_dispatchPollers).forEach(stopDispatchPoller);
-    // Stop the triage-sweep poller too; a reopen re-seeds it via seedSweepState.
+    // Stop the triage-sweep poller; a reopen re-seeds it via seedSweepState.
     stopSweepTracking();
     // Stop the derive-run poller and clear its state directly (no settle paint —
     // the board is being torn down). Unlike the sweep, derive tracking is local

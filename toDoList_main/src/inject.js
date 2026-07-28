@@ -10,7 +10,7 @@
 import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { supabase } from './supabaseClient.js';
-import { setShippedMarkerRefresher } from './agentQueueStore.js';
+import { setShippedMarkerRefresher, setDispatchReconcilerDeps } from './agentQueueStore.js';
 
 const URL_KEY              = 'todoapp_injectWorkerUrl';
 const SECRET_KEY           = 'todoapp_injectSharedSecret';
@@ -677,6 +677,19 @@ export function refreshShippedMarkersForProject(projectName, force) {
 // (see refreshMarkersForShippedTransitions). Done via a setter rather than the
 // store importing this module, which would form an init-time cycle.
 setShippedMarkerRefresher(refreshShippedMarkersForProject);
+
+// Register the Worker-call helpers the persistent dispatch reconciler (in the
+// agent-queue store) needs. Same setter idiom and TDZ-avoidance reason as the
+// refresher above: the store must not statically import this module, so it reaches
+// these through a registered bundle instead.
+setDispatchReconcilerDeps({
+    pollRunStatus: pollRunStatus,
+    fetchRunResult: fetchRunResult,
+    resolveEntryByMarker: resolveEntryByMarker,
+    findTargetById: findTargetById,
+    refreshShippedMarkersForProject: refreshShippedMarkersForProject,
+    resolveEntryRunState: resolveEntryRunState,
+});
 
 
 // Mutate the target repo's TODO.md through the Worker's `rewrite` branch.
