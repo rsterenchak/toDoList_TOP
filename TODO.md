@@ -24,3 +24,22 @@
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-07-28
   <!-- id: 4426593b-df87-4d48-84fe-fc628757b30c -->
+
+- [ ] **[MEDIUM]** Delete the Agent view
+  - Type: feature
+  - Description: Every reason to keep the Agent board is gone. Send, Dispatch, Retry and the board's Accept all resolve to `dispatchDraft` and are reachable from the task row and detail pane. The mockup A/B/C flow was extracted to `mockupFlow.js` and mounts in the detail pane and the mobile modal. The cross-project bucket overview is unused. The dispatched-run reconciler and the working watch live in `agentQueueStore.js` and no longer depend on the board being mounted. The tab is gone from the bar and the DRAFTED / STUCK / MOCKUP badges route to the description panel. Delete `agentView.js` (3,359 lines) and everything reaching it, leaving Stream and Structure as the app's two surfaces. Two exports must survive the file: `stuckReasonText`, a shared copy string the description panel and modal both use, and `startAgentWorkingWatch`, which drives the nav dot and is not board-specific.
+  - Behavior: The Agent view no longer exists. Nothing navigates to it, no code path renders it, and its DOM host is gone. Every capability it held remains reachable: dispatching, retrying, answering a triage question, choosing a mockup variant, and reviewing a shipped entry all happen on the row, in the detail pane, or in the mobile modal. The nav working dot still lights and clears. STUCK blocks still show their failure reason. Task rows, phases, badges, filters, and the queue store are unchanged.
+  - Implementation notes:
+    - RELOCATE THE TWO SURVIVORS FIRST, before deleting anything, and verify both consumers still work at that point. `stuckReasonText` is imported by `modals.js`; `startAgentWorkingWatch` by `main.js`. Move both to `agentQueueStore.js`, which already owns the reconciler and the queue's realtime channel, and confirm no import cycle forms — `modals.js` must be able to reach it without pulling in a view.
+    - Then remove from `main.js`: `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView`, `syncAgentAvailabilityForProject`, and `anchorAgentCardForTodo`, along with every call site. Grep each individually. `syncAgentAvailabilityForProject` is wired into project switching in several places for the no-repo gate, and a dangling call will throw on switch.
+    - Remove the `#agentView` DOM host, its `data-view="agent"` gating in `main.js` and `style.css`, any `body[data-view="agent"]` rules, and the view's entry in whatever drives view switching. The AGENT pill is already gone; confirm nothing stale remains in `viewFocusNav.js` or the arrow-key tab order.
+    - Delete `agentView.js` and its `agent*` CSS — but grep `agentMockup*` FIRST. The extracted mockup flow may still use those class names, in which case they stay or get renamed, not deleted.
+    - Check `POST_TRIAGE_HANDOFF_STATES`, `BUCKETS`, and any other constant defined in `agentView.js` for consumers outside it. Anything still referenced must move rather than vanish.
+    - Delete the view's own tests. Keep any test covering behavior that survived — the working watch, the reconciler, `stuckReasonText`, the mockup flow — and move it beside the module that now owns it.
+    - Do NOT change queue semantics. The `agent_queue` states, the reconciler, the realtime channel, `dispatchDraft`, `shipped_at` stamping, and `derivePhase` all stay exactly as they are — this removes a view, not a pipeline.
+    - Run the full suite and report the before/after line count of `src` in the PR body.
+    - Test: no module imports `agentView.js`; switching projects, dispatching, retrying, answering a triage question, and choosing a mockup variant all still work; the nav working dot lights and clears; STUCK blocks still render their reason; and no view-switch path can reach an agent view.
+  - Out of scope: The `agent_queue` table, its states, the reconciler, the working watch's logic, `dispatchDraft`, and the `shipped_at` stamp. The mockup flow. `derivePhase`, the phase vocabulary, badges, and filters. The Structure view. Renaming anything `agent*` in the queue store or the database — the pipeline is still the agent pipeline; only its board is going.
+  - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/main.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a089a08b-fa64-4e54-b203-e6e2acba6f4b -->
