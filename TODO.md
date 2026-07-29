@@ -56,9 +56,9 @@
   - Completed: 2026-07-29
   <!-- id: e4648af2-f484-4ac7-ad96-fddcef1a2e9d -->
 
-- [ ] **[MEDIUM]** Replace desktop IDEAS phase filter with an ACTIVE filter covering draft+accept
+- [x] **[MEDIUM]** Replace desktop IDEAS phase filter with an ACTIVE filter covering draft+accept
   - Type: feature
   - Description: In the desktop phase control (`#taskFilterBar .taskPhaseFilters`), swap the `PHASE_FILTERS` entry with key `ideas` (label IDEAS, match `p === 'none'`) for a new `active` entry (label ACTIVE, match `p === 'draft' || p === 'accept'`), keeping order ALL / ACTIVE / RUNNING / DONE. Update the `phaseCounts` tally in `applyTaskFilter` from `{ all:0, ideas:0, running:0, done:0 }` to use an `active` counter incremented when phase is 'draft' or 'accept' (replacing the `if (phase === 'none') phaseCounts.ideas += 1` line). Update `EMPTY_MESSAGES` to replace the `ideas` key with an `active` key using phase-control-appropriate copy (e.g. 'Nothing active right now.'). Mobile status control's Ideas segment must remain untouched; no pill CSS/visual changes — same `.taskPhaseFilterPill` styling, only label text and match/count logic change.
   - File: `toDoList_main/src/taskFilter.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: 1ac43cb5-91f3-41c3-aacc-f59332385ae7 -->
