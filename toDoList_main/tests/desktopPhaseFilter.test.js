@@ -11,8 +11,9 @@ import {
 } from '../src/prefs.js';
 
 // The DESKTOP queue rail filters on a row's DERIVED phase through four always-
-// visible pills (ALL / IDEAS / RUNNING / DONE), a separate vocabulary and a
-// separate persisted key from the mobile status cycle pill. taskFilter.js never
+// visible pills (ALL / ACTIVE / RUNNING / DONE), a separate vocabulary and a
+// separate persisted key from the mobile status cycle pill. ACTIVE covers the
+// drafted-or-accepted phases (draft + accept). taskFilter.js never
 // imports phase.js (import cycle), so the phase test is injected through
 // setItemPhaseResolver — mirroring how toDoRow.js injects `derivePhase` in the
 // real app. These tests register a light resolver reading a `ph` string off the
@@ -71,14 +72,14 @@ afterEach(() => {
 
 
 describe('desktop phase pills — DOM shape', () => {
-    it('renders four phase pills in order (ALL / IDEAS / RUNNING / DONE)', () => {
+    it('renders four phase pills in order (ALL / ACTIVE / RUNNING / DONE)', () => {
         const bar = buildTaskFilterBar();
         const pills = bar.querySelectorAll('.taskPhaseFilterPill');
         expect(pills.length).toBe(4);
         expect(Array.from(pills).map(p => p.getAttribute('data-phase')))
-            .toEqual(['all', 'ideas', 'running', 'done']);
+            .toEqual(['all', 'active', 'running', 'done']);
         expect(Array.from(pills).map(p => p.querySelector('.taskPhaseFilterLabel').textContent))
-            .toEqual(['ALL', 'IDEAS', 'RUNNING', 'DONE']);
+            .toEqual(['ALL', 'ACTIVE', 'RUNNING', 'DONE']);
         pills.forEach(p => expect(p.querySelector('.taskPhaseFilterCount')).not.toBeNull());
     });
 
@@ -107,54 +108,58 @@ describe('desktop phase pills — filtering', () => {
         const running = makeRow('Running', 'running', { status: 'active' });
         const done = makeRow('Done', 'done', { status: 'active' });
         const draft = makeRow('Draft', 'draft', { status: 'active' });
-        ml.append(idea, running, done, draft);
+        const accept = makeRow('Accept', 'accept', { status: 'active' });
+        ml.append(idea, running, done, draft, accept);
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
-        return { ml, bar, idea, running, done, draft };
+        return { ml, bar, idea, running, done, draft, accept };
     }
 
     it('ALL shows every uncompleted task regardless of phase or status', () => {
-        const { bar, idea, running, done, draft } = seed();
+        const { bar, idea, running, done, draft, accept } = seed();
         applyTaskFilter();
-        [idea, running, done, draft].forEach(r => expect(isHidden(r)).toBe(false));
-        expect(phaseCount(bar, 'all')).toBe('4');
+        [idea, running, done, draft, accept].forEach(r => expect(isHidden(r)).toBe(false));
+        expect(phaseCount(bar, 'all')).toBe('5');
     });
 
-    it('IDEAS shows only phase-none rows', () => {
-        const { bar, idea, running, done, draft } = seed();
-        phasePill(bar, 'ideas').click();
-        expect(getPhaseFilter()).toBe('ideas');
-        expect(isHidden(idea)).toBe(false);
+    it('ACTIVE shows only draft/accept rows (hides idea, running, done)', () => {
+        const { bar, idea, running, done, draft, accept } = seed();
+        phasePill(bar, 'active').click();
+        expect(getPhaseFilter()).toBe('active');
+        expect(isHidden(draft)).toBe(false);
+        expect(isHidden(accept)).toBe(false);
+        expect(isHidden(idea)).toBe(true);
         expect(isHidden(running)).toBe(true);
         expect(isHidden(done)).toBe(true);
-        expect(isHidden(draft)).toBe(true);
     });
 
     it('RUNNING shows only phase-running rows', () => {
-        const { bar, idea, running, done, draft } = seed();
+        const { bar, idea, running, done, draft, accept } = seed();
         phasePill(bar, 'running').click();
         expect(getPhaseFilter()).toBe('running');
         expect(isHidden(running)).toBe(false);
         expect(isHidden(idea)).toBe(true);
         expect(isHidden(done)).toBe(true);
         expect(isHidden(draft)).toBe(true);
+        expect(isHidden(accept)).toBe(true);
     });
 
     it('DONE shows only phase-done rows', () => {
-        const { bar, idea, running, done, draft } = seed();
+        const { bar, idea, running, done, draft, accept } = seed();
         phasePill(bar, 'done').click();
         expect(getPhaseFilter()).toBe('done');
         expect(isHidden(done)).toBe(false);
         expect(isHidden(idea)).toBe(true);
         expect(isHidden(running)).toBe(true);
         expect(isHidden(draft)).toBe(true);
+        expect(isHidden(accept)).toBe(true);
     });
 
     it('counts come from the full committed set (excluding completed rows)', () => {
         const ml = makeMainList();
         ml.append(
-            makeRow('I1', 'none'),
-            makeRow('I2', 'none'),
+            makeRow('A1', 'draft'),
+            makeRow('A2', 'accept'),
             makeRow('R1', 'running'),
             makeRow('D1', 'done'),
             makeRow('DoneCompleted', 'done', { completed: true }),
@@ -164,7 +169,7 @@ describe('desktop phase pills — filtering', () => {
 
         applyTaskFilter();
         expect(phaseCount(bar, 'all')).toBe('4');   // completed excluded
-        expect(phaseCount(bar, 'ideas')).toBe('2');
+        expect(phaseCount(bar, 'active')).toBe('2'); // draft + accept
         expect(phaseCount(bar, 'running')).toBe('1');
         expect(phaseCount(bar, 'done')).toBe('1');
     });
@@ -192,6 +197,18 @@ describe('desktop phase pills — filtering', () => {
         const empty = document.getElementById('taskFilterEmpty');
         expect(empty).not.toBeNull();
         expect(empty.textContent).toBe('No runs in flight.');
+    });
+
+    it('shows the ACTIVE empty state when no draft/accept rows exist', () => {
+        const ml = makeMainList();
+        ml.append(makeRow('Idea', 'none'), makeRow('Running', 'running'));
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        phasePill(bar, 'active').click(); // no draft/accept rows
+        const empty = document.getElementById('taskFilterEmpty');
+        expect(empty).not.toBeNull();
+        expect(empty.textContent).toBe('Nothing active right now.');
     });
 });
 

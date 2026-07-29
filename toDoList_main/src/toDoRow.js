@@ -98,7 +98,7 @@ setBlockedItemResolver(function (item) {
     return isBlockedPhase(derivePhase(item));
 });
 
-// The desktop queue-rail phase filter (ALL / IDEAS / RUNNING / DONE) keys off a
+// The desktop queue-rail phase filter (ALL / ACTIVE / RUNNING / DONE) keys off a
 // row's derived phase. taskFilter.js can't import phase.js (the same cycle the
 // blocked resolver dodges), so register derivePhase here as the phase seam.
 setItemPhaseResolver(derivePhase);
