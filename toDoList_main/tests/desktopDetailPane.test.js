@@ -300,13 +300,15 @@ describe('detail pane — host DOM + CSS wiring (source-structural)', () => {
         expect(body).toMatch(/todo-detail-open/);
     });
 
-    it('CSS splits #mainSec into queue + detail columns at ≥1024px', () => {
+    it('CSS splits #mainSec into queue + resize handle + detail columns at ≥1024px', () => {
         const desktop = css.slice(css.indexOf('@media (min-width: 1024px)'));
-        // The split declares a two-track grid — a fixed-width queue rail on the
-        // left and a flexible detail track (1fr) on the right — and places the
-        // detail pane in col 2.
-        expect(desktop).toMatch(/#mainSec\s*\{[^}]*grid-template-columns:\s*minmax\(260px,\s*308px\)\s+minmax\(0,\s*1fr\)/);
-        expect(desktop).toMatch(/#descDetailPane\s*\{[^}]*grid-column:\s*2/);
+        // The split declares a THREE-track grid — a resizable queue rail on the
+        // left (its width driven by the --queue-width custom property so the drag
+        // handle can update it live, falling back to the responsive minmax when
+        // unset), a narrow auto handle track in the middle, and a flexible detail
+        // track (1fr) on the right — and places the detail pane in col 3.
+        expect(desktop).toMatch(/#mainSec\s*\{[^}]*grid-template-columns:\s*var\(--queue-width,\s*minmax\(260px,\s*308px\)\)\s+auto\s+minmax\(0,\s*1fr\)/);
+        expect(desktop).toMatch(/#descDetailPane\s*\{[^}]*grid-column:\s*3/);
     });
 
     it('CSS gives the detail pane the flexible width: fixed chat pane + fluid #mainSec', () => {

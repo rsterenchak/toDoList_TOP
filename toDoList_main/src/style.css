@@ -9738,6 +9738,13 @@ body.row-dragging * { cursor: grabbing !important; }
 #descDetailPane {
   display: none;
 }
+/* DESKTOP QUEUE RESIZE HANDLE — the thin draggable divider between the queue rail
+   (#mainBar) and the detail pane (#descDetailPane) at ≥1024px in STREAM view.
+   Hidden by default (there is no split below 1024px, and the desktop grid track +
+   full styling live in the desktop media block, gated to body[data-view="projects"]). */
+#queueResizeHandle {
+  display: none;
+}
 /* Empty state — shown when nothing is open so the column never reads as a blank
    rendering failure. Hidden (via the [hidden] attribute set in JS) once a panel
    mounts. */
@@ -11429,11 +11436,49 @@ body.row-dragging * { cursor: grabbing !important; }
      which remains a flex sibling of #mainSec one level up in #mainSplit.
      #sideBar is position:fixed and takes no grid cell. */
   #mainSec {
-    grid-template-columns: minmax(260px, 308px) minmax(0, 1fr);
+    /* Three tracks: queue rail | resize handle | detail pane. The queue width is
+       driven by the --queue-width custom property so the drag handle can update it
+       live (and prefs.js can restore it on load) without an inline grid-template-
+       columns override that would defeat the STRUCTURE single-track collapse below
+       (that rule sets grid-template-columns literally and ignores the variable).
+       Falls back to the responsive minmax when no width has been chosen. The middle
+       (handle) track is `auto`, so it collapses to 0 in views where the handle is
+       display:none. */
+    grid-template-columns: var(--queue-width, minmax(260px, 308px)) auto minmax(0, 1fr);
   }
   #mainBar { grid-column: 1; }
-  #descDetailPane {
+  /* The handle occupies its own narrow track and only shows in STREAM view — body
+     carries data-view in lockstep with #mainBar (applyActiveView), and the handle
+     is a sibling of #mainBar so it can't key off #mainBar's own attribute. A
+     centered rounded grip that turns accent on hover / during a drag; col-resize
+     cursor over the whole strip. touch-action:none so a pointer drag on touch
+     devices resizes rather than scrolls. */
+  body[data-view="projects"] #queueResizeHandle {
     grid-column: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    align-self: stretch;
+    width: 11px;
+    cursor: col-resize;
+    background: transparent;
+    touch-action: none;
+    user-select: none;
+  }
+  body[data-view="projects"] #queueResizeHandle::before {
+    content: "";
+    width: 4px;
+    height: 44px;
+    border-radius: 2px;
+    background: var(--border-mid);
+    transition: background 0.15s ease;
+  }
+  body[data-view="projects"] #queueResizeHandle:hover::before,
+  body[data-view="projects"] #queueResizeHandle.dragging::before {
+    background: var(--accent);
+  }
+  #descDetailPane {
+    grid-column: 3;
     display: flex;
     flex-direction: column;
     min-width: 0;
