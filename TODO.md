@@ -102,3 +102,22 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-29
   <!-- id: 5329baf0-48ea-4dbc-9986-53985f57e64d -->
+
+- [ ] **[MEDIUM]** Relocate the derive and sweep run trackers out of the Agent view
+  - Type: feature
+  - Description: `agentView.js` holds two run trackers that are not board concerns. The sweep tracker (`_sweepActive`, `_sweepPoller`, `_sweepSeenActive`, `_sweepGraceDeadline`, `_sweepHardDeadline`, `_sweepProjectName`) drives the Working/Idle pill from the real `claude-triage.yml` run via the Worker's triage-scoped `active_runs` probe, and reconciles that project's rows when the sweep finishes. The derive tracker mirrors it for `claude-derive.yml`, polling the derive-scoped probe and retaining the run's correlation id so a completion can look up its conclusion. Both only run while the board is mounted, which is why a derive dispatched from anywhere else would have no pending state — the same defect that left dispatched runs unsettled until the reconciler was moved. Relocate both into `agentQueueStore.js` beside the reconciler and the working watch, with the board still reading them, so the coverage tab can host Derive in the next entry.
+  - Behavior: Identical to today while the board is open. A triage sweep still flips the pill Working → Idle from what GitHub reports, still distinguishes registration lag from a finished run via the grace window, still honours the hard cap, and still reconciles the originating project's rows when it settles — targeting the project captured at start, not whichever is on screen. A derive run still tracks the same way with no post-finish reconcile. Both now continue tracking with the board closed.
+  - Implementation notes:
+    - Move both trackers whole — the state, the poll functions, the deadline constants, and the correlation-id retention. Do not move one and leave the other; they share shape and probably helpers, and splitting them means two migrations of the same pattern.
+    - `startAgentWorkingWatch` and the reconciler already live in `agentQueueStore.js` and follow exactly this pattern — module-level started flag, one interval, no dependence on a mounted view. Match their shape rather than inventing a second lifecycle.
+    - `_sweepProjectName` exists because a sweep is scoped to one project's rows and the user may switch mid-run. That capture must survive the move intact — a post-finish reconcile targeting the currently-selected project instead of the originating one would silently reconcile the wrong rows.
+    - The board reads `_sweepActive` and `_deriveActive` for its pill and its Draft button. Export accessors rather than the raw bindings so the board observes rather than mutates, and so the coverage tab can read the same signal next entry.
+    - The trackers poll the Worker's `active_runs` probe. Confirm nothing about that call depends on view state, and that a poll starting with no board mounted still resolves its target the same way.
+    - Start and stop on the same conditions as today — do not convert either to an always-on interval. An idle app with no sweep and no derive in flight must poll nothing.
+    - Watch for import cycles: `agentQueueStore.js` must not gain an import that reaches back into a view. It already imports what the reconciler needs; verify the probe call and the correlation-id path do not pull in `agentView.js`.
+    - Do not change the grace or hard-cap durations, the probe endpoint, or the reconcile logic. This is a relocation.
+    - Test: a sweep started with the board closed still flips the pill and reconciles the originating project's rows; a project switch mid-sweep does not retarget the reconcile; a derive run tracks and clears with the board closed; both stop polling when nothing is in flight; and the board still reads both signals correctly when mounted.
+  - Out of scope: The Derive action and the proposed list in the coverage tab — the next entry, which depends on this. `dispatchDerive`, which already lives in `inject.js`. The reconciler and the working watch, already relocated. The board's pill and Draft button rendering, which keep reading the relocated signals. Deleting `agentView.js`.
+  - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5e293a6c-e056-433c-a30c-cb65ebccf0a1 -->
