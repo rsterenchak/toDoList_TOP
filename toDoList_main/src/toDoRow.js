@@ -696,7 +696,7 @@ export function applyPhaseLayout(descSibling, phase) {
 // shared `pendingAnswers` map (keyed by the linked queue-row id, the same key the
 // board uses) so it survives a row rebuild and shows on whichever surface the user
 // opens next.
-function buildAskingBlock(item, projectName, queueRow) {
+export function buildAskingBlock(item, projectName, queueRow) {
     const block = document.createElement('div');
     block.className = 'askingBlock';
     block.setAttribute('data-answer-row', String(queueRow.id));
@@ -900,7 +900,7 @@ function syncStuckPanel(toDoChild, item) {
 // `mode` is 'dispatch' (drafted) or 'retry' (stuck). Retry can proceed on the
 // stored entry_id alone (the marker is already in TODO.md); Dispatch needs the
 // generated draft text to inject — the same empty-case guard the board applies.
-function buildDispatchBlock(item, queueRow, mode) {
+export function buildDispatchBlock(item, queueRow, mode) {
     const isRetry = mode === 'retry';
     const block = document.createElement('div');
     block.className = 'descDispatchBlock';
@@ -1068,7 +1068,7 @@ export function extractEntryDescription(raw) {
 // summary is the entry's own `- Description:` line (extractEntryDescription — no
 // network fetch, the honest local source), omitted when the entry carries no
 // Description line. Always carries the costs-nothing note.
-function buildReviewBlock(item, queueRow) {
+export function buildReviewBlock(item, queueRow) {
     const block = document.createElement('div');
     block.className = 'descReviewBlock';
 
@@ -1170,7 +1170,15 @@ function performReviewRevert(item, btn, errorEl) {
 // Build the review action row: ACCEPT & CLOSE (amber, primary), REVERT (danger
 // red), OPEN IN TODO.MD (ghost). Tagged with the entry id so syncReviewPanel's
 // idempotent guard can keep an in-flight Revert button across a live repaint.
-function buildReviewActions(item, projectName) {
+//
+// Host-neutral: the desktop detail pane calls it with (item, projectName) and the
+// OPEN IN TODO.MD button routes straight through the shared invokeReviewBadgeTap
+// entry point. The mobile description-editor modal passes an `options.onOpenInViewer`
+// callback so it can dismiss ITSELF first (an open modal over the viewer would land
+// the anchored scroll behind a scrim) before opening the anchored viewer a tick
+// later — the exact close-then-defer the modal's old REVIEW button did.
+export function buildReviewActions(item, projectName, options) {
+    const opts2 = options || {};
     const actions = document.createElement('div');
     actions.className = 'descReviewActions';
     actions.setAttribute('data-review-entry', String((item && (item.entryId || item.id)) || ''));
@@ -1223,8 +1231,14 @@ function buildReviewActions(item, projectName) {
     open.textContent = 'Open in TODO.md';
     open.addEventListener('click', function (e) {
         e.stopPropagation();
-        // The same route the REVIEW badge takes — the project's TODO.md viewer,
-        // anchored to this entry — via the shared registered entry point.
+        // The modal host supplies its own close-then-open route (dismiss the modal
+        // first, defer the anchored viewer a tick); the desktop detail pane has no
+        // modal to close, so it takes the shared registered entry point directly —
+        // the project's TODO.md viewer, anchored to this entry.
+        if (typeof opts2.onOpenInViewer === 'function') {
+            opts2.onOpenInViewer();
+            return;
+        }
         invokeReviewBadgeTap(item && item.entryId, projectName);
     });
     actions.appendChild(open);
@@ -2598,6 +2612,27 @@ function openDescEditorForRow(toDoChild) {
             if (projectName) listLogic.editToDoItem(projectName, item);
         }
     });
+}
+// Open the mobile description-editor modal for a committed row identified by its
+// todo id — the entry point the on-row phase badges (ASKING / DRAFTED / STUCK /
+// MOCKUP / REVIEW) reach on `(pointer: coarse)`, where the badge routes to the
+// modal (which mounts the asking / dispatch / review blocks) rather than the
+// inline #descSibling panel the mobile design never intended. Resolves the live
+// row in #mainList by item identity and reuses openDescEditorForRow so the modal's
+// onSave / onTitleSave wiring and the row's todo-active treatment are identical to
+// a direct row-body tap. No-op when no matching row is mounted.
+export function openDescEditorForTodoId(todoId) {
+    if (!todoId) return;
+    const mainList = document.getElementById('mainList');
+    if (!mainList) return;
+    const rows = mainList.querySelectorAll('#toDoChild');
+    for (let i = 0; i < rows.length; i++) {
+        const item = rows[i].__item;
+        if (item && item.id === todoId) {
+            openDescEditorForRow(rows[i]);
+            return;
+        }
+    }
 }
 export function wireToDoRowClick(toDoChild, toDoInput, descToggle) {
     toDoChild.addEventListener('click', function(e) {

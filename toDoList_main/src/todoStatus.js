@@ -119,18 +119,41 @@ export function invokeReviewBadgeTap(entryId, projectName) {
 }
 
 
-// Handler that jumps to the Agent board scrolled to a task's card when a badge
-// whose action lives only on the board is tapped — `⌁ DRAFTED` (Dispatch),
-// `⌁ STUCK` (Retry), and `⌁ MOCKUP` (choose a variant) all route here now that
-// the Agent view has no tab of its own. Registered by main.js (which owns the
-// view switch, imports agentView.js's open-and-anchor entry point, and gates the
-// route on the project's repo), the same indirection setReviewBadgeTapHandler /
-// setLocateTabSwitch use — so this module never imports agentView.js or main.js
-// and stays free of the module-cycle concerns the file header documents. Invoked
-// with (todoId, projectName).
+// Handler that opens the mobile description-editor modal for a task's row when one
+// of its phase badges is tapped on a touch device — `⌁ ASKING`, `⌁ DRAFTED`,
+// `⌁ STUCK`, `⌁ MOCKUP`, and `⌁ REVIEW` all route here on `(pointer: coarse)`, where
+// the modal mounts the asking / dispatch / review blocks the inline `#descSibling`
+// panel would otherwise host (an accordion drop-down the mobile design never
+// intended). Registered by main.js (which owns the modal opener + resolves the row
+// from the todo id), the same indirection setReviewBadgeTapHandler /
+// setLocateTabSwitch use — so this module never imports modals.js / toDoRow.js's
+// opener and stays free of the module-cycle concerns the file header documents.
+// Invoked with (todoId, projectName). On desktop (fine pointer) the badge taps
+// fall through to their existing destinations instead — the inline `#descSibling`
+// panel (asking / drafted / stuck / mockup) or the TODO.md viewer (review).
 let agentRouteBadgeTapHandler = null;
 export function setAgentRouteBadgeTapHandler(fn) {
     agentRouteBadgeTapHandler = typeof fn === 'function' ? fn : null;
+}
+
+// True on touch/coarse-pointer viewports, where the phase badges open the
+// description-editor modal rather than the inline `#descSibling` panel. Mirrors
+// toDoRow.js's isCoarsePointerTap so both surfaces read the same media query, and
+// tolerates a jsdom/SSR host with no matchMedia (returns false → the desktop
+// fall-through path).
+function isCoarsePointer() {
+    return typeof window !== 'undefined'
+        && !!window.matchMedia
+        && window.matchMedia('(pointer: coarse)').matches;
+}
+
+// Route a phase badge to the modal on a touch device. Returns true when the tap
+// was handled (coarse pointer AND a modal-opener handler is registered), so the
+// caller returns early; false leaves the desktop fall-through path in charge.
+function routeBadgeToModalOnTouch(item, projectName) {
+    if (!isCoarsePointer() || !agentRouteBadgeTapHandler) return false;
+    agentRouteBadgeTapHandler(item.id, projectName);
+    return true;
 }
 
 
@@ -446,6 +469,10 @@ export function wireStatusLabelDelegation(container) {
         // acknowledged from the viewer. The viewer still opens unanchored if the
         // marker can't be found, so the tap is never a no-op. No popover mounts.
         if (label.getAttribute('data-status') === 'review') {
+            // On touch the WHAT CHANGED card + decide actions live in the
+            // description-editor modal, so route the tap there; on desktop the
+            // badge still opens the project's TODO.md viewer anchored to the entry.
+            if (routeBadgeToModalOnTouch(item, projectName)) return;
             if (reviewBadgeTapHandler) reviewBadgeTapHandler(item.entryId, projectName);
             return;
         }
@@ -456,6 +483,9 @@ export function wireStatusLabelDelegation(container) {
         // re-queues the linked agent_queue row out of needs_words. No-op when the
         // panel is already open so a second tap doesn't collapse it shut.
         if (label.getAttribute('data-status') === 'asking') {
+            // On touch the question + answer field mount in the description-editor
+            // modal; on desktop they mount in the inline `#descSibling` panel.
+            if (routeBadgeToModalOnTouch(item, projectName)) return;
             const descToggle = row.querySelector('#descToggle');
             if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;
@@ -480,6 +510,10 @@ export function wireStatusLabelDelegation(container) {
         // panel is already open so a second tap doesn't collapse it shut.
         const routeStatus = label.getAttribute('data-status');
         if (routeStatus === 'drafted' || routeStatus === 'stuck' || routeStatus === 'mockup') {
+            // On touch the Dispatch / Retry / choose-a-mockup controls mount in the
+            // description-editor modal; on desktop they mount in the inline
+            // `#descSibling` panel via the row's expand caret.
+            if (routeBadgeToModalOnTouch(item, projectName)) return;
             const descToggle = row.querySelector('#descToggle');
             if (descToggle && !descToggle.classList.contains('open')) descToggle.click();
             return;

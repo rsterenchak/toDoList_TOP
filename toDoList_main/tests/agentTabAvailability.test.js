@@ -152,30 +152,34 @@ describe('AGENT tab availability wiring', () => {
         // spinner's own repo re-resolution.
         expect(body).toMatch(/activeName\s*!==\s*projRunSpinnerLastProject/);
         expect(body).toMatch(/syncAgentAvailabilityForProject\s*\(/);
-        // Call sites: two click hooks + this active-change chokepoint + the
-        // badge-route handler's no-repo gate.
+        // Call sites: two click hooks + this active-change chokepoint. (The
+        // badge-route handler no longer gates on repo — it opens the description
+        // modal, which is available for any committed row.)
         const calls = main.match(/syncAgentAvailabilityForProject\(/g) || [];
         expect(calls.length).toBeGreaterThanOrEqual(3);
     });
 
-    it('main.js has no AGENT pill and gates the badge route on repo availability', () => {
+    it('main.js has no AGENT pill and routes the phase badges to the description modal', () => {
         const main = read('main.js');
         // The old gate helpers are gone from main.js entirely.
         expect(main).not.toMatch(/isAgentUnavailable/);
         expect(main).not.toMatch(/showAgentUnavailableTooltip/);
-        // The AGENT tab was retired — no pill is built for it. The Agent board is
-        // now reached only by tapping a DRAFTED / STUCK / MOCKUP badge, routed
-        // through the handler main.js registers.
+        // The AGENT tab was retired — no pill is built for it.
         expect(main).not.toMatch(/viewPillAgent/);
         // The STRUCTURE pill still carries the hollow no-repo marker (it needs a
         // repo too), so the marker lives on in main.js.
         expect(main).toMatch(/viewPillStructureMarker[\s\S]{0,120}agentNoRepoMarker/);
-        // The badge-route handler refuses to open the board for a project with no
-        // routed repo, using the gate's return value as the guard.
+        // The badge-route handler now opens the mobile description-editor modal for
+        // the tapped row (touch home for the asking / dispatch / review controls),
+        // resolving the row from the todo id — no board switch, no repo gate.
         const handlerIdx = main.indexOf('setAgentRouteBadgeTapHandler(function');
         expect(handlerIdx).toBeGreaterThan(-1);
-        const handlerBody = main.slice(handlerIdx, handlerIdx + 300);
-        expect(handlerBody).toMatch(/if\s*\(\s*!syncAgentAvailabilityForProject\(\s*projectName\s*\)\s*\)\s*return/);
+        const handlerBody = main.slice(handlerIdx, handlerIdx + 200);
+        expect(handlerBody).toMatch(/openDescEditorForTodoId\(\s*todoId\s*\)/);
+        expect(handlerBody).not.toMatch(/syncAgentAvailabilityForProject/);
+        // The opener is imported from toDoRow.js (registered handler avoids the
+        // todoStatus → modals/toDoRow import cycle).
+        expect(main).toMatch(/import\s*\{[^}]*openDescEditorForTodoId[^}]*\}\s*from\s*['"]\.\/toDoRow\.js['"]/);
     });
 
     it('agentView paint() renders the unavailable message when the tab is gated', () => {

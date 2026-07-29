@@ -15,14 +15,17 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the mobile description-editor modal's REVIEW action: when a task's derived
-// phase is `accept` (shipped, not yet acknowledged), the modal grows a single
-// primary action that dismisses itself and opens the TODO.md viewer anchored to
-// the entry — the mobile route out of the REVIEW rail node, since the on-row
-// badge is hidden below 1024px. The modal is too heavily wired to instantiate
-// end-to-end here (see mobileDescEditorRail), so the modal side is verified by
-// source inspection; the shared open-and-anchor entry point it reuses IS
-// exercised behaviorally through todoStatus.js's small public surface.
+// Pins the mobile description-editor modal's REVIEW (accept-phase) surface: when a
+// task's derived phase is `accept` (shipped, not yet acknowledged), the modal
+// mounts the SHARED WHAT CHANGED card (buildReviewBlock) plus the Accept / Revert /
+// Open-in-TODO.md action row (buildReviewActions) at the top of its body — the same
+// decide surface the desktop detail pane mounts inline, since the on-row badge is
+// hidden below 1024px. OPEN IN TODO.MD still routes out to the anchored viewer, but
+// via buildReviewActions' onOpenInViewer hook that dismisses the modal first. The
+// modal is too heavily wired to instantiate end-to-end here (see
+// mobileDescEditorRail), so the modal side is verified by source inspection; the
+// shared open-and-anchor entry point it reuses IS exercised behaviorally through
+// todoStatus.js's small public surface.
 
 describe('invokeReviewBadgeTap — shared open-and-anchor entry point', () => {
     it('invokes the registered review-badge handler with the entry id + project', () => {
@@ -54,7 +57,7 @@ describe('invokeReviewBadgeTap — shared open-and-anchor entry point', () => {
     });
 });
 
-describe('mobile desc editor REVIEW action — modal wiring', () => {
+describe('mobile desc editor REVIEW block — modal wiring', () => {
     const modals = read('modals.js');
 
     it('reuses the shared entry point (imports invokeReviewBadgeTap; no main.js import)', () => {
@@ -66,90 +69,97 @@ describe('mobile desc editor REVIEW action — modal wiring', () => {
         expect(modals).not.toMatch(/from\s*['"]\.\/main\.js['"]/);
     });
 
-    it('imports PHASE so the action gates on the accept phase by constant, not a string', () => {
+    it('imports PHASE so the block gates on the accept phase by constant, not a string', () => {
         expect(modals).toMatch(
             /import\s*\{[^}]*\bPHASE\b[^}]*\}\s*from\s*['"]\.\/phase\.js['"]/
         );
     });
 
-    it('builds a #descEditorModalReview button, hidden by default, appended to the actions block', () => {
-        expect(modals).toMatch(/['"]descEditorModalReview['"]/);
-        const idx = modals.indexOf("'descEditorModalReview'");
-        expect(idx).toBeGreaterThan(-1);
-        const block = modals.slice(idx, idx + 400);
-        // Starts hidden — only the accept phase reveals it.
-        expect(block).toMatch(/reviewBtn\.style\.display\s*=\s*['"]none['"]/);
-        // Appended into the same actions container as the other controls.
-        expect(modals).toMatch(/actions\.appendChild\(reviewBtn\)/);
+    it('imports the shared review builders from toDoRow.js (one card + actions for both hosts)', () => {
+        expect(modals).toMatch(
+            /import\s*\{[\s\S]*?buildReviewBlock[\s\S]*?buildReviewActions[\s\S]*?\}\s*from\s*['"]\.\/toDoRow\.js['"]/
+        );
     });
 
-    it('toggles visibility ONLY in PHASE.ACCEPT via syncReviewAction', () => {
-        const idx = modals.indexOf('function syncReviewAction');
-        expect(idx).toBeGreaterThan(-1);
-        const fn = modals.slice(idx, idx + 200);
-        expect(fn).toMatch(/PHASE\.ACCEPT/);
-        expect(fn).toMatch(/reviewBtn\.style\.display/);
+    it('the old single-route reviewBtn + syncReviewAction are gone — the decide surface mounts in the body', () => {
+        // The accept-phase surface is no longer a lone "Review shipped change"
+        // button in the actions row; the WHAT CHANGED card + Accept/Revert/Open
+        // action row mount at the top of the body via renderReviewBlock.
+        expect(modals).not.toMatch(/descEditorModalReview/);
+        expect(modals).not.toMatch(/function syncReviewAction/);
     });
 
-    it('resolves the phase once: renderRail returns it and refreshPhaseUI reuses it', () => {
+    it('renderReviewBlock gates on PHASE.ACCEPT and mounts buildReviewBlock + buildReviewActions', () => {
+        const idx = modals.indexOf('function renderReviewBlock(phase)');
+        expect(idx).toBeGreaterThan(-1);
+        const fn = modals.slice(idx, idx + 1400);
+        expect(fn).toMatch(/phase\s*!==\s*PHASE\.ACCEPT/);
+        expect(fn).toMatch(/buildReviewBlock\(item,\s*queueRow\)/);
+        expect(fn).toMatch(/buildReviewActions\(item,\s*projectName/);
+    });
+
+    it('OPEN IN TODO.MD dismisses the modal BEFORE opening the viewer, deferring the open a tick', () => {
+        const idx = modals.indexOf('function renderReviewBlock(phase)');
+        const fn = modals.slice(idx, idx + 1400);
+        // The modal passes an onOpenInViewer callback so buildReviewActions'
+        // OPEN button closes the modal first, then defers the anchored viewer.
+        expect(fn).toMatch(/onOpenInViewer/);
+        const closeIdx = fn.indexOf('closeDescEditor(');
+        const timeoutIdx = fn.indexOf('setTimeout(');
+        const invokeIdx = fn.indexOf('invokeReviewBadgeTap(');
+        expect(closeIdx).toBeGreaterThan(-1);
+        expect(timeoutIdx).toBeGreaterThan(-1);
+        expect(invokeIdx).toBeGreaterThan(-1);
+        expect(closeIdx).toBeLessThan(timeoutIdx);
+        expect(timeoutIdx).toBeLessThan(invokeIdx);
+    });
+
+    it('resolves the phase once: renderRail returns it and refreshPhaseUI reuses it (no second derivePhase)', () => {
         const idx = modals.indexOf('function refreshPhaseUI');
         expect(idx).toBeGreaterThan(-1);
-        const fn = modals.slice(idx, idx + 220);
-        // The review action reuses the rail's computed phase rather than calling
-        // derivePhase a second time in the same render.
+        const fn = modals.slice(idx, idx + 320);
         expect(fn).toMatch(/renderRail\(\s*\)/);
-        expect(fn).toMatch(/syncReviewAction\(\s*phase\s*\)/);
+        expect(fn).toMatch(/renderReviewBlock\(\s*phase\s*\)/);
+        // The block reuses the rail's computed phase rather than calling
+        // derivePhase a second time in the same render.
         expect(fn).not.toMatch(/derivePhase/);
     });
 
-    it('repaints the action on TODO_RUN_STATUS_EVENT so it appears/disappears with the rail', () => {
-        // onRailPhaseChange drives refreshPhaseUI, which syncs both the rail and
-        // the review action — an acknowledge from another device removes it live.
+    it('repaints the block on TODO_RUN_STATUS_EVENT so it appears/disappears with the rail', () => {
+        // onRailPhaseChange drives refreshPhaseUI, which repaints the review block —
+        // an acknowledge from another device removes it live.
         const idx = modals.indexOf('function onRailPhaseChange');
         expect(idx).toBeGreaterThan(-1);
         const fn = modals.slice(idx, idx + 120);
         expect(fn).toMatch(/refreshPhaseUI\(\s*\)/);
     });
 
-    it('dismisses the modal BEFORE opening the viewer, deferring the open a tick', () => {
-        const idx = modals.indexOf("reviewBtn.addEventListener('click'");
-        expect(idx).toBeGreaterThan(-1);
-        const handler = modals.slice(idx, idx + 500);
-        const closeIdx = handler.indexOf('closeDescEditor(');
-        const invokeIdx = handler.indexOf('invokeReviewBadgeTap(');
-        const timeoutIdx = handler.indexOf('setTimeout(');
-        expect(closeIdx).toBeGreaterThan(-1);
-        expect(invokeIdx).toBeGreaterThan(-1);
-        expect(timeoutIdx).toBeGreaterThan(-1);
-        // close() runs before the deferred viewer open.
-        expect(closeIdx).toBeLessThan(timeoutIdx);
-        expect(timeoutIdx).toBeLessThan(invokeIdx);
-    });
-
-    it('captures the guarded close fn from wireModalDismiss for the review action', () => {
+    it('captures the guarded close fn from wireModalDismiss for the review block', () => {
         expect(modals).toMatch(/const\s+closeDescEditor\s*=\s*wireModalDismiss\(/);
     });
 });
 
-describe('mobile desc editor REVIEW action — styling', () => {
+describe('mobile desc editor REVIEW block — styling', () => {
     const css = read('style.css');
 
-    it('leads the actions block on its own full-width row (order 0, ahead of Generate)', () => {
-        const m = css.match(/#descEditorModalActions\s+#descEditorModalReview\s*\{([^}]*)\}/);
+    it('reuses the shared .descReviewBlock treatment, dropping the grid gutters for the modal host', () => {
+        // One class serves both hosts; the modal body's own padding insets it, so
+        // the modal-host rule only zeroes the #descSibling grid side margins.
+        const m = css.match(/#descEditorModalBody\s+\.descReviewBlock\s*\{([^}]*)\}/);
         expect(m).toBeTruthy();
         const body = m[1];
-        expect(body).toMatch(/order:\s*0\b/);
-        expect(body).toMatch(/flex:\s*0\s+0\s+100%/);
+        expect(body).toMatch(/margin-left:\s*0/);
+        expect(body).toMatch(/margin-right:\s*0/);
     });
 
-    it('carries the amber REVIEW accent as a solid primary fill with dark text', () => {
-        const m = css.match(/#descEditorModalActions\s+#descEditorModalReview\s*\{([^}]*)\}/);
-        expect(m).toBeTruthy();
-        const body = m[1];
-        expect(body).toMatch(/background:\s*#ffbd5e/i);
-        expect(body).toMatch(/border-color:\s*#ffbd5e/i);
-        // Dark text for contrast on the amber fill (same pairing as the viewer's
-        // Acknowledge pill).
-        expect(body).toMatch(/color:\s*#1a1408/i);
+    it('keeps the shared ACCEPT amber / REVERT red / OPEN ghost button treatment', () => {
+        const bodyOf = (sel) => {
+            const idx = css.indexOf(sel + ' {');
+            expect(idx).toBeGreaterThan(-1);
+            return css.slice(idx, css.indexOf('}', idx));
+        };
+        expect(bodyOf('.descReviewBtn--accept')).toMatch(/#ffbd5e/);
+        expect(bodyOf('.descReviewBtn--revert')).toMatch(/var\(--text-danger\)/);
+        expect(bodyOf('.descReviewBtn--open')).toMatch(/background:\s*transparent/);
     });
 });

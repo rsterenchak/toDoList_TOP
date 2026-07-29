@@ -17,7 +17,14 @@ import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
 import { buildManualStatusControl, invokeReviewBadgeTap } from './todoStatus.js';
-import { makeGenerateButton, syncGenerateControl } from './toDoRow.js';
+import {
+    makeGenerateButton,
+    syncGenerateControl,
+    buildAskingBlock,
+    buildDispatchBlock,
+    buildReviewBlock,
+    buildReviewActions,
+} from './toDoRow.js';
 import { derivePhase, PHASE } from './phase.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
@@ -324,16 +331,25 @@ export function showDescEditorModal(item, options) {
         return phase;
     }
 
-    // Repaint the phase-dependent UI (the rail, the REVIEW action, AND the STUCK
-    // reason block below) from a single derived phase: renderRail computes
-    // derivePhase(item) once and returns it, and the REVIEW action + STUCK block
-    // reuse that value rather than resolving it a second time in the same render.
-    // Defined here but first invoked after the actions block builds reviewBtn.
+    // Repaint the phase-dependent UI from a single derived phase: renderRail
+    // computes derivePhase(item) once and returns it, and every phase block reuses
+    // that value rather than resolving it a second time in the same render. The
+    // blocks are the touch-device homes for the same controls the desktop
+    // `#descSibling` panel mounts — the ASKING question + answer, the Dispatch /
+    // Retry action, the STUCK reason, the MOCKUP flow, and the WHAT CHANGED review
+    // card + decide actions — so a phone tap on a phase badge reaches them here
+    // rather than in an inline accordion. renderDispatchBlock takes no phase: it
+    // gates on the linked queue row's state directly, because opening the modal
+    // stamps draftSeenAt (clearing PHASE.DRAFTED) before this runs. Order matters:
+    // renderStuckBlock mounts the reason card before renderDispatchBlock, whose
+    // Retry variant anchors beneath it.
     function refreshPhaseUI() {
         const phase = renderRail();
-        syncReviewAction(phase);
+        renderAskingBlock(phase);
         renderStuckBlock(phase);
+        renderDispatchBlock();
         renderMockupBlock(phase);
+        renderReviewBlock(phase);
     }
 
     // Repaint when the phase changes while the modal is open — an entry can ship
@@ -358,6 +374,29 @@ export function showDescEditorModal(item, options) {
     entryLabel.id = 'descEditorModalEntryLabel';
     entryLabel.textContent = 'The entry';
     body.appendChild(entryLabel);
+
+    // ── ASKING QUESTION BLOCK ──
+    // When the task's derived phase is `asking` (its linked agent_queue row is in
+    // needs_words), triage has a pending question. Mount the SHARED ASKING block —
+    // buildAskingBlock from toDoRow.js, the same builder the desktop `#descSibling`
+    // panel uses — at the top of the body: triage's question, the answer textarea
+    // (16px, iOS-zoom-safe), and the Send control that routes the answer through
+    // listLogic.answerAgentTask. Idempotent, mirroring renderStuckBlock: mount only
+    // in the asking phase and clear the moment the queue row moves on, but KEEP an
+    // already-mounted block for the SAME queue row (data-answer-row guard) so a live
+    // repaint doesn't drop the user's unsent answer text.
+    function renderAskingBlock(phase) {
+        const existing = body.querySelector('.askingBlock');
+        const queueRow = (phase === PHASE.ASKING && item && item.id)
+            ? getQueueRowForTodo(item.id) : null;
+        if (!queueRow) {
+            if (existing) existing.remove();
+            return;
+        }
+        if (existing && existing.getAttribute('data-answer-row') === String(queueRow.id)) return;
+        if (existing) existing.remove();
+        body.insertBefore(buildAskingBlock(item, opts.projectName || '', queueRow), body.firstChild);
+    }
 
     // ── STUCK REASON BLOCK ──
     // When the task's derived phase is `stuck` (its linked agent_queue row is in
@@ -446,6 +485,80 @@ export function showDescEditorModal(item, options) {
         body.insertBefore(block, body.firstChild);
     }
 
+    // ── DISPATCH / RETRY ACTION ──
+    // A landed draft (linked queue row `drafted`) shows a Dispatch control; a broken
+    // / no-change run (`failed` / `no_change`) shows a Retry control beneath the
+    // STUCK reason card. Both are the SHARED buildDispatchBlock from toDoRow.js — the
+    // touch home for the row-side Dispatch / Retry the desktop `#descSibling` panel
+    // mounts. Gated on the queue row's STATE, not the derived phase: opening this
+    // modal stamps draftSeenAt, which clears PHASE.DRAFTED, so a phase gate would
+    // wipe the Dispatch control before it ever mounts (the green-but-does-nothing
+    // failure this codebase pins deliberately). Idempotent: keep an in-flight
+    // (pending) button across a repaint when the row + mode are unchanged.
+    function renderDispatchBlock() {
+        const existing = body.querySelector('.descDispatchBlock');
+        const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+        const state = queueRow && queueRow.state;
+        const mode = state === 'drafted' ? 'dispatch'
+            : ((state === 'failed' || state === 'no_change') ? 'retry' : null);
+        if (!mode) {
+            if (existing) existing.remove();
+            return;
+        }
+        if (existing) {
+            if (existing.getAttribute('data-dispatch-row') === String(queueRow.id)
+                && existing.getAttribute('data-dispatch-mode') === mode) return;
+            existing.remove();
+        }
+        const block = buildDispatchBlock(item, queueRow, mode);
+        // Retry sits beneath the STUCK reason card; Dispatch beneath the entry
+        // textarea. Fall back to appending at the body's end.
+        const anchorAfter = mode === 'retry'
+            ? body.querySelector('#descEditorModalStuck')
+            : body.querySelector('#descEditorModalTextarea');
+        if (anchorAfter) body.insertBefore(block, anchorAfter.nextSibling);
+        else body.appendChild(block);
+    }
+
+    // ── REVIEW (ACCEPT-PHASE) DECISION SURFACE ──
+    // When the task's derived phase is `accept` (shipped, not yet acknowledged),
+    // mount the SHARED WHAT CHANGED card (buildReviewBlock) and the ACCEPT / REVERT /
+    // OPEN IN TODO.MD action row (buildReviewActions) at the top of the body — the
+    // touch home for the decide surface the desktop detail pane mounts inline.
+    // OPEN IN TODO.MD hands buildReviewActions an onOpenInViewer that dismisses this
+    // modal FIRST, then defers the anchored viewer open a tick (an open modal over
+    // the viewer lands the anchor scroll behind a scrim) — the exact close-then-defer
+    // the modal's old REVIEW button did. Idempotent, mirroring syncReviewPanel: keep
+    // the mounted controls (and any in-flight Revert) when the same entry is already
+    // shown so a live repaint doesn't thrash the DOM.
+    function renderReviewBlock(phase) {
+        const existingBlock = body.querySelector('.descReviewBlock');
+        const existingActions = body.querySelector('.descReviewActions');
+        if (phase !== PHASE.ACCEPT) {
+            if (existingBlock) existingBlock.remove();
+            if (existingActions) existingActions.remove();
+            return;
+        }
+        const entryKey = String((item && (item.entryId || item.id)) || '');
+        if (existingActions && existingActions.getAttribute('data-review-entry') === entryKey) return;
+        if (existingBlock) existingBlock.remove();
+        if (existingActions) existingActions.remove();
+        const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+        const projectName = opts.projectName || '';
+        const actionsRow = buildReviewActions(item, projectName, {
+            onOpenInViewer: function () {
+                const entryId = item && item.entryId;
+                closeDescEditor();
+                setTimeout(function () {
+                    invokeReviewBadgeTap(entryId, projectName);
+                }, 0);
+            },
+        });
+        // WHAT CHANGED card first, the action row right after it.
+        body.insertBefore(actionsRow, body.firstChild);
+        body.insertBefore(buildReviewBlock(item, queueRow), body.firstChild);
+    }
+
     const textarea = document.createElement('textarea');
     textarea.id = 'descEditorModalTextarea';
     textarea.setAttribute('aria-label', 'Description text');
@@ -532,47 +645,29 @@ export function showDescEditorModal(item, options) {
     generateSpend.id = 'descEditorModalGenerateSpend';
     generateSpend.textContent = 'Dispatches an agent run — spends your Max-plan quota.';
 
-    // ── REVIEW ACTION ──
-    // Shown ONLY while the task's derived phase is `accept` (shipped, not yet
-    // acknowledged): below 1024px this modal is the task's only detail surface —
-    // the on-row REVIEW badge is CSS-hidden — so without this the mobile user
-    // sees REVIEW reported on the rail with no route out of it. It is a route,
-    // not a second Accept control: acknowledging stays the viewer's job, where
-    // the entry plus whatever the run appended (the PR number) is visible.
-    // Tapping dismisses the modal and opens the TODO.md viewer anchored to this
-    // entry — the same destination the row badge reaches on desktop, via the same
-    // registered handler (invokeReviewBadgeTap) rather than a second open-and-
-    // anchor implementation or a main.js import. syncReviewAction toggles its
-    // visibility off the phase refreshPhaseUI computes, so it appears/disappears
-    // in lockstep with the rail on TODO_RUN_STATUS_EVENT. Hidden by default.
-    const reviewBtn = document.createElement('button');
-    reviewBtn.id = 'descEditorModalReview';
-    reviewBtn.type = 'button';
-    reviewBtn.className = 'descEditorModalBtn';
-    reviewBtn.textContent = '⌁ Review shipped change';
-    reviewBtn.style.display = 'none';
+    // The REVIEW (accept-phase) decide surface no longer lives in the actions row.
+    // In the `accept` phase renderReviewBlock mounts the WHAT CHANGED card plus the
+    // ACCEPT / REVERT / OPEN IN TODO.MD action row at the TOP of the body (the shared
+    // buildReviewBlock / buildReviewActions the desktop detail pane uses), so the
+    // mobile user can decide in place rather than only routing out to the viewer.
 
-    function syncReviewAction(phase) {
-        reviewBtn.style.display = (phase === PHASE.ACCEPT) ? '' : 'none';
-    }
-
-    // Explicit stacking order for the whole actions block: the REVIEW action (when
-    // present) leads, then Generate, its spend caption, Inject, then the Clear /
-    // Copy pair on one row. Each child carries its own `order` in CSS rather than
-    // layering another override onto a basis hack, so the sequence is readable.
+    // Explicit stacking order for the whole actions block: Generate, its spend
+    // caption, Inject, then the Clear / Copy pair on one row. Each child carries its
+    // own `order` in CSS rather than layering another override onto a basis hack, so
+    // the sequence is readable.
     actions.appendChild(clearBtn);
     actions.appendChild(injectBtn);
     actions.appendChild(generateBtn);
     actions.appendChild(generateSpend);
-    actions.appendChild(reviewBtn);
     actions.appendChild(copyBtn);
     // Reflect the linked queue row's current state (Generating…/failure) and land
     // a draft that finished while the modal was closed. Live pushes re-sync via
     // the shared sweep in refreshDescStatusDots (every `.generateBtn`).
     syncGenerateControl(generateBtn);
 
-    // First paint of the rail + REVIEW action now that reviewBtn exists (the
-    // TODO_RUN_STATUS_EVENT subscription above only repaints on later changes).
+    // First paint of the rail + every phase block now that the body + textarea
+    // exist (the TODO_RUN_STATUS_EVENT / onQueueChange subscriptions above only
+    // repaint on later changes).
     refreshPhaseUI();
 
     // ── STATUS SEGMENTED CONTROL ──
@@ -628,24 +723,6 @@ export function showDescEditorModal(item, options) {
         backdrop: backdrop,
         closeButtons: [closeX],
         onClose: onDescEditorClose
-    });
-
-    // REVIEW action: dismiss the modal FIRST, then open the anchored viewer. The
-    // viewer expands and scrolls to the anchored entry, and an open modal over it
-    // would land the scroll behind a scrim; deferring the open a tick lets the
-    // modal teardown (and its layout reflow) settle before the anchor offset is
-    // computed. Reuses the same registered handler the on-row REVIEW badge uses,
-    // so there is one open-and-anchor path. Phase `accept` already means the
-    // marker sits on a checked TODO.md entry, so the anchor resolves; the button
-    // is absent in every other phase (syncReviewAction), never opening an
-    // unanchored viewer from a surface that implied a specific entry.
-    reviewBtn.addEventListener('click', function() {
-        const entryId = item && item.entryId;
-        const projectName = opts.projectName || '';
-        closeDescEditor();
-        setTimeout(function() {
-            invokeReviewBadgeTap(entryId, projectName);
-        }, 0);
     });
 
     copyBtn.addEventListener('click', function() {
