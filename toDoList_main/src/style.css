@@ -1495,6 +1495,78 @@ body {
   box-shadow: 0 0 0 1px var(--accent-dim);
 }
 
+/* ── BLOCKED-PHASE CHROME ──
+   In a blocked phase the modal leads with the phase block, so its header eyebrow
+   drops "Description" for the phase name and both it and the dialog border take
+   the phase accent — the shared amber (#ffbd5e) for the waiting-on-you phases and
+   danger red (#ff5d7a) for `stuck`, the same two colors the on-row status badges
+   use. Driven off the dialog's `data-phase` attribute (set in modals.js) so no
+   inline color writes live in JS. */
+#descEditorModal[data-phase] {
+  border-color: #ffbd5e;
+}
+#descEditorModal[data-phase="stuck"] {
+  border-color: #ff5d7a;
+}
+#descEditorModal[data-phase] #descEditorModalTitleEyebrowLabel {
+  color: #ffbd5e;
+}
+#descEditorModal[data-phase="stuck"] #descEditorModalTitleEyebrowLabel {
+  color: #ff5d7a;
+}
+
+/* ── THE ENTRY DISCLOSURE ──
+   A single collapsed row that stands in for THE ENTRY region while a task sits in
+   a blocked phase, so the phase block owns the visible area. A real <button> with
+   a ≥44px tap target, its own accent label on the left and the expand/collapse
+   affordance on the right. */
+.descEditorModalEntryDisclosure {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+.descEditorModalEntryDisclosure:hover { background: var(--bg-hover); }
+.descEditorModalEntryDisclosure:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-dim);
+}
+.descEditorModalEntryDisclosureLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--accent-text);
+}
+.descEditorModalEntryDisclosureHint {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+/* Collapsed entry region. THE ENTRY label, the file-picker trigger, and the
+   textarea carry the `hidden` attribute in the collapsed state; author-level
+   `display` (e.g. the textarea's flex) would outrank the bare UA
+   `[hidden] { display: none }`, so re-assert it with `!important` — the same
+   guard the `claude*` family and the file-picker panel already carry. */
+#descEditorModalEntryLabel[hidden],
+#descEditorModalTargetPick[hidden],
+#descEditorModalTextarea[hidden] {
+  display: none !important;
+}
+
 /* FILE:-PATH PICKER — a target chip beside THE ENTRY that lists the project's
    manifest files and writes the chosen path into the entry's File: line. Shared
    by the mobile description-editor modal and the desktop description panel

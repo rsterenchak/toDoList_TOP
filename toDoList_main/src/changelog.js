@@ -13,12 +13,14 @@ export const changelog = [
             "A task whose run has already shipped now shows its shipped status as soon as the row appears, instead of a stale badge that lingered until reload.",
             "On phones, tapping a task's pipeline badge now opens the description editor with its triage question, dispatch, and review controls, instead of an inline panel where those controls were unreachable.",
         ],
+        changed: [
+            "On phones, a task that's waiting on you now opens its description editor with the phase controls up front and the entry text collapsed behind a tap-to-expand row.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-28',
         fixed: [
-            "On mobile, a task row's run-status glyph now aligns with the title rail instead of hugging the row's left edge.",
             "A task that skips its mockup step and is sent to the agent directly now shows a pending indicator while it runs, instead of staying on its mockup badge.",
         ],
     },

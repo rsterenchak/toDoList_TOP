@@ -25,7 +25,7 @@ import {
     buildReviewBlock,
     buildReviewActions,
 } from './toDoRow.js';
-import { derivePhase, PHASE } from './phase.js';
+import { derivePhase, isBlockedPhase, PHASE } from './phase.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
 import { stuckReasonText } from './agentView.js';
@@ -159,6 +159,22 @@ export function showConfirmModal(options) {
 //
 // Closes on the close X, the backdrop, or Escape (CLAUDE.md modal contract).
 // The Clear destructive-action path routes through showConfirmModal.
+
+// The eyebrow label each blocked phase shows in place of the static
+// "Description" — the phase's own name, rendered uppercase by the eyebrow's
+// text-transform. `accept` reads REVIEW to match the badge / rail vocabulary.
+// Keyed by the literal PHASE string VALUES rather than `PHASE.*` refs because
+// this map is built at module-eval time and phase.js → inject.js → modals.js is
+// a circular import — `PHASE` is still in its temporal dead zone here, so a
+// computed `[PHASE.ASKING]` key would read undefined.ASKING and throw.
+const PHASE_EYEBROW_LABELS = Object.freeze({
+    asking: 'Asking',
+    drafted: 'Drafted',
+    stuck: 'Stuck',
+    mockup: 'Mockup',
+    accept: 'Review',
+});
+
 export function showDescEditorModal(item, options) {
 
     if (!item) return;
@@ -350,6 +366,8 @@ export function showDescEditorModal(item, options) {
         renderDispatchBlock();
         renderMockupBlock(phase);
         renderReviewBlock(phase);
+        applyPhaseChrome(phase);
+        renderEntryDisclosure(phase);
     }
 
     // Repaint when the phase changes while the modal is open — an entry can ship
@@ -558,6 +576,103 @@ export function showDescEditorModal(item, options) {
         body.insertBefore(actionsRow, body.firstChild);
         body.insertBefore(buildReviewBlock(item, queueRow), body.firstChild);
     }
+
+    // ── PHASE CHROME (blocked-phase eyebrow + dialog accent) ──
+    // In a blocked phase the header eyebrow drops "Description" for the phase name
+    // and both it and the dialog border take the phase accent — amber for the
+    // waiting-on-you phases, danger red for `stuck` — so the modal reads as the
+    // phase surface it now leads with. Driven by a `data-phase` attribute on the
+    // dialog rather than inline styles, so the color rules live in style.css. Non-
+    // blocked phases restore the static "Description" eyebrow and clear the accent,
+    // keeping those layouts byte-for-byte their prior selves.
+    function applyPhaseChrome(phase) {
+        if (isBlockedPhase(phase)) {
+            dialog.setAttribute('data-phase', phase);
+            eyebrowLabel.textContent = PHASE_EYEBROW_LABELS[phase] || 'Description';
+        } else {
+            dialog.removeAttribute('data-phase');
+            eyebrowLabel.textContent = 'Description';
+        }
+    }
+
+    // ── THE ENTRY DISCLOSURE (blocked-phase collapse) ──
+    // When a task is parked in a blocked phase, the thing the user opened the modal
+    // for is the phase block above — the question, the stuck reason, the shipped
+    // diff — not the TODO.md entry text. Collapse THE ENTRY region (its label, the
+    // file picker, and the 180px textarea) behind ONE disclosure row pinned below
+    // the phase block, so a short phone shows the phase block without scrolling past
+    // the textarea. In every non-blocked phase no disclosure renders and the entry
+    // region stays expanded — the pre-existing layout, unchanged.
+    //
+    // Collapse toggles the `hidden` attribute on the region's own elements (each
+    // backed by an explicit `[hidden] { display: none !important }` guard in
+    // style.css, since author-level `display` outranks the bare UA `[hidden]` rule),
+    // never an inline style write. The disclosure is a real <button> with
+    // aria-expanded / aria-controls and a 44px tap target. State is transient: a
+    // fresh modal starts collapsed (entryExpanded = false) and a mid-session repaint
+    // preserves whatever the user last chose — it is never persisted.
+    function applyEntryVisibility(collapsed) {
+        entryLabel.hidden = collapsed;
+        filePicker.trigger.hidden = collapsed;
+        textarea.hidden = collapsed;
+        // Closing the picker dropdown on collapse is harmless (a later tap reopens
+        // it); never force it OPEN on expand — the picker owns its own hidden state,
+        // so leave a closed panel closed rather than popping it on every expand.
+        if (collapsed) filePicker.panel.hidden = true;
+    }
+    function paintDisclosure() {
+        const btn = body.querySelector('#descEditorModalEntryDisclosure');
+        if (!btn) return;
+        const hint = btn.querySelector('.descEditorModalEntryDisclosureHint');
+        btn.setAttribute('aria-expanded', entryExpanded ? 'true' : 'false');
+        if (hint) hint.textContent = entryExpanded ? 'tap to collapse ▴' : 'tap to expand ▾';
+    }
+    function renderEntryDisclosure(phase) {
+        const existing = body.querySelector('#descEditorModalEntryDisclosure');
+        if (!isBlockedPhase(phase)) {
+            if (existing) existing.remove();
+            applyEntryVisibility(false);
+            return;
+        }
+        if (!existing) {
+            const btn = document.createElement('button');
+            btn.id = 'descEditorModalEntryDisclosure';
+            btn.type = 'button';
+            btn.className = 'descEditorModalEntryDisclosure';
+            btn.setAttribute('aria-controls',
+                'descEditorModalEntryLabel descEditorModalTargetPick descEditorModalTextarea descEditorModalTargetPanel');
+
+            const label = document.createElement('span');
+            label.className = 'descEditorModalEntryDisclosureLabel';
+            label.textContent = 'The entry';
+
+            const hint = document.createElement('span');
+            hint.className = 'descEditorModalEntryDisclosureHint';
+            hint.setAttribute('aria-hidden', 'true');
+
+            btn.appendChild(label);
+            btn.appendChild(hint);
+            btn.addEventListener('click', function () {
+                entryExpanded = !entryExpanded;
+                applyEntryVisibility(!entryExpanded);
+                paintDisclosure();
+                if (entryExpanded) {
+                    // Bring the freshly-expanded region into view on a short phone.
+                    try { textarea.scrollIntoView({ block: 'nearest' }); } catch (e) { /* defensive */ }
+                }
+            });
+            // Sits right above the entry region so an expand reveals it directly
+            // beneath the disclosure, and below any phase block (which mount at
+            // body.firstChild), so the phase block keeps the top of the body.
+            body.insertBefore(btn, entryLabel);
+            paintDisclosure();
+        }
+        applyEntryVisibility(!entryExpanded);
+    }
+
+    // Transient disclosure state — a fresh modal always starts collapsed; never
+    // persisted (see renderEntryDisclosure).
+    let entryExpanded = false;
 
     const textarea = document.createElement('textarea');
     textarea.id = 'descEditorModalTextarea';
