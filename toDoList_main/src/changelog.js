@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-29',
         added: [
-            "On desktop, drag the divider between the task queue and the detail pane in Stream view to resize the queue, and it stays that width across reloads.",
+            "Coursework projects now show a Coverage tab in the Claude chat pane with the assignment summary, rubric coverage bar, and a full breakdown view.",
         ],
         fixed: [
             "A task whose run has already shipped now shows its shipped status as soon as the row appears, instead of a stale badge that lingered until reload.",
