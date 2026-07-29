@@ -35,7 +35,7 @@
   - Completed: 2026-07-29
   <!-- id: 21b043fb-2e42-4b21-a6bd-310f0b01c318 -->
 
-- [ ] **[MEDIUM]** Make the mobile description modal phase-first with the entry behind a disclosure
+- [x] **[MEDIUM]** Make the mobile description modal phase-first with the entry behind a disclosure
   - Type: feature
   - Description: When a task is parked in a queue phase, the thing the user opened the modal for is the question, the draft, or the shipped diff — not the TODO.md entry text. Reorder the modal so that in a blocked phase the phase block owns the visible area and the entry region collapses behind a single disclosure row at the foot, leaving the modal readable on a short phone without scrolling past a 180px textarea to reach the answer field. In every non-blocked phase the modal renders exactly as it does today.
   - Behavior:
@@ -53,5 +53,5 @@
     - Keep all styling in `style.css` as classes — no inline `style.display` writes from `modals.js`.
   - Out of scope: the desktop `#descSibling` panel ordering, which keeps rail → phase block → entry unchanged. No change to which blocks mount (that is the preceding entry).
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: e4648af2-f484-4ac7-ad96-fddcef1a2e9d -->
