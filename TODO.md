@@ -103,7 +103,7 @@
   - Completed: 2026-07-29
   <!-- id: 5329baf0-48ea-4dbc-9986-53985f57e64d -->
 
-- [ ] **[MEDIUM]** Relocate the derive and sweep run trackers out of the Agent view
+- [x] **[MEDIUM]** Relocate the derive and sweep run trackers out of the Agent view
   - Type: feature
   - Description: `agentView.js` holds two run trackers that are not board concerns. The sweep tracker (`_sweepActive`, `_sweepPoller`, `_sweepSeenActive`, `_sweepGraceDeadline`, `_sweepHardDeadline`, `_sweepProjectName`) drives the Working/Idle pill from the real `claude-triage.yml` run via the Worker's triage-scoped `active_runs` probe, and reconciles that project's rows when the sweep finishes. The derive tracker mirrors it for `claude-derive.yml`, polling the derive-scoped probe and retaining the run's correlation id so a completion can look up its conclusion. Both only run while the board is mounted, which is why a derive dispatched from anywhere else would have no pending state — the same defect that left dispatched runs unsettled until the reconciler was moved. Relocate both into `agentQueueStore.js` beside the reconciler and the working watch, with the board still reading them, so the coverage tab can host Derive in the next entry.
   - Behavior: Identical to today while the board is open. A triage sweep still flips the pill Working → Idle from what GitHub reports, still distinguishes registration lag from a finished run via the grace window, still honours the hard cap, and still reconciles the originating project's rows when it settles — targeting the project captured at start, not whichever is on screen. A derive run still tracks the same way with no post-finish reconcile. Both now continue tracking with the board closed.
@@ -119,5 +119,5 @@
     - Test: a sweep started with the board closed still flips the pill and reconciles the originating project's rows; a project switch mid-sweep does not retarget the reconcile; a derive run tracks and clears with the board closed; both stop polling when nothing is in flight; and the board still reads both signals correctly when mounted.
   - Out of scope: The Derive action and the proposed list in the coverage tab — the next entry, which depends on this. `dispatchDerive`, which already lives in `inject.js`. The reconciler and the working watch, already relocated. The board's pill and Draft button rendering, which keep reading the relocated signals. Deleting `agentView.js`.
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: 5e293a6c-e056-433c-a30c-cb65ebccf0a1 -->

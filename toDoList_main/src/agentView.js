@@ -31,6 +31,17 @@ import {
     notifyQueueChange,
     setTriageDispatcher,
     kickDispatchReconciler,
+    configureRunTrackers,
+    startSweepTracking,
+    stopSweepTracking,
+    seedSweepState,
+    isSweepActive,
+    startDeriveTracking,
+    stopDeriveTracking,
+    setDeriveCorrelationId,
+    isDeriveActive,
+    SWEEP_GRACE_MS,
+    SWEEP_HARD_CAP_MS,
 } from './agentQueueStore.js';
 import { buildMockupSecondary, configureMockupFlow } from './mockupFlow.js';
 import {
@@ -58,8 +69,31 @@ configureAssignmentCoverage({
     resolveReadTarget,
     isBucketCollapsed,
     setBucketCollapsed,
-    isDeriveActive: function () { return _deriveActive; },
+    isDeriveActive,
     fireDeriveRun,
+});
+
+// Wire the triage-sweep and derive run trackers (relocated to agentQueueStore.js)
+// to the board-side rendering + working-watch callbacks and the Worker probes they
+// need. Same hoisting + acyclic rationale as configureAssignmentCoverage above: the
+// store must not import this view or inject.js, so the board injects them. These are
+// all hoisted function declarations (or top-level imports), so they resolve here at
+// module load even though the board renderers are defined further down.
+// The Worker-call deps are wrapped in thunks (rather than passed by reference) so
+// the imported bindings are read at CALL time, not here at module load — some tests
+// partially mock inject.js, and eagerly reading an absent export would throw on
+// import even for a test that never fires a sweep or derive run.
+configureRunTrackers({
+    refreshStatusPill,
+    paint,
+    refreshAgentQueue,
+    seedWorkingWatchSweep,
+    clearWorkingWatchSweepSeed,
+    pollAgentWorkingWatch,
+    fetchActiveRuns: function (target, workflow) { return fetchActiveRuns(target, workflow); },
+    pollRunStatus: function (opts) { return pollRunStatus(opts); },
+    resolveDispatchTarget: function () { return resolveDispatchTarget(); },
+    showInjectToast: function (msg, kind) { return showInjectToast(msg, kind); },
 });
 
 // The AGENT view: a per-project board of the autonomous-agent work queue. It
@@ -120,22 +154,10 @@ const STATE_CHIP = {
     no_change: 'No change',
 };
 
-// Workflow conclusions that positively mean the run failed. Mirrors the
-// Runs-tab FAILURE_CONCLUSIONS list: only these flip a completed run to
-// `failed`; any other completed conclusion (neutral, skipped, no conclusion)
-// keeps the row in-progress rather than asserting failure.
-const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
-
-// Triage-sweep tracking cadence and windows. Tapping Run fires a
-// `claude-triage.yml` sweep — a GitHub Actions workflow that isn't represented
-// by any lasting agent_queue row state — so the header pill is driven from the
-// real run via the Worker's triage-scoped `active_runs` probe instead. The poll
-// runs every SWEEP_POLL_MS; if the run hasn't registered yet the pill stays
-// optimistically "Working" up to SWEEP_GRACE_MS (registration lag), and a hard
-// SWEEP_HARD_CAP_MS ceiling force-stops the poller regardless.
-const SWEEP_POLL_MS = 5000;
-const SWEEP_GRACE_MS = 30 * 1000;
-const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
+// The triage-sweep / derive-run poll cadence and windows moved to
+// agentQueueStore.js with the trackers; SWEEP_GRACE_MS and SWEEP_HARD_CAP_MS are
+// imported back here because the persistent working watch below mirrors the same
+// grace arc for the nav dot.
 
 // ── module state ─────────────────────────────────────────────────────
 // The project-scoped row cache, the realtime channel, the unsent-answer draft
@@ -179,42 +201,13 @@ const _pendingRevertPrUrls = new Map();
 // in the store now, shared by the header Run button, the board answer auto-fire,
 // and the task-row answer auto-fire, so a rapid double-tap or a quick succession
 // of answers across either surface doesn't fire redundant sweeps in the same tick.
-// Triage-sweep tracking state that drives the header's Working/Idle pill from
-// the real claude-triage.yml run (via the Worker's triage-scoped active_runs
-// probe), not just from agent_queue row states. `_sweepActive` is what the pill
-// reads; `_sweepPoller` is the interval handle; `_sweepSeenActive` records
-// whether a poll has ever confirmed the run in flight (so registration lag is
-// distinguished from a finished run); the deadlines bound the grace window and
-// the hard cap. Cross-device, since GitHub is the source of truth.
-let _sweepActive = false;
-let _sweepPoller = null;
-let _sweepSeenActive = false;
-let _sweepGraceDeadline = 0;
-let _sweepHardDeadline = 0;
-// The project whose sweep is being tracked, captured when tracking starts. A
-// sweep is scoped to one project's agent_queue rows, and the user may switch
-// projects while it runs, so the post-finish reconcile targets THIS project's
-// rows rather than whatever board is on screen when the sweep settles.
-let _sweepProjectName = null;
-// Derive-run tracking mirrors the sweep tracker, scoped to claude-derive.yml. A
-// Draft dispatch is a fire-and-forget batch run (assignment.md → candidate
-// tasks) with no lasting agent_queue row state while it runs, so the pill can't
-// be computed from rows alone — instead we poll the Worker's derive-scoped
-// `active_runs` probe and flip the pill Working → Idle from what GitHub reports.
-// `_deriveActive` is what the pill and the Draft button read; `_derivePoller` is
-// the interval handle; `_deriveSeenActive` records whether a poll has confirmed
-// the run in flight (registration lag vs. finished); the deadlines bound the
-// grace window and the hard cap. Unlike the sweep tracker there is no post-finish
-// row reconcile — derive rows leave `proposed` via Accept, not a stuck state.
-let _deriveActive = false;
-let _derivePoller = null;
-let _deriveSeenActive = false;
-let _deriveGraceDeadline = 0;
-let _deriveHardDeadline = 0;
-// The correlation_id minted for the in-flight derive run, retained so a genuine
-// completion can look up the run's conclusion (success vs. failure) rather than
-// settling the pill silently. Set in fireDeriveRun on dispatch, cleared on stop.
-let _deriveCorrelationId = null;
+// The triage-sweep and derive run trackers — the pill-driving state, pollers,
+// deadline windows, and the derive correlation-id retention — now live in
+// agentQueueStore.js beside the dispatch reconciler, so they track a run whether or
+// not the board is mounted. The board wires their rendering callbacks via
+// configureRunTrackers (above) and reads their signal through isSweepActive() /
+// isDeriveActive(); fireTriageSweep / fireDeriveRun below still dispatch and start
+// them, and unsubscribeAgentView stops them on tab exit.
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -281,234 +274,6 @@ function fireTriageSweep(projectName) {
 // imported by main.js, so the dispatcher is available before any row answers.
 setTriageDispatcher(fireTriageSweep);
 
-// ── triage-sweep tracking ────────────────────────────────────────────
-// Drive the header pill from the real claude-triage.yml run. A sweep is a
-// batch GitHub Actions workflow with no lasting agent_queue row state, so the
-// pill can't be computed from rows alone — instead we poll the Worker's
-// triage-scoped `active_runs` probe and flip the pill Working → Idle from what
-// GitHub actually reports. Cross-device: a sweep started on another device is
-// picked up by the mount-time seed (seedSweepState).
-
-// Begin (or refresh) tracking a triage sweep. Sets the pill optimistically to
-// Working immediately, (re)arms the poller, and kicks a one-shot poll so an
-// already-completed run settles at once. `alreadyConfirmed` is true only for
-// the mount-time seed, where the seed fetch has already observed the run in
-// flight — otherwise we start unconfirmed so the grace window covers the
-// registration lag before the run appears. This is also the single chokepoint
-// that seeds the persistent working watch (both local dispatch via
-// fireTriageSweep and the cross-device mount seed via seedSweepState), so the
-// nav "● Agent" dot lights the instant a sweep dispatches instead of waiting on
-// the watch's slow remote probe to observe the run once it registers.
-function startSweepTracking(alreadyConfirmed) {
-    const now = Date.now();
-    _sweepActive = true;
-    _sweepSeenActive = !!alreadyConfirmed;
-    _sweepProjectName = getSelectedProjectName();
-    _sweepGraceDeadline = now + SWEEP_GRACE_MS;
-    _sweepHardDeadline = now + SWEEP_HARD_CAP_MS;
-    if (!_sweepPoller) {
-        _sweepPoller = setInterval(pollSweepOnce, SWEEP_POLL_MS);
-    }
-    // Seed the mount-independent working watch so the nav dot lights now, not
-    // 30-45s later when the probe finally observes the registered run.
-    seedWorkingWatchSweep(alreadyConfirmed);
-    refreshStatusPill();
-    pollSweepOnce();
-}
-
-// Stop tracking and settle the pill to Idle. Idempotent; refreshes the pill only
-// when it was actually showing Working, so a no-op stop (e.g. on view exit with
-// no sweep) doesn't touch the DOM.
-function stopSweepTracking() {
-    if (_sweepPoller) {
-        clearInterval(_sweepPoller);
-        _sweepPoller = null;
-    }
-    const wasActive = _sweepActive;
-    _sweepActive = false;
-    _sweepSeenActive = false;
-    if (wasActive) refreshStatusPill();
-}
-
-// One poll tick: ask the Worker whether claude-triage.yml has an in-flight run.
-// `active:true` confirms the sweep (and keeps the pill Working); `active:false`
-// after a confirmation means it finished → settle to Idle. Before any
-// confirmation, `active:false` is registration lag: stay Working until the grace
-// window elapses. A transient failure (`ok:false`) is ignored and retried. A
-// hard cap force-stops regardless so a wedged run can't pin the pill forever.
-function pollSweepOnce() {
-    if (Date.now() >= _sweepHardDeadline) {
-        finishSweep();
-        return;
-    }
-    Promise.resolve(fetchActiveRuns(resolveDispatchTarget(), 'triage')).then(function (res) {
-        if (!_sweepPoller && !_sweepActive) return; // torn down mid-flight
-        if (!res || res.ok === false) return; // transient — retry next tick
-        if (res.active) {
-            _sweepSeenActive = true;
-            if (!_sweepActive) { _sweepActive = true; refreshStatusPill(); }
-            return;
-        }
-        // active === false
-        if (_sweepSeenActive || Date.now() >= _sweepGraceDeadline) {
-            // Either the confirmed run has finished, or the grace window for a
-            // run that never registered has elapsed — settle to Idle.
-            finishSweep();
-        }
-    });
-}
-
-// A tracked sweep has reached a terminal point — the probe confirmed its run
-// finished, the grace window for a never-registered run elapsed, or the hard cap
-// force-stopped a wedged run. Settle the pill to Idle, then reconcile any row the
-// sweep left stuck at 'triaging'. Only reconcile when a sweep was genuinely being
-// tracked (`wasActive`), so a stray poll while idle is a pure no-op. This is
-// deliberately NOT folded into stopSweepTracking(): that also fires on plain
-// teardown (view exit, or a dispatch that never launched a run), where the sweep
-// may still be running and its rows must be left untouched.
-function finishSweep() {
-    const projectName = _sweepProjectName;
-    const wasActive = _sweepActive;
-    stopSweepTracking();
-    if (wasActive) reconcileStuckTriaging(projectName);
-}
-
-// Reconcile rows a finished triage sweep left behind. A flagged todo's
-// agent_queue row is set to 'triaging' at flag time (and again on re-triage after
-// an answer), before any run exists, and nothing ever revisits that row from the
-// client: dispatchTriage is fire-and-forget and the sweep poller only drives the
-// header pill. So if claude-triage.yml errors, times out, or exhausts its turns
-// before writing a verdict for a given row, that row is left at 'triaging'
-// indefinitely — sitting silently in the In-progress bucket with the pill back at
-// Idle and no way to tell the sweep failed. Once the tracked run is confirmed
-// finished, flip each still-'triaging' row for the swept project to a visible
-// 'failed' state (surfaced in the Stuck bucket) with an explanatory reason, so
-// the user can remove it and flag the task again rather than stall unseen. This
-// mirrors the reconcile pattern the shared store's dispatch reconciler uses for
-// in-flight ship rows. The queue is read fresh (not the possibly-stale render
-// cache) so a row the sweep DID resolve is never clobbered, and the board
-// repaints only when the swept project is still the one on screen.
-async function reconcileStuckTriaging(projectName) {
-    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
-    if (!projectId) return;
-    const rows = await fetchQueueRows(projectId);
-    const stuck = (Array.isArray(rows) ? rows : []).filter(function (r) {
-        return r && r.state === 'triaging';
-    });
-    if (!stuck.length) return;
-    let changedAny = false;
-    for (let i = 0; i < stuck.length; i++) {
-        const res = await listLogic.setAgentRunState(stuck[i].id, {
-            state: 'failed',
-            failure_reason: 'The triage sweep didn’t finish for this task. Remove it and flag the task again to retry.',
-        });
-        if (res && res.ok) changedAny = true;
-    }
-    if (changedAny && getSelectedProjectName() === projectName) {
-        refreshAgentQueue(projectName);
-    }
-}
-
-// ── derive-run tracking ──────────────────────────────────────────────
-// Drive the header pill (and the Draft button's disabled state) from the real
-// claude-derive.yml run for its whole duration, rather than a fixed 700ms timer.
-// Mirrors the triage-sweep tracker but with no row reconcile: a derive run's
-// results land as `proposed` rows and leave via Accept, so there's no stuck
-// state to clean up when it settles.
-
-// Begin tracking a derive run. Sets the pill optimistically to Working, arms the
-// poller, and kicks a one-shot poll so an already-finished run settles at once.
-// Always starts unconfirmed so the grace window covers the registration lag
-// before the run appears in the probe.
-function startDeriveTracking() {
-    const now = Date.now();
-    _deriveActive = true;
-    _deriveSeenActive = false;
-    _deriveGraceDeadline = now + SWEEP_GRACE_MS;
-    _deriveHardDeadline = now + SWEEP_HARD_CAP_MS;
-    if (!_derivePoller) {
-        _derivePoller = setInterval(pollDeriveOnce, SWEEP_POLL_MS);
-    }
-    refreshStatusPill();
-    pollDeriveOnce();
-}
-
-// Stop tracking and settle the pill to Idle, re-enabling the Draft button.
-// Idempotent; repaints only when it was actually showing Working so a no-op stop
-// doesn't churn the DOM. A full paint() (not just refreshStatusPill) is used so
-// the rebuilt assignment card picks up the cleared `_deriveActive` and drops its
-// "Drafting…" disabled state.
-function stopDeriveTracking() {
-    if (_derivePoller) {
-        clearInterval(_derivePoller);
-        _derivePoller = null;
-    }
-    const wasActive = _deriveActive;
-    _deriveActive = false;
-    _deriveSeenActive = false;
-    _deriveCorrelationId = null;
-    if (wasActive) paint();
-}
-
-// One poll tick: ask the Worker whether claude-derive.yml has an in-flight run.
-// `active:true` confirms the run (keeps the pill Working); `active:false` after a
-// confirmation means it finished → settle to Idle. Before any confirmation,
-// `active:false` is registration lag: stay Working until the grace window
-// elapses. A transient failure (`ok:false`) is ignored and retried. A hard cap
-// force-stops regardless so a wedged run can't pin the pill forever.
-function pollDeriveOnce() {
-    if (Date.now() >= _deriveHardDeadline) {
-        stopDeriveTracking();
-        return;
-    }
-    Promise.resolve(fetchActiveRuns(resolveDispatchTarget(), 'derive')).then(function (res) {
-        if (!_derivePoller && !_deriveActive) return; // torn down mid-flight
-        if (!res || res.ok === false) return; // transient — retry next tick
-        if (res.active) {
-            _deriveSeenActive = true;
-            if (!_deriveActive) { _deriveActive = true; refreshStatusPill(); }
-            return;
-        }
-        // active === false
-        if (_deriveSeenActive) {
-            // A confirmed run has finished — capture its correlation id and
-            // target before settling to Idle, then fetch the run's conclusion so
-            // a silent failure surfaces, and refresh the queue so proposals land
-            // even if the realtime push lagged.
-            const correlationId = _deriveCorrelationId;
-            const target = resolveDispatchTarget();
-            stopDeriveTracking();
-            finishDeriveRun(correlationId, target);
-        } else if (Date.now() >= _deriveGraceDeadline) {
-            // The grace window for a run that never registered has elapsed —
-            // there's no genuine run outcome to report, so settle silently.
-            stopDeriveTracking();
-        }
-    });
-}
-
-// Called once a confirmed derive run reports finished. Fetches the run's
-// conclusion by its correlation id (reusing the ship flow's pollRunStatus /
-// FAILURE_CONCLUSIONS machinery) and raises a failure toast when it failed;
-// then refreshes the queue so newly written proposals appear even if the
-// realtime push was missed. Never throws — a transient status miss just skips
-// the toast, and the queue refresh still runs.
-function finishDeriveRun(correlationId, target) {
-    const refresh = function () { refreshAgentQueue(getSelectedProjectName()); };
-    if (!correlationId) { refresh(); return; }
-    Promise.resolve(pollRunStatus({ correlationId: correlationId, target: target || null }))
-        .then(
-            function (res) {
-                if (res && res.ok !== false && res.status === 'completed'
-                    && FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1) {
-                    showInjectToast('Derive run failed — check the run.', 'error');
-                }
-            },
-            function () {}
-        )
-        .then(refresh);
-}
-
 // Update the header status pill in place to reflect the current Working/Idle
 // state, WITHOUT a full paint(). A full repaint here would rebuild — and reset —
 // the Run button while its click handler is mid-interaction, and would churn the
@@ -523,22 +288,10 @@ function refreshStatusPill() {
     const shipInFlight = rows.some(function (r) {
         return r && (r.state === 'dispatched' || r.state === 'running');
     });
-    const working = _sweepActive || _deriveActive || shipInFlight;
+    const working = isSweepActive() || isDeriveActive() || shipInFlight;
     pill.className = 'agentStatusPill' + (working ? ' agentStatusPill--working' : ' agentStatusPill--idle');
     const label = pill.querySelector('.agentStatusLabel');
     if (label) label.textContent = working ? 'Working' : 'Idle';
-}
-
-// Mount-time seed: a one-shot triage active_runs check so a sweep already
-// running (possibly started on another device) shows Working here too and is
-// tracked to completion. Fire-and-forget; a miss or transient error leaves the
-// pill as the row states dictate.
-function seedSweepState() {
-    Promise.resolve(fetchActiveRuns(resolveDispatchTarget(), 'triage')).then(function (res) {
-        if (res && res.ok !== false && res.active) {
-            startSweepTracking(true);
-        }
-    });
 }
 
 // Resolve the currently-selected project's name from the sidebar — the same
@@ -1553,13 +1306,13 @@ function buildLinkOffIcon() {
 // id, resolve the linked target) but sends dispatch_derive. Never throws.
 function fireDeriveRun(btn) {
     if (btn && btn.disabled) return;
-    if (_deriveActive) return;
+    if (isDeriveActive()) return;
     const projectName = getSelectedProjectName();
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     if (!projectId) return;
     // Instant local feedback so a double-tap can't fire two runs before the
     // first paint; the durable disabled/"Drafting…" state now comes from
-    // `_deriveActive` on every subsequent repaint.
+    // `isDeriveActive()` on every subsequent repaint.
     if (btn) {
         btn.disabled = true;
         btn.textContent = 'Drafting…';
@@ -1568,10 +1321,11 @@ function fireDeriveRun(btn) {
     // claude-derive.yml run to completion (settling to Idle when GitHub reports
     // it done), mirroring fireTriageSweep's dispatch handling.
     startDeriveTracking();
-    // Retain the run's correlation id so its conclusion can be looked up on
-    // completion. stopDeriveTracking clears it on any failure/teardown.
-    _deriveCorrelationId = mintEntryId();
-    Promise.resolve(dispatchDerive(projectId, _deriveCorrelationId, resolveDispatchTarget()))
+    // Retain the run's correlation id in the tracker so its conclusion can be
+    // looked up on completion. stopDeriveTracking clears it on any failure/teardown.
+    const correlationId = mintEntryId();
+    setDeriveCorrelationId(correlationId);
+    Promise.resolve(dispatchDerive(projectId, correlationId, resolveDispatchTarget()))
         .then(
             function (res) {
                 // If the dispatch itself failed, clear the optimistic Working
@@ -1991,7 +1745,7 @@ function paint() {
     // dot) when a triage sweep OR a derive run is in flight (each tracked live
     // via the Worker's workflow-scoped active_runs probe) OR any row is running
     // a ship run (dispatched/running), else muted "Idle". Sweeps and derive runs
-    // aren't captured by any lasting row state, so `_sweepActive`/`_deriveActive`
+    // aren't captured by any lasting row state, so isSweepActive()/isDeriveActive()
     // — not the row counts — carry those signals.
     const controls = document.createElement('div');
     controls.className = 'agentHeaderControls';
@@ -1999,7 +1753,7 @@ function paint() {
     const shipInFlight = rows.some(function (r) {
         return r && (r.state === 'dispatched' || r.state === 'running');
     });
-    const working = _sweepActive || _deriveActive || shipInFlight;
+    const working = isSweepActive() || isDeriveActive() || shipInFlight;
     const statusPill = document.createElement('span');
     statusPill.id = 'agentStatusPill';
     statusPill.className = 'agentStatusPill' + (working ? ' agentStatusPill--working' : ' agentStatusPill--idle');
@@ -2218,17 +1972,11 @@ export function subscribeAgentView() {
 export function unsubscribeAgentView() {
     // Stop the triage-sweep poller; a reopen re-seeds it via seedSweepState.
     stopSweepTracking();
-    // Stop the derive-run poller and clear its state directly (no settle paint —
-    // the board is being torn down). Unlike the sweep, derive tracking is local
-    // dispatch only (no cross-device mount seed), so a backgrounded board simply
-    // drops the in-flight derive signal rather than re-seeding on reopen.
-    if (_derivePoller) {
-        clearInterval(_derivePoller);
-        _derivePoller = null;
-    }
-    _deriveActive = false;
-    _deriveSeenActive = false;
-    _deriveCorrelationId = null;
+    // Stop the derive-run poller silently — no settle paint, since the board is
+    // being torn down. Unlike the sweep, derive tracking is local dispatch only (no
+    // cross-device mount seed), so a backgrounded board simply drops the in-flight
+    // derive signal rather than re-seeding on reopen.
+    stopDeriveTracking(true);
 }
 
 // ── PERSISTENT AGENT-WORKING WATCH ──
