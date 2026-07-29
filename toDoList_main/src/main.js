@@ -33,6 +33,8 @@ import {
     setChatPaneCollapsed,
     getTaskSort,
     setTaskSort,
+    readQueueWidthPref,
+    writeQueueWidthPref,
 } from './prefs.js';
 import {
     applyTheme,
@@ -633,7 +635,21 @@ function component() {
     descDetailEmpty.className = 'descDetailEmpty';
     descDetailEmpty.textContent = 'Open a task to see its details here.';
     descDetailPane.appendChild(descDetailEmpty);
+    // Draggable resize handle between the queue rail (#mainBar) and the detail
+    // pane, living in its own narrow grid track (see #queueResizeHandle in the
+    // desktop CSS). Inserted BEFORE the detail pane so DOM order is queue →
+    // handle → detail, matching the visual left-to-right order. Pointer drag
+    // widens the queue rail live and persists the chosen width; it is scoped to
+    // this element so it never interferes with row clicks/drags inside #mainBar.
+    const queueResizeHandle = document.createElement('div');
+    queueResizeHandle.id = 'queueResizeHandle';
+    queueResizeHandle.setAttribute('role', 'separator');
+    queueResizeHandle.setAttribute('aria-orientation', 'vertical');
+    queueResizeHandle.setAttribute('aria-label', 'Resize task queue');
+    main.appendChild(queueResizeHandle);
     main.appendChild(descDetailPane);
+    setupQueueResizeHandle(queueResizeHandle);
+    applyStoredQueueWidth();
     // Re-place an open panel into the host matching the current breakpoint when
     // the viewport crosses 1024px, so a resize mid-open moves the panel between
     // the inline slot and the detail pane without losing its handlers or state.
@@ -3591,6 +3607,84 @@ export function firstFocusableInActiveMainView() {
     }
     if (allRows.length > 0) return allRows[0];
     return null;
+}
+
+// ── desktop queue-rail resize handle ──
+// At ≥1024px the STREAM view nests a queue|detail split inside #mainSec, driven
+// by the --queue-width custom property (see the desktop CSS). The handle between
+// the two columns lets the user widen the queue rail; the width is clamped to a
+// meaningful range and persisted so a resized split survives reloads. A custom
+// property (never an inline grid-template-columns) is used so the STRUCTURE
+// single-track collapse rule still wins in that view.
+const QUEUE_WIDTH_MIN = 260;
+const QUEUE_WIDTH_MAX = 480;
+
+function clampQueueWidth(px) {
+    return Math.max(QUEUE_WIDTH_MIN, Math.min(QUEUE_WIDTH_MAX, px));
+}
+
+// Write the queue width onto #mainSec as a custom property. Passing null clears
+// it so the CSS falls back to its responsive default.
+function setQueueWidthVar(px) {
+    const main = document.getElementById('mainSec');
+    if (!main) return;
+    if (px == null) main.style.removeProperty('--queue-width');
+    else main.style.setProperty('--queue-width', px + 'px');
+}
+
+// Restore a persisted queue width on boot. A missing / unparseable pref leaves
+// the CSS default in place; a stored value is clamped before applying so a
+// hand-edited or stale-range value can't push the rail out of bounds.
+function applyStoredQueueWidth() {
+    const stored = readQueueWidthPref();
+    if (!Number.isNaN(stored)) setQueueWidthVar(clampQueueWidth(stored));
+}
+
+// Wire pointer drag on the handle: pointerdown captures the pointer, pointermove
+// maps the cursor's X (relative to the queue rail's left edge) to a clamped
+// width applied live, and pointerup/cancel end the drag and persist the result.
+// Scoped entirely to the handle element (with pointer capture) so it never
+// competes with row click/drag interactions in #mainBar. The split only exists
+// at desktop widths, so a drag started below 1024px is ignored.
+function setupQueueResizeHandle(handle) {
+    if (!handle) return;
+    let dragging = false;
+    let pointerId = null;
+
+    handle.addEventListener('pointerdown', function (e) {
+        if (window.innerWidth < 1024) return;
+        dragging = true;
+        pointerId = e.pointerId;
+        handle.classList.add('dragging');
+        try { handle.setPointerCapture(e.pointerId); } catch (_) { /* not captured */ }
+        e.preventDefault();
+    });
+
+    handle.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        const mainBar = document.getElementById('mainBar');
+        if (!mainBar) return;
+        // Width from the queue rail's own left edge, so #mainSec padding (or the
+        // fixed sidebar) never skews the mapping.
+        const width = clampQueueWidth(e.clientX - mainBar.getBoundingClientRect().left);
+        setQueueWidthVar(width);
+        e.preventDefault();
+    });
+
+    function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        handle.classList.remove('dragging');
+        try { if (pointerId != null) handle.releasePointerCapture(pointerId); } catch (_) { /* already released */ }
+        pointerId = null;
+        const main = document.getElementById('mainSec');
+        if (!main) return;
+        const px = parseInt(main.style.getPropertyValue('--queue-width'), 10);
+        if (!Number.isNaN(px)) writeQueueWidthPref(px);
+    }
+
+    handle.addEventListener('pointerup', endDrag);
+    handle.addEventListener('pointercancel', endDrag);
 }
 
 // Apply the top-level Projects / Agent view. Module-scope so both the

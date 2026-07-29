@@ -5,13 +5,19 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-07-29',
+        added: [
+            "On desktop, drag the divider between the task queue and the detail pane in Stream view to resize the queue, and it stays that width across reloads.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-07-28',
         fixed: [
             "On mobile, a task waiting on a mockup now lets you generate and choose an A/B/C variant right in its editor, comparing the three through tabs above a single preview.",
             "The calendar chip in the mobile task-create row now uses a themed icon that recolors with light and dark mode instead of a fixed-color emoji.",
             "On mobile, a task row's run-status glyph now aligns with the title rail instead of hugging the row's left edge.",
             "A task that skips its mockup step and is sent to the agent directly now shows a pending indicator while it runs, instead of staying on its mockup badge.",
-            "On desktop, the Structure tab's NEXT REFACTOR card now sits at the top of the left rail instead of below the node tree.",
         ],
     },
 ];

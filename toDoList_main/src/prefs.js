@@ -11,6 +11,7 @@
 
 export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
+export const QUEUE_WIDTH_KEY = 'todoapp_queueWidth';
 export const CHANGELOG_LAST_SEEN_KEY = 'todoapp_changelogLastSeen';
 export const ACTIVE_VIEW_KEY = 'todoapp_active_view';
 export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
@@ -60,6 +61,35 @@ export function writeSidebarWidthPref(width) {
 export function hasSidebarWidthPref() {
     try {
         return localStorage.getItem(SIDEBAR_WIDTH_KEY) !== null;
+    } catch (e) {
+        return false;
+    }
+}
+
+// ── desktop queue-rail width (Stream view split) ──
+// At ≥1024px the STREAM view nests a queue|detail split inside #mainSec. A
+// draggable handle between the two lets the user widen the queue rail; the
+// chosen width persists here so a resized split is restored on reload. Mirrors
+// the sidebar-width accessors above: readQueueWidthPref returns NaN when nothing
+// is stored or the value can't be parsed, and callers fall back to the
+// responsive CSS default in that case.
+export function readQueueWidthPref() {
+    try {
+        return parseInt(localStorage.getItem(QUEUE_WIDTH_KEY), 10);
+    } catch (e) {
+        return NaN;
+    }
+}
+
+export function writeQueueWidthPref(width) {
+    try {
+        localStorage.setItem(QUEUE_WIDTH_KEY, String(width));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+export function hasQueueWidthPref() {
+    try {
+        return localStorage.getItem(QUEUE_WIDTH_KEY) !== null;
     } catch (e) {
         return false;
     }
