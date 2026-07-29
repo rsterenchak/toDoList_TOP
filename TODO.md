@@ -34,3 +34,24 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-29
   <!-- id: 21b043fb-2e42-4b21-a6bd-310f0b01c318 -->
+
+- [ ] **[MEDIUM]** Make the mobile description modal phase-first with the entry behind a disclosure
+  - Type: feature
+  - Description: When a task is parked in a queue phase, the thing the user opened the modal for is the question, the draft, or the shipped diff — not the TODO.md entry text. Reorder the modal so that in a blocked phase the phase block owns the visible area and the entry region collapses behind a single disclosure row at the foot, leaving the modal readable on a short phone without scrolling past a 180px textarea to reach the answer field. In every non-blocked phase the modal renders exactly as it does today.
+  - Behavior:
+    1. When `derivePhase(item)` is `asking`, `drafted`, `stuck`, `mockup`, or `accept`, the header eyebrow reads the phase name in amber (`#ffbd5e`; `#ff5d7a` for `stuck`) instead of the static "Description", and the dialog border takes the same accent.
+    2. The phase block renders directly beneath the rail at full body width. THE ENTRY label, the textarea, the file picker, and the authoring mode strip collapse into one disclosure row pinned below, reading `THE ENTRY` with a `tap to expand ▾` affordance.
+    3. Tapping the disclosure expands the entry region inline beneath it and flips the affordance to `▴`; the body scrolls to reach it. Tapping again collapses.
+    4. Disclosure state is transient — every open of the modal starts collapsed. Do not persist it.
+    5. In `idea`, `draft`, `running`, `done`, and `none`, the modal is byte-for-byte its current layout: eyebrow reads "Description", entry region expanded, no disclosure row rendered at all.
+    6. The actions row and the manual status control keep their current position below the scroll region and stay reachable in both states.
+  - Implementation notes:
+    - Drive the whole switch from the phase already computed in `refreshPhaseUI` so a mid-session phase change (a run shipping behind the open modal, an answer clearing `needs_words`) re-lays out the modal without a second `derivePhase` call.
+    - `isBlockedPhase` in `phase.js` is exactly the blocked set this keys off — use it rather than inlining the five phases, so a sixth blocked phase later lands in one place.
+    - The disclosure is a `<button>` with `aria-expanded` and `aria-controls` pointing at the entry region, not a bare div — it is a real control and needs keyboard activation and a 44px tap target.
+    - Do not use `display: none` on the entry region from a stylesheet alone: per the repo's `[hidden]` rule, author-level `display` declarations outrank `[hidden] { display: none }`, so the collapsed region needs an explicit `[hidden]` guard with `display: none !important` the way the `claude*` family already carries.
+    - Keep all styling in `style.css` as classes — no inline `style.display` writes from `modals.js`.
+  - Out of scope: the desktop `#descSibling` panel ordering, which keeps rail → phase block → entry unchanged. No change to which blocks mount (that is the preceding entry).
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e4648af2-f484-4ac7-ad96-fddcef1a2e9d -->
