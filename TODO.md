@@ -122,7 +122,7 @@
   - Completed: 2026-07-29
   <!-- id: 5e293a6c-e056-433c-a30c-cb65ebccf0a1 -->
 
-- [ ] **[MEDIUM]** Coverage tab: add Derive and the proposal review modal
+- [x] **[MEDIUM]** Coverage tab: add Derive and the proposal review modal
   - Type: feature
   - Description: The coverage tab reports on an assignment but cannot act on it. The derive loop — dispatch `claude-derive.yml`, which reads `assignment.md`, enumerates uncovered rubric aspects, and writes a `proposed` row per aspect — is still only reachable from the Agent board, as is accepting or dismissing those proposals. Add a Derive action to the tab with a pending state driven by the now-relocated derive tracker, a count of waiting proposals, and a modal for reviewing them as a batch. Proposals stay out of the task stream by design: they are `agent_queue` rows with no todo behind them, and accepting one injects its draft and dispatches a run exactly as the board does today.
   - Behavior: The coverage tab shows a Derive action beneath the coverage summary. Tapping it dispatches a derive run for the active project and switches to a pending state — the action is replaced by a running indicator while the tracker reports the run in flight, and returns to idle when it settles. When `proposed` rows exist, the tab shows a "Review N proposals" action and the COVERAGE tab label carries a count badge. That action opens a modal listing each proposal with its aspect tag, its title, its description preview, and Accept and Dismiss controls. Accept injects the proposal's draft and dispatches a run through the same path the board uses; Dismiss removes the queue row. The list updates live as rows are accepted or dismissed, and the modal closes on its own when the last proposal is resolved. With no proposals, neither the review action nor the badge appears.
@@ -140,5 +140,5 @@
     - Test: Derive dispatches once and disables while in flight; the pending state survives a pane close and reopen; the badge and review action appear only with proposals present; Accept dispatches through `dispatchDraft` and removes the proposal; Dismiss removes the row; the modal closes when the last proposal is resolved; and the count updates on a realtime change.
   - Out of scope: Putting proposals in the task stream — they have no todo, and giving them one would mean inventing a synthetic task and reconciling two lifecycles. The derive workflow, `.claude/derive.md`, and what it writes. The coverage summary and breakdown modal. The board's own proposed bucket, which keeps working until deletion. `isAgentUnavailable` and the availability gate, which is the next entry.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: 1ce1ff70-05e7-4b25-a420-8edca16bd495 -->

@@ -1,7 +1,21 @@
 import { listLogic } from './listLogic.js';
-import { readAssignmentFromWorker, readRepoFile, showInjectToast } from './inject.js';
+import {
+    readAssignmentFromWorker,
+    readRepoFile,
+    showInjectToast,
+    mintEntryId,
+    dispatchDerive,
+} from './inject.js';
 import { showAssignmentEditorModal, wireModalDismiss } from './modals.js';
-import { getQueueRows } from './agentQueueStore.js';
+import {
+    getQueueRows,
+    onQueueChange,
+    isDeriveActive,
+    startDeriveTracking,
+    stopDeriveTracking,
+    setDeriveCorrelationId,
+} from './agentQueueStore.js';
+import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 
 // The assignment / rubric-coverage subsystem, extracted verbatim from
 // agentView.js so it can be re-homed as a chat-pane tab later. It owns reading
@@ -13,18 +27,19 @@ import { getQueueRows } from './agentQueueStore.js';
 // nothing a user sees changes.
 //
 // The subsystem calls back into the board to read the selected project, repaint,
-// resolve the read target, toggle a bucket's collapse, and reach the board-owned
-// derive run state (getSelectedProjectName / paint / resolveReadTarget /
-// isBucketCollapsed / setBucketCollapsed / isDeriveActive / fireDeriveRun). Those
-// live in agentView.js and importing them here would create a view → module →
-// view cycle, so the board injects them once at load via
-// configureAssignmentCoverage. Until it does, the bindings are inert no-ops.
+// resolve the read target, toggle a bucket's collapse, and fire the board's own
+// derive dispatch (getSelectedProjectName / paint / resolveReadTarget /
+// isBucketCollapsed / setBucketCollapsed / fireDeriveRun). Those live in
+// agentView.js and importing them here would create a view → module → view cycle,
+// so the board injects them once at load via configureAssignmentCoverage. Until it
+// does, the bindings are inert no-ops. The relocated derive tracker itself
+// (isDeriveActive / startDeriveTracking / …) is imported directly from
+// agentQueueStore so the coverage tab's own Derive action works without the board.
 let getSelectedProjectName = function () { return ''; };
 let paint = function () {};
 let resolveReadTarget = function () { return null; };
 let isBucketCollapsed = function () { return false; };
 let setBucketCollapsed = function () {};
-let isDeriveActive = function () { return false; };
 let fireDeriveRun = function () {};
 
 // Wire the board-side callbacks the subsystem depends on. Called once by
@@ -36,7 +51,6 @@ export function configureAssignmentCoverage(deps) {
     if (deps && typeof deps.resolveReadTarget === 'function') resolveReadTarget = deps.resolveReadTarget;
     if (deps && typeof deps.isBucketCollapsed === 'function') isBucketCollapsed = deps.isBucketCollapsed;
     if (deps && typeof deps.setBucketCollapsed === 'function') setBucketCollapsed = deps.setBucketCollapsed;
-    if (deps && typeof deps.isDeriveActive === 'function') isDeriveActive = deps.isDeriveActive;
     if (deps && typeof deps.fireDeriveRun === 'function') fireDeriveRun = deps.fireDeriveRun;
 }
 
@@ -1095,18 +1109,101 @@ function computePaneBreakdown(aspects, labels, rows) {
     return { blocked: blocked, inProgress: inProgress, manual: manual };
 }
 
+// The label shown on the pane's Derive action, and the disabled pending text it
+// swaps to while a derive run is in flight. Derived from `isDeriveActive()` on
+// each paint so a repaint mid-run keeps the disabled "Deriving…" state until the
+// tracked run settles, rather than a one-shot timer.
+const DERIVE_LABEL = 'Derive tasks';
+const DERIVE_PENDING_LABEL = 'Deriving…';
+
+// The active project's `proposed` queue rows — derive output waiting on Accept /
+// Dismiss. `getQueueRows()` is already scoped to the loaded project, so this needs
+// no further project filter. This is the SINGLE source the pane's count badge, the
+// "Review N proposals" action, and the review modal all derive from, so they can
+// never disagree about how many proposals are outstanding.
+export function getProposedRows() {
+    return getQueueRows().filter(function (r) { return r && r.state === 'proposed'; });
+}
+
+// Dispatch a derive run for the active project from the coverage pane. Mirrors the
+// board's fireDeriveRun (resolve the project id, mint an entry/correlation id,
+// resolve the linked target) but is self-contained so the coverage tab drives
+// derive without the board mounted: it calls the relocated startDeriveTracking (the
+// SAME single module-level poller the board uses — never a second one) and
+// dispatchDerive directly. Fire-and-forget; the pending state is read back from
+// `isDeriveActive()` on every paint. On a dispatch failure the tracker is stopped
+// and the button restored locally, since no pane repaint fires on that path.
+function fireDeriveFromPane(btn) {
+    if (btn && btn.disabled) return;
+    if (isDeriveActive()) return;
+    const projectName = getSelectedProjectName();
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    if (!projectId) return;
+    // Instant local feedback so a double-tap can't fire two runs before the first
+    // paint; the durable disabled state now comes from isDeriveActive().
+    if (btn) { btn.disabled = true; btn.textContent = DERIVE_PENDING_LABEL; }
+    startDeriveTracking();
+    const correlationId = mintEntryId();
+    setDeriveCorrelationId(correlationId);
+    Promise.resolve(dispatchDerive(projectId, correlationId, resolveDispatchTarget()))
+        .then(
+            function (res) {
+                if (res && res.ok === false) {
+                    stopDeriveTracking();
+                    if (btn) { btn.disabled = false; btn.textContent = DERIVE_LABEL; }
+                }
+            },
+            function () {
+                stopDeriveTracking();
+                if (btn) { btn.disabled = false; btn.textContent = DERIVE_LABEL; }
+            }
+        );
+}
+
+// The pane's Derive action: a full-width button that dispatches a derive run and
+// disables itself (via isDeriveActive) while the tracked run is in flight, so a
+// second dispatch can't queue behind the first (derive is concurrency-limited to
+// one at a time by the workflow).
+function buildDeriveAction() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'claudeCoverageDerive';
+    if (isDeriveActive()) {
+        btn.textContent = DERIVE_PENDING_LABEL;
+        btn.disabled = true;
+    } else {
+        btn.textContent = DERIVE_LABEL;
+    }
+    btn.addEventListener('click', function () { fireDeriveFromPane(btn); });
+    return btn;
+}
+
+// The pane's "Review N proposals" action — present only when derive has produced
+// unaccepted `proposed` rows. Opens the batch review modal. Returns null when there
+// are no proposals so the caller appends nothing.
+function buildProposalsAction() {
+    const proposals = getProposedRows();
+    if (!proposals.length) return null;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'claudeCoverageProposals';
+    btn.textContent = 'Review ' + proposals.length + ' proposal' +
+        (proposals.length === 1 ? '' : 's');
+    btn.addEventListener('click', function () { showProposalReviewModal(); });
+    return btn;
+}
+
 // The COVERAGE tab's body for the chat pane — a slimmer, pane-native rendering of
 // the same assignment/coverage data the board's buildAssignmentCard shows, minus
-// the board-specific chrome (the derive "Draft tasks from this" button and the
-// agentAssignment* card frame, which don't belong in a 360px chat column and
-// whose derive dispatch is a later entry). Reuses the module's own data functions
+// the board's agentAssignment* card frame. Reuses the module's own data functions
 // (describeAssignment's cached descriptor, buildCoverageSummary, computePaneBreakdown,
 // showCoverageDetailModal) so the numbers and the drill-in modal stay identical to
 // the board. Renders the filled summary (headline + bar + counts line + breakdown
 // action), the unfilled invite, or the requirements-only words/sections line, each
-// with an edit action into the assignment editor. Callers gate mounting on
-// getAssignmentState() being 'unfilled' / 'filled'; the absent guard here is
-// defensive.
+// with an edit action into the assignment editor; a filled spec also gets the
+// Derive action and — when proposals are waiting — the batch review action. Callers
+// gate mounting on getAssignmentState() being 'unfilled' / 'filled'; the absent
+// guard here is defensive.
 export function buildCoveragePane() {
     const a = _assignment;
     const pane = document.createElement('div');
@@ -1131,7 +1228,8 @@ export function buildCoveragePane() {
 
     pane.appendChild(header);
 
-    // Unfilled: an invite to add the spec, no coverage bar to draw yet.
+    // Unfilled: an invite to add the spec, no coverage bar to draw yet and nothing
+    // for derive to read, so no Derive action either.
     if (a.state !== 'filled') {
         const prompt = document.createElement('div');
         prompt.className = 'claudeCoveragePrompt';
@@ -1141,38 +1239,263 @@ export function buildCoveragePane() {
         return pane;
     }
 
-    // Filled without parsed rubric aspects: degrade to the words/sections line
-    // rather than drawing an empty bar.
     const aspects = Array.isArray(a.aspects) ? a.aspects : [];
     if (!aspects.length) {
+        // Filled without parsed rubric aspects: degrade to the words/sections line
+        // rather than drawing an empty bar.
         const meta = document.createElement('div');
         meta.className = 'claudeCoverageMeta';
         meta.textContent = a.words + ' words · ' + a.sections + ' sections';
         pane.appendChild(meta);
-        return pane;
+    } else {
+        // Filled with aspects: the shared coverage summary (headline + segmented bar,
+        // itself a drill-in into the detail modal), a secondary counts line, and an
+        // explicit breakdown action.
+        const rows = getQueueRows();
+        pane.appendChild(buildCoverageSummary(aspects, rows));
+
+        const labels = (a.aspectLabels && typeof a.aspectLabels === 'object')
+            ? a.aspectLabels : {};
+        const bd = computePaneBreakdown(aspects, labels, rows);
+        const counts = document.createElement('div');
+        counts.className = 'claudeCoverageCounts';
+        counts.textContent = bd.blocked + ' blocked · ' + bd.inProgress +
+            ' in progress · ' + bd.manual + ' manual';
+        pane.appendChild(counts);
+
+        const breakdownBtn = document.createElement('button');
+        breakdownBtn.type = 'button';
+        breakdownBtn.className = 'claudeCoverageBreakdown';
+        breakdownBtn.textContent = 'View full breakdown';
+        breakdownBtn.addEventListener('click', function () { showCoverageDetailModal(); });
+        pane.appendChild(breakdownBtn);
     }
 
-    // Filled with aspects: the shared coverage summary (headline + segmented bar,
-    // itself a drill-in into the detail modal), a secondary counts line, and an
-    // explicit breakdown action.
-    const rows = getQueueRows();
-    pane.appendChild(buildCoverageSummary(aspects, rows));
-
-    const labels = (a.aspectLabels && typeof a.aspectLabels === 'object')
-        ? a.aspectLabels : {};
-    const bd = computePaneBreakdown(aspects, labels, rows);
-    const counts = document.createElement('div');
-    counts.className = 'claudeCoverageCounts';
-    counts.textContent = bd.blocked + ' blocked · ' + bd.inProgress +
-        ' in progress · ' + bd.manual + ' manual';
-    pane.appendChild(counts);
-
-    const breakdownBtn = document.createElement('button');
-    breakdownBtn.type = 'button';
-    breakdownBtn.className = 'claudeCoverageBreakdown';
-    breakdownBtn.textContent = 'View full breakdown';
-    breakdownBtn.addEventListener('click', function () { showCoverageDetailModal(); });
-    pane.appendChild(breakdownBtn);
+    // Filled state (aspects or not): a Derive action to enumerate uncovered aspects
+    // into `proposed` rows, and — when derive has produced any — a batch review
+    // action. Derive reads the raw assignment.md, so it belongs even on a
+    // filled-but-aspectless spec.
+    pane.appendChild(buildDeriveAction());
+    const proposalsAction = buildProposalsAction();
+    if (proposalsAction) pane.appendChild(proposalsAction);
 
     return pane;
+}
+
+// The currently-open proposal review modal's live-update hook (or null when no
+// modal is open). A single module-level onQueueChange listener drives it, so a
+// proposal accepted/dismissed here or on another device re-renders the list — and
+// closes the modal when the last proposal is resolved — without stacking one
+// listener per open.
+let _proposalModal = null;
+let _proposalRepaintWired = false;
+function ensureProposalRepaintListener() {
+    if (_proposalRepaintWired) return;
+    _proposalRepaintWired = true;
+    onQueueChange(function () {
+        if (_proposalModal) _proposalModal.onQueueChange();
+    });
+}
+
+// One proposal card in the review modal: the aspect badge (when tagged), the
+// proposal title, a description preview, and Accept / Dismiss controls. Accept
+// ships the proposal's draft through the SAME dispatchDraft path Dispatch / Retry /
+// the board's Accept use (mint an id, inject the entry, dispatch a run); the row
+// transitions proposed → dispatched and the queue-change repaint drops it from the
+// list. Dismiss removes the queue row via listLogic.unflagAgentTask (the board's ×
+// remove control) — cheap to redo by deriving again, so no confirm. Both disable
+// while their action is in flight and re-enable with an inline error on failure.
+function buildProposalCard(row) {
+    const card = document.createElement('div');
+    card.className = 'proposalCard';
+
+    const headRow = document.createElement('div');
+    headRow.className = 'proposalCardHead';
+    const badge = buildAspectBadge(row);
+    if (badge) headRow.appendChild(badge);
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const titleText = (ctx.title || row.title || 'Proposed task').toString().trim()
+        || 'Proposed task';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'proposalCardTitle';
+    titleEl.textContent = titleText;
+    headRow.appendChild(titleEl);
+    card.appendChild(headRow);
+
+    const description = (ctx.description || '').toString().trim();
+    if (description) {
+        const preview = document.createElement('p');
+        preview.className = 'proposalCardPreview';
+        preview.textContent = description;
+        card.appendChild(preview);
+    }
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'proposalCardError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+
+    const actions = document.createElement('div');
+    actions.className = 'proposalCardActions';
+
+    const dismiss = document.createElement('button');
+    dismiss.type = 'button';
+    dismiss.className = 'proposalDismissBtn';
+    dismiss.textContent = 'Dismiss';
+
+    const accept = document.createElement('button');
+    accept.type = 'button';
+    accept.className = 'proposalAcceptBtn';
+    accept.textContent = 'Accept';
+
+    const draftText = (row.draft || '').trim();
+
+    function fail(btn, restoreLabel, message) {
+        accept.disabled = false;
+        dismiss.disabled = false;
+        btn.classList.remove('is-pending');
+        btn.textContent = restoreLabel;
+        errorEl.textContent = message;
+        errorEl.hidden = false;
+    }
+
+    accept.addEventListener('click', function () {
+        if (accept.disabled) return;
+        if (!draftText) { fail(accept, 'Accept', 'No proposal to accept.'); return; }
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        accept.disabled = true;
+        dismiss.disabled = true;
+        accept.classList.add('is-pending');
+        accept.textContent = 'Accepting…';
+        Promise.resolve(dispatchDraft(row, draftText, row.entry_id)).then(function (res) {
+            // On success the row leaves `proposed`; the queue-change repaint drops
+            // it from the list, so there's nothing to do here.
+            if (res && res.ok) return;
+            fail(accept, 'Accept', (res && res.error) || 'Could not accept. Try again.');
+        }).catch(function () {
+            fail(accept, 'Accept', 'Could not accept. Try again.');
+        });
+    });
+
+    dismiss.addEventListener('click', function () {
+        if (dismiss.disabled) return;
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        accept.disabled = true;
+        dismiss.disabled = true;
+        dismiss.classList.add('is-pending');
+        dismiss.textContent = 'Dismissing…';
+        Promise.resolve(listLogic.unflagAgentTask(row.id)).then(function (res) {
+            if (res && res.ok) return;
+            fail(dismiss, 'Dismiss', 'Could not dismiss. Try again.');
+        }).catch(function () {
+            fail(dismiss, 'Dismiss', 'Could not dismiss. Try again.');
+        });
+    });
+
+    actions.appendChild(errorEl);
+    actions.appendChild(dismiss);
+    actions.appendChild(accept);
+    card.appendChild(actions);
+    return card;
+}
+
+// The batch proposal review modal — lists every waiting `proposed` row with its
+// aspect tag, title, description preview, and Accept / Dismiss controls. Built with
+// the shared three-way dismiss (close X, backdrop, Escape) and focus restore,
+// matching showCoverageDetailModal so the two modals in this subsystem read alike.
+// The list updates live on onQueueChange (a proposal accepted or dismissed here or
+// on another device), and the modal closes itself when the last proposal resolves.
+// A no-op when there are no proposals to review.
+export function showProposalReviewModal() {
+    if (!getProposedRows().length) return;
+
+    const prior = document.getElementById('proposalReviewModalBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'proposalReviewModalBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'proposalReviewModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'proposalReviewModalTitleText');
+
+    const header = document.createElement('div');
+    header.id = 'proposalReviewModalHeader';
+
+    const title = document.createElement('div');
+    title.id = 'proposalReviewModalTitle';
+
+    const eyebrow = document.createElement('span');
+    eyebrow.id = 'proposalReviewModalEyebrow';
+    eyebrow.textContent = 'PROPOSALS';
+
+    const titleText = document.createElement('span');
+    titleText.id = 'proposalReviewModalTitleText';
+
+    title.appendChild(eyebrow);
+    title.appendChild(titleText);
+
+    const closeX = document.createElement('button');
+    closeX.id = 'proposalReviewModalClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close proposal review');
+    closeX.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const body = document.createElement('div');
+    body.id = 'proposalReviewModalBody';
+
+    const actions = document.createElement('div');
+    actions.id = 'proposalReviewModalActions';
+    const closeBtn = document.createElement('button');
+    closeBtn.id = 'proposalReviewModalCloseBtn';
+    closeBtn.type = 'button';
+    closeBtn.textContent = 'Close';
+    actions.appendChild(closeBtn);
+
+    dialog.appendChild(header);
+    dialog.appendChild(body);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    let closeRef = null;
+    const closeFn = function () { if (closeRef) closeRef(); };
+
+    // Re-render the list from the live proposal set. Closes the modal outright once
+    // the last proposal is resolved so an empty shell never lingers.
+    function renderList() {
+        const proposals = getProposedRows();
+        if (!proposals.length) { closeFn(); return; }
+        titleText.textContent = proposals.length + ' proposal' +
+            (proposals.length === 1 ? '' : 's') + ' to review';
+        body.textContent = '';
+        proposals.forEach(function (row) { body.appendChild(buildProposalCard(row)); });
+    }
+
+    _proposalModal = { onQueueChange: renderList };
+    ensureProposalRepaintListener();
+    renderList();
+
+    const previouslyFocused = document.activeElement;
+    closeBtn.focus();
+
+    closeRef = wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX, closeBtn],
+        onClose: function () {
+            _proposalModal = null;
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
+        },
+    });
 }

@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-29',
         added: [
-            "Coursework projects now show a Coverage tab in the Claude chat pane with the assignment summary, rubric coverage bar, and a full breakdown view.",
+            "The Coverage tab now has a Derive action that drafts tasks from the assignment rubric, plus a badge and review modal to accept or dismiss the proposals it produces.",
         ],
         fixed: [
             "A task whose run has already shipped now shows its shipped status as soon as the row appears, instead of a stale badge that lingered until reload.",
