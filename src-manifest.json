@@ -1,10 +1,11 @@
 {
-  "generatedAt": "2026-07-29T11:29:09.351Z",
-  "sha": "b968452c307e9532aa8faad12cc07bacda56b6bc",
+  "generatedAt": "2026-07-29T13:51:52.258Z",
+  "sha": "750bda1c9a707c2ef74f37c0d099667034c66f51",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
     "agentView.js",
+    "assignmentCoverage.js",
     "auth.js",
     "authoringModeStrip.js",
     "captureCard.js",
@@ -143,11 +144,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 2954,
+      "line": 2004,
       "files": [
         {
           "file": "agentView.js",
-          "line": 2954
+          "line": 2004
         }
       ]
     },
@@ -171,11 +172,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 215,
+      "line": 232,
       "files": [
         {
           "file": "agentView.js",
-          "line": 215
+          "line": 232
         }
       ]
     },
@@ -1686,12 +1687,12 @@
     {
       "selector": "#coverageDetailModal",
       "label": "Coverage Detail Modal",
-      "file": "agentView.js",
-      "line": 2282,
+      "file": "assignmentCoverage.js",
+      "line": 814,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2282
+          "file": "assignmentCoverage.js",
+          "line": 814
         },
         {
           "file": "style.css",
@@ -1702,12 +1703,12 @@
     {
       "selector": "#coverageDetailModalActions",
       "label": "Coverage Detail Modal Actions",
-      "file": "agentView.js",
-      "line": 2357,
+      "file": "assignmentCoverage.js",
+      "line": 889,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2357
+          "file": "assignmentCoverage.js",
+          "line": 889
         },
         {
           "file": "style.css",
@@ -1718,12 +1719,12 @@
     {
       "selector": "#coverageDetailModalBackdrop",
       "label": "Coverage Detail Modal Backdrop",
-      "file": "agentView.js",
-      "line": 2279,
+      "file": "assignmentCoverage.js",
+      "line": 811,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2279
+          "file": "assignmentCoverage.js",
+          "line": 811
         },
         {
           "file": "style.css",
@@ -1734,12 +1735,12 @@
     {
       "selector": "#coverageDetailModalBody",
       "label": "Coverage Detail Modal Body",
-      "file": "agentView.js",
-      "line": 2328,
+      "file": "assignmentCoverage.js",
+      "line": 860,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2328
+          "file": "assignmentCoverage.js",
+          "line": 860
         },
         {
           "file": "style.css",
@@ -1750,12 +1751,12 @@
     {
       "selector": "#coverageDetailModalClose",
       "label": "Coverage Detail Modal Close",
-      "file": "agentView.js",
-      "line": 2319,
+      "file": "assignmentCoverage.js",
+      "line": 851,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2319
+          "file": "assignmentCoverage.js",
+          "line": 851
         },
         {
           "file": "style.css",
@@ -1766,12 +1767,12 @@
     {
       "selector": "#coverageDetailModalCloseBtn",
       "label": "Coverage Detail Modal Close Btn",
-      "file": "agentView.js",
-      "line": 2360,
+      "file": "assignmentCoverage.js",
+      "line": 892,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2360
+          "file": "assignmentCoverage.js",
+          "line": 892
         },
         {
           "file": "style.css",
@@ -1782,12 +1783,12 @@
     {
       "selector": "#coverageDetailModalCommitted",
       "label": "Coverage Detail Modal Committed",
-      "file": "agentView.js",
-      "line": 2307,
+      "file": "assignmentCoverage.js",
+      "line": 839,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2307
+          "file": "assignmentCoverage.js",
+          "line": 839
         },
         {
           "file": "style.css",
@@ -1798,12 +1799,12 @@
     {
       "selector": "#coverageDetailModalEyebrow",
       "label": "Coverage Detail Modal Eyebrow",
-      "file": "agentView.js",
-      "line": 2294,
+      "file": "assignmentCoverage.js",
+      "line": 826,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2294
+          "file": "assignmentCoverage.js",
+          "line": 826
         },
         {
           "file": "style.css",
@@ -1814,12 +1815,12 @@
     {
       "selector": "#coverageDetailModalHeader",
       "label": "Coverage Detail Modal Header",
-      "file": "agentView.js",
-      "line": 2288,
+      "file": "assignmentCoverage.js",
+      "line": 820,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2288
+          "file": "assignmentCoverage.js",
+          "line": 820
         },
         {
           "file": "style.css",
@@ -1830,12 +1831,12 @@
     {
       "selector": "#coverageDetailModalTitle",
       "label": "Coverage Detail Modal Title",
-      "file": "agentView.js",
-      "line": 2291,
+      "file": "assignmentCoverage.js",
+      "line": 823,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2291
+          "file": "assignmentCoverage.js",
+          "line": 823
         },
         {
           "file": "style.css",
@@ -1846,12 +1847,12 @@
     {
       "selector": "#coverageDetailModalTitleText",
       "label": "Coverage Detail Modal Title Text",
-      "file": "agentView.js",
-      "line": 2298,
+      "file": "assignmentCoverage.js",
+      "line": 830,
       "files": [
         {
-          "file": "agentView.js",
-          "line": 2298
+          "file": "assignmentCoverage.js",
+          "line": 830
         },
         {
           "file": "style.css",
