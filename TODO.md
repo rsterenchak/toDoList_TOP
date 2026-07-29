@@ -82,7 +82,7 @@
   - Completed: 2026-07-29
   <!-- id: 0e74eb9f-0566-455d-9328-46cc96a975c0 -->
 
-- [ ] **[MEDIUM]** Mount coverage as a third chat-pane tab
+- [x] **[MEDIUM]** Mount coverage as a third chat-pane tab
   - Type: feature
   - Description: The assignment/coverage subsystem now lives in `assignmentCoverage.js` but is still only reachable through the Agent board, which is being deleted. Re-home it as a third tab in the chat pane beside CHAT and RUNS. The tab is project-conditional — it appears only when the active project's `assignment.md` classifies as `unfilled` or `filled`, and is absent entirely when `absent`, which is every non-coursework project. This entry ports what exists: the assignment card, the coverage summary, the edit trigger, and the route into the existing breakdown modal. Derive and the proposed list are a separate entry, since they need the board's derive run-tracking state relocated first.
   - Behavior: When the active project has an `assignment.md`, the chat pane shows a COVERAGE tab alongside CHAT and RUNS. Selecting it shows the assignment title with an action to edit `assignment.md`, then the coverage headline and stacked bar with a line summarising blocked / in-progress / manual-outstanding counts, then an action opening the full breakdown modal. A project whose assignment is `unfilled` shows the edit action and a short prompt instead of a bar. A `filled` assignment with no parsed aspects degrades to the words/sections line rather than showing an empty bar. Projects with no `assignment.md` show no tab at all. The tab does not appear before the assignment read resolves, so it never flashes in and out. Switching projects re-resolves it. CHAT and RUNS are unchanged, as is the pane's docking on desktop and its sheet behavior on mobile.
@@ -100,5 +100,5 @@
     - Test: the tab appears only for `unfilled` and `filled` projects; it is absent for `absent`; it does not render before the assignment read resolves; selecting it shows the summary; the edit action opens the assignment editor; the breakdown action opens the detail modal; the summary recomputes on a queue change; and switching to a project without an assignment falls back to CHAT.
   - Out of scope: Derive, its dispatch, its run tracking, and the proposed list — the next entry, which must first relocate `_deriveActive`, `_derivePoller`, `_deriveSeenActive`, and `_deriveGraceDeadline` out of `agentView.js`. The coverage breakdown modal's contents. `assignment.md` parsing and the coverage math. The board's own rendering. Deleting `agentView.js`.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: 5329baf0-48ea-4dbc-9986-53985f57e64d -->
