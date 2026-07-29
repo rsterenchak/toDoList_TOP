@@ -48,6 +48,7 @@ import { listLogic } from './listLogic.js';
 import {
     buildCoveragePane,
     getAssignmentState,
+    getProposedRows,
     onAssignmentChange,
     refreshAssignmentForActiveProject,
 } from './assignmentCoverage.js';
@@ -297,6 +298,7 @@ function renderCoverageView() {
     if (!view) return;
     view.textContent = '';
     view.appendChild(buildCoveragePane());
+    refreshCoverageBadge();
 }
 
 // Reconcile the COVERAGE tab's visibility with the active project's assignment
@@ -314,9 +316,29 @@ function refreshCoverageTab() {
     const onCoverage = !!(sheetEl && sheetEl.getAttribute('data-tab') === 'coverage');
     if (!show) {
         if (onCoverage) setActiveTab('chat');
+        refreshCoverageBadge();
         return;
     }
     if (onCoverage) renderCoverageView();
+    refreshCoverageBadge();
+}
+
+// Update the COVERAGE tab's proposal-count badge from the same getProposedRows()
+// query the pane's review action reads, so the badge and the action can never
+// disagree. Shown only when proposals are waiting; hidden (and count cleared)
+// otherwise. Runs on every queue change regardless of the active tab so the badge
+// tracks proposals even while the user is on CHAT or RUNS.
+function refreshCoverageBadge() {
+    const badge = sheetQuery('#claudeTabCoverageBadge');
+    if (!badge) return;
+    const count = getProposedRows().length;
+    if (count > 0) {
+        badge.textContent = String(count);
+        badge.hidden = false;
+    } else {
+        badge.textContent = '';
+        badge.hidden = true;
+    }
 }
 
 export function openClaudeSheet() {
@@ -3788,6 +3810,13 @@ function buildSheet() {
     // goes. Hidden by default so a project without an assignment shows no tab.
     const coverageTab = buildTab('claudeTabCoverage', 'COVERAGE', false);
     coverageTab.hidden = true;
+    // A count badge for waiting derive proposals, appended beside the label. Hidden
+    // until proposals exist (refreshCoverageBadge toggles it from getProposedRows).
+    const coverageBadge = document.createElement('span');
+    coverageBadge.id = 'claudeTabCoverageBadge';
+    coverageBadge.className = 'claudeTabBadge';
+    coverageBadge.hidden = true;
+    coverageTab.appendChild(coverageBadge);
     coverageTab.addEventListener('click', function() { setActiveTab('coverage'); });
     // CHAT / RUNS live inside a single grouping wrapper so the desktop pane can
     // render them as one segmented control (a rounded container with the active
@@ -4057,13 +4086,16 @@ export function mountClaudeSheet(parent) {
     // active project's assignment.md read resolves (from either the board or the
     // pane's own refresh) — reconcile the tab's visibility and repaint it then, so
     // it appears exactly when the read lands. onQueueChange keeps the open
-    // coverage summary tracking rows that ship while it's the live tab.
+    // coverage summary tracking rows that ship while it's the live tab, and always
+    // refreshes the proposal-count badge so it tracks even from CHAT / RUNS.
     if (!coverageListenersWired) {
         coverageListenersWired = true;
         onAssignmentChange(refreshCoverageTab);
         onQueueChange(function() {
             if (sheetEl && sheetEl.getAttribute('data-tab') === 'coverage') {
                 renderCoverageView();
+            } else {
+                refreshCoverageBadge();
             }
         });
     }
