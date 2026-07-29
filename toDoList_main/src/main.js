@@ -84,6 +84,7 @@ import {
     addToDos_restore,
     focusBlankToDoInput,
     focusBlankToDoInputIfDesktop,
+    openDescEditorForTodoId,
     reorderToDoDOM,
     setDiscussTaskHandler,
     setStuckReasonResolver,
@@ -103,7 +104,6 @@ import {
     unsubscribeAgentView,
     syncAgentAvailabilityForProject,
     startAgentWorkingWatch,
-    anchorAgentCardForTodo,
     stuckReasonText,
 } from './agentView.js';
 import {
@@ -968,12 +968,12 @@ function component() {
     viewPillProjectsWorkingDot.setAttribute('aria-hidden', 'true');
     viewPillProjects.appendChild(viewPillProjectsWorkingDot);
 
-    // The AGENT pill was retired: the Agent board's blocked-on-you states
-    // (DRAFTED / STUCK / MOCKUP) now reach the task row's phase badge, so the
-    // board is a routed destination reached by tapping those badges rather than
-    // a tab you navigate to. The bar collapses to STREAM + STRUCTURE. The Agent
-    // view itself stays mounted and fully functional (see #agentView below and
-    // the badge-route handler that calls applyActiveView('agent')).
+    // The AGENT pill was retired: the blocked-on-you states (ASKING / DRAFTED /
+    // STUCK / MOCKUP / REVIEW) now surface on the task row's phase badge and its
+    // controls mount in the row's description panel (desktop) or the description-
+    // editor modal (touch), so there is no AGENT tab to navigate to. The bar
+    // collapses to STREAM + STRUCTURE. The Agent view code itself stays mounted
+    // (see #agentView below).
 
     const viewPillStructure = document.createElement('button');
     viewPillStructure.id = 'viewPillStructure';
@@ -3098,21 +3098,18 @@ setDiscussTaskHandler(function(todoId) {
     openChatWithTask(todoId);
 });
 
-// Wire the tasks-surface `⌁ DRAFTED` / `⌁ STUCK` / `⌁ MOCKUP` badges to jump to
-// the Agent board scrolled to the task's card — now the only way into the board
-// since the AGENT tab was retired. todoStatus.js owns the badges but must not
-// import agentView.js / main.js (module-cycle + inject.js isolation), so it
-// invokes this registered handler with (todoId, projectName). Gate on the
-// project's repo first: with no routed repo there's no board to ship from, so the
-// tap is a no-op (this replaces the removed AGENT tab's no-repo gate). Then switch
-// to the Agent view — that repaints the board (synchronously when the queue is
-// already loaded, otherwise after a fetch) — and anchor: anchorAgentCardForTodo
-// scrolls the card now if it exists, or lets the next paint() flush the anchor
-// once the card is rendered.
+// Wire the tasks-surface phase badges (`⌁ ASKING` / `⌁ DRAFTED` / `⌁ STUCK` /
+// `⌁ MOCKUP` / `⌁ REVIEW`) to open the mobile description-editor modal on touch —
+// todoStatus.js routes here only on `(pointer: coarse)`, where the modal mounts the
+// asking / dispatch / review blocks the inline `#descSibling` panel would otherwise
+// host (an accordion the mobile design never intended). todoStatus.js owns the
+// badges but must not import modals.js / toDoRow.js's opener (module-cycle +
+// inject.js isolation), so it invokes this registered handler with (todoId,
+// projectName). openDescEditorForTodoId resolves the live #mainList row by item
+// identity and opens the modal through the same path a direct row-body tap uses;
+// no board switch and no repo gate — the modal is available for any committed row.
 setAgentRouteBadgeTapHandler(function(todoId, projectName) {
-    if (!syncAgentAvailabilityForProject(projectName)) return;
-    applyActiveView('agent');
-    anchorAgentCardForTodo(todoId);
+    openDescEditorForTodoId(todoId);
 });
 
 // The desktop description panel's STUCK failure-reason block reuses the exact

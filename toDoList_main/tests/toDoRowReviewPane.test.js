@@ -53,11 +53,25 @@ describe('toDoRow REVIEW decision surface wiring', () => {
         expect(body).toMatch(/res\.merged === false/);
     });
 
-    it('opens the viewer through the shared review-badge entry point', () => {
+    it('opens the viewer through the shared review-badge entry point (default, no modal host)', () => {
         expect(toDoRow).toMatch(/import \{[^}]*invokeReviewBadgeTap[^}]*\} from '\.\/todoStatus\.js'/s);
         const start = toDoRow.indexOf('function buildReviewActions(');
-        const body = toDoRow.slice(start, start + 2600);
+        // Widened window: buildReviewActions grew an optional modal-host
+        // onOpenInViewer branch above the default direct call.
+        const body = toDoRow.slice(start, start + 3400);
+        // The desktop detail pane passes no options, so the OPEN button falls
+        // through to the shared entry point directly.
         expect(body).toMatch(/invokeReviewBadgeTap\(item && item\.entryId, projectName\)/);
+    });
+
+    it('lets a modal host supply its own close-then-open route via options.onOpenInViewer', () => {
+        const start = toDoRow.indexOf('function buildReviewActions(');
+        const body = toDoRow.slice(start, start + 3400);
+        // Signature carries the optional options bag …
+        expect(body).toMatch(/function buildReviewActions\(item, projectName, options\)/);
+        // … and the OPEN handler prefers the host's callback when present, so the
+        // mobile modal can dismiss itself before opening the anchored viewer.
+        expect(body).toMatch(/opts2\.onOpenInViewer/);
     });
 
     it('mounts on panel open AND repaints on the live sweep (one def + two call sites)', () => {

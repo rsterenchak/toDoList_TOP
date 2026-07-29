@@ -513,6 +513,116 @@ describe('MOCKUP derived overlay', () => {
 });
 
 
+describe('(coarse pointer) phase badges route to the description-editor modal on touch', () => {
+    // Regression: on `(pointer: coarse)` the ASKING / DRAFTED / STUCK / MOCKUP /
+    // REVIEW badges must open the description-editor modal (which hosts the
+    // question, Dispatch, and decide controls) rather than the inline #descSibling
+    // accordion (asking/drafted/stuck/mockup) or the TODO.md viewer (review) the
+    // desktop path uses. The tap reaches the modal through the registered
+    // agentRouteBadgeTapHandler, invoked with (todoId, projectName).
+    let priorMatchMedia;
+    beforeEach(() => {
+        priorMatchMedia = window.matchMedia;
+        // Report a coarse (touch) pointer so the badge routing takes the modal path.
+        window.matchMedia = (q) => ({
+            matches: /coarse/.test(q),
+            media: q,
+            addListener() {}, removeListener() {},
+            addEventListener() {}, removeEventListener() {},
+        });
+    });
+    afterEach(() => {
+        window.matchMedia = priorMatchMedia;
+        setAgentRouteBadgeTapHandler(null);
+        setReviewBadgeTapHandler(null);
+    });
+
+    function wireContainer() {
+        const container = document.createElement('div');
+        container.id = 'mainList';
+        document.body.appendChild(container);
+        wireStatusLabelDelegation(container);
+        return container;
+    }
+
+    function attachDescToggle(row) {
+        const descToggle = document.createElement('div');
+        descToggle.id = 'descToggle';
+        const state = { opened: 0 };
+        descToggle.addEventListener('click', function () {
+            state.opened += 1;
+            descToggle.classList.add('open');
+        });
+        row.appendChild(descToggle);
+        return state;
+    }
+
+    ['asking', 'drafted', 'stuck', 'mockup'].forEach((overlay) => {
+        it(`tapping the ${overlay.toUpperCase()} badge opens the modal, not the inline #descSibling panel`, () => {
+            const container = wireContainer();
+            const routed = [];
+            setAgentRouteBadgeTapHandler(function (todoId, projectName) {
+                routed.push([todoId, projectName]);
+            });
+
+            const item = { id: 'todo-' + overlay, status: 'active' };
+            const row = makeRow(item, 'Work');
+            refreshTodoStatusUI(row, item, overlay);
+            const toggle = attachDescToggle(row);
+            container.appendChild(row);
+
+            row.querySelector('.todoStatusLabel').click();
+
+            // The modal opener fired with (todoId, projectName) …
+            expect(routed).toEqual([['todo-' + overlay, 'Work']]);
+            // … and the inline accordion never opened.
+            expect(toggle.opened).toBe(0);
+            expect(document.getElementById('todoStatusPopover')).toBeNull();
+        });
+    });
+
+    it('tapping the REVIEW badge opens the modal, not the TODO.md viewer', () => {
+        const container = wireContainer();
+        const routed = [];
+        const viewer = [];
+        setAgentRouteBadgeTapHandler(function (todoId, projectName) {
+            routed.push([todoId, projectName]);
+        });
+        setReviewBadgeTapHandler(function (entryId, projectName) {
+            viewer.push([entryId, projectName]);
+        });
+
+        const item = { id: 'todo-rv', entryId: 'entry-rv', status: 'active', tit: 'Shipped' };
+        const row = makeRow(item, 'Work');
+        refreshTodoStatusUI(row, item, true); // REVIEW overlay
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+
+        expect(routed).toEqual([['todo-rv', 'Work']]);
+        // The viewer is the DESKTOP route — on touch the modal owns the decide surface.
+        expect(viewer).toEqual([]);
+    });
+
+    it('falls back to the desktop path when no modal-opener handler is registered', () => {
+        const container = wireContainer();
+        setAgentRouteBadgeTapHandler(null); // nothing registered
+
+        const item = { id: 'todo-fb', status: 'active' };
+        const row = makeRow(item, 'Work');
+        refreshTodoStatusUI(row, item, 'drafted');
+        const toggle = attachDescToggle(row);
+        container.appendChild(row);
+
+        row.querySelector('.todoStatusLabel').click();
+
+        // With no handler the touch route can't fire, so the inline panel opens
+        // rather than leaving a dead badge.
+        expect(toggle.opened).toBe(1);
+    });
+});
+
+
 describe('(e) cross-label popover swap in a single click', () => {
     // Regression: clicking label B while label A's popover is open must tear
     // down A's popover AND mount B's in the same click — no second click. The

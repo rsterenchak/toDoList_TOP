@@ -1211,7 +1211,9 @@ describe('todo.md viewer — REVIEW-badge anchor (open scrolled to an entry)', (
     it('todoStatus.js review branch opens the viewer via the registered handler and no longer stamps', () => {
         const start = status.indexOf("data-status') === 'review'");
         expect(start).toBeGreaterThan(-1);
-        const block = status.slice(start, start + 300);
+        // Widened window: the review branch now leads with a coarse-pointer route
+        // to the modal before the desktop viewer fall-through.
+        const block = status.slice(start, start + 600);
         expect(block).toMatch(/reviewBadgeTapHandler\(\s*item\.entryId\s*,\s*projectName\s*\)/);
         expect(block).not.toMatch(/markEntryReviewed/);
     });
@@ -1413,7 +1415,9 @@ describe('todo.md viewer — acknowledge shipped-but-unreviewed entries (todoMdV
         // can be read before it is acknowledged; no stamp, no event from the row.
         const start = status.indexOf("data-status') === 'review'");
         expect(start).toBeGreaterThan(-1);
-        const block = status.slice(start, start + 300);
+        // Widened window: the review branch now leads with a coarse-pointer route
+        // to the modal before the desktop viewer fall-through.
+        const block = status.slice(start, start + 600);
         expect(block).toMatch(/reviewBadgeTapHandler\(\s*item\.entryId\s*,\s*projectName\s*\)/);
         expect(block).not.toMatch(/markEntryReviewed/);
         expect(block).not.toMatch(/emitTodoRunStatusChange/);
