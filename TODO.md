@@ -63,7 +63,7 @@
   - Completed: 2026-07-29
   <!-- id: 1ac43cb5-91f3-41c3-aacc-f59332385ae7 -->
 
-- [ ] **[MEDIUM]** Extract the assignment and coverage subsystem out of agentView.js
+- [x] **[MEDIUM]** Extract the assignment and coverage subsystem out of agentView.js
   - Type: feature
   - Description: `agentView.js` contains a complete assignment/rubric-coverage subsystem that has nothing to do with the board's queue rendering: reading and classifying `assignment.md`, parsing rubric aspects, computing per-aspect coverage from tagged `agent_queue` rows, the coverage summary, the coverage detail modal, the manual commit-tick controls backed by `aspect_submissions`, and the assignment editor trigger. That is nineteen functions and two constants. It must survive the board's deletion — it is being re-homed as a third tab in the chat pane — so extract it first, with the board still calling it and nothing a user can see changing. A previous attempt to delete the whole view failed after 34 minutes because it tried to do this and the removal in one pass.
   - Behavior: Identical to today in every respect. The board's assignment card renders the same, the coverage summary computes the same numbers, the detail modal opens with the same rows and lanes, commit ticks persist the same way, and the assignment editor opens and saves the same. No visible change.
@@ -79,5 +79,5 @@
     - Report in the PR body: the before/after line count of both files, which module-level state moved, and any function that could not be moved cleanly and why.
   - Out of scope: Mounting coverage anywhere new — the chat-pane tab is the next entry, and it wants its own mockups first now that the tab must also carry Derive and the proposed list. Deleting `agentView.js` or any board rendering. The derive dispatch (`dispatchDerive` already lives in `inject.js`), its run tracking, or the `proposed` bucket — those move in a later entry. Any change to `assignment.md` parsing, coverage math, `aspect_submissions`, or the detail modal's contents.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/agentView.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: 0e74eb9f-0566-455d-9328-46cc96a975c0 -->
