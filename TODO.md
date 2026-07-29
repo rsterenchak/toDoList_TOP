@@ -13,7 +13,7 @@
   - File: `toDoList_main/src/toDoRow.js`
   <!-- id: 5f1c9f73-f7bc-4e02-812c-e80909a13e2d -->
 
-- [ ] **[HIGH]** Mount the asking, dispatch, and review blocks in the mobile description modal and route badge taps to it
+- [x] **[HIGH]** Mount the asking, dispatch, and review blocks in the mobile description modal and route badge taps to it
   - Type: bug
   - Description: On a touch device the `⌁ ASKING` / `⌁ DRAFTED` / `⌁ STUCK` / `⌁ MOCKUP` badge handler in `todoStatus.js` calls `descToggle.click()`, and because `isDetailPaneMode()` is false below 1024px `placeDescPanel` falls to its inline branch and inserts `#descSibling` beneath the row — an accordion drop-down the mobile design never intended. Tapping the row body instead opens `showDescEditorModal`, but that modal only builds the phase rail, `renderStuckBlock`, `renderMockupBlock`, and a bare REVIEW route button: `syncAskingPanel`, `syncDispatchPanel`, and `syncReviewPanel` all mount into `#descSibling` alone (and `syncReviewPanel` additionally gates on `isDetailPaneMode()`), so triage's question, the Dispatch control, and the WHAT CHANGED card are unreachable from the modal. Mount all three in the modal and repoint the badge taps at it so the inline panel never mounts on touch.
   - Behavior:
@@ -32,5 +32,5 @@
     - Keep the answer textarea at `font-size: 16px` (it already sets this inline) to avoid iOS Safari focus auto-zoom.
   - Out of scope: the phase-first modal reordering and the collapsible entry disclosure — those land in a follow-up entry. Do not change `syncReviewPanel`'s desktop-only gate.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/todoStatus.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-29
   <!-- id: 21b043fb-2e42-4b21-a6bd-310f0b01c318 -->
