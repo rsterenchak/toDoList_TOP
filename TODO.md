@@ -17,3 +17,10 @@
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/phase.js`
   - Completed: 2026-07-28
   <!-- id: 2735f0f9-d970-47a7-931d-5b35085658cd -->
+
+- [ ] **[MEDIUM]** Move refactor card to top of structure tab left rail on desktop
+  - Type: bug
+  - Description: On desktop (>=1024px), the NEXT REFACTOR card is grid-placed at row 4 of `#structureView`'s left rail, landing below the flexible node-tree row instead of near the top like it does on mobile (where it follows natural DOM order as the 2nd child). Change the desktop CSS grid placement so `.refactorCard` sits directly after `.structureHeader` at the top of the rail, above `.structureControlRow` and `.structureTree`, matching the mobile placement; shift the remaining rail rows (`structureControlRow`, `structureTree`, `captureCard`) down accordingly and update `grid-template-rows` on `#structureView` to reflect the new row order. Keep `.structureTree` as the only scrolling element and preserve its `min-height: 0` behavior so a long tree still can't push other cards off-screen.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4426593b-df87-4d48-84fe-fc628757b30c -->
