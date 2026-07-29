@@ -2287,7 +2287,10 @@ export function refreshDescStatusDots() {
         }
     });
     projectsToRefresh.forEach(function(name) {
-        refreshShippedMarkersForProject(name);
+        // Force past the 60s TTL: a row may render (or re-render on reload) with a
+        // stale pre-ship marker cache, and a shipped fact must be trusted
+        // immediately rather than served from that stale entry.
+        refreshShippedMarkersForProject(name, true);
     });
     // Re-derive every mounted Generate button from the fresh queue-row cache so
     // a triaging → drafted / failed transition lands / clears live. Covers the
@@ -3761,9 +3764,12 @@ export function buildToDoRow(item, toDoName) {
     const phase = derivePhase(item);
     applyRunStatusGlyph(descIndicator, phase);
     // Kick a shipped-marker refresh for this project's routed target so the
-    // glyph flips to green once the entry's TODO.md checkbox is [x]. TTL-cached
-    // per repo, so this is a no-op when already fresh.
-    if (item.entryId) refreshShippedMarkersForProject(toDoName);
+    // glyph flips to green once the entry's TODO.md checkbox is [x]. Force past
+    // the 60s TTL: a run may ship while this project isn't rendered (or the tab
+    // reloads after shipping), so the row would otherwise paint from a stale
+    // pre-ship cache entry until the TTL lapses — a shipped fact must be trusted
+    // immediately.
+    if (item.entryId) refreshShippedMarkersForProject(toDoName, true);
 
     // Workflow-status badge — committed rows only. Sits right after the
     // checkbox, ahead of the title, and is itself the tap target for the

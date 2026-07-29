@@ -494,6 +494,23 @@ describe('wiring — dot is driven by the shared TODO.md, synced entry id, and e
         expect(toDoRow).toMatch(/refreshShippedMarkersForProject\(/);
     });
 
+    it('both toDo-row marker-refresh call sites force past the TTL', () => {
+        // Regression: without force, a row that first renders (or re-renders on
+        // reload) after its run already shipped painted from the stale pre-ship
+        // marker cache — the 60s TTL short-circuited the follow-up refresh — and
+        // stayed on a DRAFTED badge until the TTL lapsed or a hard reload. Both
+        // the per-row buildToDoRow kick and the full-render sweep must pass
+        // force=true so a shipped fact is trusted immediately.
+        expect(toDoRow).toMatch(
+            /if\s*\(item\.entryId\)\s*refreshShippedMarkersForProject\(toDoName,\s*true\)/
+        );
+        expect(toDoRow).toMatch(
+            /refreshShippedMarkersForProject\(name,\s*true\)/
+        );
+        // And no bare (TTL-guarded) call to the project refresher survives.
+        expect(toDoRow).not.toMatch(/refreshShippedMarkersForProject\(\s*(?:toDoName|name)\s*\)/);
+    });
+
     it('refreshShippedMarkersForProject passes a force flag through to refreshShippedMarkers', () => {
         expect(inject).toMatch(
             /export\s+function\s+refreshShippedMarkersForProject\s*\(\s*projectName\s*,\s*force\s*\)[\s\S]{0,600}refreshShippedMarkers\(target,\s*force\)/
