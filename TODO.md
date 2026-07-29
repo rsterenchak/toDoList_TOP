@@ -7,7 +7,7 @@
   - Completed: 2026-07-29
   <!-- id: 93cf70c3-5c7c-4186-ace0-0d3bf81697dc -->
 
-- [ ] **[MEDIUM]** Force a fresh shipped-marker check when a row first renders, so an already-shipped run doesn't show a stale DRAFTED badge until reload
+- [x] **[MEDIUM]** Force a fresh shipped-marker check when a row first renders, so an already-shipped run doesn't show a stale DRAFTED badge until reload — Completed: 2026-07-29
   - Type: bug
   - Description: When a run ships while its project isn't open/rendered (or the tab reloads after shipping), the row's badge paints from `shippedMarkerCache` before a fresh check, and the follow-up refresh call passes no `force` flag, so the 60s TTL guard in `refreshShippedMarkers` (`toDoList_main/src/inject.js:628-634`) short-circuits and serves the stale pre-ship cache entry instead of re-fetching. The badge only corrects itself once the TTL naturally lapses or a hard reload wipes the in-memory `shippedMarkerCache` clean. The two call sites are `buildToDoRow`'s `refreshShippedMarkersForProject(toDoName)` at `toDoList_main/src/toDoRow.js:3766` and the full-render sweep's `refreshShippedMarkersForProject(name)` at `toDoList_main/src/toDoRow.js:2290` — both should pass `force=true`, matching the existing pattern already used at `inject.js:294`, `didEntryShip`, and `settleShippedRows`, all of which force the check specifically because a shipped fact must be trusted immediately rather than served from a stale cache.
   - File: `toDoList_main/src/toDoRow.js`
