@@ -62,6 +62,45 @@ export function getAssignmentProject() {
     return _assignmentProject;
 }
 
+// The classified state of the cached assignment ('absent' | 'unfilled' |
+// 'filled'), or null before the first read resolves. The chat pane's COVERAGE
+// tab reads this to decide its own visibility — shown only for 'unfilled' /
+// 'filled', hidden for 'absent', and hidden while null so it never flashes in
+// before the read lands.
+export function getAssignmentState() {
+    return _assignment ? _assignment.state : null;
+}
+
+// Subscribers notified whenever the cached assignment descriptor resolves (on a
+// no-target sync-to-absent or an async read completing). The chat pane's COVERAGE
+// tab registers here so it can (re)resolve its visibility and repaint once the
+// read lands, without polling. Module-level so a single registration survives
+// across sheet re-mounts (the chat pane guards against double-registering).
+const assignmentListeners = [];
+export function onAssignmentChange(fn) {
+    if (typeof fn === 'function') assignmentListeners.push(fn);
+}
+function notifyAssignmentChange() {
+    assignmentListeners.forEach(function (fn) {
+        try { fn(); } catch (e) { /* a listener error must not abort the read */ }
+    });
+}
+
+// Resolve (or re-resolve) the active project's assignment for a non-board host —
+// the chat pane's COVERAGE tab. Reuses the board-configured getSelectedProjectName
+// / resolveReadTarget so the read is scoped to the same project the board would
+// read, and guards against a double-fetch: when the cache already belongs to (or
+// is in flight for) the active project, the board (or a prior pane call) already
+// kicked the read off, so this is a no-op and the pending read's notify still
+// repaints the tab. Otherwise it resets the stale descriptor (so getAssignmentState
+// reads null → the tab hides until the fresh read lands, never flashing the prior
+// project's state) and fires the read.
+export function refreshAssignmentForActiveProject() {
+    if (getAssignmentProject() === getSelectedProjectName()) return;
+    resetAssignmentCache();
+    refreshAssignment(resolveReadTarget());
+}
+
 // A derive aspect badge: a small mono tag ("A1"/"B1") shown near the chip on
 // derive-generated rows. Returns null when the row carries no aspect (all
 // existing triage rows), so those cards render unchanged.
@@ -206,6 +245,7 @@ export function refreshAssignment(target) {
     _assignmentProject = projectName;
     if (!target) {
         _assignment = { state: 'absent' };
+        notifyAssignmentChange();
         return;
     }
     readAssignmentFromWorker(target).then(function (res) {
@@ -214,6 +254,7 @@ export function refreshAssignment(target) {
         if (getSelectedProjectName() !== projectName) return;
         _assignment = describeAssignment(res && res.ok ? res.content : null);
         paint();
+        notifyAssignmentChange();
     });
 }
 
@@ -1027,4 +1068,111 @@ export function buildAssignmentCard() {
 
     card.appendChild(body);
     return card;
+}
+
+// Tally the pane's secondary counts line — how many rubric aspects are blocked
+// (a needs_words question waiting), in progress (dispatched/running), and manual
+// (Git/process aspects the agent can't ship). Mirrors showCoverageDetailModal's
+// classification (process aspects short-circuit to the manual lane; everything
+// else derives its lifecycle from its tagged rows via aspectStatus) so the pane's
+// summary and the drill-in modal never disagree. `manual` is simply the count of
+// process aspects, matching the modal's "manual · outstanding" lane.
+function computePaneBreakdown(aspects, labels, rows) {
+    const byAspect = Object.create(null);
+    (Array.isArray(rows) ? rows : []).forEach(function (r) {
+        const tag = r && typeof r.aspect === 'string' ? r.aspect.trim() : '';
+        if (!tag) return;
+        (byAspect[tag] || (byAspect[tag] = [])).push(r);
+    });
+    let blocked = 0, inProgress = 0, manual = 0;
+    aspects.forEach(function (id) {
+        const label = (labels && labels[id]) || '';
+        if (isProcessAspect(label)) { manual++; return; }
+        const st = aspectStatus(byAspect[id] || []);
+        if (st === 'blocked') blocked++;
+        else if (st === 'in-flight') inProgress++;
+    });
+    return { blocked: blocked, inProgress: inProgress, manual: manual };
+}
+
+// The COVERAGE tab's body for the chat pane — a slimmer, pane-native rendering of
+// the same assignment/coverage data the board's buildAssignmentCard shows, minus
+// the board-specific chrome (the derive "Draft tasks from this" button and the
+// agentAssignment* card frame, which don't belong in a 360px chat column and
+// whose derive dispatch is a later entry). Reuses the module's own data functions
+// (describeAssignment's cached descriptor, buildCoverageSummary, computePaneBreakdown,
+// showCoverageDetailModal) so the numbers and the drill-in modal stay identical to
+// the board. Renders the filled summary (headline + bar + counts line + breakdown
+// action), the unfilled invite, or the requirements-only words/sections line, each
+// with an edit action into the assignment editor. Callers gate mounting on
+// getAssignmentState() being 'unfilled' / 'filled'; the absent guard here is
+// defensive.
+export function buildCoveragePane() {
+    const a = _assignment;
+    const pane = document.createElement('div');
+    pane.className = 'claudeCoveragePane';
+    if (!a || a.state === 'absent') return pane;
+
+    const header = document.createElement('div');
+    header.className = 'claudeCoverageHeader';
+
+    const title = document.createElement('div');
+    title.className = 'claudeCoverageTitle';
+    title.textContent = a.state === 'filled' ? a.title : 'No assignment spec yet';
+    header.appendChild(title);
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'claudeCoverageEdit';
+    editBtn.textContent = 'Edit';
+    editBtn.setAttribute('aria-label', 'Edit assignment.md');
+    editBtn.addEventListener('click', function () { openAssignmentEditor(); });
+    header.appendChild(editBtn);
+
+    pane.appendChild(header);
+
+    // Unfilled: an invite to add the spec, no coverage bar to draw yet.
+    if (a.state !== 'filled') {
+        const prompt = document.createElement('div');
+        prompt.className = 'claudeCoveragePrompt';
+        prompt.textContent =
+            'Add your assignment requirements and rubric to track coverage here.';
+        pane.appendChild(prompt);
+        return pane;
+    }
+
+    // Filled without parsed rubric aspects: degrade to the words/sections line
+    // rather than drawing an empty bar.
+    const aspects = Array.isArray(a.aspects) ? a.aspects : [];
+    if (!aspects.length) {
+        const meta = document.createElement('div');
+        meta.className = 'claudeCoverageMeta';
+        meta.textContent = a.words + ' words · ' + a.sections + ' sections';
+        pane.appendChild(meta);
+        return pane;
+    }
+
+    // Filled with aspects: the shared coverage summary (headline + segmented bar,
+    // itself a drill-in into the detail modal), a secondary counts line, and an
+    // explicit breakdown action.
+    const rows = getQueueRows();
+    pane.appendChild(buildCoverageSummary(aspects, rows));
+
+    const labels = (a.aspectLabels && typeof a.aspectLabels === 'object')
+        ? a.aspectLabels : {};
+    const bd = computePaneBreakdown(aspects, labels, rows);
+    const counts = document.createElement('div');
+    counts.className = 'claudeCoverageCounts';
+    counts.textContent = bd.blocked + ' blocked · ' + bd.inProgress +
+        ' in progress · ' + bd.manual + ' manual';
+    pane.appendChild(counts);
+
+    const breakdownBtn = document.createElement('button');
+    breakdownBtn.type = 'button';
+    breakdownBtn.className = 'claudeCoverageBreakdown';
+    breakdownBtn.textContent = 'View full breakdown';
+    breakdownBtn.addEventListener('click', function () { showCoverageDetailModal(); });
+    pane.appendChild(breakdownBtn);
+
+    return pane;
 }

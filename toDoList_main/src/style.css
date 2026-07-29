@@ -2529,6 +2529,76 @@ body:has(#settingsMenu) #claudeLauncher {
 /* Match the chat message area to #mainList's base background for a unified
    look. Scoped to the chat view so the Runs/Author tabs are unaffected. */
 #claudeChatView { background: var(--bg-base); }
+
+/* ── COVERAGE TAB (chat pane) ──
+   A project-conditional third tab beside CHAT / RUNS. The tab button is hidden
+   unless the active project's assignment.md is present; the explicit guard is
+   required because author-level rules here could otherwise outrank the UA
+   [hidden] rule (the claude* family carries several such guards). */
+#claudeTabCoverage[hidden] { display: none !important; }
+/* The tab's body: a scrollable pane-native rendering of the assignment summary
+   and coverage, styled for the 360px docked column / full-width mobile sheet. */
+.claudeCoveragePane {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.claudeCoverageHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.claudeCoverageTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  /* A long assignment title truncates to one line rather than wrapping to three
+     in the narrow column. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.claudeCoverageEdit {
+  flex: 0 0 auto;
+  padding: 4px 10px;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  border: 1px solid var(--accent-text);
+  border-radius: 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.claudeCoverageEdit:hover { background: var(--accent); color: #fff; }
+.claudeCoveragePrompt {
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.claudeCoverageMeta {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.claudeCoverageCounts {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.claudeCoverageBreakdown {
+  align-self: flex-start;
+  padding: 6px 12px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.claudeCoverageBreakdown:hover { background: var(--bg-hover); }
 .claudeChatSurface {
   flex: 1;
   min-height: 0;
@@ -14105,6 +14175,35 @@ body.row-dragging * { cursor: grabbing !important; }
     color: #5a5a7a;
   }
   :root[data-theme="light"] #desktopChatPane .claudeTabGroup .claudeTab[aria-selected="true"] {
+    background: #6C5DF5;
+    color: #ffffff;
+  }
+  /* COVERAGE sits as its own rounded pill next to the CHAT / RUNS segmented
+     control (not inside it), so the two-half control never reflows as this
+     conditional tab appears and disappears. Matches the segmented control's
+     palette. */
+  #desktopChatPane #claudeTabCoverage {
+    flex: 0 0 auto;
+    width: auto;
+    margin-left: 8px;
+    padding: 6px 12px;
+    border: 1px solid #3a3a50;
+    border-radius: 13px;
+    background: #15151e;
+    color: #8a8a99;
+  }
+  #desktopChatPane #claudeTabCoverage[aria-selected="true"] {
+    background: #6C5DF5;
+    border-color: #6C5DF5;
+    color: #e8e8f0;
+    font-weight: 700;
+  }
+  :root[data-theme="light"] #desktopChatPane #claudeTabCoverage {
+    background: #ddddf0;
+    border-color: #c0c0e0;
+    color: #5a5a7a;
+  }
+  :root[data-theme="light"] #desktopChatPane #claudeTabCoverage[aria-selected="true"] {
     background: #6C5DF5;
     color: #ffffff;
   }

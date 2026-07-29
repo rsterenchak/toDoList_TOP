@@ -45,6 +45,13 @@ import {
     activeProjectNameForViewer,
 } from './runState.js';
 import { listLogic } from './listLogic.js';
+import {
+    buildCoveragePane,
+    getAssignmentState,
+    onAssignmentChange,
+    refreshAssignmentForActiveProject,
+} from './assignmentCoverage.js';
+import { onQueueChange } from './agentQueueStore.js';
 import { parsePastedEntry, commitEntryToActiveProject } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
 import { setChatPaneCollapsed } from './prefs.js';
@@ -91,6 +98,10 @@ let chatPaneEl = null;
 let resizeHandler = null;
 let keydownHandler = null;
 let attachClickHandler = null;
+// Registered once (module-level) so re-mounts don't stack duplicate coverage
+// listeners. The listeners read live module state (sheetEl/contentEl), which each
+// mount refreshes, so a single registration keeps working across remounts.
+let coverageListenersWired = false;
 let appUpdateHandler = null;
 let appAppliedHandler = null;
 let injectTargetsChangedHandler = null;
@@ -233,12 +244,20 @@ function setActiveTab(tab) {
     sheetEl.setAttribute('data-tab', tab);
     const chatTab = sheetQuery('#claudeTabChat');
     const runsTab = sheetQuery('#claudeTabRuns');
+    const coverageTab = sheetQuery('#claudeTabCoverage');
     const chatView = sheetQuery('#claudeChatView');
     const runsView = sheetQuery('#claudeRunsView');
+    const coverageView = sheetQuery('#claudeCoverageView');
     if (chatTab) chatTab.setAttribute('aria-selected', String(tab === 'chat'));
     if (runsTab) runsTab.setAttribute('aria-selected', String(tab === 'runs'));
+    if (coverageTab) coverageTab.setAttribute('aria-selected', String(tab === 'coverage'));
     if (chatView) chatView.hidden = tab !== 'chat';
     if (runsView) runsView.hidden = tab !== 'runs';
+    if (coverageView) coverageView.hidden = tab !== 'coverage';
+    // Rebuild the coverage body from the live assignment cache + queue rows each
+    // time the tab is entered, so it reflects any rows that shipped while it was
+    // off-screen (onQueueChange keeps it fresh while it's the active tab).
+    if (tab === 'coverage') renderCoverageView();
     // The attach button and its dropdown live in the composer, so they hide with
     // the chat view on the Runs tab. Still gate the button explicitly and collapse
     // the panel when leaving Chat so a panel left open can't linger on return.
@@ -268,6 +287,36 @@ function setActiveTab(tab) {
         resumeRunPollers();
         renderUpdateNudge();
     }
+}
+
+// Repaint the COVERAGE tab's body from the assignmentCoverage module's cached
+// descriptor + the live queue rows. A no-op when the view node isn't mounted
+// (unit mounts that build only the sheet still have it, so this is defensive).
+function renderCoverageView() {
+    const view = sheetQuery('#claudeCoverageView');
+    if (!view) return;
+    view.textContent = '';
+    view.appendChild(buildCoveragePane());
+}
+
+// Reconcile the COVERAGE tab's visibility with the active project's assignment
+// state, and repaint its body if it's the live tab. The tab shows only when the
+// assignment classifies 'unfilled' or 'filled'; it's hidden for 'absent' (every
+// non-coursework project) and while the read is still pending (state null), so it
+// never flashes in before the read resolves. When it hides out from under a
+// selected COVERAGE tab (a switch to a project without an assignment), fall back
+// to CHAT rather than stranding a hidden tab selected over an empty body.
+function refreshCoverageTab() {
+    const state = getAssignmentState();
+    const show = state === 'unfilled' || state === 'filled';
+    const coverageTab = sheetQuery('#claudeTabCoverage');
+    if (coverageTab) coverageTab.hidden = !show;
+    const onCoverage = !!(sheetEl && sheetEl.getAttribute('data-tab') === 'coverage');
+    if (!show) {
+        if (onCoverage) setActiveTab('chat');
+        return;
+    }
+    if (onCoverage) renderCoverageView();
 }
 
 export function openClaudeSheet() {
@@ -408,6 +457,13 @@ export function syncClaudeSheetForProject(projectName) {
     setChatPaneCollapsed(collapsed);
     applyClaudeAvailability(hasRepo);
     autoSwapWorkspaceForProject(projectName);
+    // Re-resolve the COVERAGE tab for the newly active project. refreshAssignment*
+    // reads assignment.md once (skipping when the board already fetched it), and
+    // refreshCoverageTab reconciles the tab's visibility now (for an already-cached
+    // project) while the onAssignmentChange listener repaints it once a pending
+    // read lands — so the tab appears only after the read resolves, never before.
+    refreshAssignmentForActiveProject();
+    refreshCoverageTab();
 }
 
 // The single source of truth for "the assistant is unusable on this project"
@@ -2791,6 +2847,19 @@ function markDraftCardShipped(card) {
     card.appendChild(note);
 }
 
+// The COVERAGE tab's panel — an empty scroll container that renderCoverageView
+// fills with the assignmentCoverage module's pane on entry / queue change /
+// assignment resolve. Hidden until the tab is selected (and the tab itself is
+// hidden unless the active project carries an assignment).
+function buildCoverageView() {
+    const view = document.createElement('div');
+    view.id = 'claudeCoverageView';
+    view.className = 'claudeView';
+    view.setAttribute('role', 'tabpanel');
+    view.hidden = true;
+    return view;
+}
+
 function buildRunsView() {
     const view = document.createElement('div');
     view.id = 'claudeRunsView';
@@ -3712,6 +3781,14 @@ function buildSheet() {
     const runsTab = buildTab('claudeTabRuns', 'RUNS', false);
     chatTab.addEventListener('click', function() { setActiveTab('chat'); });
     runsTab.addEventListener('click', function() { setActiveTab('runs'); });
+    // COVERAGE — a project-conditional third tab, hidden until the active project's
+    // assignment.md classifies as unfilled/filled (refreshCoverageTab toggles it).
+    // It sits as a standalone pill beside the CHAT/RUNS segmented control rather
+    // than inside it, so the two-half control never reflows as this tab comes and
+    // goes. Hidden by default so a project without an assignment shows no tab.
+    const coverageTab = buildTab('claudeTabCoverage', 'COVERAGE', false);
+    coverageTab.hidden = true;
+    coverageTab.addEventListener('click', function() { setActiveTab('coverage'); });
     // CHAT / RUNS live inside a single grouping wrapper so the desktop pane can
     // render them as one segmented control (a rounded container with the active
     // half highlighted). At mobile widths the wrapper is `display: contents`
@@ -3723,6 +3800,7 @@ function buildSheet() {
     tabGroup.appendChild(chatTab);
     tabGroup.appendChild(runsTab);
     tabs.appendChild(tabGroup);
+    tabs.appendChild(coverageTab);
     tabs.appendChild(buildClearChat());
     tabs.appendChild(buildWorkspace());
 
@@ -3736,6 +3814,7 @@ function buildSheet() {
     body.appendChild(tabs);
     body.appendChild(buildChatView());
     body.appendChild(buildRunsView());
+    body.appendChild(buildCoverageView());
     contentEl = body;
 
     sheet.appendChild(handle);
@@ -3973,6 +4052,25 @@ export function mountClaudeSheet(parent) {
     loadRunRecords();
     renderRunsList();
     resumeRunPollers();
+
+    // COVERAGE tab reactivity, wired once. onAssignmentChange fires when the
+    // active project's assignment.md read resolves (from either the board or the
+    // pane's own refresh) — reconcile the tab's visibility and repaint it then, so
+    // it appears exactly when the read lands. onQueueChange keeps the open
+    // coverage summary tracking rows that ship while it's the live tab.
+    if (!coverageListenersWired) {
+        coverageListenersWired = true;
+        onAssignmentChange(refreshCoverageTab);
+        onQueueChange(function() {
+            if (sheetEl && sheetEl.getAttribute('data-tab') === 'coverage') {
+                renderCoverageView();
+            }
+        });
+    }
+    // Resolve the tab for whatever project is already selected at mount (a reload
+    // lands on the persisted project without a fresh switch firing).
+    refreshAssignmentForActiveProject();
+    refreshCoverageTab();
 
     return { launcher: launcherEl, sheet: sheetEl, backdrop: backdropEl };
 }
