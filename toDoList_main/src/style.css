@@ -11471,7 +11471,7 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainBar[data-view="structure"] #structureView {
     display: grid;
     grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
-    grid-template-rows: auto auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto auto auto minmax(0, 1fr) auto;
     column-gap: 20px;
     row-gap: 12px;
     padding: 16px 20px 20px;
@@ -11480,18 +11480,20 @@ body.row-dragging * { cursor: grabbing !important; }
   }
 
   /* Left rail — vertical stack; only the tree scrolls, so a long tree can't push
-     the refactor / capture cards below it off-screen. */
+     the refactor / capture cards below it off-screen. The refactor card sits
+     directly under the header (matching its 2nd-child mobile placement), above the
+     filter row and tree; the tree stays the sole flexible/scrolling row. */
   #structureView > .structureHeader     { grid-column: 1; grid-row: 1; }
-  #structureView > .structureControlRow { grid-column: 1; grid-row: 2; }
+  #structureView > .refactorCard        { grid-column: 1; grid-row: 2; }
+  #structureView > .structureControlRow { grid-column: 1; grid-row: 3; }
   #structureView > .structureTree {
     grid-column: 1;
-    grid-row: 3;
+    grid-row: 4;
     min-height: 0;
     overflow-y: auto;
     overflow-x: hidden;
     -webkit-overflow-scrolling: touch;
   }
-  #structureView > .refactorCard { grid-column: 1; grid-row: 4; }
   #structureView > .captureCard  { grid-column: 1; grid-row: 5; }
 
   /* Right column — a compact inspector (top of the column) above the block canvas,
