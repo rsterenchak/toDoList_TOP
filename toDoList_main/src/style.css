@@ -3927,7 +3927,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
-/* ── DESKTOP PHASE FILTER PILLS (ALL / IDEAS / RUNNING / DONE) ──
+/* ── DESKTOP PHASE FILTER PILLS (ALL / ACTIVE / RUNNING / DONE) ──
    The desktop-only counterpart to the mobile cycle pill: four always-visible
    pills that filter the queue by a row's DERIVED pipeline phase rather than its
    manual status. Hidden by default (mobile owns the cycle pill); revealed at the

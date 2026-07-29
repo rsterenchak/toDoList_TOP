@@ -11,7 +11,7 @@ function read(relative) {
 }
 
 // Pins the contract that at desktop widths the four phase-filter pills (ALL /
-// IDEAS / RUNNING / DONE) sit on their OWN full-width row, with the Sort
+// ACTIVE / RUNNING / DONE) sit on their OWN full-width row, with the Sort
 // dropdown overlay + blocked chip dropped to the row beneath. Sharing one row
 // with the Sort overlay squeezed each pill under 60px in the ~308px queue rail,
 // truncating "RUNNING" to "RU…" and pushing DONE out of view. The fix stacks

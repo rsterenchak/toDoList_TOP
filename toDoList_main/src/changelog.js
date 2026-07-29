@@ -15,13 +15,7 @@ export const changelog = [
         ],
         changed: [
             "On phones, a task that's waiting on you now opens its description editor with the phase controls up front and the entry text collapsed behind a tap-to-expand row.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-28',
-        fixed: [
-            "A task that skips its mockup step and is sent to the agent directly now shows a pending indicator while it runs, instead of staying on its mockup badge.",
+            "On desktop, the task queue's phase filter now offers an Active view covering drafted and accepted entries in place of the Ideas view.",
         ],
     },
 ];

@@ -149,21 +149,22 @@ export function setTaskFilter(filter) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// ── task phase filter (ALL / IDEAS / RUNNING / DONE) ──
+// ── task phase filter (ALL / ACTIVE / RUNNING / DONE) ──
 // The DESKTOP-only pill row above the compose row filters visible rows by their
 // DERIVED pipeline phase (see phase.js), a different vocabulary from the manual
 // status the mobile cycle pill filters on — so it persists under its OWN key
 // rather than sharing TASK_FILTER_KEY. Keeping them separate means resizing
 // across the breakpoint can never write a phase token into the status filter (or
-// vice versa) and blank the list. 'all' shows every uncompleted task, 'ideas'
-// shows phase `none`, 'running' shows in-flight runs (phase `running`), 'done'
-// shows shipped-and-acknowledged work (phase `done`). Any stored value other than
-// the four known tokens falls back to 'all' so a stale or hand-edited pref can't
-// desync the list.
+// vice versa) and blank the list. 'all' shows every uncompleted task, 'active'
+// shows drafted-or-accepted entries (phase `draft` or `accept`), 'running' shows
+// in-flight runs (phase `running`), 'done' shows shipped-and-acknowledged work
+// (phase `done`). Any stored value other than the four known tokens falls back to
+// 'all' so a stale or hand-edited pref (including the retired 'ideas' token)
+// can't desync the list.
 export function getPhaseFilter() {
     try {
         const v = localStorage.getItem(PHASE_FILTER_KEY);
-        if (v === 'ideas' || v === 'running' || v === 'done') return v;
+        if (v === 'active' || v === 'running' || v === 'done') return v;
         return 'all';
     } catch (e) {
         return 'all';
@@ -172,7 +173,7 @@ export function getPhaseFilter() {
 
 export function setPhaseFilter(filter) {
     try {
-        const stored = (filter === 'ideas' || filter === 'running' || filter === 'done') ? filter : 'all';
+        const stored = (filter === 'active' || filter === 'running' || filter === 'done') ? filter : 'all';
         localStorage.setItem(PHASE_FILTER_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }

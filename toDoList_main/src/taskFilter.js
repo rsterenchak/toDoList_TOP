@@ -122,12 +122,13 @@ const FILTERS = [
 // Desktop phase filter: order + display label for each pill. `match` decides
 // whether a given DERIVED phase is visible; ALL matches everything. The phase
 // strings mirror phase.js's PHASE map (inlined rather than imported to keep this
-// module's only hard dependency `prefs`). IDEAS is phase `none` (no entry yet),
-// RUNNING is phase `running` (an in-flight agent run), DONE is phase `done`
-// (shipped and acknowledged — NOT the checkbox-completed COMPLETED section).
+// module's only hard dependency `prefs`). ACTIVE is phase `draft` or `accept`
+// (an entry drafted or accepted, not yet running), RUNNING is phase `running`
+// (an in-flight agent run), DONE is phase `done` (shipped and acknowledged —
+// NOT the checkbox-completed COMPLETED section).
 const PHASE_FILTERS = [
     { key: 'all',     label: 'ALL',     match: function () { return true; } },
-    { key: 'ideas',   label: 'IDEAS',   match: function (p) { return p === 'none'; } },
+    { key: 'active',  label: 'ACTIVE',  match: function (p) { return p === 'draft' || p === 'accept'; } },
     { key: 'running', label: 'RUNNING', match: function (p) { return p === 'running'; } },
     { key: 'done',    label: 'DONE',    match: function (p) { return p === 'done'; } },
 ];
@@ -135,9 +136,10 @@ const PHASE_FILTERS = [
 // Empty-state copy shown when the active filter hides every task (but the
 // project still has tasks under other filters). ALL is omitted — it can only
 // be empty when the project itself is empty, which the project empty-state
-// already covers. `ideas` is shared by the mobile status filter and the desktop
-// phase filter (both mean "nothing to show under Ideas"); `running` and `done`
-// are the desktop-only phase additions.
+// already covers. `active` is shared by the mobile status filter and the desktop
+// phase filter (mobile Active status, desktop ACTIVE phase); `ideas` serves the
+// mobile status filter's Ideas segment; `running` and `done` are the
+// desktop-only phase additions.
 const EMPTY_MESSAGES = {
     active: 'Nothing active right now.',
     ideas: 'No ideas captured yet.',
@@ -571,7 +573,7 @@ export function applyTaskFilter() {
     const activePhaseFilter = phaseFilterFor(phaseKey);
 
     const counts = { all: 0, active: 0, ideas: 0 };
-    const phaseCounts = { all: 0, ideas: 0, running: 0, done: 0 };
+    const phaseCounts = { all: 0, active: 0, running: 0, done: 0 };
     let blockedCount = 0;
     let total = 0;
     let visible = 0;
@@ -601,7 +603,7 @@ export function applyTaskFilter() {
             if (status === 'active' || status === 'in_progress') counts.active += 1;
             if (status === 'idea') counts.ideas += 1;
             phaseCounts.all += 1;
-            if (phase === 'none') phaseCounts.ideas += 1;
+            if (phase === 'draft' || phase === 'accept') phaseCounts.active += 1;
             if (phase === 'running') phaseCounts.running += 1;
             if (phase === 'done') phaseCounts.done += 1;
             if (blocked) blockedCount += 1;
