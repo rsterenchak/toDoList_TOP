@@ -10747,6 +10747,14 @@ body.row-dragging * { cursor: grabbing !important; }
   overflow: hidden;
 }
 
+/* Desktop rail strip + pane-hosted card chrome. Both surfaces only exist at
+   ≥1024px (the strip is JS-mounted only in desktop mode; the pane close control
+   is only reachable there), so their base state here is "off" and the desktop
+   media block below lights them up. Keeping the close button and strip inert by
+   default means the in-list / mobile card is byte-for-byte unchanged. */
+.todoMdViewerStrip { display: none; }
+.todoMdViewerPaneCloseBtn { display: none; }
+
 /* Keep the inline #mainList card sized to its content even when the project
    has many completed rows. #mainList uses grid-auto-rows: min-content, which
    sizes each row's track to its content; but `overflow: hidden` on the card
@@ -11889,6 +11897,115 @@ body.row-dragging * { cursor: grabbing !important; }
     border-left: 0.5px solid var(--border-mid);
     background: var(--bg-base);
     padding: 12px;
+  }
+
+  /* ═══ TODO.md VIEWER — desktop rail strip + detail-pane body ═══
+     The compact strip pins at the top of the queue rail, above #taskFilterBar:
+     the file name (which doubles as the expand toggle), a "N to review" count,
+     and the relocated action controls. The card body renders in the detail pane
+     at full width when expanded. */
+  .todoMdViewerStrip {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 6px 8px;
+    margin: 0 0 6px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-md);
+    font-family: 'Trebuchet MS', sans-serif;
+  }
+  .todoMdViewerStripName {
+    appearance: none;
+    background: transparent;
+    border: 0;
+    padding: 4px 6px;
+    color: var(--text-primary);
+    font: inherit;
+    font-weight: 600;
+    font-size: 13px;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+  }
+  .todoMdViewerStripName:hover { color: #9D93EE; }
+  .todoMdViewerStripName:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  .todoMdViewerStrip--expanded .todoMdViewerStripName { color: #9D93EE; }
+  .todoMdViewerStripReview {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--accent);
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    padding: 2px 7px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+  .todoMdViewerStripReview[hidden] { display: none; }
+  /* The relocated action controls sit at the strip's right edge; margin-left:auto
+     pushes them past the name + count. They wrap as a unit on a very narrow rail. */
+  .todoMdViewerStripActions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  /* Card body relocated into the pane: it is content sitting on the pane surface,
+     not a drawer hanging off a list row, so drop the card's own chrome (border,
+     radius, elevated fill, margins) and let it fill the pane's width and height. */
+  #descDetailPane .todoMdViewerCard {
+    grid-column: auto;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    background: transparent;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  /* Hidden (collapsed) occupant of the pane — the strip is not expanded, so the
+     card yields the pane to the open task / empty state. */
+  #descDetailPane .todoMdViewerCard[hidden] { display: none; }
+  /* The lone collapse chevron and its now-empty meta group are meaningless in the
+     pane (the body always shows here and the actions moved to the strip). */
+  #descDetailPane .todoMdViewerCard .todoMdViewerMeta { display: none; }
+  /* The pane close control replaces them, tucked at the header's right edge. */
+  #descDetailPane .todoMdViewerCard .todoMdViewerPaneCloseBtn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    appearance: none;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    background: transparent;
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #descDetailPane .todoMdViewerCard .todoMdViewerPaneCloseBtn:hover {
+    color: var(--text-primary);
+    border-color: var(--border-mid);
+  }
+  #descDetailPane .todoMdViewerCard .todoMdViewerPaneCloseBtn:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+  }
+  /* The pane owns the scroll, so the body fills naturally rather than taking the
+     #mainList-relative inline height the in-list expand path stamps on. */
+  #descDetailPane .todoMdViewerCard .todoMdViewerBody {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    overflow-y: auto;
   }
 
   /* STRUCTURE takes the full main pane: collapse the queue|detail split to a

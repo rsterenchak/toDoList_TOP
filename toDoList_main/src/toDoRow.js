@@ -59,6 +59,7 @@ import {
 import { applyTaskFilter, setBlockedItemResolver, setItemPhaseResolver } from './taskFilter.js';
 import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
+import { dismissDesktopTodoViewer } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker, parseFilePathsFromEntry } from './filePicker.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
@@ -3328,6 +3329,11 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
     }
 
     function openPanel() {
+        // Opening a task claims the detail pane, so dismiss the TODO.md viewer if
+        // it is currently expanded into the pane — otherwise the pane would hold
+        // both. This restores whatever the viewer had stashed before we mount the
+        // task, hooking the existing row-open path rather than adding a listener.
+        dismissDesktopTodoViewer();
         // Only one detail is shown at a time in pane mode — evict any other
         // open panel and clear its selection before mounting this one.
         if (isDetailPaneMode() && openDetail && openDetail.toggle !== descToggle && openDetail.close) {

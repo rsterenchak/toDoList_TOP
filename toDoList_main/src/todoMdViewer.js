@@ -2,6 +2,8 @@ import { listLogic } from './listLogic.js';
 import { isTodoMdShowCompleted, setTodoMdShowCompleted } from './prefs.js';
 import { showConfirmModal } from './modals.js';
 import { isMobileViewport } from './viewport.js';
+import { derivePhase, PHASE } from './phase.js';
+import { onQueueChange } from './agentQueueStore.js';
 import {
     readActiveRun,
     writeActiveRun,
@@ -128,6 +130,16 @@ let viewerActiveRunChangeHandler = null;
 // an acknowledgement lands from the tasks-surface REVIEW badge (which emits
 // TODO_RUN_STATUS_EVENT). Bound to the mounted card; detached with it.
 let viewerReviewSyncHandler = null;
+// Unsubscribe thunk for the queue-change subscription that repaints the desktop
+// rail strip's "N to review" count when a realtime agent_queue push lands (e.g. a
+// task ships from another device). Bound to the mounted card; dropped on teardown.
+let viewerQueueChangeUnsub = null;
+// Desktop-only: true while the TODO.md card is expanded into the detail pane
+// (#descDetailPane) from its rail strip. The strip stays pinned in the queue rail
+// either way; this only tracks whether the card body is showing in the pane. Reset
+// whenever the strip is torn down or the viewport drops below the desktop
+// breakpoint. See placeViewerCardDesktop / expandViewerIntoPane below.
+let viewerStripExpanded = false;
 let viewerRunPollInterval = null;
 // Separate interval from the local run poll: this one polls the Worker's
 // repo-level `active_runs` probe so a run started on ANOTHER device lights up
@@ -205,6 +217,11 @@ function detachViewerResizeHandler() {
         document.removeEventListener(TODO_RUN_STATUS_EVENT, viewerReviewSyncHandler);
         viewerReviewSyncHandler = null;
     }
+    // Drop the queue-change subscription that repaints the strip's review count.
+    if (viewerQueueChangeUnsub) {
+        try { viewerQueueChangeUnsub(); } catch (e) { /* already gone */ }
+        viewerQueueChangeUnsub = null;
+    }
 }
 
 // Re-run the expanded viewer card's height computation against the live
@@ -214,8 +231,274 @@ function detachViewerResizeHandler() {
 // description panel opening or closing, which shifts every row below it — call
 // this so the card's cached height tracks the live layout instead of a stale
 // one-time snapshot. No-op when no card is mounted or the card isn't expanded.
+// Mode-aware: in desktop detail-pane mode the card body no longer lives inside
+// #mainList, so its expanded height is owned by the pane's own scroll rather than
+// the list-relative computation the resize handler runs. Skipping the handler
+// there keeps these callers (a description panel opening/closing in #mainList)
+// no-ops for the relocated card instead of stamping a stale #mainList-relative
+// height on a body the pane now sizes. Otherwise it still drives viewerResizeHandler.
 export function refreshViewerExpandedHeight() {
+    if (isViewerCardInPane()) return;
     if (viewerResizeHandler) viewerResizeHandler();
+}
+
+// ── Desktop rail strip + detail-pane expansion ───────────────────────────────
+// At desktop widths the TODO.md viewer splits in two: a compact strip pinned at
+// the top of the queue rail (#mainBar, above #taskFilterBar) carrying the file
+// name, sync state, a "N to review" count, and the action controls; and the card
+// body, which renders in the detail pane (#descDetailPane) at full width when the
+// strip is expanded. Mobile (and any width with no detail pane) keeps the in-list
+// card and its bottom sheet exactly as before — every branch here is gated on
+// isViewerDesktopMode(), which mirrors toDoRow.js's isDetailPaneMode() by also
+// requiring the pane host to exist so unit tests that build bare DOM stay on the
+// in-list path.
+function isViewerDesktopMode() {
+    return typeof window !== 'undefined'
+        && typeof document !== 'undefined'
+        && window.innerWidth > 1023
+        && !!document.getElementById('descDetailPane');
+}
+
+// True when the viewer card currently lives inside the detail pane, regardless of
+// whether it is the visible (expanded) or hidden (collapsed) occupant. Used to
+// gate the #mainList-relative height computation and the mode-aware refresh above.
+function isViewerCardInPane() {
+    if (typeof document === 'undefined') return false;
+    const card = document.getElementById('todoMdViewerCard');
+    const pane = document.getElementById('descDetailPane');
+    return !!(card && pane && card.parentNode === pane);
+}
+
+// The strip's reason to exist: how many of the active project's tasks are shipped
+// but not yet acknowledged — i.e. resolve to PHASE.ACCEPT (the REVIEW badge). It
+// runs through derivePhase, the same source the row badges and the blocked chip
+// read, so the count can never disagree with them; it never parses TODO.md.
+function countTodoEntriesAwaitingReview(projectName) {
+    if (!projectName) return 0;
+    try {
+        const items = listLogic.listItems(projectName) || [];
+        let n = 0;
+        for (let i = 0; i < items.length; i++) {
+            if (derivePhase(items[i]) === PHASE.ACCEPT) n++;
+        }
+        return n;
+    } catch (e) { return 0; }
+}
+
+function paintViewerStripReview(strip, projectName) {
+    if (!strip) return;
+    const badge = strip.querySelector('.todoMdViewerStripReview');
+    if (!badge) return;
+    const n = countTodoEntriesAwaitingReview(projectName);
+    if (n > 0) {
+        badge.hidden = false;
+        badge.textContent = n + ' to review';
+        badge.setAttribute('aria-label', n + ' shipped entries awaiting review');
+    } else {
+        badge.hidden = true;
+        badge.textContent = '';
+        badge.removeAttribute('aria-label');
+    }
+}
+
+// The action controls (synced label, Run backlog, Redeploy, Sync, overflow) are
+// built into the card's `.todoMdViewerMeta` group. On desktop they MOVE — same
+// elements, handlers intact — into the strip so they stay reachable while the body
+// lives in the pane. The collapse chevron stays behind on the card (its body
+// toggle is meaningless in the pane and hidden there by CSS). Idempotent: once
+// moved, meta.querySelector finds nothing to move on the next placement.
+const VIEWER_STRIP_ACTION_SELECTORS = [
+    '.todoMdViewerSynced',
+    '.todoMdViewerRunBtn',
+    '.todoMdViewerDeployPill',
+    '.todoMdViewerSyncBtn',
+    '.todoMdViewerOverflowWrap',
+];
+
+function relocateActionsToStrip(card, actionsHost) {
+    const meta = card.querySelector('.todoMdViewerMeta');
+    if (!meta || !actionsHost) return;
+    VIEWER_STRIP_ACTION_SELECTORS.forEach(function(sel) {
+        const el = meta.querySelector(sel);
+        if (el && el.parentNode !== actionsHost) actionsHost.appendChild(el);
+    });
+}
+
+// Undo relocateActionsToStrip: move the action controls back into the card's meta,
+// re-inserted ahead of the collapse chevron so the original meta order is restored.
+// Called when a desktop→mobile resize drops the strip.
+function restoreActionsToMeta(card) {
+    const meta = card.querySelector('.todoMdViewerMeta');
+    const strip = document.getElementById('todoMdViewerStrip');
+    if (!meta || !strip) return;
+    const host = strip.querySelector('.todoMdViewerStripActions');
+    if (!host) return;
+    const collapseBtn = meta.querySelector('.todoMdViewerCollapseBtn');
+    VIEWER_STRIP_ACTION_SELECTORS.forEach(function(sel) {
+        const el = host.querySelector(sel);
+        if (el) meta.insertBefore(el, collapseBtn || null);
+    });
+}
+
+function buildViewerRailStrip() {
+    const strip = document.createElement('div');
+    strip.id = 'todoMdViewerStrip';
+    strip.className = 'todoMdViewerStrip';
+
+    // The file name doubles as the expand/collapse control — tapping it opens the
+    // file in the detail pane (or closes it if already open). aria-expanded tracks
+    // the pane state for screen readers.
+    const nameBtn = document.createElement('button');
+    nameBtn.type = 'button';
+    nameBtn.className = 'todoMdViewerStripName';
+    nameBtn.setAttribute('aria-expanded', 'false');
+    nameBtn.title = 'Open TODO.md in the detail pane';
+    nameBtn.textContent = 'TODO.md';
+
+    const review = document.createElement('span');
+    review.className = 'todoMdViewerStripReview';
+    review.setAttribute('aria-live', 'polite');
+    review.hidden = true;
+
+    const actions = document.createElement('div');
+    actions.className = 'todoMdViewerStripActions';
+
+    strip.appendChild(nameBtn);
+    strip.appendChild(review);
+    strip.appendChild(actions);
+
+    nameBtn.addEventListener('click', function() {
+        // Resolve the card live rather than closing over it: the card is rebuilt on
+        // every project switch, but the strip persists, so a captured reference
+        // would go stale. getElementById always yields the current card.
+        const card = document.getElementById('todoMdViewerCard');
+        if (!card) return;
+        if (viewerStripExpanded) collapseViewerToRail(card);
+        else expandViewerIntoPane(card);
+    });
+
+    return strip;
+}
+
+// Hide (never unmount) the detail pane's task content — the open task's panel, its
+// header, and the empty-state message — so the expanded viewer card is the pane's
+// sole visible occupant. Stashing rather than removing is what lets the previously
+// open task survive the expansion and be restored verbatim on close.
+function stashPaneTaskContent(pane, card) {
+    ['#descSibling', '.descDetailHeader', '.descDetailEmpty'].forEach(function(sel) {
+        const el = pane.querySelector(sel);
+        if (el && el !== card) {
+            el.dataset.viewerStashed = '1';
+            el.style.display = 'none';
+        }
+    });
+}
+
+function restorePaneTaskContent(pane) {
+    if (!pane) return;
+    pane.querySelectorAll('[data-viewer-stashed="1"]').forEach(function(el) {
+        delete el.dataset.viewerStashed;
+        el.style.display = '';
+    });
+    // Re-resolve the empty-state visibility exactly as toDoRow's
+    // updateDetailPaneEmptyState would: shown only when no task panel occupies the
+    // pane. Restoring the previously open panel keeps it hidden; an empty pane
+    // shows it again.
+    const empty = pane.querySelector('.descDetailEmpty');
+    if (empty) {
+        empty.style.display = '';
+        empty.hidden = !!pane.querySelector('#descSibling');
+    }
+}
+
+function expandViewerIntoPane(card) {
+    const pane = document.getElementById('descDetailPane');
+    if (!pane) return;
+    if (card.parentNode !== pane) pane.appendChild(card);
+    stashPaneTaskContent(pane, card);
+    card.hidden = false;
+    // The card mounts collapsed for its in-list life; the pane always shows the
+    // full body, so clear the collapsed flag when it takes the pane.
+    card.classList.remove('collapsed');
+    card.classList.add('todoMdViewerCard--inPane');
+    viewerStripExpanded = true;
+    const strip = document.getElementById('todoMdViewerStrip');
+    if (strip) {
+        strip.classList.add('todoMdViewerStrip--expanded');
+        const nameBtn = strip.querySelector('.todoMdViewerStripName');
+        if (nameBtn) nameBtn.setAttribute('aria-expanded', 'true');
+    }
+}
+
+function collapseViewerToRail(card) {
+    const pane = document.getElementById('descDetailPane');
+    if (card) card.hidden = true;
+    viewerStripExpanded = false;
+    restorePaneTaskContent(pane);
+    const strip = document.getElementById('todoMdViewerStrip');
+    if (strip) {
+        strip.classList.remove('todoMdViewerStrip--expanded');
+        const nameBtn = strip.querySelector('.todoMdViewerStripName');
+        if (nameBtn) nameBtn.setAttribute('aria-expanded', 'false');
+    }
+}
+
+// Called from the row-open path (toDoRow.js openPanel) so opening a task while the
+// file is showing dismisses the viewer, leaving the pane free for the task. No-op
+// unless the desktop viewer is currently expanded.
+export function dismissDesktopTodoViewer() {
+    if (!viewerStripExpanded) return;
+    const card = typeof document !== 'undefined'
+        ? document.getElementById('todoMdViewerCard') : null;
+    collapseViewerToRail(card);
+}
+
+// Drop the rail strip and reset the expanded state, restoring any stashed pane
+// content. Called before a fresh card is built (project switch) and by the
+// desktop→mobile teardown path.
+function removeViewerRailStrip() {
+    const pane = typeof document !== 'undefined'
+        ? document.getElementById('descDetailPane') : null;
+    restorePaneTaskContent(pane);
+    viewerStripExpanded = false;
+    const strip = typeof document !== 'undefined'
+        ? document.getElementById('todoMdViewerStrip') : null;
+    if (strip && strip.parentNode) strip.parentNode.removeChild(strip);
+}
+
+// Restore the in-list layout when the viewport drops below the desktop breakpoint
+// mid-session: move the action controls back into the card header and drop the
+// strip so the mobile in-list card and bottom sheet behave exactly as before.
+function teardownViewerDesktopChrome(card) {
+    restoreActionsToMeta(card);
+    removeViewerRailStrip();
+    card.hidden = false;
+    card.classList.remove('todoMdViewerCard--inPane');
+}
+
+// Desktop placement: pin the strip in the rail, move the actions into it, and keep
+// the card mounted in the pane — hidden until expanded so the strip's toggle can
+// always resolve it. Idempotent across the mainListRendered re-renders that fire
+// on the same project.
+function placeViewerCardDesktop(card) {
+    const mainBar = document.getElementById('mainBar');
+    const pane = document.getElementById('descDetailPane');
+    if (!mainBar || !pane) return;
+    let strip = document.getElementById('todoMdViewerStrip');
+    if (!strip) strip = buildViewerRailStrip();
+    const filterBar = mainBar.querySelector('#taskFilterBar');
+    if (strip.parentNode !== mainBar || (filterBar && strip.nextSibling !== filterBar)) {
+        mainBar.insertBefore(strip, filterBar || mainBar.firstChild);
+    }
+    const actionsHost = strip.querySelector('.todoMdViewerStripActions');
+    relocateActionsToStrip(card, actionsHost);
+    if (card.parentNode !== pane) pane.appendChild(card);
+    card.classList.add('todoMdViewerCard--inPane');
+    // Preserve an already-open expansion across a same-project re-render; default
+    // to collapsed (card hidden, task content visible) otherwise.
+    if (viewerStripExpanded) expandViewerIntoPane(card);
+    else card.hidden = true;
+    paintViewerStripReview(strip, card.dataset.projectName || activeProjectNameForViewer());
 }
 
 function stopViewerRunPoll() {
@@ -595,6 +878,20 @@ function buildViewerRawBody(text) {
 }
 
 export function placeViewerCard(card, mainListDiv) {
+    // Desktop: the card body renders in the detail pane and a compact strip lives
+    // in the rail. Resolved the same way toDoRow's placeDescPanel / placeChatContent
+    // resolve their host — one definition governs, so there is no second placement
+    // path. Below the breakpoint (or with no detail pane) fall through to the
+    // in-list card exactly as before.
+    if (isViewerDesktopMode()) {
+        placeViewerCardDesktop(card);
+        return;
+    }
+    // A desktop→mobile resize may leave the strip behind and the actions relocated;
+    // undo that before re-homing the card in-list so the mobile surface is intact.
+    if (typeof document !== 'undefined' && document.getElementById('todoMdViewerStrip')) {
+        teardownViewerDesktopChrome(card);
+    }
     const spacer = mainListDiv.querySelector('#projectsGhostSpacer');
     if (spacer && spacer.parentNode === mainListDiv) {
         if (card.nextSibling !== spacer) mainListDiv.insertBefore(card, spacer);
@@ -765,6 +1062,19 @@ function buildTodoMdViewerCard(projectName, target) {
 
     header.appendChild(tabs);
     header.appendChild(meta);
+
+    // Close control for the detail-pane host: dismisses the expanded viewer and
+    // returns the pane to the previously open task. Hidden by CSS on the in-list /
+    // mobile card (which is never "expanded into" a pane), shown only under
+    // #descDetailPane. Resolves the card at click time from `card` in this closure.
+    const paneCloseBtn = document.createElement('button');
+    paneCloseBtn.type = 'button';
+    paneCloseBtn.className = 'todoMdViewerPaneCloseBtn';
+    paneCloseBtn.setAttribute('aria-label', 'Close TODO.md');
+    paneCloseBtn.title = 'Close';
+    paneCloseBtn.textContent = '✕';
+    paneCloseBtn.addEventListener('click', function() { collapseViewerToRail(card); });
+    header.appendChild(paneCloseBtn);
 
     const body = document.createElement('div');
     body.className = 'todoMdViewerBody';
@@ -1980,8 +2290,23 @@ function buildTodoMdViewerCard(projectName, target) {
             changed = true;
         });
         if (changed) applyShowCompletedState();
+        // Keep the rail strip's "N to review" count in step with acknowledgements,
+        // which move a task out of PHASE.ACCEPT.
+        const strip = document.getElementById('todoMdViewerStrip');
+        if (strip) paintViewerStripReview(strip, projectName);
     };
     document.addEventListener(TODO_RUN_STATUS_EVENT, viewerReviewSyncHandler);
+
+    // Repaint the strip's review count on realtime queue pushes too — a task that
+    // ships from another device enters PHASE.ACCEPT via an agent_queue change with
+    // no local TODO_RUN_STATUS_EVENT. Unsubscribed with the card on teardown.
+    if (viewerQueueChangeUnsub) {
+        try { viewerQueueChangeUnsub(); } catch (e) { /* already gone */ }
+    }
+    viewerQueueChangeUnsub = onQueueChange(function() {
+        const strip = document.getElementById('todoMdViewerStrip');
+        if (strip) paintViewerStripReview(strip, projectName);
+    });
 
     // Re-attach an in-flight run's pill if one is tracked for THIS project and
     // hasn't resolved yet. This fires on every card mount — both project
@@ -2029,10 +2354,14 @@ function updateTodoMdViewerCard() {
     if (!mainListDiv) return;
 
     const projectName = activeProjectNameForViewer();
-    const existing = mainListDiv.querySelector('#todoMdViewerCard');
+    // Resolve the card wherever it lives — in-list on mobile, or relocated into the
+    // detail pane on desktop — so the reconcile still finds it after a desktop
+    // placement moved it out of #mainList.
+    const existing = document.getElementById('todoMdViewerCard');
 
     if (!projectName) {
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        removeViewerRailStrip();
         detachViewerResizeHandler();
         viewerActiveProject = null;
         return;
@@ -2043,6 +2372,7 @@ function updateTodoMdViewerCard() {
 
     if (!target) {
         if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+        removeViewerRailStrip();
         detachViewerResizeHandler();
         viewerActiveProject = null;
         return;
@@ -2054,6 +2384,10 @@ function updateTodoMdViewerCard() {
     }
 
     if (existing && existing.parentNode) existing.parentNode.removeChild(existing);
+    // A fresh card carries fresh action controls in its meta group; drop the old
+    // strip (which holds the previous card's now-orphaned actions) so a new one is
+    // built for this card.
+    removeViewerRailStrip();
     const card = buildTodoMdViewerCard(projectName, target);
     placeViewerCard(card, mainListDiv);
     viewerActiveProject = projectName;
