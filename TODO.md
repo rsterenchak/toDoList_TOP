@@ -178,3 +178,20 @@
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/claudeSheet.js`
   - Completed: 2026-07-30
   <!-- id: 40b40c83-2c2e-4ac0-96a5-cedd10ecb790 -->
+
+- [ ] **[MEDIUM]** Coverage breakdown modal doesn't repaint when a row settles
+  - Type: bug
+  - Description: The coverage breakdown modal renders once and never updates. `assignmentCoverage.js` has a single `onQueueChange` subscription and it drives only `_proposalModal`, so the proposal review list tracks changes live while the breakdown does not. When the reconciler settles a dispatched row to `shipped` — which is what moves an aspect from "In progress" to "Shipped" and increments the covered count — an open breakdown keeps showing the pre-settle state until it is closed and reopened or the page is reloaded. Runs settle minutes after dispatch, so this is the normal case rather than an edge one: the modal is exactly where you would be watching for it.
+  - Behavior: While the coverage breakdown modal is open, each aspect's status, the headline counts, and the bar all update as queue rows change — an aspect moves from In progress to Shipped and the covered count increments without closing the modal. The manual lane's committed ticks continue to reflect `aspect_submissions` as they do today. Closing and reopening still shows current state. The proposal review modal's existing live behavior is unchanged.
+  - Implementation notes:
+    - Follow the pattern the proposal modal already uses: hold a module-level handle to the open breakdown (`_coverageModal = { onQueueChange: rerender }`), have the single existing `onQueueChange` listener call it when set, and clear the handle on dismiss. Do NOT add a second `onQueueChange` subscription — one listener dispatching to whichever modals are open is the established shape here and avoids duplicate registration.
+    - Re-render must recompute, not just relabel. `computeCoverage(aspects, rows)` and `aspectStatus(rows)` derive everything from the rows passed in, so the rerender needs fresh rows from `getQueueRows()` — a handle that closes over the original rows array will repaint identical content.
+    - Preserve the modal's own state across a repaint: scroll position, and any committed-tick checkbox state hydrated from `aspect_submissions`. `showCoverageDetailModal` accepts a preloaded Set for exactly that hydration — reuse it on rerender rather than re-fetching, or a settle will visibly reset the manual lane.
+    - Do not tear down and rebuild the modal element. Rebuilding would drop focus, which matters because the manual lane contains real checkboxes; update the affected rows in place, or rebuild only the list body while leaving the dialog and its focus trap intact.
+    - Both modals can be open in sequence but not simultaneously — confirm the shared listener handles a null handle for whichever is closed, and that dismissing one does not clear the other's handle.
+    - The coverage summary in the tab body already repaints on queue changes per its own entry. Verify that still works and that this change does not double-render it.
+    - Test: with the breakdown open, a row transitioning to `shipped` moves its aspect's status and increments the covered count without reopening; scroll position and manual ticks survive the repaint; dismissing clears the handle so no repaint fires afterward; and the proposal modal's live updates still work.
+  - Out of scope: The reconciler and how rows reach `shipped`. `aspectStatus` and `computeCoverage`. The proposal review modal. Allowing manual confirmation of agent-shippable aspects, which is a separate design decision. The coverage summary in the tab body.
+  - File: `toDoList_main/src/assignmentCoverage.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 8ef2844e-0939-44a9-98b8-dbddf7d6f393 -->
