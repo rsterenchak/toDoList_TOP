@@ -6,11 +6,13 @@ import {
     syncAgentAvailabilityForProject,
     isAgentUnavailable,
     AGENT_UNAVAILABLE_MSG,
-} from '../src/agentView.js';
+} from '../src/agentQueueStore.js';
+// Importing inject.js registers isInjectConfigured() with the store's availability
+// gate (setAgentAvailabilityDeps) at module load — the gate reads it from there.
 import { initInjectConfig } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
 
-// agentView → inject → supabaseClient. Stub the shared client so module import
+// agentQueueStore → supabaseClient. Stub the shared client so module import
 // doesn't reach the network (the availability gate never touches Supabase, but
 // importing the module still loads the client).
 vi.mock('../src/supabaseClient.js', () => ({
@@ -122,17 +124,23 @@ describe('AGENT tab availability wiring', () => {
     const srcDir = resolve(here, '../src');
     const read = (rel) => readFileSync(resolve(srcDir, rel), 'utf8');
 
-    it('agentView.js exports the gate helpers and no longer exports the tooltip', () => {
+    it('agentQueueStore.js exports the gate helpers; agentView.js imports them and no longer exports the tooltip', () => {
+        const store = read('agentQueueStore.js');
+        expect(store).toMatch(/export\s+function\s+syncAgentAvailabilityForProject\s*\(/);
+        expect(store).toMatch(/export\s+function\s+isAgentUnavailable\s*\(/);
+        expect(store).toMatch(/export\s+const\s+AGENT_UNAVAILABLE_MSG\b/);
         const av = read('agentView.js');
-        expect(av).toMatch(/export\s+function\s+syncAgentAvailabilityForProject\s*\(/);
-        expect(av).toMatch(/export\s+function\s+isAgentUnavailable\s*\(/);
+        // The board no longer defines the gate — it consults it from the store for
+        // paint()'s unavailable branch.
+        expect(av).not.toMatch(/export\s+function\s+syncAgentAvailabilityForProject\s*\(/);
+        expect(av).toMatch(/import\s*\{[\s\S]*?isAgentUnavailable[\s\S]*?\}\s*from\s*['"]\.\/agentQueueStore\.js['"]/);
         expect(av).not.toMatch(/showAgentUnavailableTooltip/);
     });
 
     it('main.js imports and calls syncAgentAvailabilityForProject at both switch hooks', () => {
         const main = read('main.js');
         expect(main)
-            .toMatch(/import\s*\{[^}]*syncAgentAvailabilityForProject[^}]*\}\s*from\s*['"]\.\/agentView\.js['"]/);
+            .toMatch(/import\s*\{[^}]*syncAgentAvailabilityForProject[^}]*\}\s*from\s*['"]\.\/agentQueueStore\.js['"]/);
         const calls = main.match(/syncAgentAvailabilityForProject\(/g) || [];
         expect(calls.length).toBeGreaterThanOrEqual(2);
     });

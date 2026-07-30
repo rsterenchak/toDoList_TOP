@@ -61,10 +61,13 @@ vi.mock('../src/claudeSheet.js', () => ({
 }));
 
 import { listLogic } from '../src/listLogic.js';
-import {
-    startAgentWorkingWatch,
-    syncAgentAvailabilityForProject,
-} from '../src/agentView.js';
+// startAgentWorkingWatch still lives in agentView.js; importing the board also
+// registers pollAgentWorkingWatch with the store (configureRunTrackers), which the
+// relocated gate calls to recompute the dot on a switch.
+import { startAgentWorkingWatch } from '../src/agentView.js';
+// The availability gate moved to the store; it still drives pollAgentWorkingWatch
+// on every project switch via the board-registered callback.
+import { syncAgentAvailabilityForProject } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 6) {

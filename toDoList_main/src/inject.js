@@ -10,7 +10,7 @@
 import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { supabase } from './supabaseClient.js';
-import { setShippedMarkerRefresher, setDispatchReconcilerDeps } from './agentQueueStore.js';
+import { setShippedMarkerRefresher, setDispatchReconcilerDeps, setAgentAvailabilityDeps } from './agentQueueStore.js';
 
 const URL_KEY              = 'todoapp_injectWorkerUrl';
 const SECRET_KEY           = 'todoapp_injectSharedSecret';
@@ -689,6 +689,14 @@ setDispatchReconcilerDeps({
     findTargetById: findTargetById,
     refreshShippedMarkersForProject: refreshShippedMarkersForProject,
     resolveEntryRunState: resolveEntryRunState,
+});
+
+// Register the inject-configured check the relocated agent availability gate (in
+// the agent-queue store) needs. Same setter idiom and TDZ-avoidance reason as the
+// two above: the store must not statically import this module, so it reaches
+// isInjectConfigured() through a registered bundle instead.
+setAgentAvailabilityDeps({
+    isInjectConfigured: isInjectConfigured,
 });
 
 

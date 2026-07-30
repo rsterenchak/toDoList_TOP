@@ -102,7 +102,6 @@ import {
     renderAgentView,
     subscribeAgentView,
     unsubscribeAgentView,
-    syncAgentAvailabilityForProject,
     startAgentWorkingWatch,
     stuckReasonText,
 } from './agentView.js';
@@ -112,6 +111,7 @@ import {
     loadAllQueueRows,
     getWaitingQuestionCounts,
     onQueueChange,
+    syncAgentAvailabilityForProject,
 } from './agentQueueStore.js';
 import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
