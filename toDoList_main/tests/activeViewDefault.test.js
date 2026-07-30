@@ -42,6 +42,25 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 
+    it("falls back to 'projects' when a retired 'agent' value is persisted", () => {
+        // The Agent queue board is no longer reachable through the UI; a
+        // persisted 'agent' token must fall through to the 'projects' default
+        // rather than booting into a dead board with no way back.
+        localStorage.setItem(ACTIVE_VIEW_KEY, 'agent');
+        expect(getActiveView()).toBe('projects');
+    });
+
+    it("never persists 'agent' — setActiveView('agent') stores 'projects'", () => {
+        setActiveView('agent');
+        expect(localStorage.getItem(ACTIVE_VIEW_KEY)).toBe('projects');
+        expect(getActiveView()).toBe('projects');
+    });
+
+    it("still persists 'structure' when selected", () => {
+        setActiveView('structure');
+        expect(getActiveView()).toBe('structure');
+    });
+
     it("falls back to 'projects' for a stale or hand-edited pref", () => {
         localStorage.setItem(ACTIVE_VIEW_KEY, 'somethingElse');
         expect(getActiveView()).toBe('projects');
