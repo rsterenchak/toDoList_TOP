@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-30',
         fixed: [
-            "Acknowledged tasks now keep their completed state even when their TODO entry was cleared from the file or was acknowledged before completion timestamps were recorded.",
             "The pinned TODO.md strip's action controls now stay reachable at any rail width, shedding labels and wrapping onto a second line instead of clipping off the edge.",
             "The pinned TODO.md strip's edges now line up with the task rows, inset from the queue column border instead of touching it.",
             "TODO.md opened in the detail pane now fills the pane's height and scrolls internally, instead of stopping partway down and leaving dead space below it.",
             "The inline TODO.md viewer card now sizes to its content — hugging short files and sitting directly beneath the per-project empty state instead of stretching to fill the panel or dropping to the column floor.",
+            "A stored preference for the retired Agent board no longer strands you on a dead view on load — the app now opens to your projects instead.",
         ],
     },
 ];

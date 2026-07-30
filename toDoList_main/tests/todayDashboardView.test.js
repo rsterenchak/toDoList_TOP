@@ -39,13 +39,14 @@ describe('Stream / Structure view switcher', () => {
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
             // The two live view tokens are honored when persisted —
-            // 'projects' and 'agent'. When the key is absent (first
-            // load, cleared storage) the fallback is 'projects'. Legacy
-            // tokens that are no longer live ('inbox', 'today', 'calendar')
-            // are NOT honored, so they fall through to the 'projects'
-            // default.
+            // 'projects' and 'structure'. When the key is absent (first
+            // load, cleared storage) the fallback is 'projects'. Tokens
+            // that are no longer live ('inbox', 'today', 'calendar', and
+            // the retired 'agent' board) are NOT honored, so they fall
+            // through to the 'projects' default.
             expect(body).toMatch(/===\s*['"]projects['"]/);
-            expect(body).toMatch(/===\s*['"]agent['"]/);
+            expect(body).toMatch(/===\s*['"]structure['"]/);
+            expect(body).not.toMatch(/===\s*['"]agent['"]/);
             expect(body).not.toMatch(/===\s*['"]inbox['"]/);
             expect(body).not.toMatch(/===\s*['"]today['"]/);
             expect(body).not.toMatch(/===\s*['"]calendar['"]/);
@@ -57,10 +58,12 @@ describe('Stream / Structure view switcher', () => {
             expect(fnIdx).toBeGreaterThan(-1);
             const body = prefs.slice(fnIdx, fnIdx + 600);
             expect(body).toMatch(/setItem\(\s*ACTIVE_VIEW_KEY/);
-            // Only 'agent' is explicitly normalized; anything else
-            // (including a legacy 'inbox' / 'calendar') falls back to the
-            // 'projects' default so a stray string can't pollute the pref.
-            expect(body).toMatch(/===\s*['"]agent['"]/);
+            // Only 'structure' is explicitly normalized; anything else
+            // (including the retired 'agent' or a legacy 'inbox' /
+            // 'calendar') falls back to the 'projects' default so a stray
+            // string can't pollute the pref.
+            expect(body).toMatch(/===\s*['"]structure['"]/);
+            expect(body).not.toMatch(/['"]agent['"]/);
             expect(body).not.toMatch(/['"]inbox['"]/);
             expect(body).not.toMatch(/['"]calendar['"]/);
         });
