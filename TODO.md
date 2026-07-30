@@ -53,7 +53,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 828a2c3f-054a-4cd2-88d1-f7209f174965 -->
 
-- [ ] **[MEDIUM]** TODO.md strip: actions clip instead of adapting to the column width
+- [x] **[MEDIUM]** TODO.md strip: actions clip instead of adapting to the column width — Completed: 2026-07-30
   - Type: bug
   - Description: The pinned strip's action controls are cut off — the sync chip is clipped at the right edge and the overflow and expand controls are pushed out of view entirely. `.todoMdViewerStrip` is `flex-wrap: wrap`, but `.todoMdViewerStripActions` is a nested flex row with no `flex-wrap` and `margin-left: auto`, so its children cannot break and the group overflows as a single unit. This is the same defect as the viewer header's `.todoMdViewerMeta` earlier in the session, reintroduced in the new strip. The strip needs to survive any column width, since the queue rail can shrink toward its 260px lower bound with the chat pane docked.
   - Behavior: Every control in the strip stays visible and reachable at any rail width — the file name, the review count, the synced timestamp, Run backlog, Redeploy, sync, overflow, and expand. At comfortable widths they sit on one row as they do now. As the column narrows, secondary controls shed their labels before anything wraps, and the group wraps to a second line only when icons alone no longer fit. Nothing is ever clipped or pushed out of view. Run backlog keeps its label longest, since it is the primary action.

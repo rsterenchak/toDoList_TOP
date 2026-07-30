@@ -11915,6 +11915,12 @@ body.row-dragging * { cursor: grabbing !important; }
     border: 1px solid var(--border-dim);
     border-radius: var(--radius-md);
     font-family: 'Trebuchet MS', sans-serif;
+    /* Inline-size query container. The rail width is decoupled from the viewport
+       — docking the chat pane narrows it toward its 260px lower bound without any
+       viewport change — so the action controls shed labels and re-align against
+       the strip's own width (see the @container rules below) rather than the
+       viewport width this enclosing @media reads. */
+    container-type: inline-size;
   }
   .todoMdViewerStripName {
     appearance: none;
@@ -11946,13 +11952,38 @@ body.row-dragging * { cursor: grabbing !important; }
   }
   .todoMdViewerStripReview[hidden] { display: none; }
   /* The relocated action controls sit at the strip's right edge; margin-left:auto
-     pushes them past the name + count. They wrap as a unit on a very narrow rail. */
+     pushes them past the name + count on a comfortable one-row layout. flex-wrap
+     lets the individual controls break onto a second line as the rail narrows,
+     instead of overflowing (and clipping) as a single rigid unit. The 8px gap
+     supplies the row gap for wrapped rows. */
   .todoMdViewerStripActions {
     margin-left: auto;
     display: flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 8px;
     min-width: 0;
+  }
+  /* Narrow rail: shed the Redeploy text (its glyph + aria-label carry the action,
+     matching the already icon-only Sync and overflow) to recover ~70px, and drop
+     the auto margin so any wrapped row starts flush-left under the file name
+     rather than hanging right. The "N to review" pill and file name stay on the
+     first line — they are direct children of the strip, ahead of this group. */
+  @container (max-width: 400px) {
+    .todoMdViewerStripActions {
+      margin-left: 0;
+    }
+    .todoMdViewerStripActions .todoMdViewerDeployPillLabel {
+      display: none;
+    }
+  }
+  /* Tighter still (chat pane docked, ~260px): also drop the synced timestamp —
+     the lowest-value, most width-variable label — before the icons themselves
+     are forced to wrap. */
+  @container (max-width: 300px) {
+    .todoMdViewerStripActions .todoMdViewerSynced {
+      display: none;
+    }
   }
 
   /* Card body relocated into the pane: it is content sitting on the pane surface,
