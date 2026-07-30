@@ -179,7 +179,7 @@
   - Completed: 2026-07-30
   <!-- id: 40b40c83-2c2e-4ac0-96a5-cedd10ecb790 -->
 
-- [ ] **[MEDIUM]** Coverage breakdown modal doesn't repaint when a row settles
+- [x] **[MEDIUM]** Coverage breakdown modal doesn't repaint when a row settles — Completed: 2026-07-30
   - Type: bug
   - Description: The coverage breakdown modal renders once and never updates. `assignmentCoverage.js` has a single `onQueueChange` subscription and it drives only `_proposalModal`, so the proposal review list tracks changes live while the breakdown does not. When the reconciler settles a dispatched row to `shipped` — which is what moves an aspect from "In progress" to "Shipped" and increments the covered count — an open breakdown keeps showing the pre-settle state until it is closed and reopened or the page is reloaded. Runs settle minutes after dispatch, so this is the normal case rather than an edge one: the modal is exactly where you would be watching for it.
   - Behavior: While the coverage breakdown modal is open, each aspect's status, the headline counts, and the bar all update as queue rows change — an aspect moves from In progress to Shipped and the covered count increments without closing the modal. The manual lane's committed ticks continue to reflect `aspect_submissions` as they do today. Closing and reopening still shows current state. The proposal review modal's existing live behavior is unchanged.
