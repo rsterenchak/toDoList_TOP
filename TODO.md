@@ -87,7 +87,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b47e1216-2024-439a-a401-c7bbb0326731 -->
 
-- [ ] **[MEDIUM]** TODO.md in the detail pane: body keeps a stale height computed for the rail
+- [x] **[MEDIUM]** TODO.md in the detail pane: body keeps a stale height computed for the rail — Completed: 2026-07-30
   - Type: bug
   - Description: With TODO.md open in the detail pane, the rendered body stops partway down and leaves dead space beneath it. `applyExpandedHeight` writes an explicit `body.style.height` derived from `#mainList`'s bounding rect — the queue rail's scroll viewport — because the card's in-list chain cannot propagate a flex height through the list's CSS grid. `refreshViewerExpandedHeight` correctly returns early when `isViewerCardInPane()`, so the height is not recomputed in the pane, but nothing clears the value already written while the card lived in the rail. The body renders at that stale rail-sized height inside a much taller pane.
   - Behavior: When TODO.md is open in the detail pane, its body fills the pane's available height and scrolls internally, with no dead space below the content and no content cut off. Collapsing back to the rail restores the in-list card's own expanded-height behavior exactly as before, recomputed against `#mainList`. Resizing the window with the file open in the pane keeps the body filling the pane. Mobile and the bottom sheet are unaffected.
