@@ -1172,3 +1172,17 @@ export function syncAgentAvailabilityForProject(projectName) {
 export function isAgentUnavailable() {
     return document.body.classList.contains('agentUnavailable');
 }
+
+// Resolve the reason text a Stuck (`failed` / `no_change`) row surfaces: its own
+// recorded `failure_reason` when present, else a state-specific fallback. The
+// single copy resolver shared by the Agent board (buildStuckSecondary), the mobile
+// desc-editor modal, and the desktop row layer (via the registered resolver seam),
+// so none defines a second copy of the fallback strings. Pure over `agent_queue`
+// row fields — it lives here with the rest of the row data model.
+export function stuckReasonText(row) {
+    const reason = (row && row.failure_reason ? String(row.failure_reason) : '').trim();
+    if (reason) return reason;
+    return (row && row.state === 'no_change')
+        ? 'The run finished without merging any changes.'
+        : 'The run failed. Retry from the queue.';
+}

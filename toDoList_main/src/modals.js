@@ -27,8 +27,7 @@ import {
 } from './toDoRow.js';
 import { derivePhase, isBlockedPhase, PHASE } from './phase.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
-import { getQueueRowForTodo, onQueueChange } from './agentQueueStore.js';
-import { stuckReasonText } from './agentView.js';
+import { getQueueRowForTodo, onQueueChange, stuckReasonText } from './agentQueueStore.js';
 // The A/B/C mockup flow — the SAME implementation the Agent board and the desktop
 // detail pane mount. The mobile modal reuses it in its tabbed layout (three OPTION
 // A/B/C tabs above one scaled preview) rather than reimplementing generation,
@@ -421,7 +420,7 @@ export function showDescEditorModal(item, options) {
     // failed / no_change), surface the run's failure reason as a read-only block at
     // the top of the editor — the same shape and position the row's ASKING block
     // uses for triage's question, so the badge tap leads somewhere that explains
-    // itself. The reason text reuses agentView's single fallback resolver
+    // itself. The reason text reuses the store's single fallback resolver
     // (stuckReasonText) rather than a second copy of the copy. It mounts only in the
     // stuck phase and clears the moment the queue row moves on; repainted from
     // refreshPhaseUI (which runs on both TODO_RUN_STATUS_EVENT and onQueueChange).

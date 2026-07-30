@@ -3,7 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 
-import { stuckReasonText } from '../src/agentView.js';
+import { stuckReasonText } from '../src/agentQueueStore.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -51,9 +51,9 @@ describe('stuckReasonText — the single Stuck-reason resolver', () => {
 describe('desc editor STUCK block — modal wiring (source inspection)', () => {
     const modals = read('modals.js');
 
-    it('reuses agentView\'s single reason resolver rather than a second copy', () => {
+    it('reuses the store\'s single reason resolver rather than a second copy', () => {
         expect(modals).toMatch(
-            /import\s*\{[^}]*stuckReasonText[^}]*\}\s*from\s*['"]\.\/agentView\.js['"]/
+            /import\s*\{[^}]*stuckReasonText[^}]*\}\s*from\s*['"]\.\/agentQueueStore\.js['"]/
         );
         // No inline duplicate of the fallback copy in the modal.
         expect(modals).not.toMatch(/finished without merging any changes/);

@@ -103,7 +103,6 @@ import {
     subscribeAgentView,
     unsubscribeAgentView,
     startAgentWorkingWatch,
-    stuckReasonText,
 } from './agentView.js';
 import {
     startAgentQueueSubscription,
@@ -112,6 +111,7 @@ import {
     getWaitingQuestionCounts,
     onQueueChange,
     syncAgentAvailabilityForProject,
+    stuckReasonText,
 } from './agentQueueStore.js';
 import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
@@ -3113,9 +3113,9 @@ setAgentRouteBadgeTapHandler(function(todoId, projectName) {
 });
 
 // The desktop description panel's STUCK failure-reason block reuses the exact
-// copy resolver the Agent view and the mobile modal use (stuckReasonText). The
-// row layer can't import agentView (its cycle-avoidance boundary), so register
-// the single resolver here — main.js imports both.
+// copy resolver the Agent view and the mobile modal use (stuckReasonText, now
+// owned by agentQueueStore.js). The row layer avoids importing it directly to keep
+// its import surface minimal, so register the single resolver here through the seam.
 setStuckReasonResolver(stuckReasonText);
 
 // Wire the viewer's "⋯" overflow button to open a mobile bottom-sheet menu
