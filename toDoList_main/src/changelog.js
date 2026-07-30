@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-30',
         fixed: [
+            "The coverage breakdown now updates live as tasks ship, moving an aspect to Shipped and raising the covered count without closing and reopening it.",
             "The New Chat button now sits above the chat transcript instead of in the tab row, so the assistant's tabs no longer get clipped when the Coverage tab is showing.",
             "A run you start in-session now settles on its own within moments of its pull request merging, updating the task badge, running count, and coverage breakdown live instead of only after a page reload.",
             "Acknowledged tasks now keep their completed state even when their TODO entry was cleared from the file or was acknowledged before completion timestamps were recorded.",
             "The pinned TODO.md strip's action controls now stay reachable at any rail width, shedding labels and wrapping onto a second line instead of clipping off the edge.",
-            "The pinned TODO.md strip now insets its contents from its border, so the file name and controls no longer crowd the strip's edges.",
         ],
     },
 ];
