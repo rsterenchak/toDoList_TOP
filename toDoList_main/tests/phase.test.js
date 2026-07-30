@@ -313,10 +313,12 @@ describe('derivePhase — one phase per item', () => {
     it("returns 'draft' while the marker is present but unchecked", () => {
         markEntryPresentLocally('owner/draft-repo', 'phase-draft-id');
         expect(derivePhase({ entryId: 'phase-draft-id' })).toBe(PHASE.DRAFT);
-        // The acknowledgement stamp is irrelevant until the entry is checked.
+        // A review stamp is now an independent terminal DONE gate checked ahead of
+        // the marker: acknowledging is only reachable from ACCEPT, so a stamp is
+        // proof the task shipped and it resolves DONE even over an unchecked marker.
         expect(derivePhase({
             entryId: 'phase-draft-id', entryReviewedAt: '2026-07-22T00:00:00.000Z',
-        })).toBe(PHASE.DRAFT);
+        })).toBe(PHASE.DONE);
     });
 
     it("returns 'accept' when checked but not acknowledged, 'done' when acknowledged", async () => {
@@ -381,5 +383,47 @@ describe('derivePhase — a stamped ship survives a TODO.md rewrite (shippedAt)'
         expect(derivePhase({
             id: 'todo-stamp-q', shippedAt: '2026-07-28T00:00:00.000Z',
         })).toBe(PHASE.ASKING);
+    });
+});
+
+
+describe('derivePhase — entryReviewedAt is its own terminal proof-of-ship gate', () => {
+    it("returns 'done' for a task with only entryReviewedAt (no shippedAt, no marker)", () => {
+        // Acknowledging is only reachable from ACCEPT, which already requires
+        // shipped-ness, so a review stamp cannot exist on a task that never shipped.
+        // Tasks acknowledged before shipped_at existed, and tasks whose markers were
+        // destroyed by `clear all entries`, have neither gate — the review stamp alone
+        // must still resolve DONE rather than collapsing to NONE.
+        expect(derivePhase({
+            id: 'todo-reviewed-only', entryId: 'gone-from-file',
+            entryReviewedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.DONE);
+        // Even with no entryId at all.
+        expect(derivePhase({
+            id: 'todo-reviewed-only2',
+            entryReviewedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.DONE);
+    });
+
+    it('yields to a live queue row — a re-dispatched task with a stale review stamp is RUNNING, not DONE', () => {
+        setQueueRows([{ id: 'qrev', todo_id: 'todo-rev-run', state: 'dispatched' }]);
+        expect(derivePhase({
+            id: 'todo-rev-run',
+            entryReviewedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.RUNNING);
+    });
+
+    it('leaves the shippedAt gate intact — stamped but unreviewed still resolves ACCEPT', () => {
+        expect(derivePhase({
+            id: 'todo-ship-noreview', entryId: 'gone-from-file',
+            shippedAt: '2026-07-28T00:00:00.000Z',
+        })).toBe(PHASE.ACCEPT);
+    });
+
+    it('leaves the marker gate intact — a checked marker with no review still resolves ACCEPT', async () => {
+        mockTodoMd('- [x] shipped\n  <!-- id: phase-marker-noreview -->');
+        await refreshShippedMarkers(freshTarget());
+        expect(derivePhase({ id: 'todo-marker-noreview', entryId: 'phase-marker-noreview' }))
+            .toBe(PHASE.ACCEPT);
     });
 });

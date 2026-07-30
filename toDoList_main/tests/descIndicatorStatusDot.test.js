@@ -292,23 +292,22 @@ describe('run-status glyph — live refresh through the marker cache', () => {
         expect(indicator.innerHTML).toBe('');
     });
 
-    it('flips a pending glyph to shipped in place when the marker cache resolves', async () => {
-        // The routed TODO.md first shows the entry present-but-unchecked. The
-        // item is already acknowledged, so once the marker is checked it lands in
-        // the 'done' phase and paints the green check (an unacknowledged entry
-        // would land in 'accept' and suppress the glyph instead).
+    it('flips a pending glyph to shipped in place when the entry is acknowledged', async () => {
+        // The routed TODO.md shows the entry present-but-unchecked, so an
+        // unreviewed row paints the pending glyph. A review stamp is now an
+        // independent terminal DONE gate — acknowledging the row lands it in the
+        // 'done' phase and paints the green check, regardless of its marker state.
+        // (Before that gate, this flip was driven by the marker checking; a
+        // reviewed row is now DONE on its own, so acknowledgement is the driver.)
         mockTodoMd('- [ ] not done yet\n  <!-- id: flip-glyph-id -->');
         await refreshShippedMarkers(freshTarget());
-        const { indicator } = makeRow({
-            entryId: 'flip-glyph-id', injectedAt: 1700000000000,
-            entryReviewedAt: '2026-07-22T00:00:00.000Z',
-        });
+        const item = { entryId: 'flip-glyph-id', injectedAt: 1700000000000 };
+        const { indicator } = makeRow(item);
         refreshDescStatusDots();
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(true);
 
-        // The routed TODO.md now shows the entry checked; refresh + re-sweep.
-        mockTodoMd('- [x] shipped\n  <!-- id: flip-glyph-id -->');
-        await refreshShippedMarkers(freshTarget());
+        // Acknowledge (as the viewer's Acknowledge pill does) and re-sweep.
+        item.entryReviewedAt = '2026-07-22T00:00:00.000Z';
         refreshDescStatusDots();
         expect(indicator.classList.contains('runStatusGlyph--pending')).toBe(false);
         expect(indicator.classList.contains('runStatusGlyph--shipped')).toBe(true);

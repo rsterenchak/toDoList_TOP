@@ -11,13 +11,7 @@ export const changelog = [
             "The coverage breakdown now updates live as tasks ship, moving an aspect to Shipped and raising the covered count without closing and reopening it.",
             "The New Chat button now sits above the chat transcript instead of in the tab row, so the assistant's tabs no longer get clipped when the Coverage tab is showing.",
             "A run you start in-session now settles on its own within moments of its pull request merging, updating the task badge, running count, and coverage breakdown live instead of only after a page reload.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-29',
-        fixed: [
-            "On phones, tapping a task's pipeline badge now opens the description editor with its triage question, dispatch, and review controls, instead of an inline panel where those controls were unreachable.",
+            "Acknowledged tasks now keep their completed state even when their TODO entry was cleared from the file or was acknowledged before completion timestamps were recorded.",
         ],
     },
 ];
