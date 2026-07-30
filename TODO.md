@@ -70,3 +70,19 @@
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3b799e13-1b50-4e5d-b3fe-d29ffbb1614e -->
+
+- [ ] **[LOW]** TODO.md strip: give the content breathing room from its own border
+  - Type: bug
+  - Description: The pinned strip's controls sit too close to its border — the overflow button nearly touches the right edge and the file name nearly touches the left. `.todoMdViewerStrip` carries `padding: 6px 8px`, and 8px horizontal is tighter than the inset the rest of the rail uses, so the strip reads as cramped and its edges collide visually with the column border it sits inside.
+  - Behavior: The strip's contents are inset from its border enough that no control appears to touch or crowd it, on both the single-row and wrapped-two-row layouts. The strip's own left and right edges continue to align with the task rows and the compose row beneath it, so the column reads as one consistent inset. Row spacing between wrapped lines stays comfortable rather than growing with the horizontal padding. Every existing behavior and the container-query label shedding are unchanged.
+  - Implementation notes:
+    - Raise the horizontal padding on `.todoMdViewerStrip` to match the inset the rail's other elements use. Grep the task row's and compose row's horizontal padding and margins and use the same value rather than picking a new one — the point is that the strip lines up with them, not that it has more room in isolation.
+    - Keep vertical padding modest. The strip is pinned above the task list, so height comes out of the visible row count; the complaint is horizontal.
+    - Adding horizontal padding reduces the content width available to the container query that sheds the action labels. Verify the shed threshold still fires before anything clips at the rail's 260px lower bound with the chat pane docked — the query reads the strip's inline size, so more padding means labels need to drop slightly earlier.
+    - Check the wrapped two-row case specifically. A row gap tuned against 6px vertical padding may read unevenly once the horizontal inset changes; adjust the gap only if the wrapped rows look cramped against the border.
+    - Confirm the strip's outer edges still align with the rows below it. If its `margin: 0 0 6px` leaves it wider or narrower than the rows, that misalignment is the actual source of the collision and the margin needs matching too.
+    - Verify at the rail's normal ~308px and its 260px lower bound. No new tokens — reuse the existing radius and spacing conventions.
+  - Out of scope: Which controls the strip carries, their labels, and the container-query shedding thresholds themselves. The review-count pill. The expand behavior and the viewer card in the detail pane. The mobile sheet and the viewer card's own header.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 9852482e-57c0-44e6-a9bd-fa51d10e44cf -->
