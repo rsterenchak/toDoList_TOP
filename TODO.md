@@ -111,3 +111,10 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3a70bc26-ec37-4434-a9e0-83c0102e0bfb -->
+
+- [ ] **[MEDIUM]** Drop the retired 'agent' value from the active-view pref
+  - Type: bug
+  - Description: The Agent board is no longer reachable through the UI — the phase badges route to the description editor via `setAgentRouteBadgeTapHandler` ("no board switch"), `anchorAgentCardForTodo` has no callers, and nothing calls the view switcher with `'agent'`. The one remaining path onto the board is persistence: `getActiveView()` in `prefs.js` still honors a stored `'agent'` token, so anyone whose `localStorage` holds it from before the tab was retired boots straight into a view with no way back to it once they leave. Remove the `if (v === 'agent') return 'agent';` line from `getActiveView()` and the `if (view === 'agent') stored = 'agent';` branch from `setActiveView()`, so a stored `'agent'` falls through to the existing `'projects'` default exactly the way the retired `'inbox'`/`'today'`, `'calendar'`, and `'conceive'` tokens already do. Update the block comment above `getActiveView()` to add `'agent'` to that list of retired values and to stop describing the main panel as hosting the project view and the Agent queue board — the two live top-level views are now `'projects'` and `'structure'`. Leave the `'agent'` branches in `main.js`'s view switcher (`~3697`, `~3702`, `~3750`) and the `stayOnAgent` check (`~2325`) alone for now; they become unreachable with this change but are removed with the view module itself in a later entry, and stripping them here would mean editing `main.js` while the extraction entries that follow also need its import block. No visual surface — the only behavior change is that a stale pref resolves to the Stream view on boot instead of a dead board.
+  - File: `toDoList_main/src/prefs.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 849a0bb8-00c7-4d34-b570-2ee0346dbaf3 -->
