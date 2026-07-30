@@ -92,8 +92,13 @@ export const PHASE = Object.freeze({
 // the marker phases while yielding to `asking`; `stuck` (a `failed`/`no_change`
 // queue row) and `mockup` (a `needs_mockup` queue row) are checked alongside them,
 // above the `entryId` guard, so a broken run or a mockup-parked run outranks the
-// DRAFT its still-unchecked entry would otherwise read as. A database-recorded
-// ship (`item.shippedAt`) is then checked ahead of the marker: once set it resolves
+// DRAFT its still-unchecked entry would otherwise read as. An acknowledgement stamp
+// (`item.entryReviewedAt`) is then checked as its own terminal DONE gate: because
+// acknowledging is only reachable from ACCEPT — which already requires shipped-ness —
+// a review stamp is sufficient proof the task shipped, so it resolves DONE even when
+// neither `shippedAt` nor a surviving marker does (tasks acknowledged before the
+// stamp existed, or whose markers `clear all entries` destroyed). A database-recorded
+// ship (`item.shippedAt`) is checked next, ahead of the marker: once set it resolves
 // the terminal phase from the row itself — accept (unreviewed) / done (reviewed) —
 // so the state survives a TODO.md rewrite. The remaining mapping mirrors the
 // three-way run state resolver as the FALLBACK for pre-stamp ships — 'pending' →
@@ -110,6 +115,7 @@ export function derivePhase(item) {
     // marker-derived phases: an in-flight run's injected marker would otherwise
     // read as DRAFT.
     if (queueRow && (queueRow.state === 'dispatched' || queueRow.state === 'running')) return PHASE.RUNNING;
+    if (item.entryReviewedAt) return PHASE.DONE;
     if (item.shippedAt) {
         return item.entryReviewedAt ? PHASE.DONE : PHASE.ACCEPT;
     }
@@ -124,9 +130,12 @@ export function derivePhase(item) {
 
 
 // The set of phases that mean a task is genuinely blocked on the user: ACCEPT
-// (shipped but unacknowledged — derivePhase only returns ACCEPT while unreviewed,
-// flipping to DONE once `entryReviewedAt` is set, so no extra unreviewed check is
-// needed here), ASKING (a parked triage question), and DRAFTED (a landed draft
+// (shipped but unacknowledged — derivePhase never returns ACCEPT once a review
+// stamp is set, because `entryReviewedAt` is now an independent terminal gate
+// checked ahead of both the `shippedAt` and marker branches: a review stamp is
+// sufficient proof of shipping on its own, so any reviewed task resolves DONE
+// before either ACCEPT branch is reached, and no extra unreviewed check is needed
+// here), ASKING (a parked triage question), and DRAFTED (a landed draft
 // not yet looked at). This is the single definition of the blocked set — the
 // status filter's blocked-on-you toggle reads it rather than inlining the
 // phases, so a further blocked state later lands in exactly one place. STUCK (a
