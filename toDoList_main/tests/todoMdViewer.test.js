@@ -305,6 +305,29 @@ describe('todo.md viewer — expand/collapse toggle', () => {
         expect(main).toMatch(/header\.getBoundingClientRect\(\)/);
     });
 
+    it('hugs content with a floor and ceiling rather than a hard fill height', () => {
+        // The body no longer gets a hard `height` (which sized a four-line
+        // TODO.md the same as a fifty-entry one). Instead the height is cleared
+        // and the computed room becomes a max-height ceiling, with a min-height
+        // floor so a nearly-empty backlog can't collapse the card to a sliver.
+        const start = main.indexOf('function applyExpandedHeight');
+        const end = main.indexOf('function applyCollapsedState', start);
+        const block = main.slice(start, end === -1 ? main.length : end);
+        expect(block).toMatch(/body\.style\.height\s*=\s*['"]['"]/);
+        expect(block).toMatch(/body\.style\.minHeight\s*=\s*['"]120px['"]/);
+        expect(block).toMatch(/body\.style\.maxHeight\s*=\s*Math\.max\(fallback,\s*available\)\s*\+\s*['"]px['"]/);
+        // No hard height assignment survives in the expanded branch.
+        expect(block).not.toMatch(/body\.style\.height\s*=\s*Math\.max/);
+    });
+
+    it('per-project empty state is content-sized on desktop so the viewer rides up beneath it', () => {
+        // Scoped to the desktop media block and excludes the NO PROJECTS welcome
+        // screen so its full-height centering survives.
+        expect(css).toMatch(
+            /#mainList\.emptyStatePresent\s+#emptyState:not\(\.emptyStateNoProjects\)\s*\{[\s\S]{0,120}flex:\s*0\s+0\s+auto[\s\S]{0,120}justify-content:\s*flex-start/
+        );
+    });
+
     it('re-applies height on window resize while expanded', () => {
         expect(main).toMatch(/window\.addEventListener\s*\(\s*['"]resize['"]\s*,\s*viewerResizeHandler/);
         expect(main).toMatch(/todoMdViewerCard--expanded/);
