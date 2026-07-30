@@ -80,11 +80,11 @@ export function setDiscussTaskHandler(fn) {
 }
 
 // The desktop description panel's STUCK failure-reason block reuses the exact
-// copy the Agent view and the mobile modal show (agentView's stuckReasonText),
-// but the row layer must not import agentView (the cycle-avoidance boundary the
-// row's store-import test pins). So main.js — which imports both — registers the
-// single resolver here, exactly as setDiscussTaskHandler bridges the Claude
-// sheet. Until it's wired the panel simply omits the reason text (never throws).
+// copy the Agent view and the mobile modal show (stuckReasonText, owned by
+// agentQueueStore.js). It resolves through a registered seam rather than a direct
+// import so the row layer keeps a minimal import surface, exactly as
+// setDiscussTaskHandler bridges the Claude sheet. main.js registers the single
+// resolver; until it's wired the panel simply omits the reason text (never throws).
 let stuckReasonResolver = null;
 export function setStuckReasonResolver(fn) {
     stuckReasonResolver = typeof fn === 'function' ? fn : null;
@@ -824,7 +824,7 @@ function syncAskingPanel(toDoChild, item, projectName) {
 }
 
 
-// Resolve the STUCK reason text through the registered resolver (agentView's
+// Resolve the STUCK reason text through the registered resolver (the store's
 // stuckReasonText, wired by main.js). Falls back to the empty string only when
 // the resolver isn't wired yet, so the block never throws and never invents a
 // second copy of the fallback strings.

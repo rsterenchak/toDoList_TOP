@@ -98,6 +98,6 @@ describe('desktop description panel — STUCK block wiring', () => {
         expect(toDoRow).toMatch(/function setStuckReasonResolver\(/);
         // main.js — which imports both — wires the single copy resolver.
         expect(main).toMatch(/setStuckReasonResolver\(stuckReasonText\)/);
-        expect(main).toMatch(/stuckReasonText,?\s*\n\s*}\s*from '\.\/agentView\.js'/);
+        expect(main).toMatch(/stuckReasonText,?\s*\n\s*}\s*from '\.\/agentQueueStore\.js'/);
     });
 });
