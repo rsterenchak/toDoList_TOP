@@ -142,3 +142,21 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
   - Completed: 2026-07-29
   <!-- id: 1ce1ff70-05e7-4b25-a420-8edca16bd495 -->
+
+- [ ] **[MEDIUM]** Relocate the agent availability gate out of the Agent view
+  - Type: feature
+  - Description: `syncAgentAvailabilityForProject`, `isAgentUnavailable`, `applyAgentAvailability`, and `AGENT_UNAVAILABLE_MSG` live in `agentView.js` but only one of their jobs belongs to the board. The gate is called from three of `main.js`'s project-switch hooks and from the badge-route handler, it toggles the `agentUnavailable` body class that drives the hollow no-repo marker's CSS on the STRUCTURE entry points, and it recomputes the working dot on switch — a documented hook without which the dot hangs on the previous project's state for up to 15 seconds. Only its fourth use, rendering an in-view unavailable message when the board is opened on a repo-less project, dies with the view. Relocate the gate so it survives, with the board still calling it. This is the last piece before `agentView.js` can be deleted.
+  - Behavior: Identical to today. Switching to a project with no routed inject target sets the `agentUnavailable` body flag, so the STRUCTURE no-repo marker shows; switching to a repo-backed project clears it. The badge-route handler still refuses to route into a repo-less project by reading the gate's return value. The nav working dot still recomputes immediately on a project switch rather than waiting out the watch's interval. The board, while it still exists, still renders its unavailable message.
+  - Implementation notes:
+    - Move all four into `agentQueueStore.js`, beside the working watch and the reconciler. The gate already calls `pollAgentWorkingWatch()` and that watch was relocated there, so this reunites two things that were split apart — check whether the relocation left a cross-module call that can now become a local one.
+    - The gate reads `isInjectConfigured()` from `inject.js` and `listLogic.getProjectTargetId`. Both are already reachable from `agentQueueStore.js`; verify neither introduces a cycle back into a view.
+    - `AGENT_UNAVAILABLE_MSG` is consumed by the board's paint() branch, which is about to be deleted. Move the constant anyway rather than inlining it — if nothing consumes it after the deletion, remove it in that entry instead of leaving a dangling export here.
+    - Update the three `main.js` call sites and the badge-route handler to import from the new location. Grep each: the switch hooks are at roughly lines 2370, 2687, and 3474, and the route handler consults the return value.
+    - The `agentUnavailable` body class name is referenced from CSS for the STRUCTURE no-repo marker. Do NOT rename it — the class is the contract between the gate and the stylesheet, and renaming it in the same entry as a relocation makes the diff harder to verify.
+    - Keep the return value. The badge-route handler depends on `hasRepo` coming back, and a relocation that changes the signature would silently let routes through on repo-less projects.
+    - Do not change what the gate computes. Inject configured globally AND the project carrying a routed target — the same test the sidebar thunderbolt uses.
+    - Test: switching to a repo-less project sets the body flag and the STRUCTURE marker shows; switching back clears it; the badge-route handler refuses a route on a repo-less project; the working dot recomputes on switch rather than lagging; and the board still renders its unavailable message while it exists.
+  - Out of scope: The board's in-view unavailable message and its paint() branch, which die with the view. Renaming the `agentUnavailable` class. The working watch's own logic. Deleting `agentView.js`, which is the next and final entry in this sequence.
+  - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 61f4b79a-7a58-4448-aad9-c5ba789bb245 -->
