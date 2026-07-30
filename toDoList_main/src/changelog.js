@@ -10,13 +10,13 @@ export const changelog = [
             "The Coverage tab now appears as soon as you switch to a project that has an assignment, instead of only after reopening the assistant pane or reloading.",
             "The coverage breakdown now updates live as tasks ship, moving an aspect to Shipped and raising the covered count without closing and reopening it.",
             "The New Chat button now sits above the chat transcript instead of in the tab row, so the assistant's tabs no longer get clipped when the Coverage tab is showing.",
+            "A run you start in-session now settles on its own within moments of its pull request merging, updating the task badge, running count, and coverage breakdown live instead of only after a page reload.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-29',
         fixed: [
-            "A task whose run has already shipped now shows its shipped status as soon as the row appears, instead of a stale badge that lingered until reload.",
             "On phones, tapping a task's pipeline badge now opens the description editor with its triage question, dispatch, and review controls, instead of an inline panel where those controls were unreachable.",
         ],
     },
