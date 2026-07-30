@@ -18,7 +18,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 93cb5cdd-9edc-4595-ae88-03ec69232bf6 -->
 
-- [ ] **[MEDIUM]** Treat entry_reviewed_at as proof of shipping so acknowledged tasks keep their DONE state
+- [x] **[MEDIUM]** Treat entry_reviewed_at as proof of shipping so acknowledged tasks keep their DONE state — Completed: 2026-07-30
   - Type: bug
   - Description: Tasks that were accepted and closed render as plain rows with no completion indicator. `derivePhase` reaches `PHASE.DONE` only via `item.shippedAt` or via the entry's marker resolving to `shipped` in `TODO.md`, and checks `entryReviewedAt` only after one of those gates passes. Tasks acknowledged before the `shipped_at` column existed have no stamp, and `clear all entries` destroyed the markers they resolved against — so both gates fail and they fall through to `PHASE.NONE`. But `entry_reviewed_at` is itself sufficient evidence: acknowledging is only reachable from the ACCEPT phase, which already requires shipped-ness, so a reviewed timestamp cannot exist on a task that never shipped. Consult it as its own terminal gate.
   - Behavior: A task with `entry_reviewed_at` set resolves to `PHASE.DONE` regardless of whether `shipped_at` is stamped or its marker still exists in `TODO.md`. Rows acknowledged before the stamp existed, and rows whose entries were cleared from the file, show their completed state again. Tasks with `shipped_at` and no review still resolve to ACCEPT. Tasks with a checked marker and no review still resolve to ACCEPT. Nothing else about the phase order changes.
