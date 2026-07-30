@@ -17,3 +17,19 @@
   - File: `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/agentQueueStore.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 93cb5cdd-9edc-4595-ae88-03ec69232bf6 -->
+
+- [ ] **[MEDIUM]** Treat entry_reviewed_at as proof of shipping so acknowledged tasks keep their DONE state
+  - Type: bug
+  - Description: Tasks that were accepted and closed render as plain rows with no completion indicator. `derivePhase` reaches `PHASE.DONE` only via `item.shippedAt` or via the entry's marker resolving to `shipped` in `TODO.md`, and checks `entryReviewedAt` only after one of those gates passes. Tasks acknowledged before the `shipped_at` column existed have no stamp, and `clear all entries` destroyed the markers they resolved against — so both gates fail and they fall through to `PHASE.NONE`. But `entry_reviewed_at` is itself sufficient evidence: acknowledging is only reachable from the ACCEPT phase, which already requires shipped-ness, so a reviewed timestamp cannot exist on a task that never shipped. Consult it as its own terminal gate.
+  - Behavior: A task with `entry_reviewed_at` set resolves to `PHASE.DONE` regardless of whether `shipped_at` is stamped or its marker still exists in `TODO.md`. Rows acknowledged before the stamp existed, and rows whose entries were cleared from the file, show their completed state again. Tasks with `shipped_at` and no review still resolve to ACCEPT. Tasks with a checked marker and no review still resolve to ACCEPT. Nothing else about the phase order changes.
+  - Implementation notes:
+    - Add a terminal check for `item.entryReviewedAt` returning `PHASE.DONE`, placed AFTER the five queue-derived branches (ASKING, DRAFTED, STUCK, MOCKUP, RUNNING) and BEFORE the `shippedAt` branch. The queue states must keep outranking it — a re-triaged or re-dispatched task with a stale review stamp is genuinely in flight again, and showing DONE over a running row would be worse than the current bug.
+    - Keep both existing gates. `shippedAt` remains the forward-looking path and the marker read remains the fallback for tasks stamped by neither; this adds a third, not a replacement.
+    - Update the comment block above `isBlockedPhase`. It currently states that "derivePhase only returns ACCEPT while unreviewed, flipping to DONE once `entryReviewedAt` is set" — still true, but the reasoning now rests on an independent check rather than a nested one, and the next reader needs to see why a review stamp alone is sufficient.
+    - Do NOT backfill `shipped_at` from `entry_reviewed_at`. The review timestamp is not the ship timestamp, and writing a wrong value into a column meant to record when a run landed would be worse than leaving it null.
+    - Confirm nothing else derives shipped-ness by testing `shippedAt` directly rather than going through `derivePhase`. Grep for `shippedAt` outside `phase.js` and `listLogic.js` — any consumer bypassing `derivePhase` has the same blind spot.
+    - Tests: a task with only `entryReviewedAt` resolves DONE; with `entryReviewedAt` plus a `dispatched` queue row it resolves RUNNING, not DONE; with `shippedAt` and no review it resolves ACCEPT; and a task with a checked marker and no review still resolves ACCEPT.
+  - Out of scope: Backfilling `shipped_at` for historical tasks. Recovering markers destroyed by `clear all entries`. The reconciler and the `shipped_at` write path. The blocked set and the filter pills. Deleting the Agent view.
+  - File: `toDoList_main/src/phase.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 8655d5f8-83a8-42e8-ad72-ed49cae240d3 -->
