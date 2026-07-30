@@ -845,43 +845,21 @@ function showCoverageDetailModal(preloadedCommitted) {
     const aspects = a.aspects;
     const labels = (a.aspectLabels && typeof a.aspectLabels === 'object')
         ? a.aspectLabels : {};
-    const rows = getQueueRows();
-
-    // Group rows by aspect tag, then classify each rubric aspect. Process aspects
-    // short-circuit to 'manual' (no agent-shippable state); everything else
-    // derives its lifecycle from its rows exactly as computeCoverage does.
-    const byAspect = Object.create(null);
-    rows.forEach(function (r) {
-        const tag = r && typeof r.aspect === 'string' ? r.aspect.trim() : '';
-        if (!tag) return;
-        (byAspect[tag] || (byAspect[tag] = [])).push(r);
-    });
-    const items = aspects.map(function (id) {
-        const label = labels[id] || '';
-        const process = isProcessAspect(label);
-        return {
-            id: id,
-            label: label,
-            process: process,
-            rows: byAspect[id] || [],
-            status: process ? 'manual' : aspectStatus(byAspect[id] || []),
-        };
-    });
-    const blocked = items.filter(function (it) { return it.status === 'blocked'; });
-    const manual = items.filter(function (it) { return it.process; });
-    const regular = items.filter(function (it) {
-        return !it.process && it.status !== 'blocked';
-    });
 
     // Shared committed-tick state for this modal. `committed` starts from any
     // preloaded Set (else empty) and is hydrated async from aspect_submissions
     // below; buildCommitTick mutates it optimistically and registers each tick in
     // `ctx.ticks` so the hydrate can re-sync them. `projectId` scopes the writes.
+    // `committed` survives a live re-render (same reference), so hydrated ticks are
+    // not lost when a row settles behind the open modal.
     const projectName = getSelectedProjectName();
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     const committed = (preloadedCommitted instanceof Set)
         ? preloadedCommitted : new Set();
     const ctx = { committed: committed, projectId: projectId, ticks: [], onCountChange: null };
+    // The classified aspect list — reassigned on every (re)render from the live
+    // rows, so committedCount and the async tick-hydrate always read the current set.
+    let items = [];
     function committedCount() {
         let n = 0;
         items.forEach(function (it) { if (committed.has(it.id)) n++; });
@@ -912,9 +890,6 @@ function showCoverageDetailModal(preloadedCommitted) {
 
     const titleText = document.createElement('span');
     titleText.id = 'coverageDetailModalTitleText';
-    const cov = computeCoverage(aspects, rows);
-    titleText.textContent = (cov.total - cov.shipped) + ' outstanding · ' +
-        cov.shipped + ' of ' + cov.total + ' covered';
 
     // The built-vs-submitted distinction: how many aspects are ticked as copied
     // into GitLab. Recomputed in place as ticks toggle (ctx.onCountChange) and
@@ -924,7 +899,6 @@ function showCoverageDetailModal(preloadedCommitted) {
     function updateCommittedCount() {
         committedCountEl.textContent = committedCount() + ' committed to GitLab';
     }
-    updateCommittedCount();
     ctx.onCountChange = updateCommittedCount;
 
     title.appendChild(eyebrow);
@@ -963,11 +937,63 @@ function showCoverageDetailModal(preloadedCommitted) {
         body.appendChild(group);
     }
 
-    // Blocked at the top (amber, jump), then the regular lifecycle list, then the
-    // manual Git/process lane set apart at the bottom.
-    appendGroup('Waiting on you', blocked, 'blocked');
-    appendGroup(blocked.length || manual.length ? 'Rubric aspects' : '', regular, null);
-    appendGroup('Manual · Git & process', manual, 'manual');
+    // Recompute the whole modal body from the LIVE queue rows and repaint the list
+    // and the header counts in place. Called once on open and again on every
+    // onQueueChange while the modal is mounted, so a row settling from dispatched to
+    // shipped moves its aspect from "In progress" to "Shipped" and bumps the covered
+    // count without a close/reopen. Only the list body is rebuilt — the dialog, its
+    // focus trap, the close controls, and the shared `committed` set survive — so
+    // scroll position and hydrated ticks persist across a settle. `ctx.ticks` is
+    // reset each render because the tick controls are rebuilt from scratch.
+    function renderBody() {
+        const rows = getQueueRows();
+        // Group rows by aspect tag, then classify each rubric aspect. Process
+        // aspects short-circuit to 'manual' (no agent-shippable state); everything
+        // else derives its lifecycle from its rows exactly as computeCoverage does.
+        const byAspect = Object.create(null);
+        rows.forEach(function (r) {
+            const tag = r && typeof r.aspect === 'string' ? r.aspect.trim() : '';
+            if (!tag) return;
+            (byAspect[tag] || (byAspect[tag] = [])).push(r);
+        });
+        items = aspects.map(function (id) {
+            const label = labels[id] || '';
+            const process = isProcessAspect(label);
+            return {
+                id: id,
+                label: label,
+                process: process,
+                rows: byAspect[id] || [],
+                status: process ? 'manual' : aspectStatus(byAspect[id] || []),
+            };
+        });
+        const blocked = items.filter(function (it) { return it.status === 'blocked'; });
+        const manual = items.filter(function (it) { return it.process; });
+        const regular = items.filter(function (it) {
+            return !it.process && it.status !== 'blocked';
+        });
+
+        const cov = computeCoverage(aspects, rows);
+        titleText.textContent = (cov.total - cov.shipped) + ' outstanding · ' +
+            cov.shipped + ' of ' + cov.total + ' covered';
+
+        // Preserve scroll position across the body rebuild; the tick controls are
+        // rebuilt from scratch, so drop their stale handles before re-registering.
+        const scroll = body.scrollTop;
+        body.textContent = '';
+        ctx.ticks = [];
+
+        // Blocked at the top (amber, jump), then the regular lifecycle list, then
+        // the manual Git/process lane set apart at the bottom.
+        appendGroup('Waiting on you', blocked, 'blocked');
+        appendGroup(blocked.length || manual.length ? 'Rubric aspects' : '', regular, null);
+        appendGroup('Manual · Git & process', manual, 'manual');
+
+        body.scrollTop = scroll;
+        updateCommittedCount();
+    }
+
+    renderBody();
 
     const actions = document.createElement('div');
     actions.id = 'coverageDetailModalActions';
@@ -983,6 +1009,12 @@ function showCoverageDetailModal(preloadedCommitted) {
     dialog.appendChild(actions);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
+
+    // Register the live-update hook so the SINGLE shared onQueueChange listener
+    // repaints this modal when a row settles. Cleared on dismiss (below) so no
+    // repaint fires afterward.
+    _coverageModal = { onQueueChange: renderBody };
+    ensureQueueRepaintListener();
 
     // Hydrate the committed ticks from stored aspect_submissions unless a Set was
     // preloaded by the caller. The modal opens synchronously (ticks default to
@@ -1005,6 +1037,9 @@ function showCoverageDetailModal(preloadedCommitted) {
         backdrop: backdrop,
         closeButtons: [closeX, closeBtn],
         onClose: function () {
+            // Clear the live-update hook so no repaint fires after dismissal; the
+            // proposal modal's handle is separate and untouched.
+            _coverageModal = null;
             if (previouslyFocused &&
                 typeof previouslyFocused.focus === 'function' &&
                 document.contains(previouslyFocused)) {
@@ -1311,17 +1346,22 @@ export function buildCoveragePane() {
     return pane;
 }
 
-// The currently-open proposal review modal's live-update hook (or null when no
-// modal is open). A single module-level onQueueChange listener drives it, so a
-// proposal accepted/dismissed here or on another device re-renders the list — and
-// closes the modal when the last proposal is resolved — without stacking one
-// listener per open.
+// The currently-open modals' live-update hooks (each null when its modal is
+// closed). A SINGLE module-level onQueueChange listener drives both, so a row
+// settling, or a proposal accepted/dismissed here or on another device, re-renders
+// whichever modal is open — the coverage breakdown tracks aspects moving to Shipped
+// and the covered count climbing, the proposal list drops resolved cards and closes
+// itself when the last one is gone — without stacking one listener per open. The two
+// modals open in sequence, never simultaneously; the dispatch tolerates a null handle
+// for whichever is closed and clearing one on dismiss never touches the other's.
 let _proposalModal = null;
-let _proposalRepaintWired = false;
-function ensureProposalRepaintListener() {
-    if (_proposalRepaintWired) return;
-    _proposalRepaintWired = true;
+let _coverageModal = null;
+let _queueRepaintWired = false;
+function ensureQueueRepaintListener() {
+    if (_queueRepaintWired) return;
+    _queueRepaintWired = true;
     onQueueChange(function () {
+        if (_coverageModal) _coverageModal.onQueueChange();
         if (_proposalModal) _proposalModal.onQueueChange();
     });
 }
@@ -1509,7 +1549,7 @@ export function showProposalReviewModal() {
     }
 
     _proposalModal = { onQueueChange: renderList };
-    ensureProposalRepaintListener();
+    ensureQueueRepaintListener();
     renderList();
 
     const previouslyFocused = document.activeElement;

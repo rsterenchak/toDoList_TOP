@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-07-30',
         fixed: [
             "The Coverage tab now appears as soon as you switch to a project that has an assignment, instead of only after reopening the assistant pane or reloading.",
+            "The coverage breakdown now updates live as tasks ship, moving an aspect to Shipped and raising the covered count without closing and reopening it.",
         ],
     },
     {
@@ -18,7 +19,6 @@ export const changelog = [
             "On phones, tapping a task's pipeline badge now opens the description editor with its triage question, dispatch, and review controls, instead of an inline panel where those controls were unreachable.",
         ],
         changed: [
-            "On phones, a task that's waiting on you now opens its description editor with the phase controls up front and the entry text collapsed behind a tap-to-expand row.",
             "On desktop, the task queue's phase filter now offers an Active view covering drafted and accepted entries in place of the Ideas view.",
         ],
     },
