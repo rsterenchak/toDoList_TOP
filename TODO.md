@@ -71,7 +71,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3b799e13-1b50-4e5d-b3fe-d29ffbb1614e -->
 
-- [ ] **[LOW]** TODO.md strip: inset its outer edges to match the task rows
+- [x] **[LOW]** TODO.md strip: inset its outer edges to match the task rows — Completed: 2026-07-30
   - Type: bug
   - Description: The pinned strip's border sits flush against the queue column's edges while the task rows are inset from them. `#toDoChild` uses `margin: 5px 8px`, and the compose row and other list children share that 8px horizontal inset, but `.todoMdViewerStrip` uses `margin: 0 0 6px` — zero horizontal — so it spans the rail's full width and its border collides with the column boundary. A previous fix raised the strip's internal padding from 8px to 12px, which improved the spacing of the controls inside it but left the outer edges unchanged, so the collision remains.
   - Behavior: The strip's left and right edges line up with the task rows, the compose row, and the COMPLETED divider beneath it, so the queue column reads as one consistent inset with no element touching its border. The strip's internal padding, its wrapped-row behavior, and the container-query label shedding are all unchanged.

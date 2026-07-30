@@ -11910,7 +11910,11 @@ body.row-dragging * { cursor: grabbing !important; }
     flex-wrap: wrap;
     gap: 6px;
     padding: 6px 8px;
-    margin: 0 0 6px;
+    /* 8px horizontal inset matches the task rows (#toDoChild: 5px 8px), the
+       compose row, and the desktop COMPLETED divider (#completedHeader:
+       6px 8px 16px), so the strip's border lines up with the column's inset
+       edge instead of colliding with the rail boundary. */
+    margin: 0 8px 6px;
     background: var(--bg-elevated);
     border: 1px solid var(--border-dim);
     border-radius: var(--radius-md);
