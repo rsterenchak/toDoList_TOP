@@ -7,11 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-30',
         fixed: [
-            "The Coverage tab now appears as soon as you switch to a project that has an assignment, instead of only after reopening the assistant pane or reloading.",
             "The coverage breakdown now updates live as tasks ship, moving an aspect to Shipped and raising the covered count without closing and reopening it.",
             "The New Chat button now sits above the chat transcript instead of in the tab row, so the assistant's tabs no longer get clipped when the Coverage tab is showing.",
             "A run you start in-session now settles on its own within moments of its pull request merging, updating the task badge, running count, and coverage breakdown live instead of only after a page reload.",
             "Acknowledged tasks now keep their completed state even when their TODO entry was cleared from the file or was acknowledged before completion timestamps were recorded.",
+        ],
+        changed: [
+            "On desktop, the TODO.md viewer now shows a compact strip pinned above the task list and opens the file in the detail pane at full width.",
         ],
     },
 ];
