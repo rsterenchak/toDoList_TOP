@@ -26,6 +26,7 @@ import { listLogic } from '../src/listLogic.js';
 import {
     setDispatchReconcilerDeps,
     reconcileDispatchRow,
+    reconcileShippedStamps,
     settleShippedRows,
     evaluateReconciler,
     isReconcilePollerActive,
@@ -213,6 +214,65 @@ describe('settleShipped — records the ship in the DB (shipped_at stamp)', () =
         await settleShippedRows([{ id: 'row3', state: 'dispatched', entry_id: 'e1' }]);
         // A missing todo_id must not block the ship — the row still reaches shipped.
         expect(findCall('row3', 'shipped')).toBeTruthy();
+    });
+});
+
+describe('reconcileShippedStamps — repairable shipped_at invariant', () => {
+    it('stamps a shipped row whose linked todo has no shippedAt yet', () => {
+        listLogic.addProject('Alpha');
+        listLogic.addToDo('Alpha', 'Repair me');
+        const todo = listLogic.listItems('Alpha').find((i) => i.tit === 'Repair me');
+        expect(todo.shippedAt).toBeFalsy();
+
+        reconcileShippedStamps([{ id: 'q1', state: 'shipped', todo_id: todo.id }]);
+
+        const after = listLogic.listItems('Alpha').find((i) => i.id === todo.id);
+        expect(typeof after.shippedAt).toBe('string');
+        expect(after.shippedAt.length).toBeGreaterThan(0);
+    });
+
+    it('leaves an already-stamped todo untouched with its original timestamp', () => {
+        listLogic.addProject('Alpha');
+        listLogic.addToDo('Alpha', 'Already shipped');
+        const todo = listLogic.listItems('Alpha').find((i) => i.tit === 'Already shipped');
+
+        // First pass stamps it; a second pass must be idempotent.
+        reconcileShippedStamps([{ id: 'q1', state: 'shipped', todo_id: todo.id }]);
+        const firstStamp = listLogic.listItems('Alpha').find((i) => i.id === todo.id).shippedAt;
+        expect(firstStamp).toBeTruthy();
+
+        reconcileShippedStamps([{ id: 'q1', state: 'shipped', todo_id: todo.id }]);
+        const secondStamp = listLogic.listItems('Alpha').find((i) => i.id === todo.id).shippedAt;
+        expect(secondStamp).toBe(firstStamp);
+    });
+
+    it('skips a shipped row with a null todo_id without error', () => {
+        listLogic.addProject('Alpha');
+        const stampSpy = vi.spyOn(listLogic, 'stampEntryShipped');
+        expect(() => reconcileShippedStamps([{ id: 'q1', state: 'shipped', todo_id: null }])).not.toThrow();
+        expect(stampSpy).not.toHaveBeenCalled();
+    });
+
+    it('ignores rows that are not shipped', () => {
+        listLogic.addProject('Alpha');
+        listLogic.addToDo('Alpha', 'Still running');
+        const todo = listLogic.listItems('Alpha').find((i) => i.tit === 'Still running');
+
+        reconcileShippedStamps([{ id: 'q1', state: 'running', todo_id: todo.id }]);
+
+        const after = listLogic.listItems('Alpha').find((i) => i.id === todo.id);
+        expect(after.shippedAt).toBeFalsy();
+    });
+
+    it('is a no-op when todos are not yet hydrated, preserving its one chance', () => {
+        // No project added → the local todo store is empty (pre-hydration). The
+        // pass must skip entirely rather than fire a doomed lookup per row.
+        expect(listLogic.hasHydratedTodos()).toBe(false);
+        const stampSpy = vi.spyOn(listLogic, 'stampEntryShipped');
+
+        reconcileShippedStamps([{ id: 'q1', state: 'shipped', todo_id: 'todo-on-server' }]);
+
+        expect(stampSpy).not.toHaveBeenCalled();
     });
 });
 
