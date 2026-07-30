@@ -52,3 +52,21 @@
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 828a2c3f-054a-4cd2-88d1-f7209f174965 -->
+
+- [ ] **[MEDIUM]** TODO.md strip: actions clip instead of adapting to the column width
+  - Type: bug
+  - Description: The pinned strip's action controls are cut off — the sync chip is clipped at the right edge and the overflow and expand controls are pushed out of view entirely. `.todoMdViewerStrip` is `flex-wrap: wrap`, but `.todoMdViewerStripActions` is a nested flex row with no `flex-wrap` and `margin-left: auto`, so its children cannot break and the group overflows as a single unit. This is the same defect as the viewer header's `.todoMdViewerMeta` earlier in the session, reintroduced in the new strip. The strip needs to survive any column width, since the queue rail can shrink toward its 260px lower bound with the chat pane docked.
+  - Behavior: Every control in the strip stays visible and reachable at any rail width — the file name, the review count, the synced timestamp, Run backlog, Redeploy, sync, overflow, and expand. At comfortable widths they sit on one row as they do now. As the column narrows, secondary controls shed their labels before anything wraps, and the group wraps to a second line only when icons alone no longer fit. Nothing is ever clipped or pushed out of view. Run backlog keeps its label longest, since it is the primary action.
+  - Implementation notes:
+    - Add `flex-wrap: wrap` and a row gap to `.todoMdViewerStripActions`. That alone stops the clipping; everything below is about making the narrow result read well rather than just wrap.
+    - Shed labels before wrapping. Redeploy already carries an icon — hide its text below a narrow threshold and keep the glyph, matching how sync, overflow, and expand are already icon-only. That recovers roughly 70px, which is usually enough to avoid wrapping entirely. Keep an `aria-label` on any control that loses its visible text.
+    - `margin-left: auto` right-aligns the group, which is correct on one row and wrong once it wraps — a wrapped second line ends up flush right while the name sits left. Drop the auto margin at narrow widths so wrapped rows start at the left edge, or right-align the whole strip consistently; pick one and say which.
+    - `.todoMdViewerStripReview` (the "1 to review" pill) is the highest-value element in the strip — it is the reason the strip is worth pinned space. It must never be the thing that gets pushed out. Verify it stays adjacent to the file name rather than travelling with the actions group.
+    - The synced timestamp can grow ("synced 3 days ago" vs "synced just now"). Let it truncate or drop below a threshold rather than forcing a wrap on its own.
+    - Test at three widths: the rail's normal ~308px, its 260px lower bound with the chat pane docked, and the mobile breakpoint. The strip is inside a media block, so confirm which breakpoints it applies at before assuming mobile is covered.
+    - The strip sits above the compose row and the task list, so any height change shifts the list. Keep the one-row case at its current height, and confirm a wrapped two-row case does not push the compose row below the fold at short viewport heights.
+    - Do NOT solve this by moving controls into the overflow menu. That changes which actions are one tap versus two, and should be a deliberate decision rather than a side effect of a layout fix.
+  - Out of scope: Which controls the strip carries and what they do. The expand behavior and the full viewer card in the detail pane. The review-count computation. The viewer card's own header, which was fixed separately. The mobile sheet.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/todoMdViewer.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 3b799e13-1b50-4e5d-b3fe-d29ffbb1614e -->
