@@ -86,3 +86,19 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 9852482e-57c0-44e6-a9bd-fa51d10e44cf -->
+
+- [ ] **[LOW]** TODO.md strip: inset its outer edges to match the task rows
+  - Type: bug
+  - Description: The pinned strip's border sits flush against the queue column's edges while the task rows are inset from them. `#toDoChild` uses `margin: 5px 8px`, and the compose row and other list children share that 8px horizontal inset, but `.todoMdViewerStrip` uses `margin: 0 0 6px` — zero horizontal — so it spans the rail's full width and its border collides with the column boundary. A previous fix raised the strip's internal padding from 8px to 12px, which improved the spacing of the controls inside it but left the outer edges unchanged, so the collision remains.
+  - Behavior: The strip's left and right edges line up with the task rows, the compose row, and the COMPLETED divider beneath it, so the queue column reads as one consistent inset with no element touching its border. The strip's internal padding, its wrapped-row behavior, and the container-query label shedding are all unchanged.
+  - Implementation notes:
+    - Change `.todoMdViewerStrip`'s margin to carry the same 8px horizontal inset the rows use — `margin: 0 8px 6px` — rather than adjusting padding again. Padding governs the gap between the border and the controls, which is now correct; margin governs the gap between the border and the column, which is the actual defect.
+    - Do NOT raise the internal padding further. It is already at 12px and matching the rows' inset is what closes the gap.
+    - Reducing the strip's width by 16px reduces the inline size the container query reads, so the action labels will shed slightly earlier. Verify nothing clips at the rail's 260px lower bound with the chat pane docked, and adjust the shed threshold only if it does.
+    - Check the COMPLETED divider's inset while you are here. The stylesheet notes it is pulled to a "shared 10px inset" on mobile — if desktop rows use 8px and the divider uses something else, confirm which value the column actually standardises on and match that, rather than assuming 8px is universal.
+    - Verify the strip's vertical margin still reads correctly against the filter bar above it and the compose row below, since the horizontal change may make the existing 6px bottom gap look different.
+    - Confirm at the rail's normal ~308px and at 260px with chat docked.
+  - Out of scope: The strip's internal padding, its controls, their labels, and the container-query thresholds. The review-count pill. The expand behavior and the viewer card in the detail pane. The mobile sheet.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b47e1216-2024-439a-a401-c7bbb0326731 -->
