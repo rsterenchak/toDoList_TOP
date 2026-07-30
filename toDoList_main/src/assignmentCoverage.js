@@ -5,6 +5,7 @@ import {
     showInjectToast,
     mintEntryId,
     dispatchDerive,
+    findTargetById,
 } from './inject.js';
 import { showAssignmentEditorModal, wireModalDismiss } from './modals.js';
 import {
@@ -100,19 +101,38 @@ function notifyAssignmentChange() {
     });
 }
 
+// Resolve the routed read target for a specific project name, independent of the
+// DOM selection. Mirrors the board's injected resolveReadTarget() (project name →
+// routed target id → target object) but keys off the name the caller passes rather
+// than re-reading getSelectedProjectName(). The switch path needs this because the
+// project name threaded from syncClaudeSheetForProject is authoritative the instant
+// the switch fires, whereas the DOM `.selectedProject` reader can still lag behind
+// it — resolving the target off the lagging DOM would fetch the wrong repo's file.
+function resolveReadTargetFor(projectName) {
+    if (!projectName) return null;
+    const targetId = listLogic.getProjectTargetId(projectName);
+    return targetId ? findTargetById(targetId) : null;
+}
+
 // Resolve (or re-resolve) the active project's assignment for a non-board host —
-// the chat pane's COVERAGE tab. Reuses the board-configured getSelectedProjectName
-// / resolveReadTarget so the read is scoped to the same project the board would
-// read, and guards against a double-fetch: when the cache already belongs to (or
-// is in flight for) the active project, the board (or a prior pane call) already
-// kicked the read off, so this is a no-op and the pending read's notify still
-// repaints the tab. Otherwise it resets the stale descriptor (so getAssignmentState
-// reads null → the tab hides until the fresh read lands, never flashing the prior
-// project's state) and fires the read.
-export function refreshAssignmentForActiveProject() {
-    if (getAssignmentProject() === getSelectedProjectName()) return;
+// the chat pane's COVERAGE tab. Callers thread the project being switched to
+// (syncClaudeSheetForProject already holds it as its argument); the mount path
+// omits it and falls back to the settled DOM selection. Guards against a
+// double-fetch: when the cache already belongs to (or is in flight for) that
+// project, the board (or a prior pane call) already kicked the read off, so this is
+// a no-op and the pending read's notify still repaints the tab. Otherwise it resets
+// the stale descriptor (so getAssignmentState reads null → the tab hides until the
+// fresh read lands, never flashing the prior project's state) and fires the read.
+// Both the double-fetch guard and the read target key off the passed name rather
+// than the DOM selection, so a switch whose DOM `.selectedProject` update trails the
+// call still resolves and reads the intended project instead of no-opping.
+export function refreshAssignmentForActiveProject(projectName) {
+    const name = (typeof projectName === 'string' && projectName)
+        ? projectName
+        : getSelectedProjectName();
+    if (getAssignmentProject() === name) return;
     resetAssignmentCache();
-    refreshAssignment(resolveReadTarget());
+    refreshAssignment(resolveReadTargetFor(name), name);
 }
 
 // A derive aspect badge: a small mono tag ("A1"/"B1") shown near the chip on
@@ -250,22 +270,31 @@ function describeAssignment(content) {
     };
 }
 
-// Fetch the active project's assignment.md once and repaint the board with the
-// classified result. Records `_assignmentProject` so mount + project switch
-// don't double-fetch (see subscribeAgentView / renderAgentView). A no-target
-// project resolves synchronously to absent (no card) without a Worker call.
-export function refreshAssignment(target) {
-    const projectName = getSelectedProjectName();
-    _assignmentProject = projectName;
+// Fetch a project's assignment.md once and repaint with the classified result.
+// The project the read belongs to is threaded in by the caller (the board and the
+// mount path omit it and fall back to the current DOM selection, unchanged from
+// before); recording it in `_assignmentProject` lets mount + project switch avoid a
+// double-fetch (see subscribeAgentView / renderAgentView) AND serves as the
+// mid-fetch staleness guard. A no-target project resolves synchronously to absent
+// (no card) without a Worker call.
+export function refreshAssignment(target, projectName) {
+    const name = (typeof projectName === 'string' && projectName)
+        ? projectName
+        : getSelectedProjectName();
+    _assignmentProject = name;
     if (!target) {
         _assignment = { state: 'absent' };
         notifyAssignmentChange();
         return;
     }
     readAssignmentFromWorker(target).then(function (res) {
-        // Guard against a project switch mid-fetch: only the still-selected
-        // project's read may populate the cache and repaint.
-        if (getSelectedProjectName() !== projectName) return;
+        // Guard against a project switch mid-fetch: only the most recent read may
+        // populate the cache. `_assignmentProject` is set synchronously to the
+        // intended project by every refreshAssignment call, so if a later switch
+        // superseded this read it no longer matches `name` and this stale read is
+        // dropped. Keying off `_assignmentProject` rather than the DOM selection
+        // keeps the guard correct even when the selection reader lags the switch.
+        if (_assignmentProject !== name) return;
         _assignment = describeAssignment(res && res.ok ? res.content : null);
         paint();
         notifyAssignmentChange();

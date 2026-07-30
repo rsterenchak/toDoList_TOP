@@ -479,12 +479,17 @@ export function syncClaudeSheetForProject(projectName) {
     setChatPaneCollapsed(collapsed);
     applyClaudeAvailability(hasRepo);
     autoSwapWorkspaceForProject(projectName);
-    // Re-resolve the COVERAGE tab for the newly active project. refreshAssignment*
-    // reads assignment.md once (skipping when the board already fetched it), and
-    // refreshCoverageTab reconciles the tab's visibility now (for an already-cached
-    // project) while the onAssignmentChange listener repaints it once a pending
-    // read lands — so the tab appears only after the read resolves, never before.
-    refreshAssignmentForActiveProject();
+    // Re-resolve the COVERAGE tab for the newly active project. Thread the switched-to
+    // project name through explicitly — it is authoritative the instant the switch
+    // fires, whereas the shared getSelectedProjectName() DOM reader can still lag the
+    // switch, which would make both the double-fetch guard and the read target resolve
+    // against the previous project and silently no-op the switch (the tab then only
+    // appeared on a later pane reopen). refreshAssignment* reads assignment.md once
+    // (skipping when the cache already belongs to this project), and refreshCoverageTab
+    // reconciles the tab's visibility now (for an already-cached project) while the
+    // onAssignmentChange listener repaints it once a pending read lands — so the tab
+    // appears only after the read resolves, never before.
+    refreshAssignmentForActiveProject(projectName);
     refreshCoverageTab();
 }
 
