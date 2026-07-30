@@ -271,9 +271,8 @@ function setActiveTab(tab) {
     if (imageBtn) imageBtn.hidden = tab !== 'chat';
     const imageRail = sheetQuery('#claudeImageRail');
     if (imageRail) imageRail.hidden = tab !== 'chat';
-    // Clear chat acts on the conversation, so it's chat-only — hide it on Runs.
-    const clearChatBtn = sheetQuery('#claudeClearChat');
-    if (clearChatBtn) clearChatBtn.hidden = tab !== 'chat';
+    // New Chat lives inside the chat view now, so it's hidden with the view on
+    // RUNS / COVERAGE — no separate per-tab gate needed here.
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
     // a worker that activated without dispatching appUpdateApplied can't surface
     // a false-positive banner — the visibility decision reads live worker state.
@@ -1023,9 +1022,10 @@ function buildWorkspace() {
     return wrap;
 }
 
-// The "New Chat" control in the tab row, to the right of the CHAT / RUNS
-// selector. Text-only (no icon), tinted with the purple accent palette. Wipes
-// the current conversation but never the attachments or the iterate seed.
+// The "New Chat" control — a contextual button above the chat transcript
+// (inside the CHAT view body, not the tab strip). Text-only (no icon), tinted
+// with the purple accent palette. Wipes the current conversation but never the
+// attachments or the iterate seed.
 function buildClearChat() {
     const btn = document.createElement('button');
     btn.id = 'claudeClearChat';
@@ -1436,6 +1436,17 @@ function buildChatView() {
     view.className = 'claudeView';
     view.setAttribute('role', 'tabpanel');
 
+    // New Chat — a contextual control scoped to the CHAT tab, sitting above the
+    // transcript and right-aligned in its own header row. It's structurally part
+    // of the chat view (not the tab strip) so it's absent on RUNS / COVERAGE
+    // without a per-tab hidden gate, and it sits OUTSIDE the scroll surface so it
+    // never scrolls away with the log. Relocated out of #claudeSheetTabs, whose
+    // width the COVERAGE tab's badge was pushing past the 360px docked pane.
+    const header = document.createElement('div');
+    header.id = 'claudeChatHeader';
+    header.className = 'claudeChatHeader';
+    header.appendChild(buildClearChat());
+
     const surface = document.createElement('div');
     surface.id = 'claudeChatSurface';
     surface.className = 'claudeChatSurface';
@@ -1621,6 +1632,7 @@ function buildChatView() {
         scrollDown.hidden = distance <= SCROLL_BOTTOM_THRESHOLD;
     });
 
+    view.appendChild(header);
     view.appendChild(surface);
     view.appendChild(scopeChip);
     view.appendChild(chips);
@@ -3835,7 +3847,6 @@ function buildSheet() {
     tabGroup.appendChild(runsTab);
     tabs.appendChild(tabGroup);
     tabs.appendChild(coverageTab);
-    tabs.appendChild(buildClearChat());
     tabs.appendChild(buildWorkspace());
 
     // The interactive surface (tabs + chat/runs views) lives in its own wrapper

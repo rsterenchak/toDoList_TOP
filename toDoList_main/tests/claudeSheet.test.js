@@ -3203,15 +3203,18 @@ describe('Claude sheet — Clear chat control', () => {
         await flush();
     }
 
-    it('renders a text-only New Chat button in the tab row, right of the tabs', () => {
+    it('renders a text-only New Chat button in the chat body, above the transcript', () => {
         const btn = document.getElementById('claudeClearChat');
         expect(btn).toBeTruthy();
         expect(btn.textContent).toBe('+ New Chat');
-        // Lives in the tab row alongside the CHAT / RUNS selector.
-        expect(document.getElementById('claudeSheetTabs').contains(btn)).toBe(true);
-        // It trails the tab group in DOM order (right of the selector).
-        const group = document.querySelector('.claudeTabGroup');
-        expect(group.compareDocumentPosition(btn) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        // Lives inside the CHAT view body, not the tab strip.
+        expect(document.getElementById('claudeSheetTabs').contains(btn)).toBe(false);
+        expect(document.getElementById('claudeChatView').contains(btn)).toBe(true);
+        // It sits above the transcript and OUTSIDE the scroll surface, so it can't
+        // scroll away with the log.
+        const surface = document.getElementById('claudeChatSurface');
+        expect(surface.contains(btn)).toBe(false);
+        expect(btn.compareDocumentPosition(surface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     });
 
     it('wipes the rendered bubbles, the in-memory thread, and its persisted copy', async () => {
@@ -3258,13 +3261,17 @@ describe('Claude sheet — Clear chat control', () => {
         expect(lastBody.repo).toBe(DEFAULT_REPO);
     });
 
-    it('hides the Clear chat button on the Runs tab', () => {
+    it('hides the New Chat button on the Runs tab via the chat view', () => {
         const btn = document.getElementById('claudeClearChat');
-        expect(btn.hidden).toBe(false);
+        const chatView = document.getElementById('claudeChatView');
+        // The button is inside the chat view, so it's shown/hidden with the view
+        // rather than through a per-tab gate on the button itself.
+        expect(chatView.hidden).toBe(false);
         document.getElementById('claudeTabRuns').click();
-        expect(btn.hidden).toBe(true);
+        expect(chatView.hidden).toBe(true);
+        expect(chatView.contains(btn)).toBe(true);
         document.getElementById('claudeTabChat').click();
-        expect(btn.hidden).toBe(false);
+        expect(chatView.hidden).toBe(false);
     });
 });
 
