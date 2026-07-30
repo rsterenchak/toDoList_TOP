@@ -143,7 +143,7 @@
   - Completed: 2026-07-29
   <!-- id: 1ce1ff70-05e7-4b25-a420-8edca16bd495 -->
 
-- [ ] **[MEDIUM]** Relocate the agent availability gate out of the Agent view
+- [x] **[MEDIUM]** Relocate the agent availability gate out of the Agent view
   - Type: feature
   - Description: `syncAgentAvailabilityForProject`, `isAgentUnavailable`, `applyAgentAvailability`, and `AGENT_UNAVAILABLE_MSG` live in `agentView.js` but only one of their jobs belongs to the board. The gate is called from three of `main.js`'s project-switch hooks and from the badge-route handler, it toggles the `agentUnavailable` body class that drives the hollow no-repo marker's CSS on the STRUCTURE entry points, and it recomputes the working dot on switch — a documented hook without which the dot hangs on the previous project's state for up to 15 seconds. Only its fourth use, rendering an in-view unavailable message when the board is opened on a repo-less project, dies with the view. Relocate the gate so it survives, with the board still calling it. This is the last piece before `agentView.js` can be deleted.
   - Behavior: Identical to today. Switching to a project with no routed inject target sets the `agentUnavailable` body flag, so the STRUCTURE no-repo marker shows; switching to a repo-backed project clears it. The badge-route handler still refuses to route into a repo-less project by reading the gate's return value. The nav working dot still recomputes immediately on a project switch rather than waiting out the watch's interval. The board, while it still exists, still renders its unavailable message.
@@ -158,5 +158,5 @@
     - Test: switching to a repo-less project sets the body flag and the STRUCTURE marker shows; switching back clears it; the badge-route handler refuses a route on a repo-less project; the working dot recomputes on switch rather than lagging; and the board still renders its unavailable message while it exists.
   - Out of scope: The board's in-view unavailable message and its paint() branch, which die with the view. Renaming the `agentUnavailable` class. The working watch's own logic. Deleting `agentView.js`, which is the next and final entry in this sequence.
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-30
   <!-- id: 61f4b79a-7a58-4448-aad9-c5ba789bb245 -->
