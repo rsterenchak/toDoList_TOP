@@ -198,22 +198,27 @@ describe('TODO.md viewer — desktop rail strip placement', () => {
         expect(openPanel.style.display).toBe('');
     });
 
-    it('expanding into the pane clears a stale in-list body height', () => {
+    it('expanding into the pane clears stale in-list body sizing', () => {
         const { mainList } = mountDesktopShell();
         const card = makeCard();
         placeViewerCard(card, mainList);
         const body = card.querySelector('.todoMdViewerBody');
         // Simulate the in-list expand path having stamped a #mainList-relative
-        // pixel height on the body before the card relocated into the pane.
+        // floor and ceiling on the body before the card relocated into the pane.
         body.style.height = '240px';
+        body.style.minHeight = '120px';
+        body.style.maxHeight = '240px';
 
         // Expand via the strip's name toggle → the card takes the pane.
         document.querySelector('.todoMdViewerStripName').click();
 
         expect(card.hidden).toBe(false);
-        // The stale rail-sized height is cleared so the pane's own flex sizing
-        // fills the body rather than pinning it short with dead space below.
+        // The stale rail-sized floor and ceiling are cleared so the pane's own
+        // flex sizing fills the body rather than pinning it short with dead space
+        // below (a stale max-height ceiling was the mirror-image bug).
         expect(body.style.height).toBe('');
+        expect(body.style.minHeight).toBe('');
+        expect(body.style.maxHeight).toBe('');
     });
 
     it('refreshViewerExpandedHeight is a no-op while the card lives in the pane', () => {

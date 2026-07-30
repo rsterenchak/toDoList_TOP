@@ -421,14 +421,18 @@ function expandViewerIntoPane(card) {
     // full body, so clear the collapsed flag when it takes the pane.
     card.classList.remove('collapsed');
     card.classList.add('todoMdViewerCard--inPane');
-    // Clear any inline body height left over from the in-list expand path.
-    // applyExpandedHeight stamps a #mainList-relative pixel height onto the body
-    // (keyed off --expanded); nothing clears it when the card relocates here, so a
-    // stale rail-sized value would pin the body short and leave dead space below it
-    // in the taller pane. The pane owns the body's height via its own flex sizing,
-    // so drop the inline value and let CSS take over.
+    // Clear any inline body sizing left over from the in-list expand path.
+    // applyExpandedHeight stamps a #mainList-relative floor (min-height) and ceiling
+    // (max-height) onto the body (keyed off --expanded); nothing clears them when the
+    // card relocates here, so a stale rail-sized ceiling would pin the body short and
+    // leave dead space below it in the taller pane. The pane owns the body's height
+    // via its own flex sizing, so drop the inline values and let CSS take over.
     const body = card.querySelector('.todoMdViewerBody');
-    if (body) body.style.height = '';
+    if (body) {
+        body.style.height = '';
+        body.style.minHeight = '';
+        body.style.maxHeight = '';
+    }
     viewerStripExpanded = true;
     const strip = document.getElementById('todoMdViewerStrip');
     if (strip) {
@@ -2116,6 +2120,8 @@ function buildTodoMdViewerCard(projectName, target) {
     function applyExpandedHeight() {
         if (!card.classList.contains('todoMdViewerCard--expanded')) {
             body.style.height = '';
+            body.style.minHeight = '';
+            body.style.maxHeight = '';
             return;
         }
         const mainListDiv = document.getElementById('mainList');
@@ -2130,7 +2136,14 @@ function buildTodoMdViewerCard(projectName, target) {
         const bottomGap = 16;
         const available = mainListRect.bottom - headerRect.bottom - bottomGap;
         const fallback = 240;
-        body.style.height = Math.max(fallback, available) + 'px';
+        // Hug the content rather than stamping a hard height: clear the height so
+        // the body is sized by its content, set a floor so a nearly-empty backlog
+        // doesn't collapse the card to a header sliver (and so it doesn't visibly
+        // resize on every check-off), and set the room as a ceiling so the body
+        // scrolls internally once the content genuinely exceeds the space.
+        body.style.height = '';
+        body.style.minHeight = '120px';
+        body.style.maxHeight = Math.max(fallback, available) + 'px';
     }
 
     function applyCollapsedState(collapsed) {

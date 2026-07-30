@@ -11575,10 +11575,13 @@ body.row-dragging * { cursor: grabbing !important; }
   line-height: 1.5;
 }
 
-/* Expanded state — the inline `height` set in JS overrides the default
-   compact `max-height`, letting the body fill the available room beneath
-   the Completed section. `max-height: none` defuses the desktop and
-   mobile `max-height` ceilings so the JS-computed height wins. */
+/* Expanded state — `max-height: none` defuses the default compact desktop
+   and mobile `max-height` ceilings so the body isn't clamped to 280px. The
+   card no longer fills the room with a hard `height`; instead JS stamps an
+   inline `min-height` floor and a `max-height` ceiling (the available room
+   beneath the Completed section) on the body. Those inline writes outrank
+   this rule on specificity, so the body hugs its content and only scrolls
+   once it genuinely exceeds the room. */
 .todoMdViewerCard--expanded .todoMdViewerBody {
   max-height: none;
 }
@@ -12434,6 +12437,17 @@ body.row-dragging * { cursor: grabbing !important; }
      against. */
   #mainList.emptyStatePresent #emptyState.emptyStateNoProjects {
     min-height: 100%;
+  }
+  /* Per-project empty states (no open todos / all caught up) should hug their
+     own content and sit at the top of the column so the TODO.md viewer card
+     rides up directly beneath them, rather than growing to fill the 1fr row and
+     shoving the card to the column floor. The :not() keeps the first-run
+     NO PROJECTS welcome block's full-height centering (rule above) intact, and
+     confining this to the desktop media block leaves the ≤1023px stack layout
+     untouched. */
+  #mainList.emptyStatePresent #emptyState:not(.emptyStateNoProjects) {
+    flex: 0 0 auto;
+    justify-content: flex-start;
   }
   #emptyStateCreateBtn {
     width: 100%;
