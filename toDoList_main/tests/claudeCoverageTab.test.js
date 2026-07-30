@@ -14,6 +14,10 @@ import { vi } from 'vitest';
 // import. `assignmentResult` controls what the assignment read resolves to.
 let assignmentResult = { ok: false, reason: 'No target' };
 let assignmentCalls = [];
+// When set to an array, the assignment read defers instead of resolving
+// immediately, pushing its resolver so a test can land reads out of call order
+// (used to exercise the mid-fetch staleness guard).
+let deferredReads = null;
 
 vi.mock('../src/inject.js', () => ({
     // claudeSheet
@@ -41,6 +45,9 @@ vi.mock('../src/inject.js', () => ({
     // assignmentCoverage + agentView
     readAssignmentFromWorker: (target) => {
         assignmentCalls.push(target);
+        if (deferredReads) {
+            return new Promise((resolve) => { deferredReads.push(resolve); });
+        }
         return Promise.resolve(assignmentResult);
     },
     readRepoFile: () => Promise.resolve({ ok: false }),
@@ -132,6 +139,7 @@ beforeEach(() => {
     listLogic._reset();
     assignmentResult = { ok: false, reason: 'No target' };
     assignmentCalls = [];
+    deferredReads = null;
     setQueueRows([], null);
     mountClaudeSheet(document.body);
 });
@@ -173,6 +181,60 @@ describe('COVERAGE tab — visibility gating', () => {
         const absent = freshProject();
         await switchTo(absent, { ok: false, reason: 'Not found' });
         expect(coverageTab().hidden).toBe(true);
+    });
+});
+
+// The switch path threads the switched-to project name through explicitly rather
+// than re-reading the shared getSelectedProjectName() DOM selection, which can lag
+// the switch call. These cover that the tab still resolves for the intended project
+// regardless of selection timing, and that a stale read can't repaint the wrong one.
+describe('COVERAGE tab — switch resolves independent of DOM-selection lag', () => {
+    // Route a project without moving the DOM `.selectedProject` marker, reproducing
+    // production where syncClaudeSheetForProject(next) fires before the sidebar flips
+    // `.selectedProject` to the new row.
+    function registerRouted() {
+        const name = 'Cov-lag-' + (projCounter++);
+        listLogic.addProject(name);
+        listLogic.setProjectTargetId(name, 'target-1');
+        return name;
+    }
+
+    it('reveals the tab on switch when the DOM selection still reads the previous project', async () => {
+        const prev = freshProject(); // DOM .selectedProject = prev
+        await switchTo(prev, { ok: false, reason: 'Not found' });
+        expect(coverageTab().hidden).toBe(true);
+
+        // The user switches to a filled-assignment project, but the DOM selection has
+        // not yet flipped — it still reads `prev`. The tab must still resolve for the
+        // switched-to project rather than no-opping (which left it hidden until the
+        // pane was reopened).
+        const next = registerRouted();
+        assignmentResult = { ok: true, content: FILLED_WITH_ASPECTS };
+        syncClaudeSheetForProject(next);
+        await flush();
+        expect(coverageTab().hidden).toBe(false);
+    });
+
+    it('drops a superseded project\'s late read instead of repainting the tab for it', async () => {
+        deferredReads = [];
+        const first = registerRouted();
+        const last = registerRouted();
+
+        // Two switches fire back-to-back; both reads are still pending.
+        syncClaudeSheetForProject(first); // read #0 (first)
+        syncClaudeSheetForProject(last);  // read #1 (last)
+
+        // The last switch's read lands first → the tab shows for it (filled).
+        deferredReads[1]({ ok: true, content: FILLED_WITH_ASPECTS });
+        await flush();
+        expect(coverageTab().hidden).toBe(false);
+
+        // The superseded first switch's read lands late with an absent
+        // classification — it must be dropped, leaving the last project's state
+        // (tab visible), not hide the tab.
+        deferredReads[0]({ ok: false, reason: 'Not found' });
+        await flush();
+        expect(coverageTab().hidden).toBe(false);
     });
 });
 

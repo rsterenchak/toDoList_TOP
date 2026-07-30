@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-29',
-        added: [
-            "The Coverage tab now has a Derive action that drafts tasks from the assignment rubric, plus a badge and review modal to accept or dismiss the proposals it produces.",
+        date: '2026-07-30',
+        fixed: [
+            "The Coverage tab now appears as soon as you switch to a project that has an assignment, instead of only after reopening the assistant pane or reloading.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-29',
         fixed: [
             "A task whose run has already shipped now shows its shipped status as soon as the row appears, instead of a stale badge that lingered until reload.",
             "On phones, tapping a task's pipeline badge now opens the description editor with its triage question, dispatch, and review controls, instead of an inline panel where those controls were unreachable.",

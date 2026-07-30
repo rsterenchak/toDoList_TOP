@@ -161,7 +161,7 @@
   - Completed: 2026-07-30
   <!-- id: 61f4b79a-7a58-4448-aad9-c5ba789bb245 -->
 
-- [ ] **[HIGH]** Coverage tab doesn't appear until the pane is reopened after a project switch
+- [x] **[HIGH]** Coverage tab doesn't appear until the pane is reopened after a project switch
   - Type: bug
   - Description: Switching to a project whose repo has an `assignment.md` does not reveal the COVERAGE tab. Closing and reopening the chat pane, or reloading, makes it appear. `refreshAssignmentForActiveProject` is called both at mount and from `syncClaudeSheetForProject` on switch, and `refreshAssignment` guards its async completion with `if (getSelectedProjectName() !== projectName) return;` so a read whose project is no longer selected cannot populate the cache. On the switch path that guard is discarding the result: the read resolves against a selected-project name that does not match the one captured when it started, so `_assignment` is never written and `notifyAssignmentChange` never fires, leaving the tab hidden with the state stuck at null. Reopening the pane re-runs the mount path with the name settled, which is why the workaround works.
   - Behavior: Switching to a project with an `assignment.md` reveals the COVERAGE tab as soon as the read resolves, with no pane close/reopen and no reload. Switching to a project without one hides it, falling back to CHAT if it was selected. Switching rapidly between projects resolves to the last one selected — an earlier project's late-arriving read must not populate the cache or reveal a tab for the wrong project.
@@ -176,5 +176,5 @@
     - Test: switching to a project with an assignment reveals the tab without reopening the pane; switching to one without hides it; a rapid switch A→B→C leaves C's state in the cache and C's tab state on screen; and a late read from A does not repaint the tab while C is selected.
   - Out of scope: The coverage summary's contents, the breakdown modal, Derive, and the proposal modal. `assignment.md` parsing and classification. The board's own assignment card. The availability gate relocation currently in flight.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/claudeSheet.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-30
   <!-- id: 40b40c83-2c2e-4ac0-96a5-cedd10ecb790 -->
