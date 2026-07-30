@@ -1101,3 +1101,74 @@ function finishDeriveRun(correlationId, target) {
         )
         .then(refresh);
 }
+
+// ── AGENT AVAILABILITY GATE ───────────────────────────────────────────
+// Relocated here out of agentView.js so it survives the board's deletion. A
+// project with no routed inject target can't draft, dispatch, or ship agent
+// work — there's nowhere to append the TODO.md entry. A single `agentUnavailable`
+// body flag (toggled here) drives the hollow "no-repo" marker's CSS on the
+// STRUCTURE entry points and the board's paint() unavailable branch while the
+// board still exists. main.js routes every project switch through
+// syncAgentAvailabilityForProject and reads its hasRepo return to bail off a
+// now-dead board; the badge-route handler consults the same gate. It is the SAME
+// test the sidebar thunderbolt uses: inject configured globally AND this project
+// carrying a routed inject target.
+//
+// The gate reaches two capabilities that live outside the store through the
+// store's established DI channels rather than a static import — the store must
+// not import a view or inject.js, the same acyclic rule the reconciler and run
+// trackers already follow:
+//   • isInjectConfigured() — registered from inject.js via setAgentAvailabilityDeps
+//     at that module's load (its natural home; survives the board's deletion).
+//   • pollAgentWorkingWatch() — the persistent working watch still lives in
+//     agentView.js this entry (relocating it is out of scope), so the gate
+//     recomputes the nav dot through the SAME callback the run trackers already
+//     receive via configureRunTrackers (_trackerDeps.pollAgentWorkingWatch). When
+//     the working watch relocates with the board's deletion, this call becomes local.
+export const AGENT_UNAVAILABLE_MSG =
+    'Agent unavailable here — no repo configured for this project';
+
+// inject.js registers { isInjectConfigured } here at module load — same setter
+// idiom and TDZ-avoidance reason as setDispatchReconcilerDeps: the store must not
+// statically import inject.js, so it reaches the check through a registered bundle.
+let _availabilityDeps = null;
+export function setAgentAvailabilityDeps(deps) {
+    _availabilityDeps = (deps && typeof deps === 'object') ? deps : null;
+}
+
+function applyAgentAvailability(hasRepo) {
+    // Just toggle the body flag — the CSS keys the hollow "no-repo" marker off it
+    // and the board's paint() renders the unavailable message in-view when opened
+    // on a repo-less project.
+    document.body.classList.toggle('agentUnavailable', !hasRepo);
+}
+
+// Recompute agent availability for the given project and apply it. Called from
+// main.js's project-switch hooks (alongside syncClaudeSheetForProject) so both
+// gates derive from one source of truth and clear together, and from the
+// badge-route handler to refuse a route into a repo-less board. Returns hasRepo so
+// the caller can bail off a now-dead board.
+export function syncAgentAvailabilityForProject(projectName) {
+    const injectConfigured = !!(_availabilityDeps
+        && typeof _availabilityDeps.isInjectConfigured === 'function'
+        && _availabilityDeps.isInjectConfigured());
+    const hasRepo = injectConfigured
+        && !!listLogic.getProjectTargetId(projectName);
+    applyAgentAvailability(hasRepo);
+    // Recompute the nav "agent working" dot for the newly selected project right
+    // now. The working signal is scoped to the selected project, but the watch
+    // otherwise only ticks on its 15s interval or an agent_queue realtime push —
+    // never on a project switch. Without this the dot hangs on the previous
+    // project's state for up to WORKING_WATCH_POLL_MS after switching. This is the
+    // documented project-switch hook, so recompute here.
+    if (_trackerDeps && typeof _trackerDeps.pollAgentWorkingWatch === 'function') {
+        _trackerDeps.pollAgentWorkingWatch();
+    }
+    return hasRepo;
+}
+
+// True while the agent gate is off for the active project. The board's paint()
+// consults this to render the in-view unavailable message instead of the queue.
+export function isAgentUnavailable() {
+    return document.body.classList.contains('agentUnavailable');
+}

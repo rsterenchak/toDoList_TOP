@@ -10,7 +10,6 @@ import {
     readRepoFile,
     findTargetById,
     showInjectToast,
-    isInjectConfigured,
     chatWithWorker,
     revertEntry,
 } from './inject.js';
@@ -42,6 +41,8 @@ import {
     isDeriveActive,
     SWEEP_GRACE_MS,
     SWEEP_HARD_CAP_MS,
+    isAgentUnavailable,
+    AGENT_UNAVAILABLE_MSG,
 } from './agentQueueStore.js';
 import { buildMockupSecondary, configureMockupFlow } from './mockupFlow.js';
 import {
@@ -1864,51 +1865,13 @@ function paint() {
 }
 
 // ── AGENT-VIEW AVAILABILITY GATE ──
-// A project with no routed repo can't draft, dispatch, or ship agent work —
-// there's nowhere to inject the TODO.md entry. The Agent view is no longer a tab;
-// it is reached by tapping a DRAFTED / STUCK / MOCKUP badge on a task row, and
-// main.js's badge-route handler consults this gate (via syncAgentAvailabilityForProject's
-// return value) to refuse the route on such a project. A single `agentUnavailable`
-// body flag — toggled from the same project-switch hook points that call
-// syncClaudeSheetForProject — also drives the hollow "no-repo" marker's CSS on the
-// STRUCTURE entry points and the paint() unavailable branch (rendered if the view
-// is opened anyway). The flag clears the moment a repo-backed project becomes
-// active. The gate is the SAME one the sidebar thunderbolt uses: inject configured
-// globally AND this project carries a routed inject target.
-export const AGENT_UNAVAILABLE_MSG =
-    'Agent unavailable here — no repo configured for this project';
-
-function applyAgentAvailability(hasRepo) {
-    // Just toggle the body flag — the CSS keys the hollow "no-repo" marker off it
-    // and paint() renders the unavailable message in-view when the board is opened
-    // on a repo-less project.
-    document.body.classList.toggle('agentUnavailable', !hasRepo);
-}
-
-// Recompute the Agent view's availability for the given project and apply it.
-// Called from main.js's project-switch hooks alongside syncClaudeSheetForProject
-// so both gates derive from one source of truth and clear together, and from the
-// badge-route handler to refuse a route into a repo-less board. Returns hasRepo so
-// the caller can bail off a now-dead board.
-export function syncAgentAvailabilityForProject(projectName) {
-    const hasRepo = isInjectConfigured()
-        && !!listLogic.getProjectTargetId(projectName);
-    applyAgentAvailability(hasRepo);
-    // Recompute the nav "agent working" dot for the newly selected project right
-    // now. The working signal pollAgentWorkingWatch() computes is scoped to the
-    // selected project, but the watch otherwise only ticks on its 15s interval or
-    // an agent_queue realtime push — never on a project switch. Without this call
-    // the dot hangs on the previous project's state for up to WORKING_WATCH_POLL_MS
-    // after switching. This is the documented project-switch hook, so recompute here.
-    pollAgentWorkingWatch();
-    return hasRepo;
-}
-
-// True while the Agent view is gated off for the active project. paint() consults
-// this to render the in-view unavailable message instead of the queue board.
-export function isAgentUnavailable() {
-    return document.body.classList.contains('agentUnavailable');
-}
+// The gate (syncAgentAvailabilityForProject / isAgentUnavailable /
+// AGENT_UNAVAILABLE_MSG) now lives in agentQueueStore.js so it survives the
+// board's deletion; the board still consults isAgentUnavailable() /
+// AGENT_UNAVAILABLE_MSG in paint() (imported at the top of this module) to render
+// its in-view unavailable message. The board also registers pollAgentWorkingWatch
+// with the store (via configureRunTrackers), which the relocated gate calls to
+// recompute the nav dot on a project switch.
 
 // Render the AGENT view for the currently selected project. Safe to call
 // before component() has built the shell (a missing #agentView short-circuits
