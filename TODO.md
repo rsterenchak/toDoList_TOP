@@ -195,3 +195,21 @@
   - File: `toDoList_main/src/assignmentCoverage.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8ef2844e-0939-44a9-98b8-dbddf7d6f393 -->
+
+- [ ] **[LOW]** Move New Chat out of the tab strip into the chat body
+  - Type: bug
+  - Description: `+ New Chat` sits in the chat pane's tab row to the right of CHAT / RUNS, and adding the COVERAGE tab with its proposal-count badge pushed the row past the docked pane's 360px — the control is clipped at the right edge. It is also misplaced: New Chat clears the transcript and the task scope, which only means anything on the CHAT tab, yet it occupies strip width on RUNS and COVERAGE too. Move it into the chat body as a contextual control so the strip holds only tabs, and the row fits at every combination of tabs.
+  - Behavior: The tab strip contains the collapse control and the tabs — CHAT, RUNS, and COVERAGE when present — with no action buttons, and fits without clipping in the 360px docked pane and in the mobile sheet. New Chat appears within the CHAT tab's body, above the transcript, aligned right, and is absent on RUNS and COVERAGE. It does exactly what it does today: clears the transcript, the task scope, and the iterate entry for the active workspace. Its accessible name stays "New Chat".
+  - Implementation notes:
+    - `buildClearChatButton` builds it and something in the tab-switch handler at `claudeSheet.js:275` already reads `#claudeClearChat` — check what that does first. If visibility is already gated on the active tab, this is a relocation only and that gate can be dropped once the control lives inside the tab body it belongs to.
+    - Mount it in the CHAT view's container rather than toggling a strip child, so it is structurally scoped to the tab instead of conditionally hidden. That removes a piece of per-tab bookkeeping rather than adding one.
+    - Keep the handler wiring identical. It clears transcript, task scope, and iterate entry together — grep the call site and move the button, not the logic.
+    - Above the transcript, right-aligned, is the placement to try first. If the transcript is a scrolling container, the control must sit OUTSIDE it so it does not scroll away — the intro placeholder text is inside that scroll region, so check which element actually scrolls before choosing the parent.
+    - With the button gone, verify the tab strip's remaining flex still distributes sensibly. It likely used a `grow` spacer to push the button right; that spacer may now be unnecessary or may need to stay so the tabs stay left-aligned rather than stretching.
+    - Verify at both hosts: the 360px docked pane with COVERAGE present (the widest case), and the mobile sheet where the strip is full-width. `placeChatContent` relocates the surface between them, so the control must travel with the chat body rather than being mounted per host.
+    - Keep the `+` affordance in the label or as a glyph — it reads as "start something new" and the control is now competing with less, so there is room for the full label.
+    - Test: the tab strip fits without clipping with all three tabs present at 360px; New Chat appears only on the CHAT tab; it still clears transcript, scope, and iterate entry; it does not scroll away with the transcript; and it renders correctly in both the docked pane and the mobile sheet.
+  - Out of scope: The COVERAGE tab, its badge, and its conditional visibility. The tabs' own styling and the collapse control. What New Chat clears. The composer, model strip, and attachment controls.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: bdf95d49-d014-469e-a441-4554936415db -->
