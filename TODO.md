@@ -232,3 +232,20 @@
   - File: `toDoList_main/src/agentView.js`, `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/main.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5b16a393-710d-4fa6-aba5-774376db1cc4 -->
+
+- [ ] **[HIGH]** Reconciler settles don't notify queue-change listeners
+  - Type: bug
+  - Description: A run finishing does not update any live surface — the coverage breakdown, the tab summary, and the row badge all need a page refresh to show a settled row. The repaint plumbing is in place: `ensureQueueRepaintListener` registers one `onQueueChange` handler that dispatches to `_coverageModal` and `_proposalModal`, and both are set while open. So the listener is not firing. The reconciler runs on a 5s poll inside the client and settles a row via `setAgentRunState`, which writes to Supabase — but a client's own write may not come back through its realtime subscription, or the store may update `_rows` directly without notifying. Either way the local settle is invisible to every listener until a reload re-fetches. Notify explicitly after a settle rather than relying on the realtime round trip.
+  - Implementation notes:
+    - FIRST establish which it is and report it in the PR body: does `onQueueChange` fire at all when the local client settles a row? Instrument or reason it out from the store's realtime handler. If Supabase echoes the write and the handler filters or ignores it, the fix is in the handler. If the reconciler updates `_rows` in place and returns, the fix is notifying after the mutation. The two need different changes and guessing wrong will look fixed while staying broken.
+    - Whichever it is, the settle path must end in the same notification a remote change produces. One notify function, called from both paths — do not add a second listener list or a bespoke callback for the reconciler.
+    - Make notification idempotent-safe: if the realtime echo DOES arrive after an explicit notify, listeners will run twice. That must be harmless — the coverage repaint recomputes from `getQueueRows()` and the proposal list re-renders, so both should be safe, but confirm rather than assume, and make sure a double repaint cannot reset scroll position or the manual-lane tick state.
+    - Check `_rows` is actually updated before notifying. A notify that fires while the cache still holds the pre-settle state will repaint identical content and look like the bug persists.
+    - The same gap likely affects the row badge and the RUNNING filter count, which also read through the store. Verify all three surfaces update after a settle: the coverage breakdown, the tab summary, and the task row's phase badge. If only some do, they are reading the cache by different paths and that is worth naming.
+    - Do not fix this by polling the coverage surfaces or by re-fetching on modal open. The store owns the cache and the notification; consumers should stay passive.
+    - This is the third time a settle has failed to reach a surface — the marker force-refresh hooked a transition nothing produced, the reconciler only ran while the board was mounted, and now the notify does not fire. Note in the PR body which surfaces were verified, so the next occurrence starts from a known-good list rather than a guess.
+    - Test: settling a row locally fires `onQueueChange`; an open coverage breakdown moves the aspect to Shipped and increments the covered count without a reload; the tab summary and the row badge update on the same event; a duplicate notify from a realtime echo does not reset modal scroll or tick state.
+  - Out of scope: The reconciler's decision logic and its poll cadence. `aspectStatus` and `computeCoverage`. The proposal modal's own behavior. The `shipped_at` stamp. Deleting the Agent view, which is a separate pending entry.
+  - File: `toDoList_main/src/agentQueueStore.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4defa5e2-76be-435c-b333-8a741dad94d6 -->
