@@ -86,3 +86,21 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b47e1216-2024-439a-a401-c7bbb0326731 -->
+
+- [ ] **[MEDIUM]** TODO.md in the detail pane: body keeps a stale height computed for the rail
+  - Type: bug
+  - Description: With TODO.md open in the detail pane, the rendered body stops partway down and leaves dead space beneath it. `applyExpandedHeight` writes an explicit `body.style.height` derived from `#mainList`'s bounding rect — the queue rail's scroll viewport — because the card's in-list chain cannot propagate a flex height through the list's CSS grid. `refreshViewerExpandedHeight` correctly returns early when `isViewerCardInPane()`, so the height is not recomputed in the pane, but nothing clears the value already written while the card lived in the rail. The body renders at that stale rail-sized height inside a much taller pane.
+  - Behavior: When TODO.md is open in the detail pane, its body fills the pane's available height and scrolls internally, with no dead space below the content and no content cut off. Collapsing back to the rail restores the in-list card's own expanded-height behavior exactly as before, recomputed against `#mainList`. Resizing the window with the file open in the pane keeps the body filling the pane. Mobile and the bottom sheet are unaffected.
+  - Implementation notes:
+    - Clear the inline height when the card enters the pane. `expandViewerToPane` already strips the collapsed flag and adds `--inPane`; set `body.style.height = ''` there too, so the pane's own flex sizing takes over rather than an inline pixel value overriding it.
+    - The pane rule already gives the card `flex: 1 1 auto; min-height: 0`. Confirm the BODY inside it also gets `flex: 1 1 auto; min-height: 0` plus its own `overflow-y: auto` under `#descDetailPane .todoMdViewerCard`, or the card will grow and the pane will scroll as a whole instead of the body scrolling within a fixed header.
+    - `collapseViewerToRail` must restore the rail behavior. After the card returns to the list, call the resize handler so `applyExpandedHeight` recomputes against `#mainList` — otherwise the body comes back with no height at all, which is the mirror-image bug.
+    - The window resize listener stays attached while the card is in the pane, and `viewerResizeHandler` calls `applyExpandedHeight` whenever `--expanded` is present. Guard that path on pane mode as well, or a resize will rewrite the stale rail height straight back onto the body. `refreshViewerExpandedHeight` has the right guard; the resize handler needs the same one.
+    - Do NOT change `applyExpandedHeight`'s rail math. It is correct for the in-list case and the comment explains why flex-grow cannot be relied on there.
+    - Verify the header stays pinned while the body scrolls — the Rendered / Raw markdown tabs and the close control should not scroll away with the content.
+    - Check both tabs. The raw markdown view is a `<pre>` and may have its own overflow behavior that fights the body's scroll.
+    - Test: opening in the pane fills the pane's height; resizing keeps it filled; collapsing to the rail restores the in-list expanded height; and the mobile sheet is unchanged.
+  - Out of scope: `applyExpandedHeight`'s computation for the in-list card. The strip, its controls, and the click-to-open behavior. `restorePaneTaskContent`. The Rendered / Raw markdown tab contents and the per-entry action pills. The mobile bottom sheet.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 57fabea1-f6d2-48f5-bd35-f7a3fafa60e1 -->
