@@ -2498,11 +2498,19 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeWorkspace,
 .claudeWorkspacePill { display: none; }
 
-/* CLEAR CHAT — text-only control in the tab row, right of CHAT / RUNS. Uses the
-   danger token to read as a destructive (conversation-wiping) action, and honors
-   both themes through the variable. */
+/* NEW CHAT header — a right-aligned row above the chat transcript that holds the
+   New Chat control. Structurally inside #claudeChatView (above #claudeChatSurface),
+   so it hides with the view on RUNS / COVERAGE and never scrolls with the log. */
+.claudeChatHeader {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+
+/* CLEAR CHAT — text-only control above the chat transcript. Tinted with the
+   purple accent palette to read as a conversation-wiping action, honoring both
+   themes through the hardcoded values below. */
 .claudeClearChat {
-  margin-left: auto;
   background: #2a2560;
   color: #9D93EE;
   border: 1px solid #6C5DF5;
@@ -14380,8 +14388,9 @@ body.row-dragging * { cursor: grabbing !important; }
   /* The relocated tab row IS the chat pane's sub-header. Compress it to the
      sub-band's height, vertically center it, and reserve room at the start for
      the absolutely-placed collapse button so CHAT/RUNS don't sit beneath it.
-     The Clear chat control keeps its margin-left:auto right alignment. Scoped to
-     #desktopChatPane so the mobile slide-up sheet's tab row is untouched. */
+     The strip holds only tabs now (New Chat moved into the chat body), so the
+     row fits at 360px with all three tabs present. Scoped to #desktopChatPane so
+     the mobile slide-up sheet's tab row is untouched. */
   #desktopChatPane #claudeSheetTabs {
     min-height: 36px;
     align-items: center;

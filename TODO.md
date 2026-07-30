@@ -196,7 +196,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8ef2844e-0939-44a9-98b8-dbddf7d6f393 -->
 
-- [ ] **[LOW]** Move New Chat out of the tab strip into the chat body
+- [x] **[LOW]** Move New Chat out of the tab strip into the chat body — Completed: 2026-07-30
   - Type: bug
   - Description: `+ New Chat` sits in the chat pane's tab row to the right of CHAT / RUNS, and adding the COVERAGE tab with its proposal-count badge pushed the row past the docked pane's 360px — the control is clipped at the right edge. It is also misplaced: New Chat clears the transcript and the task scope, which only means anything on the CHAT tab, yet it occupies strip width on RUNS and COVERAGE too. Move it into the chat body as a contextual control so the strip holds only tabs, and the row fits at every combination of tabs.
   - Behavior: The tab strip contains the collapse control and the tabs — CHAT, RUNS, and COVERAGE when present — with no action buttons, and fits without clipping in the 360px docked pane and in the mobile sheet. New Chat appears within the CHAT tab's body, above the transcript, aligned right, and is absent on RUNS and COVERAGE. It does exactly what it does today: clears the transcript, the task scope, and the iterate entry for the active workspace. Its accessible name stays "New Chat".
