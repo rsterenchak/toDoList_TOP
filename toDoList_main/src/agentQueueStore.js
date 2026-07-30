@@ -246,10 +246,41 @@ export function fetchAllQueueRows() {
                 supabase.from('agent_queue').select('*')
             ).then(function (res) {
                 if (res && res.error) { resolve([]); return; }
-                resolve((res && res.data) || []);
+                const rows = (res && res.data) || [];
+                reconcileShippedStamps(rows);
+                resolve(rows);
             }).catch(function () { resolve([]); });
         } catch (e) {
             resolve([]);
+        }
+    });
+}
+
+// Repair the `shipped_at` invariant across every already-loaded queue row.
+// `settleShipped` stamps the linked todo exactly once, at settle time, and does
+// not gate the ship on that stamp succeeding — so a stamp that fails in that one
+// moment (most plausibly a startup reconcile settling rows before the todos have
+// hydrated, making listLogic's in-memory scan miss the todo) is never retried,
+// and the row reaches `shipped` with a todo that carries no `shippedAt`. The
+// derived REVIEW/DONE phase then rests solely on the TODO.md marker and a
+// `clear all entries` wipes it. This pass makes the stamp a repairable invariant
+// instead of a one-shot: for every row already at `shipped` carrying a
+// `todo_id`, re-stamp its todo. `stampEntryShipped` is idempotent (an
+// already-stamped todo keeps its original time), so this is safe to run on every
+// load and needs no separate migration for rows stranded before this shipped —
+// they repair on the next pass. Gated on todos actually being hydrated: before
+// hydration the scan would miss a todo that exists on the server, so the pass
+// skips and retries on the next load rather than firing a doomed lookup per row.
+// Best-effort like the settle stamp — a not-yet-loaded todo is left for the next
+// pass, not warned about, since this pass exists precisely to be re-run.
+export function reconcileShippedStamps(rows) {
+    if (!listLogic.hasHydratedTodos()) return;
+    (Array.isArray(rows) ? rows : []).forEach(function (row) {
+        if (!row || row.state !== 'shipped' || !row.todo_id) return;
+        try {
+            listLogic.stampEntryShipped(row.todo_id);
+        } catch (e) {
+            /* transient — the pass re-runs on the next load and repairs then */
         }
     });
 }

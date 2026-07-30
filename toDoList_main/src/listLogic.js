@@ -1755,6 +1755,19 @@ export const listLogic = (function () {
     }
 
 
+    // Report whether the local todo store has been populated — i.e. at least
+    // one project is present in `allProjects`. Best-effort repair passes that
+    // scan todos by id (e.g. the agent-queue shipped-stamp reconcile) use this
+    // as a gate: before hydration the store is empty, so an id lookup returns
+    // "not found" for a todo that genuinely exists on the server, and acting on
+    // that false-negative would burn the pass. Gating on this lets such a pass
+    // skip cleanly and retry on the next load once the store is hydrated,
+    // rather than firing a doomed lookup per row.
+    function hasHydratedTodos() {
+        return Object.keys(allProjects).length > 0;
+    }
+
+
     // Write a per-project color key. Pass null (or any non-valid key) to
     // reset back to the theme accent.
     // @category: user-mutation-only
@@ -3843,6 +3856,7 @@ export const listLogic = (function () {
         stampEntryShipped,
         getEntryReviewInfo,
         getTodoById,
+        hasHydratedTodos,
         unflagAgentTask,
         setProjectColor,
         getProjectSortByDue,
