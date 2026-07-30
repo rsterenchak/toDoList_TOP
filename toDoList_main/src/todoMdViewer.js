@@ -421,6 +421,14 @@ function expandViewerIntoPane(card) {
     // full body, so clear the collapsed flag when it takes the pane.
     card.classList.remove('collapsed');
     card.classList.add('todoMdViewerCard--inPane');
+    // Clear any inline body height left over from the in-list expand path.
+    // applyExpandedHeight stamps a #mainList-relative pixel height onto the body
+    // (keyed off --expanded); nothing clears it when the card relocates here, so a
+    // stale rail-sized value would pin the body short and leave dead space below it
+    // in the taller pane. The pane owns the body's height via its own flex sizing,
+    // so drop the inline value and let CSS take over.
+    const body = card.querySelector('.todoMdViewerBody');
+    if (body) body.style.height = '';
     viewerStripExpanded = true;
     const strip = document.getElementById('todoMdViewerStrip');
     if (strip) {
@@ -441,6 +449,13 @@ function collapseViewerToRail(card) {
         const nameBtn = strip.querySelector('.todoMdViewerStripName');
         if (nameBtn) nameBtn.setAttribute('aria-expanded', 'false');
     }
+    // Restore the in-list expanded-height behavior. Once the card is being sized by
+    // #mainList again (a viewport that has dropped below the desktop breakpoint),
+    // the body needs applyExpandedHeight to recompute its height — otherwise the
+    // value cleared on the way into the pane leaves it with no height at all, the
+    // mirror image of the stale-height bug. The resize handler guards on pane mode,
+    // so this is a no-op while the card is still hosted in the pane.
+    if (viewerResizeHandler) viewerResizeHandler();
 }
 
 // Called from the row-open path (toDoRow.js openPanel) so opening a task while the
@@ -2232,6 +2247,12 @@ function buildTodoMdViewerCard(projectName, target) {
 
     detachViewerResizeHandler();
     viewerResizeHandler = function() {
+        // In the detail pane the pane's own flex sizing owns the body height;
+        // running applyExpandedHeight here would stamp a stale #mainList-relative
+        // height straight back onto the body on every resize. Skip it there — the
+        // computed height is only for the in-list card. refreshViewerExpandedHeight
+        // carries the same guard.
+        if (isViewerCardInPane()) return;
         if (card.classList.contains('todoMdViewerCard--expanded')) {
             applyExpandedHeight();
         }

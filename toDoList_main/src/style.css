@@ -12040,6 +12040,10 @@ body.row-dragging * { cursor: grabbing !important; }
     flex: 1 1 auto;
     min-height: 0;
     height: auto;
+    /* Defuse the base body's 280px max-height ceiling: in the pane the body grows
+       to fill the available height under a fixed header and scrolls internally,
+       rather than capping at 280px and leaving dead space below. */
+    max-height: none;
     overflow-y: auto;
   }
 
