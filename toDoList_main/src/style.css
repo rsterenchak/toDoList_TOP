@@ -11909,7 +11909,12 @@ body.row-dragging * { cursor: grabbing !important; }
     align-items: center;
     flex-wrap: wrap;
     gap: 6px;
-    padding: 6px 8px;
+    /* 12px horizontal inset matches #taskFilterBar (the strip's direct sibling
+       below it) and the task rows, so the file name and controls line up with the
+       rows beneath instead of crowding the strip's own border. Vertical padding
+       stays modest — the strip is pinned above the task list, so its height comes
+       out of the visible row count. */
+    padding: 6px 12px;
     margin: 0 0 6px;
     background: var(--bg-elevated);
     border: 1px solid var(--border-dim);
