@@ -1,6 +1,7 @@
 import { listLogic } from './listLogic.js';
 import { findTargetById } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
+import { kickDispatchReconciler } from './agentQueueStore.js';
 
 // Shared dispatch core for a drafted/stuck agent_queue row's entry. Extracted out
 // of agentView so BOTH the Agent board and the task-row description panel ship a
@@ -73,6 +74,22 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     };
     if (res.runId != null) patch.run_id = res.runId;
     await listLogic.setAgentRunState(rowId, patch);
+
+    // Arm the dispatch reconciler for THIS in-session dispatch, from the one funnel
+    // every surface (Dispatch, Retry, mockup Use, proposal Accept) resolves through.
+    // The reconciler otherwise arms only from an `onQueueChange`, which fires only
+    // after a settle, which comes only from the poller — a cycle nothing but a page
+    // reload breaks, so a locally-dispatched run would never settle until a refresh.
+    // Kicking here breaks that cycle so the run settles on its own within a poll
+    // cycle of its PR merging. Fire-and-forget: a failed kick must leave the row
+    // `dispatched` (reconciled on the next reload) and never turn a dispatch that
+    // actually worked into a surfaced error, and must not block the success path or
+    // its UI feedback. The realtime `onQueueChange` arming path stays intact for runs
+    // dispatched from another device; both paths are safe together (evaluateReconciler
+    // is idempotent and won't start a second interval).
+    try {
+        Promise.resolve(kickDispatchReconciler()).catch(function () {});
+    } catch (e) { /* never let a kick failure fail the dispatch */ }
 
     if (tail && typeof tail.onDispatched === 'function') {
         tail.onDispatched(rowId, res.entryId, res.correlationId, target);
