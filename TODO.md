@@ -14,7 +14,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 668c8baa-beca-48b6-90bd-6c2966034a38 -->
 
-- [ ] **[MEDIUM]** Replace the per-row description chevron with the copy-title button on desktop
+- [x] **[MEDIUM]** Replace the per-row description chevron with the copy-title button on desktop
   - Type: feature
   - Description: On desktop the `#descToggle` `▾` chevron is dead chrome — clicking or keyboard-focusing a row already opens its description in the detail pane via `openRowInDetailPane()` (which itself drives `descToggle.click()`), so the caret is a second path to something the row already does. Meanwhile `.copyTitleBtn` is built for every committed row but only paints at ≤1023px. Retire the chevron's paint at all widths and surface the copy button in its slot on desktop.
   - Behavior: Desktop committed rows show a trailing cluster of due pill → stats toggle (recurrence rows only) → copy icon → `×`. The copy icon uses the chevron's resting treatment it replaces — `var(--text-secondary)`, `var(--bg-hover)` on hover — rather than the receded `#4a4b58` the mobile rule uses, so the meta cluster stays one visual weight with `#statsToggle`. Copy behavior is unchanged: click writes `item.tit` to the clipboard and swaps the glyph to a checkmark for ~1s. Mobile is visually untouched. The description panel still opens on row click/focus, on Ctrl+Enter (bulk), and on Ctrl+Delete (focused row).
