@@ -9,14 +9,14 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the contract for the top-level Projects / Agent view switcher.
+// Pins the contract for the top-level Projects / Structure view switcher.
 //
 // A pill bar near the top of the main panel toggles between the project
-// view and the Agent incubator. The active view is persisted in
+// view and the Structure map. The active view is persisted in
 // localStorage under `todoapp_active_view` (default 'projects'). A
-// persisted legacy 'inbox' / 'today' value (from the retired Inbox view)
-// falls back to 'projects'. Clicking any project row auto-switches back to
-// PROJECTS so a project context always implies the PROJECTS pill is active.
+// persisted legacy value (from a retired Inbox / Agent view) falls back to
+// 'projects'. Clicking any project row auto-switches back to PROJECTS so a
+// project context always implies the PROJECTS pill is active.
 describe('Stream / Structure view switcher', () => {
     const main   = read('main.js');
     const prefs  = read('prefs.js');
@@ -97,7 +97,6 @@ describe('Stream / Structure view switcher', () => {
             // permanent home in the header is correct at every breakpoint; the
             // chip cluster's own margin-left:auto keeps it right-anchored.
             expect(main).toMatch(/nav\.insertBefore\(\s*viewSwitcher\s*,\s*pomodoroToggle\s*\)/);
-            expect(main).toMatch(/main2\.appendChild\(\s*agentView\s*\)/);
         });
 
         it('wires both pill buttons to applyActiveView', () => {
@@ -126,6 +125,32 @@ describe('Stream / Structure view switcher', () => {
         it('drops the renderInbox import and any call to it', () => {
             expect(main).not.toMatch(/renderInbox/);
             expect(main).not.toMatch(/inboxView\.js/);
+        });
+    });
+
+    describe('Agent view severed from main.js', () => {
+        it('drops the agentView.js import and its board renderers', () => {
+            // renderAgentView / subscribeAgentView / unsubscribeAgentView and
+            // the './agentView.js' import are gone — main.js no longer reaches
+            // into the board module. (The module itself survives until a later
+            // step; only main.js's wiring to it is severed here.)
+            expect(main).not.toMatch(/agentView\.js/);
+            expect(main).not.toMatch(/renderAgentView/);
+            expect(main).not.toMatch(/subscribeAgentView/);
+            expect(main).not.toMatch(/unsubscribeAgentView/);
+        });
+
+        it('no longer constructs the #agentView container', () => {
+            expect(main).not.toMatch(/agentView\.id\s*=\s*['"]agentView['"]/);
+            expect(main).not.toMatch(/appendChild\(\s*agentView\s*\)/);
+        });
+
+        it('the view switch no longer accepts an agent value', () => {
+            // No branch normalizes or renders 'agent'; a restored 'agent'
+            // pref falls back to the projects default (see prefs.js).
+            expect(main).not.toMatch(/safe\s*=\s*['"]agent['"]/);
+            expect(main).not.toMatch(/safe\s*===\s*['"]agent['"]/);
+            expect(main).not.toMatch(/getActiveView\(\)\s*===\s*['"]agent['"]/);
         });
     });
 
@@ -206,8 +231,6 @@ describe('Stream / Structure view switcher', () => {
         it('uses an `auto 1fr` grid for #mainBar — the status filter pill row above the list', () => {
             // The top `auto` track holds the status filter pill row
             // (#taskFilterBar); the 1fr track below is the scrollable list.
-            // The Agent view overlays the panel via grid-row: 1 / -1 (see
-            // assertion below), so it still covers both tracks when active.
             const idx = css.indexOf('#mainBar {');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
@@ -242,19 +265,19 @@ describe('Stream / Structure view switcher', () => {
             expect(css).not.toMatch(/data-view="inbox"/);
         });
 
-        it('hides the project view surfaces when AGENT is active', () => {
-            expect(css).toMatch(
-                /#mainBar\[data-view="agent"\]\s+#mainList[\s\S]*#mainBar\[data-view="agent"\]\s+#mobileProjHeader[\s\S]*#mainBar\[data-view="agent"\]\s+#bulkDescActions[\s\S]*display:\s*none/
-            );
+        it('drops every #mainBar[data-view="agent"] gating rule', () => {
+            // The Agent view was severed from main.js: it mounts no #agentView
+            // container and the view switch no longer accepts 'agent', so the
+            // data-view="agent" CSS that showed the container and hid the
+            // project surfaces is dead and removed.
+            expect(css).not.toMatch(/data-view="agent"/);
         });
 
-        it('places #agentView across all of #mainBar so it overlays the project content area', () => {
-            // Single-row grid now; #agentView still spans every track so
-            // the switch is a clean swap instead of a partial overlay.
-            const idx = css.indexOf('#agentView {');
-            expect(idx).toBeGreaterThan(-1);
-            const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/grid-row:\s*1\s*\/\s*-1/);
+        it('drops the #agentView container rule entirely', () => {
+            // No container is mounted for the Agent view any more, so its
+            // styling block is removed. (The .agentView* content classes are
+            // retired with the module in a later step.)
+            expect(css.indexOf('#agentView {')).toBe(-1);
         });
 
         it('mobile #mainBar grid carries mobile header + filter pills + list', () => {

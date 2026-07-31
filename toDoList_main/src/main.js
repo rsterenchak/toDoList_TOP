@@ -99,11 +99,6 @@ import { updateAllProjectBadges, navigateToProjectByIndex } from './projectBadge
 import { prefersReducedMotion } from './dragDrop.js';
 import { applyDueUrgency, updateDuePillLabel } from './dueDate.js';
 import {
-    renderAgentView,
-    subscribeAgentView,
-    unsubscribeAgentView,
-} from './agentView.js';
-import {
     startAgentQueueSubscription,
     startDispatchReconciler,
     loadAllQueueRows,
@@ -208,8 +203,8 @@ function component() {
     // where the attribute is unset; if any later code path checks the
     // attribute during that window, the mobile tab bar's .active class
     // and the data-view attribute can drift out of sync, leaving
-    // #mobileProjHeader hidden by the [data-view="agent"]
-    // rules even when the Projects tab is the active mobile tab.
+    // #mobileProjHeader hidden by a non-projects [data-view]
+    // rule even when the Projects tab is the active mobile tab.
     // applyActiveView() remains the canonical writer for subsequent flips.
     main2.dataset.view = 'projects';
     // Mirror the routing attribute onto <body> as well so any body-scoped
@@ -972,8 +967,9 @@ function component() {
     // STUCK / MOCKUP / REVIEW) now surface on the task row's phase badge and its
     // controls mount in the row's description panel (desktop) or the description-
     // editor modal (touch), so there is no AGENT tab to navigate to. The bar
-    // collapses to STREAM + STRUCTURE. The Agent view code itself stays mounted
-    // (see #agentView below).
+    // collapses to STREAM + STRUCTURE. The Agent view is no longer reachable —
+    // main.js mounts no container for it and the view switch no longer accepts
+    // 'agent'.
 
     const viewPillStructure = document.createElement('button');
     viewPillStructure.id = 'viewPillStructure';
@@ -1028,14 +1024,6 @@ function component() {
     viewPillProjects.addEventListener('keydown', viewSwitcherArrowNav);
     viewPillStructure.addEventListener('keydown', viewSwitcherArrowNav);
 
-    // ── Agent view shell ──
-    // Empty container the agentView module owns at runtime — renderAgentView()
-    // fills it with the project's agent-queue buckets (or an empty state). Toggled
-    // via #mainBar's data-view attribute like the projects surface, so
-    // neither view re-renders the other on switch.
-    const agentView = document.createElement('div');
-    agentView.id = 'agentView';
-
     // Empty container the structureView module owns at runtime —
     // renderStructureView() fills it with the selected project's repo label and
     // source tree.
@@ -1055,7 +1043,6 @@ function component() {
     nav.insertBefore(viewSwitcher, pomodoroToggle);
     const taskFilterBar = buildTaskFilterBar();
 
-    main2.appendChild(agentView);
     main2.appendChild(structureView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
@@ -2316,19 +2303,14 @@ function component() {
                     console.log("called project selection");
 
                     // Clicking a project normally means the user wants the
-                    // project view active — switch back from TODAY if
-                    // needed before resolving the selection. The one
-                    // exception is AGENT: it's a second lens on the SAME
-                    // selected project, so a click there keeps Agent
-                    // active and just re-renders it for the newly selected
-                    // project (handled below once the selection resolves).
-                    const stayOnAgent = getActiveView() === 'agent';
-                    // STRUCTURE, like AGENT, is a second lens on the SAME
-                    // selected project — a click here keeps it active and just
-                    // re-renders the tab against the newly selected project's
-                    // repo (handled below once the selection resolves).
+                    // project view active — switch back before resolving the
+                    // selection. The one exception is STRUCTURE: it's a second
+                    // lens on the SAME selected project, so a click there keeps
+                    // it active and just re-renders the tab against the newly
+                    // selected project's repo (handled below once the selection
+                    // resolves).
                     const stayOnStructure = getActiveView() === 'structure';
-                    if (!stayOnAgent && !stayOnStructure) {
+                    if (!stayOnStructure) {
                         applyActiveView('projects');
                     }
 
@@ -2365,24 +2347,14 @@ function component() {
                         // Auto-open the Claude sheet for repo-backed projects,
                         // auto-close it for projects with no repo configured.
                         syncClaudeSheetForProject(innerValue);
-                        // Gate the AGENT tab off in lockstep — same repo test,
-                        // one shared body flag as the Claude gate.
-                        const agentAvailable = syncAgentAvailabilityForProject(innerValue);
+                        // Recompute the shared repo-availability flag in lockstep —
+                        // same repo test, one shared body flag as the Claude gate.
+                        syncAgentAvailabilityForProject(innerValue);
 
-                        // When Agent or Structure is the active view, the
-                        // click didn't switch away from it — re-render it so it
-                        // reflects the newly selected project (Agent's queue
-                        // board; Structure's resolved repo + map). If the newly
-                        // selected project has no repo while AGENT is active, the
-                        // board is now dead — fall back to PROJECTS rather than
-                        // leave it on screen.
-                        if (stayOnAgent) {
-                            if (!agentAvailable) {
-                                applyActiveView('projects');
-                            } else {
-                                renderAgentView();
-                            }
-                        } else if (stayOnStructure) {
+                        // When Structure is the active view, the click didn't
+                        // switch away from it — re-render it so it reflects the
+                        // newly selected project (its resolved repo + map).
+                        if (stayOnStructure) {
                             renderStructureView();
                         }
 
@@ -3684,7 +3656,7 @@ function setupQueueResizeHandle(handle) {
     handle.addEventListener('pointercancel', endDrag);
 }
 
-// Apply the top-level Projects / Agent view. Module-scope so both the
+// Apply the top-level Projects / Structure view. Module-scope so both the
 // in-component pill click handlers and the restoreFromStorage auto-init
 // path can route through one entry point. Writes the chosen view to
 // localStorage, flips #mainBar's data-view attribute (the CSS show/hide
@@ -3694,13 +3666,12 @@ function setupQueueResizeHandle(handle) {
 function applyActiveView(view) {
     // Leaving Tasks View: snapshot the live layout for the Structure block canvas
     // while the app's regions are still on screen (another view hides them).
-    if (getActiveView() === 'projects' && (view === 'agent' || view === 'structure')) {
+    if (getActiveView() === 'projects' && view === 'structure') {
         captureStructureSnapshot();
     }
 
     let safe = 'projects';
-    if (view === 'agent') safe = 'agent';
-    else if (view === 'structure') safe = 'structure';
+    if (view === 'structure') safe = 'structure';
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
@@ -3747,18 +3718,6 @@ function applyActiveView(view) {
     const detailPane = document.getElementById('descDetailPane');
     if (detailPane) detailPane.hidden = (safe === 'structure');
 
-    if (safe === 'agent') {
-        // The sidebar selection persists across the switch but is hidden
-        // while AGENT owns the main panel, so the lingering
-        // .selectedProject has no visual effect. Opening the view paints the
-        // cached rows and opens the realtime subscription (which refreshes).
-        renderAgentView();
-        subscribeAgentView();
-    } else {
-        // Leaving the Agent view (to Projects or Structure) tears down its
-        // realtime channel so a backgrounded board holds no open socket.
-        unsubscribeAgentView();
-    }
     if (safe === 'structure') {
         // The Structure view maps the selected project's linked repo, so it
         // renders fresh on each switch (resolving the repo from the selection).

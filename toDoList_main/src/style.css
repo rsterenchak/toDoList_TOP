@@ -4350,38 +4350,6 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   }
 }
 
-/* ── AGENT VIEW ──
-   The per-project agent-queue board: the selected project's name + an
-   "Agent queue" chip, followed by grouped buckets (Needs you, Stuck, In
-   progress, Shipped). An empty state shows when no project is selected or the
-   project has no queued work. renderAgentView() fills #agentView at runtime.
-   Hidden by default; #mainBar's data-view attribute toggles visibility, the
-   same hook the project view uses. */
-#agentView {
-  grid-row: 1 / -1;
-  grid-column: 1;
-  display: none;
-  flex-direction: column;
-  gap: 16px;
-  padding: 24px 24px 96px;
-  background: var(--bg-base);
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
-  min-width: 0;
-}
-
-#mainBar[data-view="agent"] #agentView {
-  display: flex;
-}
-
-#mainBar[data-view="agent"] #mainList,
-#mainBar[data-view="agent"] #mobileProjHeader,
-#mainBar[data-view="agent"] #taskFilterBar,
-#mainBar[data-view="agent"] #bulkDescActions {
-  display: none;
-}
-
 /* ── STRUCTURE VIEW ──
    A cross-repo source map. A repo picker selects an allowlisted repo and its
    published src-manifest.json renders as a collapsible folder/file tree; each
