@@ -61,13 +61,17 @@ vi.mock('../src/claudeSheet.js', () => ({
 }));
 
 import { listLogic } from '../src/listLogic.js';
-// startAgentWorkingWatch still lives in agentView.js; importing the board also
-// registers pollAgentWorkingWatch with the store (configureRunTrackers), which the
-// relocated gate calls to recompute the dot on a switch.
-import { startAgentWorkingWatch } from '../src/agentView.js';
-// The availability gate moved to the store; it still drives pollAgentWorkingWatch
-// on every project switch via the board-registered callback.
-import { syncAgentAvailabilityForProject } from '../src/agentQueueStore.js';
+// The persistent working watch and the availability gate both live in the store
+// now; the gate recomputes the nav dot with a direct local call to
+// pollAgentWorkingWatch on every project switch.
+import {
+    startAgentWorkingWatch,
+    syncAgentAvailabilityForProject,
+} from '../src/agentQueueStore.js';
+// Load the board module for its configureRunTrackers side-effect: the store's
+// working-watch sweep probe reads the routed dispatch target and the Worker
+// active-runs probe through that DI channel, which the board registers at load.
+import '../src/agentView.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 6) {

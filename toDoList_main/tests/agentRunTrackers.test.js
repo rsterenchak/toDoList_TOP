@@ -5,10 +5,12 @@ import { vi } from 'vitest';
 // a run whether or not the board is mounted — the same mount-independence the dispatch
 // reconciler and the working watch already have. These tests drive the trackers
 // DIRECTLY through the store's exported functions, with NO board rendered: they assert
-// the accessors reflect state, the pill/working-watch/Worker callbacks are invoked
-// through configureRunTrackers, a sweep reconciles the project captured at start (not
-// whatever is selected when it settles), a derive run resolves its conclusion, and both
-// stop polling once settled.
+// the accessors reflect state, the pill/Worker callbacks are invoked through
+// configureRunTrackers, a sweep reconciles the project captured at start (not whatever
+// is selected when it settles), a derive run resolves its conclusion, and both stop
+// polling once settled. (The persistent working watch the sweep tracker seeds now
+// lives in the store as a direct local call, not a DI callback, so it is exercised by
+// the dedicated agentWorkingDot* tests rather than mocked here.)
 
 // ── supabase stub ────────────────────────────────────────────────────
 // `select().eq('project_id', id)` returns that project's rows and records the id it was
@@ -74,9 +76,6 @@ beforeEach(() => {
         refreshStatusPill: vi.fn(),
         paint: vi.fn(),
         refreshAgentQueue: vi.fn(),
-        seedWorkingWatchSweep: vi.fn(),
-        clearWorkingWatchSweepSeed: vi.fn(),
-        pollAgentWorkingWatch: vi.fn(),
         fetchActiveRuns: vi.fn(() => Promise.resolve({ ok: true, active: false })),
         pollRunStatus: vi.fn(() => Promise.resolve({ ok: true, found: false })),
         resolveDispatchTarget: vi.fn(() => ({ repo: 'owner/repo', file_path: 'TODO.md' })),
@@ -93,14 +92,15 @@ afterEach(() => {
 });
 
 describe('run trackers (relocated to the store) — triage sweep', () => {
-    it('starts tracking with no board mounted: flips the accessor, seeds the working watch, and probes triage', async () => {
+    it('starts tracking with no board mounted: flips the accessor, lights the nav dot, and probes triage', async () => {
         listLogic.addProject('Alpha');
         setSelected('Alpha');
 
         startSweepTracking(false);
 
         expect(isSweepActive()).toBe(true);
-        expect(deps.seedWorkingWatchSweep).toHaveBeenCalledWith(false);
+        // The tracker seeds the store-local working watch, lighting the nav dot now.
+        expect(document.body.classList.contains('agentWorking')).toBe(true);
         expect(deps.refreshStatusPill).toHaveBeenCalled();
         await flush();
         expect(deps.fetchActiveRuns.mock.calls.some((c) => c[1] === 'triage')).toBe(true);
@@ -166,7 +166,6 @@ describe('run trackers (relocated to the store) — triage sweep', () => {
         await flush();
 
         expect(isSweepActive()).toBe(true);
-        expect(deps.seedWorkingWatchSweep).toHaveBeenCalledWith(true);
         stopSweepTracking();
     });
 });

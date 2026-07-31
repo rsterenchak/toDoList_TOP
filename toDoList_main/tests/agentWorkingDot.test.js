@@ -30,14 +30,8 @@ vi.mock('../src/supabaseClient.js', () => ({
     },
 }));
 
-// agentView imports openChatWithSeed from claudeSheet.js; stub it so the real
-// chat surface isn't pulled into jsdom.
-vi.mock('../src/claudeSheet.js', () => ({
-    openChatWithSeed: () => {},
-}));
-
 import { listLogic } from '../src/listLogic.js';
-import { startAgentWorkingWatch } from '../src/agentView.js';
+import { startAgentWorkingWatch } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 4) {

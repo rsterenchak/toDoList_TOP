@@ -69,8 +69,10 @@ import { listLogic } from '../src/listLogic.js';
 import {
     subscribeAgentView,
     unsubscribeAgentView,
-    startAgentWorkingWatch,
 } from '../src/agentView.js';
+// The persistent working watch moved into the store; the board (imported above)
+// still registers the run-tracker DI the watch's sweep probe reads.
+import { startAgentWorkingWatch } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 8) {

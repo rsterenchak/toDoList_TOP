@@ -65,7 +65,11 @@ vi.mock('../src/claudeSheet.js', () => ({
 }));
 
 import { listLogic } from '../src/listLogic.js';
-import { startAgentWorkingWatch } from '../src/agentView.js';
+import { startAgentWorkingWatch } from '../src/agentQueueStore.js';
+// Load the board module for its configureRunTrackers side-effect: the store's
+// working-watch sweep probe reads the routed dispatch target and the Worker
+// active-runs probe through that DI channel, which the board registers at load.
+import '../src/agentView.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 6) {

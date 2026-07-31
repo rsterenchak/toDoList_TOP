@@ -102,11 +102,11 @@ import {
     renderAgentView,
     subscribeAgentView,
     unsubscribeAgentView,
-    startAgentWorkingWatch,
 } from './agentView.js';
 import {
     startAgentQueueSubscription,
     startDispatchReconciler,
+    startAgentWorkingWatch,
     loadAllQueueRows,
     getWaitingQuestionCounts,
     onQueueChange,
