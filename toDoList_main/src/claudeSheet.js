@@ -52,7 +52,7 @@ import {
     onAssignmentChange,
     refreshAssignmentForActiveProject,
 } from './assignmentCoverage.js';
-import { onQueueChange } from './agentQueueStore.js';
+import { onQueueChange, getQueueRows, getLoadedProjectName } from './agentQueueStore.js';
 import { parsePastedEntry, commitEntryToActiveProject } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
 import { setChatPaneCollapsed } from './prefs.js';
@@ -2981,11 +2981,189 @@ const RUN_STATUS_LABEL = {
 // unconfirmed rather than asserting FAILED.
 const FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 
+// ── QUEUE-SOURCED RUNS ──
+// The RUNS tab reads the `agent_queue` store as its primary source so a run
+// dispatched from ANY device (the task row, the detail pane, or the coverage
+// tab's Derive) shows up here — not only chat-shipped runs, which are the ones
+// captured in the localStorage `runRecords` fallback. Queue rows are already
+// project-scoped and cross-device by construction (RLS scopes them to the user;
+// `getQueueRows()` returns the loaded project's rows), and the store's own
+// dispatch reconciler polls in-flight rows by their persisted `correlation_id`
+// and settles them, notifying via `onQueueChange` — so live status here needs no
+// separate poller, just a repaint on that subscription.
+//
+// Field mapping queue row → run record: entry_id→entryId, correlation_id→
+// correlationId, id→agentRowId, run_id→runId, pr_number/pr_url pass through,
+// created_at→dispatchedAt (for ordering), project resolved from the loaded
+// project, repo from that project's routed inject target, title derived from the
+// row's stashed `draft` entry or the linked todo (never stored twice), and
+// `state` mapped to the run status below.
+const QUEUE_STATE_TO_STATUS = {
+    dispatched: 'QUEUED',
+    running: 'RUNNING',
+    shipped: 'SHIPPED',
+    failed: 'FAILED',
+    no_change: 'NOCHANGE',
+};
+
+// Session-scoped revert state for queue-derived rows, keyed by entry id. Queue
+// rows aren't held in `runRecords`, so their post-revert guard (`reverted`, or a
+// pending revert PR url) can't ride `saveRunRecords`; hold it here so a re-render
+// — which rebuilds every queue-derived record from scratch — preserves the guard
+// that stops a shipped change being reverted twice.
+const queueRunRevertState = new Map();
+
+// The workspace repo a project's runs target, resolved from its routed inject
+// target the same way the chat workspace auto-swap does. Null when the project
+// has no routed target (the Worker falls back to its default repo for polling).
+function repoForProject(projectName) {
+    if (!projectName) return null;
+    let targetId = null;
+    try { targetId = listLogic.getProjectTargetId(projectName); } catch (e) { targetId = null; }
+    if (!targetId) return null;
+    const targets = getCachedTargets();
+    for (let i = 0; i < targets.length; i++) {
+        if (targets[i] && targets[i].id === targetId) return targets[i].repo || null;
+    }
+    return null;
+}
+
+// Parse an ISO timestamp to epoch ms for ordering; 0 when absent/unparseable so
+// a row with no created_at sorts oldest rather than throwing.
+function parseIsoMs(value) {
+    if (!value) return 0;
+    const t = Date.parse(value);
+    return isNaN(t) ? 0 : t;
+}
+
+// Derive a queue run's title WITHOUT storing a second copy: prefer the stashed
+// draft entry (what the row shipped), else the linked todo's title, else its
+// description's first line. Keeps the title in lockstep with an edited entry.
+function titleForQueueRow(row, itemsById) {
+    if (typeof row.draft === 'string' && row.draft.trim()) return deriveRunTitle(row.draft);
+    const item = (row.todo_id != null && itemsById) ? itemsById[row.todo_id] : null;
+    if (item) {
+        const t = (item.tit || '').trim();
+        if (t) return t;
+        if (item.desc) return deriveRunTitle(item.desc);
+    }
+    return 'Untitled entry';
+}
+
+// Build an id → todo item map for the loaded project so queue rows can resolve a
+// title from their linked todo. Empty on any failure — the caller falls back to
+// 'Untitled entry'.
+function buildItemsById(projectName) {
+    const map = {};
+    if (!projectName) return map;
+    let items = [];
+    try { items = listLogic.listItems(projectName) || []; } catch (e) { items = []; }
+    items.forEach(function(it) { if (it && it.id != null) map[it.id] = it; });
+    return map;
+}
+
+// Map the loaded project's `agent_queue` rows to run-record-shaped objects for the
+// RUNS list. Only rows in a dispatched-run state (dispatched/running/shipped/
+// failed/no_change) become records; pre-dispatch states (drafted, needs_words,
+// proposed, …) are not runs and are skipped.
+function buildQueueRunRecords() {
+    const rows = getQueueRows();
+    if (!rows || !rows.length) return [];
+    const projectName = getLoadedProjectName();
+    const repo = repoForProject(projectName);
+    let itemsById = null;
+    const records = [];
+    rows.forEach(function(row) {
+        if (!row) return;
+        const status = QUEUE_STATE_TO_STATUS[row.state];
+        if (!status) return;
+        if (itemsById === null) itemsById = buildItemsById(projectName);
+        const rec = {
+            entryId: row.entry_id || null,
+            correlationId: row.correlation_id || null,
+            title: titleForQueueRow(row, itemsById),
+            status: status,
+            dispatchedAt: parseIsoMs(row.created_at),
+            repo: repo,
+            project: projectName,
+            agentRowId: row.id,
+            runId: row.run_id != null ? row.run_id : null,
+            // Flags this record as queue-derived (not a localStorage record), so
+            // the revert path persists its guard in queueRunRevertState.
+            __fromQueue: true,
+        };
+        if (row.pr_number != null) rec.pr_number = row.pr_number;
+        if (row.pr_url) rec.pr_url = row.pr_url;
+        // A no-change row already carries the agent's closing summary in
+        // failure_reason — surface it without a second fetch.
+        if (status === 'NOCHANGE' && typeof row.failure_reason === 'string') {
+            rec.result = row.failure_reason;
+        }
+        const side = row.entry_id ? queueRunRevertState.get(row.entry_id) : null;
+        if (side) {
+            if (side.reverted) rec.reverted = true;
+            if (side.revertPrUrl) rec.revertPrUrl = side.revertPrUrl;
+        }
+        records.push(rec);
+    });
+    return records;
+}
+
+// Whether a localStorage fallback record should show for the active project. The
+// queue-sourced list is project-scoped; the local fallback keeps its records
+// visible when no project is active (unknown) or when the record predates the
+// `project` field (legacy), and otherwise scopes to the active project so the
+// list switches with the selection.
+function localRecordVisible(rec, activeProject) {
+    if (!activeProject) return true;
+    if (rec.project == null || rec.project === '') return true;
+    return rec.project === activeProject;
+}
+
+function byDispatchedDesc(a, b) {
+    return (b.dispatchedAt || 0) - (a.dispatchedAt || 0);
+}
+
+// localStorage is a FALLBACK, not a parallel truth: once a queue row exists for a
+// record's entry (the cross-device record of that same dispatch), drop the local
+// copy so the two lists can't disagree. Stops any poller the pruned record owned.
+function pruneMatchedLocalRecords(queueEntryIds) {
+    if (!queueEntryIds || !queueEntryIds.size) return;
+    let changed = false;
+    runRecords = runRecords.filter(function(rec) {
+        if (rec.entryId && queueEntryIds.has(rec.entryId)) {
+            if (rec.correlationId) stopRunPoller(rec.correlationId);
+            changed = true;
+            return false;
+        }
+        return true;
+    });
+    if (changed) saveRunRecords();
+}
+
+// The runs to render, newest-first: the queue-sourced records for the active
+// project plus any localStorage fallback records with no matching queue row.
+function getDisplayRunRecords() {
+    const activeProject = activeProjectNameForViewer();
+    const queueRecords = buildQueueRunRecords();
+    const queueEntryIds = new Set();
+    queueRecords.forEach(function(r) { if (r.entryId) queueEntryIds.add(r.entryId); });
+    pruneMatchedLocalRecords(queueEntryIds);
+    const localRecords = runRecords.filter(function(rec) {
+        return localRecordVisible(rec, activeProject);
+    });
+    // Only reorder when merging in queue records; a local-only list keeps its
+    // existing newest-first insertion order untouched.
+    if (!queueRecords.length) return localRecords;
+    return queueRecords.concat(localRecords).sort(byDispatchedDesc);
+}
+
 function renderRunsList() {
     const list = sheetQuery('#claudeRunsList');
     if (!list) return;
     list.innerHTML = '';
-    if (!runRecords.length) {
+    const display = getDisplayRunRecords();
+    if (!display.length) {
         const empty = document.createElement('p');
         empty.id = 'claudeRunsEmpty';
         empty.className = 'claudeRunsEmpty';
@@ -2993,9 +3171,11 @@ function renderRunsList() {
         list.appendChild(empty);
         return;
     }
-    runRecords.forEach(function(rec) {
+    display.forEach(function(rec) {
         list.appendChild(buildRunRow(rec));
     });
+    // The Clear-completed affordance only clears localStorage records (queue rows
+    // are the pipeline's own record), so its count comes from `runRecords`.
     const clearableCount = runRecords.filter(isClearableRun).length;
     if (clearableCount) {
         list.appendChild(buildClearCompleted(clearableCount));
@@ -3109,6 +3289,24 @@ function confirmAndRevertRun(rec, btn) {
     });
 }
 
+// Persist a run's post-revert guard. A localStorage record rides `saveRunRecords`
+// as before; a queue-derived record (which isn't in `runRecords`) mirrors its
+// `reverted` / pending-PR state into queueRunRevertState, keyed by entry id, so a
+// re-render that rebuilds queue records from scratch preserves the guard.
+function persistRunRevertGuard(rec) {
+    if (rec && rec.__fromQueue) {
+        if (rec.entryId) {
+            const prev = queueRunRevertState.get(rec.entryId) || {};
+            queueRunRevertState.set(rec.entryId, {
+                reverted: !!rec.reverted || !!prev.reverted,
+                revertPrUrl: rec.revertPrUrl || prev.revertPrUrl || null,
+            });
+        }
+        return;
+    }
+    saveRunRecords();
+}
+
 async function performRevertRun(rec, btn) {
     btn.disabled = true;
     btn.classList.add('claudeRunRevertBtn--loading');
@@ -3121,7 +3319,7 @@ async function performRevertRun(rec, btn) {
         // the control can no longer be triggered (double-revert guard).
         showInjectToast('Reverted — new build shipping');
         rec.reverted = true;
-        saveRunRecords();
+        persistRunRevertGuard(rec);
         renderRunsList();
         return;
     }
@@ -3130,7 +3328,7 @@ async function performRevertRun(rec, btn) {
         // unconfirmed). Persist the PR URL so the control switches to opening it
         // rather than POSTing again, and surface the reason.
         if (res.revert_pr_url) rec.revertPrUrl = res.revert_pr_url;
-        saveRunRecords();
+        persistRunRevertGuard(rec);
         showInjectToast(res.reason
             ? ('Revert needs attention: ' + res.reason)
             : 'Revert PR opened — finish it in GitHub');
@@ -4112,6 +4310,12 @@ export function mountClaudeSheet(parent) {
                 renderCoverageView();
             } else {
                 refreshCoverageBadge();
+            }
+            // Keep the Runs tab tracking queue rows arriving and settling live —
+            // the same subscription the coverage tab and the row badges use — so a
+            // run dispatched or settled on another device appears without a reload.
+            if (sheetEl && sheetEl.getAttribute('data-tab') === 'runs') {
+                renderRunsList();
             }
         });
     }
