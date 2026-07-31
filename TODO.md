@@ -41,7 +41,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7053ca8f-6920-4f1e-8953-f61ea7b8108e -->
 
-- [ ] **[MEDIUM]** Move the working watch out of agentView.js
+- [x] **[MEDIUM]** Move the working watch out of agentView.js — Completed: 2026-07-31
   - Type: feature
   - Description: `agentView.js` is down to one export worth keeping. `stuckReasonText` has already moved, and `main.js` is now the only importer, taking `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView` — all board rendering that dies with the view — plus `startAgentWorkingWatch`, which drives the nav working dot and has nothing to do with the board. Relocate that one function into `agentQueueStore.js`, beside the dispatch reconciler and the availability gate it already sits with conceptually. This is the first of three small steps to retire the view; earlier attempts bundled relocation, removal, and test cleanup into a single run and did not complete, so each step now lands on its own.
   - Behavior: Identical to today. The nav working dot lights while a triage sweep or a dispatched run is in flight and clears when neither is, with the same grace window and hard cap. It continues to work with no board mounted, as it already does. Nothing else changes — the board still renders, its subscribe/unsubscribe still run, and no call site outside the watch is touched.
