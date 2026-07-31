@@ -24,7 +24,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7cde4937-a5c9-4b56-a37b-f9a53d5b6a92 -->
 
-- [ ] **[MEDIUM]** Move the working watch out of agentView.js
+- [x] **[MEDIUM]** Move the working watch out of agentView.js
   - Type: feature
   - Description: `agentView.js` is down to one export worth keeping. `stuckReasonText` has already moved, and `main.js` is now the only importer, taking `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView` — all board rendering that dies with the view — plus `startAgentWorkingWatch`, which drives the nav working dot and has nothing to do with the board. Relocate that one function into `agentQueueStore.js`, beside the dispatch reconciler and the availability gate it already sits with conceptually. This is the first of three small steps to retire the view; two previous attempts bundled relocation, removal, and test cleanup into a single run and did not complete, so each step now lands on its own.
   - Behavior: Identical to today. The nav working dot lights while a triage sweep or a dispatched run is in flight and clears when neither is, with the same grace window and hard cap. It continues to work with no board mounted, as it already does. Nothing else changes — the board still renders, its subscribe/unsubscribe still run, and no call site outside the watch is touched.
@@ -39,5 +39,5 @@
     - Report in the PR body: the before/after line count of both source files, which module-level state moved, how many test blocks relocated, and the suite's wall-clock runtime.
   - Out of scope: `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView`, and their four call sites in `main.js` — removed in the next entry. The `#agentView` container at `main.js:1032` and the view-switching wiring. Deleting `agentView.js`, its CSS, or the bulk of its test file. The watch's own logic, cadence, and settle behavior.
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/agentView.test.js`, `toDoList_main/tests/agentQueueStore.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-07-31
   <!-- id: 5ab43b07-1bcd-4643-a776-0ed77cd9338f -->
