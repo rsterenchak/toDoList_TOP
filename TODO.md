@@ -24,24 +24,6 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7cde4937-a5c9-4b56-a37b-f9a53d5b6a92 -->
 
-- [ ] **[MEDIUM]** Move the working watch out of agentView.js
-  - Type: feature
-  - Description: `agentView.js` is down to one export worth keeping. `stuckReasonText` has already moved, and `main.js` is now the only importer, taking `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView` — all board rendering that dies with the view — plus `startAgentWorkingWatch`, which drives the nav working dot and has nothing to do with the board. Relocate that one function into `agentQueueStore.js`, beside the dispatch reconciler and the availability gate it already sits with conceptually. This is the first of three small steps to retire the view; two previous attempts bundled relocation, removal, and test cleanup into a single run and did not complete, so each step now lands on its own.
-  - Behavior: Identical to today. The nav working dot lights while a triage sweep or a dispatched run is in flight and clears when neither is, with the same grace window and hard cap. It continues to work with no board mounted, as it already does. Nothing else changes — the board still renders, its subscribe/unsubscribe still run, and no call site outside the watch is touched.
-  - Implementation notes:
-    - Move `startAgentWorkingWatch` and everything it closes over: its module-level started flag, the poll interval handle, the poll function, and any deadline or cadence constants it reads. Leaving state behind while the function moves is how this kind of extraction silently breaks — grep every identifier the function references and move or import each.
-    - `agentQueueStore.js` already hosts the dispatch reconciler and the availability gate, and the gate calls into the watch. If that call currently crosses module boundaries, this move makes it local — check for it and simplify if so.
-    - Match the shape already established there: module-level started flag, one interval, no dependence on a mounted view. `startDispatchReconciler` is the reference.
-    - Verify no import cycle forms. `agentQueueStore.js` must not gain anything reaching back into a view; if the watch reads something from `agentView.js`, that dependency has to move too or be inverted.
-    - Update `main.js`'s import to take `startAgentWorkingWatch` from the new location, leaving the three board imports untouched — they are removed in the next entry.
-    - Move any test covering the watch out of `tests/agentView.test.js` into `tests/agentQueueStore.test.js`, updating its import path. Do NOT delete the rest of that file; the board is still live and its remaining tests are still valid coverage.
-    - Do not "improve" the watch while moving. No renames beyond what export requires, no cadence changes, no restructuring of the grace or hard-cap logic. A pure move keeps the diff reviewable.
-    - Report in the PR body: the before/after line count of both source files, which module-level state moved, how many test blocks relocated, and the suite's wall-clock runtime.
-  - Out of scope: `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView`, and their four call sites in `main.js` — removed in the next entry. The `#agentView` container at `main.js:1032` and the view-switching wiring. Deleting `agentView.js`, its CSS, or the bulk of its test file. The watch's own logic, cadence, and settle behavior.
-  - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/agentView.test.js`, `toDoList_main/tests/agentQueueStore.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: 5ab43b07-1bcd-4643-a776-0ed77cd9338f -->
-
 - [x] **[HIGH]** TODO.md strip stretches to fill the rail when the task list is short — Completed: 2026-07-31
   - Type: bug
   - Description: The pinned TODO.md strip grows to fill most of the queue rail when few tasks are present, with its contents floating in the vertical middle of an oversized box. `#mainBar` is `grid-template-rows: auto 1fr` — the `auto` track holds `#taskFilterBar`, the `1fr` track holds the scrollable list. The strip declares no `grid-row`, so it auto-places into the `1fr` track and stretches to fill it, and its own `align-items: center` then centres the file name and actions inside that height. With a full list the effect is hidden because the list consumes the space; with one or two rows the strip takes over the rail. This is the same unplaced-child-in-an-explicit-grid defect that has hit `#descSibling` repeatedly.
