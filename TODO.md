@@ -92,7 +92,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 4b179cbf-36fd-4678-a76c-5b0590be1c71 -->
 
-- [ ] **[MEDIUM]** Runs tab: read from the queue store so runs appear on every device
+- [x] **[MEDIUM]** Runs tab: read from the queue store so runs appear on every device — Completed: 2026-07-31
   - Type: feature
   - Description: The RUNS tab reads `runRecords`, an array persisted to `localStorage` under `todoapp_claudeRuns`, so it shows only runs dispatched from the browser you are holding. A run started on the phone is invisible on the desktop and vice versa — and since a shipped run record is the entry point to iterate mode, iterating is only possible from the device that dispatched. Source the list from `agent_queue` instead, which already holds `run_id`, `pr_number`, `pr_url`, `state`, and `todo_id`, is scoped per project, and is cross-device by construction. Two fields have no queue equivalent and need handling: `correlationId`, used to poll a run's status by matching the workflow run-name, and the derived `title`.
   - Behavior: The RUNS tab lists that project's runs regardless of which device dispatched them, newest first, each with its title, status, and the time it started. A shipped run still opens iterate mode. In-flight runs still poll and update to their terminal state. The list reflects runs dispatched from the row, the detail pane, and the coverage tab's Derive, not only ones started from chat — the queue is the pipeline's record, not the chat's. Switching projects switches the list. Nothing about dispatching, polling cadence, or iterate mode's behavior changes.
