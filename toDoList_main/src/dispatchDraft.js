@@ -8,8 +8,12 @@ import { kickDispatchReconciler } from './agentQueueStore.js';
 // draft and retry a failed run through ONE implementation — the entry-id reuse
 // that keeps Retry from appending a duplicate to TODO.md, and the dispatched-state
 // persistence that moves the card on, can never drift between the two surfaces.
-// This module deliberately imports neither agentView.js nor the row layer, so it
-// stays acyclic for both importers.
+// This module statically imports neither agentView.js nor the row layer, so it
+// stays acyclic for both importers. The row-layer render helpers it needs to
+// repaint #mainList after materializing a derive-proposal todo are pulled in
+// lazily via a dynamic import (see rebuildSelectedList), which keeps the static
+// module graph free of the cycle that a top-level `import ./toDoRow.js` would form
+// (toDoRow imports this module).
 
 // The name of the currently-selected project, read from the sidebar's selected
 // row. A DOM read kept local so this shared core has no dependency on either
@@ -67,6 +71,7 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     // look the created item up, backfill its description through the edit path.
     // Rows that already carry a todo_id (normal flagged tasks) skip this entirely.
     let todoId = row.todo_id;
+    let createdProject = null;
     if (!todoId) {
         const projectName = getSelectedProjectName();
         const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
@@ -79,8 +84,20 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
                 created.desc = (ctx.description || '').toString();
                 listLogic.editToDoItem(projectName, created);
                 todoId = created.id;
+                createdProject = projectName;
             }
         }
+    }
+
+    // The derive branch just materialized a real todo in the data model, but the
+    // visible #mainList still reflects the pre-creation state — it only rebuilds
+    // from data on project selection, so the new row would be invisible until the
+    // user navigates away and back. Repaint it now, mirroring refactorCard's
+    // pushCandidate and seedTasksModal's post-add rebuild. Guarded on the created
+    // todo still belonging to the currently-selected project so an unrelated
+    // project's list is never repainted.
+    if (createdProject && createdProject === getSelectedProjectName()) {
+        await rebuildSelectedList(createdProject);
     }
 
     const res = await shipEntryForTodo({
@@ -126,4 +143,27 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
         tail.onDispatched(rowId, res.entryId, res.correlationId, target);
     }
     return { ok: true };
+}
+
+// Rebuild #mainList for `projectName` from the data model, mirroring the project-
+// selection render (and refactorCard/seedTasksModal's post-add rebuild): clear the
+// list, then re-render either the real items or the empty-project placeholder. The
+// row-layer render helpers live in toDoRow.js, which imports THIS module, so they
+// are pulled in with a dynamic import to avoid a static cycle (see the module note
+// above). Best-effort by design: a repaint failure must never turn a dispatch that
+// already created the todo and shipped the run into a surfaced error.
+async function rebuildSelectedList(projectName) {
+    const mainList = document.getElementById('mainList');
+    if (!mainList) return;
+    try {
+        const toDoRow = await import('./toDoRow.js');
+        while (mainList.firstChild) mainList.removeChild(mainList.firstChild);
+        const items = listLogic.listItems(projectName);
+        const hasRealItems = items && items.some(function (i) { return i.tit !== ''; });
+        if (hasRealItems) {
+            toDoRow.addToDos_restore(items, projectName);
+        } else if (items) {
+            toDoRow.addAllToDo_DOM(items, projectName);
+        }
+    } catch (e) { /* best-effort repaint — never fail the dispatch on a render error */ }
 }
