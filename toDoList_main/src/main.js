@@ -108,6 +108,11 @@ import {
     startAgentWorkingWatch,
     stuckReasonText,
 } from './agentQueueStore.js';
+// Side-effect import: wires the extracted mockup / coverage / run-tracker
+// subsystems to their board-side callbacks on boot. This wiring used to run as a
+// module-load side effect of the (now-severed) Agent board; importing it here is
+// what keeps those subsystems configured in the running app (see agentWiring.js).
+import './agentWiring.js';
 import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { attachDragDropImport } from './exportImport.js';

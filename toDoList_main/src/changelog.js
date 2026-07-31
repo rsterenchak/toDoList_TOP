@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-07-31',
         fixed: [
             "The TODO.md strip in the queue rail now stays at its natural height instead of stretching to fill the rail and floating its contents in the middle when only a few tasks are present.",
+            "The Coverage tab can edit and save its assignment, run Derive, and receive proposals again, and the working indicator lights during triage and derive runs — all of which had quietly stopped after the Agent board was retired.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-30',
         fixed: [
-            "TODO.md opened in the detail pane now fills the pane's height and scrolls internally, instead of stopping partway down and leaving dead space below it.",
             "The inline TODO.md viewer card now sizes to its content — hugging short files and sitting directly beneath the per-project empty state instead of stretching to fill the panel or dropping to the column floor.",
             "A stored preference for the retired Agent board no longer strands you on a dead view on load — the app now opens to your projects instead.",
             "A shipped task keeps its review status even after you clear all TODO.md entries, instead of losing it when the entry list is wiped.",

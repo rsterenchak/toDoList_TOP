@@ -80,7 +80,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ae8c7e9f-b539-48a5-b50f-1fff9f23e603 -->
 
-- [ ] **[HIGH]** Restore the extracted modules' wiring, which stopped running when the view was severed
+- [x] **[HIGH]** Restore the extracted modules' wiring, which stopped running when the view was severed — Completed: 2026-07-31
   - Type: bug
   - Description: The Coverage tab cannot accept an assignment or run Derive, and the run trackers are unwired. `agentView.js` makes three configuration calls at module load — `configureMockupFlow`, `configureAssignmentCoverage`, and `configureRunTrackers` — injecting board-owned callbacks into `mockupFlow.js`, `assignmentCoverage.js`, and `agentQueueStore.js`. Those modules deliberately do not import the callbacks themselves, because doing so would create a view → module → view cycle, so the view injects them. When `main.js` was severed from `agentView.js`, nothing loaded the view any more and all three calls stopped executing, leaving the extracted subsystems unconfigured in the running app. The suite did not catch it because five test files import `agentView.js` directly and therefore trigger the side effects — the tests exercise a configured state the app never reaches. Move the wiring to a module that actually loads.
   - Behavior: The Coverage tab accepts an assignment through the editor and saves it, Derive dispatches and reports its pending state, proposals arrive and can be accepted or dismissed, the coverage summary and detail modal render, the mockup flow generates and applies variants, and the triage-sweep and derive run trackers drive the nav working dot and status pill — all exactly as before the severing. No feature gains or loses capability; this restores wiring that was silently lost.
