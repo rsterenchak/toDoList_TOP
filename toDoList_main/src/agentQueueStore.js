@@ -1054,6 +1054,22 @@ export function startDeriveTracking() {
         _derivePoller = setInterval(pollDeriveOnce, SWEEP_POLL_MS);
     }
     if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill();
+    // Announce on the store's channel so the Coverage tab repaints its Derive action
+    // into the disabled "Deriving…" state (read from isDeriveActive() on each paint).
+    // Only the DERIVE tracker notifies, not the sweep tracker: derive runs boardless
+    // in the app (via the Coverage tab), whereas the sweep tracker only runs while the
+    // Agent board is mounted (the app's triage dispatcher is board-owned), so notifying
+    // on a sweep transition would only reach the mounted board — whose full-paint
+    // onQueueChange listener would clobber the Run button's transient "Queued" label,
+    // a behaviour the board still relies on. The board's own refreshStatusPill covers
+    // the sweep pill; a derive-button repaint is safe because it reads its durable
+    // state from isDeriveActive() rather than a captured transient label.
+    notifyQueueChange();
+    // Light the nav working dot at dispatch time. The persistent watch polls
+    // independently and does NOT observe onQueueChange, so the notify above won't
+    // move the dot; set the class directly here, and pollAgentWorkingWatch folds
+    // isDeriveActive() into its signal so the dot stays lit for the run's duration.
+    setAgentWorkingClass(true);
     pollDeriveOnce();
 }
 
@@ -1073,6 +1089,14 @@ export function stopDeriveTracking(silent) {
     _deriveSeenActive = false;
     _deriveCorrelationId = null;
     if (wasActive && !silent && _trackerDeps && _trackerDeps.paint) _trackerDeps.paint();
+    // The board's paint() above is dead in the app; the surface that used to be the
+    // rebuilt assignment card is now the Coverage tab, which repaints from
+    // isDeriveActive() on an onQueueChange notification. Fire that on a real settle
+    // (not a silent board teardown) so the Derive action leaves "Deriving…" without
+    // a project switch. Then recompute the nav dot — isDeriveActive() is now false,
+    // so it clears unless a ship run or triage sweep still holds it lit.
+    if (wasActive && !silent) notifyQueueChange();
+    if (wasActive) pollAgentWorkingWatch();
 }
 
 // One poll tick: ask the Worker whether claude-derive.yml has an in-flight run.
@@ -1092,7 +1116,7 @@ function pollDeriveOnce() {
         if (!res || res.ok === false) return; // transient — retry next tick
         if (res.active) {
             _deriveSeenActive = true;
-            if (!_deriveActive) { _deriveActive = true; if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill(); }
+            if (!_deriveActive) { _deriveActive = true; if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill(); notifyQueueChange(); setAgentWorkingClass(true); }
             return;
         }
         // active === false
@@ -1241,9 +1265,10 @@ function resolveWatchSweepWorking(probeActive) {
 }
 
 // One watch tick: compute `working` = a triage sweep in flight for the selected
-// project OR any dispatched/running row for the selected project — the same
-// predicate the header pill uses (refreshStatusPill), but resolved independently
-// so it holds off-tab where the board's row cache / `_sweepActive` are cleared.
+// project OR any dispatched/running row for the selected project OR a derive run in
+// flight (isDeriveActive, folded in below) — the same predicate the header pill uses
+// (refreshStatusPill), but resolved independently so it holds off-tab where the
+// board's row cache / `_sweepActive` are cleared.
 // Both halves are scoped to the selected project: the ship half reads its
 // dispatched/running rows, and the sweep half gates the repo-wide triage
 // active-runs probe on the project actually owning an in-flight 'triaging' row
@@ -1290,7 +1315,11 @@ export function pollAgentWorkingWatch() {
 
     return Promise.all([shipProbe, sweepProbe]).then(function (parts) {
         const sweepWorking = resolveWatchSweepWorking(parts[1]);
-        setAgentWorkingClass(parts[0] || sweepWorking);
+        // Fold in a live derive run. A derive isn't a triage sweep and leaves no
+        // dispatched/running row (its output lands as `proposed`), so neither probe
+        // above catches it — without this the nav dot would never light for a derive.
+        // isDeriveActive() is a synchronous module flag, so this needs no extra probe.
+        setAgentWorkingClass(parts[0] || sweepWorking || isDeriveActive());
     });
 }
 
