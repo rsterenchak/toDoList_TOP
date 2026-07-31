@@ -79,3 +79,22 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ae8c7e9f-b539-48a5-b50f-1fff9f23e603 -->
+
+- [ ] **[MEDIUM]** Retire the 11 board test files that import agentView.js
+  - Type: feature
+  - Description: `agentView.js` cannot be deleted while 11 test files still import it and mount the board: `agentTriageDispatch`, `agentAssignmentEditor`, `agentCoverageDetail`, `agentAssignmentCard`, `agentBucketCollapse`, `agentGitlabTick`, `agentWorkingDotSeed`, `agentMockupGen`, `agentDispatch`, `agentStuckActions`, `agentRevert`. A previous run correctly aborted the deletion on this. These test board rendering of behavior that has since moved to the row, the detail pane, the coverage tab, and the queue store, and successor suites already exist for much of it — `dispatchDraftShared`, `toDoRowDispatch`, `toDoRowMockupPane`, `claudeCoverageTab`, `claudeCoverageProposals`, `coverageDetailRepaint`, `agentDispatchReconciler`, `agentRunTrackers`. Retire the 11, but only after establishing per-behavior that the coverage survives somewhere. The risk is not breaking the build — it is silently dropping the only test for something that still ships.
+  - Behavior: No test file outside `tests/agentView.test.js` imports `agentView.js`. Every behavior those files covered that STILL EXISTS in the app is covered by a test against the module that now owns it. The suite passes from a clean checkout. Nothing in `src/` changes.
+  - Implementation notes:
+    - Work file by file, not in bulk. For each of the 11, list its test blocks and classify each: (a) covers board rendering only — bucket ordering, card chrome, the paint loop, the in-view unavailable message, collapse state — DELETE, the behavior is gone; (b) covers behavior that moved and is already asserted in a successor suite — DELETE, and name the successor file and the test that covers it; (c) covers behavior that moved and is NOT covered anywhere — RELOCATE the block to the module's current test file, updating imports and any board-mounting setup.
+    - Category (c) is the point of this entry. Do not assume a successor covers something because its name suggests it — open the successor and find the assertion. If you cannot point at a specific test, treat it as (c) and relocate.
+    - `agentGitlabTick` and `agentBucketCollapse` are the likeliest to be pure (a) — GitLab commit ticking and bucket collapse were board features. `agentWorkingDotSeed` is the likeliest (c) risk: the working watch moved to `agentQueueStore.js` and `agentRunTrackers.test.js` exists, but seed-specific coverage may not have travelled with it.
+    - `agentAssignmentEditor`, `agentAssignmentCard`, and `agentCoverageDetail` cover the assignment/coverage subsystem, which is live in the chat pane. `claudeCoverageTab` and `coverageDetailRepaint` exist — check them for overlap before deleting anything here.
+    - A relocated test must exercise the module that owns the behavior now, not mount the board. If a block cannot be rewritten without the board, that means it was testing board rendering after all — reclassify it as (a) and say so.
+    - Do NOT touch `tests/agentView.test.js`; it goes with the module in the next entry. Do NOT touch `src/` at all.
+    - Do NOT weaken or skip a relocated test to make it pass. If it cannot pass against its new home, the relocation lost something and that must be reported rather than papered over.
+    - Run the full suite after each file is retired, not only at the end, so a failure names the file that caused it.
+    - Report in the PR body: for each of the 11, the count of blocks deleted as (a), deleted as (b) with the successor named, and relocated as (c) with the destination. Also report the suite's test count and wall-clock runtime before and after.
+  - Out of scope: Deleting `agentView.js`, `tests/agentView.test.js`, or any `agent*` CSS — the next and final entry, which becomes safe once nothing but `agentView.test.js` imports the module. Any change to `src/`. Renaming surviving `agent*` classes or test files.
+  - File: `toDoList_main/tests/`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 47e045a3-6ee3-4b23-9b46-647443180fc8 -->
