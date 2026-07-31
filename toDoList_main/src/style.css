@@ -6508,6 +6508,15 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
 
+/* A blocked jump-button row paired with its confirmation tick as siblings — the
+   tick <button> can't nest inside the jump <button>, so they share a flex row. */
+.coverageDetailConfirmable {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.coverageDetailConfirmable .coverageDetailRow--jump { flex: 1 1 auto; }
+
 /* Shipped aspects expand to a commit-helper lane (copy-ready commit message +
    file manifest for the GitHub → GitLab transfer). The row is a toggle button;
    the lane sits below it inside the .coverageDetailItem wrapper. */

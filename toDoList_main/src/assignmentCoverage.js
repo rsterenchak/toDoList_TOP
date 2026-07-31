@@ -512,12 +512,14 @@ function isProcessAspect(label) {
     return PROCESS_ASPECT_RE.test(label || '');
 }
 
-// Build one control for a project+aspect's "committed to GitLab" tick: a
-// checkbox-role button whose accent-filled / amber-outlined state reflects the
-// shared `ctx.committed` Set. Toggling optimistically flips the UI + header
-// count, persists via listLogic.setAspectSubmitted, and reverts on failure.
-// Used both in a shipped aspect's expansion ("Committed to GitLab") and on the
-// manual aspect's row ("mark done"). Registers itself in `ctx.ticks` so the
+// Build one control for a project+aspect's confirmation tick: a checkbox-role
+// button whose accent-filled / amber-outlined state reflects the shared
+// `ctx.committed` Set. Toggling optimistically flips the UI + header count,
+// persists via listLogic.setAspectSubmitted, and reverts on failure. Rendered
+// on every aspect row with status-appropriate copy — "Committed to GitLab" in a
+// shipped aspect's expansion, "mark done" on a manual aspect's row, and
+// "Confirmed" on every other aspect — so any aspect can be signed off
+// independently of its derived status. Registers itself in `ctx.ticks` so the
 // modal's async submission-hydrate can refresh it once stored state loads.
 function buildCommitTick(item, ctx, labelText) {
     const committed = (ctx && ctx.committed instanceof Set) ? ctx.committed : new Set();
@@ -584,8 +586,10 @@ function buildCommitTick(item, ctx, labelText) {
 // reveals a commit-helper lane (copy-ready commit message + file manifest for
 // the GitHub → GitLab transfer, plus a "Committed to GitLab" tick). Manual
 // Git/process aspects render a static row with a "mark done" tick. Every other
-// status renders as a static row. `ctx` carries the shared committed-tick state
-// (see buildCommitTick); absent for callers that don't wire ticks.
+// status (in progress, proposed, blocked, not started) renders with a
+// "Confirmed" tick so any aspect can be signed off by hand alongside its derived
+// status. `ctx` carries the shared committed-tick state (see buildCommitTick);
+// absent for callers that don't wire ticks.
 function buildCoverageDetailRow(item, closeFn, ctx) {
     const isBlocked = item.status === 'blocked';
     // Shipped, non-process aspects expand to a commit helper derived from their
@@ -644,7 +648,28 @@ function buildCoverageDetailRow(item, closeFn, ctx) {
         row.appendChild(buildCommitTick(item, ctx, 'mark done'));
     }
 
-    if (!isExpandable) return row;
+    if (!isExpandable) {
+        // Every non-process, non-shipped aspect (in progress, proposed, blocked,
+        // not started) also carries a confirmation tick, so ANY aspect can be
+        // signed off by hand alongside its derived status — confirmation is a
+        // second, independent axis, never an override of the derived lifecycle.
+        // (Shipped aspects confirm through the commit lane's tick below; process
+        // aspects already have their "mark done" tick above.)
+        if (ctx && !item.process) {
+            const confirmTick = buildCommitTick(item, ctx, 'Confirmed');
+            if (isBlocked) {
+                // The blocked row is itself a jump <button>, so the tick <button>
+                // can't nest inside it — pair them as siblings in a flex wrapper.
+                const wrap = document.createElement('div');
+                wrap.className = 'coverageDetailConfirmable';
+                wrap.appendChild(row);
+                wrap.appendChild(confirmTick);
+                return wrap;
+            }
+            row.appendChild(confirmTick);
+        }
+        return row;
+    }
 
     // Tap-to-expand: chevron + a commit-helper panel toggled below the row.
     row.classList.add('coverageDetailRow--expandable');
