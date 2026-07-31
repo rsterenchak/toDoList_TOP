@@ -97,3 +97,21 @@
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/agentQueueStore.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3f84c4fe-5aeb-49f4-b6c7-5cf73f918b1a -->
+
+- [ ] **[HIGH]** Run trackers change state without notifying any surface
+  - Type: bug
+  - Description: The nav working dot never lights during a derive or a triage sweep, and the Coverage tab's Derive action stays on "deriving" until you switch projects and back. The trackers in `agentQueueStore.js` flip `_deriveActive` and `_sweepActive` correctly, then announce the change by calling `_trackerDeps.refreshStatusPill()` — a board-only callback the wiring relocation deliberately dropped, since there is no board to repaint. Every call site is guarded so nothing throws, but that guard now swallows the only signal the trackers emitted. State changes silently; no surface repaints. Switching projects works because it re-reads the state on mount rather than being notified.
+  - Behavior: When a derive or triage sweep starts, the nav working dot lights and the Coverage tab's Derive action shows its pending state, without a project switch or reload. When either settles, both clear. The Coverage tab's proposal count and review action update as proposals arrive. Behaviour with a board mounted (tests only) is unchanged. Nothing about the trackers' polling, grace window, hard cap, or settle logic changes.
+  - Implementation notes:
+    - Add a notification the store owns, rather than re-supplying a board callback. `notifyQueueChange` already exists and every relevant surface subscribes through `onQueueChange` — call it wherever the trackers currently call `refreshStatusPill`, at lines roughly 929, 944, 964, 1056, and 1095. Keep the guarded `refreshStatusPill` calls alongside it so a mounted board still repaints in tests.
+    - Verify `onQueueChange` is the right channel before committing to it. Its listeners include the coverage tab, the proposal modal, the coverage breakdown, and `evaluateReconciler`. If firing it on a tracker transition would cause unwanted work — a redundant reconciler evaluation on every sweep tick, for instance — add a separate lightweight notifier for tracker state instead and say why in the PR body.
+    - Do NOT notify on every poll tick. The trackers poll on an interval; notify only on an actual state TRANSITION (idle→active, active→idle), or the surfaces will repaint every few seconds for the duration of a run.
+    - The nav dot is driven by `body.agentWorking`, toggled from the working watch's computed signal. Confirm the watch recomputes on the new notification — if it polls independently, the dot may need the toggle called directly rather than relying on a repaint.
+    - Line 1062's comment notes a full `paint()` was used rather than `refreshStatusPill` in one place "so the rebuilt assignment card picks up the change." That surface is now the Coverage tab, not the board — confirm the tab's repaint path covers what `paint()` used to, and name it in the PR body.
+    - This is the second regression from the same removal, so audit the rest of it: for every callback the wiring relocation dropped as board-only, confirm nothing outside the board depended on the side effect it produced. Report each dropped callback and what now covers its role, or that nothing needed to.
+    - Add a test that asserts a tracker transition notifies, driven WITHOUT mounting the board. The existing tests import `agentView.js` for its side effects, so they see a board-configured state the app never reaches — that is precisely why this shipped.
+    - Manual verification required: on a project with an `assignment.md`, run Derive and confirm the nav dot lights, the Derive action shows pending, and both clear when the run settles — with no project switch. Report the result.
+  - Out of scope: The trackers' poll cadence, grace window, hard cap, and settle decisions. The dispatch reconciler. The Coverage tab's layout. Deleting `agentView.js` or retiring the board test files.
+  - File: `toDoList_main/src/agentQueueStore.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 73306854-f785-4ffb-966e-e387b00601cc -->
