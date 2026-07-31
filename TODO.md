@@ -31,7 +31,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: de80a73f-5be1-41aa-be6f-db7481b9519b -->
 
-- [ ] **[MEDIUM]** Redefine the desktop filter pills to ALL / IN PROGRESS / DONE
+- [x] **[MEDIUM]** Redefine the desktop filter pills to ALL / IN PROGRESS / DONE — Completed: 2026-07-31
   - Type: feature
   - Description: The desktop pills filter purely on derived phase — ACTIVE matches `draft` or `accept`, RUNNING matches `running`, DONE matches `done` — so with 17 tasks that have no injected entry, all three read zero while ALL reads 17. The set was designed around pipeline states, which describe a small minority of a real list. Redefine it around what is actually useful: three pills, mixing manual status and derived phase deliberately, so "in progress" means work you are doing OR work the machine is doing. Drop RUNNING; an in-flight run is a kind of in-progress, not a separate category.
   - Behavior: The desktop queue rail shows three pills with live counts. ALL matches every task that is not completed — active, in progress, and idea alike. IN PROGRESS matches a task whose manual status is `in_progress`, OR whose derived phase is `draft` or `running` — an entry injected and awaiting its run, or a run in flight. DONE matches a task that is either shipped-and-acknowledged (`PHASE.DONE`) or checked off. ALL and DONE are therefore complementary rather than nested: ALL is open work, DONE is finished work. Exactly one pill is active, the selection persists, and counts update live as statuses and phases change. Mobile is unchanged — it keeps its ACTIVE / Ideas cycle pill on manual status.
