@@ -23,3 +23,20 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/mobileDescToggleHidden.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7cde4937-a5c9-4b56-a37b-f9a53d5b6a92 -->
+
+- [ ] **[HIGH]** Remove the orphaned Agent view test suite
+  - Type: bug
+  - Description: `agentView.js` was deleted, but `tests/agentView.test.js` remains and still imports `../src/agentView.js` at line 68. That is 1,574 lines of test against a module that no longer exists. The deletion entry called for removing the view's own tests and keeping only those covering behavior that survived; that step was missed. Every run now pays for this in the preflight suite, and the suite's runtime is already the reason a previous run timed out waiting on its own tests.
+  - Behavior: The test suite contains no tests importing `agentView.js`. Coverage for behavior that survived the deletion — the working watch, the dispatch reconciler, `stuckReasonText`, the mockup flow, and the assignment/coverage subsystem — is preserved, relocated beside the modules that now own it. The suite passes from a clean checkout and runs measurably faster.
+  - Implementation notes:
+    - Read `tests/agentView.test.js` in full before deleting anything. Its 1,574 lines cover a mix of board rendering (gone) and behavior that moved. Classify every test block before removing the file.
+    - Tests covering surviving behavior must MOVE, not be deleted. Likely candidates: the working watch's grace and hard-cap settle logic, the dispatch reconciler's decision rules, `stuckReasonText`'s fallback copy, the availability gate's repo test, and anything asserting `agent_queue` state transitions. Their new homes are `tests/agentQueueStore.test.js`, `tests/mockupFlow.test.js`, and `tests/assignmentCoverage.test.js` — create whichever does not exist.
+    - Update the imports on any moved test to point at the module that now owns the behavior, and confirm each still asserts something meaningful rather than passing vacuously against a different module's shape.
+    - Delete tests that only exercised board rendering: bucket ordering, card layout, the paint loop, the in-view unavailable message, and the bucket-collapse preference.
+    - Report in the PR body: how many test blocks were moved, how many deleted, the suite's test count and wall-clock runtime before and after, and whether the suite was actually passing beforehand — if `agentView.test.js` was failing, the preflight baseline check should have caught it and did not, which is worth flagging as a separate concern.
+    - While you are in the tests directory, check for other orphans. Any test file importing a `../src/` module that no longer exists is dead weight; grep every test's imports against the current `src` listing and name any others found, without fixing them in this entry.
+    - Do NOT weaken or skip a moved test to make it pass in its new location. If a test cannot be made to pass against the module that now owns its behavior, that indicates the relocation lost something — report it rather than deleting the test.
+  - Out of scope: Reducing what the suite runs per entry, or splitting it into fast and full tiers — a separate change, and this entry's measurements will inform whether it is still needed. Adding new structural guards. Any change to source modules.
+  - File: `toDoList_main/tests/agentView.test.js`, `toDoList_main/tests/agentQueueStore.test.js`, `toDoList_main/tests/mockupFlow.test.js`, `toDoList_main/tests/assignmentCoverage.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 0dcb5ca1-4442-4a65-bb09-2c3fcad83ec7 -->
