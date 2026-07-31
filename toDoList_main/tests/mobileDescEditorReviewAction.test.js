@@ -92,7 +92,7 @@ describe('mobile desc editor REVIEW block — modal wiring', () => {
     it('renderReviewBlock gates on PHASE.ACCEPT and mounts buildReviewBlock + buildReviewActions', () => {
         const idx = modals.indexOf('function renderReviewBlock(phase)');
         expect(idx).toBeGreaterThan(-1);
-        const fn = modals.slice(idx, idx + 1400);
+        const fn = modals.slice(idx, idx + 2100);
         expect(fn).toMatch(/phase\s*!==\s*PHASE\.ACCEPT/);
         expect(fn).toMatch(/buildReviewBlock\(item,\s*queueRow\)/);
         expect(fn).toMatch(/buildReviewActions\(item,\s*projectName/);
@@ -100,7 +100,7 @@ describe('mobile desc editor REVIEW block — modal wiring', () => {
 
     it('OPEN IN TODO.MD dismisses the modal BEFORE opening the viewer, deferring the open a tick', () => {
         const idx = modals.indexOf('function renderReviewBlock(phase)');
-        const fn = modals.slice(idx, idx + 1400);
+        const fn = modals.slice(idx, idx + 2100);
         // The modal passes an onOpenInViewer callback so buildReviewActions'
         // OPEN button closes the modal first, then defers the anchored viewer.
         expect(fn).toMatch(/onOpenInViewer/);

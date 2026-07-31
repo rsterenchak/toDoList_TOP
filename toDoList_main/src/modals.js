@@ -24,6 +24,7 @@ import {
     buildDispatchBlock,
     buildReviewBlock,
     buildReviewActions,
+    invokeIterateTask,
 } from './toDoRow.js';
 import { derivePhase, isBlockedPhase, PHASE } from './phase.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
@@ -568,6 +569,16 @@ export function showDescEditorModal(item, options) {
                 closeDescEditor();
                 setTimeout(function () {
                     invokeReviewBadgeTap(entryId, projectName);
+                }, 0);
+            },
+            // Opening the chat sheet means sliding it up OVER this modal. Dismiss
+            // the modal first, then defer the iterate open a tick — the same
+            // close-then-defer the OPEN IN TODO.MD route uses — so the sheet never
+            // stacks on top of a still-open modal.
+            onIterate: function (entryId, repo) {
+                closeDescEditor();
+                setTimeout(function () {
+                    invokeIterateTask(entryId, repo);
                 }, 0);
             },
         });
