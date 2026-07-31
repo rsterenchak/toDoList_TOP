@@ -126,3 +126,21 @@
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 28a37ac2-44ac-48c3-a05a-232c023bfc6a -->
+
+- [ ] **[MEDIUM]** Open iterate mode on a shipped entry directly from the task
+  - Type: feature
+  - Description: Iterating on a shipped change is only reachable by tapping a SHIPPED record in the RUNS tab. That list is `localStorage`-backed, so it shows only runs dispatched from the device you are holding — and there is no path from a task to iterating on it, even though the task is where you notice the change needs adjusting. Iterate does not actually need a run record: `activeIterateEntry` is a per-workspace entry id, and `entryId` is passed on the first turn so the Worker resolves the merged diff from that marker and assembles the seed. The task already carries `item.entryId`. Add a control on the ACCEPT face that opens chat in iterate mode for that entry, scoped to that task's repo.
+  - Behavior: A task whose phase is `accept` shows an iterate control alongside its existing actions. Activating it opens the chat surface — the docked pane on desktop, the sheet on mobile — switches to the CHAT tab, sets the workspace to that task's repo if it is not already there, starts an iterate session seeded with the task's entry id, and focuses the composer so you can describe the change. The first turn carries the entry id so the Worker resolves the shipped diff; later turns omit it, as they do today. Iterating from the RUNS tab is unchanged. The task, its entry, and its queue row are not modified.
+  - Implementation notes:
+    - Reuse the existing iterate entry point rather than reconstructing the session. Grep how the RUNS tab's shipped record opens iterate — it sets `activeIterateEntry` and drives the first turn — and expose that as a function the row layer can call with an entry id and a repo. Do not set `activeIterateEntry` directly from `toDoRow.js`.
+    - `toDoRow.js` must NOT import `claudeSheet.js` — the documented `toDoRow → claudeSheet → modals → toDoRow` cycle. Use the registered-handler pattern already established for Discuss (`setDiscussTaskHandler`), registering the iterate opener from `main.js` the same way.
+    - Repo scoping matters. `activeIterateEntry` is per-workspace and swapped in lockstep with `chatHistory` on a workspace change. Opening iterate for a task in a different repo than the active chat workspace must switch the workspace first, or the session will attach to the wrong thread. Verify against the existing workspace-swap path rather than adding a second one.
+    - The Worker treats a 404 as "nothing to iterate on yet". A task whose entry was cleared from `TODO.md`, or whose PR was reverted, will hit that — surface it as a readable message in the transcript rather than a silent failure or a raw error.
+    - Mount it in both hosts' ACCEPT faces, since the mobile modal now carries the full face. On mobile, opening chat means opening the sheet over the modal — decide whether the modal dismisses first and say which; leaving a modal stacked under an open sheet is the likely defect.
+    - Style it as a ghost action beside OPEN IN TODO.MD and COPY CONTEXT. It is a third route, not a decision — ACCEPT & CLOSE stays primary.
+    - Mount idempotently, register in `DESC_PANEL_CHILD_SELECTORS`, and keep it out of `DESC_AUTHORING_GROUP_SELECTORS` like the other accept actions.
+    - Test: the control renders only in the `accept` phase; activating it opens chat on the CHAT tab with the task's repo active and an iterate session seeded with the entry id; a task in a non-active workspace switches the workspace first; a 404 surfaces a readable message; and RUNS-tab iterate still works.
+  - Out of scope: Making the RUNS tab cross-device, which is a separate prepped entry. The iterate conversation's own behavior once open. The COPY CONTEXT block. Iterating on anything other than a shipped entry.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 57b89766-bb42-4076-af4d-9f852887380a -->
