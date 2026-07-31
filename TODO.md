@@ -145,7 +145,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 57b89766-bb42-4076-af4d-9f852887380a -->
 
-- [ ] **[MEDIUM]** Runs tab: list every shipped entry, not only those with a queue row
+- [x] **[MEDIUM]** Runs tab: list every shipped entry, not only those with a queue row — Completed: 2026-07-31
   - Type: bug
   - Description: The RUNS tab was moved off `localStorage` and onto `agent_queue`, which fixed the device-local problem — but the queue is not the complete record of shipped work. A row only exists there for entries that went through triage or agent dispatch; an entry injected and run via Run backlog or the entry's own Run pill never gets one, so it is still missing from the list and cannot be iterated on. The complete set is the checked entries in `TODO.md`: every entry that actually shipped, regardless of how it was dispatched, cross-device by nature, each carrying the marker that iterate keys on. Use that as the list's spine and enrich from the queue where a row exists.
   - Behavior: The RUNS tab lists every shipped entry for the active project — each checked entry in that project's `TODO.md` — newest first, whether it was dispatched from chat, from the row, from Run backlog, or from the entry's Run pill. Each row shows its title derived from the entry text, and where a matching `agent_queue` row exists, its status and PR reference as well. Entries with no queue row show as shipped without run detail rather than being omitted. Tapping any of them opens iterate mode, which needs only the entry id. In-flight runs continue to appear and update as they do now. Switching projects switches the list.

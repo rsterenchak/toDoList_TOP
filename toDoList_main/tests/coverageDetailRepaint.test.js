@@ -31,6 +31,8 @@ vi.mock('../src/inject.js', () => ({
     showInjectToast: () => {},
     emitTodoRunStatusChange: () => {},
     refreshShippedMarkersForProject: () => {},
+    getShippedMarkersForRepo: () => [],
+    TODO_RUN_STATUS_EVENT: 'todoapp:todoRunStatusChange',
     dispatchTriage: () => Promise.resolve({ ok: true }),
     dispatchDerive: () => Promise.resolve({ ok: true }),
     fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
