@@ -30,10 +30,12 @@ import { sizeMainListGhostSpacer } from './emptyState.js';
 //   • Mobile (≤1023px): the manual-STATUS controls — the cycle pill and the
 //     segmented control — filter on a row's workflow status (ALL / Active /
 //     Ideas), persisting under `todoapp_taskFilter`.
-//   • Desktop (≥1024px): a four-pill PHASE control (ALL / IDEAS / RUNNING /
-//     DONE) filters on a row's DERIVED pipeline phase, persisting under its own
-//     `todoapp_phaseFilter` key. The two vocabularies never share a key, so
-//     crossing the breakpoint can't write a phase token into the status filter.
+//   • Desktop (≥1024px): a three-pill control (ALL / IN PROGRESS / DONE) that
+//     mixes manual status and DERIVED pipeline phase deliberately — ALL is open
+//     work, IN PROGRESS is work you or the machine are doing, DONE is finished
+//     work — persisting under its own `todoapp_phaseFilter` key. The two
+//     vocabularies never share a key, so crossing the breakpoint can't write a
+//     desktop token into the mobile status filter.
 // The blocked-on-you chip is a third, width-agnostic overlay filter present at
 // both breakpoints. CSS gates which status control is visible; applyTaskFilter
 // picks the matching predicate from the live viewport width so the visible
@@ -119,32 +121,46 @@ const FILTERS = [
     { key: 'ideas',  label: 'Ideas',  seg: 'Ideas',  match: function (s) { return s === 'idea'; } },
 ];
 
-// Desktop phase filter: order + display label for each pill. `match` decides
-// whether a given DERIVED phase is visible; ALL matches everything. The phase
-// strings mirror phase.js's PHASE map (inlined rather than imported to keep this
-// module's only hard dependency `prefs`). ACTIVE is phase `draft` or `accept`
-// (an entry drafted or accepted, not yet running), RUNNING is phase `running`
-// (an in-flight agent run), DONE is phase `done` (shipped and acknowledged —
-// NOT the checkbox-completed COMPLETED section).
+// Desktop filter: order + display label for each pill. Unlike the mobile status
+// filter, each `match` receives the ITEM and derives what it needs inside —
+// manual status, derived phase, and the checkbox-completed flag — because the
+// three pills mix those facts on purpose (the phase strings mirror phase.js's
+// PHASE map, inlined rather than imported to keep this module's only hard
+// dependency `prefs`):
+//   • ALL         — every task that is NOT checked off (open work of any status).
+//   • IN PROGRESS — manual status `in_progress`, OR derived phase `draft`
+//                   (an entry injected and awaiting its run) or `running` (a run
+//                   in flight); checked-off rows are excluded.
+//   • DONE        — shipped-and-acknowledged (phase `done`) OR checked off. This
+//                   is the complement of ALL: ALL is open work, DONE is finished
+//                   work, so its count folds in the COMPLETED section's rows.
+// ALL and DONE key off `completed`, so an item with no phase resolver still
+// partitions correctly; only IN PROGRESS and DONE consult the derived phase.
 const PHASE_FILTERS = [
-    { key: 'all',     label: 'ALL',     match: function () { return true; } },
-    { key: 'active',  label: 'ACTIVE',  match: function (p) { return p === 'draft' || p === 'accept'; } },
-    { key: 'running', label: 'RUNNING', match: function (p) { return p === 'running'; } },
-    { key: 'done',    label: 'DONE',    match: function (p) { return p === 'done'; } },
+    { key: 'all',        label: 'ALL',         match: function (item) { return !(item && item.completed); } },
+    { key: 'inprogress', label: 'IN PROGRESS', match: function (item) {
+        if (!item || item.completed) return false;
+        const phase = phaseOf(item);
+        return normalizeStatus(item.status) === 'in_progress' || phase === 'draft' || phase === 'running';
+    } },
+    { key: 'done',       label: 'DONE',        match: function (item) {
+        if (!item) return false;
+        return !!item.completed || phaseOf(item) === 'done';
+    } },
 ];
 
 // Empty-state copy shown when the active filter hides every task (but the
-// project still has tasks under other filters). ALL is omitted — it can only
-// be empty when the project itself is empty, which the project empty-state
-// already covers. `active` is shared by the mobile status filter and the desktop
-// phase filter (mobile Active status, desktop ACTIVE phase); `ideas` serves the
-// mobile status filter's Ideas segment; `running` and `done` are the
-// desktop-only phase additions.
+// project still has tasks under other filters). ALL is omitted (both the mobile
+// `all` and the desktop `all`) — it can only be empty when the project itself is
+// empty, which the project empty-state already covers. `active` and `ideas` serve
+// the MOBILE status filter's segments; `inprogress` and `done` are the desktop
+// pills. DONE's copy covers both of its senses — shipped-and-acknowledged work
+// and checked-off work.
 const EMPTY_MESSAGES = {
     active: 'Nothing active right now.',
     ideas: 'No ideas captured yet.',
-    running: 'No runs in flight.',
-    done: 'Nothing shipped and acknowledged yet.',
+    inprogress: 'Nothing in progress right now.',
+    done: 'Nothing finished yet.',
     blocked: 'Nothing is blocked on you right now.',
 };
 
@@ -432,8 +448,8 @@ function buildSegmentedControl() {
 }
 
 
-// Build the desktop phase-filter control: four always-visible pills (ALL /
-// IDEAS / RUNNING / DONE), each with its own live count, that set the phase
+// Build the desktop phase-filter control: three always-visible pills (ALL /
+// IN PROGRESS / DONE), each with its own live count, that set the phase
 // filter directly on tap. CSS hides the whole group on mobile (the cycle pill
 // owns that breakpoint) and reveals it on desktop, where the cycle pill hides —
 // so exactly one status-vocabulary control is visible per breakpoint. Tapping a
@@ -573,58 +589,78 @@ export function applyTaskFilter() {
     const activePhaseFilter = phaseFilterFor(phaseKey);
 
     const counts = { all: 0, active: 0, ideas: 0 };
-    const phaseCounts = { all: 0, active: 0, running: 0, done: 0 };
+    const phaseCounts = { all: 0, inprogress: 0, done: 0 };
+    const allPhase = phaseFilterFor('all');
+    const inProgressPhase = phaseFilterFor('inprogress');
+    const donePhase = phaseFilterFor('done');
     let blockedCount = 0;
-    let total = 0;
-    let visible = 0;
+    let total = 0;          // committed, non-completed rows (mobile / blocked gate)
+    let totalAll = 0;       // committed rows including completed (desktop gate)
+    let visible = 0;        // non-completed rows shown (mobile / blocked)
+    let desktopVisible = 0; // rows shown by the desktop predicate, completed included
 
     const rows = mainList.querySelectorAll('#toDoChild');
     rows.forEach(function (row) {
         if (!isCommittedRow(row)) return;
+        const item = row.__item;
         const status = rowStatus(row);
         // Completed rows keep their original `status` (so un-completing restores
-        // the category), but they belong to the COMPLETED section's own count —
-        // excluding them here keeps the filter pills reporting non-completed
-        // work only. Row hiding (setRowHidden) stays unconditional so the
-        // filter-match partition still applies when COMPLETED is expanded.
-        const isCompleted = !!(row.__item && row.__item.completed);
+        // the category). They belong to the COMPLETED section, so the mobile
+        // status counts exclude them — but the desktop DONE pill folds them in, so
+        // the desktop phase counts are taken over the FULL committed set below.
+        const isCompleted = !!(item && item.completed);
         // Blocked membership is computed from the FULL committed, non-completed
         // set — matching how the status counts are computed — not the visible
         // subset.
-        const blocked = !isCompleted && isBlockedItem(row.__item);
-        // The row's derived phase drives the desktop pills. Resolved once here and
-        // reused for both the phase counts and the visibility predicate. Null when
-        // no resolver is registered (unit rows) — no phase pill then matches, so
-        // ALL still shows everything.
-        const phase = phaseOf(row.__item);
+        const blocked = !isCompleted && isBlockedItem(item);
+
+        totalAll += 1;
         if (!isCompleted) {
             total += 1;
             counts.all += 1;
             if (status === 'active' || status === 'in_progress') counts.active += 1;
             if (status === 'idea') counts.ideas += 1;
-            phaseCounts.all += 1;
-            if (phase === 'draft' || phase === 'accept') phaseCounts.active += 1;
-            if (phase === 'running') phaseCounts.running += 1;
-            if (phase === 'done') phaseCounts.done += 1;
             if (blocked) blockedCount += 1;
         }
+        // Desktop pill counts: each pill's own predicate over the item, so the
+        // counts and the visibility decision below read from ONE definition
+        // (PHASE_FILTERS). DONE counts completed rows even though they sit in the
+        // COMPLETED section, so its number never under-reports.
+        if (allPhase.match(item)) phaseCounts.all += 1;
+        if (inProgressPhase.match(item)) phaseCounts.inprogress += 1;
+        if (donePhase.match(item)) phaseCounts.done += 1;
 
         // When the blocked filter is engaged both status vocabularies are on ALL,
         // so visibility keys purely on blocked membership; otherwise the desktop
-        // phase filter governs at desktop widths and the mobile status filter
-        // below them.
+        // filter governs at desktop widths and the mobile status filter below them.
         const show = blockedActive
             ? blocked
-            : (desktop ? activePhaseFilter.match(phase) : activeFilter.match(status));
-        if (show && !isCompleted) visible += 1;
+            : (desktop ? activePhaseFilter.match(item) : activeFilter.match(status));
         setRowHidden(row, !show);
+        if (show) {
+            desktopVisible += 1;
+            if (!isCompleted) visible += 1;
+        }
     });
+
+    // Desktop DONE reveals the checked-off rows that normally sit hidden in the
+    // collapsed COMPLETED section, so the pill's count and the visible rows agree.
+    // This is a filter-VIEW concern only: it overrides the collapse via a class and
+    // never touches the persisted completed-section open/closed state.
+    const revealCompleted = !blockedActive && desktop && phaseKey === 'done';
+    mainList.classList.toggle('phaseFilterRevealCompleted', revealCompleted);
 
     updateCounts(counts);
     updatePhaseCounts(phaseCounts);
     updateBlockedChip(blockedCount, blockedActive);
     const emptyKey = blockedActive ? 'blocked' : (desktop ? phaseKey : active);
-    updateFilterEmptyState(mainList, emptyKey, total, visible);
+    // The desktop empty-state weighs the FULL committed set against the
+    // desktop-visible tally (completed rows included) so DONE — whose visible rows
+    // can be entirely completed ones — is never falsely reported empty; mobile and
+    // the blocked overlay keep the non-completed gate they have always used.
+    const emptyTotal = (!blockedActive && desktop) ? totalAll : total;
+    const emptyVisible = (!blockedActive && desktop) ? desktopVisible : visible;
+    updateFilterEmptyState(mainList, emptyKey, emptyTotal, emptyVisible);
 
     // Filtering hides/shows rows via a class with no DOM mutation or resize, so
     // re-size the ghost spacer here too — otherwise hiding rows could shrink the

@@ -148,22 +148,23 @@ export function setTaskFilter(filter) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// ── task phase filter (ALL / ACTIVE / RUNNING / DONE) ──
-// The DESKTOP-only pill row above the compose row filters visible rows by their
-// DERIVED pipeline phase (see phase.js), a different vocabulary from the manual
-// status the mobile cycle pill filters on — so it persists under its OWN key
-// rather than sharing TASK_FILTER_KEY. Keeping them separate means resizing
-// across the breakpoint can never write a phase token into the status filter (or
-// vice versa) and blank the list. 'all' shows every uncompleted task, 'active'
-// shows drafted-or-accepted entries (phase `draft` or `accept`), 'running' shows
-// in-flight runs (phase `running`), 'done' shows shipped-and-acknowledged work
-// (phase `done`). Any stored value other than the four known tokens falls back to
-// 'all' so a stale or hand-edited pref (including the retired 'ideas' token)
-// can't desync the list.
+// ── task desktop filter (ALL / IN PROGRESS / DONE) ──
+// The DESKTOP-only pill row above the compose row filters visible rows by a mix
+// of manual status and DERIVED pipeline phase (see phase.js) — a different
+// vocabulary from the manual-status-only mobile cycle pill — so it persists under
+// its OWN key rather than sharing TASK_FILTER_KEY. Keeping them separate means
+// resizing across the breakpoint can never write a desktop token into the mobile
+// status filter (or vice versa) and blank the list. 'all' shows every uncompleted
+// task, 'inprogress' shows in-progress or in-flight work (status `in_progress` or
+// phase `draft`/`running`), 'done' shows finished work (phase `done` or checked
+// off). Any stored value other than the three known tokens falls back to 'all' —
+// this also MIGRATES the retired 'active'/'running'/'ideas' tokens from the old
+// four-pill set to 'all' so a reload after deploy lands on a populated list rather
+// than an empty filtered view.
 export function getPhaseFilter() {
     try {
         const v = localStorage.getItem(PHASE_FILTER_KEY);
-        if (v === 'active' || v === 'running' || v === 'done') return v;
+        if (v === 'inprogress' || v === 'done') return v;
         return 'all';
     } catch (e) {
         return 'all';
@@ -172,7 +173,7 @@ export function getPhaseFilter() {
 
 export function setPhaseFilter(filter) {
     try {
-        const stored = (filter === 'active' || filter === 'running' || filter === 'done') ? filter : 'all';
+        const stored = (filter === 'inprogress' || filter === 'done') ? filter : 'all';
         localStorage.setItem(PHASE_FILTER_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }

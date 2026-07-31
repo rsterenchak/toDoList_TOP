@@ -4091,8 +4091,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-family: inherit;
   font-size: 10px;
   font-weight: 700;
-  /* Tightened from 0.06em so the longest label ("RUNNING") plus its count fits
-     an even quarter of the full-width row without engaging the ellipsis. */
+  /* Tightened from 0.06em so the longest label ("IN PROGRESS") plus its count
+     fits an even third of the full-width row without engaging the ellipsis. */
   letter-spacing: 0.04em;
   text-transform: uppercase;
   line-height: 1;
@@ -10421,6 +10421,15 @@ body.row-dragging * { cursor: grabbing !important; }
 #mainList.completedCollapsed #toDoChild.completed,
 #mainList.completedCollapsed #toDoChild.completed + #descSibling {
   display: none;
+}
+
+/* When the desktop DONE filter is active, reveal the checked-off rows even while
+   the COMPLETED section is collapsed, so the DONE pill's count and the visible
+   rows agree. taskFilter.js adds .phaseFilterRevealCompleted for the DONE pill
+   only; the extra class raises specificity above the collapse rule above. This is
+   a filter-view override — the persisted collapse state itself is untouched. */
+#mainList.phaseFilterRevealCompleted.completedCollapsed #toDoChild.completed {
+  display: flex;
 }
 
 /* ── MOBILE COMPLETED-SECTION BOTTOM SHEET ──

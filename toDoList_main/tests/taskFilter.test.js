@@ -105,10 +105,10 @@ describe('buildTaskFilterBar — cycle pill + segmented control', () => {
             expect(s.querySelector('.taskFilterSegLabel')).not.toBeNull();
             expect(s.querySelector('.taskFilterSegCount')).not.toBeNull();
         });
-        // Cycle pill (1) + three segments (3) + four desktop phase pills (4) +
-        // blocked-on-you chip (1) = nine buttons total (the mobile Sort trigger is
+        // Cycle pill (1) + three segments (3) + three desktop pills (3) +
+        // blocked-on-you chip (1) = eight buttons total (the mobile Sort trigger is
         // appended later by main.js, not by buildTaskFilterBar).
-        expect(bar.querySelectorAll('button').length).toBe(9);
+        expect(bar.querySelectorAll('button').length).toBe(8);
     });
 
     // (2) Default state proves the prefs round-trip still drives the pill.

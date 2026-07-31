@@ -10,12 +10,12 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the contract that at desktop widths the four phase-filter pills (ALL /
-// ACTIVE / RUNNING / DONE) sit on their OWN full-width row, with the Sort
-// dropdown overlay + blocked chip dropped to the row beneath. Sharing one row
-// with the Sort overlay squeezed each pill under 60px in the ~308px queue rail,
-// truncating "RUNNING" to "RU…" and pushing DONE out of view. The fix stacks
-// #taskFilterBar into a column at desktop only.
+// Pins the contract that at desktop widths the filter pills (ALL / IN PROGRESS /
+// DONE) sit on their OWN full-width row, with the Sort dropdown overlay + blocked
+// chip dropped to the row beneath. Sharing one row with the Sort overlay squeezed
+// each pill too narrow in the ~308px queue rail, truncating the longest label and
+// pushing DONE out of view. The fix stacks #taskFilterBar into a column at desktop
+// only.
 //
 // Verified by source inspection because jsdom does no layout and main.js is too
 // large to instantiate (per CLAUDE.md guidance). A layout-computed assertion is
