@@ -66,11 +66,15 @@ vi.mock('../src/claudeSheet.js', () => ({
 }));
 
 import { listLogic } from '../src/listLogic.js';
+// The board is still imported for subscribeAgentView / unsubscribeAgentView (and,
+// as a side effect, its configureRunTrackers call that registers the Worker probes
+// the watch's sweep half needs). The working watch itself relocated into the store,
+// so startAgentWorkingWatch comes from there now.
 import {
     subscribeAgentView,
     unsubscribeAgentView,
-    startAgentWorkingWatch,
 } from '../src/agentView.js';
+import { startAgentWorkingWatch } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 8) {
