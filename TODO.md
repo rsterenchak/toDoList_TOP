@@ -109,3 +109,20 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/agentQueueStore.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 28acb54f-d9a1-4a3d-aa03-1b47089e1886 -->
+
+- [ ] **[LOW]** Mobile: add the copy-context control to the ACCEPT face
+  - Type: feature
+  - Description: The control that copies a shipped change as a pasteable context block was scoped to the desktop detail pane, following the earlier decision that inlining the ACCEPT face's controls into the mobile modal costs roughly 210px and pushes the entry textarea, mode strip, picker and Generate below the fold. But that cost came from the WHAT CHANGED card, the file list, and the three decision actions — a single copy control is one button with no supporting content, closer to 40px. Add just that one to the mobile modal's ACCEPT face. The block exists to be pasted into an outside conversation, and the phone is where that most often happens, so the one surface likely to need it is currently the one without it.
+  - Behavior: On mobile, a task whose phase is `accept` shows a copy-context control in its description-editor modal, beside the existing REVIEW SHIPPED CHANGE action. Activating it copies the same block the desktop control produces — repo, entry marker, PR number and URL, files, the entry as shipped, and the trailing placeholder — and confirms with the existing toast. Everything else about the mobile ACCEPT face is unchanged: acknowledging still routes to the TODO.md viewer, and the WHAT CHANGED card, file list, and decision actions stay desktop-only.
+  - Implementation notes:
+    - Reuse the desktop implementation, do not reimplement. The block builder should already be a function in `toDoRow.js`; if it is inlined in the desktop control's handler, extract it so both hosts call one builder — a second copy would drift from the first the next time the block's format changes.
+    - Keep the clipboard handling identical: `navigator.clipboard.writeText()` wrapped in try/catch AND with the rejected promise handled, falling back to selecting the text in a temporary element so a manual copy still works. Mobile Safari is the case most likely to reject, which makes the fallback matter more here than on desktop.
+    - Mount it in the modal's ACCEPT branch alongside REVIEW SHIPPED CHANGE. Style it as a ghost action so the amber route action stays the primary — acknowledging is still the main thing you do in that state.
+    - `showDescEditorModal` rebuilds the modal on every open, so mount on open rather than initialising once.
+    - The modal is capped at 92vh and already scrolls; one added control should not change that, but verify the ACCEPT face still fits without the body scrolling on a short viewport, since that overlap bug has appeared here before.
+    - Do NOT add the WHAT CHANGED card, the FILE list, or REVERT and ACCEPT & CLOSE to the mobile modal. That decision stands — this is the one control whose value outweighs its height.
+    - Test: the control renders only in the `accept` phase on mobile; it produces a block identical to the desktop control's for the same task; a rejected clipboard write falls back rather than failing silently; and the modal does not overflow its cap with the control present.
+  - Out of scope: The block's format and contents, correct as landed. The desktop ACCEPT face. The mobile modal's other controls and its route to the viewer. The RUNS tab and iterate mode.
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 28a37ac2-44ac-48c3-a05a-232c023bfc6a -->
