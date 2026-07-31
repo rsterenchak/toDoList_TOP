@@ -42,7 +42,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5ab43b07-1bcd-4643-a776-0ed77cd9338f -->
 
-- [ ] **[HIGH]** TODO.md strip stretches to fill the rail when the task list is short
+- [x] **[HIGH]** TODO.md strip stretches to fill the rail when the task list is short — Completed: 2026-07-31
   - Type: bug
   - Description: The pinned TODO.md strip grows to fill most of the queue rail when few tasks are present, with its contents floating in the vertical middle of an oversized box. `#mainBar` is `grid-template-rows: auto 1fr` — the `auto` track holds `#taskFilterBar`, the `1fr` track holds the scrollable list. The strip declares no `grid-row`, so it auto-places into the `1fr` track and stretches to fill it, and its own `align-items: center` then centres the file name and actions inside that height. With a full list the effect is hidden because the list consumes the space; with one or two rows the strip takes over the rail. This is the same unplaced-child-in-an-explicit-grid defect that has hit `#descSibling` repeatedly.
   - Behavior: The strip renders at its natural content height — one row of controls, or two when wrapped — pinned directly beneath the filter bar, regardless of how many tasks are in the list. An empty or nearly empty project shows the strip at the same compact height as a full one, with the task list and its empty state occupying the remaining space beneath it. Everything else about the strip is unchanged.
