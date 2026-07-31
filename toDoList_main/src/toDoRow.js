@@ -3575,11 +3575,14 @@ export function buildToDoRow(item, toDoName) {
 
     descToggle.id            = "descToggle";
     descToggle.style.display = item.tit ? "flex" : "none";
-    // tabindex makes the non-button caret focusable so keyboard users can
-    // reach it in tab order. Hidden placeholder rows (display:none) skip it
-    // naturally, and committing the row reveals it without a re-wire.
-    descToggle.setAttribute("tabindex", "0");
-    descToggle.setAttribute("role", "button");
+    // The chevron is a headless toggle now — CSS hides it at every width (on
+    // desktop the copy-title button takes its slot; on touch the row itself
+    // opens the description via wireToDoRowClick). So it is no longer a tab
+    // stop or an ARIA button — dropping tabindex/role stops it being an
+    // invisible tab stop on every row. It keeps its aria-label and the Enter
+    // keydown handler (both harmless while unreachable) and its inline
+    // style.display writes (main.js's bulk-dispatch placeholder guard reads
+    // them); it is the open MECHANISM the callers still click(), not painted UI.
     descToggle.setAttribute("aria-label", "Toggle description");
 
     // Stats toggle — chart-icon button that opens the recurring-task
@@ -3738,10 +3741,14 @@ export function buildToDoRow(item, toDoName) {
     // row's trailing side.
     if (pasteChip) toDoChild.appendChild(pasteChip);
     if (micBtn) toDoChild.appendChild(micBtn);
-    toDoChild.appendChild(copyBtn);
     toDoChild.appendChild(duePill);
     toDoChild.appendChild(spacer);
     toDoChild.appendChild(statsToggle);
+    // The copy-title button sits in the retired chevron's slot, so the desktop
+    // trailing cluster reads due pill → stats toggle → copy → ×. Mobile order
+    // is fixed by explicit `order` rules in the ≤1023px block, so this DOM move
+    // leaves mobile layout unchanged.
+    toDoChild.appendChild(copyBtn);
     toDoChild.appendChild(descToggle);
     toDoChild.appendChild(closeButtonToDo);
 

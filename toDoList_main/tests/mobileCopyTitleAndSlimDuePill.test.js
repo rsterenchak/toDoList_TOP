@@ -47,19 +47,25 @@ describe('mobile copy-title button — wiring and skip-on-blank-placeholder', ()
         expect(buildBody).toMatch(/copyBtn\.className\s*=\s*['"]copyTitleBtn['"]/);
     });
 
-    it('inserts copyBtn into the DOM between toDoInput and duePill', () => {
-        // The chrome order on each row reads:
-        //   toDoInput → copyBtn → duePill → spacer → statsToggle → descToggle → close
-        // The build site appends in that exact order, so an indexOf chain
-        // locks the sequence in.
-        const inputAppend = buildBody.indexOf('toDoChild.appendChild(toDoInput)');
-        const copyAppend  = buildBody.indexOf('toDoChild.appendChild(copyBtn)');
-        const pillAppend  = buildBody.indexOf('toDoChild.appendChild(duePill)');
+    it('inserts copyBtn into the retired chevron slot (after statsToggle, before descToggle)', () => {
+        // The desktop trailing cluster now reads:
+        //   toDoInput → duePill → spacer → statsToggle → copyBtn → descToggle → close
+        // The copy button takes the (headless) chevron's slot, so the build
+        // site appends it between statsToggle and descToggle. Mobile order is
+        // fixed by explicit `order` rules in the ≤1023px block, so this DOM
+        // position is desktop-only and mobile layout stays identical.
+        const inputAppend  = buildBody.indexOf('toDoChild.appendChild(toDoInput)');
+        const pillAppend   = buildBody.indexOf('toDoChild.appendChild(duePill)');
+        const statsAppend  = buildBody.indexOf('toDoChild.appendChild(statsToggle)');
+        const copyAppend   = buildBody.indexOf('toDoChild.appendChild(copyBtn)');
+        const toggleAppend = buildBody.indexOf('toDoChild.appendChild(descToggle)');
         expect(inputAppend).toBeGreaterThan(-1);
         expect(copyAppend).toBeGreaterThan(-1);
-        expect(pillAppend).toBeGreaterThan(-1);
-        expect(copyAppend).toBeGreaterThan(inputAppend);
-        expect(pillAppend).toBeGreaterThan(copyAppend);
+        expect(toggleAppend).toBeGreaterThan(-1);
+        expect(pillAppend).toBeGreaterThan(inputAppend);
+        expect(statsAppend).toBeGreaterThan(pillAppend);
+        expect(copyAppend).toBeGreaterThan(statsAppend);
+        expect(toggleAppend).toBeGreaterThan(copyAppend);
     });
 
     it('hides the copy button on blank placeholder rows (skips wiring on no-title rows)', () => {
@@ -273,23 +279,25 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         expect(body).toMatch(/text-transform:\s*uppercase/);
     });
 
-    it('mobile @media block reveals the copy-title button via display: inline-flex', () => {
-        // The desktop default is display: none on .copyTitleBtn; the
-        // ≤1023px breakpoint flips it on. Without this rule the JS-side
-        // wiring would be dark on every device.
+    it('mobile ≤1023px recedes the copy-title button to the dim #4a4b58 (mobile unchanged)', () => {
+        // The copy button's desktop resting color is var(--text-secondary)
+        // (the base rule), but on mobile it keeps the receded #4a4b58 it has
+        // always used, so the mobile row is visually unchanged by the desktop
+        // restyle that surfaces the button in the retired chevron's slot.
         const block = allMobileMediaBlocks().find(b =>
-            /\.copyTitleBtn\s*\{[^}]*display:\s*inline-flex/.test(b.text)
+            /\.copyTitleBtn\s*\{[^}]*color:\s*#4a4b58/i.test(b.text)
         );
         expect(block).toBeTruthy();
     });
 
-    it('desktop default rule on .copyTitleBtn is display: none', () => {
-        // Outside any media query, the button must be hidden — otherwise
-        // it leaks onto desktop rows where the copy icon would crowd the
-        // existing chrome.
+    it('base .copyTitleBtn rule paints the button (display: inline-flex) at all widths', () => {
+        // The button now takes the headless chevron's slot on desktop as well
+        // as its mobile home, so it paints for committed rows at every width;
+        // blank placeholder rows are hidden via the inline style.display write
+        // in toDoRow.js, not this rule.
         const topLevel = css.match(/(?:^|\n)\.copyTitleBtn\s*\{([\s\S]*?)\}/);
         expect(topLevel).not.toBeNull();
-        expect(topLevel[1]).toMatch(/display:\s*none/);
+        expect(topLevel[1]).toMatch(/display:\s*inline-flex/);
     });
 
     it('desktop urgency cascade for #duePill stays intact at the top level', () => {

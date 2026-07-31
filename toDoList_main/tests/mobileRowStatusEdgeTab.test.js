@@ -88,14 +88,18 @@ describe('mobile row restructure — left-edge status tab + reordered controls',
         expect(copy).toBeGreaterThan(due);
     });
 
-    it('keeps the DOM assembly unchanged in toDoRow.js (reorder is CSS-only)', () => {
+    it('mobile visual order stays CSS-only — the desktop DOM reorder does not affect it', () => {
         const toDoRow = read('toDoRow.js');
-        const copyAppend = toDoRow.indexOf('toDoChild.appendChild(copyBtn)');
-        const pillAppend = toDoRow.indexOf('toDoChild.appendChild(duePill)');
+        const copyAppend  = toDoRow.indexOf('toDoChild.appendChild(copyBtn)');
+        const pillAppend  = toDoRow.indexOf('toDoChild.appendChild(duePill)');
+        const statsAppend = toDoRow.indexOf('toDoChild.appendChild(statsToggle)');
         expect(copyAppend).toBeGreaterThan(-1);
         expect(pillAppend).toBeGreaterThan(-1);
-        // Copy is still appended before due in source — only CSS order flips
-        // the visual sequence, so toDoRow.js needs no change.
-        expect(copyAppend).toBeLessThan(pillAppend);
+        // Copy now sits AFTER due + stats in source — it took the retired
+        // chevron's desktop slot. The mobile ≤1023px `order` rules make the
+        // mobile visual sequence (due → copy) independent of this DOM position,
+        // so the mobile layout is unchanged despite the source reorder.
+        expect(copyAppend).toBeGreaterThan(pillAppend);
+        expect(copyAppend).toBeGreaterThan(statsAppend);
     });
 });
