@@ -9,96 +9,58 @@ function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
 }
 
-// Pins the STACK mobile contract: at the ≤1023px breakpoint the per-row
-// `▾` description-toggle chevron is hidden so titles reclaim the
-// horizontal space. Tapping the row itself already opens the description
-// on touch (wireToDoRowClick), so the chevron is redundant on mobile.
-// Source-inspection only, mirroring mobileCheckboxHidden / mobileCloseButtonHidden.
-describe('STACK mobile per-row description toggle chevron hidden', () => {
+// Pins the headless-chevron contract: the per-row `#descToggle` caret is dead
+// chrome at EVERY width now — on desktop the copy-title button takes its slot,
+// and on touch tapping the row itself opens the description (wireToDoRowClick).
+// So the hide rule lives in DEFAULT scope (not the mobile @media block) with
+// `!important`, and the chevron renders no `::after` glyph. The element stays
+// in the DOM as the open mechanism, so the still-load-bearing
+// `descToggle.click()` routing and the inline-style placeholder guard are
+// pinned below. Source-inspection only, mirroring mobileCheckboxHidden.
+describe('per-row #descToggle chevron is a headless, unpainted toggle', () => {
     const css = read('style.css');
 
-    function allMobileMediaBlocks() {
-        const blocks = [];
-        let cursor = 0;
-        while (true) {
-            const media = css.indexOf('@media (max-width: 1023px)', cursor);
-            if (media === -1) break;
-            let depth = 0;
-            let end = css.length;
-            for (let i = css.indexOf('{', media); i < css.length; i++) {
-                if (css[i] === '{') depth++;
-                else if (css[i] === '}') {
-                    depth--;
-                    if (depth === 0) { end = i + 1; break; }
-                }
-            }
-            blocks.push({ start: media, end, text: css.slice(media, end) });
-            cursor = end;
+    // Brace depth at a source index: 0 means the rule sits in default scope,
+    // ≥1 means it is nested inside an @media (or other) block.
+    function braceDepthAt(index) {
+        let depth = 0;
+        for (let i = 0; i < index; i++) {
+            if (css[i] === '{') depth++;
+            else if (css[i] === '}') depth--;
         }
-        expect(blocks.length).toBeGreaterThan(0);
-        return blocks;
+        return depth;
     }
 
-    function extractAllMobileRules(haystack, selector) {
-        const stripped = haystack.replace(/\/\*[\s\S]*?\*\//g, '');
-        const escaped = selector.replace(/[#.]/g, m => '\\' + m);
-        const re = new RegExp(
-            '(?:^|[\\s,{}])' + escaped + '\\s*(?=[,{])',
-            'mg'
-        );
-        const bodies = [];
-        let m;
-        while ((m = re.exec(stripped)) !== null) {
-            const startIdx = stripped.indexOf('{', m.index);
-            if (startIdx === -1) continue;
-            const endIdx = stripped.indexOf('}', startIdx);
-            if (endIdx === -1) continue;
-            bodies.push(stripped.slice(startIdx + 1, endIdx));
-        }
-        return bodies;
+    function descToggleBlock() {
+        const idx = css.indexOf('#descToggle {');
+        expect(idx).toBeGreaterThan(-1);
+        const open = css.indexOf('{', idx);
+        const close = css.indexOf('}', open);
+        return { idx, body: css.slice(open + 1, close) };
     }
 
-    function findHidingBlock(selector) {
-        const blocks = allMobileMediaBlocks();
-        for (const block of blocks) {
-            const bodies = extractAllMobileRules(block.text, selector);
-            for (const body of bodies) {
-                if (/display:\s*none/.test(body)) return { block, body };
-            }
-        }
-        return null;
-    }
-
-    it('#descToggle is hidden at the ≤1023px breakpoint', () => {
-        const hit = findHidingBlock('#descToggle');
-        expect(hit).not.toBeNull();
+    it('#descToggle is hidden in default scope (all widths, not just mobile)', () => {
+        const { idx, body } = descToggleBlock();
+        // The hide rule must be top-level, not gated behind the ≤1023px block —
+        // the chevron is redundant on desktop and mobile alike.
+        expect(braceDepthAt(idx)).toBe(0);
+        expect(body).toMatch(/display:\s*none/);
     });
 
-    it('the mobile hide rule uses !important to defeat the inline style.display = "flex" writes in toDoRow.js', () => {
-        // toDoRow.js sets `descToggle.style.display = "flex"` on row
-        // creation (when the row has a title) and on first-commit reveal.
-        // Inline styles outrank stylesheet rules at any specificity, so
-        // the mobile override has to carry `!important` — otherwise the
-        // chevron paints anyway on every committed row.
-        const hit = findHidingBlock('#descToggle');
-        expect(hit).not.toBeNull();
-        expect(hit.body).toMatch(/display:\s*none\s*!important/);
+    it('the default hide rule uses !important to defeat the inline style.display = "flex" writes in toDoRow.js', () => {
+        // toDoRow.js sets `descToggle.style.display = "flex"` on row creation
+        // (when the row has a title) and on first-commit reveal. Inline styles
+        // outrank stylesheet rules at any specificity, so the hide has to carry
+        // `!important` — otherwise the chevron paints anyway on every committed
+        // row.
+        const { body } = descToggleBlock();
+        expect(body).toMatch(/display:\s*none\s*!important/);
     });
 
-    it('desktop #descToggle declaration is untouched (still sized/styled at 24×24 with ::after caret)', () => {
-        // Hiding on mobile must not regress the desktop chevron — the
-        // desktop rule keeps the 24×24 hit area, hover treatment, and
-        // ::after `▾` glyph. Spot-check width/height and the ::after
-        // content declaration.
-        const desktopIdx = css.indexOf('#descToggle {');
-        expect(desktopIdx).toBeGreaterThan(-1);
-        const desktopBody = css.slice(
-            css.indexOf('{', desktopIdx) + 1,
-            css.indexOf('}', desktopIdx)
-        );
-        expect(desktopBody).toMatch(/width:\s*24px/);
-        expect(desktopBody).toMatch(/height:\s*24px/);
-        expect(css).toMatch(/#descToggle::after\s*\{[^}]*content:\s*['"]▾['"]/);
+    it('#descToggle renders no ::after ▾ caret (the chevron is headless)', () => {
+        // The glyph and its open-state rotation are gone — the toggle is a
+        // mechanism now, not painted UI, so it must carry no ::after content.
+        expect(css).not.toMatch(/#descToggle::after\s*\{[^}]*content:\s*['"]▾['"]/);
     });
 
     it('row-click handler still routes through descToggle.click() so tapping a row opens the description on mobile', () => {
@@ -117,10 +79,10 @@ describe('STACK mobile per-row description toggle chevron hidden', () => {
     it('placeholder-detection guard in main.js still reads inline style.display so the !important rule does not break it', () => {
         // main.js skips blank placeholder rows during bulk descToggle
         // dispatch by reading `descToggle.style.display === 'none'` —
-        // an inline-style check, not computed style. The mobile @media
-        // rule never sets inline style, so this guard keeps working
-        // even when the CSS-hidden chevron is in fact display:none on
-        // mobile (its inline style is still "flex" for committed rows).
+        // an inline-style check, not computed style. The default-scope
+        // !important rule never sets inline style, so this guard keeps
+        // working even though the CSS-hidden chevron is display:none
+        // (its inline style is still "flex" for committed rows).
         const main = read('main.js');
         expect(main).toMatch(/descToggle\.style\.display\s*===\s*['"]none['"]/);
     });

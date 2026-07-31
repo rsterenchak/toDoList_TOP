@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-30',
+        changed: [
+            "On desktop, each task row's trailing controls now show a copy-title button in place of the description caret; clicking the row still opens its description.",
+        ],
         fixed: [
-            "The pinned TODO.md strip's edges now line up with the task rows, inset from the queue column border instead of touching it.",
             "TODO.md opened in the detail pane now fills the pane's height and scrolls internally, instead of stopping partway down and leaving dead space below it.",
             "The inline TODO.md viewer card now sizes to its content — hugging short files and sitting directly beneath the per-project empty state instead of stretching to fill the panel or dropping to the column floor.",
             "A stored preference for the retired Agent board no longer strands you on a dead view on load — the app now opens to your projects instead.",

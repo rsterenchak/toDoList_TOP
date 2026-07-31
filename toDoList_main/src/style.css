@@ -9335,7 +9335,10 @@ body.row-dragging * { cursor: grabbing !important; }
    committed rows (blank placeholders set display:none in JS) so the
    chrome stays out of the way until there's actually a title to copy. */
 .copyTitleBtn {
-  display: none;
+  /* Painted at all widths for committed rows now that it also takes the
+     retired chevron's desktop slot; blank placeholder rows hide it via the
+     inline `copyBtn.style.display = "none"` write in toDoRow.js. */
+  display: inline-flex;
   background: transparent;
   border: none;
   padding: 0;
@@ -9346,10 +9349,13 @@ body.row-dragging * { cursor: grabbing !important; }
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  /* Receded utility chrome — the copy icon sits at a dim neutral so it
-     doesn't compete with the task title; the copied-feedback flip below
-     is the only time it brightens to the accent. */
-  color: #4a4b58;
+  /* Desktop default: the copy icon paints at the retired chevron's resting
+     treatment it replaces — var(--text-secondary) text, var(--bg-hover) on
+     hover (below) — so it reads as one weight with #statsToggle in the trailing
+     meta cluster. The ≤1023px block below recedes it to the dim #4a4b58 it has
+     always used on mobile, so the mobile copy button is visually unchanged. The
+     copied-feedback flip (below) is the only time it brightens to the accent. */
+  color: var(--text-secondary);
   border-radius: 4px;
   transition: background 0.12s ease, color 0.12s ease;
   -webkit-tap-highlight-color: transparent;
@@ -9633,28 +9639,17 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 /* DESCRIPTION TOGGLE (todo) */
+/* The description chevron is a headless toggle — hidden at EVERY width. On
+   desktop the copy-title button takes its slot in the row's trailing cluster;
+   on touch the row itself opens the description (wireToDoRowClick). The element
+   stays in the DOM as the open mechanism (descToggle.click() routing and the
+   inline style.display placeholder guard main.js reads), so it only stops
+   painting — it renders no glyph. `!important` beats the inline
+   `style.display = "flex"` writes toDoRow.js applies on row creation and on
+   first-commit reveal. */
 #descToggle {
-  width: 24px;
-  height: 24px;
-  flex-shrink: 0;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 3px;
-  transition: background 0.12s ease, color 0.12s ease;
-  font-size: 11px;
-  line-height: 1;
-  color: var(--text-secondary);
-  user-select: none;
+  display: none !important;
 }
-#descToggle::after {
-  content: '▾';
-  display: block;
-  transition: transform 0.2s ease;
-}
-#descToggle:hover { color: var(--text-primary); background: var(--bg-hover); }
-#descToggle.open::after { transform: rotate(180deg); }
 
 /* CLOSE BUTTON (todo) */
 #closeButtonToDo {
@@ -12886,14 +12881,6 @@ body.row-dragging * { cursor: grabbing !important; }
   .mobileProjChev,
   #mobileSidebarClose {
     touch-action: manipulation;
-  }
-
-  /* Tapping a row already opens its description on touch, so the chevron is
-     redundant on mobile — hide it to reclaim horizontal space for the title.
-     `!important` overrides the inline `style.display = "flex"` writes that
-     toDoRow.js applies on row creation and on first-commit reveal. */
-  #descToggle {
-    display: none !important;
   }
 
   /* ── STACK mobile project header ──
@@ -17442,12 +17429,15 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   /* Hide the floating help FAB while the expanded sheet covers it. */
   body:has(#bottomSheet[data-state="EXPANDED"]) #helpFab { display: none; }
 
-  /* COPY-TITLE BUTTON — revealed at the mobile breakpoint as inline-flex
-     between the title input and the due-date pill. Sits in the gap that
-     opens up once the slimmed-down pill below releases its border + bg
-     footprint. */
+  /* COPY-TITLE BUTTON — recede to the dim neutral #4a4b58 on mobile (the
+     treatment it has always used here, where it sits between the title and the
+     slimmed-down due pill). The desktop base rule paints it at
+     var(--text-secondary) instead; keeping this mobile override means the
+     mobile copy button is visually unchanged by the desktop restyle. The
+     mobile-dark override further below lifts dark theme to var(--text-secondary),
+     exactly as before. */
   .copyTitleBtn {
-    display: inline-flex;
+    color: #4a4b58;
   }
 
   /* BARE-ICON MOBILE DUE PILL — strip the filled outline / uppercase

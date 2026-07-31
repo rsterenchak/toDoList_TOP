@@ -10,11 +10,14 @@ function read(relative) {
 }
 
 // Pins the contract for keyboard navigation WITHIN a single committed todo
-// row. Tab must reach every sub-control in visual order: checkbox → title →
-// date pill → expand caret → delete X (and description after delete X when
-// the row is expanded). Enter on each sub-control fires its primary action
-// without yanking focus to the title input. Backspace inside the open due-
-// date popover closes it without applying a date.
+// row. Tab must reach every focusable sub-control in visual order: checkbox →
+// title → date pill → delete X. The description chevron is a headless toggle
+// (hidden at every width now — the copy button takes its desktop slot and the
+// row itself opens the description on touch), so it is deliberately NOT a tab
+// stop, though it keeps an Enter handler as a harmless, unreachable mechanism.
+// Enter on each focusable sub-control fires its primary action without yanking
+// focus to the title input. Backspace inside the open due-date popover closes
+// it without applying a date.
 describe('todo row sub-control keyboard navigation', () => {
     const toDoRow = read('toDoRow.js');
     const main    = read('main.js');
@@ -36,14 +39,15 @@ describe('todo row sub-control keyboard navigation', () => {
         throw new Error('unterminated function for: ' + signature);
     }
 
-    it('descToggle gets tabindex="0" and a button role so the expand caret is keyboard-reachable', () => {
-        // The caret is a <div>, which isn't natively focusable. tabindex="0"
-        // puts it in the tab order; role="button" makes assistive tech
-        // announce it correctly. Hidden placeholder rows skip it via
-        // display:none, so we don't need a separate placeholder branch.
+    it('descToggle is NOT given tabindex/role — the headless chevron is not a tab stop', () => {
+        // The chevron is hidden at every width (the copy button takes its
+        // desktop slot; the row itself opens the description on touch), so it
+        // must not remain an invisible tab stop on every committed row. It keeps
+        // its aria-label and Enter keydown handler as a harmless-but-unreachable
+        // mechanism, but drops the tabindex and role that made it focusable.
         const fn = extractFunction(toDoRow, 'export function buildToDoRow(');
-        expect(fn).toMatch(/descToggle\.setAttribute\(\s*["']tabindex["']\s*,\s*["']0["']\s*\)/);
-        expect(fn).toMatch(/descToggle\.setAttribute\(\s*["']role["']\s*,\s*["']button["']\s*\)/);
+        expect(fn).not.toMatch(/descToggle\.setAttribute\(\s*["']tabindex["']/);
+        expect(fn).not.toMatch(/descToggle\.setAttribute\(\s*["']role["']/);
     });
 
     it('closeButtonToDo gets tabindex="0" and a button role so the delete X is keyboard-reachable', () => {
