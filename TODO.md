@@ -127,7 +127,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 28a37ac2-44ac-48c3-a05a-232c023bfc6a -->
 
-- [ ] **[MEDIUM]** Open iterate mode on a shipped entry directly from the task
+- [x] **[MEDIUM]** Open iterate mode on a shipped entry directly from the task — Completed: 2026-07-31
   - Type: feature
   - Description: Iterating on a shipped change is only reachable by tapping a SHIPPED record in the RUNS tab. That list is `localStorage`-backed, so it shows only runs dispatched from the device you are holding — and there is no path from a task to iterating on it, even though the task is where you notice the change needs adjusting. Iterate does not actually need a run record: `activeIterateEntry` is a per-workspace entry id, and `entryId` is passed on the first turn so the Worker resolves the merged diff from that marker and assembles the seed. The task already carries `item.entryId`. Add a control on the ACCEPT face that opens chat in iterate mode for that entry, scoped to that task's repo.
   - Behavior: A task whose phase is `accept` shows an iterate control alongside its existing actions. Activating it opens the chat surface — the docked pane on desktop, the sheet on mobile — switches to the CHAT tab, sets the workspace to that task's repo if it is not already there, starts an iterate session seeded with the task's entry id, and focuses the composer so you can describe the change. The first turn carries the entry id so the Worker resolves the shipped diff; later turns omit it, as they do today. Iterating from the RUNS tab is unchanged. The task, its entry, and its queue row are not modified.
