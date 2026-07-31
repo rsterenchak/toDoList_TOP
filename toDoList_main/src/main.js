@@ -56,7 +56,7 @@ import {
     buildCompanionToggle as buildCompanionToggleRow,
 } from './drawerRows.js';
 import { mountClaudeSheet } from './claudeSheet.js';
-import { syncClaudeSheetForProject, openChatWithTask } from './claudeSheet.js';
+import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
@@ -87,6 +87,7 @@ import {
     openDescEditorForTodoId,
     reorderToDoDOM,
     setDiscussTaskHandler,
+    setIterateTaskHandler,
     setStuckReasonResolver,
     syncDetailPaneForViewport,
 } from './toDoRow.js';
@@ -3073,6 +3074,15 @@ setReviewBadgeTapHandler(function(entryId, projectName) {
 // this registered handler with the todo id.
 setDiscussTaskHandler(function(todoId) {
     openChatWithTask(todoId);
+});
+
+// Wire the todo row's ACCEPT-face "Iterate" action to open the Claude chat in
+// iterate mode seeded from the task's shipped entry, scoped to that task's repo.
+// toDoRow.js owns the button but must not import claudeSheet.js (the same
+// toDoRow → claudeSheet → modals → toDoRow cycle Discuss avoids), so it invokes
+// this registered handler with the entry id and repo.
+setIterateTaskHandler(function(entryId, repo) {
+    openIterateForEntry(entryId, repo);
 });
 
 // Wire the tasks-surface phase badges (`⌁ ASKING` / `⌁ DRAFTED` / `⌁ STUCK` /

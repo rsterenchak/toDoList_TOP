@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-31',
         added: [
-            "The control to copy a shipped change as a pasteable context block is now available on mobile, not just the desktop detail pane.",
+            "Iterate on a shipped change straight from the task's review actions, without going through the Runs tab.",
         ],
         fixed: [
             "The Coverage tab can edit and save its assignment, run Derive, and receive proposals again, and the working indicator lights during triage and derive runs — all of which had quietly stopped after the Agent board was retired.",

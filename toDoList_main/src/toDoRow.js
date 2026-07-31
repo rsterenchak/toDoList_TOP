@@ -79,6 +79,23 @@ export function setDiscussTaskHandler(fn) {
     discussTaskHandler = typeof fn === 'function' ? fn : null;
 }
 
+// The ACCEPT-face "Iterate" control opens the Claude chat in iterate mode seeded
+// from a shipped entry's diff, scoped to the task's repo. Reusing the Claude
+// sheet's own iterate entry point means importing claudeSheet.js, which this
+// layer must not do (the toDoRow → claudeSheet → modals → toDoRow cycle), so
+// main.js registers the opener through this slot exactly as setDiscussTaskHandler
+// bridges Discuss. The opener is called with (entryId, repo). invokeIterateTask
+// is exported so the mobile description-editor modal can trigger it AFTER
+// dismissing itself (mirroring how onOpenInViewer defers invokeReviewBadgeTap),
+// keeping the chat sheet from stacking over an open modal.
+let iterateTaskHandler = null;
+export function setIterateTaskHandler(fn) {
+    iterateTaskHandler = typeof fn === 'function' ? fn : null;
+}
+export function invokeIterateTask(entryId, repo) {
+    if (entryId && iterateTaskHandler) iterateTaskHandler(entryId, repo);
+}
+
 // The desktop description panel's STUCK failure-reason block reuses the exact
 // copy the Agent view and the mobile modal show (stuckReasonText, owned by
 // agentQueueStore.js). It resolves through a registered seam rather than a direct
@@ -1265,6 +1282,34 @@ export function buildReviewActions(item, projectName, options) {
         copyIterateContext(buildIterateContextBlock(item, queueRow, target && target.repo));
     });
     actions.appendChild(copyCtx);
+
+    // ITERATE — a THIRD ghost route beside OPEN IN TODO.MD and COPY CONTEXT (never
+    // competing with ACCEPT & CLOSE, the primary decision). Opens the Claude chat
+    // in iterate mode seeded from this entry's shipped diff, scoped to the task's
+    // repo, so a change is adjusted from the task itself rather than only from a
+    // RUNS-tab record. Reads only — it never mutates the task, entry, or row.
+    // Needs a shipped entry marker (item.entryId) to seed the diff, so it no-ops
+    // without one. The registered opener (main.js → claudeSheet's iterate entry
+    // point) switches the workspace to `repo` before seeding. On the mobile modal
+    // host the opts2.onIterate hook dismisses the modal FIRST so the chat sheet
+    // doesn't stack over it; the desktop detail pane has no modal and fires the
+    // registered opener directly.
+    const iterate = document.createElement('button');
+    iterate.type = 'button';
+    iterate.className = 'descReviewBtn descReviewBtn--iterate';
+    iterate.textContent = 'Iterate';
+    iterate.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (!item || !item.entryId) return;
+        const target = resolveDispatchTarget();
+        const repo = target && target.repo;
+        if (typeof opts2.onIterate === 'function') {
+            opts2.onIterate(item.entryId, repo);
+            return;
+        }
+        invokeIterateTask(item.entryId, repo);
+    });
+    actions.appendChild(iterate);
 
     return actions;
 }

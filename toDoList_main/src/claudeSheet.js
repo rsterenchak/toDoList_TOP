@@ -2683,15 +2683,19 @@ async function sendAskAnswer(label) {
     await requestAssistantReply(activeIterateEntry, chatMode === 'deep');
 }
 
-// Seed an iterate chat from a SHIPPED run: switch to the Chat tab, reset the
-// conversation, and fire turn 1 carrying the run's entry id so the Worker
-// resolves that entry's merged diff and replies with iterate context. The seed
-// turn establishes the active repo's iterate session on success (in
+// Seed an iterate chat on `entryId`: switch to the Chat tab, reset the
+// conversation, and fire turn 1 carrying the entry id so the Worker resolves
+// that entry's merged diff and replies with iterate context. The seed turn
+// establishes the ACTIVE repo's iterate session on success (in
 // requestAssistantReply), so later turns keep re-sending the id and the diff;
-// a 404 there clears it. Tapping a non-shipped or id-less run is a no-op —
-// iterate needs a merged change to build on.
-async function startIterateFromRun(rec) {
-    if (!rec || rec.status !== 'SHIPPED' || !rec.entryId) return;
+// a 404 there clears it and surfaces a readable note. Callers MUST have already
+// framed the workspace on the entry's repo — activeIterateEntry is per-workspace
+// and swapped in lockstep with chatHistory, so seeding on the wrong workspace
+// would attach the id to another repo's thread. `noteLabel` is the opening
+// status bubble. Shared by the RUNS-tab shipped record (startIterateFromRun) and
+// a task's ACCEPT-face Iterate control (openIterateForEntry) so the two can't
+// drift.
+async function seedIterateSession(entryId, noteLabel) {
     setActiveTab('chat');
     if (!isClaudeSheetOpen()) openClaudeSheet();
 
@@ -2700,7 +2704,7 @@ async function startIterateFromRun(rec) {
     if (surface) surface.innerHTML = '';
     clearAttachments();
 
-    appendMessageBubble('note', 'Iterating on “' + (rec.title || 'this run') + '” — pulling the shipped change…');
+    appendMessageBubble('note', noteLabel);
 
     // The Worker requires a non-empty messages array even when entry_id is
     // present (the id only adds diff/code context to the system field, it's not
@@ -2709,7 +2713,46 @@ async function startIterateFromRun(rec) {
     chatHistory.push({ role: 'user', content: seedPrompt });
     appendMessageBubble('user', seedPrompt);
 
-    await requestAssistantReply(rec.entryId);
+    await requestAssistantReply(entryId);
+}
+
+// Seed an iterate chat from a SHIPPED run record (the RUNS tab entry point). The
+// record's run is always the active workspace's project, so no workspace swap is
+// needed here. Tapping a non-shipped or id-less run is a no-op — iterate needs a
+// merged change to build on.
+async function startIterateFromRun(rec) {
+    if (!rec || rec.status !== 'SHIPPED' || !rec.entryId) return;
+    await seedIterateSession(rec.entryId, 'Iterating on “' + (rec.title || 'this run') + '” — pulling the shipped change…');
+}
+
+// Open iterate mode on a shipped entry straight from a task's ACCEPT face,
+// scoped to `repo` (the task's routed target). The row layer can't import this
+// module (the toDoRow → claudeSheet → modals → toDoRow cycle), so main.js
+// registers this as the opener via setIterateTaskHandler. Reuses the exact seed
+// the RUNS-tab shipped record drives (seedIterateSession). Repo framing comes
+// FIRST: setChatWorkspaceRepo performs the same deliberate swap the workspace
+// pill does (a no-op when already on `repo` or when it isn't an allowed
+// workspace), so the per-workspace iterate id can never attach to the wrong
+// thread. Then open/uncollapse the chat surface as the other row entry points do
+// (openChatWithTask), fire the seed, and focus the composer so the user can
+// describe the change immediately. A 404 (entry cleared from TODO.md or its PR
+// reverted) surfaces as a readable note via requestAssistantReply's handler. A
+// missing entry id is a no-op.
+export function openIterateForEntry(entryId, repo) {
+    if (!entryId) return Promise.resolve();
+    if (repo && repo !== activeChatRepo) setChatWorkspaceRepo(repo);
+    if (window.innerWidth <= MOBILE_MAX_WIDTH) {
+        if (!isClaudeSheetOpen()) openClaudeSheet();
+    } else {
+        document.body.classList.remove('chatPaneCollapsed');
+        setChatPaneCollapsed(false);
+    }
+    // seedIterateSession runs synchronously up to the Worker call, so the surface
+    // exists by the time we focus the composer below.
+    const p = seedIterateSession(entryId, 'Iterating on this shipped change — pulling the diff…');
+    const input = sheetQuery('#claudeComposerInput');
+    if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
+    return p;
 }
 
 // ── DRAFTED ENTRY CARD ──
