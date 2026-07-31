@@ -1283,7 +1283,7 @@ export const listLogic = (function () {
     async function setAgentRunState(rowId, patch) {
         if (!rowId) return { ok: false, error: 'Missing row id.' };
         const src = (patch && typeof patch === 'object') ? patch : {};
-        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id'];
+        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id', 'todo_id'];
         const update = {};
         allowed.forEach(function (key) {
             if (src[key] !== undefined) update[key] = src[key];

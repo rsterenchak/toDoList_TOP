@@ -6,18 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-31',
+        added: [
+            "Accepting a proposed task now creates a real todo in your selected project's list, instead of shipping the run with no visible task appearing.",
+        ],
         fixed: [
             "The TODO.md strip in the queue rail now stays at its natural height instead of stretching to fill the rail and floating its contents in the middle when only a few tasks are present.",
             "The Coverage tab can edit and save its assignment, run Derive, and receive proposals again, and the working indicator lights during triage and derive runs — all of which had quietly stopped after the Agent board was retired.",
             "The Coverage tab's Derive action and the nav working dot now update the moment a derive run starts and finishes, instead of staying stuck on 'Deriving…' until you switch projects and back.",
             "Flagging a task now launches its triage run and lights the working indicator again, instead of silently queuing it and doing nothing after the Agent board was retired.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-07-30',
-        fixed: [
-            "A shipped task keeps its review status even after you clear all TODO.md entries, instead of losing it when the entry list is wiped.",
         ],
     },
 ];
