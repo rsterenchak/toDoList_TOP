@@ -67,7 +67,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6c94edc8-ac2f-4a23-bbc2-54e172a22d39 -->
 
-- [ ] **[MEDIUM]** Copy a shipped change as a context block for an outside conversation
+- [x] **[MEDIUM]** Copy a shipped change as a context block for an outside conversation — Completed: 2026-07-31
   - Type: feature
   - Description: Iterating on a shipped change outside the app means reassembling its context by hand — finding the entry text, the PR number, and the files touched, then pasting them somewhere. Add a control that produces that block in one tap. Put it on the detail pane's ACCEPT face, which already has every field it needs and is driven by the linked `agent_queue` row rather than local state — so unlike the RUNS tab's `localStorage` records, it works from whichever device you are holding.
   - Behavior: A task in the `accept` phase shows a copy control alongside its existing actions. Activating it copies a plain-text block to the clipboard and confirms with the existing toast. The block names the repo, the entry's marker id, the PR number and URL, the files from the entry's `- File:` line, the entry text as shipped, and a trailing placeholder line inviting a description of the desired change. The control does not alter the task, the entry, or the queue row — it only reads.
