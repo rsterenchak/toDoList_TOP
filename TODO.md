@@ -40,3 +40,21 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7053ca8f-6920-4f1e-8953-f61ea7b8108e -->
+
+- [ ] **[MEDIUM]** Move the working watch out of agentView.js
+  - Type: feature
+  - Description: `agentView.js` is down to one export worth keeping. `stuckReasonText` has already moved, and `main.js` is now the only importer, taking `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView` — all board rendering that dies with the view — plus `startAgentWorkingWatch`, which drives the nav working dot and has nothing to do with the board. Relocate that one function into `agentQueueStore.js`, beside the dispatch reconciler and the availability gate it already sits with conceptually. This is the first of three small steps to retire the view; earlier attempts bundled relocation, removal, and test cleanup into a single run and did not complete, so each step now lands on its own.
+  - Behavior: Identical to today. The nav working dot lights while a triage sweep or a dispatched run is in flight and clears when neither is, with the same grace window and hard cap. It continues to work with no board mounted, as it already does. Nothing else changes — the board still renders, its subscribe/unsubscribe still run, and no call site outside the watch is touched.
+  - Implementation notes:
+    - Move `startAgentWorkingWatch` and everything it closes over: its module-level started flag, the poll interval handle, the poll function, and any deadline or cadence constants it reads. Leaving state behind while the function moves is how this kind of extraction silently breaks — grep every identifier the function references and move or import each.
+    - `agentQueueStore.js` already hosts the dispatch reconciler and the availability gate, and the gate calls into the watch. If that call currently crosses module boundaries, this move makes it local — check for it and simplify if so.
+    - Match the shape already established there: module-level started flag, one interval, no dependence on a mounted view. `startDispatchReconciler` is the reference.
+    - Verify no import cycle forms. `agentQueueStore.js` must not gain anything reaching back into a view; if the watch reads something from `agentView.js`, that dependency has to move too or be inverted.
+    - Update `main.js` to take `startAgentWorkingWatch` from the new location, leaving the three board imports untouched — they are removed in the next entry. Its call site at roughly `main.js:2773` (`setTimeout(startAgentWorkingWatch, 0)`) stays as it is; only the import path changes.
+    - Move any test covering the watch out of `tests/agentView.test.js` into `tests/agentQueueStore.test.js`, updating its import path. Do NOT delete the rest of that file; the board is still live and its remaining tests are still valid coverage.
+    - Do not "improve" the watch while moving. No renames beyond what export requires, no cadence changes, no restructuring of the grace or hard-cap logic. A pure move keeps the diff reviewable.
+    - Report in the PR body: the before/after line count of both source files, which module-level state moved, how many test blocks relocated, and the suite's wall-clock runtime.
+  - Out of scope: `renderAgentView`, `subscribeAgentView`, `unsubscribeAgentView`, and their call sites in `main.js` — removed in the next entry. The `#agentView` container and the view-switching wiring. Deleting `agentView.js`, its CSS, or the bulk of its test file. The watch's own logic, cadence, and settle behavior.
+  - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/agentView.test.js`, `toDoList_main/tests/agentQueueStore.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 92ca938e-b67e-44f3-acb9-8d61cb6563a0 -->
