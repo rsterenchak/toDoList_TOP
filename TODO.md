@@ -23,3 +23,10 @@
   - File: `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/listLogic.js`
   - Out of scope: rows that already carry a `todo_id` (normal flagged tasks, not derive proposals) are unaffected — this only fills the gap for proposals accepted with no source todo.
   <!-- id: 966d0fa7-6944-466f-b45f-e4dabaf02de4 -->
+
+- [ ] **[MEDIUM]** Refresh #mainList after a derive proposal creates a real todo
+  - Type: bug
+  - Description: When accepting a derive proposal whose queue row has no `todo_id`, `dispatchDraft()` in `dispatchDraft.js` (around lines 69-84) materializes a real todo via `listLogic.addToDo(projectName, title)` + `listLogic.editToDoItem(...)`, but never re-renders `#mainList` afterward. The new row sits in the data model but the visible list is stale until the user navigates to a different project and back (which rebuilds `#mainList` from data on selection). The two other call sites of `listLogic.addToDo` already guard against this: `refactorCard.js`'s `pushCandidate` calls its local `rebuildMainList(projectName)` helper (refactorCard.js:163, using `addToDos_restore`/`addAllToDo_DOM` from `toDoRow.js`) right after creating the todo, and `seedTasksModal.js`'s add handler does the same rebuild inline after its batch add. Fix by rebuilding `#mainList` in `dispatchDraft()` immediately after `todoId` is set from the newly created item, only when the created todo belongs to the currently-selected project (compare against `getSelectedProjectName()`, already defined in this file) so it doesn't repaint an unrelated project's list.
+  - File: `toDoList_main/src/dispatchDraft.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: de80a73f-5be1-41aa-be6f-db7481b9519b -->
