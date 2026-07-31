@@ -10,7 +10,7 @@ function read(relative) {
 }
 
 // Pins the sync between #mainBar's data-view attribute (the CSS routing
-// hook that hides #mobileProjHeader on the Agent view) and
+// hook that hides #mobileProjHeader on the Structure view) and
 // the active mobile tab. Two guarantees:
 //   1. #mainBar is created with data-view="projects" at the DOM build
 //      site — never sits in the DOM without an attribute value, so no
@@ -136,10 +136,10 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
         // writes a non-projects value), or moves the write inside an
         // `if (viewKey !== 'projects')` guard so the projects case never
         // re-asserts the attribute. The header CSS rules key off
-        // `data-view="agent"` — if 'projects' is never written back on
+        // `data-view="structure"` — if 'projects' is never written back on
         // the return trip, the attribute stays stuck on the last
         // non-Projects value and #mobileProjHeader stays hidden by the
-        // [data-view="agent"] rule even when the Projects tab is active.
+        // [data-view="structure"] rule even when the Projects tab is active.
         function extractApplyActiveView() {
             const idx = main.indexOf('function applyActiveView');
             expect(idx).toBeGreaterThan(-1);
@@ -174,10 +174,13 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
             expect(secondArg).toMatch(/^[A-Za-z_$][A-Za-z0-9_$]*$/);
         });
 
-        it('maps view === "agent" to the same normalized value', () => {
-            expect(body).toMatch(
-                /view\s*===\s*['"]agent['"]\s*\)\s*safe\s*=\s*['"]agent['"]/
-            );
+        it('no longer normalizes an agent value — it falls back to projects', () => {
+            // The Agent view was severed: 'agent' is not a live view, so
+            // applyActiveView must not special-case it. Any non-structure
+            // token (including a restored 'agent') lands on the projects
+            // default via `let safe = 'projects'`.
+            expect(body).not.toMatch(/safe\s*=\s*['"]agent['"]/);
+            expect(body).not.toMatch(/===\s*['"]agent['"]/);
         });
 
         it('preserves the projects default for unknown view values', () => {
@@ -191,27 +194,27 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
         it('writes data-view before the view-specific render branches', () => {
             // The attribute must be set before any branch that depends
-            // on view-specific work (the agent render, etc.) so a
+            // on view-specific work (the Structure render, etc.) so a
             // thrown exception in those branches still leaves the CSS
             // routing attribute in a consistent state.
             const dataViewWriteIdx = body.search(
                 /setAttribute\(\s*['"]data-view['"]/
             );
-            const agentBranchIdx = body.search(
-                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]agent['"]\s*\)/
+            const structureBranchIdx = body.search(
+                /(else\s+if|if)\s*\(\s*safe\s*===\s*['"]structure['"]\s*\)/
             );
             expect(dataViewWriteIdx).toBeGreaterThan(-1);
-            expect(agentBranchIdx).toBeGreaterThan(-1);
-            expect(dataViewWriteIdx).toBeLessThan(agentBranchIdx);
+            expect(structureBranchIdx).toBeGreaterThan(-1);
+            expect(dataViewWriteIdx).toBeLessThan(structureBranchIdx);
         });
 
         it('produces the correct data-view attribute for every view on round-trip (runtime)', () => {
             // Source patterns above pin the shape; this test pins the
             // BEHAVIOR by lifting the normalization-and-write slice from
             // applyActiveView and executing it against a real DOM. The
-            // round-trip — initial → agent → projects, with a legacy
-            // 'inbox' value falling back to projects — must each leave
-            // data-view correctly synced. Extracting just the data-view
+            // round-trip — initial → structure → projects, with legacy
+            // 'agent' / 'inbox' values falling back to projects — must each
+            // leave data-view correctly synced. Extracting just the data-view
             // slice avoids depending on the rest of main.js (pill/tab
             // toggles, renderers, etc.), which can't load standalone.
             const sliceStart = body.search(/let\s+safe\s*=/);
@@ -244,12 +247,15 @@ describe('mobile tab bar / #mainBar[data-view] sync', () => {
 
             const mainBar = document.getElementById('mainBar');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
-            applyActiveView('agent');
-            expect(mainBar.getAttribute('data-view')).toBe('agent');
+            applyActiveView('structure');
+            expect(mainBar.getAttribute('data-view')).toBe('structure');
             applyActiveView('projects');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
-            // A legacy 'inbox' value is no longer a live view — it falls
+            // A legacy 'agent' value is no longer a live view — it falls
             // back to the projects default.
+            applyActiveView('agent');
+            expect(mainBar.getAttribute('data-view')).toBe('projects');
+            // Any other unknown token (e.g. a legacy 'inbox') does too.
             applyActiveView('inbox');
             expect(mainBar.getAttribute('data-view')).toBe('projects');
         });
