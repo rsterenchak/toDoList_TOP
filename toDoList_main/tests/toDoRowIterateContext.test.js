@@ -109,9 +109,47 @@ describe('Copy context control — mounting and clipboard', () => {
         expect(btn.textContent).toMatch(/copy context/i);
     });
 
-    it('does NOT mount Copy context on the mobile modal host (onOpenInViewer supplied)', () => {
+    it('mounts the ghost Copy context button on the mobile modal host too (onOpenInViewer supplied)', () => {
         const actions = buildReviewActions(makeItem(), 'Proj', { onOpenInViewer: function () {} });
-        expect(actions.querySelector('.descReviewBtn--copyctx')).toBeNull();
+        const btn = actions.querySelector('.descReviewBtn--copyctx');
+        expect(btn).not.toBeNull();
+        expect(btn.textContent).toMatch(/copy context/i);
+    });
+
+    it('produces an IDENTICAL block for both hosts on the same task (one shared builder)', () => {
+        const writes = [];
+        const writeText = vi.fn((t) => { writes.push(t); return Promise.resolve(); });
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+
+        const desktop = buildReviewActions(makeItem(), 'Proj');
+        desktop.querySelector('.descReviewBtn--copyctx').click();
+
+        const mobile = buildReviewActions(makeItem(), 'Proj', { onOpenInViewer: function () {} });
+        mobile.querySelector('.descReviewBtn--copyctx').click();
+
+        expect(writeText).toHaveBeenCalledTimes(2);
+        expect(writes[0]).toBe(writes[1]);
+        expect(writes[0]).toContain('ENTRY 4b179cbf-3678-4c8b-90af-abc123def456');
+        expect(writes[0]).toContain('--- what I want changed ---');
+    });
+
+    it('the mobile host control falls back to a temporary-element copy when the async write rejects', async () => {
+        const writeText = vi.fn(() => Promise.reject(new Error('denied')));
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        const exec = vi.fn(() => true);
+        document.execCommand = exec;
+
+        const actions = buildReviewActions(makeItem(), 'Proj', { onOpenInViewer: function () {} });
+        document.body.appendChild(actions);
+        actions.querySelector('.descReviewBtn--copyctx').click();
+
+        expect(writeText).toHaveBeenCalledTimes(1);
+        await Promise.resolve();
+        await Promise.resolve();
+        expect(exec).toHaveBeenCalledWith('copy');
+        expect(document.getElementById('todoRowToast')).not.toBeNull();
+
+        document.body.removeChild(actions);
     });
 
     it('falls back to a temporary-element copy when the async clipboard write rejects', async () => {

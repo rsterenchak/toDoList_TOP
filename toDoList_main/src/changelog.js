@@ -6,8 +6,8 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-31',
-        changed: [
-            "The Runs tab now shows a project's runs dispatched from any device, not just the current browser, so a run started elsewhere appears here and can be iterated on.",
+        added: [
+            "The control to copy a shipped change as a pasteable context block is now available on mobile, not just the desktop detail pane.",
         ],
         fixed: [
             "The Coverage tab can edit and save its assignment, run Derive, and receive proposals again, and the working indicator lights during triage and derive runs — all of which had quietly stopped after the Agent board was retired.",

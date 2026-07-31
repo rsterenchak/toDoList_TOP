@@ -110,7 +110,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 28acb54f-d9a1-4a3d-aa03-1b47089e1886 -->
 
-- [ ] **[LOW]** Mobile: add the copy-context control to the ACCEPT face
+- [x] **[LOW]** Mobile: add the copy-context control to the ACCEPT face — Completed: 2026-07-31
   - Type: feature
   - Description: The control that copies a shipped change as a pasteable context block was scoped to the desktop detail pane, following the earlier decision that inlining the ACCEPT face's controls into the mobile modal costs roughly 210px and pushes the entry textarea, mode strip, picker and Generate below the fold. But that cost came from the WHAT CHANGED card, the file list, and the three decision actions — a single copy control is one button with no supporting content, closer to 40px. Add just that one to the mobile modal's ACCEPT face. The block exists to be pasted into an outside conversation, and the phone is where that most often happens, so the one surface likely to need it is currently the one without it.
   - Behavior: On mobile, a task whose phase is `accept` shows a copy-context control in its description-editor modal, beside the existing REVIEW SHIPPED CHANGE action. Activating it copies the same block the desktop control produces — repo, entry marker, PR number and URL, files, the entry as shipped, and the trailing placeholder — and confirms with the existing toast. Everything else about the mobile ACCEPT face is unchanged: acknowledging still routes to the TODO.md viewer, and the WHAT CHANGED card, file list, and decision actions stay desktop-only.

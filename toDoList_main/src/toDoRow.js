@@ -1246,26 +1246,25 @@ export function buildReviewActions(item, projectName, options) {
 
     // COPY CONTEXT — a ghost secondary path beside OPEN IN TODO.MD (not competing
     // with ACCEPT & CLOSE). Copies a plain-text block for iterating on this shipped
-    // change in an outside conversation. Desktop-detail-pane only: the mobile modal
-    // host supplies an `onOpenInViewer` callback and keeps its single route action
-    // (inlining accept controls there costs too much height), so this is added only
-    // when no such host callback is present — the pane passes none. Reads only: the
-    // entry (item), the linked queue row's PR fields fetched fresh from the shared
-    // store at click time, and the active project's repo. It never mutates the task,
-    // the entry, or the row.
-    if (typeof opts2.onOpenInViewer !== 'function') {
-        const copyCtx = document.createElement('button');
-        copyCtx.type = 'button';
-        copyCtx.className = 'descReviewBtn descReviewBtn--copyctx';
-        copyCtx.textContent = 'Copy context';
-        copyCtx.addEventListener('click', function (e) {
-            e.stopPropagation();
-            const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
-            const target = resolveDispatchTarget();
-            copyIterateContext(buildIterateContextBlock(item, queueRow, target && target.repo));
-        });
-        actions.appendChild(copyCtx);
-    }
+    // change in an outside conversation. Mounted for BOTH hosts — the desktop detail
+    // pane and the mobile description-editor modal — since one copy control is a
+    // single ghost button with no supporting content, and the phone is the surface
+    // where pasting into an outside conversation most often happens. Both hosts share
+    // this ONE builder + handler, so the block can never drift between them. Reads
+    // only: the entry (item), the linked queue row's PR fields fetched fresh from the
+    // shared store at click time, and the active project's repo. It never mutates the
+    // task, the entry, or the row.
+    const copyCtx = document.createElement('button');
+    copyCtx.type = 'button';
+    copyCtx.className = 'descReviewBtn descReviewBtn--copyctx';
+    copyCtx.textContent = 'Copy context';
+    copyCtx.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+        const target = resolveDispatchTarget();
+        copyIterateContext(buildIterateContextBlock(item, queueRow, target && target.repo));
+    });
+    actions.appendChild(copyCtx);
 
     return actions;
 }
