@@ -98,7 +98,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3f84c4fe-5aeb-49f4-b6c7-5cf73f918b1a -->
 
-- [ ] **[HIGH]** Run trackers change state without notifying any surface
+- [x] **[HIGH]** Run trackers change state without notifying any surface — Completed: 2026-07-31
   - Type: bug
   - Description: The nav working dot never lights during a derive or a triage sweep, and the Coverage tab's Derive action stays on "deriving" until you switch projects and back. The trackers in `agentQueueStore.js` flip `_deriveActive` and `_sweepActive` correctly, then announce the change by calling `_trackerDeps.refreshStatusPill()` — a board-only callback the wiring relocation deliberately dropped, since there is no board to repaint. Every call site is guarded so nothing throws, but that guard now swallows the only signal the trackers emitted. State changes silently; no surface repaints. Switching projects works because it re-reads the state on mount rather than being notified.
   - Behavior: When a derive or triage sweep starts, the nav working dot lights and the Coverage tab's Derive action shows its pending state, without a project switch or reload. When either settles, both clear. The Coverage tab's proposal count and review action update as proposals arrive. Behaviour with a board mounted (tests only) is unchanged. Nothing about the trackers' polling, grace window, hard cap, or settle logic changes.
