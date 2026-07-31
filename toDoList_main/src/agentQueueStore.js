@@ -850,9 +850,6 @@ export const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
 //   refreshStatusPill()          — repaint the board header pill in place
 //   paint()                      — full board repaint (derive stop drops "Drafting…")
 //   refreshAgentQueue(name)      — reload + notify the selected project's rows
-//   seedWorkingWatchSweep(conf)  — light the nav working dot from dispatch time
-//   clearWorkingWatchSweepSeed() — drop that seed when a dispatch fails
-//   pollAgentWorkingWatch()      — recompute the nav dot now
 //   fetchActiveRuns(target, wf)  — Worker active-runs probe (inject.js)
 //   pollRunStatus(opts)          — Worker run-status lookup (inject.js)
 //   resolveDispatchTarget()      — the selected project's routed target (dispatchDraft.js)
@@ -921,8 +918,9 @@ export function startSweepTracking(alreadyConfirmed) {
         _sweepPoller = setInterval(pollSweepOnce, SWEEP_POLL_MS);
     }
     // Seed the mount-independent working watch so the nav dot lights now, not
-    // 30-45s later when the probe finally observes the registered run.
-    if (_trackerDeps) _trackerDeps.seedWorkingWatchSweep(alreadyConfirmed);
+    // 30-45s later when the probe finally observes the registered run. The watch
+    // now lives in this module, so this is a local call rather than a DI hop.
+    seedWorkingWatchSweep(alreadyConfirmed);
     if (_trackerDeps) _trackerDeps.refreshStatusPill();
     pollSweepOnce();
 }
@@ -1133,6 +1131,190 @@ function finishDeriveRun(correlationId, target) {
         .then(refresh);
 }
 
+// ── PERSISTENT AGENT-WORKING WATCH ──
+// A lightweight, mount-INDEPENDENT watch on whether the agent is actively
+// working — a triage sweep in flight, or a ship run dispatched/running for the
+// selected project. Relocated here out of agentView.js so it survives the
+// board's deletion, beside the dispatch reconciler and the run trackers it
+// mirrors. The board subscription (subscribeAgentView) is torn down by
+// unsubscribeAgentView() on tab-exit (a backgrounded board holds no open
+// socket), which also clears the board's row cache and forces `_sweepActive`
+// false via stopSweepTracking — so the header pill's working signal goes dark the
+// instant you leave the Agent tab, exactly the context the nav "working" dot
+// exists to serve. This watch is therefore started once at app init and NEVER
+// torn down. It carries ONLY the working signal: its own minimal agent_queue
+// realtime subscription (separate from the shared board channel, to catch
+// dispatched/running transitions) plus a slow triage active-runs probe. It
+// deliberately does NOT keep the board subscription or the dispatch pollers alive
+// off-tab, and never rebuilds the board — it only toggles a `body.agentWorking`
+// class the nav CSS keys the dot off, mirroring the `agentUnavailable` body-flag
+// pattern. The Worker probes it needs (fetchActiveRuns / resolveDispatchTarget)
+// are reached through the run-tracker DI bundle (_trackerDeps) the same acyclic
+// way the sweep/derive trackers reach them — the store must not import inject.js
+// or a view — so the sweep half degrades to a no-op before agentView.js has
+// registered the trackers (the ship half needs only the store-local queue cache).
+let _workingWatchStarted = false;
+let _workingWatchChannel = null;
+let _workingWatchPoller = null;
+let _workingWatchState = false;
+// The watch's own view of a locally-seeded triage sweep, independent of the
+// mounted board's `_sweepActive`/`_sweepSeenActive` (which are cleared on tab
+// exit). Seeded by startSweepTracking the instant a sweep dispatches so the nav
+// dot lights synchronously, then settled by the watch's poll: held true through
+// the registration window, and cleared once the probe has confirmed the run in
+// flight and then seen it gone (seen-active-then-gone), or once the grace / hard
+// cap elapses — mirroring pollSweepOnce's grace semantics so the optimistic seed
+// doesn't flicker off on the first pre-registration tick.
+let _workingWatchSweepSeeded = false;
+let _workingWatchSweepSeenActive = false;
+let _workingWatchSweepGraceDeadline = 0;
+let _workingWatchSweepHardDeadline = 0;
+
+// Background probe cadence for the persistent working watch. Slower than the
+// mounted sweep poller (SWEEP_POLL_MS) — this only drives a cosmetic nav dot, so
+// a gentle tick keeps Worker load low while still catching a triage sweep or a
+// project switch that no realtime push covers.
+const WORKING_WATCH_POLL_MS = 15000;
+
+// Toggle body.agentWorking to reflect the computed working signal, but only when
+// it actually changes so the class isn't churned every tick. No-op before
+// document.body exists.
+function setAgentWorkingClass(working) {
+    working = !!working;
+    if (working === _workingWatchState) return;
+    _workingWatchState = working;
+    if (document.body) document.body.classList.toggle('agentWorking', working);
+}
+
+// Seed the watch with a just-dispatched triage sweep: arm the grace / hard-cap
+// deadlines and light the nav dot immediately, so it lights from dispatch time
+// rather than from the first probe that observes the registered run. Called from
+// startSweepTracking (the shared chokepoint for local dispatch and the
+// cross-device mount seed). `alreadyConfirmed` marks the mount seed, whose fetch
+// already saw the run in flight, so the seen-active-then-gone settle applies at
+// once instead of waiting out the grace window.
+function seedWorkingWatchSweep(alreadyConfirmed) {
+    const now = Date.now();
+    _workingWatchSweepSeeded = true;
+    _workingWatchSweepSeenActive = !!alreadyConfirmed;
+    _workingWatchSweepGraceDeadline = now + SWEEP_GRACE_MS;
+    _workingWatchSweepHardDeadline = now + SWEEP_HARD_CAP_MS;
+    setAgentWorkingClass(true);
+}
+
+// Drop the watch's seeded-sweep state. Called when a dispatch fails (no run will
+// register) so the seed can't hold the dot lit through the grace window, and
+// from the watch's own settle logic once a sweep is confirmed finished.
+export function clearWorkingWatchSweepSeed() {
+    _workingWatchSweepSeeded = false;
+    _workingWatchSweepSeenActive = false;
+    _workingWatchSweepGraceDeadline = 0;
+    _workingWatchSweepHardDeadline = 0;
+}
+
+// Resolve the sweep component of the working signal from the latest probe result
+// plus any local seed. A live probe (`active:true`) always means Working and
+// promotes a seed to seen-active. With the probe quiet, a seed still holds the
+// dot lit through the registration window and settles it only once the run has
+// been seen active and then gone, or the grace / hard cap elapses — the same
+// arc pollSweepOnce uses for the mounted pill. Without a seed the probe alone
+// decides (e.g. a sweep started on another device that this client never seeded).
+function resolveWatchSweepWorking(probeActive) {
+    if (probeActive) {
+        if (_workingWatchSweepSeeded) _workingWatchSweepSeenActive = true;
+        return true;
+    }
+    if (!_workingWatchSweepSeeded) return false;
+    const now = Date.now();
+    if (now >= _workingWatchSweepHardDeadline) { clearWorkingWatchSweepSeed(); return false; }
+    // Confirmed in flight and now gone → finished.
+    if (_workingWatchSweepSeenActive) { clearWorkingWatchSweepSeed(); return false; }
+    // Never registered within the grace window → give up.
+    if (now >= _workingWatchSweepGraceDeadline) { clearWorkingWatchSweepSeed(); return false; }
+    // Still inside the registration window → hold the dot lit.
+    return true;
+}
+
+// One watch tick: compute `working` = a triage sweep in flight for the selected
+// project OR any dispatched/running row for the selected project — the same
+// predicate the header pill uses (refreshStatusPill), but resolved independently
+// so it holds off-tab where the board's row cache / `_sweepActive` are cleared.
+// Both halves are scoped to the selected project: the ship half reads its
+// dispatched/running rows, and the sweep half gates the repo-wide triage
+// active-runs probe on the project actually owning an in-flight 'triaging' row
+// (see below). The sweep component then folds the raw probe with any local seed
+// via resolveWatchSweepWorking, so a just-dispatched sweep stays lit through the
+// registration window instead of blinking dark until the probe first observes the
+// registered run. Both probes degrade to false on any error, and skip entirely
+// when there is no selected project or no routed target (or before the run
+// trackers register their Worker probes), so a pre-auth or repo-less state is a
+// cheap no-op (a local seed is still honored — the probe simply resolves false).
+export function pollAgentWorkingWatch() {
+    const projectName = resolveSelectedProjectName();
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    const target = _trackerDeps ? _trackerDeps.resolveDispatchTarget() : null;
+
+    const shipProbe = projectId
+        ? fetchQueueRows(projectId).then(function (rows) {
+            return (Array.isArray(rows) ? rows : []).some(function (r) {
+                return r && (r.state === 'dispatched' || r.state === 'running');
+            });
+        }).catch(function () { return false; })
+        : Promise.resolve(false);
+
+    // Scope the sweep half to the selected project the same way shipProbe scopes
+    // the ship half. The repo-wide triage active-runs probe only reports whether
+    // the TARGET REPO has a claude-triage.yml run in flight, with no project
+    // attribution — on its own it lights the dot for every project sharing that
+    // repo (or the null default target). Gate it on the project owning an
+    // in-flight 'triaging' agent_queue row (the state flagTaskForAgent writes and
+    // reconcileStuckTriaging later clears), so the dot lights only while THIS
+    // project has a sweep actually processing its flagged tasks.
+    const sweepProbe = (target && projectId)
+        ? Promise.all([
+            Promise.resolve(_trackerDeps.fetchActiveRuns(target, 'triage')),
+            fetchQueueRows(projectId),
+        ]).then(function (parts) {
+            const repoActive = !!(parts[0] && parts[0].ok !== false && parts[0].active);
+            const projectTriaging = (Array.isArray(parts[1]) ? parts[1] : []).some(function (r) {
+                return r && r.state === 'triaging';
+            });
+            return repoActive && projectTriaging;
+        }).catch(function () { return false; })
+        : Promise.resolve(false);
+
+    return Promise.all([shipProbe, sweepProbe]).then(function (parts) {
+        const sweepWorking = resolveWatchSweepWorking(parts[1]);
+        setAgentWorkingClass(parts[0] || sweepWorking);
+    });
+}
+
+// Start the persistent working watch. Idempotent — guarded against double-init
+// (app-init code can evaluate more than once), so a second call is a no-op
+// rather than a second channel plus a second poller. Opens its own agent_queue
+// realtime channel (each push re-evaluates the working signal) and a slow
+// background poller, then kicks one immediate tick.
+export function startAgentWorkingWatch() {
+    if (_workingWatchStarted) return;
+    _workingWatchStarted = true;
+    if (!_workingWatchChannel && supabase && typeof supabase.channel === 'function') {
+        try {
+            _workingWatchChannel = supabase
+                .channel('agent-working-watch:agent_queue')
+                .on('postgres_changes',
+                    { event: '*', schema: 'public', table: 'agent_queue' },
+                    function () { pollAgentWorkingWatch(); })
+                .subscribe();
+        } catch (e) {
+            _workingWatchChannel = null;
+        }
+    }
+    if (!_workingWatchPoller) {
+        _workingWatchPoller = setInterval(pollAgentWorkingWatch, WORKING_WATCH_POLL_MS);
+    }
+    pollAgentWorkingWatch();
+}
+
 // ── AGENT AVAILABILITY GATE ───────────────────────────────────────────
 // Relocated here out of agentView.js so it survives the board's deletion. A
 // project with no routed inject target can't draft, dispatch, or ship agent
@@ -1145,17 +1327,13 @@ function finishDeriveRun(correlationId, target) {
 // test the sidebar thunderbolt uses: inject configured globally AND this project
 // carrying a routed inject target.
 //
-// The gate reaches two capabilities that live outside the store through the
-// store's established DI channels rather than a static import — the store must
-// not import a view or inject.js, the same acyclic rule the reconciler and run
-// trackers already follow:
+// The gate reaches inject.js's configured-check through the store's established DI
+// channel rather than a static import — the store must not import a view or
+// inject.js, the same acyclic rule the reconciler and run trackers already follow:
 //   • isInjectConfigured() — registered from inject.js via setAgentAvailabilityDeps
 //     at that module's load (its natural home; survives the board's deletion).
-//   • pollAgentWorkingWatch() — the persistent working watch still lives in
-//     agentView.js this entry (relocating it is out of scope), so the gate
-//     recomputes the nav dot through the SAME callback the run trackers already
-//     receive via configureRunTrackers (_trackerDeps.pollAgentWorkingWatch). When
-//     the working watch relocates with the board's deletion, this call becomes local.
+// The nav-dot recompute (pollAgentWorkingWatch) is now a local call: the
+// persistent working watch relocated into this module beside the run trackers.
 export const AGENT_UNAVAILABLE_MSG =
     'Agent unavailable here — no repo configured for this project';
 
@@ -1191,10 +1369,9 @@ export function syncAgentAvailabilityForProject(projectName) {
     // otherwise only ticks on its 15s interval or an agent_queue realtime push —
     // never on a project switch. Without this the dot hangs on the previous
     // project's state for up to WORKING_WATCH_POLL_MS after switching. This is the
-    // documented project-switch hook, so recompute here.
-    if (_trackerDeps && typeof _trackerDeps.pollAgentWorkingWatch === 'function') {
-        _trackerDeps.pollAgentWorkingWatch();
-    }
+    // documented project-switch hook, so recompute here (local call — the watch
+    // lives in this module).
+    pollAgentWorkingWatch();
     return hasRepo;
 }
 

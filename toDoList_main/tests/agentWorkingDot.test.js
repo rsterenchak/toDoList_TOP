@@ -7,8 +7,9 @@ import { vi } from 'vitest';
 // run is in flight. These tests drive it with a controllable fake Supabase
 // client (no network) and assert the class tracks whether any dispatched/running
 // row exists for the selected project. The triage active-runs probe is a no-op
-// here because the mounted project carries no routed inject target (so
-// resolveDispatchTarget returns null and the sweep probe is skipped).
+// here: the board is never imported, so the run-tracker Worker probes are never
+// registered (no resolveDispatchTarget), which skips the sweep half and leaves the
+// ship half — read straight from the store's queue cache — driving the dot.
 
 let queueRows = [];
 // Captured realtime callback so a test can simulate an agent_queue push and
@@ -30,14 +31,10 @@ vi.mock('../src/supabaseClient.js', () => ({
     },
 }));
 
-// agentView imports openChatWithSeed from claudeSheet.js; stub it so the real
-// chat surface isn't pulled into jsdom.
-vi.mock('../src/claudeSheet.js', () => ({
-    openChatWithSeed: () => {},
-}));
-
 import { listLogic } from '../src/listLogic.js';
-import { startAgentWorkingWatch } from '../src/agentView.js';
+// The persistent working watch now lives in the shared store (relocated out of the
+// board), so it's imported from there — the board isn't pulled into jsdom at all.
+import { startAgentWorkingWatch } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 4) {

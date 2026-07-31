@@ -65,7 +65,13 @@ vi.mock('../src/claudeSheet.js', () => ({
 }));
 
 import { listLogic } from '../src/listLogic.js';
-import { startAgentWorkingWatch } from '../src/agentView.js';
+// The working watch now lives in the store, so startAgentWorkingWatch is imported
+// from there. The board is still imported for its side effect: agentView.js's
+// configureRunTrackers call registers the Worker probes (resolveDispatchTarget /
+// fetchActiveRuns) the watch's sweep half reaches through the tracker DI bundle —
+// without it the sweep probe these tests exercise would degrade to a no-op.
+import '../src/agentView.js';
+import { startAgentWorkingWatch } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 6) {

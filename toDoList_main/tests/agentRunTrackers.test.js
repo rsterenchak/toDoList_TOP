@@ -5,10 +5,11 @@ import { vi } from 'vitest';
 // a run whether or not the board is mounted — the same mount-independence the dispatch
 // reconciler and the working watch already have. These tests drive the trackers
 // DIRECTLY through the store's exported functions, with NO board rendered: they assert
-// the accessors reflect state, the pill/working-watch/Worker callbacks are invoked
-// through configureRunTrackers, a sweep reconciles the project captured at start (not
-// whatever is selected when it settles), a derive run resolves its conclusion, and both
-// stop polling once settled.
+// the accessors reflect state, the pill/Worker callbacks are invoked through
+// configureRunTrackers, the working watch (now a store-local module, no longer a
+// tracker DI callback) is seeded — observable as the `body.agentWorking` class — a
+// sweep reconciles the project captured at start (not whatever is selected when it
+// settles), a derive run resolves its conclusion, and both stop polling once settled.
 
 // ── supabase stub ────────────────────────────────────────────────────
 // `select().eq('project_id', id)` returns that project's rows and records the id it was
@@ -74,9 +75,6 @@ beforeEach(() => {
         refreshStatusPill: vi.fn(),
         paint: vi.fn(),
         refreshAgentQueue: vi.fn(),
-        seedWorkingWatchSweep: vi.fn(),
-        clearWorkingWatchSweepSeed: vi.fn(),
-        pollAgentWorkingWatch: vi.fn(),
         fetchActiveRuns: vi.fn(() => Promise.resolve({ ok: true, active: false })),
         pollRunStatus: vi.fn(() => Promise.resolve({ ok: true, found: false })),
         resolveDispatchTarget: vi.fn(() => ({ repo: 'owner/repo', file_path: 'TODO.md' })),
@@ -100,7 +98,9 @@ describe('run trackers (relocated to the store) — triage sweep', () => {
         startSweepTracking(false);
 
         expect(isSweepActive()).toBe(true);
-        expect(deps.seedWorkingWatchSweep).toHaveBeenCalledWith(false);
+        // The store-local working watch is seeded from dispatch time: the nav dot
+        // lights immediately (body.agentWorking), no longer a tracker DI callback.
+        expect(document.body.classList.contains('agentWorking')).toBe(true);
         expect(deps.refreshStatusPill).toHaveBeenCalled();
         await flush();
         expect(deps.fetchActiveRuns.mock.calls.some((c) => c[1] === 'triage')).toBe(true);
@@ -166,7 +166,9 @@ describe('run trackers (relocated to the store) — triage sweep', () => {
         await flush();
 
         expect(isSweepActive()).toBe(true);
-        expect(deps.seedWorkingWatchSweep).toHaveBeenCalledWith(true);
+        // The mount seed (alreadyConfirmed=true) also seeds the store-local watch,
+        // lighting the nav dot — observed via the body flag rather than a DI callback.
+        expect(document.body.classList.contains('agentWorking')).toBe(true);
         stopSweepTracking();
     });
 });

@@ -102,7 +102,6 @@ import {
     renderAgentView,
     subscribeAgentView,
     unsubscribeAgentView,
-    startAgentWorkingWatch,
 } from './agentView.js';
 import {
     startAgentQueueSubscription,
@@ -111,6 +110,7 @@ import {
     getWaitingQuestionCounts,
     onQueueChange,
     syncAgentAvailabilityForProject,
+    startAgentWorkingWatch,
     stuckReasonText,
 } from './agentQueueStore.js';
 import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
