@@ -844,16 +844,21 @@ const SWEEP_POLL_MS = 5000;
 export const SWEEP_GRACE_MS = 30 * 1000;
 export const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
 
-// Board + Worker callbacks, registered by agentView.js at module load (same setter
-// idiom and acyclic rationale as setDispatchReconcilerDeps). Null until the board
-// module registers, so a tracker call degrades to a no-op before then.
-//   refreshStatusPill()          — repaint the board header pill in place
-//   paint()                      — full board repaint (derive stop drops "Drafting…")
-//   refreshAgentQueue(name)      — reload + notify the selected project's rows
+// Board + Worker callbacks, registered on boot by the wiring module (agentWiring.js
+// in the running app; agentView.js still self-registers them when a test mounts the
+// board). Same setter idiom and acyclic rationale as setDispatchReconcilerDeps: the
+// store must not import inject.js or a view, so the live probes are injected. Null
+// until a registrar runs, so a tracker call degrades to a no-op before then.
+//   refreshStatusPill()          — repaint the board header pill in place (board-only,
+//                                  OPTIONAL: omitted by the app wiring, which has no board)
+//   paint()                      — full board repaint (board-only, OPTIONAL, as above)
+//   refreshAgentQueue(name)      — reload + notify the selected project's rows (live)
 //   fetchActiveRuns(target, wf)  — Worker active-runs probe (inject.js)
 //   pollRunStatus(opts)          — Worker run-status lookup (inject.js)
 //   resolveDispatchTarget()      — the selected project's routed target (dispatchDraft.js)
 //   showInjectToast(msg, kind)   — non-blocking notice (inject.js)
+// The board-only repaint callbacks are guarded at each call site (checked present
+// before invoking) so a wiring that omits them — the app's — never throws.
 let _trackerDeps = null;
 export function configureRunTrackers(deps) {
     _trackerDeps = (deps && typeof deps === 'object') ? deps : null;
@@ -921,7 +926,7 @@ export function startSweepTracking(alreadyConfirmed) {
     // 30-45s later when the probe finally observes the registered run. The watch
     // now lives in this module, so this is a local call rather than a DI hop.
     seedWorkingWatchSweep(alreadyConfirmed);
-    if (_trackerDeps) _trackerDeps.refreshStatusPill();
+    if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill();
     pollSweepOnce();
 }
 
@@ -936,7 +941,7 @@ export function stopSweepTracking() {
     const wasActive = _sweepActive;
     _sweepActive = false;
     _sweepSeenActive = false;
-    if (wasActive && _trackerDeps) _trackerDeps.refreshStatusPill();
+    if (wasActive && _trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill();
 }
 
 // One poll tick: ask the Worker whether claude-triage.yml has an in-flight run.
@@ -956,7 +961,7 @@ function pollSweepOnce() {
         if (!res || res.ok === false) return; // transient — retry next tick
         if (res.active) {
             _sweepSeenActive = true;
-            if (!_sweepActive) { _sweepActive = true; if (_trackerDeps) _trackerDeps.refreshStatusPill(); }
+            if (!_sweepActive) { _sweepActive = true; if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill(); }
             return;
         }
         // active === false
@@ -1048,7 +1053,7 @@ export function startDeriveTracking() {
     if (!_derivePoller) {
         _derivePoller = setInterval(pollDeriveOnce, SWEEP_POLL_MS);
     }
-    if (_trackerDeps) _trackerDeps.refreshStatusPill();
+    if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill();
     pollDeriveOnce();
 }
 
@@ -1067,7 +1072,7 @@ export function stopDeriveTracking(silent) {
     _deriveActive = false;
     _deriveSeenActive = false;
     _deriveCorrelationId = null;
-    if (wasActive && !silent && _trackerDeps) _trackerDeps.paint();
+    if (wasActive && !silent && _trackerDeps && _trackerDeps.paint) _trackerDeps.paint();
 }
 
 // One poll tick: ask the Worker whether claude-derive.yml has an in-flight run.
@@ -1087,7 +1092,7 @@ function pollDeriveOnce() {
         if (!res || res.ok === false) return; // transient — retry next tick
         if (res.active) {
             _deriveSeenActive = true;
-            if (!_deriveActive) { _deriveActive = true; if (_trackerDeps) _trackerDeps.refreshStatusPill(); }
+            if (!_deriveActive) { _deriveActive = true; if (_trackerDeps && _trackerDeps.refreshStatusPill) _trackerDeps.refreshStatusPill(); }
             return;
         }
         // active === false
