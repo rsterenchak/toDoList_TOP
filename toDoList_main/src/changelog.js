@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-07-30',
-        changed: [
-            "On desktop, each task row's trailing controls now show a copy-title button in place of the description caret; clicking the row still opens its description.",
+        date: '2026-07-31',
+        fixed: [
+            "The TODO.md strip in the queue rail now stays at its natural height instead of stretching to fill the rail and floating its contents in the middle when only a few tasks are present.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-07-30',
         fixed: [
             "TODO.md opened in the detail pane now fills the pane's height and scrolls internally, instead of stopping partway down and leaving dead space below it.",
             "The inline TODO.md viewer card now sizes to its content — hugging short files and sitting directly beneath the per-project empty state instead of stretching to fill the panel or dropping to the column floor.",

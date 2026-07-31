@@ -11856,6 +11856,21 @@ body.row-dragging * { cursor: grabbing !important; }
     grid-template-columns: var(--queue-width, minmax(260px, 308px)) auto minmax(0, 1fr);
   }
   #mainBar { grid-column: 1; }
+  /* Desktop gains a third row track between the filter bar and the list so the
+     relocated TODO.md rail strip has an explicit `auto` home. Without it the
+     strip (a direct child of #mainBar with no grid-row) auto-places into — and,
+     as a stretch-aligned grid item, fills the height of — the list's 1fr track,
+     so on a short list it balloons and its `align-items: center` floats the file
+     name + actions in the middle of an oversized box (the unplaced-child-in-an-
+     explicit-grid defect that has repeatedly hit #descSibling). Filter bar in row
+     1, strip in row 2, list in the 1fr row 3 — every child placed explicitly so
+     nothing rides on source order or auto-placement. The Agent/Structure overlays
+     span grid-row: 1 / -1 and stay correct across all three tracks. #mainBar has
+     no row-gap, so when no strip is present the empty middle `auto` track
+     collapses to 0 and the old two-row layout is preserved. */
+  #mainBar { grid-template-rows: auto auto 1fr; }
+  #taskFilterBar { grid-row: 1; }
+  #mainList { grid-row: 3; }
   /* The handle occupies its own narrow track and only shows in STREAM view — body
      carries data-view in lockstep with #mainBar (applyActiveView), and the handle
      is a sibling of #mainBar so it can't key off #mainBar's own attribute. A
@@ -11903,6 +11918,10 @@ body.row-dragging * { cursor: grabbing !important; }
      and the relocated action controls. The card body renders in the detail pane
      at full width when expanded. */
   .todoMdViewerStrip {
+    /* Explicit middle track (see #mainBar grid-template-rows above): pins the
+       strip directly beneath the filter bar at its natural content height,
+       rather than auto-placing into and stretching to fill the list's 1fr row. */
+    grid-row: 2;
     display: flex;
     align-items: center;
     flex-wrap: wrap;
