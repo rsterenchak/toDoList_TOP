@@ -35,10 +35,12 @@ vi.mock('../src/supabaseClient.js', () => ({
 const fetchActiveRuns = vi.fn(() => Promise.resolve({ ok: true, active: true }));
 const pollRunStatus = vi.fn(() => Promise.resolve({ ok: true, found: false }));
 const dispatchDerive = vi.fn(() => Promise.resolve({ ok: true }));
+const dispatchTriage = vi.fn(() => Promise.resolve({ ok: true, dispatched: true }));
 vi.mock('../src/inject.js', () => ({
     fetchActiveRuns: (...a) => fetchActiveRuns(...a),
     pollRunStatus: (...a) => pollRunStatus(...a),
     dispatchDerive: (...a) => dispatchDerive(...a),
+    dispatchTriage: (...a) => dispatchTriage(...a),
     showInjectToast: vi.fn(),
     mintEntryId: () => 'corr-test',
     findTargetById: () => null,
@@ -58,6 +60,9 @@ import {
     startDeriveTracking,
     isDeriveActive,
     stopDeriveTracking,
+    fireTriageSweep,
+    isTriageInFlight,
+    setTriageInFlight,
 } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -74,12 +79,15 @@ beforeEach(() => {
     fetchActiveRuns.mockClear();
     pollRunStatus.mockClear();
     dispatchDerive.mockClear();
+    dispatchTriage.mockClear();
+    setTriageInFlight(false);
     document.body.innerHTML = '';
 });
 
 afterEach(() => {
     stopSweepTracking();
     stopDeriveTracking(true);
+    setTriageInFlight(false);
 });
 
 describe('agentWiring — boot wiring for the extracted agent subsystems', () => {
@@ -120,5 +128,63 @@ describe('agentWiring — boot wiring for the extracted agent subsystems', () =>
             seedSweepState();
         }).not.toThrow();
         await flush();
+    });
+});
+
+describe('agentWiring — boardless triage dispatcher registered through the boot path', () => {
+    it('registers the triage dispatcher so fireTriageSweep dispatches a real run without the board', async () => {
+        listLogic.addProject('Alpha');
+        setSelected('Alpha');
+
+        // fireTriageSweep resolves to the store's registered dispatcher. Before the
+        // fix only the severed board registered one, so this call was a null-
+        // dispatcher no-op (resolved null, nothing dispatched). With agentWiring
+        // registering it on boot — the board never imported here — a real
+        // claude-triage.yml dispatch fires for the selected project.
+        const res = await fireTriageSweep('Alpha');
+        await flush();
+
+        expect(dispatchTriage).toHaveBeenCalledTimes(1);
+        expect(dispatchTriage.mock.calls[0][0]).toBe(listLogic.getProjectId('Alpha'));
+        expect(res).toEqual({ ok: true, dispatched: true });
+        // The sweep tracker started, so the header pill / nav dot read Working.
+        expect(isSweepActive()).toBe(true);
+    });
+
+    it('coalesces a rapid double-fire into one dispatch via the shared in-flight guard', async () => {
+        listLogic.addProject('Beta');
+        setSelected('Beta');
+
+        // Two calls before the first settles: the shared guard drops the second.
+        fireTriageSweep('Beta');
+        fireTriageSweep('Beta');
+        await flush();
+
+        expect(dispatchTriage).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears the optimistic Working state when the triage dispatch fails', async () => {
+        listLogic.addProject('Gamma');
+        setSelected('Gamma');
+        dispatchTriage.mockImplementationOnce(() => Promise.resolve({ ok: false, reason: 'boom' }));
+
+        await fireTriageSweep('Gamma');
+        await flush();
+
+        // A failed dispatch must not leave the sweep tracker (pill/nav dot) stuck
+        // Working, and it releases the in-flight guard for a retry.
+        expect(isSweepActive()).toBe(false);
+        expect(isTriageInFlight()).toBe(false);
+    });
+
+    it('swallows the call with no dispatch when no project id resolves', async () => {
+        // No project added → getProjectId returns null, so nothing dispatches.
+        setSelected('Ghost');
+
+        const res = await fireTriageSweep('Ghost');
+        await flush();
+
+        expect(res).toBe(null);
+        expect(dispatchTriage).not.toHaveBeenCalled();
     });
 });

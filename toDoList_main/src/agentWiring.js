@@ -5,6 +5,7 @@ import {
     showInjectToast,
     mintEntryId,
     dispatchDerive,
+    dispatchTriage,
     findTargetById,
 } from './inject.js';
 import { resolveDispatchTarget } from './dispatchDraft.js';
@@ -17,6 +18,13 @@ import {
     startDeriveTracking,
     stopDeriveTracking,
     setDeriveCorrelationId,
+    setTriageDispatcher,
+    isTriageInFlight,
+    setTriageInFlight,
+    startSweepTracking,
+    stopSweepTracking,
+    clearWorkingWatchSweepSeed,
+    pollAgentWorkingWatch,
 } from './agentQueueStore.js';
 import { configureMockupFlow } from './mockupFlow.js';
 import { configureAssignmentCoverage } from './assignmentCoverage.js';
@@ -42,6 +50,14 @@ import { configureAssignmentCoverage } from './assignmentCoverage.js';
 // probes come straight from inject.js / dispatchDraft.js (neither is a view), and
 // the two small view-local helpers the board used to own — the selected-project
 // reader and the read-target resolver — are reproduced here.
+//
+// For the same reason this module also re-homes the board's TRIAGE-SWEEP dispatcher
+// (setTriageDispatcher). The board registered it at its module load so the task-row
+// Generate button and the ASKING answer path could fire a sweep through the store
+// without importing the view; with the board no longer loading, that registration
+// stopped running, leaving fireTriageSweep a null-dispatcher no-op — flagging a task
+// queued a `triaging` row but never launched claude-triage.yml. The boardless
+// dispatcher below (fireTriageSweep) restores it, sourced acyclically the same way.
 
 // The currently-selected project's name, read from the sidebar — the same source
 // of truth agentView.js and the row layer read. Returns '' when nothing is
@@ -107,6 +123,55 @@ function fireDeriveRun(btn) {
             function () { stopDeriveTracking(); }
         );
 }
+
+// Dispatch a triage sweep for the named project, fire-and-forget, and track the
+// real claude-triage.yml run to completion. Reproduces agentView's fireTriageSweep
+// verbatim: the board used to own this and register it via setTriageDispatcher at
+// its module load, but the board no longer loads in the app, so fireTriageSweep in
+// the store resolved to a null dispatcher and flagging a task never launched a run
+// (and the nav dot never lit). Re-homing the registration here — a leaf main.js
+// imports on boot — restores the wiring whether or not the board ever mounts. All
+// dependencies resolve acyclically: dispatchTriage / mintEntryId from inject.js,
+// resolveDispatchTarget from dispatchDraft.js, and the sweep tracker + in-flight
+// guard from the store. Guarded by the shared in-flight flag; returns null when the
+// guard or a missing project id swallows the call, otherwise the dispatch result.
+// Never throws.
+function fireTriageSweep(projectName) {
+    if (isTriageInFlight()) return Promise.resolve(null);
+    const projectId = projectName ? listLogic.getProjectId(projectName) : null;
+    if (!projectId) return Promise.resolve(null);
+    setTriageInFlight(true);
+    // Optimistically drive the pill/nav dot to Working the instant we dispatch, and
+    // start the poller that tracks the real claude-triage.yml run to completion
+    // (settling back to Idle when GitHub reports it done).
+    startSweepTracking(false);
+    return Promise.resolve()
+        .then(function () { return dispatchTriage(projectId, mintEntryId(), resolveDispatchTarget()); })
+        .then(
+            function (res) {
+                setTriageInFlight(false);
+                // If the dispatch itself failed, clear the optimistic Working state
+                // so neither the pill nor the nav dot falsely reports a sweep in
+                // flight (no run will ever register).
+                if (res && res.ok === false) { stopSweepTracking(); clearWorkingWatchSweepSeed(); pollAgentWorkingWatch(); }
+                return res;
+            },
+            function () {
+                setTriageInFlight(false);
+                stopSweepTracking();
+                clearWorkingWatchSweepSeed();
+                pollAgentWorkingWatch();
+                return { ok: false };
+            }
+        );
+}
+
+// Register the boardless triage dispatcher with the store so the row layer's
+// Generate button and the ASKING answer path (which call fireTriageSweep through
+// the store, never importing this module) fire a real sweep. agentView.js still
+// self-registers its own copy when a test mounts the board; the app loads THIS
+// module, not the board, so this registration is the one the running app uses.
+setTriageDispatcher(fireTriageSweep);
 
 // Wire the mockup flow. Only the live callback (the selected-project reader, used
 // to resolve the routed repo for mockup prompts) is supplied; the board repaint
