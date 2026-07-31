@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-31',
         added: [
-            "Every rubric aspect in the coverage breakdown can now be confirmed by hand, with your confirmation shown alongside its derived status.",
+            "Copy a shipped change as a ready-to-paste context block for continuing the work in an outside conversation.",
         ],
         fixed: [
             "The Coverage tab can edit and save its assignment, run Derive, and receive proposals again, and the working indicator lights during triage and derive runs — all of which had quietly stopped after the Agent board was retired.",
