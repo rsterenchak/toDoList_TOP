@@ -66,3 +66,28 @@
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6c94edc8-ac2f-4a23-bbc2-54e172a22d39 -->
+
+- [ ] **[MEDIUM]** Copy a shipped change as a context block for an outside conversation
+  - Type: feature
+  - Description: Iterating on a shipped change outside the app means reassembling its context by hand — finding the entry text, the PR number, and the files touched, then pasting them somewhere. Add a control that produces that block in one tap. Put it on the detail pane's ACCEPT face, which already has every field it needs and is driven by the linked `agent_queue` row rather than local state — so unlike the RUNS tab's `localStorage` records, it works from whichever device you are holding.
+  - Behavior: A task in the `accept` phase shows a copy control alongside its existing actions. Activating it copies a plain-text block to the clipboard and confirms with the existing toast. The block names the repo, the entry's marker id, the PR number and URL, the files from the entry's `- File:` line, the entry text as shipped, and a trailing placeholder line inviting a description of the desired change. The control does not alter the task, the entry, or the queue row — it only reads.
+  - Implementation notes:
+    - Block format, in this order, plain text with no markdown fences so it survives pasting anywhere:
+      `Iterating on a shipped change in <owner>/<repo>.` then a blank line;
+      `ENTRY <marker uuid>`;
+      `PR #<number> — <pr_url>` (omit the line entirely when the queue row carries neither);
+      `FILES <comma-separated paths from the entry's - File: line>` (omit when there is no File: line);
+      a blank line, then `--- the entry as shipped ---` and the entry's full text;
+      a blank line, then `--- what I want changed ---` and a single placeholder line.
+    - The trailing placeholder is the point of the block — it prompts the description that makes the paste actionable. Do not omit it.
+    - Every field already exists on this surface: the marker from `item.entryId`, `pr_number` / `pr_url` from the linked queue row via the shared store, and the file paths from the same tolerant `- File:` matcher the FILE readout uses. Import that matcher rather than writing a second one.
+    - Entry text comes from `item.desc`. Copy it verbatim including the trailing marker comment — the marker is what lets any follow-up trace back, and stripping it would defeat the block's purpose.
+    - Clipboard writes need a user gesture and can reject. Wrap `navigator.clipboard.writeText()` in try/catch AND handle the rejected promise, matching how the paste chip does it. On failure, fall back to selecting the text in a temporary element so a manual copy still works, and say so in the toast rather than failing silently.
+    - Mount idempotently in the ACCEPT block alongside the existing actions, registered in `DESC_PANEL_CHILD_SELECTORS`, and excluded from `DESC_AUTHORING_GROUP_SELECTORS` for the same reason the other accept actions are — the group is hidden in `done`, and this must survive long enough to be used.
+    - Style it as a ghost action beside OPEN IN TODO.MD rather than competing with ACCEPT & CLOSE. It is a secondary path, not a decision.
+    - Gate on pane mode; the mobile modal's ACCEPT face keeps its single route action, per the earlier decision that inlining accept controls there costs too much height.
+    - Test: the block contains every present field and omits absent ones cleanly; the marker survives verbatim; a rejected clipboard write falls back rather than failing silently; and the control renders only in the `accept` phase.
+  - Out of scope: The RUNS tab's `localStorage` records and making them cross-device — a separate change, and one that may be better served by reading `agent_queue` than by syncing local state. The in-app iterate flow. The ACCEPT face's other actions. The mobile modal.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4b179cbf-36fd-4678-a76c-5b0590be1c71 -->
