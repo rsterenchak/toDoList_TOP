@@ -57,8 +57,34 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     const rowId = row.id;
     const target = resolveDispatchTarget();
 
+    // A fresh derive proposal ships with no source todo — `row.todo_id` is null
+    // because the proposal was never a real list item (see agentView.js:713-716).
+    // Left as-is the run injects into TODO.md and dispatches, but no visible todo
+    // ever appears in the sidebar, and stampEntryShipped (keyed by todo_id) has
+    // nothing to stamp when the PR merges. So when there is no source todo,
+    // materialize a real one in the selected project from the proposal's context
+    // and ship against IT. Mirrors refactorCard's pushCandidate: add by title,
+    // look the created item up, backfill its description through the edit path.
+    // Rows that already carry a todo_id (normal flagged tasks) skip this entirely.
+    let todoId = row.todo_id;
+    if (!todoId) {
+        const projectName = getSelectedProjectName();
+        const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+        const title = (ctx.title || '').toString().trim();
+        if (projectName && title) {
+            listLogic.addToDo(projectName, title);
+            const items = listLogic.listItems(projectName) || [];
+            const created = items.filter(function (it) { return it && it.tit === title; }).pop();
+            if (created) {
+                created.desc = (ctx.description || '').toString();
+                listLogic.editToDoItem(projectName, created);
+                todoId = created.id;
+            }
+        }
+    }
+
     const res = await shipEntryForTodo({
-        todoId: row.todo_id,
+        todoId: todoId,
         entryText: draftText,
         target: target,
         existingEntryId: existingEntryId,
@@ -73,6 +99,11 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
         correlation_id: res.correlationId,
     };
     if (res.runId != null) patch.run_id = res.runId;
+    // Persist a newly-minted todo id onto the queue row so later reconciliation
+    // (stampEntryShipped, keyed by todo_id) can find and stamp it when the PR
+    // merges. Only when this run created the todo — rows that already had a
+    // todo_id don't rewrite it.
+    if (!row.todo_id && todoId) patch.todo_id = todoId;
     await listLogic.setAgentRunState(rowId, patch);
 
     // Arm the dispatch reconciler for THIS in-session dispatch, from the one funnel
