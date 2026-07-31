@@ -1244,7 +1244,106 @@ export function buildReviewActions(item, projectName, options) {
     });
     actions.appendChild(open);
 
+    // COPY CONTEXT — a ghost secondary path beside OPEN IN TODO.MD (not competing
+    // with ACCEPT & CLOSE). Copies a plain-text block for iterating on this shipped
+    // change in an outside conversation. Desktop-detail-pane only: the mobile modal
+    // host supplies an `onOpenInViewer` callback and keeps its single route action
+    // (inlining accept controls there costs too much height), so this is added only
+    // when no such host callback is present — the pane passes none. Reads only: the
+    // entry (item), the linked queue row's PR fields fetched fresh from the shared
+    // store at click time, and the active project's repo. It never mutates the task,
+    // the entry, or the row.
+    if (typeof opts2.onOpenInViewer !== 'function') {
+        const copyCtx = document.createElement('button');
+        copyCtx.type = 'button';
+        copyCtx.className = 'descReviewBtn descReviewBtn--copyctx';
+        copyCtx.textContent = 'Copy context';
+        copyCtx.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+            const target = resolveDispatchTarget();
+            copyIterateContext(buildIterateContextBlock(item, queueRow, target && target.repo));
+        });
+        actions.appendChild(copyCtx);
+    }
+
     return actions;
+}
+
+
+// Assemble the plain-text context block for iterating on a shipped change in an
+// outside conversation, in this exact order and with NO markdown fences so it
+// survives pasting anywhere:
+//   `Iterating on a shipped change in <owner>/<repo>.` then a blank line;
+//   `ENTRY <marker uuid>`;
+//   `PR #<number> — <pr_url>` — omitted entirely when the row carries neither;
+//   `FILES <comma-separated paths>` from the entry's `- File:` line, parsed with
+//     the SAME tolerant matcher the FILE readout uses — omitted when it names none;
+//   a blank line, `--- the entry as shipped ---`, then item.desc VERBATIM (marker
+//     comment and all — the marker is what lets any follow-up trace back, so
+//     stripping it would defeat the block's purpose);
+//   a blank line, `--- what I want changed ---`, then a single placeholder line —
+//     the point of the block, prompting the description that makes the paste
+//     actionable, so it is never omitted.
+// Pure: the repo is resolved by the caller and the queue row is passed in, so this
+// stays testable with a fabricated item + row.
+export function buildIterateContextBlock(item, queueRow, repo) {
+    const lines = [];
+    lines.push('Iterating on a shipped change in ' + (repo || 'this repo') + '.');
+    lines.push('');
+    lines.push('ENTRY ' + ((item && item.entryId) || ''));
+    const prNumber = queueRow && queueRow.pr_number;
+    const prUrl = queueRow && queueRow.pr_url;
+    if (prNumber && prUrl) lines.push('PR #' + prNumber + ' — ' + prUrl);
+    else if (prNumber) lines.push('PR #' + prNumber);
+    else if (prUrl) lines.push('PR — ' + prUrl);
+    const files = parseFilePathsFromEntry((item && item.desc) || '');
+    if (files.length) lines.push('FILES ' + files.join(', '));
+    lines.push('');
+    lines.push('--- the entry as shipped ---');
+    lines.push((item && item.desc) || '');
+    lines.push('');
+    lines.push('--- what I want changed ---');
+    lines.push('Describe the change you want here.');
+    return lines.join('\n');
+}
+
+
+// Copy the iterate context block to the clipboard, confirming with the shared row
+// toast. Mirrors copyTitleToClipboard's two-tier path: navigator.clipboard.writeText
+// when available — guarded by BOTH a try/catch for a synchronous throw AND a
+// .catch for a rejected promise — falling back to selecting the text in a temporary
+// element and execCommand('copy') so a manual copy still works from a user gesture.
+// Every terminal path says what happened in the toast rather than failing silently.
+function copyIterateContext(text) {
+    function fallback() {
+        try {
+            const ta = document.createElement('textarea');
+            ta.value = text;
+            ta.setAttribute('readonly', '');
+            ta.style.position = 'fixed';
+            ta.style.opacity = '0';
+            ta.style.pointerEvents = 'none';
+            document.body.appendChild(ta);
+            ta.select();
+            const ok = document.execCommand && document.execCommand('copy');
+            document.body.removeChild(ta);
+            showRowToast(ok
+                ? 'Copied context for iterating'
+                : 'Couldn’t copy — select and copy the block manually');
+        } catch (e) {
+            showRowToast('Couldn’t copy — select and copy the block manually');
+        }
+    }
+    if (navigator && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+            navigator.clipboard.writeText(text)
+                .then(function () { showRowToast('Copied context for iterating'); })
+                .catch(fallback);
+            return;
+        } catch (e) { /* synchronous throw — fall through to the temp-element path */ }
+    }
+    fallback();
 }
 
 

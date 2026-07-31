@@ -18476,6 +18476,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 .descReviewBtn--open:hover:not(:disabled) {
   color: var(--text-primary);
 }
+/* COPY CONTEXT — a ghost secondary action beside OPEN IN TODO.MD; copies a
+   plain-text iterate block for an outside conversation. */
+.descReviewBtn--copyctx {
+  color: var(--text-secondary);
+  background: transparent;
+  border-color: var(--border-bright);
+}
+.descReviewBtn--copyctx:hover:not(:disabled) {
+  color: var(--text-primary);
+}
 
 /* ── MOCKUP-PHASE FLOW (DETAIL PANE) ──────────────────────────────────────
    The A/B/C mockup flow mounted for a `needs_mockup` task in the desktop detail
