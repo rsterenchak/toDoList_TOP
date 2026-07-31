@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-07-31',
-        added: [
-            "Iterate on a shipped change straight from the task's review actions, without going through the Runs tab.",
-        ],
         fixed: [
             "The Coverage tab can edit and save its assignment, run Derive, and receive proposals again, and the working indicator lights during triage and derive runs — all of which had quietly stopped after the Agent board was retired.",
             "The Coverage tab's Derive action and the nav working dot now update the moment a derive run starts and finishes, instead of staying stuck on 'Deriving…' until you switch projects and back.",
             "Flagging a task now launches its triage run and lights the working indicator again, instead of silently queuing it and doing nothing after the Agent board was retired.",
             "A todo created by accepting a proposed task now appears in your list immediately, instead of staying hidden until you switch projects and back.",
+            "The Runs tab now lists every shipped entry — including ones run from the backlog or an entry's Run pill — so any of them can be reopened to iterate on, not just runs started from chat.",
         ],
     },
 ];

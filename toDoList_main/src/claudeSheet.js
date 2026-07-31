@@ -36,6 +36,8 @@ import {
     showInjectToast,
     emitTodoRunStatusChange,
     refreshShippedMarkersForProject,
+    getShippedMarkersForRepo,
+    TODO_RUN_STATUS_EVENT,
 } from './inject.js';
 import {
     readActiveRun,
@@ -286,6 +288,13 @@ function setActiveTab(tab) {
         renderRunsList();
         resumeRunPollers();
         renderUpdateNudge();
+        // Refresh the shipped-marker cache the Runs list's spine reads (the
+        // cross-device record of entries shipped via Run backlog or a Run pill,
+        // which have no queue row). Respects the 60s TTL; on resolve it fires
+        // TODO_RUN_STATUS_EVENT, which repaints the list with any new shipped
+        // entries. A no-op when inject isn't configured or the project has no
+        // routed target.
+        refreshShippedMarkersForProject(getLoadedProjectName());
     }
 }
 
@@ -3105,6 +3114,79 @@ function buildItemsById(projectName) {
     return map;
 }
 
+// Build an entryId → todo item map for the loaded project so a shipped TODO.md
+// marker can resolve back to the todo that injected it — the source of both its
+// title and its project scope. Empty on any failure.
+function buildItemsByEntryId(projectName) {
+    const map = {};
+    if (!projectName) return map;
+    let items = [];
+    try { items = listLogic.listItems(projectName) || []; } catch (e) { items = []; }
+    items.forEach(function(it) { if (it && it.entryId) map[it.entryId] = it; });
+    return map;
+}
+
+// Build shipped-entry records from the project repo's TODO.md marker cache — the
+// complete, cross-device record of what shipped, regardless of how it was
+// dispatched. A run started via Run backlog or an entry's own Run pill never gets
+// an agent_queue row, so it's invisible to buildQueueRunRecords; its `[x]` entry
+// in TODO.md is the only trace, and this reads that.
+//
+// The spine is the shipped marker set (getShippedMarkersForRepo) for the loaded
+// project's routed repo. Each shipped id is joined back to the todo that injected
+// it (by entry_id) for its title and — critically — its project scope: the marker
+// cache is repo-scoped and one repo can back several projects, so an id with no
+// linked todo in THIS project belongs to another project sharing the repo (or has
+// no todo at all) and is skipped. That join also supplies the title without a
+// second TODO.md read (the marker cache holds ids, not text).
+//
+// Entries already represented by a queue record or a local record are skipped
+// (`skipEntryIds`) so the same shipped change isn't listed twice — the queue row
+// carries richer detail (status, PR) and wins.
+function buildShippedEntryRecords(projectName, skipEntryIds) {
+    if (!projectName) return [];
+    const repo = repoForProject(projectName);
+    if (!repo) return [];
+    const shippedIds = getShippedMarkersForRepo(repo);
+    if (!shippedIds.length) return [];
+    const itemsByEntryId = buildItemsByEntryId(projectName);
+    const records = [];
+    shippedIds.forEach(function(entryId) {
+        if (!entryId) return;
+        if (skipEntryIds && skipEntryIds.has(entryId)) return;
+        const item = itemsByEntryId[entryId];
+        // No linked todo in this project → the entry is another project's (shared
+        // repo) or has no todo; either way it isn't scoped here. Skip it.
+        if (!item) return;
+        const title = (item.tit || '').trim() || (item.desc ? deriveRunTitle(item.desc) : 'Untitled entry');
+        const rec = {
+            entryId: entryId,
+            correlationId: null,
+            title: title,
+            status: 'SHIPPED',
+            // The marker set has no timestamps; the todo's shipped_at (stamped
+            // when its run settled) orders these against created_at-ordered queue
+            // records. Absent shipped_at sorts oldest rather than jumping around.
+            dispatchedAt: parseIsoMs(item.shippedAt),
+            repo: repo,
+            project: projectName,
+            agentRowId: null,
+            runId: null,
+            // Cross-device like a queue record (rebuilt from scratch each render,
+            // never held in runRecords), so its revert guard rides
+            // queueRunRevertState keyed by entry id rather than saveRunRecords.
+            __fromMarker: true,
+        };
+        const side = queueRunRevertState.get(entryId);
+        if (side) {
+            if (side.reverted) rec.reverted = true;
+            if (side.revertPrUrl) rec.revertPrUrl = side.revertPrUrl;
+        }
+        records.push(rec);
+    });
+    return records;
+}
+
 // Map the loaded project's `agent_queue` rows to run-record-shaped objects for the
 // RUNS list. Only rows in a dispatched-run state (dispatched/running/shipped/
 // failed/no_change) become records; pre-dispatch states (drafted, needs_words,
@@ -3184,8 +3266,18 @@ function pruneMatchedLocalRecords(queueEntryIds) {
     if (changed) saveRunRecords();
 }
 
-// The runs to render, newest-first: the queue-sourced records for the active
-// project plus any localStorage fallback records with no matching queue row.
+// The runs to render, newest-first, from three sources unioned by entry id so no
+// shipped change is listed twice:
+//   1. queue records — every dispatched agent_queue row (in-flight and shipped),
+//      the richest source (status, PR);
+//   2. shipped-entry records — every `[x]` entry in the project repo's TODO.md
+//      with NO queue row (runs dispatched via Run backlog or an entry's Run pill,
+//      which the queue never sees) so the list is the complete shipped record;
+//   3. localStorage fallback records with no matching queue row (chat-shipped
+//      runs on this device).
+// The shipped spine is unioned with the queue's in-flight rows (source 1), so a
+// run mid-flight — unchecked in TODO.md, thus absent from the shipped set —
+// still appears via its queue row and settles into place when it lands.
 function getDisplayRunRecords() {
     const activeProject = activeProjectNameForViewer();
     const queueRecords = buildQueueRunRecords();
@@ -3195,10 +3287,15 @@ function getDisplayRunRecords() {
     const localRecords = runRecords.filter(function(rec) {
         return localRecordVisible(rec, activeProject);
     });
-    // Only reorder when merging in queue records; a local-only list keeps its
-    // existing newest-first insertion order untouched.
-    if (!queueRecords.length) return localRecords;
-    return queueRecords.concat(localRecords).sort(byDispatchedDesc);
+    // Skip any shipped marker already covered by a queue or local record so the
+    // same change isn't listed twice; the richer record wins.
+    const covered = new Set(queueEntryIds);
+    localRecords.forEach(function(rec) { if (rec.entryId) covered.add(rec.entryId); });
+    const shippedRecords = buildShippedEntryRecords(getLoadedProjectName(), covered);
+    // Only reorder when merging in queue or shipped-spine records; a local-only
+    // list keeps its existing newest-first insertion order untouched.
+    if (!queueRecords.length && !shippedRecords.length) return localRecords;
+    return queueRecords.concat(shippedRecords).concat(localRecords).sort(byDispatchedDesc);
 }
 
 function renderRunsList() {
@@ -3337,7 +3434,10 @@ function confirmAndRevertRun(rec, btn) {
 // `reverted` / pending-PR state into queueRunRevertState, keyed by entry id, so a
 // re-render that rebuilds queue records from scratch preserves the guard.
 function persistRunRevertGuard(rec) {
-    if (rec && rec.__fromQueue) {
+    // Queue- and marker-derived records are both cross-device (rebuilt from
+    // scratch each render, never in runRecords), so their guard rides
+    // queueRunRevertState keyed by entry id rather than saveRunRecords.
+    if (rec && (rec.__fromQueue || rec.__fromMarker)) {
         if (rec.entryId) {
             const prev = queueRunRevertState.get(rec.entryId) || {};
             queueRunRevertState.set(rec.entryId, {
@@ -4361,6 +4461,18 @@ export function mountClaudeSheet(parent) {
                 renderRunsList();
             }
         });
+        // The Runs list's shipped spine is sourced from the TODO.md marker cache,
+        // which onQueueChange does NOT cover: an entry shipped via Run backlog or
+        // an entry's Run pill has no queue row, so its only signal is the marker
+        // cache refreshing (which fires TODO_RUN_STATUS_EVENT). Repaint on that too
+        // so a just-shipped entry appears the moment the cache reconciles.
+        if (typeof document !== 'undefined') {
+            document.addEventListener(TODO_RUN_STATUS_EVENT, function() {
+                if (sheetEl && sheetEl.getAttribute('data-tab') === 'runs') {
+                    renderRunsList();
+                }
+            });
+        }
     }
     // Resolve the tab for whatever project is already selected at mount (a reload
     // lands on the persisted project without a fresh switch firing).

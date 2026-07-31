@@ -37,6 +37,8 @@ vi.mock('../src/inject.js', () => ({
     showInjectToast: () => {},
     emitTodoRunStatusChange: () => {},
     refreshShippedMarkersForProject: () => {},
+    getShippedMarkersForRepo: () => [],
+    TODO_RUN_STATUS_EVENT: 'todoapp:todoRunStatusChange',
     // agentView + coverage tab derive dispatch
     dispatchTriage: () => Promise.resolve({ ok: true }),
     dispatchDerive: (projectId, correlationId, target) => {

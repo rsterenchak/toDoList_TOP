@@ -230,6 +230,19 @@ export function resolveEntryRunState(entryId) {
     return state;
 }
 
+// The shipped marker ids cached for `repo` (the `[x]` top-level TODO.md entries),
+// as an array — empty when the repo has no cache entry yet. Lets the RUNS list
+// source its spine of every shipped entry from the same per-repo marker cache the
+// row status glyphs read, rather than re-fetching or re-parsing TODO.md. The
+// cache is populated by refreshShippedMarkers on a ~60s TTL. Synchronous, so the
+// list render path can call it directly without awaiting.
+export function getShippedMarkersForRepo(repo) {
+    if (!repo) return [];
+    const entry = shippedMarkerCache.get(repo);
+    if (!entry || !entry.shipped) return [];
+    return Array.from(entry.shipped);
+}
+
 // Optimistically record a just-injected entry's marker as present (unshipped)
 // in the target repo's cache so the amber pending glyph appears immediately,
 // before the next TODO.md read confirms it. Does NOT bump `fetchedAt`, so the
