@@ -30,3 +30,21 @@
   - File: `toDoList_main/src/dispatchDraft.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: de80a73f-5be1-41aa-be6f-db7481b9519b -->
+
+- [ ] **[MEDIUM]** Redefine the desktop filter pills to ALL / IN PROGRESS / DONE
+  - Type: feature
+  - Description: The desktop pills filter purely on derived phase — ACTIVE matches `draft` or `accept`, RUNNING matches `running`, DONE matches `done` — so with 17 tasks that have no injected entry, all three read zero while ALL reads 17. The set was designed around pipeline states, which describe a small minority of a real list. Redefine it around what is actually useful: three pills, mixing manual status and derived phase deliberately, so "in progress" means work you are doing OR work the machine is doing. Drop RUNNING; an in-flight run is a kind of in-progress, not a separate category.
+  - Behavior: The desktop queue rail shows three pills with live counts. ALL matches every task that is not completed — active, in progress, and idea alike. IN PROGRESS matches a task whose manual status is `in_progress`, OR whose derived phase is `draft` or `running` — an entry injected and awaiting its run, or a run in flight. DONE matches a task that is either shipped-and-acknowledged (`PHASE.DONE`) or checked off. ALL and DONE are therefore complementary rather than nested: ALL is open work, DONE is finished work. Exactly one pill is active, the selection persists, and counts update live as statuses and phases change. Mobile is unchanged — it keeps its ACTIVE / Ideas cycle pill on manual status.
+  - Implementation notes:
+    - `PHASE_FILTERS`' `match` currently receives a phase string. All three new predicates need more than that — manual status, derived phase, and the completed flag. Change the signature to take the ITEM and derive what each needs inside, rather than threading three arguments through. Update every call site and the comment block above the array, which documents the old phase-only contract.
+    - DONE matching checked-off tasks is the sharp edge. Completed rows live in the collapsed COMPLETED section, not the main list — so filtering to DONE must reveal them, or the pill will show a count with nothing beneath it. Grep how that section's collapse works and decide deliberately: either DONE expands it, or DONE renders those rows in the main list while active. Say which, and verify the count and the visible rows agree.
+    - Dropping RUNNING does NOT remove `PHASE.RUNNING` from `phase.js`. The phase stays — it drives the row badge and `derivePhase`'s ordering — and IN PROGRESS simply includes it.
+    - The persisted filter key can hold `running` or `active` from the old set. Migrate on read: an unknown or retired value resolves to `all` rather than leaving the list empty on first load after deploy.
+    - Update `EMPTY_MESSAGES`. The `running` entry becomes dead, `active` is shared with the mobile status filter and must keep working there, and `done` needs copy covering both senses rather than only "shipped and acknowledged".
+    - Counts come from the full committed row set, as they do now — and DONE's count must include completed rows even though they sit in a separate section, or it will under-report.
+    - Keep `taskFilter.js`'s dependency discipline: it deliberately holds `prefs` as its only hard dependency and inlines the phase strings rather than importing `phase.js`. If the new predicates need the completed flag or manual status, read them off the item rather than adding an import.
+    - Tests: ALL matches uncompleted tasks of every manual status; IN PROGRESS matches `in_progress` status, `draft` phase, and `running` phase, and excludes idle ideas; DONE matches both an acknowledged task and a checked-off one; a stored `running` preference resolves to ALL; and the counts match what renders.
+  - Out of scope: The mobile cycle pill and its manual-status filters. The blocked chip, which stays an independent overlay filter. `derivePhase`, `PHASE.RUNNING`, and the phase vocabulary. The row badges. The COMPLETED section's own behavior beyond whatever DONE needs to reveal it. The sort control.
+  - File: `toDoList_main/src/taskFilter.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: f89b24df-dad7-463b-a376-8b5b9a49f089 -->
