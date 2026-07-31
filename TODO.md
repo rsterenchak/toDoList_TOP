@@ -41,3 +41,20 @@
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/agentView.test.js`, `toDoList_main/tests/agentQueueStore.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5ab43b07-1bcd-4643-a776-0ed77cd9338f -->
+
+- [ ] **[HIGH]** TODO.md strip stretches to fill the rail when the task list is short
+  - Type: bug
+  - Description: The pinned TODO.md strip grows to fill most of the queue rail when few tasks are present, with its contents floating in the vertical middle of an oversized box. `#mainBar` is `grid-template-rows: auto 1fr` — the `auto` track holds `#taskFilterBar`, the `1fr` track holds the scrollable list. The strip declares no `grid-row`, so it auto-places into the `1fr` track and stretches to fill it, and its own `align-items: center` then centres the file name and actions inside that height. With a full list the effect is hidden because the list consumes the space; with one or two rows the strip takes over the rail. This is the same unplaced-child-in-an-explicit-grid defect that has hit `#descSibling` repeatedly.
+  - Behavior: The strip renders at its natural content height — one row of controls, or two when wrapped — pinned directly beneath the filter bar, regardless of how many tasks are in the list. An empty or nearly empty project shows the strip at the same compact height as a full one, with the task list and its empty state occupying the remaining space beneath it. Everything else about the strip is unchanged.
+  - Implementation notes:
+    - Add a third track to `#mainBar` rather than squeezing the strip into an existing one: `grid-template-rows: auto auto 1fr`, with `#taskFilterBar` and the strip in the two `auto` tracks and `#mainList` in the `1fr`. Give each child an explicit `grid-row` so nothing depends on source order or auto-placement.
+    - CHECK EVERY EXISTING `grid-row` AGAINST `#mainBar` BEFORE CHANGING THE TEMPLATE. The comment notes the Agent view overlays with `grid-row: 1 / -1`, which stays correct with three tracks, but any rule using a numeric row index will silently shift. Grep every `grid-row` in the stylesheet and report which ones reference this grid.
+    - The strip is `display: none` by default and only shown inside the desktop media block, so the third track must not change the mobile layout — either scope the template change to the same media block, or confirm an empty `auto` track collapses to zero height when the strip is hidden. Verify rather than assume; an `auto` track with a `display: none` child should collapse, but the row gap may not.
+    - Do not fix this with `align-self: start` on the strip alone. That stops the stretch but leaves the strip sharing the `1fr` track with the list, so the list's own height calculation is still wrong — `#mainList` has `overflow-y: auto` and needs the full track to size its scroll region correctly.
+    - Verify `#mainList`'s scrolling still works after the template change: with a long list it must scroll within its track rather than growing the rail, and the strip must stay pinned above it rather than scrolling away.
+    - Confirm the empty-state and the ghost spacer inside `#mainList` still position correctly, since they were laid out against a `1fr` track that previously started higher.
+    - Add a test asserting the strip resolves to a row other than the list's, so a future unplaced child cannot reintroduce this.
+  - Out of scope: The strip's internal padding, margins, controls, and wrapped-row behavior. The click-to-open behavior and the viewer card in the detail pane. The filter bar and the sort control. The mobile layout and the bottom sheet.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 7053ca8f-6920-4f1e-8953-f61ea7b8108e -->
