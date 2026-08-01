@@ -164,7 +164,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 99e53a1a-5b7f-4a7b-a1ba-2e6b32481875 -->
 
-- [ ] **[LOW]** DONE filter: shipped-and-acknowledged only, excluding checked-off tasks
+- [x] **[LOW]** DONE filter: shipped-and-acknowledged only, excluding checked-off tasks — Completed: 2026-07-31
   - Type: bug
   - Description: The DONE pill matches `!!item.completed || phaseOf(item) === 'done'`, so it includes checked-off tasks. Those live in the collapsed COMPLETED section rather than the main list, which forced the awkward requirement that DONE reveal that section — and it conflates two different ideas. The useful meaning is narrower: work the pipeline finished that is still sitting in your open list. Change DONE to match a task whose derived phase is `done` AND which is not checked off, so it selects exactly the rows carrying the shipped glyph that you have not yet filed away.
   - Behavior: DONE matches a task whose derived phase is `done` and whose `completed` flag is false — shipped, acknowledged, still open. A checked-off task is excluded regardless of its phase, so the COMPLETED section is never revealed by this filter and its count always agrees with what renders in the main list. ALL continues to match every uncompleted task, so DONE is now a strict subset of ALL rather than complementary to it. IN PROGRESS is unchanged. Mobile is unchanged.
