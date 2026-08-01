@@ -330,7 +330,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a6c51938-3fc8-4224-b7a2-cf3d56b960cd -->
 
-- [ ] **[MEDIUM]** Mobile: use the ALL / IN PROGRESS / DONE filters instead of ALL / Active / Ideas
+- [x] **[MEDIUM]** Mobile: use the ALL / IN PROGRESS / DONE filters instead of ALL / Active / Ideas — Completed: 2026-08-01
   - Type: feature
   - Description: Mobile filters on manual status through its own `FILTERS` array — ALL matches everything, Active matches `active` or `in_progress`, Ideas matches `idea` — while desktop uses the three phase-aware pills that describe how work actually moves: ALL is open work, IN PROGRESS is work you or the machine are doing, DONE is shipped-and-acknowledged but not yet filed away. Mobile should use the same three. The two sets are not interchangeable as written: mobile's `match` receives a status string, desktop's receives the item and derives status, phase, and the completed flag inside. Consolidate onto the desktop definitions and drive both breakpoints from one array.
   - Behavior: The mobile filter control offers ALL, IN PROGRESS, and DONE with the same meanings as desktop. ALL matches every task that is not checked off. IN PROGRESS matches manual status `in_progress`, or derived phase `draft` or `running`. DONE matches phase `done` and not checked off. The control keeps its current form — the cycle pill with its position dots — now cycling three phase-aware filters rather than three status ones. Counts update live. The selection is shared with desktop, so crossing the breakpoint keeps the same filter active. The COMPLETED section is unaffected; no filter reveals checked-off rows at either breakpoint.
