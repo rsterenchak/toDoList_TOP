@@ -18394,6 +18394,69 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: var(--text-muted);
 }
 
+/* WHAT THE RUN REPORTED — the run's own closing summary, rendered as a block
+   distinct from the WHAT CHANGED card (a neutral left rail rather than the amber
+   entry accent) so it reads as the run's report, not part of the entry. Spans the
+   full detail-pane grid like the WHAT CHANGED card; on the mobile modal it drops
+   the side gutters to align with the entry textarea. Same class serves both hosts. */
+#descSibling .descRunReportBlock {
+  grid-column: 1 / -1;
+}
+#descEditorModalBody .descRunReportBlock {
+  margin-left: 0;
+  margin-right: 0;
+}
+.descRunReportBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 10px;
+  padding: 12px;
+  background: var(--bg-hover);
+  border-left: 3px solid var(--text-muted);
+  border-radius: 8px;
+}
+.descRunReportHeading {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.descRunReportBody {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  /* Clamp a long summary to ~5 lines so it can't push ACCEPT & CLOSE below the
+     fold; the toggle removes the clamp when expanded. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+.descRunReportBlock.is-expanded .descRunReportBody {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+.descRunReportToggle {
+  align-self: flex-start;
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--accent-text, var(--accent));
+}
+.descRunReportToggle:hover {
+  text-decoration: underline;
+}
+
 #descSibling .descReviewActions {
   grid-column: 2;
 }

@@ -60,9 +60,18 @@ describe('Generate-with-triage — toDoRow.js control', () => {
         expect(toDoRow).toMatch(/listLogic\.editToDoItem\(projectName,\s*item\)/);
     });
 
-    it('does NOT stand up a second derive pipeline (no fetchRunResult / dispatchRun)', () => {
-        expect(toDoRow).not.toMatch(/fetchRunResult/);
-        expect(toDoRow).not.toMatch(/dispatchRun/);
+    it('does NOT stand up a second derive pipeline (no fetchRunResult / dispatchRun in the generate flow)', () => {
+        // The generate flow flags + sweeps rather than dispatching its own run.
+        // Scoped to the generate region (showGenerateFailure → applyRunStatusGlyph):
+        // fetchRunResult IS used elsewhere in the file, by the ACCEPT face's
+        // closing-summary readout, which is an unrelated surface.
+        const genStart = toDoRow.indexOf('function showGenerateFailure');
+        const genEnd = toDoRow.indexOf('function applyRunStatusGlyph');
+        const genRegion = toDoRow.slice(genStart, genEnd);
+        expect(genStart).toBeGreaterThan(-1);
+        expect(genEnd).toBeGreaterThan(genStart);
+        expect(genRegion).not.toMatch(/fetchRunResult/);
+        expect(genRegion).not.toMatch(/dispatchRun/);
     });
 
     it('surfaces a dismissible failure notice for failed / no_change rows', () => {

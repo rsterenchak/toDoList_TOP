@@ -24,6 +24,7 @@ import {
     buildDispatchBlock,
     buildReviewBlock,
     buildReviewActions,
+    mountRunReportBlock,
     invokeIterateTask,
 } from './toDoRow.js';
 import { derivePhase, isBlockedPhase, PHASE } from './phase.js';
@@ -585,6 +586,12 @@ export function showDescEditorModal(item, options) {
         // WHAT CHANGED card first, the action row right after it.
         body.insertBefore(actionsRow, body.firstChild);
         body.insertBefore(buildReviewBlock(item, queueRow), body.firstChild);
+        // The run's closing summary is fetched async and mounted BETWEEN the WHAT
+        // CHANGED card and the action row once (if) it resolves. The modal body
+        // already scrolls under its 92vh cap, so no expanded-height re-snapshot is
+        // needed here (that is the desktop viewer's concern). A run with no summary,
+        // or a failed fetch, mounts nothing.
+        mountRunReportBlock(body, item, queueRow, actionsRow, null);
     }
 
     // ── PHASE CHROME (blocked-phase eyebrow + dialog accent) ──
