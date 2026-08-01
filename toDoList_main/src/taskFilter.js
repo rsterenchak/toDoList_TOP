@@ -608,8 +608,9 @@ export function applyTaskFilter() {
         const status = rowStatus(row);
         // Completed rows keep their original `status` (so un-completing restores
         // the category). They belong to the COMPLETED section, so the mobile
-        // status counts exclude them — but the desktop DONE pill folds them in, so
-        // the desktop phase counts are taken over the FULL committed set below.
+        // status counts exclude them, and every desktop phase predicate excludes
+        // them too (see PHASE_FILTERS) — so although the phase counts run over the
+        // FULL committed set below, completed rows contribute zero to them.
         const isCompleted = !!(item && item.completed);
         // Blocked membership is computed from the FULL committed, non-completed
         // set — matching how the status counts are computed — not the visible
@@ -626,12 +627,26 @@ export function applyTaskFilter() {
         }
         // Desktop pill counts: each pill's own predicate over the item, so the
         // counts and the visibility decision below read from ONE definition
-        // (PHASE_FILTERS). DONE counts completed rows even though they sit in the
-        // COMPLETED section, so its number never under-reports.
+        // (PHASE_FILTERS). Every predicate excludes completed rows, so the counts
+        // describe the OPEN list only and never fold in the COMPLETED section.
         if (allPhase.match(item)) phaseCounts.all += 1;
         if (inProgressPhase.match(item)) phaseCounts.inprogress += 1;
         if (donePhase.match(item)) phaseCounts.done += 1;
 
+        // Visibility. On desktop the pills must not govern completed rows at all:
+        // the COMPLETED section's own collapse (#mainList.completedCollapsed) is
+        // their sole authority, so expanding it reveals its rows under every pill
+        // rather than the filter suppressing them. Clear any taskFilterHidden a
+        // prior mobile-width pass left on the row (rather than leaving it be), so a
+        // resize to desktop can't strand a completed row hidden while the section
+        // is open. These rows are not tallied into desktopVisible — the pills'
+        // empty-state describes the OPEN list only. Mobile is unaffected: there the
+        // COMPLETED items live in a separate bottom sheet, so the status filter
+        // keeps hiding completed rows in the main list as before.
+        if (desktop && isCompleted) {
+            setRowHidden(row, false);
+            return;
+        }
         // When the blocked filter is engaged both status vocabularies are on ALL,
         // so visibility keys purely on blocked membership; otherwise the desktop
         // filter governs at desktop widths and the mobile status filter below them.
