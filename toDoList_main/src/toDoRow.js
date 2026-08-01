@@ -45,6 +45,7 @@ import {
     refreshShippedMarkersForProject,
     TODO_RUN_STATUS_EVENT,
     revertEntry,
+    fetchRunResult,
 } from './inject.js';
 import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI, buildManualStatusControl, invokeReviewBadgeTap } from './todoStatus.js';
 import { derivePhase, PHASE, isBlockedPhase } from './phase.js';
@@ -642,6 +643,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descTriageBlock',
     '#descSibling .descReviewBlock',
     '#descSibling .descReviewActions',
+    '#descSibling .descRunReportBlock',
     '#descSibling .descMockupBlock',
 ]);
 
@@ -1279,7 +1281,11 @@ export function buildReviewActions(item, projectName, options) {
         e.stopPropagation();
         const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
         const target = resolveDispatchTarget();
-        copyIterateContext(buildIterateContextBlock(item, queueRow, target && target.repo));
+        // The run's closing summary rides along only if it has already resolved
+        // (the ACCEPT face kicks the fetch off on mount); reading it synchronously
+        // keeps the clipboard write inside this user gesture.
+        copyIterateContext(buildIterateContextBlock(
+            item, queueRow, target && target.repo, cachedRunSummary(item, queueRow)));
     });
     actions.appendChild(copyCtx);
 
@@ -1326,12 +1332,18 @@ export function buildReviewActions(item, projectName, options) {
 //   a blank line, `--- the entry as shipped ---`, then item.desc VERBATIM (marker
 //     comment and all — the marker is what lets any follow-up trace back, so
 //     stripping it would defeat the block's purpose);
+//   a blank line, `--- what the run reported ---`, then the run's closing summary
+//     — included ONLY when `summary` is a non-empty string, so a run with none (or
+//     one whose fetch never resolved) omits the heading entirely rather than
+//     emitting an empty section;
 //   a blank line, `--- what I want changed ---`, then a single placeholder line —
 //     the point of the block, prompting the description that makes the paste
 //     actionable, so it is never omitted.
-// Pure: the repo is resolved by the caller and the queue row is passed in, so this
-// stays testable with a fabricated item + row.
-export function buildIterateContextBlock(item, queueRow, repo) {
+// The run summary sits AFTER the entry and BEFORE the placeholder so the block reads
+// as: what shipped, what the run said about it, then your request.
+// Pure: the repo is resolved by the caller and both the queue row and the summary
+// are passed in, so this stays testable with a fabricated item + row + summary.
+export function buildIterateContextBlock(item, queueRow, repo, summary) {
     const lines = [];
     lines.push('Iterating on a shipped change in ' + (repo || 'this repo') + '.');
     lines.push('');
@@ -1346,10 +1358,153 @@ export function buildIterateContextBlock(item, queueRow, repo) {
     lines.push('');
     lines.push('--- the entry as shipped ---');
     lines.push((item && item.desc) || '');
+    const summaryText = String(summary == null ? '' : summary).trim();
+    if (summaryText) {
+        lines.push('');
+        lines.push('--- what the run reported ---');
+        lines.push(summaryText);
+    }
     lines.push('');
     lines.push('--- what I want changed ---');
     lines.push('Describe the change you want here.');
     return lines.join('\n');
+}
+
+
+// A completed run leaves a closing summary — the agent's verdict on what it did and
+// anything it noticed but deliberately did not fix. For a SHIPPED run that summary
+// is not persisted on the queue row (only the no_change / failed reconcile path
+// stores it, in `failure_reason`), so the ACCEPT face fetches it on demand through
+// the SAME Worker `run_result` route the store's no_change path uses (fetchRunResult
+// — no second fetch mechanism). Keyed by the queue row's numeric `run_id` when
+// known, else its `correlation_id` (the Worker resolves either), scoped to the
+// active project's dispatch target. Results are cached per run so reopening the
+// panel does not re-fetch; a successful read (even an empty summary) is cached, but
+// a transient failure is NOT, so a later open can retry. Degrades to '' on any
+// failure — an absent summary is a normal state the caller renders as nothing.
+const _runSummaryCache = new Map();
+
+function runSummaryKey(item, queueRow) {
+    if (queueRow && queueRow.run_id != null && queueRow.run_id !== '') return 'run:' + queueRow.run_id;
+    if (queueRow && queueRow.correlation_id) return 'corr:' + queueRow.correlation_id;
+    if (item && item.entryId) return 'entry:' + item.entryId;
+    return '';
+}
+
+// Synchronous read of an already-fetched summary for a run — '' when not yet cached.
+// COPY CONTEXT uses this so its clipboard write stays inside the user gesture rather
+// than awaiting a fetch; the summary is normally already resolved because the panel
+// kicks the fetch off when the ACCEPT face mounts.
+function cachedRunSummary(item, queueRow) {
+    const key = runSummaryKey(item, queueRow);
+    return (key && _runSummaryCache.has(key)) ? _runSummaryCache.get(key) : '';
+}
+
+function fetchShippedRunSummary(item, queueRow) {
+    const runKey = (queueRow && queueRow.run_id != null && queueRow.run_id !== '')
+        ? queueRow.run_id
+        : (queueRow && queueRow.correlation_id);
+    if (!runKey) return Promise.resolve('');
+    const cacheKey = runSummaryKey(item, queueRow);
+    if (cacheKey && _runSummaryCache.has(cacheKey)) return Promise.resolve(_runSummaryCache.get(cacheKey));
+    const target = resolveDispatchTarget();
+    return Promise.resolve(fetchRunResult(runKey, target || null)).then(function (res) {
+        if (res && res.ok && typeof res.result === 'string') {
+            const summary = res.result.trim();
+            if (cacheKey) _runSummaryCache.set(cacheKey, summary);
+            return summary;
+        }
+        return ''; // not cached — a transient failure can retry on the next open
+    }, function () { return ''; });
+}
+
+
+// Build the "WHAT THE RUN REPORTED" block for the review surface — the run's own
+// closing summary, rendered as a distinct block labelled as the run's report rather
+// than as part of the entry (the WHAT CHANGED card, by contrast, shows the entry's
+// Description line). Returns null when there is no summary, so the caller mounts
+// nothing rather than an empty block. The body clamps to a few lines with a Show
+// more / Show less toggle so a long summary can't push ACCEPT & CLOSE below the
+// fold; the toggle starts hidden and clampRunReportBlock reveals it only when the
+// clamped body actually overflows (measured once mounted).
+export function buildRunReportBlock(summaryText) {
+    const text = String(summaryText == null ? '' : summaryText).trim();
+    if (!text) return null;
+    const block = document.createElement('div');
+    block.className = 'descRunReportBlock';
+
+    const heading = document.createElement('span');
+    heading.className = 'descRunReportHeading';
+    heading.textContent = 'What the run reported';
+    block.appendChild(heading);
+
+    const bodyEl = document.createElement('p');
+    bodyEl.className = 'descRunReportBody';
+    bodyEl.textContent = text;
+    block.appendChild(bodyEl);
+
+    const toggle = document.createElement('button');
+    toggle.type = 'button';
+    toggle.className = 'descRunReportToggle';
+    toggle.textContent = 'Show more';
+    toggle.hidden = true;
+    toggle.addEventListener('click', function (e) {
+        e.stopPropagation();
+        const expanded = block.classList.toggle('is-expanded');
+        toggle.textContent = expanded ? 'Show less' : 'Show more';
+    });
+    block.appendChild(toggle);
+
+    return block;
+}
+
+// Reveal the Show more toggle only when the clamped body overflows its line clamp.
+// Must run after the block is in the document (clientHeight/scrollHeight need
+// layout). A short summary keeps the toggle hidden.
+function clampRunReportBlock(block) {
+    const bodyEl = block && block.querySelector('.descRunReportBody');
+    const toggle = block && block.querySelector('.descRunReportToggle');
+    if (!bodyEl || !toggle) return;
+    toggle.hidden = !(bodyEl.scrollHeight - bodyEl.clientHeight > 1);
+}
+
+// Async-mount the run-report block into `host`, immediately before `anchor` when
+// that anchor is still a child of `host` (else appended). Fetches the shipped run's
+// closing summary and mounts the block ONLY once a non-empty summary resolves — a
+// missing summary or a failed fetch mounts nothing, never an empty block or an
+// error. Idempotent by entry key: a block already mounted for this entry is left in
+// place. Because the fetch is async, it re-checks before mounting that the ACCEPT
+// face for this same entry is still present (the task may have been accepted or the
+// panel reused for another entry while the fetch was in flight) and drops the result
+// otherwise. options.onRender fires after a successful mount so the desktop pane can
+// re-snapshot its expanded height (the block arrives after the initial paint).
+export function mountRunReportBlock(host, item, queueRow, anchor, options) {
+    if (!host) return Promise.resolve(null);
+    const opts = options || {};
+    const entryKey = String((item && (item.entryId || item.id)) || '');
+    const existing = host.querySelector('.descRunReportBlock');
+    if (existing && existing.getAttribute('data-run-report-entry') === entryKey) {
+        return Promise.resolve(existing);
+    }
+    if (existing) existing.remove();
+    return fetchShippedRunSummary(item, queueRow).then(function (summary) {
+        if (!summary) return null;
+        // The ACCEPT face for this entry must still be mounted — if it was accepted
+        // (moved to done) or the panel was reused for a different entry while the
+        // fetch was in flight, drop the stale summary rather than mounting it.
+        const actions = host.querySelector('.descReviewActions');
+        if (!actions || actions.getAttribute('data-review-entry') !== entryKey) return null;
+        const dupe = host.querySelector('.descRunReportBlock');
+        if (dupe) dupe.remove();
+        const block = buildRunReportBlock(summary);
+        if (!block) return null;
+        block.setAttribute('data-run-report-entry', entryKey);
+        if (anchor && anchor.parentNode === host) host.insertBefore(block, anchor);
+        else host.appendChild(block);
+        clampRunReportBlock(block);
+        if (typeof opts.onRender === 'function') opts.onRender();
+        return block;
+    });
 }
 
 
@@ -1432,8 +1587,13 @@ function syncReviewPanel(toDoChild, item, projectName) {
     // WHAT CHANGED card first, the action row right after it.
     const anchor = descPanelTopAnchor(panel);
     panel.insertBefore(buildReviewBlock(item, queueRow), anchor);
-    panel.insertBefore(buildReviewActions(item, projectName), anchor);
+    const reviewActions = buildReviewActions(item, projectName);
+    panel.insertBefore(reviewActions, anchor);
     refreshViewerExpandedHeight();
+    // The run's closing summary is fetched async and mounted BETWEEN the WHAT
+    // CHANGED card and the action row once (if) it resolves — a run with none, or a
+    // failed fetch, mounts nothing and never blocks the decision controls.
+    mountRunReportBlock(panel, item, queueRow, reviewActions, { onRender: refreshViewerExpandedHeight });
 }
 
 
