@@ -367,7 +367,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: d0b9a3a0-d476-4e25-bebb-4b766988c63f -->
 
-- [ ] **[MEDIUM]** Show API spend — a desktop panel and a mobile chat-header control
+- [x] **[MEDIUM]** Show API spend — a desktop panel and a mobile chat-header control — Completed: 2026-08-01
   - Type: feature
   - Description: The Worker now records every Anthropic call to `usage_events` — the chat route (Sonnet, or Opus on deep_think) and the scan route — with per-call token counts plus `route` and `model`. Nothing surfaces it, so there is no way to see what the account has spent. Add a readout with two entry points, since the surfaces differ: on DESKTOP the header's existing stats icon opens a small panel showing the month's total with a bar against a budget; on MOBILE a control in the chat view's header row, left of New Chat, opens the same panel. This covers API spend ONLY — the CI runs authenticate against the Max plan, produce no usage object, and cannot be measured. The panel must say so, or a small figure reads as "this whole pipeline is nearly free" when every run is invisible to it.
   - Behavior: Tapping the desktop header's stats icon, or the mobile chat header's spend control, opens a panel showing the current calendar month's API spend as a dollar figure, a bar filled against a configurable budget, the percentage that represents, and one line naming what the number covers and what it cannot. With no rows the panel reads $0.00 with an empty bar rather than an error or a spinner. It closes on Escape, a backdrop tap, and its own close control, returning focus to whatever opened it. The figure is account-wide, not per-project.
