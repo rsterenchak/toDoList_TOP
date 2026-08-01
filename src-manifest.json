@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-01T05:53:25.631Z",
-  "sha": "ba636066db446a4d9f18b1e0916551fe51851385",
+  "generatedAt": "2026-08-01T06:16:16.743Z",
+  "sha": "70158df7b6a3d9c01b974f347a0022aaa1828987",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -5373,11 +5373,11 @@
       "selector": "#taskFilterEmpty",
       "label": "Task Filter Empty",
       "file": "taskFilter.js",
-      "line": 792,
+      "line": 807,
       "files": [
         {
           "file": "taskFilter.js",
-          "line": 792
+          "line": 807
         }
       ]
     },
