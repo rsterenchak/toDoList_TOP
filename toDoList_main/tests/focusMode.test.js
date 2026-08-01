@@ -248,6 +248,8 @@ describe('focus mode — main.js nav wiring', () => {
     });
 
     it('includes focusModeToggle in the header arrow-key navigation order', () => {
-        expect(js).toMatch(/musicToggle,\s*focusModeToggle,\s*settingsToggle/);
+        // The API-spend nav button sits between focus-mode and settings in the
+        // right cluster, so it appears in the arrow-key order between them too.
+        expect(js).toMatch(/musicToggle,\s*focusModeToggle,\s*spendToggle,\s*settingsToggle/);
     });
 });

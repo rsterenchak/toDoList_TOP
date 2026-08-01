@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-01',
         added: [
-            "The Structure tab's NEXT REFACTOR card can now request a fresh scan on demand.",
+            "See this month's API spend — chat and refactor-scan usage — in a new panel opened from the header and the mobile chat view, with a bar against a budget you set.",
         ],
         changed: [
             "On phones the task filter now cycles All / In progress / Done — the same phase-aware set as desktop — replacing the old All / Active / Ideas filter.",

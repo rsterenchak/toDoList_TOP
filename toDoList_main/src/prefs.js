@@ -422,3 +422,34 @@ export function setMusicVisualizerStyle(style) {
         localStorage.setItem(MUSIC_VISUALIZER_STYLE_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }
+
+// ── monthly API-spend budget ──
+// The API-spend panel fills a progress bar against this monthly budget (USD).
+// It is a plain user setting with a sensible non-zero default so the bar has
+// something to fill on first open; a stored 0 (or a hand-cleared/unset value the
+// user deliberately zeroes) is honored as "no budget" by the panel, which then
+// shows the total with no bar rather than dividing by zero. Any non-finite or
+// negative stored value falls back to the default so a stale/hand-edited pref
+// can't break the panel.
+export const USAGE_BUDGET_KEY = 'todoapp_usageBudget';
+const DEFAULT_USAGE_BUDGET = 20;
+
+export function getUsageBudget() {
+    try {
+        const raw = localStorage.getItem(USAGE_BUDGET_KEY);
+        if (raw === null) return DEFAULT_USAGE_BUDGET;
+        const n = parseFloat(raw);
+        return (isFinite(n) && n >= 0) ? n : DEFAULT_USAGE_BUDGET;
+    } catch (e) {
+        return DEFAULT_USAGE_BUDGET;
+    }
+}
+
+export function setUsageBudget(amount) {
+    try {
+        const n = parseFloat(amount);
+        if (isFinite(n) && n >= 0) {
+            localStorage.setItem(USAGE_BUDGET_KEY, String(n));
+        }
+    } catch (e) { /* ignore quota/private-mode */ }
+}
