@@ -267,3 +267,20 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3659ea51-fb4e-48a4-9c56-597e596e26b9 -->
+
+- [ ] **[MEDIUM]** TODO.md strip renders on the Structure view
+  - Type: bug
+  - Description: The TODO.md strip stays visible when STRUCTURE is active and peeks past the right edge of the expanded Structure view. `#mainBar[data-view="structure"]` hides the view's other queue-column children by name — `#mainList`, `#mobileProjHeader`, `#taskFilterBar`, `#bulkDescActions` — but the strip was added after that rule was written and is not in the list, so it keeps rendering. The strip belongs to the Stream view only; it is the entry point to `TODO.md` for the task queue and has no meaning alongside the source-structure map.
+  - Behavior: With STRUCTURE active the TODO.md strip is not rendered. Switching back to STREAM restores it in its pinned position above the filter pills, collapsed or expanded as it was. If the viewer card was expanded into the detail pane when the view switched, returning to STREAM restores that state rather than silently collapsing it — or collapses it deliberately; state which and make it consistent.
+  - Implementation notes:
+    - Add the strip's selector to the existing `#mainBar[data-view="structure"]` hide rule rather than writing a separate one. One rule listing every Stream-only child is what a future addition will be checked against; two rules is how the next element gets missed the same way.
+    - While you are in that rule, audit `#mainBar`'s children against it. Anything Stream-only and not listed has this bug latent — report the full list in the PR body even if the strip is the only one.
+    - Check the AGENT view's equivalent gating if one still exists. The view is reached only by badge routes now, but if it has its own `data-view` rule the strip needs excluding there too.
+    - Verify the expanded viewer card separately. It mounts into `#descDetailPane`, which the Structure entry hides — so it should already be gone, but confirm it is hidden rather than merely off-screen, and that `restorePaneTaskContent` is not left holding a stale reference across the view switch.
+    - `#mainBar` is a three-track grid (`auto auto 1fr`) since the strip was pinned. Hiding the strip should collapse its `auto` track to zero; confirm no residual row gap remains, which would shift Structure down by a few pixels.
+    - Do NOT unmount the strip in JS. Hiding it with the existing CSS rule keeps its state intact across the switch, which is what makes returning to STREAM cheap.
+    - Test: the strip is absent under STRUCTURE and present under STREAM; switching back and forth preserves its collapsed/expanded state; and no residual gap appears above the Structure view.
+  - Out of scope: The strip's own layout, controls, and click-to-open behavior. The Structure view's contents and its full-width split. The detail pane. The Stream view's filter pills and compose row.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: cdbea0f5-b0b3-4774-8c5b-e160fd1f0886 -->
