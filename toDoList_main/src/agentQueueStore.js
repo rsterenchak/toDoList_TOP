@@ -1160,6 +1160,120 @@ function finishDeriveRun(correlationId, target) {
         .then(refresh);
 }
 
+// ── generic active-runs poll tracker ─────────────────────────────────
+// The triage-sweep and derive-run trackers above share one shape: a single
+// interval, a grace window that holds the flag optimistically on through the run's
+// registration lag, and a hard cap that force-settles a wedged run. They predate
+// this factory and keep their bespoke settle side-effects — a sweep reconciles
+// stuck 'triaging' rows and seeds the working watch, a derive fetches its run
+// conclusion and toggles the nav dot — so retrofitting them is out of scope here.
+// This factory captures the shared poll loop so a NEW tracker (the refactor scan)
+// is a configured instance rather than a third hand-rolled copy. `workflow` scopes
+// the active_runs probe; `onStart(context)` runs as tracking begins and
+// `onSettle(context)` runs once when a tracked run reaches a terminal point
+// (confirmed finished, grace elapsed, or hard cap), each with the context captured
+// at start. Both hooks default to no-ops. Probes flow through the same injected
+// `_trackerDeps` the sweep/derive trackers use (fetchActiveRuns / resolveDispatchTarget).
+function makeRunTracker(opts) {
+    const workflow = opts.workflow;
+    const onStart = (typeof opts.onStart === 'function') ? opts.onStart : function () {};
+    const onSettle = (typeof opts.onSettle === 'function') ? opts.onSettle : function () {};
+    let active = false;
+    let poller = null;
+    let seenActive = false;
+    let graceDeadline = 0;
+    let hardDeadline = 0;
+    let context = null;
+
+    function settle() {
+        if (poller) { clearInterval(poller); poller = null; }
+        const wasActive = active;
+        const ctx = context;
+        active = false;
+        seenActive = false;
+        if (wasActive) onSettle(ctx);
+    }
+
+    function pollOnce() {
+        if (Date.now() >= hardDeadline) { settle(); return; }
+        const target = _trackerDeps ? _trackerDeps.resolveDispatchTarget() : null;
+        Promise.resolve(_trackerDeps ? _trackerDeps.fetchActiveRuns(target, workflow) : null).then(function (res) {
+            if (!poller && !active) return;          // torn down mid-flight
+            if (!res || res.ok === false) return;    // transient — retry next tick
+            if (res.active) {
+                seenActive = true;
+                active = true;
+                return;
+            }
+            // active === false: a confirmed run has finished, or the grace window
+            // for a run that never registered has elapsed — either way, settle.
+            if (seenActive || Date.now() >= graceDeadline) settle();
+        });
+    }
+
+    return {
+        start: function (ctx) {
+            const now = Date.now();
+            active = true;
+            seenActive = false;
+            context = (ctx === undefined ? null : ctx);
+            graceDeadline = now + SWEEP_GRACE_MS;
+            hardDeadline = now + SWEEP_HARD_CAP_MS;
+            if (!poller) poller = setInterval(pollOnce, SWEEP_POLL_MS);
+            onStart(context);
+            pollOnce();
+        },
+        stop: function () {
+            if (poller) { clearInterval(poller); poller = null; }
+            active = false;
+            seenActive = false;
+        },
+        isActive: function () { return active; },
+        context: function () { return context; },
+    };
+}
+
+// ── refactor-scan tracking ───────────────────────────────────────────
+// Drive the NEXT REFACTOR card's pending state from the real claude-scan.yml run.
+// A scan writes NO agent_queue row — its only lasting record is the refactor_scans
+// row the Worker writes at the END of the run — so the card cannot infer "scanning"
+// from queue state; it observes this tracker instead. On dispatch the card starts
+// tracking; the poll flips off when the scan-scoped active_runs probe reports the
+// run gone (or the grace window elapses for a run that never registered), and the
+// card re-reads its stored scan on the settle notification. The pending state lives
+// HERE, not on the card element, so a lens switch, a project switch, or a tab reopen
+// renders pending from isScanActive() unchanged. The captured context is the scanned
+// repo, so a card can tell a scan for its own repo apart from one dispatched for a
+// different project's.
+const _scanListeners = new Set();
+
+// Subscribe to scan-tracker transitions (dispatch → pending, settle → re-read).
+// Returns an unsubscribe thunk. The card subscribes on mount and self-unsubscribes
+// once it leaves the DOM, so stale cards from earlier mounts don't accumulate.
+export function onScanChange(listener) {
+    if (typeof listener === 'function') _scanListeners.add(listener);
+    return function () { _scanListeners.delete(listener); };
+}
+function notifyScanChange() {
+    _scanListeners.forEach(function (fn) { try { fn(); } catch (e) { /* ignore */ } });
+}
+
+const _scanTracker = makeRunTracker({
+    workflow: 'scan',
+    onStart: function () { notifyScanChange(); },
+    onSettle: function () { notifyScanChange(); },
+});
+
+// Begin tracking a refactor scan for `repo`. Notifies on start so a mounted card
+// flips to its pending state at once, then polls the scan-scoped active_runs probe.
+export function startScanTracking(repo) { _scanTracker.start(repo || null); }
+// Stop tracking WITHOUT a settle notification — used to cancel the optimistic poller
+// when a dispatch fails, where the card renders its own error and repaint. A genuine
+// run settle goes through the tracker's own onSettle (which does notify).
+export function stopScanTracking() { _scanTracker.stop(); }
+export function isScanActive() { return _scanTracker.isActive(); }
+export function getScanningRepo() { return _scanTracker.context(); }
+
 // ── PERSISTENT AGENT-WORKING WATCH ──
 // A lightweight, mount-INDEPENDENT watch on whether the agent is actively
 // working — a triage sweep in flight, or a ship run dispatched/running for the

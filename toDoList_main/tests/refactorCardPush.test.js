@@ -39,6 +39,12 @@ const addAllToDo_DOM = vi.fn(function () {});
 vi.mock('../src/inject.js', () => ({
     getCachedTargets: () => [],
     fetchActiveRuns: (...a) => fetchActiveRuns(...a),
+    // The card now imports these for its request-scan control. isInjectConfigured
+    // returns false here so the scan control never mounts, keeping these push-focused
+    // tests' DOM assertions unchanged; dispatchScan/mintEntryId are never exercised.
+    isInjectConfigured: () => false,
+    dispatchScan: (...a) => Promise.resolve({ ok: true }),
+    mintEntryId: () => 'scan-corr-test',
 }));
 
 vi.mock('../src/shipEntry.js', () => ({

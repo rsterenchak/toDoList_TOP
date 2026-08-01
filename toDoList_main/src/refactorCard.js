@@ -18,14 +18,21 @@
 // real todo, ships its entry and dispatches a run directly (via shipEntryForTodo),
 // then dismisses it and advances.
 
-import { getCachedTargets, fetchActiveRuns } from './inject.js';
+import { getCachedTargets, fetchActiveRuns, dispatchScan, mintEntryId, isInjectConfigured } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
 import { listLogic } from './listLogic.js';
 import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
+import { startScanTracking, stopScanTracking, isScanActive, getScanningRepo, onScanChange } from './agentQueueStore.js';
 
 // How long the "Entry shipped — run dispatched" confirmation lingers before the
 // card re-renders to the next candidate.
 const PUSHED_ADVANCE_MS = 2000;
+
+// After a tracked scan settles, the Worker writes its refactor_scans row at the END
+// of the run — occasionally a beat AFTER the run reports complete. So the card
+// re-reads once on settle and, if the stored scan hasn't advanced, once more after
+// this delay before giving up.
+const SCAN_SETTLE_REREAD_MS = 2500;
 
 function clearEl(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -343,6 +350,7 @@ function renderCandidate(card, repo, row, projectName) {
         note.className = 'refactorCardNote';
         note.textContent = 'No more candidates — every suggestion skipped.';
         card.appendChild(note);
+        mountScanControl(card, repo, projectName, true);
         return;
     }
 
@@ -428,6 +436,7 @@ function renderCandidate(card, repo, row, projectName) {
     actions.appendChild(push);
     actions.appendChild(skip);
     card.appendChild(actions);
+    mountScanControl(card, repo, projectName, true);
 }
 
 // The scan looked and found nothing over budget. Show the "clean" note plus a
@@ -462,6 +471,132 @@ function renderUnreadable(card, row) {
     card.appendChild(note);
 }
 
+// ── Request-scan control ─────────────────────────────────────────────
+// The card is a pure reader of the last stored scan; this control asks the Worker
+// to run a FRESH one (claude-scan.yml, ~90s in CI) for the active project's repo.
+// The scan runs server-side precisely because mobile Safari drops a connection held
+// that long, so the browser never scans — it dispatches, then observes the shared
+// scan tracker (agentQueueStore) for the run's lifecycle and re-reads the row when
+// it settles. Gated on the project routing to an inject target, the same test the
+// sidebar bolt and the availability check use, so a project with no routed repo
+// shows no control.
+
+// Whether this project routes to an inject target. Mirrors the sidebar bolt /
+// availability gate (isInjectConfigured() && getProjectTargetId(project)). Guarded
+// with typeof so a partial mock of inject.js / listLogic (which some tests use)
+// degrades to "no control" rather than throwing during render.
+function hasRoutedTarget(projectName) {
+    if (!projectName) return false;
+    if (typeof isInjectConfigured !== 'function' || !isInjectConfigured()) return false;
+    if (typeof listLogic.getProjectTargetId !== 'function') return false;
+    return !!listLogic.getProjectTargetId(projectName);
+}
+
+// True when a scan is in flight for THIS card's repo — read from the tracker, not
+// from card-local state, so the pending state survives a lens switch, a project
+// switch, or a tab reopen.
+function scanPendingForRepo(repo) {
+    return isScanActive() && getScanningRepo() === repo;
+}
+
+// A quiet inline error for a failed scan DISPATCH (mirroring showPushError). Only a
+// genuinely failed dispatch warrants this — the scan reporting "nothing new" is a
+// success and returns the card to its normal state.
+function showScanError(card, reason) {
+    const existing = card.querySelector('.refactorCardScanError');
+    if (existing) existing.remove();
+    const err = document.createElement('div');
+    err.className = 'refactorCardError refactorCardScanError';
+    err.textContent = reason
+        ? ('Couldn’t request a scan — ' + reason)
+        : 'Couldn’t request a scan.';
+    const row = card.querySelector('.refactorCardScanRow');
+    if (row) card.insertBefore(err, row);
+    else card.appendChild(err);
+}
+
+// Dispatch a fresh scan for `repo`, then begin tracking it. Awaits the dispatch so a
+// failure surfaces without pinning the pending state through the grace window — only
+// a run that actually dispatched is tracked. On success the tracker flips
+// isScanActive() and notifies, so this card (and any other mounted card for the same
+// repo) repaints to its pending state.
+async function requestScan(card, repo, projectName, state, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Requesting…';
+    const prevErr = card.querySelector('.refactorCardScanError');
+    if (prevErr) prevErr.remove();
+    const target = resolveTarget(repo);
+    const correlationId = mintEntryId();
+    let res;
+    try {
+        res = await dispatchScan(correlationId, target);
+    } catch (e) {
+        res = { ok: false, reason: (e && e.message) || '' };
+    }
+    if (!res || res.ok === false) {
+        showScanError(card, (res && (res.detail || res.reason)) || '');
+        btn.disabled = false;
+        btn.textContent = state && state.hasRow ? 'Scan again' : 'Run scan now';
+        return;
+    }
+    // Baseline the current scan timestamp so the settle re-read can tell whether the
+    // stored row actually advanced (the Worker writes it at the end of the run).
+    state.pendingBaseline = state.lastScannedAt;
+    state.awaitingResult = true;
+    state.retried = false;
+    startScanTracking(repo);
+}
+
+// Mount (idempotently) the request-scan control as the card's last child. Called at
+// the end of fillCard and of renderCandidate — the latter re-renders internally on
+// Skip and on push-advance, wiping the card, so the control is re-established there
+// too. Reads pending from the tracker; when scanning, the button is disabled and
+// labelled "Scanning…". State bookkeeping rides on card._refactorScanState so the
+// internal re-render paths (which don't thread `state`) can still reach it.
+function mountScanControl(card, repo, projectName, hasRow) {
+    const existing = card.querySelector('.refactorCardScanRow');
+    if (existing) existing.remove();
+    if (!hasRoutedTarget(projectName)) return;
+    const state = card._refactorScanState || null;
+    if (state) state.hasRow = !!hasRow;
+    const row = document.createElement('div');
+    row.className = 'refactorCardScanRow';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'refactorCardScan';
+    if (scanPendingForRepo(repo)) {
+        btn.disabled = true;
+        btn.textContent = 'Scanning…';
+    } else {
+        btn.textContent = hasRow ? 'Scan again' : 'Run scan now';
+        btn.title = 'Request a fresh refactor scan for this repo.';
+        btn.addEventListener('click', function () {
+            if (btn.disabled || !state) return;
+            requestScan(card, repo, projectName, state, btn);
+        });
+    }
+    row.appendChild(btn);
+    card.appendChild(row);
+}
+
+// After a settle re-read, if the tracked scan has finished but the stored row hasn't
+// advanced yet (the Worker writes it a beat late), schedule ONE more re-read, then
+// stop. Clears the awaiting flag once a fresh row lands or the single retry is spent.
+function maybeScheduleScanReread(card, repo, projectName, state, scannedAt) {
+    if (!state || !state.awaitingResult) return;
+    if (isScanActive()) return; // still scanning — not settled yet
+    if (scannedAt && scannedAt !== state.pendingBaseline) {
+        state.awaitingResult = false; // a fresh scan landed
+        return;
+    }
+    if (state.retried) { state.awaitingResult = false; return; }
+    state.retried = true;
+    setTimeout(function () {
+        if (!card.isConnected) return;
+        fillCard(card, repo, projectName, state);
+    }, SCAN_SETTLE_REREAD_MS);
+}
+
 // ── Reader ───────────────────────────────────────────────────────────
 
 // Read the repo's last stored scan and render the top not-yet-dismissed
@@ -473,36 +608,54 @@ function renderUnreadable(card, row) {
 // (the client never sees "unchanged"), and a Worker that writes no row because
 // everything is under budget is indistinguishable from a cold start — both
 // collapse into the no-row note.
-async function fillCard(card, repo, projectName) {
-    let loaded;
+async function fillCard(card, repo, projectName, state) {
+    const scanState = state || card._refactorScanState || null;
+    // Guard against a stale async fill (a settle re-read or a scan-change repaint)
+    // clobbering a newer one: each call takes a generation and bails if superseded.
+    const gen = scanState ? (++scanState.gen) : 0;
+    let loaded, errMsg = null;
     try {
         loaded = await listLogic.loadLatestRefactorScan(repo);
     } catch (e) {
-        renderError(card, (e && e.message) || '');
-        return;
+        loaded = null;
+        errMsg = (e && e.message) || '';
     }
-    if (!loaded || loaded.ok === false) {
+    if (scanState && gen !== scanState.gen) return; // superseded by a newer fill
+    let row = null;
+    if (errMsg !== null) {
+        renderError(card, errMsg);
+    } else if (!loaded || loaded.ok === false) {
         renderError(card, (loaded && loaded.error) || '');
-        return;
+    } else {
+        row = loaded.row || null;
+        if (!row) {
+            renderNote(card, 'No refactor scan yet — one runs automatically after the next shipped run.');
+        // The Worker writes rows for the states where it looked and found nothing.
+        // Branch on `status` so each reads truthfully; `candidates` and any
+        // missing/unrecognised status (a legacy row) fall through to renderCandidate.
+        } else if (row.status === 'clean') {
+            renderClean(card, row);
+        } else if (row.status === 'unreadable') {
+            renderUnreadable(card, row);
+        } else {
+            renderCandidate(card, repo, row, projectName);
+        }
     }
-    const row = loaded.row || null;
-    if (!row) {
-        renderNote(card, 'No refactor scan yet — one runs automatically after the next shipped run.');
-        return;
+    const scannedAt = row ? (row.scanned_at || null) : null;
+    // renderCandidate self-mounts the scan control; mount for every other branch and
+    // idempotently re-mount for the candidate branch so exactly one control remains.
+    mountScanControl(card, repo, projectName, !!row);
+    if (scanState) {
+        maybeScheduleScanReread(card, repo, projectName, scanState, scannedAt);
+        scanState.lastScannedAt = scannedAt;
     }
-    // The Worker now writes rows for the states where it looked and found
-    // nothing. Branch on `status` so each reads truthfully; `candidates` and any
-    // missing/unrecognised status (a legacy row) fall through to renderCandidate.
-    if (row.status === 'clean') {
-        renderClean(card, row);
-        return;
-    }
-    if (row.status === 'unreadable') {
-        renderUnreadable(card, row);
-        return;
-    }
-    renderCandidate(card, repo, row, projectName);
 }
+
+// Module-level unsubscribe for the currently-mounted card's scan-change listener.
+// structureView mounts exactly one refactor card per render and discards the old
+// one, so the previous listener is dropped when a new card mounts (belt-and-braces
+// with the self-clean on `!card.isConnected` inside the listener).
+let _scanChangeUnsub = null;
 
 // Public entry: a container element filled asynchronously. Hidden entirely when
 // there's no repo (structureView already early-returns before this in that case,
@@ -510,12 +663,28 @@ async function fillCard(card, repo, projectName) {
 // nothing until the stored row resolves — the read is sub-second, so a loading
 // state would only flash.
 export function renderRefactorCard(repo, projectName) {
+    // Drop the prior card's scan-change listener before wiring this one.
+    if (_scanChangeUnsub) { _scanChangeUnsub(); _scanChangeUnsub = null; }
     const card = document.createElement('div');
     card.className = 'refactorCard';
     if (!repo) {
         card.style.display = 'none';
         return card;
     }
-    fillCard(card, repo, projectName);
+    // Per-card scan bookkeeping (generation guard + settle re-read baseline), parked
+    // on the element so the internal re-render paths (Skip, push-advance) can reach it.
+    const state = { gen: 0, lastScannedAt: null, pendingBaseline: null, awaitingResult: false, retried: false, hasRow: false };
+    card._refactorScanState = state;
+    fillCard(card, repo, projectName, state);
+    // Repaint on scan-tracker transitions: dispatch flips the control to "Scanning…",
+    // settle re-reads the stored row and repaints. Self-cleaning once the card leaves
+    // the DOM (a fresh structureView render mounts a new card). The listener captures
+    // its OWN unsubscribe locally, so a detached old card can never drop a live card's.
+    let unsub = null;
+    unsub = onScanChange(function () {
+        if (!card.isConnected) { if (unsub) unsub(); return; }
+        fillCard(card, repo, projectName, state);
+    });
+    _scanChangeUnsub = unsub;
     return card;
 }
