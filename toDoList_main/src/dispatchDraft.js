@@ -1,5 +1,5 @@
 import { listLogic } from './listLogic.js';
-import { findTargetById } from './inject.js';
+import { findTargetById, mintEntryId, embedEntryMarker } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
 import { kickDispatchReconciler } from './agentQueueStore.js';
 
@@ -70,21 +70,46 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     // and ship against IT. Mirrors refactorCard's pushCandidate: add by title,
     // look the created item up, backfill its description through the edit path.
     // Rows that already carry a todo_id (normal flagged tasks) skip this entirely.
+    //
+    // The created todo's description is the ENTRY being injected (`draftText`), NOT
+    // the proposal's short summary (`ctx.description`) — the summary reads fine as a
+    // blurb but has no `- Type:`/`- Description:`/`- File:` structure, so everything
+    // downstream that parses `item.desc` (WHAT CHANGED, COPY CONTEXT, ITERATE) breaks
+    // against it. We mint the entry id up front and store the marker-embedded entry,
+    // so the todo's `desc` matches byte-for-byte what shipEntryForTodo injects into
+    // TODO.md (it embeds the same id into the same `draftText`), and COPY CONTEXT's
+    // block carries the marker that makes a follow-up traceable. The minted id is
+    // passed on to shipEntryForTodo as its entry id so the two never diverge.
     let todoId = row.todo_id;
     let createdProject = null;
+    let shipEntryId = existingEntryId;
     if (!todoId) {
         const projectName = getSelectedProjectName();
         const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
         const title = (ctx.title || '').toString().trim();
         if (projectName && title) {
+            // Mint (or reuse) the entry id before creating the todo so the stored
+            // description carries the exact `<!-- id: ... -->` marker the injected
+            // entry will. `existingEntryId` is honored when present (Retry reuse).
+            const entryId = existingEntryId || mintEntryId();
+            // Snapshot existing item ids so the newly-created row is identified by
+            // its fresh id, not by a title match — a pre-existing task (or a second
+            // proposal) with the same title must never be adopted as "the created
+            // todo". addToDo doesn't return the item, so diff the list instead.
+            const beforeIds = new Set(
+                (listLogic.listItems(projectName) || []).map(function (it) { return it && it.id; })
+            );
             listLogic.addToDo(projectName, title);
             const items = listLogic.listItems(projectName) || [];
-            const created = items.filter(function (it) { return it && it.tit === title; }).pop();
+            const created = items.filter(function (it) {
+                return it && it.tit === title && !beforeIds.has(it.id);
+            }).pop();
             if (created) {
-                created.desc = (ctx.description || '').toString();
+                created.desc = embedEntryMarker((draftText || '').toString(), entryId);
                 listLogic.editToDoItem(projectName, created);
                 todoId = created.id;
                 createdProject = projectName;
+                shipEntryId = entryId;
             }
         }
     }
@@ -104,7 +129,7 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
         todoId: todoId,
         entryText: draftText,
         target: target,
-        existingEntryId: existingEntryId,
+        existingEntryId: shipEntryId,
     });
     if (!res || !res.ok) {
         return { ok: false, error: res.error };

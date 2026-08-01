@@ -27,6 +27,8 @@ vi.mock('../src/shipEntry.js', () => ({
 
 vi.mock('../src/inject.js', () => ({
     findTargetById: () => null,
+    mintEntryId: () => 'ent-mint',
+    embedEntryMarker: (t, id) => String(t == null ? '' : t).replace(/\s+$/, '') + '\n  <!-- id: ' + id + ' -->',
 }));
 
 vi.mock('../src/listLogic.js', () => ({
@@ -81,16 +83,20 @@ describe('dispatchDraft creates a real todo for a derive proposal (no source tod
         expect(res).toEqual({ ok: true });
 
         // A real todo was created in the selected project with the proposal's title,
-        // and its description backfilled through the edit path.
+        // and its description backfilled through the edit path with the ENTRY being
+        // injected (draftText) — marker-embedded — NOT the proposal's short summary.
         expect(addToDoCalls).toEqual([{ projectName: 'Inbox', title: 'Add a widget' }]);
         expect(editCalls).toHaveLength(1);
         expect(editCalls[0].projectName).toBe('Inbox');
         expect(editCalls[0].item.id).toBe('created-id-1');
-        expect(editCalls[0].item.desc).toBe('A shiny new widget.');
+        expect(editCalls[0].item.desc).toBe('entry body\n  <!-- id: ent-mint -->');
+        expect(editCalls[0].item.desc).not.toBe('A shiny new widget.');
 
-        // The run shipped against the CREATED todo's id, not the null row.todo_id.
+        // The run shipped against the CREATED todo's id, not the null row.todo_id,
+        // reusing the id minted for the todo so the two never diverge.
         expect(shipCalls).toHaveLength(1);
         expect(shipCalls[0].todoId).toBe('created-id-1');
+        expect(shipCalls[0].existingEntryId).toBe('ent-mint');
     });
 
     it('persists the created todo id back onto the queue row for later stamping', async () => {
@@ -113,6 +119,51 @@ describe('dispatchDraft creates a real todo for a derive proposal (no source tod
             run_id: 222,
             todo_id: 'created-id-1',
         });
+    });
+
+    it('backfills the entry text as the description, not the proposal summary', async () => {
+        selectProject('Inbox');
+        const row = {
+            id: 'q9',
+            todo_id: null,
+            entry_id: null,
+            context: { title: 'Add a widget', description: 'A shiny new widget.' },
+        };
+
+        const entryText =
+            '- [ ] **[MEDIUM]** Add a widget\n  - Type: feature\n' +
+            '  - Description: Renders a widget.\n  - File: `src/widget.js`';
+        await dispatchDraft(row, entryText, row.entry_id);
+
+        // The stored description is the full injected entry (headline + Type/File
+        // bullets) with the marker appended — never the one-line proposal summary.
+        expect(editCalls[0].item.desc).toBe(entryText + '\n  <!-- id: ent-mint -->');
+        expect(editCalls[0].item.desc).toContain('- Type: feature');
+        expect(editCalls[0].item.desc).toContain('- File: `src/widget.js`');
+        expect(editCalls[0].item.desc).not.toContain('A shiny new widget.');
+    });
+
+    it('does not adopt a pre-existing task that shares the proposal title', async () => {
+        selectProject('Inbox');
+        // A task with the same title already exists in the project; the derive
+        // proposal must create a NEW row and ship against it, never the old one.
+        projectItems.push({ id: 'old-1', tit: 'Add a widget', desc: 'pre-existing' });
+        const row = {
+            id: 'q9',
+            todo_id: null,
+            entry_id: null,
+            context: { title: 'Add a widget', description: 'A shiny new widget.' },
+        };
+
+        await dispatchDraft(row, 'entry body', row.entry_id);
+
+        // The created todo (fresh id), not the pre-existing 'old-1', was edited and shipped.
+        expect(editCalls).toHaveLength(1);
+        expect(editCalls[0].item.id).toBe('created-id-1');
+        expect(shipCalls[0].todoId).toBe('created-id-1');
+        expect(runStateCalls[0].patch.todo_id).toBe('created-id-1');
+        // The pre-existing task is left untouched.
+        expect(projectItems.find((i) => i.id === 'old-1').desc).toBe('pre-existing');
     });
 });
 

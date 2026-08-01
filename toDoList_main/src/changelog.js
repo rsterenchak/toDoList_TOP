@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-07-31',
         fixed: [
-            "Flagging a task now launches its triage run and lights the working indicator again, instead of silently queuing it and doing nothing after the Agent board was retired.",
             "A todo created by accepting a proposed task now appears in your list immediately, instead of staying hidden until you switch projects and back.",
             "The Runs tab now lists every shipped entry — including ones run from the backlog or an entry's Run pill — so any of them can be reopened to iterate on, not just runs started from chat.",
             "The desktop DONE filter now shows only shipped work still open in your list, no longer pulling in tasks you have already checked off.",
             "Expanding the COMPLETED section on desktop now shows your checked-off tasks again, instead of appearing empty because the status filters were hiding them.",
+            "A task created by accepting a proposal now keeps the full task entry as its description, so its change details, copy-context, and iterate actions work correctly.",
         ],
     },
 ];
