@@ -214,3 +214,22 @@
   - File: `toDoList_main/src/dispatchDraft.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 59142ecb-f642-469d-8a70-5d34788785bd -->
+
+- [ ] **[MEDIUM]** Surface a shipped run's closing summary on the ACCEPT face
+  - Type: feature
+  - Description: A completed run leaves a closing summary — the agent's verdict on what it did and anything it noticed but deliberately did not fix. `fetchClosingSummary` already retrieves it and the queue store surfaces it on `no_change` rows, but a run that SHIPPED has its summary discarded, which is exactly the run whose observations matter. With the routine no longer appending follow-ups to `TODO.md`, that summary becomes the only channel for them, so it has to reach the surface where you are already deciding. Show it on the ACCEPT face, and include it in the COPY CONTEXT block so a follow-up can be handed to an outside conversation or fed straight into iterate.
+  - Behavior: A task in the `accept` phase shows its run's closing summary beneath the WHAT CHANGED card, in a distinct block labelled as the run's own report rather than as part of the entry. It appears only when a summary exists; a run with none renders nothing rather than an empty block. The COPY CONTEXT block gains the summary under its own heading, so a pasted context carries what the run observed as well as what it changed. ITERATE is unchanged and already seeds from the entry, so describing a follow-up there produces a new entry against the same repo. The existing `no_change` surfacing is untouched.
+  - Implementation notes:
+    - Reuse `fetchClosingSummary` from `inject.js` — do not add a second fetch. Check how the `no_change` path retrieves and caches it; if the result is already stored on the queue row, read it from there rather than fetching again on every panel open.
+    - The fetch is async and the panel is already mounted. Render the block only once the summary resolves, and do not block the ACCEPT face on it — the decision controls must be usable immediately.
+    - A run may have no summary, or the fetch may fail. Both cases render nothing. Do NOT show an error or a placeholder; an absent summary is normal and a failed fetch is not worth interrupting a decision over.
+    - Summaries can be long. Clamp the block to a few lines with an expand affordance rather than letting it push ACCEPT & CLOSE below the fold, and verify against the mobile modal's 92vh cap where the ACCEPT face is already dense.
+    - Add the summary to the copy block under `--- what the run reported ---`, placed after the entry text and before the trailing `--- what I want changed ---` placeholder, so the block reads as: what shipped, what the run said about it, then your request. Omit the section entirely when there is no summary rather than emitting an empty heading.
+    - Mount idempotently, register in `DESC_PANEL_CHILD_SELECTORS`, and keep it out of `DESC_AUTHORING_GROUP_SELECTORS` like the other accept-face children.
+    - Render in both hosts — the desktop pane and the mobile modal, which now carries the full ACCEPT face.
+    - Call `refreshViewerExpandedHeight()` when the block mounts, since it arrives async and changes the panel's height after the initial paint.
+    - Test: a shipped run with a summary renders the block; one without renders nothing; a failed fetch renders nothing and does not block the decision controls; the copy block includes the summary section only when present; and the `no_change` surfacing still works.
+  - Out of scope: The `no_change` path's existing summary rendering. `fetchClosingSummary` itself and the Worker's `run_result` route. ITERATE's behavior. The WHAT CHANGED card, which reads the entry's Description line and is a different thing. Creating tasks from a follow-up automatically.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 83e4595d-a343-471c-a7f5-39c678274460 -->
