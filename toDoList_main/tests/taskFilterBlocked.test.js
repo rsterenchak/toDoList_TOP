@@ -8,8 +8,8 @@ import {
     taskFilterArrowTarget,
 } from '../src/taskFilter.js';
 import {
-    getTaskFilter,
-    setTaskFilter,
+    getPhaseFilter,
+    setPhaseFilter,
     getBlockedFilter,
     setBlockedFilter,
 } from '../src/prefs.js';
@@ -164,8 +164,8 @@ describe('blocked chip — always present, dimmed + inert at zero', () => {
 // (b) Tapping the chip filters to blocked rows only AND snaps the status pill to
 // ALL, so the two controls are never both filtering.
 describe('engaging the blocked filter', () => {
-    it('shows only blocked rows and snaps the status pill to ALL', () => {
-        setTaskFilter('ideas'); // start on a non-ALL status filter
+    it('shows only blocked rows and snaps the filter to ALL', () => {
+        setPhaseFilter('inprogress'); // start on a non-ALL filter
         const ml = makeMainList();
         const blocked = makeRow('Blocked', 'active', { blocked: true });
         const idea = makeRow('Idea', 'idea');
@@ -178,8 +178,8 @@ describe('engaging the blocked filter', () => {
         chip(bar).click();
 
         expect(getBlockedFilter()).toBe(true);
-        // Status pill snapped to ALL — the two controls never both filter.
-        expect(getTaskFilter()).toBe('all');
+        // Filter snapped to ALL — the two controls never both filter.
+        expect(getPhaseFilter()).toBe('all');
         // Only the blocked row is visible.
         expect(isHidden(blocked)).toBe(false);
         expect(isHidden(idea)).toBe(true);
@@ -187,7 +187,7 @@ describe('engaging the blocked filter', () => {
         expect(chip(bar).classList.contains('selected')).toBe(true);
     });
 
-    it('tapping again releases the filter, leaving the pill on ALL', () => {
+    it('tapping again releases the filter, leaving it on ALL', () => {
         const ml = makeMainList();
         const blocked = makeRow('Blocked', 'active', { blocked: true });
         const active = makeRow('Active', 'active');
@@ -200,7 +200,7 @@ describe('engaging the blocked filter', () => {
         chip(bar).click();   // release
 
         expect(getBlockedFilter()).toBe(false);
-        expect(getTaskFilter()).toBe('all');
+        expect(getPhaseFilter()).toBe('all');
         expect(isHidden(blocked)).toBe(false);
         expect(isHidden(active)).toBe(false);
     });
@@ -230,10 +230,10 @@ describe('engaging the blocked filter', () => {
 });
 
 
-// Selecting a status filter releases the blocked filter — the two never compose
-// (out of scope: a blocked filter AND a non-ALL status filter).
-describe('status filter selection releases the blocked filter', () => {
-    it('cycling the status pill releases an active blocked filter', () => {
+// Selecting a filter releases the blocked filter — the two never compose
+// (out of scope: a blocked filter AND a non-ALL filter).
+describe('filter selection releases the blocked filter', () => {
+    it('cycling the pill releases an active blocked filter', () => {
         const ml = makeMainList();
         ml.append(makeRow('Blocked', 'active', { blocked: true }), makeRow('Idea', 'idea'));
         const bar = buildTaskFilterBar();
@@ -243,12 +243,12 @@ describe('status filter selection releases the blocked filter', () => {
         chip(bar).click();
         expect(getBlockedFilter()).toBe(true);
 
-        bar.querySelector('.taskCyclePill').click(); // all → active
+        bar.querySelector('.taskCyclePill').click(); // all → inprogress
         expect(getBlockedFilter()).toBe(false);
-        expect(getTaskFilter()).toBe('active');
+        expect(getPhaseFilter()).toBe('inprogress');
     });
 
-    it('tapping a mobile segment releases an active blocked filter', () => {
+    it('tapping a segment releases an active blocked filter', () => {
         const ml = makeMainList();
         ml.append(makeRow('Blocked', 'active', { blocked: true }), makeRow('Idea', 'idea'));
         const bar = buildTaskFilterBar();
@@ -258,11 +258,11 @@ describe('status filter selection releases the blocked filter', () => {
         chip(bar).click();
         expect(getBlockedFilter()).toBe(true);
 
-        const ideasSeg = Array.from(bar.querySelectorAll('.taskFilterSeg'))
-            .filter(s => s.getAttribute('data-seg') === 'ideas')[0];
-        ideasSeg.click();
+        const doneSeg = Array.from(bar.querySelectorAll('.taskFilterSeg'))
+            .filter(s => s.getAttribute('data-seg') === 'done')[0];
+        doneSeg.click();
         expect(getBlockedFilter()).toBe(false);
-        expect(getTaskFilter()).toBe('ideas');
+        expect(getPhaseFilter()).toBe('done');
     });
 });
 

@@ -6,22 +6,21 @@ import {
     setItemPhaseResolver,
 } from '../src/taskFilter.js';
 import {
-    getTaskFilter, setTaskFilter,
     getPhaseFilter, setPhaseFilter,
     PHASE_FILTER_KEY,
 } from '../src/prefs.js';
 
 // The DESKTOP filter is three always-visible pills (ALL / IN PROGRESS / DONE)
-// that mix manual status and derived phase deliberately — a separate vocabulary
-// and a separate persisted key from the mobile status cycle pill. ALL is open
-// work (every uncompleted task), IN PROGRESS is work you or the machine are doing
-// (status in_progress, or phase draft/running), DONE is shipped-and-acknowledged
-// work still open in the list (phase done AND NOT checked off — a strict subset of
-// ALL, so checked-off rows never appear under it). taskFilter.js
-// never imports phase.js (import cycle), so the phase test is injected through
-// setItemPhaseResolver — mirroring how toDoRow.js injects `derivePhase` in the
-// real app. These tests register a light resolver reading a `ph` string off the
-// row's __item.
+// that mix manual status and derived phase deliberately. It is now the SAME filter
+// vocabulary the mobile cycle pill uses, sharing one persisted key across both
+// breakpoints. ALL is open work (every uncompleted task), IN PROGRESS is work you
+// or the machine are doing (status in_progress, or phase draft/running), DONE is
+// shipped-and-acknowledged work still open in the list (phase done AND NOT checked
+// off — a strict subset of ALL, so checked-off rows never appear under it).
+// taskFilter.js never imports phase.js (import cycle), so the phase test is
+// injected through setItemPhaseResolver — mirroring how toDoRow.js injects
+// `derivePhase` in the real app. These tests register a light resolver reading a
+// `ph` string off the row's __item.
 
 const realInnerWidth = window.innerWidth;
 function setWidth(w) {
@@ -295,23 +294,23 @@ describe('desktop pills — completed rows exempt (COMPLETED collapse is sole au
         expect(phaseCount(bar, 'done')).toBe('1');       // only the open done row
     });
 
-    it('clears a taskFilterHidden left by a mobile pass when re-applied at desktop width', () => {
-        // A completed row hidden by the mobile status filter must not stay stranded
-        // after a resize to desktop, or expanding COMPLETED would reveal nothing.
+    it('exempts completed rows at the MOBILE breakpoint too (one shared predicate)', () => {
+        // The mobile cycle pill now runs the same predicate as the desktop pills, so
+        // completed rows are exempt at both widths — expanding COMPLETED on a phone
+        // must reveal its rows under every filter, not leave them filter-hidden.
         const ml = makeMainList();
         const completed = makeRow('C', 'none', { status: 'active', completed: true });
         ml.append(makeRow('Idea', 'none', { status: 'idea' }), completed);
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
 
-        // Mobile 'ideas' filter hides the completed (active-status) row.
+        // A non-ALL filter at mobile width never hides the completed row.
         setWidth(800);
-        setTaskFilter('ideas');
+        setPhaseFilter('inprogress');
         applyTaskFilter();
-        expect(isHidden(completed)).toBe(true);
+        expect(isHidden(completed)).toBe(false);
 
-        // Back on desktop, the filter exempts it — the class is cleared, so the
-        // COMPLETED collapse alone governs whether it shows.
+        // Same at desktop width.
         setWidth(1280);
         applyTaskFilter();
         expect(isHidden(completed)).toBe(false);
@@ -332,27 +331,13 @@ describe('retired-token migration', () => {
 });
 
 
-describe('two vocabularies, two keys — breakpoint independence', () => {
-    it('setting the desktop filter never touches the status filter, and vice versa', () => {
-        setTaskFilter('ideas');    // mobile status vocabulary
-        setPhaseFilter('done');    // desktop vocabulary
-        expect(getTaskFilter()).toBe('ideas');
-        expect(getPhaseFilter()).toBe('done');
-
-        const ml = makeMainList();
-        ml.append(makeRow('R', 'running'));
-        const bar = buildTaskFilterBar();
-        document.body.appendChild(bar);
-        phasePill(bar, 'inprogress').click();
-        expect(getPhaseFilter()).toBe('inprogress');
-        expect(getTaskFilter()).toBe('ideas'); // untouched
-    });
-
-    it('crossing the breakpoint swaps the predicate but preserves both selections', () => {
-        // A running row (status active) and an idea row (phase none). Desktop
-        // filter = inprogress, mobile status filter = ideas.
+describe('one vocabulary, one key — shared across breakpoints', () => {
+    it('the same predicate governs at both widths, so a filter survives a resize', () => {
+        // A running row (phase running) and an idea row (phase none) under the
+        // single IN PROGRESS filter. The mobile cycle pill and the desktop pills
+        // now read one key and match identically, so the same row shows at both
+        // widths — there is no second vocabulary to desync.
         setPhaseFilter('inprogress');
-        setTaskFilter('ideas');
         const ml = makeMainList();
         const running = makeRow('Running', 'running', { status: 'active' });
         const idea = makeRow('Idea', 'none', { status: 'idea' });
@@ -360,19 +345,33 @@ describe('two vocabularies, two keys — breakpoint independence', () => {
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
 
-        // Desktop: the desktop predicate governs — only the running row shows.
+        // Desktop width: only the in-progress (running) row shows.
         setWidth(1280);
         applyTaskFilter();
         expect(isHidden(running)).toBe(false);
         expect(isHidden(idea)).toBe(true);
 
-        // Mobile: the status predicate governs — only the idea row shows. Both
-        // stored selections survive the swap.
+        // Mobile width: identical result — the same key, the same predicate.
         setWidth(800);
         applyTaskFilter();
-        expect(isHidden(idea)).toBe(false);
-        expect(isHidden(running)).toBe(true);
+        expect(isHidden(running)).toBe(false);
+        expect(isHidden(idea)).toBe(true);
         expect(getPhaseFilter()).toBe('inprogress');
-        expect(getTaskFilter()).toBe('ideas');
+    });
+
+    it('the mobile cycle pill and the desktop pills drive the same persisted key', () => {
+        setPhaseFilter('all');
+        const ml = makeMainList();
+        ml.append(makeRow('R', 'running'));
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        // Set via the desktop pill …
+        phasePill(bar, 'inprogress').click();
+        expect(getPhaseFilter()).toBe('inprogress');
+
+        // … then advance via the mobile cycle pill: same key, one step on.
+        bar.querySelector('.taskCyclePill').click(); // inprogress → done
+        expect(getPhaseFilter()).toBe('done');
     });
 });

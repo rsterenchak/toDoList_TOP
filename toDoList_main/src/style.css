@@ -3995,15 +3995,15 @@ button.claudeAttachChipLabel { cursor: pointer; }
   background: var(--accent-text);
 }
 
-/* ── MOBILE SEGMENTED STATUS FILTER (All · Active · Ideas) ──
-   The mobile counterpart to the desktop cycle pill: three segments, each with
-   its live count, that set the filter directly on tap (no cycling). Mirrors the
-   status selector's segmented control (#descEditorModalStatusControl) so
+/* ── MOBILE SEGMENTED FILTER (All · In progress · Done) ──
+   A segmented rendering of the shared filter vocabulary: three segments, each
+   with its live count, that set the filter directly on tap (no cycling). Mirrors
+   the status selector's segmented control (#descEditorModalStatusControl) so
    filtering and status-setting share one visual language, and the active
-   segment uses the same accent tint as the cycle pill's selected state. Hidden
-   on desktop (the cycle pill owns that breakpoint); revealed at the mobile
-   breakpoint by the media query below, where the cycle pill hides — exactly one
-   filter control is ever visible, mirroring the dual Sort-trigger pattern. */
+   segment uses the same accent tint as the cycle pill's selected state. Kept
+   hidden — the cycle pill owns the mobile breakpoint and the pills own desktop —
+   so exactly one filter control is ever visible, mirroring the dual Sort-trigger
+   pattern; it stays in the DOM for the shared segmented-control styling. */
 .taskFilterSegmented {
   display: none;
   flex: 0 0 auto;
@@ -4057,14 +4057,14 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 0.85;
 }
 
-/* ── DESKTOP PHASE FILTER PILLS (ALL / ACTIVE / RUNNING / DONE) ──
-   The desktop-only counterpart to the mobile cycle pill: four always-visible
-   pills that filter the queue by a row's DERIVED pipeline phase rather than its
-   manual status. Hidden by default (mobile owns the cycle pill); revealed at the
-   desktop breakpoint below, where the cycle pill is hidden — so exactly one
-   status-vocabulary control shows per breakpoint. The four pills share the row's
-   width (flex: 1 1 0) so they stay compact in the ~308px queue rail, and the row
-   scrolls horizontally as a last resort rather than wrapping. */
+/* ── DESKTOP FILTER PILLS (ALL / IN PROGRESS / DONE) ──
+   The desktop-only counterpart to the mobile cycle pill: three always-visible
+   pills that render the shared filter vocabulary — a mix of manual status and
+   DERIVED pipeline phase. Hidden by default (mobile owns the cycle pill); revealed
+   at the desktop breakpoint below, where the cycle pill is hidden — so exactly one
+   filter control shows per breakpoint. The three pills share the row's width
+   (flex: 1 1 0) so they stay compact in the ~308px queue rail, and the row scrolls
+   horizontally as a last resort rather than wrapping. */
 .taskPhaseFilters {
   display: none;
   flex: 1 1 auto;
