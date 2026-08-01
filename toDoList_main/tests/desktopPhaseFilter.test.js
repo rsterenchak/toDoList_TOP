@@ -123,12 +123,14 @@ describe('desktop pills — filtering', () => {
         return { ml, bar, idea, inprog, draft, running, accept, done, completed };
     }
 
-    it('ALL shows every uncompleted task and hides the checked-off one', () => {
+    it('ALL shows every uncompleted task and leaves the checked-off one to the COMPLETED collapse', () => {
         const { bar, idea, inprog, draft, running, accept, done, completed } = seed();
         applyTaskFilter();
         [idea, inprog, draft, running, accept, done].forEach(r => expect(isHidden(r)).toBe(false));
-        expect(isHidden(completed)).toBe(true);
-        expect(phaseCount(bar, 'all')).toBe('6'); // completed excluded from ALL
+        // The desktop filter no longer hides completed rows — the COMPLETED
+        // section's own collapse is their sole authority — so no taskFilterHidden.
+        expect(isHidden(completed)).toBe(false);
+        expect(phaseCount(bar, 'all')).toBe('6'); // completed still excluded from the ALL count
     });
 
     it('IN PROGRESS shows in_progress status + draft/running phase, excludes idle ideas and done', () => {
@@ -141,16 +143,19 @@ describe('desktop pills — filtering', () => {
         expect(isHidden(idea)).toBe(true);
         expect(isHidden(accept)).toBe(true);
         expect(isHidden(done)).toBe(true);
-        expect(isHidden(completed)).toBe(true);
+        // Completed rows are exempt from the desktop filter (COMPLETED collapse owns them).
+        expect(isHidden(completed)).toBe(false);
         expect(phaseCount(bar, 'inprogress')).toBe('3');
     });
 
-    it('DONE shows the shipped-and-acknowledged row and hides the checked-off one', () => {
+    it('DONE shows the shipped-and-acknowledged row and excludes the checked-off one from its count', () => {
         const { bar, idea, inprog, draft, running, accept, done, completed } = seed();
         phasePill(bar, 'done').click();
         expect(getPhaseFilter()).toBe('done');
         expect(isHidden(done)).toBe(false);
-        expect(isHidden(completed)).toBe(true); // checked-off excluded from DONE
+        // Checked-off rows are excluded from the DONE COUNT, but the filter no
+        // longer hides them — the COMPLETED collapse governs their visibility.
+        expect(isHidden(completed)).toBe(false);
         [idea, inprog, draft, running, accept].forEach(r => expect(isHidden(r)).toBe(true));
         expect(phaseCount(bar, 'done')).toBe('1'); // only the open phase-done row
     });
@@ -165,7 +170,9 @@ describe('desktop pills — filtering', () => {
 
         phasePill(bar, 'done').click();
         expect(isHidden(openDone)).toBe(false);
-        expect(isHidden(shippedThenChecked)).toBe(true);
+        // The checked-off done-phase row is excluded from the DONE count, but the
+        // filter leaves its visibility to the COMPLETED collapse (no taskFilterHidden).
+        expect(isHidden(shippedThenChecked)).toBe(false);
         expect(phaseCount(bar, 'done')).toBe('1');
     });
 
@@ -193,9 +200,12 @@ describe('desktop pills — filtering', () => {
         expect(phaseCount(bar, 'all')).toBe('4');        // 4 uncompleted
         expect(phaseCount(bar, 'inprogress')).toBe('3'); // in_progress + draft + running
         expect(phaseCount(bar, 'done')).toBe('1');       // only the open phase-done row
-        // The count matches exactly the visible, non-hidden committed rows.
+        // The count matches exactly the OPEN rows the pill renders: non-completed
+        // and not filter-hidden. Completed rows are exempt from the filter (the
+        // COMPLETED collapse owns them), so they are excluded here by the completed
+        // flag rather than by taskFilterHidden.
         const visible = Array.from(ml.querySelectorAll('#toDoChild'))
-            .filter(r => r.__item && r.__item.tit && !isHidden(r));
+            .filter(r => r.__item && r.__item.tit && !r.__item.completed && !isHidden(r));
         expect(visible.length).toBe(1);
         expect(visible[0].__item.tit).toBe('Done1');
     });
@@ -251,6 +261,60 @@ describe('desktop pills — filtering', () => {
         const empty = document.getElementById('taskFilterEmpty');
         expect(empty).not.toBeNull();
         expect(empty.textContent).toBe('Nothing shipped is waiting.');
+    });
+});
+
+
+describe('desktop pills — completed rows exempt (COMPLETED collapse is sole authority)', () => {
+    it('never filter-hides a completed row under ALL, IN PROGRESS, or DONE', () => {
+        const ml = makeMainList();
+        const completed = makeRow('C', 'done', { status: 'active', completed: true });
+        ml.append(makeRow('Open', 'draft'), completed);
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        ['all', 'inprogress', 'done'].forEach(key => {
+            phasePill(bar, key).click();
+            expect(isHidden(completed)).toBe(false);
+        });
+    });
+
+    it('counts still exclude completed rows even though they are never hidden', () => {
+        const ml = makeMainList();
+        ml.append(
+            makeRow('Open', 'done'),
+            makeRow('C1', 'done', { completed: true }),
+            makeRow('C2', 'none', { status: 'in_progress', completed: true }),
+        );
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        applyTaskFilter();
+        expect(phaseCount(bar, 'all')).toBe('1');        // only the open row
+        expect(phaseCount(bar, 'inprogress')).toBe('0'); // completed in_progress excluded
+        expect(phaseCount(bar, 'done')).toBe('1');       // only the open done row
+    });
+
+    it('clears a taskFilterHidden left by a mobile pass when re-applied at desktop width', () => {
+        // A completed row hidden by the mobile status filter must not stay stranded
+        // after a resize to desktop, or expanding COMPLETED would reveal nothing.
+        const ml = makeMainList();
+        const completed = makeRow('C', 'none', { status: 'active', completed: true });
+        ml.append(makeRow('Idea', 'none', { status: 'idea' }), completed);
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        // Mobile 'ideas' filter hides the completed (active-status) row.
+        setWidth(800);
+        setTaskFilter('ideas');
+        applyTaskFilter();
+        expect(isHidden(completed)).toBe(true);
+
+        // Back on desktop, the filter exempts it — the class is cleared, so the
+        // COMPLETED collapse alone governs whether it shows.
+        setWidth(1280);
+        applyTaskFilter();
+        expect(isHidden(completed)).toBe(false);
     });
 });
 
