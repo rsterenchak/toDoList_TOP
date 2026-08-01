@@ -304,7 +304,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7c66708b-db14-4329-9415-bd7eed91eb56 -->
 
-- [ ] **[LOW]** Add a harmless comment to style.css to trigger a redeploy
+- [x] **[LOW]** Add a harmless comment to style.css to trigger a redeploy — Completed: 2026-08-01
   - Type: feature
   - Description: Add a single-line CSS comment (e.g. a timestamp or note) near the top of style.css with no functional or visual effect, purely to produce a new commit that triggers the deploy pipeline. No selectors, rules, or values should change. This is a throwaway trigger entry, not a real styling change.
   - File: `toDoList_main/src/style.css`
