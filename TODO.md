@@ -310,3 +310,22 @@
   - File: `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f2a990bc-5475-4b7e-9f18-12b0f8aae25e -->
+
+- [ ] **[HIGH]** Entry text and id are lost when a task is created for an injected entry
+  - Type: bug
+  - Description: A task created by `materializeEntryTodo` — from chat's Inject & run, or from accepting a derive proposal — reaches Supabase with `description` and `entry_id` both null, so its WHAT CHANGED card and FILE readout render empty and its shipped state cannot resolve from the marker. The cause is write ordering, not a missing write. `addToDo` mints the id, pushes to memory, saves to localStorage, then hands the row's INSERT to `persistMutation` and returns immediately — the insert is fire-and-forget. `materializeEntryTodo` synchronously sets `created.desc` and calls `editToDoItem`, then stamps the entry id; both issue UPDATEs keyed by an id that does not exist server-side yet, so they match zero rows and do nothing. The insert then lands carrying the original payload — empty description, no entry id. Local state looks correct, which is why the row renders with a title and nothing else.
+  - Behavior: A task created for an injected entry reaches the database with its full entry text as `description` and its `entry_id` set, so WHAT CHANGED shows the entry's Description line, the FILE readout lists its paths, and the row resolves through DRAFT to REVIEW as the run progresses. This holds for both callers — chat's Inject & run and derive-proposal acceptance — and survives a reload or a switch to another device. Tasks created by any other path are unaffected.
+  - Implementation notes:
+    - Fix it at the creation site, not by making every later write retry. The row should be inserted ONCE carrying its final shape: title, description, and entry id together, rather than an insert followed by two updates that race it.
+    - Preferred approach: give `materializeEntryTodo` a path that builds the complete item before persisting — set `desc` and `entryId` on the in-memory item after `addToDo` pushes it but BEFORE the insert is queued, or add an `addToDo` variant taking the description so the single insert carries it. Report which you chose and why.
+    - If instead you await the insert before updating, establish that `persistMutation` exposes a promise to await at all. Its fire-and-forget shape is deliberate — it keeps the UI responsive — so do not make `addToDo` synchronous for every caller just to fix this one.
+    - `toTodoRowPayload` already carries both `description` and `entry_id`, so a correctly-shaped item inserts them without any schema or payload change.
+    - The entry-id stamp currently goes through `stampTodoEntryId`, which surfaces its own failures. If the id now travels in the insert, make sure a failure there is still visible — a silently unstamped task is orphaned from work that shipped, which is the first bug this project hit.
+    - Verify against BOTH callers. The derive path was fixed once for the description already; confirm this is the reason that fix appeared to land locally but not in the database, and that both paths are correct afterward.
+    - `materializeEntryTodo` finds the created item by matching `it.tit === cleanTitle` against ids not present before the call. That is sound, but if the creation path changes shape, keep the identity check rather than falling back to a title match.
+    - `todos` has no `user_id` column; `listLogicSchema.test.js` fails the build if `'todos'` and `'user_id'` appear within 200 characters of each other.
+    - Test with a real round trip, not just in-memory state: create a task through both callers, then read the row back from the database and assert `description` and `entry_id` are populated. An in-memory assertion passes today with the bug present, which is exactly why this shipped twice.
+  - Out of scope: `persistMutation`'s fire-and-forget design and the general write queue. `injectEntry`, `dispatchRun`, and `dispatchDraft`'s dispatch logic. The ACCEPT face's rendering. The chat draft card and the RUNS tab.
+  - File: `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/listLogic.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a6c51938-3fc8-4224-b7a2-cf3d56b960cd -->
