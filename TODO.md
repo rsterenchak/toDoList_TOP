@@ -387,3 +387,11 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5a1579f8-d0a8-466a-9b57-131572be5ff3 -->
+
+Reading this as: on mobile the API-spend control should be hidden everywhere except inside the chat sheet — no clarifying needed, that's clear.
+
+- [ ] **[MEDIUM]** Hide the API-spend control from the mobile top-header, keep it only in the chat sheet
+  - Type: bug
+  - Description: On mobile (`isMobile()` / viewport < 1024px) the API-spend button is rendering in the top-left header corner, where it shouldn't appear. It must only be shown inside the chat window (the Claude sheet) on mobile, matching its intended placement. Locate where the spend control is mounted into the header (likely `toDoList_main/src/desktopHeaderPlacement.js` or the header wiring in `toDoList_main/src/main.js`) and suppress it below the 1024px breakpoint, leaving the chat-sheet instance in `toDoList_main/src/claudeSheet.js` untouched; a CSS `display:none` under the mobile breakpoint in `toDoList_main/src/style.css` may be the cleanest fix. Verify the desktop panel and the mobile chat-header control both still render.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/desktopHeaderPlacement.js`, `toDoList_main/src/claudeSheet.js`
+  <!-- id: 8ca05958-9d17-4208-bab3-432f66fd1b79 -->
