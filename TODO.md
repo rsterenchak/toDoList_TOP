@@ -396,7 +396,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/desktopHeaderPlacement.js`, `toDoList_main/src/claudeSheet.js`
   <!-- id: 8ca05958-9d17-4208-bab3-432f66fd1b79 -->
 
-- [ ] **[LOW]** Hide the prev/next project navigation arrows in the mobile header
+- [x] **[LOW]** Hide the prev/next project navigation arrows in the mobile header — Completed: 2026-08-01
   - Type: bug
   - Description: On mobile, the `<` and `>` chevrons shown at the top corners of the project header (used to page between projects) should be hidden — the user doesn't use them for navigation. Keep the arrows visible on desktop; only suppress them under the mobile breakpoint (`isMobile()` / viewport < 1024px). Preserve any underlying swipe-to-navigate gesture between projects if one exists (likely in `toDoList_main/src/mobileProjSwipeNav.js`) — only the visible arrow buttons should disappear, not the navigation capability itself. Likely rendered in `toDoList_main/src/main.js` or `toDoList_main/src/desktopHeaderPlacement.js`, styled in `toDoList_main/src/style.css`.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/mobileProjSwipeNav.js`
