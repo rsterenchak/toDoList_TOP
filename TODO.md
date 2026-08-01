@@ -285,7 +285,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: cdbea0f5-b0b3-4774-8c5b-e160fd1f0886 -->
 
-- [ ] **[MEDIUM]** Chat's Inject & run should create a task row for the entry
+- [x] **[MEDIUM]** Chat's Inject & run should create a task row for the entry — Completed: 2026-08-01
   - Type: feature
   - Description: Chat's Inject & run calls `injectEntry` then `dispatchRun` directly, so the entry lands in `TODO.md` and a run dispatches, but no task is created — the work ships with nothing representing it in the list, no ACCEPT face, no revert, no iterate. That is the same gap derive proposals had, and `dispatchDraft` already solves it: when a row carries no `todo_id` it creates a todo from the proposal's title and description, stamps the entry id, and repaints the list. Give chat's path the same treatment so an entry injected from chat behaves like one injected from a task.
   - Behavior: Injecting and running an entry from chat creates a task in the active project whose title is the entry's headline and whose description is the entry text as injected. The task is linked to that entry by id, so it moves through DRAFT to REVIEW as the run progresses and shows its full ACCEPT face when the run merges — ACCEPT & CLOSE, REVERT, OPEN IN TODO.MD, COPY CONTEXT, ITERATE. The list repaints so the row appears immediately rather than after a project switch. The chat run record and the RUNS tab entry are unchanged. Injecting into a repo other than the active project's still ships the entry; whether it creates a task there is covered below.
