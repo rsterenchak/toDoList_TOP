@@ -251,7 +251,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 86b52bb7-5880-4492-a209-274b6099c1fc -->
 
-- [ ] **[LOW]** Run summary card: show the verdict and follow-ups, keep the detail behind Show more
+- [x] **[LOW]** Run summary card: show the verdict and follow-ups, keep the detail behind Show more — Completed: 2026-08-01
   - Type: feature
   - Description: The WHAT THE RUN REPORTED card renders the run's closing summary verbatim, which opens with bookkeeping — "Ran in **entry** mode for target id `cd54720d…` — the sole unchecked task…" — so the part worth glancing at is buried behind Show more. The routine now emits the summary in three parts: a one-sentence verdict, a `Follow-ups:` line, then a blank line and the full detail paragraph. Render the first two in the collapsed card and keep the detail behind the existing expander. The COPY CONTEXT block continues to carry the summary in full, since verbosity is useful when handing it to another conversation.
   - Behavior: The card shows the verdict sentence and the `Follow-ups:` line by default — enough to see at a glance whether the run flagged anything. Show more reveals the rest. The card collapses back on a second tap. When a summary does not match the three-part shape, the card falls back to today's behavior and renders it clamped as-is, so older runs and any run that deviates still display. COPY CONTEXT includes the entire summary verbatim under its existing heading, unchanged.

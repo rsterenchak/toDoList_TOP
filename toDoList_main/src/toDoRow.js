@@ -1419,14 +1419,47 @@ function fetchShippedRunSummary(item, queueRow) {
 }
 
 
+// The routine's closing summary comes in three parts: a one-sentence verdict, a
+// line beginning exactly `Follow-ups:`, then a blank line and the full detail
+// paragraph. Split on the `Follow-ups:` LABEL rather than on paragraph position, so
+// a verdict that wraps across several lines still resolves cleanly: everything up to
+// and including that line is the collapsed content, and everything after the blank
+// line that follows it is the detail. Returns null when no `Follow-ups:` line is
+// present — the caller then treats the whole summary as detail and clamps it as
+// before, rather than guessing a split point that could hide content. Pure.
+function splitRunSummary(text) {
+    const lines = text.split('\n');
+    let fi = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (/^\s*Follow-ups:/i.test(lines[i])) { fi = i; break; }
+    }
+    if (fi === -1) return null;
+    const verdict = lines.slice(0, fi).join('\n').trim();
+    const followupsLine = lines[fi].trim();
+    // Skip the blank line(s) separating the follow-ups line from the detail paragraph.
+    let di = fi + 1;
+    while (di < lines.length && lines[di].trim() === '') di += 1;
+    const detail = lines.slice(di).join('\n').trim();
+    const followContent = followupsLine.replace(/^Follow-ups:/i, '').trim();
+    const isNone = /^none\.?$/i.test(followContent);
+    return { verdict, followupsLine, detail, isNone };
+}
+
 // Build the "WHAT THE RUN REPORTED" block for the review surface — the run's own
 // closing summary, rendered as a distinct block labelled as the run's report rather
 // than as part of the entry (the WHAT CHANGED card, by contrast, shows the entry's
 // Description line). Returns null when there is no summary, so the caller mounts
-// nothing rather than an empty block. The body clamps to a few lines with a Show
-// more / Show less toggle so a long summary can't push ACCEPT & CLOSE below the
-// fold; the toggle starts hidden and clampRunReportBlock reveals it only when the
-// clamped body actually overflows (measured once mounted).
+// nothing rather than an empty block.
+//
+// When the summary matches the routine's three-part shape (splitRunSummary), the
+// collapsed card shows the verdict sentence and the `Follow-ups:` line — enough to
+// glance at whether the run flagged anything — with the detail paragraph behind a
+// Show more / Show less toggle. `Follow-ups: none.` renders at reduced emphasis so a
+// bare "nothing to see" reads differently from a line carrying real content. When
+// the summary does NOT match that shape (older runs, or any run that deviates), the
+// whole thing renders in the body clamped to a few lines, with the toggle revealed
+// by clampRunReportBlock only when the clamped body actually overflows — the prior
+// behavior, preserved as the fallback.
 export function buildRunReportBlock(summaryText) {
     const text = String(summaryText == null ? '' : summaryText).trim();
     if (!text) return null;
@@ -1438,21 +1471,54 @@ export function buildRunReportBlock(summaryText) {
     heading.textContent = 'What the run reported';
     block.appendChild(heading);
 
+    function makeToggle() {
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'descRunReportToggle';
+        toggle.textContent = 'Show more';
+        toggle.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const expanded = block.classList.toggle('is-expanded');
+            toggle.textContent = expanded ? 'Show less' : 'Show more';
+        });
+        return toggle;
+    }
+
+    const parts = splitRunSummary(text);
+    if (parts) {
+        block.classList.add('descRunReportBlock--split');
+
+        const verdictEl = document.createElement('p');
+        verdictEl.className = 'descRunReportBody';
+        verdictEl.textContent = parts.verdict;
+        block.appendChild(verdictEl);
+
+        const followEl = document.createElement('p');
+        followEl.className = 'descRunReportFollowups';
+        if (parts.isNone) followEl.classList.add('is-none');
+        followEl.textContent = parts.followupsLine;
+        block.appendChild(followEl);
+
+        // The detail paragraph is optional — a three-part summary with an empty
+        // detail shows verdict + follow-ups with no toggle rather than a dead control.
+        if (parts.detail) {
+            const detailEl = document.createElement('p');
+            detailEl.className = 'descRunReportDetail';
+            detailEl.textContent = parts.detail;
+            block.appendChild(detailEl);
+
+            block.appendChild(makeToggle());
+        }
+        return block;
+    }
+
     const bodyEl = document.createElement('p');
     bodyEl.className = 'descRunReportBody';
     bodyEl.textContent = text;
     block.appendChild(bodyEl);
 
-    const toggle = document.createElement('button');
-    toggle.type = 'button';
-    toggle.className = 'descRunReportToggle';
-    toggle.textContent = 'Show more';
+    const toggle = makeToggle();
     toggle.hidden = true;
-    toggle.addEventListener('click', function (e) {
-        e.stopPropagation();
-        const expanded = block.classList.toggle('is-expanded');
-        toggle.textContent = expanded ? 'Show less' : 'Show more';
-    });
     block.appendChild(toggle);
 
     return block;
@@ -1460,10 +1526,13 @@ export function buildRunReportBlock(summaryText) {
 
 // Reveal the Show more toggle only when the clamped body overflows its line clamp.
 // Must run after the block is in the document (clientHeight/scrollHeight need
-// layout). A short summary keeps the toggle hidden.
+// layout). A short summary keeps the toggle hidden. No-op for a split block: its
+// toggle governs the detail paragraph, whose visibility is fixed at build time, not
+// the clamped body's overflow.
 function clampRunReportBlock(block) {
-    const bodyEl = block && block.querySelector('.descRunReportBody');
-    const toggle = block && block.querySelector('.descRunReportToggle');
+    if (!block || block.classList.contains('descRunReportBlock--split')) return;
+    const bodyEl = block.querySelector('.descRunReportBody');
+    const toggle = block.querySelector('.descRunReportToggle');
     if (!bodyEl || !toggle) return;
     toggle.hidden = !(bodyEl.scrollHeight - bodyEl.clientHeight > 1);
 }
