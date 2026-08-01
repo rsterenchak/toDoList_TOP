@@ -15,8 +15,9 @@ import {
 // that mix manual status and derived phase deliberately — a separate vocabulary
 // and a separate persisted key from the mobile status cycle pill. ALL is open
 // work (every uncompleted task), IN PROGRESS is work you or the machine are doing
-// (status in_progress, or phase draft/running), DONE is finished work (phase done
-// OR checked off — so it folds in the COMPLETED section's rows). taskFilter.js
+// (status in_progress, or phase draft/running), DONE is shipped-and-acknowledged
+// work still open in the list (phase done AND NOT checked off — a strict subset of
+// ALL, so checked-off rows never appear under it). taskFilter.js
 // never imports phase.js (import cycle), so the phase test is injected through
 // setItemPhaseResolver — mirroring how toDoRow.js injects `derivePhase` in the
 // real app. These tests register a light resolver reading a `ph` string off the
@@ -144,26 +145,38 @@ describe('desktop pills — filtering', () => {
         expect(phaseCount(bar, 'inprogress')).toBe('3');
     });
 
-    it('DONE shows both a phase-done row and a checked-off row', () => {
+    it('DONE shows the shipped-and-acknowledged row and hides the checked-off one', () => {
         const { bar, idea, inprog, draft, running, accept, done, completed } = seed();
         phasePill(bar, 'done').click();
         expect(getPhaseFilter()).toBe('done');
         expect(isHidden(done)).toBe(false);
-        expect(isHidden(completed)).toBe(false);
+        expect(isHidden(completed)).toBe(true); // checked-off excluded from DONE
         [idea, inprog, draft, running, accept].forEach(r => expect(isHidden(r)).toBe(true));
-        expect(phaseCount(bar, 'done')).toBe('2'); // phase-done + checked-off
+        expect(phaseCount(bar, 'done')).toBe('1'); // only the open phase-done row
     });
 
-    it('DONE adds the reveal class so collapsed completed rows show; other filters clear it', () => {
+    it('DONE excludes a checked-off row even when its phase is done', () => {
+        const ml = makeMainList();
+        const openDone = makeRow('OpenDone', 'done', { status: 'active' });
+        const shippedThenChecked = makeRow('Filed', 'done', { status: 'active', completed: true });
+        ml.append(openDone, shippedThenChecked);
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        phasePill(bar, 'done').click();
+        expect(isHidden(openDone)).toBe(false);
+        expect(isHidden(shippedThenChecked)).toBe(true);
+        expect(phaseCount(bar, 'done')).toBe('1');
+    });
+
+    it('DONE never reveals the collapsed COMPLETED section', () => {
         const { ml, bar } = seed();
         ml.classList.add('completedCollapsed');
         phasePill(bar, 'done').click();
-        expect(ml.classList.contains('phaseFilterRevealCompleted')).toBe(true);
-        phasePill(bar, 'all').click();
         expect(ml.classList.contains('phaseFilterRevealCompleted')).toBe(false);
     });
 
-    it('counts come from the full committed set (DONE folds in completed rows)', () => {
+    it('DONE count agrees with the rows it renders (completed rows excluded)', () => {
         const ml = makeMainList();
         ml.append(
             makeRow('P1', 'none', { status: 'in_progress' }),
@@ -176,10 +189,15 @@ describe('desktop pills — filtering', () => {
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
 
-        applyTaskFilter();
+        phasePill(bar, 'done').click();
         expect(phaseCount(bar, 'all')).toBe('4');        // 4 uncompleted
         expect(phaseCount(bar, 'inprogress')).toBe('3'); // in_progress + draft + running
-        expect(phaseCount(bar, 'done')).toBe('3');       // phase-done + 2 completed
+        expect(phaseCount(bar, 'done')).toBe('1');       // only the open phase-done row
+        // The count matches exactly the visible, non-hidden committed rows.
+        const visible = Array.from(ml.querySelectorAll('#toDoChild'))
+            .filter(r => r.__item && r.__item.tit && !isHidden(r));
+        expect(visible.length).toBe(1);
+        expect(visible[0].__item.tit).toBe('Done1');
     });
 
     it('never hides the blank placeholder row under any filter', () => {
@@ -207,30 +225,32 @@ describe('desktop pills — filtering', () => {
         expect(empty.textContent).toBe('Nothing in progress right now.');
     });
 
-    it('shows the DONE empty state only when there is neither a done nor a completed row', () => {
+    it('shows the DONE empty state when no open shipped row exists', () => {
         const ml = makeMainList();
         ml.append(makeRow('Idea', 'none', { status: 'idea' }), makeRow('Draft', 'draft'));
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
 
-        phasePill(bar, 'done').click(); // nothing finished
+        phasePill(bar, 'done').click(); // nothing shipped-and-open
         const empty = document.getElementById('taskFilterEmpty');
         expect(empty).not.toBeNull();
-        expect(empty.textContent).toBe('Nothing finished yet.');
+        expect(empty.textContent).toBe('Nothing shipped is waiting.');
     });
 
-    it('DONE is NOT empty when only completed rows would satisfy it', () => {
+    it('DONE is empty when only checked-off rows would otherwise satisfy it', () => {
         const ml = makeMainList();
         ml.append(
             makeRow('Draft', 'draft'),
-            makeRow('C1', 'none', { completed: true }),
+            makeRow('C1', 'done', { completed: true }),
         );
         const bar = buildTaskFilterBar();
         document.body.appendChild(bar);
 
         phasePill(bar, 'done').click();
-        // A completed row satisfies DONE, so no filter empty-state fires.
-        expect(document.getElementById('taskFilterEmpty')).toBeNull();
+        // The done-phase row is checked off, so DONE now excludes it and reports empty.
+        const empty = document.getElementById('taskFilterEmpty');
+        expect(empty).not.toBeNull();
+        expect(empty.textContent).toBe('Nothing shipped is waiting.');
     });
 });
 

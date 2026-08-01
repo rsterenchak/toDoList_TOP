@@ -131,11 +131,13 @@ const FILTERS = [
 //   • IN PROGRESS — manual status `in_progress`, OR derived phase `draft`
 //                   (an entry injected and awaiting its run) or `running` (a run
 //                   in flight); checked-off rows are excluded.
-//   • DONE        — shipped-and-acknowledged (phase `done`) OR checked off. This
-//                   is the complement of ALL: ALL is open work, DONE is finished
-//                   work, so its count folds in the COMPLETED section's rows.
-// ALL and DONE key off `completed`, so an item with no phase resolver still
-// partitions correctly; only IN PROGRESS and DONE consult the derived phase.
+//   • DONE        — shipped-and-acknowledged (phase `done`) AND NOT checked off:
+//                   exactly the rows carrying the shipped glyph that you have not
+//                   yet filed away. DONE is a strict SUBSET of ALL (both exclude
+//                   checked-off rows), not its complement — checked-off tasks live
+//                   in the collapsed COMPLETED section and no filter reveals them.
+// ALL keys off `completed` alone, so an item with no phase resolver still lands in
+// ALL; IN PROGRESS and DONE also consult the derived phase.
 const PHASE_FILTERS = [
     { key: 'all',        label: 'ALL',         match: function (item) { return !(item && item.completed); } },
     { key: 'inprogress', label: 'IN PROGRESS', match: function (item) {
@@ -144,8 +146,8 @@ const PHASE_FILTERS = [
         return normalizeStatus(item.status) === 'in_progress' || phase === 'draft' || phase === 'running';
     } },
     { key: 'done',       label: 'DONE',        match: function (item) {
-        if (!item) return false;
-        return !!item.completed || phaseOf(item) === 'done';
+        if (!item || item.completed) return false;
+        return phaseOf(item) === 'done';
     } },
 ];
 
@@ -154,13 +156,13 @@ const PHASE_FILTERS = [
 // `all` and the desktop `all`) — it can only be empty when the project itself is
 // empty, which the project empty-state already covers. `active` and `ideas` serve
 // the MOBILE status filter's segments; `inprogress` and `done` are the desktop
-// pills. DONE's copy covers both of its senses — shipped-and-acknowledged work
-// and checked-off work.
+// pills. DONE now means shipped-and-acknowledged work still open in the list
+// (checked-off tasks are excluded), so its copy speaks to that single sense.
 const EMPTY_MESSAGES = {
     active: 'Nothing active right now.',
     ideas: 'No ideas captured yet.',
     inprogress: 'Nothing in progress right now.',
-    done: 'Nothing finished yet.',
+    done: 'Nothing shipped is waiting.',
     blocked: 'Nothing is blocked on you right now.',
 };
 
@@ -643,21 +645,15 @@ export function applyTaskFilter() {
         }
     });
 
-    // Desktop DONE reveals the checked-off rows that normally sit hidden in the
-    // collapsed COMPLETED section, so the pill's count and the visible rows agree.
-    // This is a filter-VIEW concern only: it overrides the collapse via a class and
-    // never touches the persisted completed-section open/closed state.
-    const revealCompleted = !blockedActive && desktop && phaseKey === 'done';
-    mainList.classList.toggle('phaseFilterRevealCompleted', revealCompleted);
-
     updateCounts(counts);
     updatePhaseCounts(phaseCounts);
     updateBlockedChip(blockedCount, blockedActive);
     const emptyKey = blockedActive ? 'blocked' : (desktop ? phaseKey : active);
-    // The desktop empty-state weighs the FULL committed set against the
-    // desktop-visible tally (completed rows included) so DONE — whose visible rows
-    // can be entirely completed ones — is never falsely reported empty; mobile and
-    // the blocked overlay keep the non-completed gate they have always used.
+    // The desktop empty-state weighs the FULL committed set (completed rows
+    // included) against the desktop-visible tally, so a project holding only
+    // checked-off rows still reports the pill's empty copy rather than a blank
+    // list under the desktop pills; mobile and the blocked overlay keep the
+    // non-completed gate they have always used.
     const emptyTotal = (!blockedActive && desktop) ? totalAll : total;
     const emptyVisible = (!blockedActive && desktop) ? desktopVisible : visible;
     updateFilterEmptyState(mainList, emptyKey, emptyTotal, emptyVisible);
