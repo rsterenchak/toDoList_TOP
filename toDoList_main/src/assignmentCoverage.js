@@ -147,6 +147,37 @@ export function buildAspectBadge(row) {
     return badge;
 }
 
+// Sort key for a proposal's rubric aspect, read from the same `row.aspect` the
+// badge renders so the ordering and the badge can never disagree. Labels are
+// letter-then-number (`A1`, `B10`); we split them so the letter sorts
+// lexically and the number sorts NUMERICALLY (a plain string sort would put
+// `B10` before `B2`). Case and stray whitespace are normalised for comparison
+// only. Returns null when the row carries no parseable aspect tag, so untagged
+// proposals can be grouped last.
+function aspectSortKey(row) {
+    const raw = (row && typeof row.aspect === 'string') ? row.aspect.trim() : '';
+    if (!raw) return null;
+    const m = /^([A-Za-z]+)\s*(\d+)/.exec(raw);
+    if (!m) return null;
+    return { letter: m[1].toUpperCase(), num: parseInt(m[2], 10) };
+}
+
+// Order proposals by rubric aspect (A1, A2, …, B1, B10, …), untagged last in
+// their existing relative order. Relies on a stable sort so equal keys keep the
+// store's fetch order — which keeps the live onQueueChange repaint from
+// reshuffling cards while the user works through them.
+function compareProposalsByAspect(a, b) {
+    const ka = aspectSortKey(a);
+    const kb = aspectSortKey(b);
+    if (ka && kb) {
+        if (ka.letter !== kb.letter) return ka.letter < kb.letter ? -1 : 1;
+        return ka.num - kb.num;
+    }
+    if (ka) return -1;
+    if (kb) return 1;
+    return 0;
+}
+
 // Return the raw text under the first top-level `## Requirements` header, up to
 // the next `## ` header or EOF, or null when there's no such header. Level-3+
 // sub-headers (`### …`) inside the section are kept (the `^## ` boundary only
@@ -1565,7 +1596,7 @@ export function showProposalReviewModal() {
     // Re-render the list from the live proposal set. Closes the modal outright once
     // the last proposal is resolved so an empty shell never lingers.
     function renderList() {
-        const proposals = getProposedRows();
+        const proposals = getProposedRows().slice().sort(compareProposalsByAspect);
         if (!proposals.length) { closeFn(); return; }
         titleText.textContent = proposals.length + ' proposal' +
             (proposals.length === 1 ? '' : 's') + ' to review';

@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             "A shipped run's closing summary now appears on a task's review face and is included in its copy-context block, so you can see and share what the run reported.",
         ],
+        fixed: [
+            "Proposal review cards are now ordered by rubric aspect, so a derive batch reads in the same order as the assignment.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-07-31',
         fixed: [
-            "The Runs tab now lists every shipped entry — including ones run from the backlog or an entry's Run pill — so any of them can be reopened to iterate on, not just runs started from chat.",
             "The desktop DONE filter now shows only shipped work still open in your list, no longer pulling in tasks you have already checked off.",
             "Expanding the COMPLETED section on desktop now shows your checked-off tasks again, instead of appearing empty because the status filters were hiding them.",
             "A task created by accepting a proposal now keeps the full task entry as its description, so its change details, copy-context, and iterate actions work correctly.",
