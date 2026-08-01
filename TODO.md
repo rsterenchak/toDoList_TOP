@@ -215,7 +215,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 59142ecb-f642-469d-8a70-5d34788785bd -->
 
-- [ ] **[MEDIUM]** Surface a shipped run's closing summary on the ACCEPT face
+- [x] **[MEDIUM]** Surface a shipped run's closing summary on the ACCEPT face — Completed: 2026-08-01
   - Type: feature
   - Description: A completed run leaves a closing summary — the agent's verdict on what it did and anything it noticed but deliberately did not fix. `fetchClosingSummary` already retrieves it and the queue store surfaces it on `no_change` rows, but a run that SHIPPED has its summary discarded, which is exactly the run whose observations matter. With the routine no longer appending follow-ups to `TODO.md`, that summary becomes the only channel for them, so it has to reach the surface where you are already deciding. Show it on the ACCEPT face, and include it in the COPY CONTEXT block so a follow-up can be handed to an outside conversation or fed straight into iterate.
   - Behavior: A task in the `accept` phase shows its run's closing summary beneath the WHAT CHANGED card, in a distinct block labelled as the run's own report rather than as part of the entry. It appears only when a summary exists; a run with none renders nothing rather than an empty block. The COPY CONTEXT block gains the summary under its own heading, so a pasted context carries what the run observed as well as what it changed. ITERATE is unchanged and already seeds from the entry, so describing a follow-up there produces a new entry against the same repo. The existing `no_change` surfacing is untouched.
