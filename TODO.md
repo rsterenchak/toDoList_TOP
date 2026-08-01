@@ -348,7 +348,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 37a8c4f5-47ab-4753-8d8e-b99d67adb802 -->
 
-- [ ] **[MEDIUM]** Structure tab: request a refactor scan on demand
+- [x] **[MEDIUM]** Structure tab: request a refactor scan on demand — Completed: 2026-08-01
   - Type: feature
   - Description: The post-merge refactor scan in `claude-run.yml` is now gated on the `REFACTOR_SCAN_ENABLED` repository variable and off by default, so the NEXT REFACTOR card stops advancing until someone asks for a scan. The Worker route and workflow for asking already exist and are verified: `claude-scan.yml` dispatches on demand and calls the Worker's `scan` route, and the Worker's `dispatch_scan` route fires that workflow. Add the app side — a control on the card that dispatches a scan, tracks the run, and re-reads the stored row when it settles. The card stays a pure reader: it never scans itself, because the scan takes ~90s and mobile Safari drops a connection held that long, which is the whole reason the work happens in CI.
   - Behavior: The NEXT REFACTOR card carries a control that requests a fresh scan for the active project's repo. Activating it dispatches the scan and shows a pending state; the control is disabled while a run is in flight so a second tap cannot queue another. When the run settles the card re-reads its stored scan and repaints — a new candidate if one was found, or its existing "no more candidates" state if the target file was unchanged. The pending state survives closing the Structure tab, switching projects, and returning, because it is read from the tracker rather than from card-local state. A project with no routed repo shows no control.
