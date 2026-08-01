@@ -14,13 +14,13 @@ export const changelog = [
         ],
         fixed: [
             "Proposal review cards are now ordered by rubric aspect, so a derive batch reads in the same order as the assignment.",
+            "The TODO.md strip is now hidden on the Structure view instead of peeking past its right edge.",
         ],
     },
     {
         version: '1.1',
         date: '2026-07-31',
         fixed: [
-            "Expanding the COMPLETED section on desktop now shows your checked-off tasks again, instead of appearing empty because the status filters were hiding them.",
             "A task created by accepting a proposal now keeps the full task entry as its description, so its change details, copy-context, and iterate actions work correctly.",
         ],
     },
