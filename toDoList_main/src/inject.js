@@ -825,6 +825,36 @@ export async function dispatchDerive(projectId, correlationId, target) {
 }
 
 
+// Dispatch a "scan" run through the same Worker the dispatch, triage, and derive
+// flows already use (same URL + Bearer secret). POSTs
+// `{ dispatch_scan: true, correlation_id, repo, filePath }` so the Worker fires
+// claude-scan.yml against the project's linked repo (or its default when `target`
+// is null); that workflow calls the Worker's `scan` route, which writes the
+// `refactor_scans` row at the END of the run. The Worker REQUIRES a non-empty
+// correlation id (it 400s without one), so callers mint it with mintEntryId() as
+// the other dispatch paths do. Like triage and derive this is a fire-and-forget
+// batch — there is NO agent_queue row for a scan and no status echoed here; the
+// NEXT REFACTOR card tracks the run via the scan-scoped active_runs probe and
+// re-reads the stored scan when it settles. Mirrors dispatchTriage's shape: the
+// Worker payload is spread onto `{ ok: true }` on success; on any failure it
+// returns `{ ok: false, reason }` via describeError, matching dispatchRun's
+// error vocabulary. A dispatch_scan against a repo whose claude-scan.yml is
+// missing 502s from the Worker — the reason surfaces so the real cause is visible.
+export async function dispatchScan(correlationId, target) {
+    try {
+        const res = await postToWorker({
+            dispatch_scan: true,
+            correlation_id: correlationId,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Dispatch a "capture" run through the same Worker the dispatch, triage, and
 // derive flows already use (same URL + Bearer secret). Mirrors dispatchRun's
 // shape: POSTs `{ dispatch_capture: true, correlation_id, args, project, repo,

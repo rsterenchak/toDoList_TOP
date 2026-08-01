@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-01',
+        added: [
+            "The Structure tab's NEXT REFACTOR card can now request a fresh scan on demand.",
+        ],
         changed: [
-            "The run summary card now shows the verdict and follow-ups at a glance, keeping the full detail behind Show more.",
             "On phones the task filter now cycles All / In progress / Done — the same phase-aware set as desktop — replacing the old All / Active / Ideas filter.",
         ],
         fixed: [

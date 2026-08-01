@@ -62,6 +62,12 @@ vi.mock('../src/inject.js', () => ({
         return Promise.resolve({ ok: true, found: false, all_under_budget: true });
     }),
     getCachedTargets: vi.fn(function () { return []; }),
+    // The card imports these for its request-scan control. isInjectConfigured returns
+    // false so the control never mounts during these structure-tree tests; the other
+    // two are never exercised here.
+    isInjectConfigured: vi.fn(function () { return false; }),
+    dispatchScan: vi.fn(function () { return Promise.resolve({ ok: true }); }),
+    mintEntryId: vi.fn(function () { return 'scan-corr-test'; }),
 }));
 
 // The deployed-site capture is stubbed so the capture-button flow can be exercised
