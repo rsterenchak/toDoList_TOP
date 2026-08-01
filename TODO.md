@@ -268,7 +268,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 3659ea51-fb4e-48a4-9c56-597e596e26b9 -->
 
-- [ ] **[MEDIUM]** TODO.md strip renders on the Structure view
+- [x] **[MEDIUM]** TODO.md strip renders on the Structure view — Completed: 2026-08-01
   - Type: bug
   - Description: The TODO.md strip stays visible when STRUCTURE is active and peeks past the right edge of the expanded Structure view. `#mainBar[data-view="structure"]` hides the view's other queue-column children by name — `#mainList`, `#mobileProjHeader`, `#taskFilterBar`, `#bulkDescActions` — but the strip was added after that rule was written and is not in the list, so it keeps rendering. The strip belongs to the Stream view only; it is the entry point to `TODO.md` for the task queue and has no meaning alongside the source-structure map.
   - Behavior: With STRUCTURE active the TODO.md strip is not rendered. Switching back to STREAM restores it in its pinned position above the filter pills, collapsed or expanded as it was. If the viewer card was expanded into the detail pane when the view switched, returning to STREAM restores that state rather than silently collapsing it — or collapses it deliberately; state which and make it consistent.
