@@ -26,6 +26,8 @@ vi.mock('../src/shipEntry.js', () => ({
 
 vi.mock('../src/inject.js', () => ({
     findTargetById: () => null,
+    mintEntryId: () => 'ent-mint',
+    embedEntryMarker: (t, id) => String(t == null ? '' : t).replace(/\s+$/, '') + '\n  <!-- id: ' + id + ' -->',
 }));
 
 vi.mock('../src/agentQueueStore.js', () => ({
