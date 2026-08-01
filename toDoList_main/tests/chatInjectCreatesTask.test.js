@@ -17,8 +17,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 // mocked so nothing renders or hits the network and each call is observed
 // directly — mirroring the sibling dispatchDraft tests.
 
-let addToDoCalls = [];
-let editCalls = [];
+let addEntryCalls = [];
 let projectItems = [];
 let restoreCalls = [];
 let domCalls = [];
@@ -40,14 +39,15 @@ vi.mock('../src/agentQueueStore.js', () => ({
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         getProjectTargetId: () => null,
-        addToDo: (projectName, title) => {
-            addToDoCalls.push({ projectName, title });
-            projectItems.push({ id: 'created-id-1', tit: title, desc: '' });
+        // The single-insert create path: the description and entry id travel in
+        // ONE write. Records its args, lands the item so the rebuild renders it,
+        // and returns its id (never a title diff).
+        addEntryTodo: (projectName, title, description, entryId) => {
+            addEntryCalls.push({ projectName, title, description, entryId });
+            projectItems.push({ id: 'created-id-1', tit: title, desc: description, entryId });
+            return 'created-id-1';
         },
         listItems: () => projectItems,
-        editToDoItem: (projectName, item) => {
-            editCalls.push({ projectName, item: { ...item } });
-        },
     },
 }));
 
@@ -68,8 +68,7 @@ function selectProject(name) {
 }
 
 beforeEach(() => {
-    addToDoCalls = [];
-    editCalls = [];
+    addEntryCalls = [];
     projectItems = [];
     restoreCalls = [];
     domCalls = [];
@@ -77,29 +76,32 @@ beforeEach(() => {
 });
 
 describe('materializeEntryTodo — the shared create-a-todo-for-an-entry funnel', () => {
-    it('creates a todo and stores the entry text VERBATIM as its description', async () => {
+    it('creates a todo and stores the entry text VERBATIM as its description in one write', async () => {
         selectProject('Inbox');
         const entry =
             '- [ ] **[MEDIUM]** Add a widget\n  - Type: feature\n' +
             '  - Description: Renders a widget.\n  - File: `src/widget.js`\n' +
             '  <!-- id: ent-mint -->';
 
-        const createdId = await materializeEntryTodo('Inbox', 'Add a widget', entry);
+        const createdId = await materializeEntryTodo('Inbox', 'Add a widget', entry, 'ent-mint');
 
         expect(createdId).toBe('created-id-1');
-        expect(addToDoCalls).toEqual([{ projectName: 'Inbox', title: 'Add a widget' }]);
+        expect(addEntryCalls).toHaveLength(1);
+        expect(addEntryCalls[0].projectName).toBe('Inbox');
+        expect(addEntryCalls[0].title).toBe('Add a widget');
         // The description is the FULL entry as injected — headline, Type/File
         // bullets and the marker — not a one-line summary. The funnel is
-        // marker-agnostic: it stores exactly what it was handed.
-        expect(editCalls).toHaveLength(1);
-        expect(editCalls[0].item.desc).toBe(entry);
-        expect(editCalls[0].item.desc).toContain('- Type: feature');
-        expect(editCalls[0].item.desc).toContain('<!-- id: ent-mint -->');
+        // marker-agnostic: it stores exactly what it was handed. The entry id
+        // rides in the SAME create call so the row's insert carries both.
+        expect(addEntryCalls[0].description).toBe(entry);
+        expect(addEntryCalls[0].description).toContain('- Type: feature');
+        expect(addEntryCalls[0].description).toContain('<!-- id: ent-mint -->');
+        expect(addEntryCalls[0].entryId).toBe('ent-mint');
     });
 
     it('repaints #mainList when the created todo is in the on-screen project', async () => {
         selectProject('Inbox');
-        await materializeEntryTodo('Inbox', 'Add a widget', 'entry body');
+        await materializeEntryTodo('Inbox', 'Add a widget', 'entry body', 'ent-mint');
         expect(restoreCalls).toHaveLength(1);
         expect(restoreCalls[0][1]).toBe('Inbox');
         expect(restoreCalls[0][0].some((i) => i.id === 'created-id-1')).toBe(true);
@@ -109,9 +111,10 @@ describe('materializeEntryTodo — the shared create-a-todo-for-an-entry funnel'
         // Chat can target a repo whose project is not the one selected — creating
         // a todo there must not repaint the visible list.
         selectProject('Inbox');
-        const createdId = await materializeEntryTodo('Archive', 'Add a widget', 'entry body');
+        const createdId = await materializeEntryTodo('Archive', 'Add a widget', 'entry body', 'ent-mint');
         expect(createdId).toBe('created-id-1');
-        expect(addToDoCalls).toEqual([{ projectName: 'Archive', title: 'Add a widget' }]);
+        expect(addEntryCalls).toHaveLength(1);
+        expect(addEntryCalls[0].projectName).toBe('Archive');
         expect(restoreCalls).toHaveLength(0);
         expect(domCalls).toHaveLength(0);
     });
@@ -120,18 +123,17 @@ describe('materializeEntryTodo — the shared create-a-todo-for-an-entry funnel'
         selectProject('Inbox');
         expect(await materializeEntryTodo('', 'Add a widget', 'entry')).toBeNull();
         expect(await materializeEntryTodo('Inbox', '   ', 'entry')).toBeNull();
-        expect(addToDoCalls).toHaveLength(0);
-        expect(editCalls).toHaveLength(0);
+        expect(addEntryCalls).toHaveLength(0);
     });
 
-    it('does not adopt a pre-existing task that shares the title', async () => {
+    it('returns the id addEntryTodo mints rather than matching by title', async () => {
         selectProject('Inbox');
+        // A pre-existing task shares the title; addEntryTodo always creates a
+        // fresh row and returns ITS id, so materializeEntryTodo never adopts the
+        // old one — the guarantee now lives in the single-insert create path.
         projectItems.push({ id: 'old-1', tit: 'Add a widget', desc: 'pre-existing' });
-        const createdId = await materializeEntryTodo('Inbox', 'Add a widget', 'entry body');
-        // The fresh id, never the pre-existing 'old-1', is returned and edited.
+        const createdId = await materializeEntryTodo('Inbox', 'Add a widget', 'entry body', 'ent-mint');
         expect(createdId).toBe('created-id-1');
-        expect(editCalls).toHaveLength(1);
-        expect(editCalls[0].item.id).toBe('created-id-1');
         expect(projectItems.find((i) => i.id === 'old-1').desc).toBe('pre-existing');
     });
 });
@@ -147,8 +149,10 @@ describe('chat Inject & run wires into the shared funnel (no divergent copy)', (
 
     it('imports materializeEntryTodo from dispatchDraft.js rather than reimplementing it', () => {
         expect(claudeSheet).toMatch(/import \{ materializeEntryTodo \} from '\.\/dispatchDraft\.js'/);
-        // No second creation loop copied into the chat file.
+        // No second creation loop copied into the chat file — neither the plain
+        // add path nor the single-insert entry path.
         expect(claudeSheet).not.toMatch(/listLogic\.addToDo\(/);
+        expect(claudeSheet).not.toMatch(/listLogic\.addEntryTodo\(/);
     });
 
     it('resolves the task project from the TARGET repo, not the on-screen project', () => {
@@ -156,8 +160,10 @@ describe('chat Inject & run wires into the shared funnel (no divergent copy)', (
         expect(claudeSheet).toMatch(/const taskProject = projectForRepo\(activeChatRepo\)/);
     });
 
-    it('creates the todo with the entry headline as title and the injected entry as description', () => {
-        expect(claudeSheet).toMatch(/materializeEntryTodo\(\s*taskProject,\s*deriveRunTitle\(entryText\),\s*entry\s*\)/);
+    it('creates the todo with the entry headline as title, the injected entry as description, and the entry id in the same call', () => {
+        // The entry id is passed as the 4th arg so it rides in the todo's single
+        // insert (addEntryTodo) rather than a follow-up UPDATE that would race it.
+        expect(claudeSheet).toMatch(/materializeEntryTodo\(\s*taskProject,\s*deriveRunTitle\(entryText\),\s*entry,\s*entryId\s*\)/);
     });
 
     it('stamps the entry id onto the created todo so it resolves its shipped state', () => {

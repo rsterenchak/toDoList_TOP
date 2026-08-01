@@ -8,15 +8,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 // the proposal's context) before shipping, ship the run against the CREATED todo's
 // id, and persist that id back onto the queue row so stampEntryShipped can find it
 // when the PR merges. Rows that already carry a todo_id must be untouched by this
-// path. shipEntry.js, inject.js, and listLogic.js are mocked so no network is hit
-// and each call is observed directly.
+// path. The todo is created through `listLogic.addEntryTodo`, whose SINGLE insert
+// carries the description AND the entry id — the fix for the earlier bug where an
+// insert-then-update pair raced and left both null server-side. shipEntry.js,
+// inject.js, and listLogic.js are mocked so no network is hit and each call is
+// observed directly.
 
 let shipCalls = [];
 let shipResult = { ok: true, entryId: 'ent-new', correlationId: 'corr-9', runId: 222 };
 let runStateCalls = [];
-let addToDoCalls = [];
-let editCalls = [];
-let projectItems = [];
+let addEntryCalls = [];
 
 vi.mock('../src/shipEntry.js', () => ({
     shipEntryForTodo: (opts) => {
@@ -34,14 +35,11 @@ vi.mock('../src/inject.js', () => ({
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         getProjectTargetId: () => null,
-        addToDo: (projectName, title) => {
-            addToDoCalls.push({ projectName, title });
-            // Mirror listLogic.addToDo: a real item with a fresh id lands in the list.
-            projectItems.push({ id: 'created-id-1', tit: title, desc: '' });
-        },
-        listItems: () => projectItems,
-        editToDoItem: (projectName, item) => {
-            editCalls.push({ projectName, item: { ...item } });
+        // The single-insert create path: records its args and returns a fresh id,
+        // mirroring listLogic.addEntryTodo's contract (never a title diff).
+        addEntryTodo: (projectName, title, description, entryId) => {
+            addEntryCalls.push({ projectName, title, description, entryId });
+            return 'created-id-1';
         },
         setAgentRunState: (id, patch) => {
             runStateCalls.push({ id, patch });
@@ -62,9 +60,7 @@ function selectProject(name) {
 beforeEach(() => {
     shipCalls = [];
     runStateCalls = [];
-    addToDoCalls = [];
-    editCalls = [];
-    projectItems = [];
+    addEntryCalls = [];
     shipResult = { ok: true, entryId: 'ent-new', correlationId: 'corr-9', runId: 222 };
     document.body.innerHTML = '';
 });
@@ -83,14 +79,15 @@ describe('dispatchDraft creates a real todo for a derive proposal (no source tod
         expect(res).toEqual({ ok: true });
 
         // A real todo was created in the selected project with the proposal's title,
-        // and its description backfilled through the edit path with the ENTRY being
-        // injected (draftText) — marker-embedded — NOT the proposal's short summary.
-        expect(addToDoCalls).toEqual([{ projectName: 'Inbox', title: 'Add a widget' }]);
-        expect(editCalls).toHaveLength(1);
-        expect(editCalls[0].projectName).toBe('Inbox');
-        expect(editCalls[0].item.id).toBe('created-id-1');
-        expect(editCalls[0].item.desc).toBe('entry body\n  <!-- id: ent-mint -->');
-        expect(editCalls[0].item.desc).not.toBe('A shiny new widget.');
+        // and its description set to the ENTRY being injected (draftText) — marker-
+        // embedded — NOT the proposal's short summary. The description AND the
+        // minted entry id both travel in that single create call.
+        expect(addEntryCalls).toHaveLength(1);
+        expect(addEntryCalls[0].projectName).toBe('Inbox');
+        expect(addEntryCalls[0].title).toBe('Add a widget');
+        expect(addEntryCalls[0].description).toBe('entry body\n  <!-- id: ent-mint -->');
+        expect(addEntryCalls[0].description).not.toBe('A shiny new widget.');
+        expect(addEntryCalls[0].entryId).toBe('ent-mint');
 
         // The run shipped against the CREATED todo's id, not the null row.todo_id,
         // reusing the id minted for the todo so the two never diverge.
@@ -137,17 +134,14 @@ describe('dispatchDraft creates a real todo for a derive proposal (no source tod
 
         // The stored description is the full injected entry (headline + Type/File
         // bullets) with the marker appended — never the one-line proposal summary.
-        expect(editCalls[0].item.desc).toBe(entryText + '\n  <!-- id: ent-mint -->');
-        expect(editCalls[0].item.desc).toContain('- Type: feature');
-        expect(editCalls[0].item.desc).toContain('- File: `src/widget.js`');
-        expect(editCalls[0].item.desc).not.toContain('A shiny new widget.');
+        expect(addEntryCalls[0].description).toBe(entryText + '\n  <!-- id: ent-mint -->');
+        expect(addEntryCalls[0].description).toContain('- Type: feature');
+        expect(addEntryCalls[0].description).toContain('- File: `src/widget.js`');
+        expect(addEntryCalls[0].description).not.toContain('A shiny new widget.');
     });
 
-    it('does not adopt a pre-existing task that shares the proposal title', async () => {
+    it('ships against the id addEntryTodo returns, not a title-matched row', async () => {
         selectProject('Inbox');
-        // A task with the same title already exists in the project; the derive
-        // proposal must create a NEW row and ship against it, never the old one.
-        projectItems.push({ id: 'old-1', tit: 'Add a widget', desc: 'pre-existing' });
         const row = {
             id: 'q9',
             todo_id: null,
@@ -157,13 +151,10 @@ describe('dispatchDraft creates a real todo for a derive proposal (no source tod
 
         await dispatchDraft(row, 'entry body', row.entry_id);
 
-        // The created todo (fresh id), not the pre-existing 'old-1', was edited and shipped.
-        expect(editCalls).toHaveLength(1);
-        expect(editCalls[0].item.id).toBe('created-id-1');
+        // The created todo's id (returned directly by addEntryTodo, which never
+        // adopts a same-title row) is what the run and the queue-row stamp use.
         expect(shipCalls[0].todoId).toBe('created-id-1');
         expect(runStateCalls[0].patch.todo_id).toBe('created-id-1');
-        // The pre-existing task is left untouched.
-        expect(projectItems.find((i) => i.id === 'old-1').desc).toBe('pre-existing');
     });
 });
 
@@ -181,8 +172,7 @@ describe('dispatchDraft leaves rows that already carry a todo_id untouched', () 
         expect(res).toEqual({ ok: true });
 
         // No todo creation path ran for a row that already has a source todo.
-        expect(addToDoCalls).toHaveLength(0);
-        expect(editCalls).toHaveLength(0);
+        expect(addEntryCalls).toHaveLength(0);
 
         // Ships against the existing todo_id and never writes todo_id back.
         expect(shipCalls[0].todoId).toBe('t-existing');

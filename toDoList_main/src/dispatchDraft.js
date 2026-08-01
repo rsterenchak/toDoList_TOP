@@ -92,7 +92,8 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
             const createdId = await materializeEntryTodo(
                 projectName,
                 title,
-                embedEntryMarker((draftText || '').toString(), entryId)
+                embedEntryMarker((draftText || '').toString(), entryId),
+                entryId
             );
             if (createdId) {
                 todoId = createdId;
@@ -149,38 +150,41 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
 // Create a real todo for an entry that is about to ship but has no source list
 // item — a fresh derive proposal (dispatchDraft, above) or an entry drafted
 // straight from chat's Inject & run (claudeSheet). Adds a todo titled `title`
-// to `projectName`, backfills its description with `entryText` — the FULL entry
-// as injected, marker and all, so everything reading `item.desc` (WHAT CHANGED,
+// to `projectName` carrying `entryText` as its description — the FULL entry as
+// injected, marker and all, so everything reading `item.desc` (WHAT CHANGED,
 // COPY CONTEXT, ITERATE) sees byte-for-byte what shipped — then repaints
 // #mainList when that project is the one on screen so the row appears without a
 // project switch. Callers embed the `<!-- id -->` marker into `entryText`
 // themselves (the derive path via embedEntryMarker, chat by passing the already-
 // injected entry), so this helper stays marker-agnostic.
 //
-// Returns the created todo's id, or null when creation was skipped (no project
-// or title) or the row couldn't be found after adding. The RUN LINKAGE is left
-// to the caller because it differs: the Agent board persists the id onto its
-// agent_queue row (stampEntryShipped later keys off it), while chat has no
-// queue row and stamps the entry id straight onto the todo via stampTodoEntryId.
+// The description AND the entry id both travel in the row's SINGLE insert via
+// `listLogic.addEntryTodo`, rather than an `addToDo` insert followed by
+// `editToDoItem` / `stampTodoEntryId` UPDATEs that race ahead of it. That earlier
+// shape left the row's `description` and `entry_id` null in the database — the
+// UPDATEs keyed by an id the fire-and-forget insert had not landed yet, so they
+// matched zero rows while local state looked correct. Passing `entryId` here is
+// what closes that: the insert carries it, so the row resolves its shipped state
+// even if a later stamp no-ops. The caller still stamps (see below) for the local
+// amber-lighting and to surface a genuine link failure; that stamp is now
+// redundant for the persisted value rather than load-bearing for it.
 //
-// Mirrors refactorCard's pushCandidate: add by title, look the created item up
-// by diffing ids (addToDo returns nothing), backfill through the edit path. The
-// id diff is what stops a pre-existing task — or a second proposal — that shares
-// the title from being adopted as "the created todo".
-export async function materializeEntryTodo(projectName, title, entryText) {
+// Returns the created todo's id (from `addEntryTodo`, never a title diff), or
+// null when creation was skipped (no project or title). The RUN LINKAGE beyond
+// the insert's own `entry_id` is left to the caller because it differs: the Agent
+// board persists the id onto its agent_queue row (stampEntryShipped later keys off
+// it), while chat has no queue row and stamps the entry id onto the todo via
+// stampTodoEntryId.
+export async function materializeEntryTodo(projectName, title, entryText, entryId) {
     const cleanTitle = (title || '').toString().trim();
     if (!projectName || !cleanTitle) return null;
-    const beforeIds = new Set(
-        (listLogic.listItems(projectName) || []).map(function (it) { return it && it.id; })
+    const createdId = listLogic.addEntryTodo(
+        projectName,
+        cleanTitle,
+        (entryText || '').toString(),
+        entryId || null
     );
-    listLogic.addToDo(projectName, cleanTitle);
-    const items = listLogic.listItems(projectName) || [];
-    const created = items.filter(function (it) {
-        return it && it.tit === cleanTitle && !beforeIds.has(it.id);
-    }).pop();
-    if (!created) return null;
-    created.desc = (entryText || '').toString();
-    listLogic.editToDoItem(projectName, created);
+    if (!createdId) return null;
     // Repaint the visible list now — #mainList only rebuilds from data on project
     // selection, so the new row would otherwise stay invisible until the user
     // navigates away and back. Guarded on the created todo still belonging to the
@@ -189,7 +193,7 @@ export async function materializeEntryTodo(projectName, title, entryText) {
     if (projectName === getSelectedProjectName()) {
         await rebuildSelectedList(projectName);
     }
-    return created.id;
+    return createdId;
 }
 
 // Rebuild #mainList for `projectName` from the data model, mirroring the project-
