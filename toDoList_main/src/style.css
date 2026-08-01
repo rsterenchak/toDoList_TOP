@@ -10432,15 +10432,6 @@ body.row-dragging * { cursor: grabbing !important; }
   display: none;
 }
 
-/* When the desktop DONE filter is active, reveal the checked-off rows even while
-   the COMPLETED section is collapsed, so the DONE pill's count and the visible
-   rows agree. taskFilter.js adds .phaseFilterRevealCompleted for the DONE pill
-   only; the extra class raises specificity above the collapse rule above. This is
-   a filter-view override — the persisted collapse state itself is untouched. */
-#mainList.phaseFilterRevealCompleted.completedCollapsed #toDoChild.completed {
-  display: flex;
-}
-
 /* ── MOBILE COMPLETED-SECTION BOTTOM SHEET ──
    At the ≤1023px breakpoint the inline accordion reveal fails to render
    the completed-items list reliably on touch (the Rendered / Raw viewer
