@@ -180,7 +180,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c8b68ff0-e92e-41b0-85b7-240812504d62 -->
 
-- [ ] **[HIGH]** Desktop filters hide completed rows, so the COMPLETED section expands empty
+- [x] **[HIGH]** Desktop filters hide completed rows, so the COMPLETED section expands empty — Completed: 2026-07-31
   - Type: bug
   - Description: Expanding the COMPLETED section on desktop reveals nothing. Completed rows are governed by two independent hiding mechanisms — the section's own collapse, and the task filter's `taskFilterHidden` class — and the desktop pills now hide them unconditionally. `PHASE_FILTERS`' ALL is `!(item && item.completed)`, and IN PROGRESS and DONE both open with `if (!item || item.completed) return false`. So no desktop pill matches a completed row, every one of them stays hidden, and un-collapsing the section exposes rows the filter has already suppressed. The mobile `all` filter is `return true` and does not have this problem, which is why it only appears on desktop. The section's collapse should be the only thing governing completed rows; the filter should not have an opinion about them.
   - Behavior: Expanding the COMPLETED section on desktop reveals its rows, under every pill. Collapsing hides them again. The pills continue to filter the OPEN list exactly as they do now — ALL matches uncompleted tasks of any status, IN PROGRESS matches in-progress or a draft/running phase, DONE matches shipped-and-acknowledged tasks that are not checked off — and none of them changes what the COMPLETED section shows. The pills' counts continue to describe the open list only, so the COMPLETED header's own count remains the source for completed work. Mobile is unchanged.
