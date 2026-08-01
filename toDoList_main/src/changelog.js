@@ -6,9 +6,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-01',
-        added: [
-            "See this month's API spend — chat and refactor-scan usage — in a new panel opened from the header and the mobile chat view, with a bar against a budget you set.",
-        ],
         changed: [
             "On phones the task filter now cycles All / In progress / Done — the same phase-aware set as desktop — replacing the old All / Active / Ideas filter.",
         ],
@@ -16,6 +13,7 @@ export const changelog = [
             "Proposal review cards are now ordered by rubric aspect, so a derive batch reads in the same order as the assignment.",
             "The TODO.md strip is now hidden on the Structure view instead of peeking past its right edge.",
             "A task created for an entry injected from chat or an accepted proposal now keeps its full entry text and shipped-run link, so its review details and status show correctly instead of appearing empty.",
+            "On phones the API-spend button no longer appears in the top header; it now opens only from the chat view.",
         ],
     },
 ];

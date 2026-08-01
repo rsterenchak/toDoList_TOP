@@ -17845,6 +17845,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      needing !important. */
   #pomodoroToggle,
   #musicToggle,
+  #usageSpendToggle,
   #focusModeToggle,
   #settingsToggle { display: none; }
 }
