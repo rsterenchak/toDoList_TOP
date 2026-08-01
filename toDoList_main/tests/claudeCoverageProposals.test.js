@@ -288,4 +288,76 @@ describe('COVERAGE tab — proposal review modal', () => {
         notifyQueueChange();
         expect(document.getElementById('proposalReviewModalBackdrop')).toBeFalsy();
     });
+
+    function renderedAspects() {
+        return Array.from(document.querySelectorAll('.proposalCard')).map(function (c) {
+            const b = c.querySelector('.agentAspectBadge');
+            return b ? b.textContent : null;
+        });
+    }
+    function renderedTitles() {
+        return Array.from(document.querySelectorAll('.proposalCardTitle'))
+            .map(function (t) { return t.textContent; });
+    }
+
+    it('orders cards by rubric aspect regardless of fetch order', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(30, 'B3', 'b3'),
+            proposedRow(31, 'C1', 'c1'),
+            proposedRow(32, 'B1', 'b1'),
+            proposedRow(33, 'A2', 'a2'),
+            proposedRow(34, 'A1', 'a1'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedAspects()).toEqual(['A1', 'A2', 'B1', 'B3', 'C1']);
+    });
+
+    it('sorts aspect numbers numerically, not lexically (B10 after B2)', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(40, 'B10', 'b10'),
+            proposedRow(41, 'B2', 'b2'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedAspects()).toEqual(['B2', 'B10']);
+    });
+
+    it('renders untagged proposals last, after all tagged ones', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(50, '', 'untagged'),
+            proposedRow(51, 'B1', 'b1'),
+            proposedRow(52, 'A1', 'a1'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedTitles()).toEqual(['a1', 'b1', 'untagged']);
+    });
+
+    it('keeps the remaining order stable after one card resolves', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(60, 'C1', 'c1'),
+            proposedRow(61, 'A1', 'a1'),
+            proposedRow(62, 'B1', 'b1'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedAspects()).toEqual(['A1', 'B1', 'C1']);
+
+        // Resolve the middle card (B1) elsewhere → the rest stay in order.
+        setQueueRows([
+            proposedRow(60, 'C1', 'c1'),
+            proposedRow(61, 'A1', 'a1'),
+        ], name);
+        notifyQueueChange();
+        expect(renderedAspects()).toEqual(['A1', 'C1']);
+    });
 });
