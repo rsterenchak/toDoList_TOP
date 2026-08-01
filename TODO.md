@@ -197,3 +197,20 @@
   - File: `toDoList_main/src/taskFilter.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 1c1b58a2-e316-4aaf-b897-b704cdc69acd -->
+
+- [ ] **[HIGH]** Proposal-created tasks store the summary instead of the entry
+  - Type: bug
+  - Description: A task created by accepting a derive proposal stores the proposal's short summary as its description rather than the TODO.md entry that was injected. Verified against the database: a task shows `description` beginning "Due date is 21 days from received date, weekend dates roll forward to Monday…" where a real entry would begin `- [ ] **[MEDIUM]** …` with its `- Type:` and `- Description:` bullets. The todo-creation block in `dispatchDraft.js` sets `created.desc = (ctx.description || '')` — the proposal's summary from `row.context` — when it should set `draftText`, the entry being injected into `TODO.md`. A previous entry called for exactly this change and it did not land; the entry-id stamp from that same entry did land, so the task is correctly linked and reaches REVIEW with its full ACCEPT face. The consequence is that everything reading `item.desc` carries the wrong text: WHAT CHANGED renders empty because it parses a `- Description:` line that is not present, and COPY CONTEXT and ITERATE both ship a one-line blurb instead of the entry.
+  - Behavior: A task created by accepting a derive proposal carries the full TODO.md entry as its description — the same text injected into the file, including its headline, `- Type:`, `- Description:`, `- File:` bullets, and trailing marker comment. Its WHAT CHANGED card shows the entry's Description line. COPY CONTEXT produces a block containing the real entry, and ITERATE seeds against it. Tasks that already carry a `todo_id` are unaffected, as are tasks created by any other path.
+  - Implementation notes:
+    - In `dispatchDraft.js`'s creation block, set the created todo's description to `draftText`, not `ctx.description`. That is the same value passed to `shipEntryForTodo` as `entryText`, so the todo and the injected entry hold identical text.
+    - Establish why the earlier change did not take and report it — whether the line was missed, or whether something downstream overwrites `desc` after creation. If a later write clobbers it, fixing only the assignment will silently fail again.
+    - The description write goes through `listLogic.editToDoItem`. Confirm that path persists to Supabase rather than only localStorage; the query above shows the summary reaching the database, so it does, but verify the same holds for the longer entry text and that nothing truncates it.
+    - `draftText` at that point does NOT yet carry the entry-id marker — `shipEntryForTodo` embeds it when injecting. Decide deliberately whether the todo stores the pre-marker text or is updated afterward with the marker-embedded version, and say which. An entry without its marker still works for display, but COPY CONTEXT's block is less useful without it, since the marker is what makes a follow-up traceable.
+    - The block finds the created item by matching `it.tit === title` and taking the last match. Two proposals with the same title, or a pre-existing task with that title, would attach to the wrong row. Prefer the id `addToDo` returns if it provides one.
+    - `todos` has no `user_id` column; `listLogicSchema.test.js` fails the build if `'todos'` and `'user_id'` appear within 200 characters of each other.
+    - Test: accepting a proposal creates a todo whose description begins with the entry's `- [ ]` headline and contains its `- Type:` and `- File:` bullets; WHAT CHANGED renders the Description line; COPY CONTEXT's block contains the entry text; and a title collision does not attach to an existing task.
+  - Out of scope: The entry-id stamp, correct as landed. The ACCEPT face's controls. The proposal review modal, Dismiss, and the derive workflow. `derivePhase` and the phase vocabulary.
+  - File: `toDoList_main/src/dispatchDraft.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 59142ecb-f642-469d-8a70-5d34788785bd -->
