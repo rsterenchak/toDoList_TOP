@@ -57,7 +57,8 @@ import {
 import { onQueueChange, getQueueRows, getLoadedProjectName } from './agentQueueStore.js';
 import { parsePastedEntry, commitEntryToActiveProject } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
-import { setChatPaneCollapsed } from './prefs.js';
+import { setChatPaneCollapsed, getUsageBudget, setUsageBudget } from './prefs.js';
+import { wireModalDismiss } from './modalDismiss.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
 import { materializeEntryTodo } from './dispatchDraft.js';
@@ -1070,6 +1071,230 @@ function buildClearChat() {
     return btn;
 }
 
+// The mobile spend control — a quiet readout button sitting left of New Chat in
+// the chat header row. It opens the shared API-spend panel. It lives inside
+// #claudeChatHeader (structurally part of the CHAT view), so it is absent on the
+// RUNS and COVERAGE tabs without a per-tab gate, and it sits outside the scroll
+// surface so it never scrolls away. A bare `$` glyph rather than an inline
+// figure keeps the read to panel-open only (no eager Supabase read on every
+// chat-view mount), consistent with the panel's read-on-open contract.
+function buildSpendControl() {
+    const btn = document.createElement('button');
+    btn.id = 'claudeSpendControl';
+    btn.type = 'button';
+    btn.className = 'claudeSpendControl';
+    btn.textContent = '$';
+    btn.setAttribute('aria-label', 'Show API spend this month');
+    btn.addEventListener('click', function() { openSpendPanel(btn); });
+    return btn;
+}
+
+// ── API SPEND ──
+// Per-million-token prices (USD) for the models the pipeline's API calls use —
+// the chat route (Sonnet, or Opus on deep_think) and the refactor-scan route.
+// FOUR separate rates per family: a single blended rate would misreport badly
+// because the chat route is deliberately cache-heavy, and a cache read is ~1/10
+// of an input token while a cache write sits above it. Prices live client-side
+// on purpose — usage_events stores exact token counts, so a price change is a
+// one-line edit here and historical spend recomputes correctly. Keyed by model
+// FAMILY (matched as a substring of the stored model id) so a version bump like
+// `claude-sonnet-4-5-YYYYMMDD` keeps resolving without a table edit.
+export const USAGE_RATES = {
+    opus:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
+    sonnet: { input: 3,   output: 15, cacheWrite: 3.75,  cacheRead: 0.3 },
+    haiku:  { input: 0.8, output: 4,  cacheWrite: 1,     cacheRead: 0.08 },
+};
+
+// The most expensive known family. An unrecognised model falls back to this so a
+// new model OVER-reports rather than silently contributing zero — a figure that
+// quietly ignores a model is worse than one that errs high.
+const HIGHEST_USAGE_RATE = USAGE_RATES.opus;
+
+function rateForModel(model) {
+    const m = (typeof model === 'string' ? model : '').toLowerCase();
+    if (m.indexOf('opus') !== -1) return USAGE_RATES.opus;
+    if (m.indexOf('sonnet') !== -1) return USAGE_RATES.sonnet;
+    if (m.indexOf('haiku') !== -1) return USAGE_RATES.haiku;
+    return HIGHEST_USAGE_RATE;
+}
+
+function usageTokenCount(value) {
+    const n = typeof value === 'number' ? value : parseFloat(value);
+    return (isFinite(n) && n > 0) ? n : 0;
+}
+
+// Dollar cost of a single usage_events row. Tolerant of the exact column names
+// the Worker writes: input/output are read directly; cache reads and writes each
+// accept a couple of plausible aliases, so a column-name difference degrades to
+// "counted as zero for that lane" rather than a crash.
+export function priceForUsageEvent(row) {
+    if (!row) return 0;
+    const rate = rateForModel(row.model);
+    const input = usageTokenCount(row.input_tokens);
+    const output = usageTokenCount(row.output_tokens);
+    const cacheRead = usageTokenCount(
+        row.cache_read_input_tokens != null ? row.cache_read_input_tokens : row.cache_read_tokens);
+    const cacheWrite = usageTokenCount(
+        row.cache_creation_input_tokens != null ? row.cache_creation_input_tokens : row.cache_write_tokens);
+    return (input * rate.input
+        + output * rate.output
+        + cacheRead * rate.cacheRead
+        + cacheWrite * rate.cacheWrite) / 1e6;
+}
+
+// Total dollar spend across a set of usage_events rows.
+export function sumUsageCost(rows) {
+    if (!Array.isArray(rows)) return 0;
+    let total = 0;
+    for (let i = 0; i < rows.length; i++) total += priceForUsageEvent(rows[i]);
+    return total;
+}
+
+// Render the spend readout — the dollar figure, the budget bar (only when a
+// positive budget is set), the percentage, and the always-present honesty line —
+// into `container`, replacing its contents. Split out from openSpendPanel so it
+// can be re-rendered when the usage read resolves or the budget changes, and so
+// the "zero/unset budget renders without a bar" contract is unit-testable.
+export function renderSpendReadout(container, totalCost, budget) {
+    if (!container) return;
+    container.innerHTML = '';
+    const total = Number(totalCost) || 0;
+
+    const amount = document.createElement('div');
+    amount.className = 'usageSpendAmount';
+    amount.textContent = '$' + total.toFixed(2);
+    container.appendChild(amount);
+
+    const hasBudget = typeof budget === 'number' && isFinite(budget) && budget > 0;
+    if (hasBudget) {
+        const pct = (total / budget) * 100;
+        const track = document.createElement('div');
+        track.className = 'usageSpendBar';
+        if (pct > 100) track.classList.add('usageSpendBar--over');
+        const fill = document.createElement('div');
+        fill.className = 'usageSpendBarFill';
+        fill.style.width = Math.max(0, Math.min(100, pct)).toFixed(1) + '%';
+        track.appendChild(fill);
+        container.appendChild(track);
+
+        const pctLabel = document.createElement('div');
+        pctLabel.className = 'usageSpendPct';
+        pctLabel.textContent = Math.round(pct) + '% of $' + budget.toFixed(2) + ' monthly budget';
+        container.appendChild(pctLabel);
+    }
+
+    const note = document.createElement('p');
+    note.className = 'usageSpendNote';
+    note.textContent = 'Covers Anthropic API calls (chat and refactor scans) only. '
+        + 'The pipeline’s CI runs bill to the Max plan and can’t be measured here.';
+    container.appendChild(note);
+}
+
+// Build and open the shared API-spend panel — one panel, opened from both the
+// desktop nav control and the mobile chat-header control. Reads usage on open
+// only (no subscribe/poll — spend moves slowly and a stale figure between opens
+// is fine), shows $0.00 immediately, then fills once the read resolves. A failed
+// or empty read leaves $0.00 rather than an error or spinner. Dismisses three
+// ways via wireModalDismiss (close control, backdrop, Escape) and restores focus
+// to whatever opened it.
+export function openSpendPanel(anchorEl) {
+    const prior = document.getElementById('usageSpendBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'usageSpendBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'usageSpendModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'usageSpendTitleText');
+
+    const header = document.createElement('div');
+    header.id = 'usageSpendHeader';
+
+    const title = document.createElement('div');
+    title.id = 'usageSpendTitle';
+    const eyebrow = document.createElement('span');
+    eyebrow.id = 'usageSpendEyebrow';
+    eyebrow.textContent = 'API SPEND';
+    const titleText = document.createElement('span');
+    titleText.id = 'usageSpendTitleText';
+    titleText.textContent = 'This month';
+    title.appendChild(eyebrow);
+    title.appendChild(titleText);
+
+    const closeX = document.createElement('button');
+    closeX.id = 'usageSpendClose';
+    closeX.type = 'button';
+    closeX.setAttribute('aria-label', 'Close API spend');
+    closeX.textContent = '×';
+
+    header.appendChild(title);
+    header.appendChild(closeX);
+
+    const readout = document.createElement('div');
+    readout.id = 'usageSpendReadout';
+
+    // The budget editor — makes the bar's budget genuinely configurable. Editing
+    // it persists to prefs and re-renders the readout in place against the last
+    // resolved total.
+    let lastTotal = 0;
+    const budgetRow = document.createElement('div');
+    budgetRow.id = 'usageSpendBudgetRow';
+    const budgetLabel = document.createElement('label');
+    budgetLabel.id = 'usageSpendBudgetLabel';
+    budgetLabel.setAttribute('for', 'usageSpendBudgetInput');
+    budgetLabel.textContent = 'Monthly budget $';
+    const budgetInput = document.createElement('input');
+    budgetInput.id = 'usageSpendBudgetInput';
+    budgetInput.type = 'number';
+    budgetInput.min = '0';
+    budgetInput.step = '1';
+    budgetInput.value = String(getUsageBudget());
+    budgetInput.addEventListener('change', function() {
+        setUsageBudget(budgetInput.value);
+        renderSpendReadout(readout, lastTotal, getUsageBudget());
+    });
+    budgetRow.appendChild(budgetLabel);
+    budgetRow.appendChild(budgetInput);
+
+    dialog.appendChild(header);
+    dialog.appendChild(readout);
+    dialog.appendChild(budgetRow);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    // Immediate $0.00 render so the panel never shows a spinner or error.
+    renderSpendReadout(readout, lastTotal, getUsageBudget());
+
+    const previouslyFocused = anchorEl || document.activeElement;
+    closeX.focus();
+
+    wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [closeX],
+        onClose: function() {
+            if (previouslyFocused
+                && typeof previouslyFocused.focus === 'function'
+                && document.contains(previouslyFocused)) {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
+        },
+    });
+
+    // Read on open only. Fill once resolved; a failed/empty read leaves $0.00.
+    if (typeof listLogic.loadMonthlyUsage === 'function') {
+        Promise.resolve(listLogic.loadMonthlyUsage()).then(function(res) {
+            if (!document.body.contains(backdrop)) return; // dismissed before it landed
+            if (res && res.ok && Array.isArray(res.rows)) {
+                lastTotal = sumUsageCost(res.rows);
+                renderSpendReadout(readout, lastTotal, getUsageBudget());
+            }
+        }, function() { /* leave $0.00 on read failure */ });
+    }
+}
+
 // Wipe the current conversation — the in-memory message array, its persisted
 // per-repo copy, and every rendered bubble — without touching the attached file
 // chips or the active workspace. The iterate entry id is now stored state that
@@ -1478,6 +1703,9 @@ function buildChatView() {
     const header = document.createElement('div');
     header.id = 'claudeChatHeader';
     header.className = 'claudeChatHeader';
+    // Spend control leads the row so it sits LEFT of New Chat (the row is
+    // right-aligned, so an earlier child lands further left).
+    header.appendChild(buildSpendControl());
     header.appendChild(buildClearChat());
 
     const surface = document.createElement('div');

@@ -1514,6 +1514,54 @@ export const listLogic = (function () {
         }
     }
 
+    // Compute the ISO timestamp for local midnight on the first day of `now`'s
+    // month. Exposed (via the public API below) so the API-spend read and its
+    // tests share one boundary definition. `now` defaults to the current time;
+    // passing a fixed Date makes the boundary deterministic under test. The
+    // returned string is UTC ISO — what a Supabase timestamptz column compares
+    // against — but the month it encodes is the LOCAL first-of-month: a
+    // UTC-boundary sum would disagree with what the user considers "this month"
+    // for several hours a day.
+    function localMonthStartISO(now) {
+        const d = now instanceof Date ? now : new Date();
+        return new Date(d.getFullYear(), d.getMonth(), 1, 0, 0, 0, 0).toISOString();
+    }
+
+    // Read this calendar month's Anthropic usage rows for the signed-in user
+    // from `usage_events` — the per-call token counts the Worker records for
+    // every chat and refactor-scan API call. Filtered by `user_id` (the table
+    // carries a user_id column with an RLS select policy on auth.uid() =
+    // user_id, the inject_targets pattern, NOT the todos pattern) and by
+    // `created_at >=` the local first-of-month boundary. Returns { ok, rows }
+    // (raw event rows; pricing lives client-side) or { ok:false, error } so the
+    // panel can read $0.00 quietly rather than surfacing a toast.
+    // @category: user-mutation-only
+    async function loadMonthlyUsage() {
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const result = await Promise.resolve(
+                supabase
+                    .from('usage_events')
+                    .select()
+                    .eq('user_id', session.user.id)
+                    .gte('created_at', localMonthStartISO())
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Load failed.',
+                };
+            }
+            return { ok: true, rows: (result && result.data) || [] };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Load failed.' };
+        }
+    }
+
     // Append a candidate `name` to a stored scan row's `dismissed` array — the
     // NEXT REFACTOR card's "Skip" action, which permanently hides that candidate
     // so the card advances to the next-cheapest one. Reads the row's current
@@ -3900,6 +3948,8 @@ export const listLogic = (function () {
         setAspectSubmitted,
         loadLatestRefactorScan,
         loadLatestCapture,
+        loadMonthlyUsage,
+        localMonthStartISO,
         dismissRefactorCandidate,
         stampTodoEntryId,
         markEntryReviewed,

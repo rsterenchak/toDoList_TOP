@@ -57,6 +57,7 @@ import {
 } from './drawerRows.js';
 import { mountClaudeSheet } from './claudeSheet.js';
 import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry } from './claudeSheet.js';
+import { openSpendPanel } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
@@ -383,6 +384,32 @@ function component() {
         if (ctl) ctl.activate();
     });
 
+    // ── API-spend button (sits left of the ghost menu trigger) ──
+    // 36px button with a bar-chart glyph. Click opens the shared API-spend panel
+    // (built in claudeSheet.js and opened from both here and the mobile chat
+    // header). There is no pre-existing header stats icon to rebind — this is a
+    // new, dedicated desktop entry point for the panel; the panel itself is the
+    // single surface both entry points share.
+    const spendToggle = document.createElement('button');
+    spendToggle.id = 'usageSpendToggle';
+    spendToggle.type = 'button';
+    spendToggle.setAttribute('aria-haspopup', 'dialog');
+    spendToggle.setAttribute('aria-label', 'Show API spend this month');
+    spendToggle.title = 'API spend';
+    // Stroke-based bar-chart glyph: a baseline with three rising bars. currentColor
+    // ties it to the button's themed color so it adapts across dark and light.
+    spendToggle.innerHTML =
+        '<svg class="spendIcon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<line x1="4" y1="20" x2="20" y2="20"/>' +
+        '<line x1="7" y1="20" x2="7" y2="13"/>' +
+        '<line x1="12" y1="20" x2="12" y2="8"/>' +
+        '<line x1="17" y1="20" x2="17" y2="11"/>' +
+        '</svg>';
+    spendToggle.addEventListener('click', function(event) {
+        event.stopPropagation();
+        openSpendPanel(spendToggle);
+    });
+
     const settingsToggle = document.createElement('button');
     settingsToggle.id = 'settingsToggle';
     settingsToggle.type = 'button';
@@ -424,11 +451,13 @@ function component() {
     nav.appendChild(pomodoroToggle);
     nav.appendChild(musicToggle);
     nav.appendChild(focusModeToggle);
+    nav.appendChild(spendToggle);
     nav.appendChild(settingsToggle);
 
     // Header arrow-key navigation. ArrowLeft / ArrowRight walk focus
     // across the header controls (sidebarToggle → viewPillProjects
-    // → pomodoroToggle → musicToggle → focusModeToggle → settingsToggle)
+    // → pomodoroToggle → musicToggle → focusModeToggle → spendToggle
+    // → settingsToggle)
     // so keyboard users can flow across the chrome without tabbing. The
     // pill references resolve at handler execution time, by which point
     // component() has finished initialising them. Bails when any
@@ -440,7 +469,7 @@ function component() {
         if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
         if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
         if (isAnyModalOrPopoverOpen()) return;
-        const order = [sidebarToggle, viewPillProjects, pomodoroToggle, musicToggle, focusModeToggle, settingsToggle];
+        const order = [sidebarToggle, viewPillProjects, pomodoroToggle, musicToggle, focusModeToggle, spendToggle, settingsToggle];
         const idx = order.indexOf(e.target);
         if (idx === -1) return;
         const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;

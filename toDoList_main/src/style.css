@@ -2402,6 +2402,7 @@ body:has(#changelogModalBackdrop) #claudeLauncher,
 body:has(#descEditorModalBackdrop) #claudeLauncher,
 body:has(#assignmentEditorModalBackdrop) #claudeLauncher,
 body:has(#coverageDetailModalBackdrop) #claudeLauncher,
+body:has(#usageSpendBackdrop) #claudeLauncher,
 body:has(#proposalReviewModalBackdrop) #claudeLauncher,
 body:has(#seedTasksModalBackdrop) #claudeLauncher,
 body:has(#helpModalBackdrop) #claudeLauncher,
@@ -2505,8 +2506,34 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeChatHeader {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
 }
+
+/* API SPEND control — a quiet readout button sitting left of New Chat in the
+   chat header row. Matches New Chat's height and radius so the pair reads as one
+   group, but stays muted (a readout, not the accented action). */
+.claudeSpendControl {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-bright);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.claudeSpendControl:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.claudeSpendControl[hidden] { display: none; }
 
 /* CLEAR CHAT — text-only control above the chat transcript. Tinted with the
    purple accent palette to read as a conversation-wiping action, honoring both
@@ -6355,6 +6382,165 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
    The drillable per-aspect breakdown behind the summary. Chrome mirrors the
    assignment editor modal; the body is a status list grouped into blocked
    (amber, jump), the regular lifecycle list, and a set-apart manual lane. */
+/* ── API-SPEND PANEL ── a small modal opened from the desktop nav bar-chart
+   button and the mobile chat-header spend control. Visual shell mirrors the
+   coverage-detail modal so the two read as one family. */
+#usageSpendBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#usageSpendModal {
+  width: 100%;
+  max-width: 380px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(108, 93, 245, 0.18);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+
+#usageSpendHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px 10px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+#usageSpendTitle {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#usageSpendEyebrow {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#usageSpendTitleText {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+#usageSpendClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+}
+#usageSpendClose:hover { color: var(--text-primary); }
+#usageSpendClose:focus { outline: none; color: var(--accent-text); }
+
+#usageSpendReadout {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.usageSpendAmount {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.usageSpendBar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-hover);
+  overflow: hidden;
+}
+.usageSpendBarFill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 4px;
+  transition: width 0.2s ease;
+}
+.usageSpendBar--over .usageSpendBarFill {
+  background: var(--text-warning);
+}
+
+.usageSpendPct {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+
+.usageSpendNote {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+#usageSpendBudgetRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+
+#usageSpendBudgetLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+#usageSpendBudgetInput {
+  width: 90px;
+  /* 16px prevents iOS Safari from auto-zooming this numeric field on focus. */
+  font-size: 16px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-input, var(--bg-surface));
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+#usageSpendBudgetInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 #coverageDetailModalBackdrop {
   position: fixed;
   inset: 0;
@@ -16265,6 +16451,36 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
 #musicToggle[data-music-status="BUFFERING"] {
   color: var(--accent);
   border-color: var(--accent);
+}
+
+/* API-SPEND nav button — bar-chart icon in the right cluster, left of the ghost
+   menu. Visual treatment mirrors #musicToggle / #settingsToggle (36×36, rounded,
+   muted by default) so the right-cluster buttons read as kin. */
+#usageSpendToggle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  color: var(--text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+#usageSpendToggle:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+#usageSpendToggle:focus { outline: none; }
+#usageSpendToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
 }
 
 .musicVizBars {
