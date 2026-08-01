@@ -60,6 +60,7 @@ import { mountMicButton, stopDictation } from './voiceInput.js';
 import { setChatPaneCollapsed } from './prefs.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
+import { materializeEntryTodo } from './dispatchDraft.js';
 import DOMPurify from 'dompurify';
 
 const MOBILE_MAX_WIDTH = 1023;
@@ -972,6 +973,29 @@ function deriveRunTitle(entryText) {
         .replace(/<!-- id: \S+ -->/, '')
         .trim();
     return line || 'Untitled entry';
+}
+
+// Resolve the project routed to `repo` via inject_targets — the project whose
+// linked target points at that repo. Chat can be scoped to a workspace repo
+// other than the on-screen project's, and `activeChatRepo` drives the inject
+// target, so a task created for a chat-injected entry must land in the project
+// that actually routes to the TARGET repo, not the selected one — creating it
+// in the wrong project would attach the row to a list the entry never shipped
+// to. Reads the same inject_targets cache the workspace menu projects from and
+// each project's `target_id` FK, matching the two on `repo`. Returns the project
+// name, or null when no project routes to `repo` (the caller then skips task
+// creation and says so rather than mis-attaching it).
+function projectForRepo(repo) {
+    if (!repo) return null;
+    const targets = getCachedTargets();
+    const names = listLogic.listProjectsArray() || [];
+    for (let i = 0; i < names.length; i++) {
+        const targetId = listLogic.getProjectTargetId(names[i]);
+        if (!targetId) continue;
+        const target = targets.find(function(t) { return t && t.id === targetId; });
+        if (target && target.repo === repo) return names[i];
+    }
+    return null;
 }
 
 function buildLauncher() {
@@ -2865,6 +2889,46 @@ async function shipDraftedEntry(entryText, card) {
     if (!injectResult.ok) {
         markDraftCardError(card, 'Inject failed — ' + (injectResult.reason || 'error'));
         return;
+    }
+
+    // Create a real task for this entry so the shipped work is represented in a
+    // list — moving through DRAFT → REVIEW and showing its full ACCEPT face
+    // (ACCEPT & CLOSE, REVERT, OPEN IN TODO.MD, COPY CONTEXT, ITERATE) — exactly
+    // as an entry injected from a task is. Chat's Inject & run otherwise ships an
+    // entry with nothing representing it, the same gap derive proposals had, so
+    // it reuses the same `materializeEntryTodo` funnel: create a todo whose
+    // description is the ENTRY AS INJECTED (`entry`, marker and all — never a
+    // summary, the bug the derive path hit) and whose title is the entry's
+    // headline via the shared `deriveRunTitle`. Chat can target a workspace repo
+    // other than the on-screen project's, so the task lands in the project routed
+    // to the TARGET repo; when nothing routes there, skip creation and say so in
+    // the chat rather than attaching it to the wrong list. Best-effort: a failed
+    // creation must never turn a ship that already injected/dispatched into a
+    // surfaced error.
+    const taskProject = projectForRepo(activeChatRepo);
+    if (taskProject) {
+        try {
+            const createdId = await materializeEntryTodo(
+                taskProject,
+                deriveRunTitle(entryText),
+                entry
+            );
+            if (createdId) {
+                // No agent_queue row exists for a chat dispatch, so link the task
+                // to its run by stamping the entry id straight onto the todo —
+                // that is what derivePhase reads to advance it and light its
+                // ACCEPT face when the run merges. A failed stamp orphans a task
+                // from work that shipped (the first bug this project hit), so
+                // surface it rather than swallowing it, matching shipEntryForTodo.
+                const stamp = listLogic.stampTodoEntryId(createdId, entryId);
+                if (!stamp || stamp.ok === false) {
+                    showInjectToast('Run dispatched, but couldn’t link this task to its entry', 'error');
+                }
+            }
+        } catch (e) { /* task creation is best-effort — never fail the ship on it */ }
+    } else {
+        appendMessageBubble('assistant',
+            'Injected into ' + activeChatRepo + ', which no project here routes to — no task was created for it.');
     }
 
     const correlationId = mintEntryId();

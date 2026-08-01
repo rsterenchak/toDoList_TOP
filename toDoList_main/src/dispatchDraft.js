@@ -67,62 +67,38 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     // ever appears in the sidebar, and stampEntryShipped (keyed by todo_id) has
     // nothing to stamp when the PR merges. So when there is no source todo,
     // materialize a real one in the selected project from the proposal's context
-    // and ship against IT. Mirrors refactorCard's pushCandidate: add by title,
-    // look the created item up, backfill its description through the edit path.
-    // Rows that already carry a todo_id (normal flagged tasks) skip this entirely.
+    // through the shared `materializeEntryTodo` (chat's Inject & run uses the same
+    // helper) and ship against IT. Rows that already carry a todo_id (normal
+    // flagged tasks) skip this entirely.
     //
     // The created todo's description is the ENTRY being injected (`draftText`), NOT
     // the proposal's short summary (`ctx.description`) — the summary reads fine as a
     // blurb but has no `- Type:`/`- Description:`/`- File:` structure, so everything
     // downstream that parses `item.desc` (WHAT CHANGED, COPY CONTEXT, ITERATE) breaks
-    // against it. We mint the entry id up front and store the marker-embedded entry,
-    // so the todo's `desc` matches byte-for-byte what shipEntryForTodo injects into
-    // TODO.md (it embeds the same id into the same `draftText`), and COPY CONTEXT's
-    // block carries the marker that makes a follow-up traceable. The minted id is
-    // passed on to shipEntryForTodo as its entry id so the two never diverge.
+    // against it. We mint the entry id up front and embed the marker before handing
+    // the entry to `materializeEntryTodo`, so the todo's `desc` matches byte-for-byte
+    // what shipEntryForTodo injects into TODO.md (it embeds the same id into the same
+    // `draftText`), and COPY CONTEXT's block carries the marker that makes a follow-up
+    // traceable. The minted id is passed on to shipEntryForTodo as its entry id so the
+    // two never diverge.
     let todoId = row.todo_id;
-    let createdProject = null;
     let shipEntryId = existingEntryId;
     if (!todoId) {
         const projectName = getSelectedProjectName();
         const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
         const title = (ctx.title || '').toString().trim();
         if (projectName && title) {
-            // Mint (or reuse) the entry id before creating the todo so the stored
-            // description carries the exact `<!-- id: ... -->` marker the injected
-            // entry will. `existingEntryId` is honored when present (Retry reuse).
             const entryId = existingEntryId || mintEntryId();
-            // Snapshot existing item ids so the newly-created row is identified by
-            // its fresh id, not by a title match — a pre-existing task (or a second
-            // proposal) with the same title must never be adopted as "the created
-            // todo". addToDo doesn't return the item, so diff the list instead.
-            const beforeIds = new Set(
-                (listLogic.listItems(projectName) || []).map(function (it) { return it && it.id; })
+            const createdId = await materializeEntryTodo(
+                projectName,
+                title,
+                embedEntryMarker((draftText || '').toString(), entryId)
             );
-            listLogic.addToDo(projectName, title);
-            const items = listLogic.listItems(projectName) || [];
-            const created = items.filter(function (it) {
-                return it && it.tit === title && !beforeIds.has(it.id);
-            }).pop();
-            if (created) {
-                created.desc = embedEntryMarker((draftText || '').toString(), entryId);
-                listLogic.editToDoItem(projectName, created);
-                todoId = created.id;
-                createdProject = projectName;
+            if (createdId) {
+                todoId = createdId;
                 shipEntryId = entryId;
             }
         }
-    }
-
-    // The derive branch just materialized a real todo in the data model, but the
-    // visible #mainList still reflects the pre-creation state — it only rebuilds
-    // from data on project selection, so the new row would be invisible until the
-    // user navigates away and back. Repaint it now, mirroring refactorCard's
-    // pushCandidate and seedTasksModal's post-add rebuild. Guarded on the created
-    // todo still belonging to the currently-selected project so an unrelated
-    // project's list is never repainted.
-    if (createdProject && createdProject === getSelectedProjectName()) {
-        await rebuildSelectedList(createdProject);
     }
 
     const res = await shipEntryForTodo({
@@ -168,6 +144,52 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
         tail.onDispatched(rowId, res.entryId, res.correlationId, target);
     }
     return { ok: true };
+}
+
+// Create a real todo for an entry that is about to ship but has no source list
+// item — a fresh derive proposal (dispatchDraft, above) or an entry drafted
+// straight from chat's Inject & run (claudeSheet). Adds a todo titled `title`
+// to `projectName`, backfills its description with `entryText` — the FULL entry
+// as injected, marker and all, so everything reading `item.desc` (WHAT CHANGED,
+// COPY CONTEXT, ITERATE) sees byte-for-byte what shipped — then repaints
+// #mainList when that project is the one on screen so the row appears without a
+// project switch. Callers embed the `<!-- id -->` marker into `entryText`
+// themselves (the derive path via embedEntryMarker, chat by passing the already-
+// injected entry), so this helper stays marker-agnostic.
+//
+// Returns the created todo's id, or null when creation was skipped (no project
+// or title) or the row couldn't be found after adding. The RUN LINKAGE is left
+// to the caller because it differs: the Agent board persists the id onto its
+// agent_queue row (stampEntryShipped later keys off it), while chat has no
+// queue row and stamps the entry id straight onto the todo via stampTodoEntryId.
+//
+// Mirrors refactorCard's pushCandidate: add by title, look the created item up
+// by diffing ids (addToDo returns nothing), backfill through the edit path. The
+// id diff is what stops a pre-existing task — or a second proposal — that shares
+// the title from being adopted as "the created todo".
+export async function materializeEntryTodo(projectName, title, entryText) {
+    const cleanTitle = (title || '').toString().trim();
+    if (!projectName || !cleanTitle) return null;
+    const beforeIds = new Set(
+        (listLogic.listItems(projectName) || []).map(function (it) { return it && it.id; })
+    );
+    listLogic.addToDo(projectName, cleanTitle);
+    const items = listLogic.listItems(projectName) || [];
+    const created = items.filter(function (it) {
+        return it && it.tit === cleanTitle && !beforeIds.has(it.id);
+    }).pop();
+    if (!created) return null;
+    created.desc = (entryText || '').toString();
+    listLogic.editToDoItem(projectName, created);
+    // Repaint the visible list now — #mainList only rebuilds from data on project
+    // selection, so the new row would otherwise stay invisible until the user
+    // navigates away and back. Guarded on the created todo still belonging to the
+    // currently-selected project so an unrelated project's list is never repainted
+    // (chat can create a todo in a project that isn't on screen).
+    if (projectName === getSelectedProjectName()) {
+        await rebuildSelectedList(projectName);
+    }
+    return created.id;
 }
 
 // Rebuild #mainList for `projectName` from the data model, mirroring the project-
