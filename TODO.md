@@ -234,7 +234,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 83e4595d-a343-471c-a7f5-39c678274460 -->
 
-- [ ] **[LOW]** Proposal review modal: order cards by rubric aspect
+- [x] **[LOW]** Proposal review modal: order cards by rubric aspect — Completed: 2026-08-01
   - Type: bug
   - Description: The proposal review modal renders cards in whatever order `getProposedRows()` returns — the queue store's fetch order — so a batch lands scrambled relative to the rubric, e.g. B3 then C1 then B1. `renderList` calls `proposals.forEach` with no sort. Reviewing a derive batch means checking it against the assignment's requirements in order, so scrambled cards make it hard to see what is covered and what is missing. Sort by aspect label.
   - Behavior: Proposal cards are ordered by their rubric aspect label — A1, A2, A3, B1, B2, B3, C1, C2 — reading in the same order as the assignment. A proposal with no aspect tag sorts after all tagged ones rather than being dropped or interleaved. The order is stable across re-renders, so accepting or dismissing one card does not reshuffle the rest. Nothing else about the modal changes.
