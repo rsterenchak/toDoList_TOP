@@ -18441,6 +18441,39 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   -webkit-line-clamp: unset;
   overflow: visible;
 }
+/* Split card: the verdict body carries a single sentence and is never clamped, so
+   the collapsed card reads at a glance. */
+.descRunReportBlock--split .descRunReportBody {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+/* The `Follow-ups:` line, rendered alongside the verdict in the collapsed card.
+   `Follow-ups: none.` reads at reduced emphasis (muted, italic) so it registers as
+   reassurance; a line with real content keeps the body's normal emphasis so the
+   difference shows without reading the words. */
+.descRunReportFollowups {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+.descRunReportFollowups.is-none {
+  color: var(--text-muted);
+  font-style: italic;
+}
+/* The detail paragraph — hidden until the Show more toggle expands the card. */
+.descRunReportDetail {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  display: none;
+}
+.descRunReportBlock.is-expanded .descRunReportDetail {
+  display: block;
+}
 .descRunReportToggle {
   align-self: flex-start;
   margin: 0;

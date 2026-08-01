@@ -97,8 +97,104 @@ describe('buildRunReportBlock — pure DOM assembly', () => {
         expect(block.querySelector('.descRunReportHeading').textContent).toMatch(/what the run reported/i);
         expect(block.querySelector('.descRunReportBody').textContent)
             .toBe('It shipped the toggle and noted the drawer needs work.');
-        // The expand toggle starts hidden — revealed only when the clamped body overflows.
+        // A summary with no `Follow-ups:` line falls back to the clamped-whole path:
+        // one body, no split, and the toggle starts hidden (revealed only on overflow).
+        expect(block.classList.contains('descRunReportBlock--split')).toBe(false);
+        expect(block.querySelector('.descRunReportFollowups')).toBeNull();
         expect(block.querySelector('.descRunReportToggle').hidden).toBe(true);
+    });
+});
+
+describe('buildRunReportBlock — three-part split', () => {
+    const THREE_PART = [
+        'Shipped the run summary card split so the verdict shows at a glance.',
+        'Follow-ups: The legacy toggle helper is unused and could be removed.',
+        '',
+        'Ran in entry mode for target id cd54720d. Implemented the split, added tests, opened a PR, and auto-merged. The detail paragraph carries the bookkeeping nobody glances at first.',
+    ].join('\n');
+
+    it('renders verdict plus follow-ups collapsed and the detail behind Show more', () => {
+        const block = buildRunReportBlock(THREE_PART);
+        expect(block.classList.contains('descRunReportBlock--split')).toBe(true);
+
+        const verdict = block.querySelector('.descRunReportBody');
+        expect(verdict.textContent).toBe('Shipped the run summary card split so the verdict shows at a glance.');
+
+        const follow = block.querySelector('.descRunReportFollowups');
+        expect(follow.textContent).toBe('Follow-ups: The legacy toggle helper is unused and could be removed.');
+        // Real content → normal emphasis, not the reduced-emphasis "none" treatment.
+        expect(follow.classList.contains('is-none')).toBe(false);
+
+        const detail = block.querySelector('.descRunReportDetail');
+        expect(detail).not.toBeNull();
+        expect(detail.textContent).toContain('Ran in entry mode for target id cd54720d.');
+        // The detail paragraph is NOT part of the collapsed verdict/follow-ups content.
+        expect(verdict.textContent).not.toContain('Ran in entry mode');
+        expect(follow.textContent).not.toContain('Ran in entry mode');
+
+        // The toggle is present and starts collapsed; clicking expands, clicking again collapses.
+        const toggle = block.querySelector('.descRunReportToggle');
+        expect(toggle.hidden).toBe(false);
+        expect(toggle.textContent).toBe('Show more');
+        expect(block.classList.contains('is-expanded')).toBe(false);
+        toggle.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+        expect(block.classList.contains('is-expanded')).toBe(true);
+        expect(toggle.textContent).toBe('Show less');
+        toggle.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+        expect(block.classList.contains('is-expanded')).toBe(false);
+        expect(toggle.textContent).toBe('Show more');
+    });
+
+    it('renders `Follow-ups: none.` at reduced emphasis', () => {
+        const block = buildRunReportBlock([
+            'Nothing needed doing beyond the one change.',
+            'Follow-ups: none.',
+            '',
+            'The full detail paragraph goes here for the curious.',
+        ].join('\n'));
+        const follow = block.querySelector('.descRunReportFollowups');
+        expect(follow.textContent).toBe('Follow-ups: none.');
+        expect(follow.classList.contains('is-none')).toBe(true);
+    });
+
+    it('resolves the split on the Follow-ups label even when the verdict wraps across lines', () => {
+        const block = buildRunReportBlock([
+            'Shipped a fairly long verdict sentence that a narrow terminal',
+            'wrapped across two physical lines before the label.',
+            'Follow-ups: none.',
+            '',
+            'Detail paragraph.',
+        ].join('\n'));
+        expect(block.classList.contains('descRunReportBlock--split')).toBe(true);
+        const verdict = block.querySelector('.descRunReportBody');
+        expect(verdict.textContent).toContain('Shipped a fairly long verdict sentence');
+        expect(verdict.textContent).toContain('before the label.');
+        // The label line is not swept into the verdict body.
+        expect(verdict.textContent).not.toContain('Follow-ups:');
+        expect(block.querySelector('.descRunReportFollowups').textContent).toBe('Follow-ups: none.');
+        expect(block.querySelector('.descRunReportDetail').textContent).toBe('Detail paragraph.');
+    });
+
+    it('shows no toggle when a three-part summary has an empty detail paragraph', () => {
+        const block = buildRunReportBlock('Shipped it.\nFollow-ups: none.');
+        expect(block.classList.contains('descRunReportBlock--split')).toBe(true);
+        expect(block.querySelector('.descRunReportDetail')).toBeNull();
+        expect(block.querySelector('.descRunReportToggle')).toBeNull();
+    });
+});
+
+describe('buildIterateContextBlock — carries the full summary regardless of shape', () => {
+    it('includes the entire three-part summary verbatim, detail paragraph and all', () => {
+        const summary = [
+            'Shipped the split card.',
+            'Follow-ups: none.',
+            '',
+            'Ran in entry mode. Full detail here that COPY CONTEXT must still carry.',
+        ].join('\n');
+        const block = buildIterateContextBlock(makeItem(), null, 'o/r', summary);
+        expect(block).toContain('--- what the run reported ---');
+        expect(block).toContain(summary.trim());
+        expect(block).toContain('Ran in entry mode. Full detail here that COPY CONTEXT must still carry.');
     });
 });
 
