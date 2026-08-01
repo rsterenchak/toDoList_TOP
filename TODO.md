@@ -387,3 +387,10 @@
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/main.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 5a1579f8-d0a8-466a-9b57-131572be5ff3 -->
+
+- [ ] **[LOW]** Add a harmless comment to style.css to trigger a redeploy
+  - Type: feature
+  - Description: Add a single-line CSS comment (e.g. a timestamp or note) near the top of style.css with no functional or visual effect, purely to produce a new commit that triggers the deploy pipeline. No selectors, rules, or values should change. This is a throwaway trigger entry, not a real styling change.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 5862ac1d-563a-4ca8-8797-ea164a5cae44 -->
