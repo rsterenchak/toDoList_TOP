@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-01T07:35:08.211Z",
-  "sha": "80e8866ef430afb46c20b11e468d800383756536",
+  "generatedAt": "2026-08-01T08:04:36.987Z",
+  "sha": "d39225cc9df11e82cfe9daa8d50adfaec68e9421",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -1713,11 +1713,11 @@
       "selector": "#coverageDetailModal",
       "label": "Coverage Detail Modal",
       "file": "assignmentCoverage.js",
-      "line": 901,
+      "line": 932,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 901
+          "line": 932
         },
         {
           "file": "style.css",
@@ -1729,11 +1729,11 @@
       "selector": "#coverageDetailModalActions",
       "label": "Coverage Detail Modal Actions",
       "file": "assignmentCoverage.js",
-      "line": 1024,
+      "line": 1055,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1024
+          "line": 1055
         },
         {
           "file": "style.css",
@@ -1745,11 +1745,11 @@
       "selector": "#coverageDetailModalBackdrop",
       "label": "Coverage Detail Modal Backdrop",
       "file": "assignmentCoverage.js",
-      "line": 898,
+      "line": 929,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 898
+          "line": 929
         },
         {
           "file": "style.css",
@@ -1761,11 +1761,11 @@
       "selector": "#coverageDetailModalBody",
       "label": "Coverage Detail Modal Body",
       "file": "assignmentCoverage.js",
-      "line": 943,
+      "line": 974,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 943
+          "line": 974
         },
         {
           "file": "style.css",
@@ -1777,11 +1777,11 @@
       "selector": "#coverageDetailModalClose",
       "label": "Coverage Detail Modal Close",
       "file": "assignmentCoverage.js",
-      "line": 934,
+      "line": 965,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 934
+          "line": 965
         },
         {
           "file": "style.css",
@@ -1793,11 +1793,11 @@
       "selector": "#coverageDetailModalCloseBtn",
       "label": "Coverage Detail Modal Close Btn",
       "file": "assignmentCoverage.js",
-      "line": 1027,
+      "line": 1058,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1027
+          "line": 1058
         },
         {
           "file": "style.css",
@@ -1809,11 +1809,11 @@
       "selector": "#coverageDetailModalCommitted",
       "label": "Coverage Detail Modal Committed",
       "file": "assignmentCoverage.js",
-      "line": 923,
+      "line": 954,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 923
+          "line": 954
         },
         {
           "file": "style.css",
@@ -1825,11 +1825,11 @@
       "selector": "#coverageDetailModalEyebrow",
       "label": "Coverage Detail Modal Eyebrow",
       "file": "assignmentCoverage.js",
-      "line": 913,
+      "line": 944,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 913
+          "line": 944
         },
         {
           "file": "style.css",
@@ -1841,11 +1841,11 @@
       "selector": "#coverageDetailModalHeader",
       "label": "Coverage Detail Modal Header",
       "file": "assignmentCoverage.js",
-      "line": 907,
+      "line": 938,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 907
+          "line": 938
         },
         {
           "file": "style.css",
@@ -1857,11 +1857,11 @@
       "selector": "#coverageDetailModalTitle",
       "label": "Coverage Detail Modal Title",
       "file": "assignmentCoverage.js",
-      "line": 910,
+      "line": 941,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 910
+          "line": 941
         },
         {
           "file": "style.css",
@@ -1873,11 +1873,11 @@
       "selector": "#coverageDetailModalTitleText",
       "label": "Coverage Detail Modal Title Text",
       "file": "assignmentCoverage.js",
-      "line": 917,
+      "line": 948,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 917
+          "line": 948
         },
         {
           "file": "style.css",
@@ -4481,11 +4481,11 @@
       "selector": "#proposalReviewModal",
       "label": "Proposal Review Modal",
       "file": "assignmentCoverage.js",
-      "line": 1515,
+      "line": 1546,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1515
+          "line": 1546
         },
         {
           "file": "style.css",
@@ -4497,11 +4497,11 @@
       "selector": "#proposalReviewModalActions",
       "label": "Proposal Review Modal Actions",
       "file": "assignmentCoverage.js",
-      "line": 1549,
+      "line": 1580,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1549
+          "line": 1580
         },
         {
           "file": "style.css",
@@ -4513,11 +4513,11 @@
       "selector": "#proposalReviewModalBackdrop",
       "label": "Proposal Review Modal Backdrop",
       "file": "assignmentCoverage.js",
-      "line": 1512,
+      "line": 1543,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1512
+          "line": 1543
         },
         {
           "file": "style.css",
@@ -4529,11 +4529,11 @@
       "selector": "#proposalReviewModalBody",
       "label": "Proposal Review Modal Body",
       "file": "assignmentCoverage.js",
-      "line": 1546,
+      "line": 1577,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1546
+          "line": 1577
         },
         {
           "file": "style.css",
@@ -4545,11 +4545,11 @@
       "selector": "#proposalReviewModalClose",
       "label": "Proposal Review Modal Close",
       "file": "assignmentCoverage.js",
-      "line": 1537,
+      "line": 1568,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1537
+          "line": 1568
         },
         {
           "file": "style.css",
@@ -4561,11 +4561,11 @@
       "selector": "#proposalReviewModalCloseBtn",
       "label": "Proposal Review Modal Close Btn",
       "file": "assignmentCoverage.js",
-      "line": 1551,
+      "line": 1582,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1551
+          "line": 1582
         },
         {
           "file": "style.css",
@@ -4577,11 +4577,11 @@
       "selector": "#proposalReviewModalEyebrow",
       "label": "Proposal Review Modal Eyebrow",
       "file": "assignmentCoverage.js",
-      "line": 1527,
+      "line": 1558,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1527
+          "line": 1558
         },
         {
           "file": "style.css",
@@ -4593,11 +4593,11 @@
       "selector": "#proposalReviewModalHeader",
       "label": "Proposal Review Modal Header",
       "file": "assignmentCoverage.js",
-      "line": 1521,
+      "line": 1552,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1521
+          "line": 1552
         },
         {
           "file": "style.css",
@@ -4609,11 +4609,11 @@
       "selector": "#proposalReviewModalTitle",
       "label": "Proposal Review Modal Title",
       "file": "assignmentCoverage.js",
-      "line": 1524,
+      "line": 1555,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1524
+          "line": 1555
         },
         {
           "file": "style.css",
@@ -4625,11 +4625,11 @@
       "selector": "#proposalReviewModalTitleText",
       "label": "Proposal Review Modal Title Text",
       "file": "assignmentCoverage.js",
-      "line": 1531,
+      "line": 1562,
       "files": [
         {
           "file": "assignmentCoverage.js",
-          "line": 1531
+          "line": 1562
         },
         {
           "file": "style.css",
