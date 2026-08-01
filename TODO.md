@@ -311,7 +311,7 @@
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f2a990bc-5475-4b7e-9f18-12b0f8aae25e -->
 
-- [ ] **[HIGH]** Entry text and id are lost when a task is created for an injected entry
+- [x] **[HIGH]** Entry text and id are lost when a task is created for an injected entry — Completed: 2026-08-01
   - Type: bug
   - Description: A task created by `materializeEntryTodo` — from chat's Inject & run, or from accepting a derive proposal — reaches Supabase with `description` and `entry_id` both null, so its WHAT CHANGED card and FILE readout render empty and its shipped state cannot resolve from the marker. The cause is write ordering, not a missing write. `addToDo` mints the id, pushes to memory, saves to localStorage, then hands the row's INSERT to `persistMutation` and returns immediately — the insert is fire-and-forget. `materializeEntryTodo` synchronously sets `created.desc` and calls `editToDoItem`, then stamps the entry id; both issue UPDATEs keyed by an id that does not exist server-side yet, so they match zero rows and do nothing. The insert then lands carrying the original payload — empty description, no entry id. Local state looks correct, which is why the row renders with a title and nothing else.
   - Behavior: A task created for an injected entry reaches the database with its full entry text as `description` and its `entry_id` set, so WHAT CHANGED shows the entry's Description line, the FILE readout lists its paths, and the row resolves through DRAFT to REVIEW as the run progresses. This holds for both callers — chat's Inject & run and derive-proposal acceptance — and survives a reload or a switch to another device. Tasks created by any other path are unaffected.
