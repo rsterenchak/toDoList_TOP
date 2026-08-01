@@ -2,14 +2,14 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
-// The mobile filter now uses the SAME single cycle pill as desktop (tap to
-// advance ALL → Active → Ideas), with the three-segment control retired from
-// the mobile breakpoint. The two controls are still gated by CSS so exactly one
-// is visible per breakpoint — but the mobile breakpoint now shows the cycle
-// pill and hides the segmented control (the reverse of the earlier swap). These
-// tests pin that CSS gating (so the swap can't silently regress to showing both
-// or neither) and the shared-visual-language tint on the active segment (still
-// present in the DOM for the desktop-hidden control's base styling).
+// The mobile breakpoint filters with a single cycle pill (tap to advance
+// ALL → IN PROGRESS → DONE — the same vocabulary the desktop pills use), while
+// the three-segment control stays CSS-hidden. The controls are gated by CSS so
+// exactly one is visible per breakpoint — the mobile breakpoint shows the cycle
+// pill and hides the segmented control. These tests pin that CSS gating (so the
+// swap can't silently regress to showing both or neither) and the
+// shared-visual-language tint on the active segment (still present in the DOM
+// for the desktop-hidden control's base styling).
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 const css = readFileSync(resolve(srcDir, 'style.css'), 'utf8');

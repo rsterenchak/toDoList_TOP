@@ -5,7 +5,7 @@ import { dirname, resolve } from 'node:path';
 
 import { getTaskSort, setTaskSort, TASK_SORT_KEY } from '../src/prefs.js';
 import { buildTaskFilterBar, applyTaskFilter } from '../src/taskFilter.js';
-import { setTaskFilter } from '../src/prefs.js';
+import { setPhaseFilter } from '../src/prefs.js';
 import { sortItemsByStatusForRender } from '../src/listLogic.js';
 
 // The Sort dropdown replaces the former "Sort by due" checkbox and "Expand All"
@@ -87,13 +87,16 @@ describe('Sort composes with the status filter', () => {
         return row;
     }
 
-    it('Status sort + Active filter shows in_progress then active, hides ideas', () => {
+    it('Status sort + IN PROGRESS filter keeps in_progress rows, hides active and ideas', () => {
         // Simulate the render path: status-sort the model, render rows in that
-        // order, then apply the Active filter (as the dropdown handler does).
+        // order, then apply the IN PROGRESS filter (as the handler does). With no
+        // phase resolver registered here, IN PROGRESS matches manual status
+        // in_progress only, so the two in-progress rows survive in sorted order.
         const items = [
-            { tit: 'B', status: 'active' },
             { tit: 'A', status: 'in_progress' },
+            { tit: 'B', status: 'in_progress' },
             { tit: 'C', status: 'idea' },
+            { tit: 'D', status: 'active' },
         ];
         const ordered = sortItemsByStatusForRender(items);
 
@@ -102,16 +105,17 @@ describe('Sort composes with the status filter', () => {
         document.body.appendChild(buildTaskFilterBar());
         ordered.forEach(it => ml.appendChild(makeRow(it.tit, it.status)));
 
-        setTaskFilter('active');
+        setPhaseFilter('inprogress');
         applyTaskFilter();
 
         const rows = Array.from(ml.querySelectorAll('#toDoChild'));
         const visible = rows.filter(r => !r.classList.contains('taskFilterHidden'));
+        // Both in_progress rows survive, in the status-sorted order.
         expect(visible.map(r => r.__item.tit)).toEqual(['A', 'B']);
 
-        // The idea row is hidden by the filter's class after the sort ran.
-        const ideaRow = rows.find(r => r.__item.tit === 'C');
-        expect(ideaRow.classList.contains('taskFilterHidden')).toBe(true);
+        // The idea and plain-active rows are hidden by the filter's class.
+        expect(rows.find(r => r.__item.tit === 'C').classList.contains('taskFilterHidden')).toBe(true);
+        expect(rows.find(r => r.__item.tit === 'D').classList.contains('taskFilterHidden')).toBe(true);
     });
 });
 

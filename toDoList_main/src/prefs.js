@@ -18,7 +18,6 @@ export const ONBOARDING_COMPLETE_KEY = 'todoapp_onboardingComplete';
 export const SAMPLE_SEEDED_KEY = 'todoapp_sampleSeeded';
 export const MUSIC_VISUALIZER_ENABLED_KEY = 'todoapp_musicVisualizerEnabled';
 export const MUSIC_VISUALIZER_STYLE_KEY = 'todoapp_musicVisualizerStyle';
-export const TASK_FILTER_KEY = 'todoapp_taskFilter';
 export const PHASE_FILTER_KEY = 'todoapp_phaseFilter';
 export const BLOCKED_FILTER_KEY = 'todoapp_blockedFilter';
 export const TASK_SORT_KEY = 'todoapp_taskSort';
@@ -125,42 +124,19 @@ export function setActiveView(view) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// ── task status filter (ALL / Active / Ideas) ──
-// The pill row above the task list filters visible rows by their workflow
-// status. 'all' shows everything, 'active' shows active + in_progress work,
-// 'ideas' shows idea-status rows. The choice persists so a filtered session
-// is restored on reload; any stored value other than the three known tokens
-// falls back to 'all' so a stale or hand-edited pref can't desync the list.
-export function getTaskFilter() {
-    try {
-        const v = localStorage.getItem(TASK_FILTER_KEY);
-        if (v === 'active' || v === 'ideas') return v;
-        return 'all';
-    } catch (e) {
-        return 'all';
-    }
-}
-
-export function setTaskFilter(filter) {
-    try {
-        const stored = (filter === 'active' || filter === 'ideas') ? filter : 'all';
-        localStorage.setItem(TASK_FILTER_KEY, stored);
-    } catch (e) { /* ignore quota/private-mode */ }
-}
-
-// ── task desktop filter (ALL / IN PROGRESS / DONE) ──
-// The DESKTOP-only pill row above the compose row filters visible rows by a mix
-// of manual status and DERIVED pipeline phase (see phase.js) — a different
-// vocabulary from the manual-status-only mobile cycle pill — so it persists under
-// its OWN key rather than sharing TASK_FILTER_KEY. Keeping them separate means
-// resizing across the breakpoint can never write a desktop token into the mobile
-// status filter (or vice versa) and blank the list. 'all' shows every uncompleted
-// task, 'inprogress' shows in-progress or in-flight work (status `in_progress` or
-// phase `draft`/`running`), 'done' shows finished work (phase `done` or checked
+// ── task filter (ALL / IN PROGRESS / DONE) ──
+// The filter bar above the task list filters visible rows by a mix of manual
+// status and DERIVED pipeline phase (see phase.js). It is now the SINGLE filter
+// vocabulary at BOTH breakpoints — the desktop three-pill control and the mobile
+// cycle pill share this one key rather than each owning its own — so crossing the
+// breakpoint keeps the same filter active. 'all' shows every uncompleted task,
+// 'inprogress' shows in-progress or in-flight work (status `in_progress` or phase
+// `draft`/`running`), 'done' shows finished work (phase `done` and not checked
 // off). Any stored value other than the three known tokens falls back to 'all' —
-// this also MIGRATES the retired 'active'/'running'/'ideas' tokens from the old
-// four-pill set to 'all' so a reload after deploy lands on a populated list rather
-// than an empty filtered view.
+// this also MIGRATES the retired 'active'/'running'/'ideas' tokens (from the old
+// desktop four-pill set AND the old mobile ALL/Active/Ideas status filter) to
+// 'all' so a reload after deploy lands on a populated list rather than an empty
+// filtered view.
 export function getPhaseFilter() {
     try {
         const v = localStorage.getItem(PHASE_FILTER_KEY);
@@ -204,7 +180,7 @@ export function setBlockedFilter(active) {
 // The Sort dropdown above the task list reorders visible rows for render only;
 // the underlying manual `pos` order is never touched, so selecting 'none'
 // restores the user's hand-arranged order intact. The choice is GLOBAL across
-// projects (mirroring getTaskFilter/setTaskFilter) and persists so a sorted
+// projects (mirroring getPhaseFilter/setPhaseFilter) and persists so a sorted
 // session is restored on reload. 'due' sorts ascending by due date; 'status'
 // groups in_progress → active → idea. Any stored value other than the three
 // known tokens falls back to 'none' so a stale or hand-edited pref can't
