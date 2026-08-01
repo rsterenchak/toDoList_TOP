@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-01',
         added: [
-            "A shipped run's closing summary now appears on a task's review face and is included in its copy-context block, so you can see and share what the run reported.",
             "Injecting and running an entry from chat now creates a task for it in the matching project, so the work appears in your list and moves through review with its full accept, revert, and iterate actions.",
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         fixed: [
             "Proposal review cards are now ordered by rubric aspect, so a derive batch reads in the same order as the assignment.",
             "The TODO.md strip is now hidden on the Structure view instead of peeking past its right edge.",
+            "A task created for an entry injected from chat or an accepted proposal now keeps its full entry text and shipped-run link, so its review details and status show correctly instead of appearing empty.",
         ],
     },
 ];

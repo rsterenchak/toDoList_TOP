@@ -2911,14 +2911,17 @@ async function shipDraftedEntry(entryText, card) {
             const createdId = await materializeEntryTodo(
                 taskProject,
                 deriveRunTitle(entryText),
-                entry
+                entry,
+                entryId
             );
             if (createdId) {
-                // No agent_queue row exists for a chat dispatch, so link the task
-                // to its run by stamping the entry id straight onto the todo —
-                // that is what derivePhase reads to advance it and light its
-                // ACCEPT face when the run merges. A failed stamp orphans a task
-                // from work that shipped (the first bug this project hit), so
+                // The entry id already rode in the todo's single insert (via
+                // materializeEntryTodo → addEntryTodo), so the row resolves its
+                // shipped state without this stamp. Keep stamping so the local
+                // amber-lighting fires and a genuine link failure still surfaces —
+                // no agent_queue row exists for a chat dispatch, so this is the
+                // only place a failed link is visible. A failed stamp orphans a
+                // task from work that shipped (the first bug this project hit), so
                 // surface it rather than swallowing it, matching shipEntryForTodo.
                 const stamp = listLogic.stampTodoEntryId(createdId, entryId);
                 if (!stamp || stamp.ok === false) {

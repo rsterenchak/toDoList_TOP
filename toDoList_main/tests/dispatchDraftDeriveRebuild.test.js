@@ -12,7 +12,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 
 let shipCalls = [];
 let shipResult = { ok: true, entryId: 'ent-new', correlationId: 'corr-9', runId: 222 };
-let addToDoCalls = [];
+let addEntryCalls = [];
 let projectItems = [];
 let restoreCalls = [];
 let domCalls = [];
@@ -37,12 +37,14 @@ vi.mock('../src/agentQueueStore.js', () => ({
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         getProjectTargetId: () => null,
-        addToDo: (projectName, title) => {
-            addToDoCalls.push({ projectName, title });
-            projectItems.push({ id: 'created-id-1', tit: title, desc: '' });
+        // The single-insert create path: records its args, lands the item in the
+        // list so the rebuild has something to render, and returns its id.
+        addEntryTodo: (projectName, title, description, entryId) => {
+            addEntryCalls.push({ projectName, title, description, entryId });
+            projectItems.push({ id: 'created-id-1', tit: title, desc: description, entryId });
+            return 'created-id-1';
         },
         listItems: () => projectItems,
-        editToDoItem: () => {},
         setAgentRunState: () => Promise.resolve({ ok: true }),
     },
 }));
@@ -65,7 +67,7 @@ function selectProject(name) {
 
 beforeEach(() => {
     shipCalls = [];
-    addToDoCalls = [];
+    addEntryCalls = [];
     projectItems = [];
     restoreCalls = [];
     domCalls = [];
@@ -87,7 +89,9 @@ describe('dispatchDraft rebuilds #mainList after materializing a derive-proposal
         expect(res).toEqual({ ok: true });
 
         // The todo was created, then #mainList was rebuilt for that same project.
-        expect(addToDoCalls).toEqual([{ projectName: 'Inbox', title: 'Add a widget' }]);
+        expect(addEntryCalls).toHaveLength(1);
+        expect(addEntryCalls[0].projectName).toBe('Inbox');
+        expect(addEntryCalls[0].title).toBe('Add a widget');
         expect(restoreCalls).toHaveLength(1);
         expect(restoreCalls[0][1]).toBe('Inbox');
         // The created item is present in the items handed to the renderer.
@@ -106,7 +110,7 @@ describe('dispatchDraft rebuilds #mainList after materializing a derive-proposal
         await dispatchDraft(row, 'entry body', row.entry_id);
 
         // No todo created and no repaint — the normal flagged-task path is untouched.
-        expect(addToDoCalls).toHaveLength(0);
+        expect(addEntryCalls).toHaveLength(0);
         expect(restoreCalls).toHaveLength(0);
         expect(domCalls).toHaveLength(0);
     });
@@ -125,7 +129,8 @@ describe('dispatchDraft rebuilds #mainList after materializing a derive-proposal
         const res = await dispatchDraft(row, 'entry body', row.entry_id);
         expect(res).toEqual({ ok: true });
         // The todo is still created; the rebuild simply no-ops with no list present.
-        expect(addToDoCalls).toEqual([{ projectName: 'Inbox', title: 'Add a widget' }]);
+        expect(addEntryCalls).toHaveLength(1);
+        expect(addEntryCalls[0].title).toBe('Add a widget');
         expect(restoreCalls).toHaveLength(0);
         expect(domCalls).toHaveLength(0);
     });

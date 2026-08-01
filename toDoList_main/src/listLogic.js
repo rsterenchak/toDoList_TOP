@@ -618,6 +618,56 @@ export const listLogic = (function () {
     };
 
 
+    // FUNCTION (ADD A TODO CARRYING ITS FULL ENTRY SHAPE IN ONE INSERT)
+    // Create a committed todo whose `description` and `entryId` are set BEFORE
+    // its single INSERT is queued — for an entry about to ship that has no source
+    // list item (chat's Inject & run, or an accepted derive proposal). The plain
+    // `addToDo` path mints the row and fires its INSERT with an empty description
+    // and no entry id, leaving the caller to backfill both through follow-up
+    // `editToDoItem` / `stampTodoEntryId` UPDATEs. Those UPDATEs are keyed by an
+    // id the server has not inserted yet — `addToDo`'s INSERT is fire-and-forget
+    // and unordered against sibling todo writes (persistMutation serializes a
+    // todo write only behind a parent PROJECT insert, not behind another todo
+    // insert) — so they race ahead of the INSERT, match zero rows, and the row
+    // lands with `description` and `entry_id` null even though local state looks
+    // correct. Building the item complete before the one INSERT closes that race:
+    // `toTodoRowPayload` already carries both fields, so the single write persists
+    // them and no follow-up UPDATE is needed for the row to be correct on the
+    // server. Returns the created item's id, or null when the project is missing
+    // or the title is blank. `entryId` is optional — omit it for a plain
+    // description-only create.
+    // @category: user-mutation-only
+    function addEntryTodo(projectName, title, description, entryId) {
+
+        const cleanTitle = (title || '').toString().trim();
+        if (!projectName || !allProjects[projectName] || cleanTitle === '') return null;
+
+        const arr = allProjects[projectName].items;
+        const listItem = toDo(cleanTitle, (description || '').toString(), '', 1, 0);
+        if (entryId) {
+            listItem.entryId = entryId;
+            listItem.injectedAt = Date.now();
+        }
+        arr.push(listItem);
+
+        saveToStorage();
+        // ONE insert carrying the FINAL row shape — title, description and entry
+        // id together — so no later UPDATE has to race it (see the header note).
+        persistMutation({
+            op: 'insert',
+            table: 'todos',
+            payload: toTodoRowPayload(
+                listItem,
+                allProjects[projectName].id || null
+            ),
+        });
+        // Re-pin the blank placeholder to index 0.
+        sortCompletedInPlace(arr);
+
+        return listItem.id;
+    }
+
+
     // FUNCTION (REMOVE TODO LIST ITEMS)
     // Maintains the invariant that a blank placeholder is pinned at index 0.
     // @category: user-mutation-only
@@ -3827,6 +3877,7 @@ export const listLogic = (function () {
         listProjects,
         listProjectsArray,
         addToDo,
+        addEntryTodo,
         removeToDo,
         removeToDoByItem,
         insertToDoAt,
