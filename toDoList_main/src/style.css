@@ -18201,23 +18201,15 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     align-items: baseline;
   }
 
-  /* Vertically-stacked ‹ / › chevron column, seated at the right edge of the
-     row. The base .mobileProjChev 44×44 hit target is trimmed to a stacked
-     pair of tall, narrow tap targets so the column stays compact. */
+  /* The prev/next project ‹ / › chevron column is hidden on mobile — the
+     user pages between projects with the horizontal swipe-on-title gesture
+     (wired on #mobileProjTitleRow in main.js) and the drawer picker, not the
+     arrow buttons. The buttons stay in the DOM (their click handlers and
+     disabled wiring are untouched) so only the visible affordance disappears,
+     not the navigation capability. Desktop hides this column too (see the
+     min-width:1024px block above). */
   #mobileProjChevCol {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    flex: 0 0 auto;
-    gap: 0;
-    margin-left: auto;
-  }
-  #mobileProjChevCol .mobileProjChev {
-    display: inline-flex;
-    width: 40px;
-    height: 26px;
-    font-size: 20px;
+    display: none;
   }
   /* ── App-root safe-area paint ──
      Belt-and-suspenders for notched devices: the header already absorbs

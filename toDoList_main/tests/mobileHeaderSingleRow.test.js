@@ -128,15 +128,21 @@ describe('Dense left-aligned mobile header (Variant C)', () => {
         expect(stats).toMatch(/justify-content:\s*flex-start/);
     });
 
-    it('reveals the ‹ › chevrons as a vertical column at the right of the row', () => {
-        const block = denseBlock();
-        const col = rule(block, '#mobileProjChevCol');
-        expect(col).toMatch(/display:\s*flex/);
-        expect(col).toMatch(/flex-direction:\s*column/);
-        expect(col).toMatch(/margin-left:\s*auto/);
-        // The chevrons are visible here (mobile), stacked in the column — not
-        // hidden as they were in the old centered single-row layout.
-        expect(block).toMatch(/#mobileProjChevCol\s+\.mobileProjChev\s*\{[^}]*display:\s*inline-flex/);
+    it('hides the ‹ › prev/next chevron column on mobile', () => {
+        // The prev/next arrow buttons are hidden on mobile — project paging is
+        // done via the swipe-on-title gesture and the drawer picker, not the
+        // arrows. The buttons stay in the DOM (handlers untouched); only the
+        // visible column is suppressed.
+        const col = rule(denseBlock(), '#mobileProjChevCol');
+        expect(col).toMatch(/display:\s*none/);
+    });
+
+    it('keeps the horizontal swipe-on-title gesture surface intact', () => {
+        // Hiding the arrow buttons must not remove the navigation capability:
+        // the title row stays the pan-y swipe surface the gesture handler
+        // claims horizontal drags on.
+        const titleRow = rule(denseBlock(), '#mobileProjTitleRow');
+        expect(titleRow).toMatch(/touch-action:\s*pan-y/);
     });
 
     it('populates the counts and the badge from the single header writer', () => {

@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-01',
-        changed: [
-            "On phones the task filter now cycles All / In progress / Done — the same phase-aware set as desktop — replacing the old All / Active / Ideas filter.",
-        ],
         fixed: [
             "Proposal review cards are now ordered by rubric aspect, so a derive batch reads in the same order as the assignment.",
             "The TODO.md strip is now hidden on the Structure view instead of peeking past its right edge.",
             "A task created for an entry injected from chat or an accepted proposal now keeps its full entry text and shipped-run link, so its review details and status show correctly instead of appearing empty.",
             "On phones the API-spend button no longer appears in the top header; it now opens only from the chat view.",
+            "The prev/next project arrows no longer appear in the mobile header; paging between projects stays available via the swipe gesture and the project picker.",
         ],
     },
 ];
