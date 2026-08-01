@@ -395,3 +395,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Description: On mobile (`isMobile()` / viewport < 1024px) the API-spend button is rendering in the top-left header corner, where it shouldn't appear. It must only be shown inside the chat window (the Claude sheet) on mobile, matching its intended placement. Locate where the spend control is mounted into the header (likely `toDoList_main/src/desktopHeaderPlacement.js` or the header wiring in `toDoList_main/src/main.js`) and suppress it below the 1024px breakpoint, leaving the chat-sheet instance in `toDoList_main/src/claudeSheet.js` untouched; a CSS `display:none` under the mobile breakpoint in `toDoList_main/src/style.css` may be the cleanest fix. Verify the desktop panel and the mobile chat-header control both still render.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/desktopHeaderPlacement.js`, `toDoList_main/src/claudeSheet.js`
   <!-- id: 8ca05958-9d17-4208-bab3-432f66fd1b79 -->
+
+- [ ] **[LOW]** Hide the prev/next project navigation arrows in the mobile header
+  - Type: bug
+  - Description: On mobile, the `<` and `>` chevrons shown at the top corners of the project header (used to page between projects) should be hidden — the user doesn't use them for navigation. Keep the arrows visible on desktop; only suppress them under the mobile breakpoint (`isMobile()` / viewport < 1024px). Preserve any underlying swipe-to-navigate gesture between projects if one exists (likely in `toDoList_main/src/mobileProjSwipeNav.js`) — only the visible arrow buttons should disappear, not the navigation capability itself. Likely rendered in `toDoList_main/src/main.js` or `toDoList_main/src/desktopHeaderPlacement.js`, styled in `toDoList_main/src/style.css`.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/main.js`, `toDoList_main/src/mobileProjSwipeNav.js`
+  <!-- id: e12c7d36-522e-4102-bf3d-67e7bd36cdd7 -->
