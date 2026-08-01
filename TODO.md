@@ -179,3 +179,21 @@
   - File: `toDoList_main/src/taskFilter.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c8b68ff0-e92e-41b0-85b7-240812504d62 -->
+
+- [ ] **[HIGH]** Desktop filters hide completed rows, so the COMPLETED section expands empty
+  - Type: bug
+  - Description: Expanding the COMPLETED section on desktop reveals nothing. Completed rows are governed by two independent hiding mechanisms — the section's own collapse, and the task filter's `taskFilterHidden` class — and the desktop pills now hide them unconditionally. `PHASE_FILTERS`' ALL is `!(item && item.completed)`, and IN PROGRESS and DONE both open with `if (!item || item.completed) return false`. So no desktop pill matches a completed row, every one of them stays hidden, and un-collapsing the section exposes rows the filter has already suppressed. The mobile `all` filter is `return true` and does not have this problem, which is why it only appears on desktop. The section's collapse should be the only thing governing completed rows; the filter should not have an opinion about them.
+  - Behavior: Expanding the COMPLETED section on desktop reveals its rows, under every pill. Collapsing hides them again. The pills continue to filter the OPEN list exactly as they do now — ALL matches uncompleted tasks of any status, IN PROGRESS matches in-progress or a draft/running phase, DONE matches shipped-and-acknowledged tasks that are not checked off — and none of them changes what the COMPLETED section shows. The pills' counts continue to describe the open list only, so the COMPLETED header's own count remains the source for completed work. Mobile is unchanged.
+    - Verify against the section's collapse state: with COMPLETED expanded, switching between all three pills must leave its rows visible throughout.
+  - Implementation notes:
+    - Exempt completed rows from the desktop filter rather than making each pill match them. `applyTaskFilter` should leave a completed row's `taskFilterHidden` class alone entirely, so the COMPLETED section's collapse is the sole authority. That is one exemption at the apply site rather than three predicate changes, and it cannot drift as pills are added.
+    - Do NOT simply change ALL to `return true`. IN PROGRESS and DONE would still hide completed rows, so the section would populate under ALL and empty under the other two — a worse, more confusing state than the current one.
+    - Leave the predicates' `item.completed` guards in place for COUNTING. The pills describe the open list, and their counts should keep excluding completed rows; it is only the visibility application that must exempt them. Confirm the counting path and the hiding path are separable — if they share one pass, split them and say so.
+    - Grep how the COMPLETED section's collapse actually hides its rows. If it uses its own class or attribute, the two mechanisms are cleanly separable; if it also relies on `taskFilterHidden`, they are entangled and the fix needs to give the section its own hiding mechanism first. Report which you found.
+    - `reorderToDoDOM` internally calls `applyTaskFilter` — never call both together. Any repaint added here must respect that.
+    - Verify the mobile path is untouched: its `all` is `return true` and its status filters run through the same apply site, so the exemption must not change what mobile shows.
+    - Test: with COMPLETED expanded, all three desktop pills leave its rows visible; collapsing hides them under every pill; the pills' counts still exclude completed rows; and mobile's status filters behave as before.
+  - Out of scope: The pills' definitions and counts, correct as landed. The COMPLETED section's collapse behavior, its header count, and its position. The mobile cycle pill and the blocked chip. `derivePhase` and the phase vocabulary.
+  - File: `toDoList_main/src/taskFilter.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1c1b58a2-e316-4aaf-b897-b704cdc69acd -->
