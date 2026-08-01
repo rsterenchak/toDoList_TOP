@@ -233,3 +233,20 @@
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 83e4595d-a343-471c-a7f5-39c678274460 -->
+
+- [ ] **[LOW]** Proposal review modal: order cards by rubric aspect
+  - Type: bug
+  - Description: The proposal review modal renders cards in whatever order `getProposedRows()` returns — the queue store's fetch order — so a batch lands scrambled relative to the rubric, e.g. B3 then C1 then B1. `renderList` calls `proposals.forEach` with no sort. Reviewing a derive batch means checking it against the assignment's requirements in order, so scrambled cards make it hard to see what is covered and what is missing. Sort by aspect label.
+  - Behavior: Proposal cards are ordered by their rubric aspect label — A1, A2, A3, B1, B2, B3, C1, C2 — reading in the same order as the assignment. A proposal with no aspect tag sorts after all tagged ones rather than being dropped or interleaved. The order is stable across re-renders, so accepting or dismissing one card does not reshuffle the rest. Nothing else about the modal changes.
+  - Implementation notes:
+    - Sort in `renderList` before the `forEach`, not in `getProposedRows` — the store's order serves other consumers and should not acquire a coverage-specific opinion.
+    - Aspect labels are letter-then-number (`A1`, `B10`). Sort by letter first, then by the number NUMERICALLY — a plain string sort puts `B10` before `B2`. Parse the two parts rather than comparing whole strings.
+    - Get the label from wherever `buildAspectBadge` reads it, so the sort key and the rendered badge can never disagree. If the tag lives on `row.context`, read it from the same place.
+    - Untagged proposals must still render. Sort them last as a group, in their existing relative order, rather than dropping them or letting a null label throw.
+    - Labels may vary in case or carry stray whitespace depending on how the rubric was written. Normalise for comparison only; render the label exactly as stored.
+    - The sort must be stable so the live `onQueueChange` repaint does not reorder cards while you are working through them — resolving one proposal should leave the others where they were.
+    - Test: a mixed batch renders in A1, A2, B1, B2, B3, C1, C2 order; `B10` sorts after `B2`; an untagged proposal renders last; and resolving a card leaves the remaining order unchanged.
+  - Out of scope: The coverage breakdown modal's own aspect ordering, which is separate. The proposal cards' contents, Accept, and Dismiss. `getProposedRows` and the queue store's fetch order. Derive and the aspect parsing.
+  - File: `toDoList_main/src/assignmentCoverage.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 86b52bb7-5880-4492-a209-274b6099c1fc -->
