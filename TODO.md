@@ -492,7 +492,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8a11bb1d-f076-4478-8539-053e4f098195 -->
 
-- [ ] **[LOW]** Add a version-bump comment to style.css to trigger a redeploy
+- [x] **[LOW]** Add a version-bump comment to style.css to trigger a redeploy — Completed: 2026-08-03
   - Type: feature
   - Description: Test entry with no functional effect, used solely to trigger the build/deploy pipeline. Add or update a single comment line near the top of the stylesheet (e.g. `/* redeploy marker: <date> */`) with no other changes. Confirms the pipeline runs end-to-end without touching app behavior.
   - File: `toDoList_main/src/style.css`
