@@ -6511,6 +6511,34 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: var(--text-secondary);
 }
 
+/* In-flight and error states for the readout, shown from panel open until the
+   month's usage read resolves. The spinner reuses the shared .projRunSpinner
+   glyph and `spin` keyframes, sized up and revealed here (the base class is
+   display:none and only 12px, tuned for the sidebar rows). */
+.usageSpendLoading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0;
+}
+.usageSpendSpinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  animation: spin 0.7s linear infinite;
+}
+.usageSpendLoadingLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.usageSpendError {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 16px 0;
+  text-align: center;
+}
+
 #usageSpendBudgetRow {
   display: flex;
   align-items: center;

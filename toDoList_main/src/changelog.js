@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-03',
+        fixed: [
+            "The API-spend panel now shows a loading spinner while this month's usage loads instead of briefly flashing $0.00, and surfaces an error if the read fails.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-02',
         added: [
             "The API-spend panel now charts daily spend for the month and shows the share of cost from deep-think turns alongside the prompt-cache hit rate.",
@@ -17,7 +24,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-01',
         fixed: [
-            "A task created for an entry injected from chat or an accepted proposal now keeps its full entry text and shipped-run link, so its review details and status show correctly instead of appearing empty.",
             "On phones the API-spend button no longer appears in the top header; it now opens only from the chat view.",
             "The prev/next project arrows no longer appear in the mobile header; paging between projects stays available via the swipe gesture and the project picker.",
         ],

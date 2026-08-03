@@ -1435,13 +1435,46 @@ export function renderSpendReadout(container, totalCost, budget) {
     container.appendChild(note);
 }
 
+// The readout's in-flight state, shown from panel open until the month's usage
+// read resolves. A centered spinner over a muted label replaces the old
+// immediate $0.00, so a slow read never flashes a misleading zero. Reuses the
+// shared .projRunSpinner glyph and `spin` keyframes (sized up via
+// .usageSpendSpinner).
+function renderSpendLoading(container) {
+    if (!container) return;
+    container.innerHTML = '';
+    const wrap = document.createElement('div');
+    wrap.className = 'usageSpendLoading';
+    const spinner = document.createElement('div');
+    spinner.className = 'projRunSpinner usageSpendSpinner';
+    const label = document.createElement('div');
+    label.className = 'usageSpendLoadingLabel';
+    label.textContent = 'Loading usage…';
+    wrap.appendChild(spinner);
+    wrap.appendChild(label);
+    container.appendChild(wrap);
+}
+
+// The readout's terminal error state: shown when the usage read fails or comes
+// back with nothing usable, in place of the spinner. Prevents the panel from
+// silently settling on a $0.00 that reads as a real (and cheap) month when it
+// really means the read didn't land.
+function renderSpendError(container, message) {
+    if (!container) return;
+    container.innerHTML = '';
+    const err = document.createElement('div');
+    err.className = 'usageSpendError';
+    err.textContent = message || 'Couldn’t load usage';
+    container.appendChild(err);
+}
+
 // Build and open the shared API-spend panel — one panel, opened from both the
 // desktop nav control and the mobile chat-header control. Reads usage on open
 // only (no subscribe/poll — spend moves slowly and a stale figure between opens
-// is fine), shows $0.00 immediately, then fills once the read resolves. A failed
-// or empty read leaves $0.00 rather than an error or spinner. Dismisses three
-// ways via wireModalDismiss (close control, backdrop, Escape) and restores focus
-// to whatever opened it.
+// is fine), shows a loading spinner immediately, then fills once the read
+// resolves. A failed or empty read shows an inline error rather than settling on
+// a misleading $0.00. Dismisses three ways via wireModalDismiss (close control,
+// backdrop, Escape) and restores focus to whatever opened it.
 export function openSpendPanel(anchorEl) {
     const prior = document.getElementById('usageSpendBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
@@ -1523,8 +1556,9 @@ export function openSpendPanel(anchorEl) {
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
-    // Immediate $0.00 render so the panel never shows a spinner or error.
-    renderSpendReadout(readout, lastTotal, getUsageBudget());
+    // Immediate loading state so a slow read never flashes a misleading $0.00;
+    // the resolve handler below swaps in the real figure or an inline error.
+    renderSpendLoading(readout);
 
     const previouslyFocused = anchorEl || document.activeElement;
     closeX.focus();
@@ -1541,16 +1575,25 @@ export function openSpendPanel(anchorEl) {
         },
     });
 
-    // Read on open only. Fill once resolved; a failed/empty read leaves $0.00.
+    // Read on open only. Fill once resolved; a failed or empty read swaps the
+    // spinner for an inline error rather than settling on a misleading $0.00.
     if (typeof listLogic.loadMonthlyUsage === 'function') {
         Promise.resolve(listLogic.loadMonthlyUsage()).then(function(res) {
             if (!document.body.contains(backdrop)) return; // dismissed before it landed
-            if (res && res.ok && Array.isArray(res.rows)) {
+            if (res && res.ok && Array.isArray(res.rows) && res.rows.length > 0) {
                 lastTotal = sumUsageCost(res.rows);
                 renderSpendReadout(readout, lastTotal, getUsageBudget());
                 renderSpendChart(chartContainer, res.rows, new Date());
+            } else {
+                renderSpendError(readout);
             }
-        }, function() { /* leave $0.00 on read failure */ });
+        }, function() {
+            if (!document.body.contains(backdrop)) return; // dismissed before it landed
+            renderSpendError(readout);
+        });
+    } else {
+        // No read available at all — surface the error rather than a stuck spinner.
+        renderSpendError(readout);
     }
 }
 
