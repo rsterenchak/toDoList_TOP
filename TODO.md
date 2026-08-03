@@ -421,3 +421,22 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 433df196-7954-4cb2-8540-6affc455970a -->
+
+- [ ] **[MEDIUM]** Daily spend chart: render the whole month, bars from a shared baseline
+  - Type: bug
+  - Description: The daily spend chart renders one slot per day that has data, so two days of usage fill the panel as two enormous blocks — which reads as a rendering fault rather than as early-month sparseness. The bars also do not share a baseline, so the shorter day appears to hang rather than rise, making the comparison hard to read. And the chart carries two competing labels: an inline value over the tallest bar plus a caption below naming a different day, so it is ambiguous which bar the caption describes. Render the full calendar month as a fixed axis instead, with bars rising from a common baseline and a single labelling mechanism.
+  - Behavior: The chart shows one slot per day of the current calendar month — 28 to 31 depending on the month — at a fixed width regardless of how many days carry data. Bars rise from a shared bottom edge, scaled to the highest day in the month. Days with no usage render as empty slots, so a sparse early month reads as sparse and the chart does not reflow as days accumulate. Days later in the month than today render as empty slots too, rather than truncating the axis. A faint marker every seven days makes the strip readable as time. Hovering or tapping a bar shows that day's date and total; a single caption beneath names the highest day and its value. The inline label over the tallest bar and the existing per-day caption are both removed in favour of that one caption.
+  - Implementation notes:
+    - Build the axis from the month's day count, not from the data. Generate every day from the 1st to the month's last day, then join the usage totals onto it — a day with no rows gets zero, not omission. Use LOCAL dates for both the axis and the join, matching the month boundary the total already uses.
+    - Bars share a baseline: anchor each `<rect>` to the chart's bottom edge and set its height from the value, rather than positioning from the top. Scale to the month's maximum, not to a fixed ceiling — a $0.05 day and a $5 day should both fill the chart when they are the month's peak.
+    - At the panel's ~250px desktop width, 31 slots leaves roughly 6px per bar with a 1px gap. That is thin but reads correctly as a shape. If it looks cramped, reduce the gap before reducing the bar count, and NEVER aggregate into weeks — the session-shaped spikes are the whole point of a daily view.
+    - Verify at the mobile panel's near-full width as well, where each bar gets considerably more room. One viewBox scaled to the container is preferable to two layouts.
+    - Remove BOTH existing labels — the inline value over the tallest bar and the caption naming a day. Replace with one caption beneath the chart naming the month's peak day and value, e.g. "Peak $0.56 on Aug 1". A zero-usage month shows no caption rather than "Peak $0.00".
+    - Per-bar values move to a tooltip on hover and tap. At 6px per bar a hover target is small; give each slot a full-height transparent hit area rather than relying on the bar's own height, or a low-value day becomes untappable.
+    - Add a faint tick or divider every seven days from the 1st. Keep it well below the bars in contrast — it is orientation, not data.
+    - The "not enough history" guard can now go: a full-month axis renders correctly with a single day of data, which is the case that guard existed to avoid. Confirm the chart reads sensibly with exactly one non-zero bar before removing it, and say in the PR body whether you did.
+    - Nothing about the month total, the budget bar, the two ratio figures, or the caveat line changes.
+  - Out of scope: Month-over-month comparison. The deep-share and cache-hit figures and their caveat line. The budget input. The Worker's recording. Aggregating to weeks under any circumstances.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e7e83142-0a51-459a-b3cb-f6659a8b4c7a -->
