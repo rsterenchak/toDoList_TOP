@@ -477,7 +477,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 541634aa-ee0b-432c-8f82-dcc51487a3a1 -->
 
-- [ ] **[HIGH]** Fix Blocked-row action control overflowing off-screen in assignment coverage modal
+- [x] **[HIGH]** Fix Blocked-row action control overflowing off-screen in assignment coverage modal — Completed: 2026-08-03
   - Type: bug
   - Description: In the assignment coverage modal's "Waiting on you" section, a row in the Blocked state (e.g. task A1) renders wider than the modal on mobile — its status badge, chevron, and text-labeled action button overflow the right edge, leaving the confirm action invisible/untappable. Replace the text-labeled "Confirmed" button with a compact ~28x28px icon-only button (checkmark SVG, `stroke="currentColor"`) for Blocked rows so the full row (dot, id, truncated title, "Blocked" label, icon button) fits within the modal width without clipping. Keep the existing checkbox-style "Confirmed" behavior/state (clicking it should perform the same confirm action as the other rows) — only the visual control changes.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
