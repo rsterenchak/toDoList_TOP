@@ -1097,8 +1097,10 @@ function buildSpendControl() {
 // of an input token while a cache write sits above it. Prices live client-side
 // on purpose — usage_events stores exact token counts, so a price change is a
 // one-line edit here and historical spend recomputes correctly. Keyed by model
-// FAMILY (matched as a substring of the stored model id) so a version bump like
-// `claude-sonnet-4-5-YYYYMMDD` keeps resolving without a table edit.
+// FAMILY (matched as a substring of the stored model id) so a generation bump —
+// `claude-sonnet-4-5-YYYYMMDD`, or `claude-opus-5` now that deep_think calls it
+// instead of `claude-opus-4-8` — keeps resolving to its family's rate without a
+// table edit, by rule rather than by coincidence.
 export const USAGE_RATES = {
     opus:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
     sonnet: { input: 3,   output: 15, cacheWrite: 3.75,  cacheRead: 0.3 },
@@ -1112,6 +1114,8 @@ const HIGHEST_USAGE_RATE = USAGE_RATES.opus;
 
 function rateForModel(model) {
     const m = (typeof model === 'string' ? model : '').toLowerCase();
+    // Every opus generation (`claude-opus-4-8`, `claude-opus-5`, …) prices at the
+    // opus family rate — the deep_think path's model id can bump without an edit.
     if (m.indexOf('opus') !== -1) return USAGE_RATES.opus;
     if (m.indexOf('sonnet') !== -1) return USAGE_RATES.sonnet;
     if (m.indexOf('haiku') !== -1) return USAGE_RATES.haiku;
