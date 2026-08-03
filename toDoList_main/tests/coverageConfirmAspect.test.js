@@ -156,7 +156,7 @@ describe('Coverage confirmation tick — rendering on every aspect', () => {
         });
     });
 
-    it('pairs the blocked row with a "Confirmed" tick as a sibling of the jump button', async () => {
+    it('pairs the blocked row with a "Confirmed" tick as a sibling of the disclosure button', async () => {
         mountRoutedProject();
         queueRows = defaultQueue();
         await loadBoard();
@@ -164,13 +164,13 @@ describe('Coverage confirmation tick — rendering on every aspect', () => {
         await flush();
         const wrap = document.querySelector('.coverageDetailConfirmable');
         expect(wrap).toBeTruthy();
-        const jump = wrap.querySelector('.coverageDetailRow--jump');
+        const disclosure = wrap.querySelector('.coverageDetailRow--expandable');
         const tickEl = wrap.querySelector('.coverageCommitTick');
-        expect(jump).toBeTruthy();
+        expect(disclosure).toBeTruthy();
         expect(tickEl).toBeTruthy();
         expect(tickEl.querySelector('.coverageCommitTickLabel').textContent).toBe('Confirmed');
-        // The tick must NOT nest inside the jump <button> (invalid + would fire jump).
-        expect(jump.querySelector('.coverageCommitTick')).toBeNull();
+        // The tick must NOT nest inside the row <button> (invalid + would toggle it).
+        expect(disclosure.querySelector('.coverageCommitTick')).toBeNull();
     });
 
     it('keeps the manual aspect on its "mark done" tick only (no second tick)', async () => {
@@ -251,7 +251,7 @@ describe('Coverage confirmation tick — persistence and independence', () => {
         expect(row.querySelector('.coverageDetailStatus').textContent).toBe('In progress');
     });
 
-    it('does not close the modal when the blocked row\'s confirmation tick is clicked', async () => {
+    it('does not expand the answer lane when the blocked row\'s confirmation tick is clicked', async () => {
         mountRoutedProject();
         queueRows = defaultQueue();
         vi.spyOn(listLogic, 'setAspectSubmitted').mockResolvedValue({ ok: true });
@@ -260,8 +260,10 @@ describe('Coverage confirmation tick — persistence and independence', () => {
         await flush();
         const tickEl = document.querySelector('.coverageDetailConfirmable .coverageCommitTick');
         tickEl.click();
-        // The jump (which closes the modal) must not have fired.
+        // The row's disclosure toggle must not have fired, and the modal stays open.
         expect(document.getElementById('coverageDetailModalBackdrop')).toBeTruthy();
+        const item = document.querySelector('.coverageDetailGroup--blocked .coverageDetailItem');
+        expect(item.classList.contains('is-expanded')).toBe(false);
         expect(tickEl.classList.contains('is-committed')).toBe(true);
     });
 });

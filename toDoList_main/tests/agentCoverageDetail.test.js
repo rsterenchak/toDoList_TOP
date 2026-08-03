@@ -4,8 +4,10 @@ import { vi } from 'vitest';
 // coverage summary. Tapping the summary opens a modal listing every rubric
 // aspect with its live lifecycle status (shipped / in-flight / proposed /
 // blocked / not-started), each row reading "A1 — <label>". Blocked aspects (a
-// needs_words question is waiting) group at the top and jump to that question;
-// Git / process aspects the agent can't ship are set apart in a manual lane.
+// needs_words question is waiting) group at the top and expand in place into an
+// answer lane for that question (see coverageAnswerLane.test.js for the lane's
+// own behavior); Git / process aspects the agent can't ship are set apart in a
+// manual lane.
 // These tests drive renderAgentView/subscribeAgentView with a fake Supabase
 // client and a mocked inject.js so the assignment read is deterministic.
 
@@ -215,7 +217,7 @@ describe('AGENT coverage detail modal', () => {
             .toBe('manual · outstanding');
     });
 
-    it('groups blocked aspects at the top as jump buttons', async () => {
+    it('groups blocked aspects at the top as disclosure buttons', async () => {
         mountRoutedProject();
         queueRows = [
             { id: '9', state: 'needs_words', aspect: 'A2', question: 'Which?', context: { title: 'Delete' } },
@@ -224,30 +226,35 @@ describe('AGENT coverage detail modal', () => {
         openDetail();
         const group = document.querySelector('.coverageDetailGroup--blocked');
         expect(group).toBeTruthy();
-        const btn = group.querySelector('.coverageDetailRow--jump');
+        const btn = group.querySelector('.coverageDetailRow--blocked');
         expect(btn).toBeTruthy();
         expect(btn.tagName).toBe('BUTTON');
+        expect(btn.classList.contains('coverageDetailRow--expandable')).toBe(true);
+        expect(btn.querySelector('.coverageDetailChevron')).toBeTruthy();
         expect(btn.querySelector('.coverageDetailId').textContent).toBe('A2');
     });
 
-    it('jumping a blocked aspect closes the modal and focuses its answer input', async () => {
+    it('expands a blocked aspect into its answer lane without closing the modal', async () => {
         mountRoutedProject();
         queueRows = [
             { id: '9', state: 'needs_words', aspect: 'A2', question: 'Which?', context: { title: 'Delete' } },
         ];
         await loadBoard();
         openDetail();
-        const btn = document.querySelector('.coverageDetailRow--jump');
+        const btn = document.querySelector('.coverageDetailRow--blocked');
         btn.click();
-        // Modal is gone…
-        expect(document.getElementById('coverageDetailModalBackdrop')).toBeNull();
-        // …and focus landed on that row's answer input.
-        const input = document.querySelector('[data-answer-row="9"]');
-        expect(input).toBeTruthy();
-        expect(document.activeElement).toBe(input);
+        // The modal stays open — the question is answered here, in place. (It used
+        // to close and hand off to the Agent board, whose surface no longer exists.)
+        expect(document.getElementById('coverageDetailModalBackdrop')).toBeTruthy();
+        const item = document.querySelector('.coverageDetailGroup--blocked .coverageDetailItem');
+        expect(item.classList.contains('is-expanded')).toBe(true);
+        const lane = item.querySelector('.coverageAnswerLane');
+        expect(lane).toBeTruthy();
+        expect(lane.querySelector('.coverageAnswerQuestion').textContent).toBe('Which?');
+        expect(lane.querySelector('.coverageAnswerInput')).toBeTruthy();
     });
 
-    it('expands a collapsed Needs-you bucket before jumping', async () => {
+    it('leaves the board untouched when a blocked aspect is expanded', async () => {
         mountRoutedProject();
         queueRows = [
             { id: '9', state: 'needs_words', aspect: 'A2', question: 'Which?', context: { title: 'Delete' } },
@@ -257,9 +264,10 @@ describe('AGENT coverage detail modal', () => {
         // Bucket starts collapsed.
         expect(document.querySelector('.agentBucket--needs-you.collapsed')).toBeTruthy();
         openDetail();
-        document.querySelector('.coverageDetailRow--jump').click();
-        // The jump repainted the board with the bucket expanded.
-        expect(document.querySelector('.agentBucket--needs-you.collapsed')).toBeNull();
+        document.querySelector('.coverageDetailRow--blocked').click();
+        // Expanding answers in place, so it must not reach into the board's
+        // bucket-collapse state the way the retired jump did.
+        expect(document.querySelector('.agentBucket--needs-you.collapsed')).toBeTruthy();
     });
 });
 
