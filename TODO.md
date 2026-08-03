@@ -448,7 +448,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-03
   <!-- id: 1b8a1466-4014-43ab-9632-f6ca5dd8a86c -->
 
-- [ ] **[LOW]** Spend panel: add the Opus 5 rate
+- [x] **[LOW]** Spend panel: add the Opus 5 rate — Completed: 2026-08-03
   - Type: bug
   - Description: The Worker's deep-think path now calls `claude-opus-5` rather than `claude-opus-4-8`. The spend panel's rate map is keyed by the `model` string and has no entry for the new id, so those rows price through the unknown-model fallback. That fallback resolves to the highest known rate, which happens to be the same $5/$25 as Opus 4.8 — so the figure is right today by coincidence rather than by definition, and would silently drift the moment the rate card changes. Add the key explicitly.
   - Behavior: Rows with model `claude-opus-5` price at the same input, output, cache-read, and cache-write rates as `claude-opus-4-8`. Existing 4.8 rows are unaffected, so a month spanning the switch prices both correctly. The deep-share figure continues to attribute both to deep-think turns, since it splits on the `deep_think` column rather than the model string — confirm that is what it does, and if it splits on the model name instead, fix it to use the column.
