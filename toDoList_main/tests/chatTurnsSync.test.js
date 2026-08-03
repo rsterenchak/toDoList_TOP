@@ -577,7 +577,9 @@ describe('Claude sheet — thread resets clear the stored turns', () => {
 
         const newChat = document.getElementById('claudeClearChat');
         expect(newChat).toBeTruthy();
+        // New Chat arms an inline confirm; the wipe only fires on Wipe.
         newChat.click();
+        document.querySelector('.claudeClearChatYes').click();
         await flush();
 
         expect(supa.deletes).toContainEqual({ kind: 'eq', column: 'repo', value: DEFAULT_REPO });

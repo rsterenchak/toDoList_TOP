@@ -133,6 +133,7 @@ describe('claudeSheet — task scope chip + attachment', () => {
         expect(getActiveChatTask()).toBe(item.id);
 
         document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
 
         expect(getActiveChatTask()).toBe(null);
         expect(scopeChip().textContent).toContain('Unscoped');

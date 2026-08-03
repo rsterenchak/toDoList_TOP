@@ -2027,6 +2027,7 @@ describe('Claude sheet — iterate from a shipped run', () => {
         expect(chatBodies[0].entry_id).toBe('entry-42');
 
         document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
 
         const input = document.getElementById('claudeComposerInput');
         input.value = 'fresh question';
@@ -3224,6 +3225,7 @@ describe('Claude sheet — Clear chat control', () => {
         expect(JSON.parse(localStorage.getItem(CHAT_KEY))[DEFAULT_REPO].length).toBeGreaterThan(0);
 
         document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
         await flush();
 
         // The conversation bubbles are gone; only the persistent capabilities
@@ -3245,6 +3247,7 @@ describe('Claude sheet — Clear chat control', () => {
 
         await sendMessage('a message with an attachment');
         document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
         await flush();
 
         // Messages gone (only the intro note remains), but the chip survives.
@@ -3255,6 +3258,7 @@ describe('Claude sheet — Clear chat control', () => {
     it('keeps the active workspace so the next send still carries its repo', async () => {
         await sendMessage('first');
         document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
         await flush();
         await sendMessage('after clearing');
         const lastBody = chatBodies[chatBodies.length - 1];
@@ -3272,6 +3276,106 @@ describe('Claude sheet — Clear chat control', () => {
         expect(chatView.contains(btn)).toBe(true);
         document.getElementById('claudeTabChat').click();
         expect(chatView.hidden).toBe(false);
+    });
+
+    // ── The confirm step ──
+    // The wipe is cross-device (it drops the repo's `chat_turns` rows as well as
+    // the local thread), so the pill must never wipe on its own click.
+    const confirmRow = () => document.querySelector('.claudeClearChatConfirm');
+
+    it('mounts the confirm between the header row and the transcript, hidden', () => {
+        const confirm = confirmRow();
+        expect(confirm).toBeTruthy();
+        expect(confirm.hidden).toBe(true);
+        // A sibling of the header, not a child — a taller child would stretch the
+        // right-aligned header row.
+        const header = document.getElementById('claudeChatHeader');
+        const surface = document.getElementById('claudeChatSurface');
+        expect(header.contains(confirm)).toBe(false);
+        expect(confirm.parentNode).toBe(document.getElementById('claudeChatView'));
+        expect(header.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(confirm.compareDocumentPosition(surface) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+        expect(confirm.querySelector('.claudeClearChatConfirmWarn').textContent)
+            .toBe('Deletes this thread on every device.');
+        expect(confirm.querySelector('.claudeClearChatYes').textContent).toBe('Wipe');
+        expect(confirm.querySelector('.claudeClearChatCancel').textContent).toBe('Cancel');
+    });
+
+    it('reveals the confirm instead of wiping, keeping the pill visible', async () => {
+        await sendMessage('first message');
+        const before = document.querySelectorAll('.claudeMsg--user').length;
+        expect(before).toBeGreaterThan(0);
+
+        document.getElementById('claudeClearChat').click();
+        await flush();
+
+        expect(confirmRow().hidden).toBe(false);
+        // Nothing wiped yet — bubbles, in-memory thread, and its persisted copy
+        // all survive the arming tap.
+        expect(document.querySelectorAll('.claudeMsg--user').length).toBe(before);
+        expect(JSON.parse(localStorage.getItem(CHAT_KEY))[DEFAULT_REPO].length).toBeGreaterThan(0);
+        // The pill stays visible while the confirm is open, so it's obvious what
+        // is being confirmed.
+        expect(document.getElementById('claudeClearChat').hidden).toBe(false);
+    });
+
+    it('Cancel hides the confirm and leaves the thread intact', async () => {
+        await sendMessage('first message');
+        document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatCancel').click();
+        await flush();
+
+        expect(confirmRow().hidden).toBe(true);
+        expect(document.querySelectorAll('.claudeMsg--user').length).toBeGreaterThan(0);
+        expect(JSON.parse(localStorage.getItem(CHAT_KEY))[DEFAULT_REPO].length).toBeGreaterThan(0);
+    });
+
+    it('Wipe clears the thread and hides the confirm again', async () => {
+        await sendMessage('first message');
+        document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
+        await flush();
+
+        expect(confirmRow().hidden).toBe(true);
+        expect(document.querySelectorAll('.claudeMsg--user, .claudeMsg--assistant').length).toBe(0);
+        expect(JSON.parse(localStorage.getItem(CHAT_KEY) || '{}')[DEFAULT_REPO]).toBeUndefined();
+    });
+
+    it('hides the pill entirely while the thread is empty, and restores it on the first turn', async () => {
+        // A fresh mount has an empty thread — nothing to wipe.
+        expect(document.getElementById('claudeClearChat').hidden).toBe(true);
+
+        await sendMessage('first message');
+        expect(document.getElementById('claudeClearChat').hidden).toBe(false);
+
+        document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
+        await flush();
+        expect(document.getElementById('claudeClearChat').hidden).toBe(true);
+    });
+
+    it('disarms the confirm when the chat tab is left, so it can never be armed out of view', async () => {
+        await sendMessage('first message');
+        document.getElementById('claudeClearChat').click();
+        expect(confirmRow().hidden).toBe(false);
+
+        document.getElementById('claudeTabRuns').click();
+        expect(confirmRow().hidden).toBe(true);
+        document.getElementById('claudeTabChat').click();
+        expect(confirmRow().hidden).toBe(true);
+        // Returning to Chat with a non-empty thread still offers the pill.
+        expect(document.getElementById('claudeClearChat').hidden).toBe(false);
+    });
+
+    // Source-level pin: jsdom never applies the stylesheet, so every DOM test
+    // above passes whether or not this guard exists — while in a real browser the
+    // author-level `display: flex` outranks the UA's `[hidden] { display: none }`
+    // and the confirm row would render permanently. Silent failure mode, so it's
+    // pinned rather than trusted to review.
+    it('guards the confirm row against the author-level display rule', () => {
+        const css = read('style.css');
+        expect(css).toMatch(/\.claudeClearChatConfirm\s*\{[^}]*display:\s*flex/);
+        expect(css).toMatch(/\.claudeClearChatConfirm\[hidden\]\s*\{\s*display:\s*none\s*!important;\s*\}/);
     });
 });
 
@@ -3350,6 +3454,7 @@ describe('Claude sheet — empty-thread capabilities intro note', () => {
         expect(document.getElementById('claudeChatIntro')).toBe(null);
 
         document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
         await flush();
 
         const intro = document.getElementById('claudeChatIntro');

@@ -2555,6 +2555,46 @@ body:has(#settingsMenu) #claudeLauncher {
   background: #34307a;
 }
 .claudeClearChat[hidden] { display: none; }
+
+/* NEW CHAT confirm — an inline confirm row spanning the chat view, mounted
+   between the header row and the transcript. Reuses the runs-clear visual
+   language: muted warn copy, an underlined text Cancel, and a red-tinted Wipe.
+   The `!important` guard is load-bearing: the author-level `display: flex`
+   below outranks the UA's `[hidden] { display: none }`, so without it the row
+   would render permanently. */
+.claudeClearChatConfirm {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+.claudeClearChatConfirm[hidden] { display: none !important; }
+.claudeClearChatConfirmWarn {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.claudeClearChatCancel {
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.claudeClearChatYes {
+  padding: 0;
+  background: none;
+  border: none;
+  color: #f09595;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
 .claudeView {
   flex: 1;
   display: flex;
