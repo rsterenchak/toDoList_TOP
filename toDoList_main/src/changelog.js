@@ -11,13 +11,7 @@ export const changelog = [
             "Saving the assignment editor now updates the assignment card and coverage summary right away, instead of sometimes showing the pre-edit version until a page refresh.",
             "Blocked rubric aspects in the coverage breakdown now expand in place so you can answer the agent's question or hand it to chat, instead of doing nothing when tapped.",
             "The confirm control on a blocked rubric aspect is now a compact checkmark button, so the row fits inside the coverage breakdown on narrow screens instead of running off the right edge.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-02',
-        fixed: [
-            "The daily API-spend chart now renders the full calendar month with bars rising from a shared baseline, so a sparse early month reads as sparse instead of a couple of oversized blocks.",
+            "The TODO.md run-status pill now stays visible when the window crosses between the mobile and desktop layouts, instead of vanishing until the run finishes.",
         ],
     },
 ];
