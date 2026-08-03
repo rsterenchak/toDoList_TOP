@@ -307,9 +307,14 @@ function paintViewerStripReview(strip, projectName) {
 // lives in the pane. The collapse chevron stays behind on the card (its body
 // toggle is meaningless in the pane and hidden there by CSS). Idempotent: once
 // moved, meta.querySelector finds nothing to move on the next placement.
+// The run pill sits next to the Run backlog button in this list because it takes
+// that button's slot while a run is in flight (only one of the two is ever in the
+// DOM), so it must travel in both directions too — otherwise a breakpoint crossing
+// strands the pill in the hidden card or destroys it with the strip.
 const VIEWER_STRIP_ACTION_SELECTORS = [
     '.todoMdViewerSynced',
     '.todoMdViewerRunBtn',
+    '.todoMdViewerRunPill',
     '.todoMdViewerDeployPill',
     '.todoMdViewerSyncBtn',
     '.todoMdViewerOverflowWrap',
