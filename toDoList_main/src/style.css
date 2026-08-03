@@ -6876,7 +6876,13 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   align-items: center;
   gap: 8px;
 }
-.coverageDetailConfirmable .coverageDetailRow--expandable { flex: 1 1 auto; }
+/* min-width: 0 overrides a flex item's `auto` minimum, which would otherwise
+   hold the row at its min-content width (id + status word + chevron) and push
+   the tick off the right edge instead of letting the title ellipsize. */
+.coverageDetailConfirmable .coverageDetailRow--expandable {
+  flex: 1 1 auto;
+  min-width: 0;
+}
 
 /* Shipped aspects expand to a commit-helper lane (copy-ready commit message +
    file manifest for the GitHub → GitLab transfer). The row is a toggle button;
@@ -7077,6 +7083,27 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   transform: rotate(45deg);
 }
 .coverageCommitTickLabel { white-space: nowrap; }
+
+/* Compact icon-only variant, used by the confirmation tick on blocked rows.
+   A text label there pushes the control past the modal's right edge on narrow
+   screens, so the check becomes the whole button: a 28x28 amber-outlined square
+   that fills with accent once confirmed. Same role, state and behaviour as the
+   labelled tick — only the visual is smaller. */
+.coverageCommitTick--icon {
+  justify-content: center;
+  gap: 0;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1.5px solid var(--text-warning);
+  border-radius: 6px;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+.coverageCommitTick--icon.is-committed {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
 
 /* Blocked aspects expand to an answer lane: triage's pending question, a reply
    box, a non-blocking error line, and the two ways to respond (hand the task to

@@ -542,6 +542,27 @@ function buildChevronRightIcon() {
     return svg;
 }
 
+// A checkmark glyph for the icon-only confirmation tick on blocked rows. DOM-built
+// like the other glyphs (no new asset, no icon library) and theme-correct via
+// currentColor, so it picks up the tick's amber / committed-white colour.
+function buildCheckIcon() {
+    const ns = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(ns, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '15');
+    svg.setAttribute('height', '15');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2.4');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(ns, 'path');
+    path.setAttribute('d', 'M5 12l5 5l9 -9');
+    svg.appendChild(path);
+    return svg;
+}
+
 // The human-readable status label for each aspect lifecycle, shown in the
 // coverage detail modal's per-aspect rows. Keys match aspectStatus()'s return
 // values; process/manual aspects render their own "manual · outstanding" copy.
@@ -572,22 +593,32 @@ function isProcessAspect(label) {
 // "Confirmed" on every other aspect — so any aspect can be signed off
 // independently of its derived status. Registers itself in `ctx.ticks` so the
 // modal's async submission-hydrate can refresh it once stored state loads.
-function buildCommitTick(item, ctx, labelText) {
+// `iconOnly` renders the compact square variant used on blocked rows, whose
+// status word and chevron leave no room for a text-labelled control: same
+// role/state/behaviour, but a checkmark glyph carries the visual and `labelText`
+// becomes the accessible name instead of visible copy.
+function buildCommitTick(item, ctx, labelText, iconOnly) {
     const committed = (ctx && ctx.committed instanceof Set) ? ctx.committed : new Set();
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'coverageCommitTick';
+    btn.className = 'coverageCommitTick' + (iconOnly ? ' coverageCommitTick--icon' : '');
     btn.setAttribute('role', 'checkbox');
 
-    const box = document.createElement('span');
-    box.className = 'coverageCommitTickBox';
-    box.setAttribute('aria-hidden', 'true');
-    btn.appendChild(box);
+    if (iconOnly) {
+        btn.setAttribute('aria-label', labelText);
+        btn.title = labelText;
+        btn.appendChild(buildCheckIcon());
+    } else {
+        const box = document.createElement('span');
+        box.className = 'coverageCommitTickBox';
+        box.setAttribute('aria-hidden', 'true');
+        btn.appendChild(box);
 
-    const label = document.createElement('span');
-    label.className = 'coverageCommitTickLabel';
-    label.textContent = labelText;
-    btn.appendChild(label);
+        const label = document.createElement('span');
+        label.className = 'coverageCommitTickLabel';
+        label.textContent = labelText;
+        btn.appendChild(label);
+    }
 
     const setState = function (on) {
         btn.setAttribute('aria-checked', on ? 'true' : 'false');
@@ -713,9 +744,12 @@ function buildCoverageDetailRow(item, ctx) {
         // signed off by hand alongside its derived status — confirmation is a
         // second, independent axis, never an override of the derived lifecycle.
         // (Shipped aspects confirm through the commit lane's tick below; process
-        // aspects already have their "mark done" tick above.)
+        // aspects already have their "mark done" tick above.) A blocked row spends
+        // its width on the amber status word and the disclosure chevron, so its
+        // tick renders icon-only — otherwise the text label pushes the control off
+        // the right edge of the modal on narrow screens.
         const confirmTick = (ctx && !item.process)
-            ? buildCommitTick(item, ctx, 'Confirmed') : null;
+            ? buildCommitTick(item, ctx, 'Confirmed', item.status === 'blocked') : null;
         if (isAnswerable) {
             // Tap-to-expand: the row discloses an answer lane below it. The row is
             // itself a <button>, so the tick <button> can't nest inside it — pair

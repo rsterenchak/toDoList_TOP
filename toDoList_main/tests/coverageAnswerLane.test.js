@@ -219,7 +219,12 @@ describe('Coverage detail — blocked aspects expand in place', () => {
         const head = document.querySelector('.coverageDetailConfirmable');
         expect(head).toBeTruthy();
         expect(head.querySelector('.coverageDetailRow--expandable')).toBeTruthy();
-        expect(head.querySelector('.coverageCommitTick')).toBeTruthy();
+        const tickEl = head.querySelector('.coverageCommitTick');
+        expect(tickEl).toBeTruthy();
+        // Blocked rows carry the compact icon-only variant; "Confirmed" survives
+        // as the accessible name rather than visible copy.
+        expect(tickEl.classList.contains('coverageCommitTick--icon')).toBe(true);
+        expect(tickEl.getAttribute('aria-label')).toBe('Confirmed');
         // The tick must not nest inside the row <button> (invalid + would toggle it).
         expect(blockedRow().querySelector('.coverageCommitTick')).toBeNull();
     });

@@ -168,9 +168,68 @@ describe('Coverage confirmation tick — rendering on every aspect', () => {
         const tickEl = wrap.querySelector('.coverageCommitTick');
         expect(disclosure).toBeTruthy();
         expect(tickEl).toBeTruthy();
-        expect(tickEl.querySelector('.coverageCommitTickLabel').textContent).toBe('Confirmed');
+        expect(tickEl.getAttribute('aria-label')).toBe('Confirmed');
         // The tick must NOT nest inside the row <button> (invalid + would toggle it).
         expect(disclosure.querySelector('.coverageCommitTick')).toBeNull();
+    });
+
+    // Regression: a text-labelled tick made the blocked row wider than the modal
+    // on mobile, pushing the confirm control off the right edge. Blocked rows get
+    // the compact icon-only variant instead — no visible label, no label span,
+    // and "Confirmed" carried as the accessible name.
+    it('renders the blocked row\'s tick icon-only, with a stroked checkmark and no text label', async () => {
+        mountRoutedProject();
+        queueRows = defaultQueue();
+        await loadBoard();
+        openDetail();
+        await flush();
+        const tickEl = document.querySelector('.coverageDetailConfirmable .coverageCommitTick');
+        expect(tickEl.classList.contains('coverageCommitTick--icon')).toBe(true);
+        expect(tickEl.querySelector('.coverageCommitTickLabel')).toBeNull();
+        expect(tickEl.textContent).toBe('');
+        expect(tickEl.getAttribute('aria-label')).toBe('Confirmed');
+        expect(tickEl.getAttribute('title')).toBe('Confirmed');
+        const svg = tickEl.querySelector('svg');
+        expect(svg).toBeTruthy();
+        expect(svg.getAttribute('stroke')).toBe('currentColor');
+        expect(svg.getAttribute('aria-hidden')).toBe('true');
+        expect(svg.querySelector('path')).toBeTruthy();
+    });
+
+    // Only blocked rows go icon-only — every other lane keeps its labelled tick.
+    it('leaves the other lanes on the labelled tick variant', async () => {
+        mountRoutedProject();
+        queueRows = defaultQueue();
+        await loadBoard();
+        openDetail();
+        await flush();
+        const row = document.querySelector('.coverageDetailRow--in-flight');
+        const labelled = row.querySelector('.coverageCommitTick');
+        expect(labelled.classList.contains('coverageCommitTick--icon')).toBe(false);
+        expect(labelled.querySelector('.coverageCommitTickLabel').textContent).toBe('Confirmed');
+        const manual = document.querySelector('.coverageDetailRow--manual .coverageCommitTick');
+        expect(manual.classList.contains('coverageCommitTick--icon')).toBe(false);
+    });
+
+    // The visual changed; the confirm behaviour did not — the icon tick still
+    // toggles aria-checked and persists through the same listLogic write.
+    it('keeps the blocked row\'s icon tick behaving as a checkbox that persists', async () => {
+        mountRoutedProject();
+        queueRows = defaultQueue();
+        const spy = vi.spyOn(listLogic, 'setAspectSubmitted').mockResolvedValue({ ok: true });
+        await loadBoard();
+        openDetail();
+        await flush();
+        const tickEl = document.querySelector('.coverageDetailConfirmable .coverageCommitTick');
+        expect(tickEl.getAttribute('role')).toBe('checkbox');
+        expect(tickEl.getAttribute('aria-checked')).toBe('false');
+        tickEl.click();
+        expect(tickEl.getAttribute('aria-checked')).toBe('true');
+        expect(tickEl.classList.contains('is-committed')).toBe(true);
+        const pid = listLogic.getProjectId(currentProject);
+        expect(spy).toHaveBeenCalledWith(pid, 'D1', true);
+        await flush();
+        expect(tickEl.classList.contains('is-committed')).toBe(true);
     });
 
     it('keeps the manual aspect on its "mark done" tick only (no second tick)', async () => {
