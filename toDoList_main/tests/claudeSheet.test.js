@@ -4442,10 +4442,19 @@ describe('Claude sheet — chat history persisted per repo', () => {
 
         const thread = readMap()[DEFAULT_REPO];
         expect(Array.isArray(thread)).toBe(true);
-        expect(thread).toEqual([
+        // Each persisted turn also carries the cross-device sync metadata stamped
+        // by appendChatTurn — a minted `id` shared with its chat_turns row and a
+        // client `ts` for ordering before that row's created_at is known.
+        expect(thread.map(t => ({ role: t.role, content: t.content }))).toEqual([
             { role: 'user', content: 'remember me' },
             { role: 'assistant', content: 'assistant reply' },
         ]);
+        thread.forEach(t => {
+            expect(typeof t.id).toBe('string');
+            expect(t.id.length).toBeGreaterThan(0);
+            expect(typeof t.ts).toBe('number');
+        });
+        expect(thread[0].id).not.toBe(thread[1].id);
     });
 
     it('hydrates and replays the active repo\'s saved thread on mount', async () => {

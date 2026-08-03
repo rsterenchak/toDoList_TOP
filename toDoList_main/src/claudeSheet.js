@@ -627,6 +627,10 @@ function autoSwapWorkspaceForProject(projectName) {
     activeHandoffRow = null;
     clearAttachments();
     replayChatHistory();
+    // Behind the instant local paint, pull the incoming repo's stored turns so a
+    // thread started on another device merges into this one. Fire-and-forget:
+    // the swap is already complete and a failed read changes nothing.
+    hydrateChatTurnsFromRemote(repo);
     renderScopeChip();
     renderWorkspacePill();
 
@@ -724,6 +728,166 @@ function deleteChatHistory(repo) {
         delete map[repo];
         writeChatMap(map);
     }
+}
+
+// ── CHAT TURNS (Supabase-backed, cross-device) ──
+// localStorage keeps a thread on the device that wrote it, so a conversation
+// started on the phone is invisible on the desktop. Every turn is therefore
+// ALSO written to the `chat_turns` table (through listLogic, which owns all
+// Supabase writes) and merged back in on hydrate. The local copy stays the
+// authoritative one for painting: it loads synchronously, works offline, and a
+// failed remote read or write changes nothing the user can see. There is no
+// realtime subscription by design — replayChatHistory is a full teardown and a
+// row arriving mid-compose would desync the array sent to the Worker.
+
+// True while a chat turn is in flight (from the moment requestAssistantReply
+// disables the composer until its reply or error settles). The remote hydrate
+// reads it as a bail condition: replayChatHistory opens with
+// `surface.innerHTML = ''`, so a merge landing mid-turn would destroy the
+// pending assistant bubble the user is watching.
+let chatTurnInFlight = false;
+
+// The single funnel every chat turn is appended through. Push onto the live
+// thread and persist it locally exactly as before, then mirror the turn into
+// `chat_turns` and trim that repo's rows back to CHAT_HISTORY_CAP — the same
+// constant saveChatHistory caps the local copy with, so the two never drift.
+//
+// The turn's `id` is minted here (when the caller didn't supply one) so the
+// in-memory turn and its row share an identity and a later hydrate can union by
+// id; `ts` is a client stamp that orders a turn whose row `created_at` hasn't
+// come back yet. Both are plain scalars, so stripTurnImages carries them through
+// untouched and `images` stay session-scoped — base64 reaches Supabase no more
+// than it reaches localStorage.
+//
+// The remote write is fire-and-forget: a failure leaves the local thread intact
+// and raises nothing, because this is a background sync rather than a user
+// action.
+function appendChatTurn(turn) {
+    if (!turn) return turn;
+    if (!turn.id) turn.id = mintEntryId();
+    if (typeof turn.ts !== 'number') turn.ts = Date.now();
+    chatHistory.push(turn);
+    saveChatHistory();
+
+    // Capture the repo now: the prune resolves after an await, by which point a
+    // workspace swap could have moved activeChatRepo onto another thread.
+    const repo = activeChatRepo;
+    const row = { id: turn.id, repo: repo, role: turn.role, content: turn.content };
+    try {
+        Promise.resolve(listLogic.insertChatTurn(row))
+            .then(function(result) {
+                if (!result || result.ok === false) return null;
+                return listLogic.pruneChatTurns(repo, CHAT_HISTORY_CAP);
+            })
+            .catch(function() { /* background sync — never surfaced */ });
+    } catch (e) { /* background sync — never surfaced */ }
+    return turn;
+}
+
+// Drop a repo's stored turns, in lockstep with deleteChatHistory. Every path
+// that resets a thread must call both, or the next hydrate would pull the wiped
+// conversation straight back out of Supabase. Fire-and-forget with the rejection
+// swallowed — a failed clear must never interrupt the reset it accompanies.
+function clearRemoteChatTurns(repo) {
+    if (!repo) return;
+    try {
+        Promise.resolve(listLogic.clearChatTurns(repo))
+            .catch(function() { /* background sync — never surfaced */ });
+    } catch (e) { /* background sync — never surfaced */ }
+}
+
+// Project the thread down to what the Worker consumes — `role`, `content`, and
+// the session-scoped `images` when a turn carries them. The sync metadata
+// (`id`, `ts`, `created_at`) is bookkeeping for the local↔Supabase merge and has
+// no meaning to the Worker, so it never rides the wire: the messages array it
+// receives keeps exactly the shape it had before chat turns were synced.
+function toWorkerTurns(history) {
+    return (Array.isArray(history) ? history : []).map(function(turn) {
+        const out = { role: turn.role, content: turn.content };
+        if (turn.images) out.images = turn.images;
+        return out;
+    });
+}
+
+// Sort key for a merged turn: its row's `created_at` when it has one, else the
+// client `ts` stamped at append. Legacy turns written before this change carry
+// neither and key to 0, which sorts them first — correct, since they predate
+// every synced turn — and Array#sort is stable, so their existing relative order
+// survives.
+function chatTurnOrderKey(turn) {
+    if (!turn) return 0;
+    if (turn.created_at) {
+        const parsed = Date.parse(turn.created_at);
+        if (!isNaN(parsed)) return parsed;
+    }
+    return typeof turn.ts === 'number' ? turn.ts : 0;
+}
+
+// Merge `repo`'s stored turns into the live thread, behind the local hydrate
+// that has already painted. Union by turn id with the remote row winning on a
+// conflict (its row is the durable copy), ordered by created_at falling back to
+// the local ts, capped to the last CHAT_HISTORY_CAP, then re-saved and replayed.
+// A turn's in-memory `images` survive a remote overwrite: the row can't carry
+// them, and dropping them would blank the thumbnails on a turn the user just
+// sent.
+//
+// An ok:false fetch — offline, signed out, a failed read — returns without
+// touching chatHistory or the surface and raises no toast. This is a background
+// sync, not a user action.
+async function hydrateChatTurnsFromRemote(repo) {
+    if (!repo) return;
+    let result = null;
+    try {
+        result = await listLogic.fetchChatTurns(repo, CHAT_HISTORY_CAP);
+    } catch (e) {
+        return;
+    }
+    if (!result || result.ok === false) return;
+    const rows = Array.isArray(result.turns) ? result.turns : [];
+    if (!rows.length) return;
+
+    // GUARD (load-bearing): replayChatHistory below opens with
+    // `surface.innerHTML = ''`. If the workspace moved while this fetch was in
+    // flight, merging would paint the wrong repo's thread; if a turn is being
+    // sent, it would destroy the pending or mid-stream assistant bubble. Bail
+    // without touching chatHistory or the surface in either case.
+    if (repo !== activeChatRepo) return;
+    if (chatTurnInFlight) return;
+
+    const merged = [];
+    const indexById = {};
+    function put(turn) {
+        if (!turn) return;
+        const id = typeof turn.id === 'string' ? turn.id : '';
+        if (!id) { merged.push(turn); return; }
+        if (Object.prototype.hasOwnProperty.call(indexById, id)) {
+            const prior = merged[indexById[id]];
+            // Remote wins on the persisted fields; the local turn's session-only
+            // images ride along, since no row can supply them.
+            if (prior && prior.images && !turn.images) turn.images = prior.images;
+            merged[indexById[id]] = turn;
+            return;
+        }
+        indexById[id] = merged.length;
+        merged.push(turn);
+    }
+    chatHistory.forEach(put);
+    rows.forEach(function(row) {
+        if (!row || (row.role !== 'user' && row.role !== 'assistant')) return;
+        put({
+            id: row.id,
+            role: row.role,
+            content: typeof row.content === 'string' ? row.content : '',
+            created_at: row.created_at,
+        });
+    });
+    merged.sort(function(a, b) { return chatTurnOrderKey(a) - chatTurnOrderKey(b); });
+
+    try {
+        chatHistory = merged.slice(-CHAT_HISTORY_CAP);
+        saveChatHistory();
+        replayChatHistory();
+    } catch (e) { /* background sync — never surfaced */ }
 }
 
 // ── ITERATE ENTRY (localStorage-backed, per-repo) ──
@@ -1610,6 +1774,9 @@ export function openSpendPanel(anchorEl) {
 function clearChatConversation() {
     chatHistory = [];
     deleteChatHistory(activeChatRepo);
+    // The stored turns go with the local copy — a wipe that left them behind
+    // would be undone by the next hydrate.
+    clearRemoteChatTurns(activeChatRepo);
     activeIterateEntry = null;
     deleteIterateEntry(activeChatRepo);
     // "New Chat" clears the task scope along with the transcript, in the same
@@ -2718,6 +2885,7 @@ export function setChatWorkspaceRepo(repo) {
 
     chatHistory = [];
     deleteChatHistory(repo);
+    clearRemoteChatTurns(repo);
     activeIterateEntry = null;
     deleteIterateEntry(repo);
     // Reframing wipes the incoming repo's session, so drop its task scope too.
@@ -3018,8 +3186,7 @@ async function sendChatTurn(deep) {
     removeChatIntro();
     const turn = { role: 'user', content: text };
     if (images.length) turn.images = images;
-    chatHistory.push(turn);
-    saveChatHistory();
+    appendChatTurn(turn);
     appendMessageBubble('user', text, turn.images);
     input.value = '';
     // The images now live on the sent turn; clear the pending rail.
@@ -3055,6 +3222,10 @@ async function requestAssistantReply(entryId, deep) {
     if (send) send.disabled = true;
     if (sendCaret) sendCaret.disabled = true;
     if (input) input.disabled = true;
+    // A background chat-turns hydrate must not replay over a turn in progress —
+    // its replay wipes the surface, pending bubble and all. Held for the whole
+    // turn and released in the finally alongside the composer.
+    chatTurnInFlight = true;
 
     // A Deep turn routes to a heavier model, so its placeholder reads
     // "Thinking deeply…" rather than the plain "…" — the slower turn should
@@ -3067,11 +3238,10 @@ async function requestAssistantReply(entryId, deep) {
         // re-explanation; resolveActiveChatTask reads its title/description live
         // and self-heals a deleted task to unscoped before the send.
         const attachTask = resolveActiveChatTask();
-        const result = await chatWithWorker(chatHistory, entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask);
+        const result = await chatWithWorker(toWorkerTurns(chatHistory), entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask);
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
-        chatHistory.push({ role: 'assistant', content: reply });
-        saveChatHistory();
+        appendChatTurn({ role: 'assistant', content: reply });
         // The seed (or any follow-up carrying an id) landed: establish/refresh
         // the active repo's iterate session so later turns keep the diff.
         if (entryId) {
@@ -3115,6 +3285,7 @@ async function requestAssistantReply(entryId, deep) {
             }
         }
     } finally {
+        chatTurnInFlight = false;
         if (send) send.disabled = false;
         if (sendCaret) sendCaret.disabled = false;
         if (input) {
@@ -3196,8 +3367,7 @@ function renderAttachLayoutButton(selector) {
 // it must carry the active iterate entry id when a session is in progress.
 async function sendInspectTurn(content) {
     removeChatIntro();
-    chatHistory.push({ role: 'user', content: content });
-    saveChatHistory();
+    appendChatTurn({ role: 'user', content: content });
     appendMessageBubble('user', content);
     await requestAssistantReply(activeIterateEntry);
 }
@@ -3244,8 +3414,7 @@ function renderAskChips(ask) {
 // through chatWithWorker from module state as usual).
 async function sendAskAnswer(label) {
     removeChatIntro();
-    chatHistory.push({ role: 'user', content: label });
-    saveChatHistory();
+    appendChatTurn({ role: 'user', content: label });
     appendMessageBubble('user', label);
     await requestAssistantReply(activeIterateEntry, chatMode === 'deep');
 }
@@ -3267,6 +3436,11 @@ async function seedIterateSession(entryId, noteLabel) {
     if (!isClaudeSheetOpen()) openClaudeSheet();
 
     chatHistory = [];
+    // Seeding replaces the thread, so the prior conversation's stored copies go
+    // with it — both the local one and the repo's `chat_turns` rows, or the next
+    // hydrate would merge the replaced conversation back in beneath the seed.
+    deleteChatHistory(activeChatRepo);
+    clearRemoteChatTurns(activeChatRepo);
     const surface = sheetQuery('#claudeChatSurface');
     if (surface) surface.innerHTML = '';
     clearAttachments();
@@ -3277,7 +3451,7 @@ async function seedIterateSession(entryId, noteLabel) {
     // present (the id only adds diff/code context to the system field, it's not
     // a turn), so seed turn 1 with a synthesized opening user message.
     const seedPrompt = 'Walk me through what shipped for this entry and whether it matches the intent.';
-    chatHistory.push({ role: 'user', content: seedPrompt });
+    appendChatTurn({ role: 'user', content: seedPrompt });
     appendMessageBubble('user', seedPrompt);
 
     await requestAssistantReply(entryId);
@@ -4276,6 +4450,10 @@ async function startFollowUpFromRun(rec) {
     if (!isClaudeSheetOpen()) openClaudeSheet();
 
     chatHistory = [];
+    // The follow-up starts a fresh author conversation, so the replaced thread's
+    // stored copies go with it — local and remote alike.
+    deleteChatHistory(activeChatRepo);
+    clearRemoteChatTurns(activeChatRepo);
     // A NOCHANGE follow-up is a plain author turn with no merged PR, so clear any
     // active iterate session for this repo — it must never inherit a stale id and
     // accidentally send entry_id (which would 404 with "nothing to iterate on").
@@ -4306,8 +4484,7 @@ async function startFollowUpFromRun(rec) {
     if (summary) parts.push('Agent summary:\n\n' + summary);
     const content = parts.join('\n\n');
 
-    chatHistory.push({ role: 'user', content: content });
-    saveChatHistory();
+    appendChatTurn({ role: 'user', content: content });
     appendMessageBubble('user', content);
     // No entry_id — this is a plain author turn (NOCHANGE has no merged PR).
     await requestAssistantReply();
@@ -5032,6 +5209,11 @@ export function mountClaudeSheet(parent) {
     // record instead, so a reload mid-hand-off simply drops the (pre-ship) link.
     activeHandoffRow = null;
     replayChatHistory();
+    // The local thread has painted; now merge in the active repo's stored turns
+    // so a conversation started on another device resumes here. Fire-and-forget
+    // behind the synchronous hydrate, which is what keeps the chat instant and
+    // usable offline.
+    hydrateChatTurnsFromRemote(activeChatRepo);
     renderScopeChip();
 
     // Hydrate run records from localStorage, render them into the Runs tab,
