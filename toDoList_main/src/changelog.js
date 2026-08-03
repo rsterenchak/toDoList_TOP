@@ -9,6 +9,7 @@ export const changelog = [
         fixed: [
             "The API-spend panel now shows a loading spinner while this month's usage loads instead of briefly flashing $0.00, and surfaces an error if the read fails.",
             "Saving the assignment editor now updates the assignment card and coverage summary right away, instead of sometimes showing the pre-edit version until a page refresh.",
+            "Blocked rubric aspects in the coverage breakdown now expand in place so you can answer the agent's question or hand it to chat, instead of doing nothing when tapped.",
         ],
     },
     {
@@ -19,13 +20,6 @@ export const changelog = [
         ],
         fixed: [
             "The daily API-spend chart now renders the full calendar month with bars rising from a shared baseline, so a sparse early month reads as sparse instead of a couple of oversized blocks.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-01',
-        fixed: [
-            "The prev/next project arrows no longer appear in the mobile header; paging between projects stays available via the swipe gesture and the project picker.",
         ],
     },
 ];

@@ -15,6 +15,9 @@ import {
     startDeriveTracking,
     stopDeriveTracking,
     setDeriveCorrelationId,
+    loadQueueRows,
+    fireTriageSweep,
+    pendingAnswers,
 } from './agentQueueStore.js';
 import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 
@@ -27,31 +30,31 @@ import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 // called before (buildAspectBadge / buildAssignmentCard / refreshAssignment) and
 // nothing a user sees changes.
 //
-// The subsystem calls back into the board to read the selected project, repaint,
-// resolve the read target, toggle a bucket's collapse, and fire the board's own
-// derive dispatch (getSelectedProjectName / paint / resolveReadTarget /
-// isBucketCollapsed / setBucketCollapsed / fireDeriveRun). Those live in
-// agentView.js and importing them here would create a view → module → view cycle,
-// so the board injects them once at load via configureAssignmentCoverage. Until it
-// does, the bindings are inert no-ops. The relocated derive tracker itself
-// (isDeriveActive / startDeriveTracking / …) is imported directly from
-// agentQueueStore so the coverage tab's own Derive action works without the board.
+// The subsystem calls back out to read the selected project, repaint, resolve the
+// read target, hand a blocked aspect's question off to the chat, and fire the
+// board's own derive dispatch (getSelectedProjectName / paint / resolveReadTarget
+// / openChatWithSeed / fireDeriveRun). Those live in agentView.js and
+// claudeSheet.js, and importing either here would create a cycle (claudeSheet.js
+// already imports this module), so agentWiring.js injects them once at boot via
+// configureAssignmentCoverage. Until it does, the bindings are inert no-ops. The
+// relocated derive tracker itself (isDeriveActive / startDeriveTracking / …) is
+// imported directly from agentQueueStore so the coverage tab's own Derive action
+// works without the board.
 let getSelectedProjectName = function () { return ''; };
 let paint = function () {};
 let resolveReadTarget = function () { return null; };
-let isBucketCollapsed = function () { return false; };
-let setBucketCollapsed = function () {};
+let openChatWithSeed = function () {};
 let fireDeriveRun = function () {};
 
-// Wire the board-side callbacks the subsystem depends on. Called once by
-// agentView.js at module load. Only overrides the callbacks actually supplied so
-// a partial wiring can't blank out an already-set binding.
+// Wire the host-side callbacks the subsystem depends on. Called once by
+// agentWiring.js at boot (and by agentView.js when a test mounts the board). Only
+// overrides the callbacks actually supplied so a partial wiring can't blank out an
+// already-set binding.
 export function configureAssignmentCoverage(deps) {
     if (deps && typeof deps.getSelectedProjectName === 'function') getSelectedProjectName = deps.getSelectedProjectName;
     if (deps && typeof deps.paint === 'function') paint = deps.paint;
     if (deps && typeof deps.resolveReadTarget === 'function') resolveReadTarget = deps.resolveReadTarget;
-    if (deps && typeof deps.isBucketCollapsed === 'function') isBucketCollapsed = deps.isBucketCollapsed;
-    if (deps && typeof deps.setBucketCollapsed === 'function') setBucketCollapsed = deps.setBucketCollapsed;
+    if (deps && typeof deps.openChatWithSeed === 'function') openChatWithSeed = deps.openChatWithSeed;
     if (deps && typeof deps.fireDeriveRun === 'function') fireDeriveRun = deps.fireDeriveRun;
 }
 
@@ -627,19 +630,33 @@ function buildCommitTick(item, ctx, labelText) {
     return btn;
 }
 
+// Which blocked aspect's answer lane is currently open, or null. Module-level
+// because the coverage modal's body is rebuilt wholesale on every onQueueChange —
+// element state would be lost — so the open lane is re-expanded from this after
+// each rebuild. Reset when the modal opens, so it always opens fully collapsed.
+let _expandedBlockedAspect = null;
+
 // Build one row of the coverage detail modal: a status dot, the aspect ID, its
 // rubric label, and a status word. Blocked aspects (a needs_words question is
-// waiting) render as a jump button that closes the modal and scrolls that
-// question into view. Shipped aspects render as a tap-to-expand toggle that
-// reveals a commit-helper lane (copy-ready commit message + file manifest for
-// the GitHub → GitLab transfer, plus a "Committed to GitLab" tick). Manual
-// Git/process aspects render a static row with a "mark done" tick. Every other
-// status (in progress, proposed, blocked, not started) renders with a
+// waiting) render as a tap-to-expand toggle that reveals an answer lane — the
+// question, a reply box, Send, and a hand-off to chat — so the question can be
+// answered without leaving the modal. Shipped aspects render as a tap-to-expand
+// toggle that reveals a commit-helper lane (copy-ready commit message + file
+// manifest for the GitHub → GitLab transfer, plus a "Committed to GitLab" tick).
+// Manual Git/process aspects render a static row with a "mark done" tick. Every
+// other status (in progress, proposed, blocked, not started) renders with a
 // "Confirmed" tick so any aspect can be signed off by hand alongside its derived
 // status. `ctx` carries the shared committed-tick state (see buildCommitTick);
 // absent for callers that don't wire ticks.
-function buildCoverageDetailRow(item, closeFn, ctx) {
-    const isBlocked = item.status === 'blocked';
+function buildCoverageDetailRow(item, ctx) {
+    // The waiting needs_words row behind a blocked aspect — the question the
+    // answer lane replies to. A blocked status always derives from one (see
+    // aspectStatus), but resolve it rather than assume it: with no row there is
+    // nothing to answer, so the aspect falls back to a static row.
+    const blockedRow = (item.status === 'blocked' && Array.isArray(item.rows))
+        ? item.rows.find(function (r) { return r && r.state === 'needs_words'; })
+        : null;
+    const isAnswerable = !!blockedRow;
     // Shipped, non-process aspects expand to a commit helper derived from their
     // shipped rows; nothing to commit for any other status, so they stay static.
     const shippedRows = (!item.process && item.status === 'shipped' &&
@@ -647,17 +664,11 @@ function buildCoverageDetailRow(item, closeFn, ctx) {
         ? item.rows.filter(function (r) { return r && r.state === 'shipped'; })
         : [];
     const isExpandable = shippedRows.length > 0;
-    const interactive = isBlocked || isExpandable;
+    const interactive = isAnswerable || isExpandable;
     const row = document.createElement(interactive ? 'button' : 'div');
     row.className = 'coverageDetailRow coverageDetailRow--' +
         (item.process ? 'manual' : item.status);
     if (interactive) row.type = 'button';
-    if (isBlocked) {
-        row.classList.add('coverageDetailRow--jump');
-        row.addEventListener('click', function () {
-            jumpToBlockedAspect(item.id, closeFn);
-        });
-    }
 
     const dot = document.createElement('span');
     dot.className = 'coverageDetailDot';
@@ -703,30 +714,37 @@ function buildCoverageDetailRow(item, closeFn, ctx) {
         // second, independent axis, never an override of the derived lifecycle.
         // (Shipped aspects confirm through the commit lane's tick below; process
         // aspects already have their "mark done" tick above.)
-        if (ctx && !item.process) {
-            const confirmTick = buildCommitTick(item, ctx, 'Confirmed');
-            if (isBlocked) {
-                // The blocked row is itself a jump <button>, so the tick <button>
-                // can't nest inside it — pair them as siblings in a flex wrapper.
-                const wrap = document.createElement('div');
-                wrap.className = 'coverageDetailConfirmable';
-                wrap.appendChild(row);
-                wrap.appendChild(confirmTick);
-                return wrap;
-            }
-            row.appendChild(confirmTick);
+        const confirmTick = (ctx && !item.process)
+            ? buildCommitTick(item, ctx, 'Confirmed') : null;
+        if (isAnswerable) {
+            // Tap-to-expand: the row discloses an answer lane below it. The row is
+            // itself a <button>, so the tick <button> can't nest inside it — pair
+            // them as siblings in a flex head, with the lane beneath both.
+            makeDisclosure(row);
+            const head = document.createElement('div');
+            head.className = 'coverageDetailConfirmable';
+            head.appendChild(row);
+            if (confirmTick) head.appendChild(confirmTick);
+
+            const wrap = document.createElement('div');
+            wrap.className = 'coverageDetailItem';
+            wrap.appendChild(head);
+            wrap.appendChild(buildAnswerLane(blockedRow));
+            wireDisclosure(row, wrap, function (open) {
+                _expandedBlockedAspect = open ? item.id : null;
+            });
+            // The modal body is rebuilt on every onQueueChange, so an open lane
+            // would be torn down mid-typing. Re-expand the aspect the user left
+            // open (buildAnswerLane restores the unsent draft alongside it).
+            if (_expandedBlockedAspect === item.id) setDisclosureOpen(row, wrap, true);
+            return wrap;
         }
+        if (confirmTick) row.appendChild(confirmTick);
         return row;
     }
 
     // Tap-to-expand: chevron + a commit-helper panel toggled below the row.
-    row.classList.add('coverageDetailRow--expandable');
-    row.setAttribute('aria-expanded', 'false');
-    const chevron = document.createElement('span');
-    chevron.className = 'coverageDetailChevron';
-    chevron.setAttribute('aria-hidden', 'true');
-    chevron.appendChild(buildChevronRightIcon());
-    row.appendChild(chevron);
+    makeDisclosure(row);
 
     const wrap = document.createElement('div');
     wrap.className = 'coverageDetailItem';
@@ -734,12 +752,41 @@ function buildCoverageDetailRow(item, closeFn, ctx) {
     const panel = buildCommitHelperPanel(item, shippedRows, ctx);
     wrap.appendChild(panel);
 
+    wireDisclosure(row, wrap);
+
+    return wrap;
+}
+
+// Turn a detail row into a disclosure control: the expandable treatment plus a
+// chevron that rotates when its .coverageDetailItem wrapper is expanded. Shared
+// by the shipped commit lane and the blocked answer lane so the two affordances
+// can't drift apart.
+function makeDisclosure(row) {
+    row.classList.add('coverageDetailRow--expandable');
+    row.setAttribute('aria-expanded', 'false');
+    const chevron = document.createElement('span');
+    chevron.className = 'coverageDetailChevron';
+    chevron.setAttribute('aria-hidden', 'true');
+    chevron.appendChild(buildChevronRightIcon());
+    row.appendChild(chevron);
+}
+
+// Bind a disclosure row's click to toggling its wrapper's expanded state, keeping
+// aria-expanded in step. `onToggle` receives the new state so a caller can record
+// which aspect is open across a body rebuild.
+function wireDisclosure(row, wrap, onToggle) {
     row.addEventListener('click', function () {
         const open = wrap.classList.toggle('is-expanded');
         row.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (typeof onToggle === 'function') onToggle(open);
     });
+}
 
-    return wrap;
+// Set a disclosure's expanded state directly (no click), for restoring an open
+// lane after the modal body is rebuilt.
+function setDisclosureOpen(row, wrap, open) {
+    wrap.classList.toggle('is-expanded', !!open);
+    row.setAttribute('aria-expanded', open ? 'true' : 'false');
 }
 
 // Build the commit-helper lane revealed when a shipped aspect is expanded: a
@@ -874,39 +921,155 @@ function buildCommitHelperPanel(item, shippedRows, ctx) {
     return panel;
 }
 
-// Jump from a blocked aspect in the coverage detail modal to its waiting
-// needs_words question on the board: close the modal, expand the Needs-you
-// bucket if it's collapsed (so the answer input is mounted and visible), then
-// scroll that input into view and focus it. A no-op past the close when the
-// aspect has no needs_words row (or its card was handed off to chat, so no
-// answer input exists).
-function jumpToBlockedAspect(aspectId, closeFn) {
-    const rows = getQueueRows();
-    const target = rows.find(function (r) {
-        return r && r.state === 'needs_words' &&
-            typeof r.aspect === 'string' && r.aspect.trim() === aspectId;
-    });
-    if (typeof closeFn === 'function') closeFn();
-    if (!target) return;
-    // Expand the Needs-you bucket if collapsed so the answer input is in the DOM
-    // and not display:none; paint() rebuilds the board in the expanded layout.
-    if (isBucketCollapsed('needs-you')) {
-        setBucketCollapsed('needs-you', false);
-        paint();
+// Assemble the chat seed for a needs_words hand-off: the task title and
+// description (from the row's `context`) plus triage's pending question, framed
+// as an opening turn. The user still sends it — this only pre-fills the composer.
+// Mirrors the board's buildDiscussSeed; reproduced rather than imported because
+// agentView.js no longer loads in the app.
+function buildAnswerSeed(row) {
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const val = function (v) { return (v == null) ? '' : String(v).trim(); };
+    const title = val(ctx.title) || val(row.title);
+    const description = val(ctx.description);
+    const question = val(row.question);
+
+    const lines = ["I'd like to discuss this task and work out the details together."];
+    if (title) { lines.push('', 'Task: ' + title); }
+    if (description) { lines.push(description); }
+    if (question) { lines.push('', 'The agent asked: ' + question); }
+    return lines.join('\n');
+}
+
+// Build the answer lane revealed when a blocked aspect is expanded: triage's
+// pending question, a reply box, a non-blocking error line, a "Discuss in chat"
+// hand-off, and Send. This is the ONLY surface in the app that can answer a
+// needs_words question raised against a rubric aspect — the row layer's ASKING
+// block mounts per todo via `agent_queue.todo_id`, and a derive-produced aspect
+// row that parks in needs_words before it is accepted into a todo has none.
+//
+// Sending appends to the row's thread and re-queues the task (state → triaging)
+// through listLogic.answerAgentTask — the only sanctioned agent_queue write path —
+// then reloads the queue and fires a triage sweep so the answer is picked up.
+// The answer is already saved by then, so a failed sweep is surfaced as a toast
+// and never blocks or rolls back the send.
+function buildAnswerLane(queueRow) {
+    const lane = document.createElement('div');
+    lane.className = 'coverageAnswerLane';
+
+    const q = (queueRow.question || '').trim();
+    if (q) {
+        const question = document.createElement('p');
+        question.className = 'coverageAnswerQuestion';
+        question.textContent = q;
+        lane.appendChild(question);
     }
-    const input = document.querySelector('[data-answer-row="' + String(target.id) + '"]');
-    if (!input) return;
-    try { input.scrollIntoView({ block: 'center' }); } catch (e) { /* jsdom / no layout */ }
-    try { input.focus(); } catch (e) { /* defensive */ }
+
+    // The 16px font-size (in CSS) avoids iOS Safari's focus auto-zoom.
+    const input = document.createElement('textarea');
+    input.className = 'coverageAnswerInput';
+    input.rows = 3;
+    input.placeholder = 'Answer to continue…';
+    input.setAttribute('aria-label', 'Answer');
+    // The modal body is rebuilt on every onQueueChange, which tears this textarea
+    // down. Mirror the draft into the shared store on each keystroke and re-apply
+    // it here, so an unsent answer survives a rebuild (and is shared with the row
+    // layer's own answer control).
+    if (pendingAnswers.has(queueRow.id)) input.value = pendingAnswers.get(queueRow.id);
+    input.addEventListener('input', function () {
+        pendingAnswers.set(queueRow.id, input.value);
+    });
+    lane.appendChild(input);
+
+    const errorEl = document.createElement('p');
+    errorEl.className = 'coverageAnswerError';
+    errorEl.setAttribute('role', 'alert');
+    errorEl.hidden = true;
+    lane.appendChild(errorEl);
+
+    const actions = document.createElement('div');
+    actions.className = 'coverageAnswerActions';
+
+    // A lightweight hand-off to the in-app Claude chat, sitting left of Send. For
+    // questions that need real back-and-forth, re-firing a triage sweep per answer
+    // is too heavy; this seeds a chat with the task context instead and leaves the
+    // conversation to the user. It never writes to the data model. The row id
+    // links the session so a ship from it still settles this row.
+    const discuss = document.createElement('button');
+    discuss.type = 'button';
+    discuss.className = 'coverageAnswerDiscuss';
+    discuss.textContent = 'Discuss in chat';
+    discuss.addEventListener('click', function () {
+        openChatWithSeed(buildAnswerSeed(queueRow), queueRow.id);
+    });
+    actions.appendChild(discuss);
+
+    const send = document.createElement('button');
+    send.type = 'button';
+    send.className = 'coverageAnswerSend';
+    send.textContent = 'Send';
+    actions.appendChild(send);
+    lane.appendChild(actions);
+
+    // Submit the trimmed answer. Empty/whitespace-only input is ignored (no
+    // write). While the write is in flight the input and button are disabled; on
+    // failure both re-enable and the error line shows.
+    function submitAnswer() {
+        if (send.disabled) return;
+        const text = (input.value || '').trim();
+        if (!text) return;
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        send.disabled = true;
+        input.disabled = true;
+        send.classList.add('is-pending');
+        send.textContent = 'Sending…';
+        const fail = function (msg) {
+            send.disabled = false;
+            input.disabled = false;
+            send.classList.remove('is-pending');
+            send.textContent = 'Send';
+            errorEl.textContent = msg || 'Could not send. Try again.';
+            errorEl.hidden = false;
+        };
+        Promise.resolve(listLogic.answerAgentTask(queueRow.id, text, queueRow.thread))
+            .then(function (res) {
+                if (!res || !res.ok) {
+                    fail(res && res.error);
+                    return;
+                }
+                input.value = '';
+                pendingAnswers.delete(queueRow.id);
+                // Reload the queue so the row leaves needs_words even where the
+                // realtime push isn't observed, then auto-fire the sweep that
+                // re-triages it now that it carries the answer.
+                loadQueueRows(getSelectedProjectName());
+                Promise.resolve(fireTriageSweep(getSelectedProjectName())).then(function (tr) {
+                    if (tr && tr.ok === false) {
+                        showInjectToast('Answer saved, but triage didn’t start — tap Run to sweep.');
+                    }
+                });
+            }, function () { fail(); });
+    }
+
+    // Enter (without Shift) submits; Shift+Enter inserts a newline.
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            submitAnswer();
+        }
+    });
+    send.addEventListener('click', submitAnswer);
+
+    return lane;
 }
 
 // The coverage detail modal: the drillable view behind the assignment card's
 // coverage summary. Lists every rubric aspect with its live lifecycle status
 // (shipped / in-flight / proposed / blocked / not-started), color-coded, reading
 // its ID + rubric label. Blocked aspects (a needs_words question is waiting) are
-// grouped and emphasized at the top in amber and jump to that question when
-// tapped; Git / process aspects the agent can't ship are set apart in a manual
-// lane. Reads `_assignment` (aspects + labels) and `_rows`, reusing computeCoverage's
+// grouped and emphasized at the top in amber and expand in place into an answer
+// lane for that question; Git / process aspects the agent can't ship are set apart
+// in a manual lane. Reads `_assignment` (aspects + labels) and `_rows`, reusing computeCoverage's
 // per-aspect status logic. Mirrors the assignment editor's chrome and the shared
 // three-way dismiss (close X, backdrop, Escape — CLAUDE.md modal contract).
 function showCoverageDetailModal(preloadedCommitted) {
@@ -938,6 +1101,10 @@ function showCoverageDetailModal(preloadedCommitted) {
         items.forEach(function (it) { if (committed.has(it.id)) n++; });
         return n;
     }
+
+    // Every blocked answer lane starts collapsed on a fresh open; the id only
+    // persists so a live rebuild can restore a lane the user has open right now.
+    _expandedBlockedAspect = null;
 
     const prior = document.getElementById('coverageDetailModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
@@ -990,9 +1157,6 @@ function showCoverageDetailModal(preloadedCommitted) {
     const body = document.createElement('div');
     body.id = 'coverageDetailModalBody';
 
-    let closeRef = null;
-    const closeFn = function () { if (closeRef) closeRef(); };
-
     function appendGroup(labelText, list, modifier) {
         if (!list.length) return;
         const group = document.createElement('div');
@@ -1005,7 +1169,7 @@ function showCoverageDetailModal(preloadedCommitted) {
             group.appendChild(heading);
         }
         list.forEach(function (it) {
-            group.appendChild(buildCoverageDetailRow(it, closeFn, ctx));
+            group.appendChild(buildCoverageDetailRow(it, ctx));
         });
         body.appendChild(group);
     }
@@ -1056,8 +1220,8 @@ function showCoverageDetailModal(preloadedCommitted) {
         body.textContent = '';
         ctx.ticks = [];
 
-        // Blocked at the top (amber, jump), then the regular lifecycle list, then
-        // the manual Git/process lane set apart at the bottom.
+        // Blocked at the top (amber, expandable into its answer lane), then the
+        // regular lifecycle list, then the manual Git/process lane at the bottom.
         appendGroup('Waiting on you', blocked, 'blocked');
         appendGroup(blocked.length || manual.length ? 'Rubric aspects' : '', regular, null);
         appendGroup('Manual · Git & process', manual, 'manual');
@@ -1106,13 +1270,14 @@ function showCoverageDetailModal(preloadedCommitted) {
     const previouslyFocused = document.activeElement;
     closeBtn.focus();
 
-    closeRef = wireModalDismiss({
+    wireModalDismiss({
         backdrop: backdrop,
         closeButtons: [closeX, closeBtn],
         onClose: function () {
             // Clear the live-update hook so no repaint fires after dismissal; the
             // proposal modal's handle is separate and untouched.
             _coverageModal = null;
+            _expandedBlockedAspect = null;
             if (previouslyFocused &&
                 typeof previouslyFocused.focus === 'function' &&
                 document.contains(previouslyFocused)) {

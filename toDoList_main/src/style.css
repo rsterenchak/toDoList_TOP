@@ -6859,8 +6859,8 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: var(--text-secondary);
 }
 
-/* Blocked rows are amber-tinted jump buttons — tapping scrolls the waiting
-   needs_words question into view. */
+/* Blocked rows are amber-tinted disclosure buttons — tapping expands the waiting
+   needs_words question into an answer lane below. */
 .coverageDetailRow--blocked {
   cursor: pointer;
   border-color: var(--text-warning);
@@ -6868,20 +6868,15 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 .coverageDetailRow--blocked .coverageDetailStatus { color: var(--text-warning); }
-.coverageDetailRow--jump:hover { background: var(--bg-hover); }
-.coverageDetailRow--jump:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px var(--accent-dim);
-}
 
-/* A blocked jump-button row paired with its confirmation tick as siblings — the
-   tick <button> can't nest inside the jump <button>, so they share a flex row. */
+/* A blocked disclosure row paired with its confirmation tick as siblings — the
+   tick <button> can't nest inside the row <button>, so they share a flex row. */
 .coverageDetailConfirmable {
   display: flex;
   align-items: center;
   gap: 8px;
 }
-.coverageDetailConfirmable .coverageDetailRow--jump { flex: 1 1 auto; }
+.coverageDetailConfirmable .coverageDetailRow--expandable { flex: 1 1 auto; }
 
 /* Shipped aspects expand to a commit-helper lane (copy-ready commit message +
    file manifest for the GitHub → GitLab transfer). The row is a toggle button;
@@ -7082,6 +7077,128 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   transform: rotate(45deg);
 }
 .coverageCommitTickLabel { white-space: nowrap; }
+
+/* Blocked aspects expand to an answer lane: triage's pending question, a reply
+   box, a non-blocking error line, and the two ways to respond (hand the task to
+   chat, or send an answer that re-triages it). Sits below the row inside the
+   .coverageDetailItem wrapper, mirroring the shipped commit lane above. */
+.coverageAnswerLane {
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin: 4px 0 2px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+}
+.coverageDetailItem.is-expanded .coverageAnswerLane { display: flex; }
+
+.coverageAnswerQuestion {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.coverageAnswerInput {
+  width: 100%;
+  box-sizing: border-box;
+  resize: vertical;
+  /* 16px avoids iOS Safari's focus auto-zoom. */
+  font-size: 16px;
+  font-family: inherit;
+  line-height: 1.4;
+  padding: 8px 10px;
+  color: var(--text-primary);
+  background: var(--bg-base);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 8px;
+}
+
+.coverageAnswerInput:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.coverageAnswerError {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #e5534b;
+}
+
+.coverageAnswerActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+/* "Discuss in chat" reads as a link, not a second button competing with Send. */
+.coverageAnswerDiscuss {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: none;
+  border: 0;
+  white-space: nowrap;
+}
+
+.coverageAnswerDiscuss:hover { text-decoration: underline; }
+
+.coverageAnswerDiscuss:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.coverageAnswerSend {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--accent-text, var(--accent));
+  background: var(--accent-dim);
+  border: 0.5px solid var(--accent);
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.coverageAnswerSend:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.coverageAnswerSend:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.coverageAnswerSend:disabled,
+.coverageAnswerSend.is-pending {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.coverageAnswerSend.is-pending:hover {
+  background: var(--accent-dim);
+  color: var(--accent-text, var(--accent));
+}
 
 #coverageDetailModalActions {
   display: flex;

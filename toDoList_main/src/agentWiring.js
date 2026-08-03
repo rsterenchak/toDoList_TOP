@@ -28,6 +28,7 @@ import {
 } from './agentQueueStore.js';
 import { configureMockupFlow } from './mockupFlow.js';
 import { configureAssignmentCoverage } from './assignmentCoverage.js';
+import { openChatWithSeed } from './claudeSheet.js';
 
 // Boot-time wiring for the extracted agent subsystems.
 //
@@ -181,14 +182,23 @@ setTriageDispatcher(fireTriageSweep);
 configureMockupFlow({ getSelectedProjectName });
 
 // Wire the assignment / coverage subsystem. Supplies the live callbacks it needs
-// (selected project, read-target resolver, derive dispatch); omits the dead
-// board-render callbacks (paint / bucket collapse state), which configure* merges
-// per key so they stay no-ops. The derive tracker itself is imported directly by
+// (selected project, read-target resolver, derive dispatch, and the chat hand-off
+// the coverage modal's blocked answer lane routes "Discuss in chat" through);
+// omits the dead board-render callback (paint), which configure* merges per key so
+// it stays a no-op. The derive tracker itself is imported directly by
 // assignmentCoverage.js from the store.
+//
+// openChatWithSeed comes from claudeSheet.js, which already imports
+// assignmentCoverage.js — so the coverage module must NOT import it back. This
+// wiring module is a leaf nothing imports (only main.js, after claudeSheet), so
+// injecting it from here is acyclic. Wrapped in a thunk for the same reason the
+// run-tracker deps below are: the binding is read at CALL time, so a test that
+// partially mocks claudeSheet.js doesn't throw on import.
 configureAssignmentCoverage({
     getSelectedProjectName,
     resolveReadTarget,
     fireDeriveRun,
+    openChatWithSeed: function (seed, rowId) { return openChatWithSeed(seed, rowId); },
 });
 
 // Wire the triage-sweep and derive run trackers. Supplies the live queue reload
