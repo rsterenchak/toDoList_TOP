@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-03',
         added: [
-            "Claude chat threads now sync across devices, so a conversation started on your phone carries on from your desktop.",
+            "New Chat now asks you to confirm before wiping a chat thread, since the wipe deletes it on every device.",
         ],
         fixed: [
             "Saving the assignment editor now updates the assignment card and coverage summary right away, instead of sometimes showing the pre-edit version until a page refresh.",

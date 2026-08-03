@@ -276,7 +276,10 @@ function setActiveTab(tab) {
     const imageRail = sheetQuery('#claudeImageRail');
     if (imageRail) imageRail.hidden = tab !== 'chat';
     // New Chat lives inside the chat view now, so it's hidden with the view on
-    // RUNS / COVERAGE — no separate per-tab gate needed here.
+    // RUNS / COVERAGE — no separate per-tab gate needed here. Its confirm does
+    // need resetting, though: leaving Chat with the confirm armed would put it
+    // one tap from a cross-device wipe on return, out of sight in between.
+    syncClearChatVisibility();
     // Re-evaluate the reload nudge each time Runs opens so a flag left stale by
     // a worker that activated without dispatching appUpdateApplied can't surface
     // a false-positive banner — the visibility decision reads live worker state.
@@ -627,6 +630,9 @@ function autoSwapWorkspaceForProject(projectName) {
     activeHandoffRow = null;
     clearAttachments();
     replayChatHistory();
+    // The incoming repo's thread is a different thread — a confirm armed against
+    // the outgoing one must never survive the swap and wipe this one instead.
+    syncClearChatVisibility();
     // Behind the instant local paint, pull the incoming repo's stored turns so a
     // thread started on another device merges into this one. Fire-and-forget:
     // the swap is already complete and a failed read changes nothing.
@@ -781,6 +787,8 @@ function appendChatTurn(turn) {
             })
             .catch(function() { /* background sync — never surfaced */ });
     } catch (e) { /* background sync — never surfaced */ }
+    // The thread just became non-empty (or grew), so the pill must be present.
+    syncClearChatVisibility();
     return turn;
 }
 
@@ -1089,6 +1097,9 @@ function replayChatHistory() {
     // that never enters chatHistory, so it's re-derived from the empty state
     // rather than persisted.
     if (chatHistory.length === 0) renderChatIntro();
+    // The thread was just replaced (mount-hydrate, remote merge, or a workspace
+    // swap), so the pill's own visibility and any armed confirm are stale.
+    syncClearChatVisibility();
 }
 
 // The capabilities intro note shown at the top of an empty chat thread. Names
@@ -1224,6 +1235,12 @@ function buildWorkspace() {
 // (inside the CHAT view body, not the tab strip). Text-only (no icon), tinted
 // with the purple accent palette. Wipes the current conversation but never the
 // attachments or the iterate seed.
+//
+// The pill no longer wipes on its own click: the wipe is cross-device (it drops
+// the local thread AND the repo's `chat_turns` rows), so a stray tap would
+// permanently delete the conversation everywhere with nothing recoverable. It
+// arms the inline confirm below the header instead, following the RUNS tab's
+// "Clear completed" pattern.
 function buildClearChat() {
     const btn = document.createElement('button');
     btn.id = 'claudeClearChat';
@@ -1231,8 +1248,61 @@ function buildClearChat() {
     btn.className = 'claudeClearChat';
     btn.textContent = '+ New Chat';
     btn.setAttribute('aria-label', 'New Chat');
-    btn.addEventListener('click', clearChatConversation);
+    btn.addEventListener('click', function() {
+        const confirm = sheetQuery('.claudeClearChatConfirm');
+        if (confirm) confirm.hidden = false;
+    });
     return btn;
+}
+
+// The inline confirm for New Chat. A sibling of #claudeChatHeader rather than a
+// child of it: the header is a right-aligned flex ROW carrying the spend control
+// and the pill, and a taller child would stretch it. As its own row directly
+// beneath, this spans the view width and can carry real copy.
+//
+// Unlike the runs-clear confirm, the pill STAYS visible while this is open, so
+// it's obvious what's being confirmed.
+function buildClearChatConfirm() {
+    const wrap = document.createElement('div');
+    wrap.className = 'claudeClearChatConfirm';
+    wrap.hidden = true;
+
+    const warn = document.createElement('span');
+    warn.className = 'claudeClearChatConfirmWarn';
+    warn.textContent = 'Deletes this thread on every device.';
+
+    const yesBtn = document.createElement('button');
+    yesBtn.type = 'button';
+    yesBtn.className = 'claudeClearChatYes';
+    yesBtn.textContent = 'Wipe';
+
+    const cancelBtn = document.createElement('button');
+    cancelBtn.type = 'button';
+    cancelBtn.className = 'claudeClearChatCancel';
+    cancelBtn.textContent = 'Cancel';
+
+    wrap.appendChild(warn);
+    wrap.appendChild(yesBtn);
+    wrap.appendChild(cancelBtn);
+
+    cancelBtn.addEventListener('click', function() { wrap.hidden = true; });
+    // clearChatConversation ends in syncClearChatVisibility, which re-hides this
+    // row (and the now-pointless pill) once the thread is empty.
+    yesBtn.addEventListener('click', clearChatConversation);
+
+    return wrap;
+}
+
+// Keep the New Chat pill and its confirm honest about the thread's state: an
+// empty thread has nothing to wipe, so the pill goes away entirely, and the
+// confirm is never left armed across a repaint. Called wherever chatHistory is
+// replaced or appended to, and wherever the chat view could go out of view while
+// the confirm is open.
+function syncClearChatVisibility() {
+    const confirm = sheetQuery('.claudeClearChatConfirm');
+    if (confirm) confirm.hidden = true;
+    const btn = sheetQuery('#claudeClearChat');
+    if (btn) btn.hidden = chatHistory.length === 0;
 }
 
 // The mobile spend control — a quiet readout button sitting left of New Chat in
@@ -1792,6 +1862,9 @@ function clearChatConversation() {
     renderChatIntro();
     // The scope returns to unscoped in lockstep with the wipe.
     renderScopeChip();
+    // The confirm that armed this wipe is dismissed here, and the now-empty
+    // thread retires the pill until there's something to wipe again.
+    syncClearChatVisibility();
 }
 
 // The composer file-picker button + its dropdown panel. The button leads the
@@ -2181,6 +2254,8 @@ function buildChatView() {
     header.appendChild(buildSpendControl());
     header.appendChild(buildClearChat());
 
+    const clearChatConfirm = buildClearChatConfirm();
+
     const surface = document.createElement('div');
     surface.id = 'claudeChatSurface';
     surface.className = 'claudeChatSurface';
@@ -2367,6 +2442,9 @@ function buildChatView() {
     });
 
     view.appendChild(header);
+    // The New Chat confirm sits between the header row and the transcript, so it
+    // spans the view width instead of stretching the right-aligned header row.
+    view.appendChild(clearChatConfirm);
     view.appendChild(surface);
     view.appendChild(scopeChip);
     view.appendChild(chips);

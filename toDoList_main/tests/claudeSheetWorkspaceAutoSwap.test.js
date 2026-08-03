@@ -138,6 +138,33 @@ describe('syncClaudeSheetForProject — auto-swap chat workspace to the project 
         expect(document.querySelector('#claudeChatSurface').textContent).toContain('saved B message');
     });
 
+    it('disarms an open New Chat confirm on auto-swap, so it can\'t wipe the incoming thread', async () => {
+        await seedTargets([
+            { id: 't1', repo: 'me/RepoA' },
+            { id: 't2', repo: 'me/RepoB' },
+        ]);
+        seedProject('Alpha', 't1');
+        seedProject('Beta', 't2');
+
+        // Both repos own a thread, so the pill is live on either side of the swap.
+        localStorage.setItem('todoapp_claudeChat', JSON.stringify({
+            'me/RepoA': [{ role: 'user', content: 'saved A message' }],
+            'me/RepoB': [{ role: 'user', content: 'saved B message' }],
+        }));
+
+        syncClaudeSheetForProject('Alpha');
+        const confirm = document.querySelector('.claudeClearChatConfirm');
+        expect(confirm).toBeTruthy();
+        document.getElementById('claudeClearChat').click();
+        expect(confirm.hidden).toBe(false);
+
+        // The incoming repo is a different thread — a confirm armed against the
+        // outgoing one must not survive the swap.
+        syncClaudeSheetForProject('Beta');
+        expect(document.querySelector('.claudeClearChatConfirm').hidden).toBe(true);
+        expect(document.querySelector('#claudeChatSurface').textContent).toContain('saved B message');
+    });
+
     it('leaves the workspace untouched when the project has no target', async () => {
         await seedTargets([{ id: 't1', repo: 'me/RepoA' }]);
         seedProject('Alpha', 't1');
