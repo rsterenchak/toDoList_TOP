@@ -1434,6 +1434,157 @@ export const listLogic = (function () {
         }
     }
 
+    // ── CHAT TURNS ──
+    // The Claude sheet's per-repo conversation is mirrored into `chat_turns` so a
+    // thread started on one device resumes on another. The table is keyed on
+    // `user_id` with RLS scoping every row to the signed-in user, and that column
+    // DEFAULTS to auth.uid() — so the four helpers below never send an owner id,
+    // only `id` / `repo` / `role` / `content`. All Supabase writes route through
+    // listLogic; claudeSheet.js calls these and never touches the client itself.
+    //
+    // Every one returns a { ok, error? } result matching setAgentRunState, because
+    // the caller treats a failure as a background-sync miss: the localStorage copy
+    // stays authoritative for the local thread and nothing is surfaced.
+
+    // Insert one turn. Its `id` is minted client-side (mintEntryId) and passed in
+    // explicitly so the in-memory turn and its row share an identity — that's what
+    // lets a later hydrate union remote rows with the local thread by id instead
+    // of guessing at duplicates by content.
+    // @category: user-mutation-only
+    async function insertChatTurn(turn) {
+        const id = turn && typeof turn.id === 'string' ? turn.id.trim() : '';
+        const repo = turn && typeof turn.repo === 'string' ? turn.repo.trim() : '';
+        const role = turn && typeof turn.role === 'string' ? turn.role.trim() : '';
+        const content = turn && typeof turn.content === 'string' ? turn.content : '';
+        if (!id || !repo || !role) {
+            return { ok: false, error: 'Missing turn id, repo, or role.' };
+        }
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('chat_turns')
+                    .insert({ id: id, repo: repo, role: role, content: content })
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Insert failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Insert failed.' };
+        }
+    }
+
+    // Read the last `limit` turns stored for `repo`. The query orders newest-first
+    // so the LIMIT keeps the most recent turns rather than the oldest, and the
+    // result is reversed before returning so callers receive them oldest-first —
+    // the order a chat thread replays in. Returns { ok, turns } with `turns`
+    // always an array, so a failed read degrades to "no remote turns" and leaves
+    // the locally-hydrated thread untouched.
+    // @category: user-mutation-only
+    async function fetchChatTurns(repo, limit) {
+        const name = typeof repo === 'string' ? repo.trim() : '';
+        if (!name) return { ok: false, error: 'Missing repo.', turns: [] };
+        const cap = typeof limit === 'number' && isFinite(limit) && limit > 0
+            ? Math.floor(limit)
+            : 60;
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('chat_turns')
+                    .select()
+                    .eq('repo', name)
+                    .order('created_at', { ascending: false })
+                    .limit(cap)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Load failed.',
+                    turns: [],
+                };
+            }
+            const rows = (result && result.data) || [];
+            return { ok: true, turns: rows.slice().reverse() };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Load failed.', turns: [] };
+        }
+    }
+
+    // Trim `repo`'s stored turns to the newest `cap`, mirroring the cap the local
+    // thread is already saved under so the two can't drift. Selects the ids that
+    // sit BEYOND the cap (newest-first, ranged from offset `cap`) and deletes
+    // exactly those — a no-op returning { ok: true } when nothing is beyond it, so
+    // the common case costs one read and no write.
+    // @category: user-mutation-only
+    async function pruneChatTurns(repo, cap) {
+        const name = typeof repo === 'string' ? repo.trim() : '';
+        if (!name) return { ok: false, error: 'Missing repo.' };
+        const keep = typeof cap === 'number' && isFinite(cap) && cap > 0
+            ? Math.floor(cap)
+            : 60;
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('chat_turns')
+                    .select('id')
+                    .eq('repo', name)
+                    .order('created_at', { ascending: false })
+                    .range(keep, keep + 999)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Prune failed.',
+                };
+            }
+            const rows = (result && result.data) || [];
+            const ids = [];
+            rows.forEach(function (r) {
+                if (r && r.id) ids.push(r.id);
+            });
+            if (!ids.length) return { ok: true };
+            const removed = await Promise.resolve(
+                supabase.from('chat_turns').delete().in('id', ids)
+            );
+            if (removed && removed.error) {
+                return {
+                    ok: false,
+                    error: (removed.error && removed.error.message) || 'Prune failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Prune failed.' };
+        }
+    }
+
+    // Drop every stored turn for `repo`. Called alongside the localStorage wipe on
+    // each path that resets a thread (New Chat, a workspace reframe, an iterate
+    // seed, a no-change follow-up) — without it, the next hydrate would resurrect
+    // the conversation the user just cleared from another device's copy.
+    // @category: user-mutation-only
+    async function clearChatTurns(repo) {
+        const name = typeof repo === 'string' ? repo.trim() : '';
+        if (!name) return { ok: false, error: 'Missing repo.' };
+        try {
+            const result = await Promise.resolve(
+                supabase.from('chat_turns').delete().eq('repo', name)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Clear failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Clear failed.' };
+        }
+    }
+
 
     // Read the most recent stored refactor-scan row for a repo. The Structure
     // tab's NEXT REFACTOR card calls this on render to recover the last scan's
@@ -3946,6 +4097,10 @@ export const listLogic = (function () {
         setAgentRunState,
         getAspectSubmissions,
         setAspectSubmitted,
+        insertChatTurn,
+        fetchChatTurns,
+        pruneChatTurns,
+        clearChatTurns,
         loadLatestRefactorScan,
         loadLatestCapture,
         loadMonthlyUsage,
