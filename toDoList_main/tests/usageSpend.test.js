@@ -231,12 +231,34 @@ describe('API spend — panel + entry points', () => {
         expect(document.getElementById('usageSpendBackdrop')).toBeNull();
     });
 
-    it('opens directly (the desktop nav entry point) and shows $0.00 with an empty read', async () => {
+    it('shows a loading spinner immediately on open, before the read resolves', () => {
+        openSpendPanel(document.createElement('button'));
+        const readout = document.getElementById('usageSpendReadout');
+        // Before flush() the read is still in flight: spinner + label, no $0.00.
+        expect(readout.querySelector('.usageSpendSpinner')).not.toBeNull();
+        expect(readout.querySelector('.usageSpendLoadingLabel').textContent).toBe('Loading usage…');
+        expect(readout.querySelector('.usageSpendAmount')).toBeNull();
+    });
+
+    it('replaces the spinner with an inline error on an empty read (no $0.00 flash)', async () => {
+        globalThis.__usageRows = [];
         openSpendPanel(document.createElement('button'));
         await flush();
-        const backdrop = document.getElementById('usageSpendBackdrop');
-        expect(backdrop).not.toBeNull();
-        expect(backdrop.querySelector('.usageSpendAmount').textContent).toBe('$0.00');
+        const readout = document.getElementById('usageSpendReadout');
+        // An empty read no longer silently settles on $0.00 — it surfaces an error.
+        expect(readout.querySelector('.usageSpendAmount')).toBeNull();
+        expect(readout.querySelector('.usageSpendSpinner')).toBeNull();
+        expect(readout.querySelector('.usageSpendError')).not.toBeNull();
+    });
+
+    it('replaces the spinner with an inline error when the read fails', async () => {
+        globalThis.__hasSession = false; // loadMonthlyUsage returns { ok: false }
+        openSpendPanel(document.createElement('button'));
+        await flush();
+        const readout = document.getElementById('usageSpendReadout');
+        expect(readout.querySelector('.usageSpendSpinner')).toBeNull();
+        expect(readout.querySelector('.usageSpendError')).not.toBeNull();
+        globalThis.__hasSession = true;
     });
 
     it('sums the month rows into the figure once the read resolves', async () => {
