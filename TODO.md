@@ -441,9 +441,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e7e83142-0a51-459a-b3cb-f6659a8b4c7a -->
 
-- [ ] **[MEDIUM]** Replace immediate $0.00 flash in the spend panel with a loading spinner until usage data resolves
+- [x] **[MEDIUM]** Replace immediate $0.00 flash in the spend panel with a loading spinner until usage data resolves
   - Type: bug
   - Description: On mobile, openSpendPanel currently calls renderSpendReadout immediately with lastTotal (starting at 0), so users see "$0.00" flash for a few seconds before listLogic.loadMonthlyUsage() resolves and the real total populates. Replace that initial renderSpendReadout call (claudeSheet.js:1527) with a centered loading state in #usageSpendReadout: a 22px .projRunSpinner (reusing the shared `spin` keyframes) above a "Loading usage…" label in var(--text-secondary), matching the chosen mockup. Once listLogic.loadMonthlyUsage() resolves successfully (claudeSheet.js:1546-1553), call renderSpendReadout for real with the resolved total and render the chart as today; on failure or empty rows, replace the spinner state with an inline error message (e.g. "Couldn't load usage") in #usageSpendReadout instead of silently leaving $0.00. Panel-open/close and backdrop-dismiss behavior around openSpendPanel must remain unchanged.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-03
   <!-- id: 1b8a1466-4014-43ab-9632-f6ca5dd8a86c -->
