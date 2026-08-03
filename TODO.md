@@ -447,3 +447,15 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   - Completed: 2026-08-03
   <!-- id: 1b8a1466-4014-43ab-9632-f6ca5dd8a86c -->
+
+- [ ] **[LOW]** Spend panel: add the Opus 5 rate
+  - Type: bug
+  - Description: The Worker's deep-think path now calls `claude-opus-5` rather than `claude-opus-4-8`. The spend panel's rate map is keyed by the `model` string and has no entry for the new id, so those rows price through the unknown-model fallback. That fallback resolves to the highest known rate, which happens to be the same $5/$25 as Opus 4.8 — so the figure is right today by coincidence rather than by definition, and would silently drift the moment the rate card changes. Add the key explicitly.
+  - Behavior: Rows with model `claude-opus-5` price at the same input, output, cache-read, and cache-write rates as `claude-opus-4-8`. Existing 4.8 rows are unaffected, so a month spanning the switch prices both correctly. The deep-share figure continues to attribute both to deep-think turns, since it splits on the `deep_think` column rather than the model string — confirm that is what it does, and if it splits on the model name instead, fix it to use the column.
+  - Implementation notes:
+    - Copy the `claude-opus-4-8` entry under the new key rather than aliasing one to the other; they are the same rate today by coincidence, not by rule, and an alias would hide a future divergence.
+    - Leave the unknown-model fallback in place. It exists so a model added at the Worker without a matching client rate over-reports rather than silently contributing zero, and that guard is still wanted.
+    - No other change. The panel, chart, ratios, and budget are untouched.
+  - File: `toDoList_main/src/claudeSheet.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 29c7c845-a6a0-468b-9f97-bc96f9ed2355 -->
