@@ -1150,6 +1150,240 @@ export function sumUsageCost(rows) {
     return total;
 }
 
+const USAGE_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+// Group this month's usage rows into a per-day cost series — one slot per elapsed
+// day of `now`'s month (day 1 through today), so a day with no usage renders as an
+// empty slot rather than being omitted and gaps stay visible. Grouped by LOCAL
+// date: a UTC grouping would shift several hours of every evening's usage into the
+// next day's bar, exactly the quiet wrongness that makes a chart worse than none.
+// `now` defaults to the current time; passing a fixed Date makes the series
+// deterministic under test. The summed cost across the series equals
+// sumUsageCost(rows) for rows within the month.
+export function dailyUsageSeries(rows, now) {
+    const ref = now instanceof Date ? now : new Date();
+    const year = ref.getFullYear();
+    const month = ref.getMonth();
+    const today = ref.getDate();
+    const costByDay = {};
+    if (Array.isArray(rows)) {
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || !row.created_at) continue;
+            const d = new Date(row.created_at);
+            if (isNaN(d.getTime())) continue;
+            if (d.getFullYear() !== year || d.getMonth() !== month) continue;
+            const day = d.getDate();
+            costByDay[day] = (costByDay[day] || 0) + priceForUsageEvent(row);
+        }
+    }
+    const series = [];
+    for (let day = 1; day <= today; day++) {
+        const mm = ('0' + (month + 1)).slice(-2);
+        const dd = ('0' + day).slice(-2);
+        series.push({
+            day: day,
+            date: year + '-' + mm + '-' + dd,
+            label: USAGE_MONTH_SHORT[month] + ' ' + day,
+            cost: costByDay[day] || 0,
+        });
+    }
+    return series;
+}
+
+// Fraction of this month's COST attributable to deep_think turns (Opus), not a
+// fraction of turn count — one Opus turn outweighs a dozen Sonnet ones, so a
+// turn-count share would understate it badly. Returns null when there is no cost
+// to divide, so the caller can omit the figure rather than show a misleading 0%.
+export function computeDeepShare(rows) {
+    if (!Array.isArray(rows)) return null;
+    let total = 0;
+    let deep = 0;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        const cost = priceForUsageEvent(row);
+        total += cost;
+        if (row.deep_think) deep += cost;
+    }
+    if (total <= 0) return null;
+    return deep / total;
+}
+
+// Cache hit rate across the month: cache_read ÷ (input + cache_read), a TOKEN
+// ratio (not a cost ratio) because it measures whether the chat route's prompt
+// cache is being hit, not what it saved. Returns null when there are no input or
+// cache-read tokens to divide.
+export function computeCacheHitRate(rows) {
+    if (!Array.isArray(rows)) return null;
+    let input = 0;
+    let cacheRead = 0;
+    for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row) continue;
+        input += usageTokenCount(row.input_tokens);
+        cacheRead += usageTokenCount(
+            row.cache_read_input_tokens != null ? row.cache_read_input_tokens : row.cache_read_tokens);
+    }
+    const denom = input + cacheRead;
+    if (denom <= 0) return null;
+    return cacheRead / denom;
+}
+
+// Render the two derived figures — deep share and cache hit rate — beneath the
+// chart (or the not-enough-history note), plus the caveat that pre-instrumentation
+// rows read as fast, uncached turns. Renders nothing when neither figure is
+// computable (an empty month), so the panel stays clean with no data.
+function renderSpendRatios(container, rows) {
+    const deep = computeDeepShare(rows);
+    const cache = computeCacheHitRate(rows);
+    if (deep == null && cache == null) return;
+
+    const grid = document.createElement('div');
+    grid.className = 'usageSpendRatios';
+
+    function addRatio(labelText, value, subText) {
+        const cell = document.createElement('div');
+        cell.className = 'usageSpendRatio';
+        const val = document.createElement('div');
+        val.className = 'usageSpendRatioValue';
+        val.textContent = value == null ? '—' : Math.round(value * 100) + '%';
+        const lab = document.createElement('div');
+        lab.className = 'usageSpendRatioLabel';
+        lab.textContent = labelText;
+        const sub = document.createElement('div');
+        sub.className = 'usageSpendRatioSub';
+        sub.textContent = subText;
+        cell.appendChild(val);
+        cell.appendChild(lab);
+        cell.appendChild(sub);
+        grid.appendChild(cell);
+    }
+
+    addRatio('Deep share', deep, 'of cost on deep-think (Opus) turns');
+    addRatio('Cache hit rate', cache, 'cache reads ÷ input tokens');
+    container.appendChild(grid);
+
+    const caveat = document.createElement('p');
+    caveat.className = 'usageSpendRatiosCaveat';
+    caveat.textContent = 'Rows recorded before usage tagging count as fast, '
+        + 'uncached turns, so both figures can read low until this month is fully tagged.';
+    container.appendChild(caveat);
+}
+
+// Render the daily bar chart plus the two derived ratios into `container`,
+// replacing its contents. The chart is hand-rolled inline SVG — ~31 <rect> bars,
+// each with a <title> for hover and a shared caption updated on hover/tap/focus —
+// rather than a charting dependency, which would be the project's largest for what
+// a rect loop covers. With fewer than two days of actual spend the chart is
+// replaced by a short note (a one-bar chart is noise); the ratios still render
+// beneath it whenever they are computable. `now` defaults to the current time; a
+// fixed Date makes the output deterministic under test.
+export function renderSpendChart(container, rows, now) {
+    if (!container) return;
+    container.innerHTML = '';
+
+    const series = dailyUsageSeries(rows, now);
+    const daysWithData = series.filter(function(s) { return s.cost > 0; }).length;
+
+    if (daysWithData < 2) {
+        const note = document.createElement('p');
+        note.className = 'usageSpendChartNote';
+        note.textContent = 'Not enough history yet — the daily chart appears once '
+            + 'there are at least two days of spend this month.';
+        container.appendChild(note);
+        renderSpendRatios(container, rows);
+        return;
+    }
+
+    const heading = document.createElement('div');
+    heading.className = 'usageSpendChartHeading';
+    heading.textContent = 'Daily spend';
+    container.appendChild(heading);
+
+    const NS = 'http://www.w3.org/2000/svg';
+    const VB_W = 300;
+    const VB_H = 100;
+    const TOP = 16;          // headroom for the max-value label
+    const BASELINE = 84;     // y of the axis
+    const plotH = BASELINE - TOP;
+    const n = series.length;
+    const slot = VB_W / n;
+    // Keep every elapsed day as its own bar; shrink the gap before ever dropping a
+    // bar, and never aggregate into weeks — the point is the session-shaped spikes.
+    const gap = Math.min(2, slot * 0.25);
+    const barW = Math.max(1, slot - gap);
+    let maxCost = 0;
+    let maxIdx = 0;
+    for (let i = 0; i < n; i++) {
+        if (series[i].cost > maxCost) { maxCost = series[i].cost; maxIdx = i; }
+    }
+
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + VB_W + ' ' + VB_H);
+    svg.setAttribute('class', 'usageSpendChartSvg');
+    svg.setAttribute('role', 'img');
+    svg.setAttribute('aria-label', 'Daily API spend for the current month');
+
+    const axis = document.createElementNS(NS, 'line');
+    axis.setAttribute('x1', '0');
+    axis.setAttribute('x2', String(VB_W));
+    axis.setAttribute('y1', String(BASELINE));
+    axis.setAttribute('y2', String(BASELINE));
+    axis.setAttribute('class', 'usageSpendChartAxis');
+    svg.appendChild(axis);
+
+    const tip = document.createElement('div');
+    tip.className = 'usageSpendChartTip';
+    function showTip(s) {
+        tip.textContent = s.label + ' · $' + s.cost.toFixed(2);
+    }
+
+    for (let i = 0; i < n; i++) {
+        const s = series[i];
+        if (s.cost <= 0) continue; // empty slot: reserve the position, draw no bar
+        const x = i * slot + (slot - barW) / 2;
+        const h = maxCost > 0 ? (s.cost / maxCost) * plotH : 0;
+        const rect = document.createElementNS(NS, 'rect');
+        rect.setAttribute('x', x.toFixed(2));
+        rect.setAttribute('y', (BASELINE - h).toFixed(2));
+        rect.setAttribute('width', barW.toFixed(2));
+        rect.setAttribute('height', Math.max(0, h).toFixed(2));
+        rect.setAttribute('class',
+            i === maxIdx ? 'usageSpendChartBar usageSpendChartBar--max' : 'usageSpendChartBar');
+        rect.setAttribute('data-date', s.date);
+        rect.setAttribute('tabindex', '0');
+        const title = document.createElementNS(NS, 'title');
+        title.textContent = s.label + ': $' + s.cost.toFixed(2);
+        rect.appendChild(title);
+        rect.addEventListener('mouseenter', function() { showTip(s); });
+        rect.addEventListener('click', function() { showTip(s); });
+        rect.addEventListener('focus', function() { showTip(s); });
+        svg.appendChild(rect);
+    }
+
+    // Label the tallest bar's value so the scale is readable at a glance.
+    if (maxCost > 0) {
+        const maxLabel = document.createElementNS(NS, 'text');
+        const mx = maxIdx * slot + slot / 2;
+        maxLabel.setAttribute('x', Math.max(14, Math.min(VB_W - 14, mx)).toFixed(2));
+        maxLabel.setAttribute('y', String(TOP - 5));
+        maxLabel.setAttribute('text-anchor', 'middle');
+        maxLabel.setAttribute('class', 'usageSpendChartMaxLabel');
+        maxLabel.textContent = '$' + maxCost.toFixed(2);
+        svg.appendChild(maxLabel);
+    }
+
+    container.appendChild(svg);
+
+    // Default the caption to the tallest day; it updates on hover/tap/focus.
+    showTip(series[maxIdx]);
+    container.appendChild(tip);
+
+    renderSpendRatios(container, rows);
+}
+
 // Render the spend readout — the dollar figure, the budget bar (only when a
 // positive budget is set), the percentage, and the always-present honesty line —
 // into `container`, replacing its contents. Split out from openSpendPanel so it
@@ -1236,6 +1470,12 @@ export function openSpendPanel(anchorEl) {
     const readout = document.createElement('div');
     readout.id = 'usageSpendReadout';
 
+    // The daily chart + derived ratios, filled once the usage read resolves. Kept
+    // separate from the readout so a budget edit re-renders the readout without
+    // wiping the chart, and so it can scroll with the readout inside the body.
+    const chartContainer = document.createElement('div');
+    chartContainer.id = 'usageSpendChart';
+
     // The budget editor — makes the bar's budget genuinely configurable. Editing
     // it persists to prefs and re-renders the readout in place against the last
     // resolved total.
@@ -1259,8 +1499,15 @@ export function openSpendPanel(anchorEl) {
     budgetRow.appendChild(budgetLabel);
     budgetRow.appendChild(budgetInput);
 
+    // Header and budget editor stay pinned; the readout + chart scroll between
+    // them so the added chart never pushes the budget editor past the 86vh cap.
+    const body = document.createElement('div');
+    body.id = 'usageSpendBody';
+    body.appendChild(readout);
+    body.appendChild(chartContainer);
+
     dialog.appendChild(header);
-    dialog.appendChild(readout);
+    dialog.appendChild(body);
     dialog.appendChild(budgetRow);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
@@ -1290,6 +1537,7 @@ export function openSpendPanel(anchorEl) {
             if (res && res.ok && Array.isArray(res.rows)) {
                 lastTotal = sumUsageCost(res.rows);
                 renderSpendReadout(readout, lastTotal, getUsageBudget());
+                renderSpendChart(chartContainer, res.rows, new Date());
             }
         }, function() { /* leave $0.00 on read failure */ });
     }

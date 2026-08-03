@@ -6,6 +6,10 @@ import {
     priceForUsageEvent,
     sumUsageCost,
     USAGE_RATES,
+    dailyUsageSeries,
+    computeDeepShare,
+    computeCacheHitRate,
+    renderSpendChart,
 } from '../src/claudeSheet.js';
 import { listLogic } from '../src/listLogic.js';
 import { getUsageBudget, setUsageBudget } from '../src/prefs.js';
@@ -252,5 +256,97 @@ describe('API spend — panel + entry points', () => {
         input.value = '50';
         input.dispatchEvent(new Event('change'));
         expect(getUsageBudget()).toBe(50);
+    });
+});
+
+describe('API spend — daily chart + ratios', () => {
+    // Build a created_at ISO string for a given LOCAL calendar day, so grouping
+    // (which reads local getFullYear/getMonth/getDate) is deterministic regardless
+    // of the machine's timezone.
+    function localISO(y, m, d, h) {
+        return new Date(y, m, d, h == null ? 12 : h, 0, 0).toISOString();
+    }
+
+    it('groups rows by local date into one slot per elapsed day', () => {
+        const now = new Date(2026, 7, 5, 15, 0, 0); // Aug 5 2026, local
+        const rows = [
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 2) },
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 2) },
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 4) },
+        ];
+        const series = dailyUsageSeries(rows, now);
+        expect(series.length).toBe(5); // one slot per elapsed day, 1..5
+        expect(series[0].date).toBe('2026-08-01');
+        expect(series[1].cost).toBeCloseTo(USAGE_RATES.sonnet.input * 2, 6); // day 2, two rows
+        expect(series[3].cost).toBeCloseTo(USAGE_RATES.sonnet.input, 6);     // day 4, one row
+    });
+
+    it('renders a day with no usage as an empty slot rather than omitting it', () => {
+        const now = new Date(2026, 7, 3, 9, 0, 0);
+        const rows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 1) }];
+        const series = dailyUsageSeries(rows, now);
+        expect(series.length).toBe(3);       // days 1, 2, 3 all present
+        expect(series[0].cost).toBeGreaterThan(0); // day 1 has usage
+        expect(series[1].cost).toBe(0);            // day 2 empty slot
+        expect(series[2].cost).toBe(0);            // day 3 empty slot
+    });
+
+    it('the summed series equals the month total (bars sum to the figure)', () => {
+        const now = new Date(2026, 7, 10, 12, 0, 0);
+        const rows = [
+            { model: 'claude-opus-4-8', input_tokens: 5e5, output_tokens: 2e5, created_at: localISO(2026, 7, 3) },
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 7) },
+        ];
+        const series = dailyUsageSeries(rows, now);
+        const barSum = series.reduce(function(acc, s) { return acc + s.cost; }, 0);
+        expect(barSum).toBeCloseTo(sumUsageCost(rows), 6);
+    });
+
+    it('deep share is a share of COST, not of turn count', () => {
+        const rows = [
+            { model: 'claude-opus-4-8', deep_think: true, input_tokens: 1e6 }, // $15
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6 },                 // $3
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6 },                 // $3
+        ];
+        const deep = computeDeepShare(rows);
+        // Cost share = 15/21 ≈ 0.714; a turn-count share would be 1/3 ≈ 0.333.
+        expect(deep).toBeCloseTo(15 / 21, 6);
+        expect(deep).toBeGreaterThan(0.5);
+        expect(computeDeepShare([])).toBeNull();
+        expect(computeDeepShare(null)).toBeNull();
+    });
+
+    it('cache hit rate is cache_read ÷ (input + cache_read) tokens', () => {
+        const rows = [
+            { model: 'claude-sonnet-4-5', input_tokens: 200000, cache_read_input_tokens: 800000 },
+            { model: 'claude-sonnet-4-5', input_tokens: 0, cache_read_tokens: 0 },
+        ];
+        expect(computeCacheHitRate(rows)).toBeCloseTo(800000 / 1000000, 6);
+        expect(computeCacheHitRate([])).toBeNull();
+    });
+
+    it('shows the not-enough-history note with fewer than two days of spend', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 8, 12, 0, 0);
+        const rows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 2) }];
+        renderSpendChart(c, rows, now);
+        expect(c.querySelector('.usageSpendChartNote')).not.toBeNull();
+        expect(c.querySelector('.usageSpendChartSvg')).toBeNull();
+    });
+
+    it('renders the chart with one bar per usage day plus the two ratios', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 6, 12, 0, 0);
+        const rows = [
+            { model: 'claude-opus-4-8', deep_think: true, input_tokens: 1e6, cache_read_input_tokens: 500000, created_at: localISO(2026, 7, 2) },
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6, cache_read_input_tokens: 500000, created_at: localISO(2026, 7, 5) },
+        ];
+        renderSpendChart(c, rows, now);
+        expect(c.querySelector('.usageSpendChartSvg')).not.toBeNull();
+        // Two usage days → two bars; the empty days between draw no rect.
+        expect(c.querySelectorAll('.usageSpendChartBar').length).toBe(2);
+        expect(c.querySelectorAll('.usageSpendRatio').length).toBe(2);
+        // The tallest bar is labelled so the scale is readable.
+        expect(c.querySelector('.usageSpendChartMaxLabel')).not.toBeNull();
     });
 });
