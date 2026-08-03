@@ -92,6 +92,35 @@ describe('API spend — pricing', () => {
         expect(priceForUsageEvent(row)).toBeCloseTo(USAGE_RATES.opus.input * 2, 6);
     });
 
+    it('prices claude-opus-5 identically to claude-opus-4-8 at the opus rate', () => {
+        // The deep_think path bumped from claude-opus-4-8 to claude-opus-5. Both
+        // must price at the opus family rate — by rule (the substring match), not
+        // by falling through the unknown-model fallback. Pinned so a future switch
+        // to exact-string keying can't silently drop opus-5 onto the fallback.
+        const tokens = {
+            input_tokens: 1e6,
+            output_tokens: 1e6,
+            cache_read_input_tokens: 1e6,
+            cache_creation_input_tokens: 1e6,
+        };
+        const opus48 = priceForUsageEvent(Object.assign({ model: 'claude-opus-4-8' }, tokens));
+        const opus5 = priceForUsageEvent(Object.assign({ model: 'claude-opus-5' }, tokens));
+        const r = USAGE_RATES.opus;
+        const expected = r.input + r.output + r.cacheRead + r.cacheWrite;
+        expect(opus5).toBeCloseTo(expected, 6);
+        expect(opus5).toBeCloseTo(opus48, 6);
+    });
+
+    it('attributes an opus-5 deep_think turn to deep share via the column, not the model name', () => {
+        // computeDeepShare must split on the deep_think column, so an opus-5 deep
+        // turn is fully attributed exactly as an opus-4-8 one is.
+        const rows = [
+            { model: 'claude-opus-5', deep_think: true, input_tokens: 1e6 },  // $15
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6 },                // $3
+        ];
+        expect(computeDeepShare(rows)).toBeCloseTo(15 / 18, 6);
+    });
+
     it('falls back to the highest known rate for an unknown model', () => {
         const unknown = {
             model: 'some-future-model-v9',
