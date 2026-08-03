@@ -491,3 +491,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/todoMdViewer.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8a11bb1d-f076-4478-8539-053e4f098195 -->
+
+- [ ] **[LOW]** Add a version-bump comment to style.css to trigger a redeploy
+  - Type: feature
+  - Description: Test entry with no functional effect, used solely to trigger the build/deploy pipeline. Add or update a single comment line near the top of the stylesheet (e.g. `/* redeploy marker: <date> */`) with no other changes. Confirms the pipeline runs end-to-end without touching app behavior.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 67412807-23ec-4386-b57e-72a804051968 -->
