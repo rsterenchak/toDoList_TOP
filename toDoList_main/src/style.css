@@ -6541,6 +6541,116 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   border-color: var(--accent);
 }
 
+/* Scrolling middle of the panel so the daily chart never pushes the pinned
+   budget editor past the modal's 86vh cap. */
+#usageSpendBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#usageSpendChart {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#usageSpendChart:empty { display: none; }
+
+.usageSpendChartHeading {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.usageSpendChartSvg {
+  width: 100%;
+  height: auto;
+  display: block;
+  overflow: visible;
+}
+
+.usageSpendChartAxis {
+  stroke: var(--border-dim);
+  stroke-width: 1;
+}
+
+.usageSpendChartBar {
+  fill: var(--accent);
+  transition: fill 0.12s ease;
+}
+.usageSpendChartBar:hover,
+.usageSpendChartBar:focus {
+  fill: var(--accent-text);
+  outline: none;
+}
+.usageSpendChartBar--max { fill: var(--accent-text); }
+
+.usageSpendChartMaxLabel {
+  fill: var(--text-secondary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+}
+
+.usageSpendChartTip {
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  min-height: 1.3em;
+}
+
+.usageSpendChartNote {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+.usageSpendRatios {
+  display: flex;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.usageSpendRatio {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-hover);
+}
+
+.usageSpendRatioValue {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.usageSpendRatioLabel {
+  font-size: 11px;
+  color: var(--text-primary);
+}
+
+.usageSpendRatioSub {
+  font-size: 10px;
+  line-height: 1.35;
+  color: var(--text-secondary);
+}
+
+.usageSpendRatiosCaveat {
+  margin: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
 #coverageDetailModalBackdrop {
   position: fixed;
   inset: 0;
