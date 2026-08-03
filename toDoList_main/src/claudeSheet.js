@@ -1153,19 +1153,21 @@ export function sumUsageCost(rows) {
 const USAGE_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-// Group this month's usage rows into a per-day cost series — one slot per elapsed
-// day of `now`'s month (day 1 through today), so a day with no usage renders as an
-// empty slot rather than being omitted and gaps stay visible. Grouped by LOCAL
-// date: a UTC grouping would shift several hours of every evening's usage into the
-// next day's bar, exactly the quiet wrongness that makes a chart worse than none.
-// `now` defaults to the current time; passing a fixed Date makes the series
-// deterministic under test. The summed cost across the series equals
-// sumUsageCost(rows) for rows within the month.
+// Group this month's usage rows into a per-day cost series — one slot per day of
+// the WHOLE calendar month (the 1st through the month's last day, 28–31), so the
+// axis is fixed regardless of how much data exists yet: a sparse early month reads
+// as sparse and the chart does not reflow as days accumulate. A day with no usage
+// (including days later in the month than today) renders as an empty slot rather
+// than being omitted, so gaps stay visible. Grouped by LOCAL date: a UTC grouping
+// would shift several hours of every evening's usage into the next day's bar,
+// exactly the quiet wrongness that makes a chart worse than none. `now` defaults to
+// the current time; passing a fixed Date makes the series deterministic under test.
+// The summed cost across the series equals sumUsageCost(rows) for rows in the month.
 export function dailyUsageSeries(rows, now) {
     const ref = now instanceof Date ? now : new Date();
     const year = ref.getFullYear();
     const month = ref.getMonth();
-    const today = ref.getDate();
+    const lastDay = new Date(year, month + 1, 0).getDate(); // days in this month
     const costByDay = {};
     if (Array.isArray(rows)) {
         for (let i = 0; i < rows.length; i++) {
@@ -1179,7 +1181,7 @@ export function dailyUsageSeries(rows, now) {
         }
     }
     const series = [];
-    for (let day = 1; day <= today; day++) {
+    for (let day = 1; day <= lastDay; day++) {
         const mm = ('0' + (month + 1)).slice(-2);
         const dd = ('0' + day).slice(-2);
         series.push({
@@ -1273,29 +1275,21 @@ function renderSpendRatios(container, rows) {
 }
 
 // Render the daily bar chart plus the two derived ratios into `container`,
-// replacing its contents. The chart is hand-rolled inline SVG — ~31 <rect> bars,
-// each with a <title> for hover and a shared caption updated on hover/tap/focus —
-// rather than a charting dependency, which would be the project's largest for what
-// a rect loop covers. With fewer than two days of actual spend the chart is
-// replaced by a short note (a one-bar chart is noise); the ratios still render
-// beneath it whenever they are computable. `now` defaults to the current time; a
-// fixed Date makes the output deterministic under test.
+// replacing its contents. The chart is hand-rolled inline SVG — one slot per day of
+// the whole calendar month — rather than a charting dependency, which would be the
+// project's largest for what a rect loop covers. The axis is fixed at the month's
+// day count, so it renders correctly with a single day of data (no history guard):
+// bars rise from a shared baseline scaled to the month's peak, empty and future days
+// are blank slots, a faint gridline marks every seventh day, and each slot carries a
+// full-height transparent hit area (a 6px bar is too small to tap) whose hover/tap
+// updates a per-day tooltip. A single static caption names the month's peak day; a
+// zero-usage month shows no caption. The ratios render beneath whenever computable.
+// `now` defaults to the current time; a fixed Date makes the output deterministic.
 export function renderSpendChart(container, rows, now) {
     if (!container) return;
     container.innerHTML = '';
 
     const series = dailyUsageSeries(rows, now);
-    const daysWithData = series.filter(function(s) { return s.cost > 0; }).length;
-
-    if (daysWithData < 2) {
-        const note = document.createElement('p');
-        note.className = 'usageSpendChartNote';
-        note.textContent = 'Not enough history yet — the daily chart appears once '
-            + 'there are at least two days of spend this month.';
-        container.appendChild(note);
-        renderSpendRatios(container, rows);
-        return;
-    }
 
     const heading = document.createElement('div');
     heading.className = 'usageSpendChartHeading';
@@ -1305,13 +1299,13 @@ export function renderSpendChart(container, rows, now) {
     const NS = 'http://www.w3.org/2000/svg';
     const VB_W = 300;
     const VB_H = 100;
-    const TOP = 16;          // headroom for the max-value label
-    const BASELINE = 84;     // y of the axis
+    const TOP = 10;          // headroom above the tallest bar
+    const BASELINE = 84;     // y of the shared baseline every bar rises from
     const plotH = BASELINE - TOP;
     const n = series.length;
     const slot = VB_W / n;
-    // Keep every elapsed day as its own bar; shrink the gap before ever dropping a
-    // bar, and never aggregate into weeks — the point is the session-shaped spikes.
+    // Keep every day as its own slot; shrink the gap before ever dropping a bar, and
+    // never aggregate into weeks — the point is the session-shaped spikes.
     const gap = Math.min(2, slot * 0.25);
     const barW = Math.max(1, slot - gap);
     let maxCost = 0;
@@ -1325,6 +1319,18 @@ export function renderSpendChart(container, rows, now) {
     svg.setAttribute('class', 'usageSpendChartSvg');
     svg.setAttribute('role', 'img');
     svg.setAttribute('aria-label', 'Daily API spend for the current month');
+
+    // Faint gridline every seven days from the 1st — orientation, not data.
+    for (let i = 0; i < n; i += 7) {
+        const gx = i * slot;
+        const grid = document.createElementNS(NS, 'line');
+        grid.setAttribute('x1', gx.toFixed(2));
+        grid.setAttribute('x2', gx.toFixed(2));
+        grid.setAttribute('y1', String(TOP));
+        grid.setAttribute('y2', String(BASELINE));
+        grid.setAttribute('class', 'usageSpendChartWeek');
+        svg.appendChild(grid);
+    }
 
     const axis = document.createElementNS(NS, 'line');
     axis.setAttribute('x1', '0');
@@ -1342,44 +1348,49 @@ export function renderSpendChart(container, rows, now) {
 
     for (let i = 0; i < n; i++) {
         const s = series[i];
-        if (s.cost <= 0) continue; // empty slot: reserve the position, draw no bar
-        const x = i * slot + (slot - barW) / 2;
-        const h = maxCost > 0 ? (s.cost / maxCost) * plotH : 0;
-        const rect = document.createElementNS(NS, 'rect');
-        rect.setAttribute('x', x.toFixed(2));
-        rect.setAttribute('y', (BASELINE - h).toFixed(2));
-        rect.setAttribute('width', barW.toFixed(2));
-        rect.setAttribute('height', Math.max(0, h).toFixed(2));
-        rect.setAttribute('class',
-            i === maxIdx ? 'usageSpendChartBar usageSpendChartBar--max' : 'usageSpendChartBar');
-        rect.setAttribute('data-date', s.date);
-        rect.setAttribute('tabindex', '0');
+        // Bars rise from the shared baseline, scaled to the month's peak. A day with
+        // no usage draws no bar but still reserves its slot (and its hit area below).
+        if (s.cost > 0) {
+            const x = i * slot + (slot - barW) / 2;
+            const h = maxCost > 0 ? (s.cost / maxCost) * plotH : 0;
+            const rect = document.createElementNS(NS, 'rect');
+            rect.setAttribute('x', x.toFixed(2));
+            rect.setAttribute('y', (BASELINE - h).toFixed(2));
+            rect.setAttribute('width', barW.toFixed(2));
+            rect.setAttribute('height', Math.max(0, h).toFixed(2));
+            rect.setAttribute('class', 'usageSpendChartBar');
+            rect.setAttribute('data-date', s.date);
+            svg.appendChild(rect);
+        }
+        // Full-height transparent hit area per slot, so a low-value or empty day is
+        // hoverable/tappable rather than an untappable 6px sliver.
+        const hit = document.createElementNS(NS, 'rect');
+        hit.setAttribute('x', (i * slot).toFixed(2));
+        hit.setAttribute('y', String(TOP));
+        hit.setAttribute('width', slot.toFixed(2));
+        hit.setAttribute('height', String(BASELINE - TOP));
+        hit.setAttribute('class', 'usageSpendChartHit');
+        hit.setAttribute('data-date', s.date);
+        hit.setAttribute('tabindex', '0');
         const title = document.createElementNS(NS, 'title');
         title.textContent = s.label + ': $' + s.cost.toFixed(2);
-        rect.appendChild(title);
-        rect.addEventListener('mouseenter', function() { showTip(s); });
-        rect.addEventListener('click', function() { showTip(s); });
-        rect.addEventListener('focus', function() { showTip(s); });
-        svg.appendChild(rect);
-    }
-
-    // Label the tallest bar's value so the scale is readable at a glance.
-    if (maxCost > 0) {
-        const maxLabel = document.createElementNS(NS, 'text');
-        const mx = maxIdx * slot + slot / 2;
-        maxLabel.setAttribute('x', Math.max(14, Math.min(VB_W - 14, mx)).toFixed(2));
-        maxLabel.setAttribute('y', String(TOP - 5));
-        maxLabel.setAttribute('text-anchor', 'middle');
-        maxLabel.setAttribute('class', 'usageSpendChartMaxLabel');
-        maxLabel.textContent = '$' + maxCost.toFixed(2);
-        svg.appendChild(maxLabel);
+        hit.appendChild(title);
+        hit.addEventListener('mouseenter', function() { showTip(s); });
+        hit.addEventListener('click', function() { showTip(s); });
+        hit.addEventListener('focus', function() { showTip(s); });
+        svg.appendChild(hit);
     }
 
     container.appendChild(svg);
-
-    // Default the caption to the tallest day; it updates on hover/tap/focus.
-    showTip(series[maxIdx]);
     container.appendChild(tip);
+
+    // Single static caption naming the month's peak day; omitted for a zero month.
+    if (maxCost > 0) {
+        const caption = document.createElement('div');
+        caption.className = 'usageSpendChartCaption';
+        caption.textContent = 'Peak $' + maxCost.toFixed(2) + ' on ' + series[maxIdx].label;
+        container.appendChild(caption);
+    }
 
     renderSpendRatios(container, rows);
 }

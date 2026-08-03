@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             "The API-spend panel now charts daily spend for the month and shows the share of cost from deep-think turns alongside the prompt-cache hit rate.",
         ],
+        fixed: [
+            "The daily API-spend chart now renders the full calendar month with bars rising from a shared baseline, so a sparse early month reads as sparse instead of a couple of oversized blocks.",
+        ],
     },
     {
         version: '1.1',
         date: '2026-08-01',
         fixed: [
-            "The TODO.md strip is now hidden on the Structure view instead of peeking past its right edge.",
             "A task created for an entry injected from chat or an accepted proposal now keeps its full entry text and shipped-run link, so its review details and status show correctly instead of appearing empty.",
             "On phones the API-spend button no longer appears in the top header; it now opens only from the chat view.",
             "The prev/next project arrows no longer appear in the mobile header; paging between projects stays available via the swipe gesture and the project picker.",

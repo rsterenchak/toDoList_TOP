@@ -267,7 +267,7 @@ describe('API spend — daily chart + ratios', () => {
         return new Date(y, m, d, h == null ? 12 : h, 0, 0).toISOString();
     }
 
-    it('groups rows by local date into one slot per elapsed day', () => {
+    it('groups rows by local date across the whole calendar month', () => {
         const now = new Date(2026, 7, 5, 15, 0, 0); // Aug 5 2026, local
         const rows = [
             { model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 2) },
@@ -275,20 +275,22 @@ describe('API spend — daily chart + ratios', () => {
             { model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 4) },
         ];
         const series = dailyUsageSeries(rows, now);
-        expect(series.length).toBe(5); // one slot per elapsed day, 1..5
+        expect(series.length).toBe(31); // full August axis, not just up to the 5th
         expect(series[0].date).toBe('2026-08-01');
+        expect(series[30].date).toBe('2026-08-31');
         expect(series[1].cost).toBeCloseTo(USAGE_RATES.sonnet.input * 2, 6); // day 2, two rows
         expect(series[3].cost).toBeCloseTo(USAGE_RATES.sonnet.input, 6);     // day 4, one row
     });
 
-    it('renders a day with no usage as an empty slot rather than omitting it', () => {
-        const now = new Date(2026, 7, 3, 9, 0, 0);
-        const rows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 1) }];
+    it('renders every day as a slot, including days later in the month than today', () => {
+        const now = new Date(2026, 1, 3, 9, 0, 0); // Feb 3 2026 — 28 days, not a leap year
+        const rows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 1, 1) }];
         const series = dailyUsageSeries(rows, now);
-        expect(series.length).toBe(3);       // days 1, 2, 3 all present
+        expect(series.length).toBe(28);            // full February, fixed axis
         expect(series[0].cost).toBeGreaterThan(0); // day 1 has usage
         expect(series[1].cost).toBe(0);            // day 2 empty slot
-        expect(series[2].cost).toBe(0);            // day 3 empty slot
+        expect(series[26].cost).toBe(0);           // day 27, future, still a slot
+        expect(series[27].date).toBe('2026-02-28');
     });
 
     it('the summed series equals the month total (bars sum to the figure)', () => {
@@ -325,16 +327,20 @@ describe('API spend — daily chart + ratios', () => {
         expect(computeCacheHitRate([])).toBeNull();
     });
 
-    it('shows the not-enough-history note with fewer than two days of spend', () => {
+    it('renders the full-month chart with a single day of spend (no history guard)', () => {
         const c = document.createElement('div');
-        const now = new Date(2026, 7, 8, 12, 0, 0);
+        const now = new Date(2026, 7, 8, 12, 0, 0); // August, 31 days
         const rows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 2) }];
         renderSpendChart(c, rows, now);
-        expect(c.querySelector('.usageSpendChartNote')).not.toBeNull();
-        expect(c.querySelector('.usageSpendChartSvg')).toBeNull();
+        // The old "not enough history" guard is gone: one day renders a real chart.
+        expect(c.querySelector('.usageSpendChartNote')).toBeNull();
+        expect(c.querySelector('.usageSpendChartSvg')).not.toBeNull();
+        expect(c.querySelectorAll('.usageSpendChartBar').length).toBe(1); // the one non-zero day
+        // A full-month axis has a hit area per day regardless of data density.
+        expect(c.querySelectorAll('.usageSpendChartHit').length).toBe(31);
     });
 
-    it('renders the chart with one bar per usage day plus the two ratios', () => {
+    it('renders one bar per usage day plus the two ratios and the peak caption', () => {
         const c = document.createElement('div');
         const now = new Date(2026, 7, 6, 12, 0, 0);
         const rows = [
@@ -346,7 +352,47 @@ describe('API spend — daily chart + ratios', () => {
         // Two usage days → two bars; the empty days between draw no rect.
         expect(c.querySelectorAll('.usageSpendChartBar').length).toBe(2);
         expect(c.querySelectorAll('.usageSpendRatio').length).toBe(2);
-        // The tallest bar is labelled so the scale is readable.
-        expect(c.querySelector('.usageSpendChartMaxLabel')).not.toBeNull();
+        // The inline max-value label is gone; a single peak caption replaces it.
+        expect(c.querySelector('.usageSpendChartMaxLabel')).toBeNull();
+        const caption = c.querySelector('.usageSpendChartCaption');
+        expect(caption).not.toBeNull();
+        expect(caption.textContent).toMatch(/^Peak \$/);
+        expect(caption.textContent).toContain('Aug 2'); // opus turn on the 2nd is the peak
+    });
+
+    it('bars rise from a shared baseline, scaled to the month peak', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 6, 12, 0, 0);
+        const rows = [
+            { model: 'claude-opus-4-8', input_tokens: 1e6, created_at: localISO(2026, 7, 2) }, // tall
+            { model: 'claude-sonnet-4-5', input_tokens: 1e5, created_at: localISO(2026, 7, 5) }, // short
+        ];
+        renderSpendChart(c, rows, now);
+        const bars = Array.from(c.querySelectorAll('.usageSpendChartBar'));
+        expect(bars.length).toBe(2);
+        const bottoms = bars.map(function(b) {
+            return parseFloat(b.getAttribute('y')) + parseFloat(b.getAttribute('height'));
+        });
+        expect(bottoms[0]).toBeCloseTo(bottoms[1], 3); // both anchored to the same baseline
+        const heights = bars.map(function(b) { return parseFloat(b.getAttribute('height')); });
+        expect(heights[0]).toBeGreaterThan(heights[1]); // taller day is taller bar
+    });
+
+    it('a zero-usage month renders the axis but no peak caption', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 10, 12, 0, 0);
+        renderSpendChart(c, [], now);
+        expect(c.querySelector('.usageSpendChartSvg')).not.toBeNull();
+        expect(c.querySelectorAll('.usageSpendChartBar').length).toBe(0);
+        expect(c.querySelector('.usageSpendChartCaption')).toBeNull(); // no "Peak $0.00"
+    });
+
+    it('draws a faint gridline every seven days from the 1st', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 20, 12, 0, 0); // August, 31 days
+        const rows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6, created_at: localISO(2026, 7, 3) }];
+        renderSpendChart(c, rows, now);
+        // Days 1, 8, 15, 22, 29 → five weekly gridlines across a 31-day month.
+        expect(c.querySelectorAll('.usageSpendChartWeek').length).toBe(5);
     });
 });
