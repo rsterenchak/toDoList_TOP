@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-08-03',
         fixed: [
             "The API-spend panel now shows a loading spinner while this month's usage loads instead of briefly flashing $0.00, and surfaces an error if the read fails.",
+            "Saving the assignment editor now updates the assignment card and coverage summary right away, instead of sometimes showing the pre-edit version until a page refresh.",
         ],
     },
     {
@@ -24,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-01',
         fixed: [
-            "On phones the API-spend button no longer appears in the top header; it now opens only from the chat view.",
             "The prev/next project arrows no longer appear in the mobile header; paging between projects stays available via the swipe gesture and the project picker.",
         ],
     },

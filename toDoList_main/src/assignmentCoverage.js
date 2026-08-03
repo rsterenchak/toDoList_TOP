@@ -332,6 +332,22 @@ export function refreshAssignment(target, projectName) {
     });
 }
 
+// Apply a just-saved assignment.md straight from the text the user wrote, with
+// no Worker read. Mirrors refreshAssignment's success path synchronously: the
+// cache is rebound to the current project, reclassified from the saved content,
+// and the card + every assignment listener (the chat pane's COVERAGE tab) repaint
+// off it. The saved text is authoritative — a fresh read only risks being served
+// the pre-edit file by Worker caching or GitHub propagation lag, which used to
+// leave the coverage summary and its Derive / Draft controls showing the old
+// classification until a full reload. refreshAssignment stays the path for the
+// mount read and the project-switch read, where there is no local content to use.
+export function applyAssignmentSave(content) {
+    _assignmentProject = getSelectedProjectName();
+    _assignment = describeAssignment(typeof content === 'string' ? content : null);
+    paint();
+    notifyAssignmentChange();
+}
+
 // A file-text glyph for the assignment card. DOM-built like the other glyphs
 // (no new asset, no icon library) and theme-correct via currentColor.
 function buildFileTextIcon() {
@@ -365,8 +381,9 @@ function buildFileTextIcon() {
 // descriptor, never raw content/sha), then opens the editor modal preloaded with
 // that content. On a failed re-read it surfaces a toast and does not open —
 // creating the file on a repo that lacks one is a separate future entry, and the
-// card is only shown when the file already exists. On Save the modal re-reads and
-// repaints the card via refreshAssignment.
+// card is only shown when the file already exists. On Save the modal hands back
+// the text it wrote and the card repaints from it via applyAssignmentSave — no
+// second read, so a stale one can't undo the edit on screen.
 function openAssignmentEditor() {
     const target = resolveReadTarget();
     if (!target) {
@@ -382,7 +399,7 @@ function openAssignmentEditor() {
             return;
         }
         showAssignmentEditorModal(target, res.content, res.sha, {
-            onSaved: function () { refreshAssignment(resolveReadTarget()); },
+            onSaved: function (saved) { applyAssignmentSave(saved); },
         });
     });
 }

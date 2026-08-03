@@ -940,8 +940,10 @@ function flashCopyFeedback(btn) {
 // Escape — CLAUDE.md modal contract). Unlike the desc editor (save-on-close),
 // this modal saves explicitly: Save writes the whole file back through the
 // Worker's `write` branch, using the open-time `sha` as the concurrency token.
-// On success it closes and calls `options.onSaved` so the caller can re-read and
-// repaint the card (unfilled → filled). On a 409 conflict it reloads the latest
+// On success it closes and calls `options.onSaved(content, sha)` with the text it
+// just wrote and the returned sha, so the caller can repaint the card
+// (unfilled → filled) from the saved content rather than re-reading it. On a 409
+// conflict it reloads the latest
 // content + sha into the textarea and asks the user to reapply; on any other
 // error it surfaces the reason and stays open. The textarea keeps a 16px font
 // (CLAUDE.md mobile-input rule) and `pre-wrap` so the seeded stub's sections and
@@ -1068,7 +1070,12 @@ export function showAssignmentEditorModal(target, content, sha, options) {
         writeAssignmentToWorker(target, textarea.value, currentSha).then(function(res) {
             if (res && res.ok) {
                 close();
-                if (typeof opts.onSaved === 'function') opts.onSaved();
+                // Hand the caller the exact text that was just written (plus the
+                // new sha) so it can apply the save directly. Re-reading the file
+                // to learn what it now holds is what made the card repaint from
+                // stale content when a layer between here and GitHub served the
+                // pre-edit version.
+                if (typeof opts.onSaved === 'function') opts.onSaved(textarea.value, res.sha);
                 return;
             }
             // Failure — re-enable the controls and keep the modal open so the
