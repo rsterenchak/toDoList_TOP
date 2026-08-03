@@ -71,6 +71,8 @@ import {
     subscribeAgentView,
     unsubscribeAgentView,
 } from '../src/agentView.js';
+import { onAssignmentChange, getAssignmentState } from '../src/assignmentCoverage.js';
+import { showAssignmentEditorModal } from '../src/modals.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 8) {
@@ -210,5 +212,69 @@ describe('AGENT assignment editor — Save', () => {
         await flush();
         expect(document.getElementById('assignmentEditorModal')).toBeNull();
         expect(writeCalls.length).toBe(0);
+    });
+});
+
+// Regression: the save-success path used to discard the content the user just
+// wrote and re-fetch assignment.md from the Worker to learn what the file now
+// held. A stale read (Worker cache / GitHub propagation lag) then repainted the
+// card — and the coverage tab it drives — from the PRE-EDIT text, so the user had
+// to reload the page before the edit showed up. The saved text is authoritative,
+// so the card must now repaint from it directly with no read at all.
+describe('AGENT assignment editor — save applies the saved content directly', () => {
+    async function openEditorWith(content) {
+        mountRoutedProject();
+        assignmentResult = { ok: true, content: content, sha: 'sha-1' };
+        await loadBoard();
+        document.querySelector('.agentAssignmentCard').click();
+        await flush();
+    }
+
+    it('repaints the card from the saved text without re-reading', async () => {
+        const UNFILLED = '## Requirements\n<!-- describe the assignment here -->\n';
+        await openEditorWith(UNFILLED);
+        expect(document.querySelector('.agentAssignmentCard--unfilled')).toBeTruthy();
+
+        const readsBefore = assignmentCalls.length;
+        const ta = document.getElementById('assignmentEditorModalTextarea');
+        ta.value = '## Requirements\n- Build the thing.\n';
+        // Any read issued after the save would be served the PRE-EDIT text here,
+        // reproducing the stale-read symptom if the save path still re-fetched.
+        document.getElementById('assignmentEditorModalSave').click();
+        await flush();
+
+        expect(assignmentCalls.length).toBe(readsBefore);
+        const card = document.querySelector('.agentAssignmentCard');
+        expect(card.classList.contains('agentAssignmentCard--filled')).toBe(true);
+        expect(card.querySelector('.agentAssignmentTitle').textContent)
+            .toBe('- Build the thing.');
+    });
+
+    it('notifies assignment-change listeners so the coverage tab repaints', async () => {
+        await openEditorWith('## Requirements\n<!-- hint -->\n');
+        let notified = 0;
+        onAssignmentChange(() => { notified++; });
+
+        document.getElementById('assignmentEditorModalTextarea').value =
+            '## Requirements\n- Build the thing.\n';
+        document.getElementById('assignmentEditorModalSave').click();
+        await flush();
+
+        expect(notified).toBeGreaterThan(0);
+        expect(getAssignmentState()).toBe('filled');
+    });
+
+    it('hands the modal a save result the caller can read the new sha from', async () => {
+        await openEditorWith(FILLED);
+        writeResult = { ok: true, sha: 'sha-after-save' };
+        const seen = [];
+        showAssignmentEditorModal({ repo: 'owner/repo', file_path: 'TODO.md' }, 'body', 'sha-0', {
+            onSaved: (content, sha) => { seen.push({ content: content, sha: sha }); },
+        });
+        document.getElementById('assignmentEditorModalTextarea').value = 'edited body';
+        document.getElementById('assignmentEditorModalSave').click();
+        await flush();
+
+        expect(seen).toEqual([{ content: 'edited body', sha: 'sha-after-save' }]);
     });
 });
