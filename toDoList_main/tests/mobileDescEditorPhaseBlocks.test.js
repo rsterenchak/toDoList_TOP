@@ -108,8 +108,10 @@ describe('desc editor DISPATCH / RETRY action — modal wiring (source inspectio
 
     it('mounts Retry beneath the STUCK reason card and Dispatch beneath the entry textarea', () => {
         const idx = modals.indexOf('function renderDispatchBlock()');
-        const fn = modals.slice(idx, idx + 1100);
-        expect(fn).toMatch(/buildDispatchBlock\(item,\s*queueRow,\s*mode\)/);
+        const fn = modals.slice(idx, idx + 1700);
+        // The builder gained a trailing projectName argument with the retriage mode,
+        // so the pin is on the shared call and its first three arguments.
+        expect(fn).toMatch(/buildDispatchBlock\(item,\s*queueRow,\s*mode\b/);
         expect(fn).toMatch(/descEditorModalStuck/);
         expect(fn).toMatch(/descEditorModalTextarea/);
     });

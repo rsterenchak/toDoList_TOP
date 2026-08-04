@@ -515,7 +515,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8577a9c6-87ce-4f39-a3f6-bcbcf58bcd74 -->
 
-- [ ] **[HIGH]** Add a Retry triage action for runs stuck before a draft exists
+- [x] **[HIGH]** Add a Retry triage action for runs stuck before a draft exists — Completed: 2026-08-03
   - Type: bug
   - Description: When `claude-triage.yml` dies before writing a verdict, `reconcileStuckTriaging` in `agentQueueStore.js` flips the row from `triaging` to `failed` with the reason "The triage sweep didn't finish for this task…". That row has no `entry_id` and no `draft`, so `buildDispatchBlock`'s retry mode computes `canRun = !!(queueRow.entry_id || draftText)` → false and mounts the RETRY button permanently disabled. The only disabled styling is `opacity: 0.6`, so it reads as a live control on both the desktop description panel and the mobile description-editor modal, and tapping it does nothing — the click handler bails on `if (btn.disabled) return`. Even if it were enabled it routes through `dispatchDraft` → `claude-run.yml`, which dispatches an entry; the wrong recovery for a row that never got one. Add a third mode that re-runs triage instead.
   - Behavior:

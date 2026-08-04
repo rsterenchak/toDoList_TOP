@@ -22,6 +22,7 @@ import {
     syncGenerateControl,
     buildAskingBlock,
     buildDispatchBlock,
+    isRetriageRow,
     buildReviewBlock,
     buildReviewActions,
     mountRunReportBlock,
@@ -507,7 +508,9 @@ export function showDescEditorModal(item, options) {
     // ── DISPATCH / RETRY ACTION ──
     // A landed draft (linked queue row `drafted`) shows a Dispatch control; a broken
     // / no-change run (`failed` / `no_change`) shows a Retry control beneath the
-    // STUCK reason card. Both are the SHARED buildDispatchBlock from toDoRow.js — the
+    // STUCK reason card — or a Retry triage control, when the row carries neither an
+    // entry nor a draft and there is nothing to dispatch (isRetriageRow).
+    // All are the SHARED buildDispatchBlock from toDoRow.js — the
     // touch home for the row-side Dispatch / Retry the desktop `#descSibling` panel
     // mounts. Gated on the queue row's STATE, not the derived phase: opening this
     // modal stamps draftSeenAt, which clears PHASE.DRAFTED, so a phase gate would
@@ -518,21 +521,25 @@ export function showDescEditorModal(item, options) {
         const existing = body.querySelector('.descDispatchBlock');
         const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
         const state = queueRow && queueRow.state;
-        const mode = state === 'drafted' ? 'dispatch'
+        const baseMode = state === 'drafted' ? 'dispatch'
             : ((state === 'failed' || state === 'no_change') ? 'retry' : null);
-        if (!mode) {
+        if (!baseMode) {
             if (existing) existing.remove();
             return;
         }
+        // A stuck row with neither an entry nor a draft gets RETRY TRIAGE rather
+        // than a Retry that would mount permanently disabled — the shared predicate
+        // from toDoRow.js, so both hosts resolve the mode identically.
+        const mode = (baseMode === 'retry' && isRetriageRow(queueRow)) ? 'retriage' : baseMode;
         if (existing) {
             if (existing.getAttribute('data-dispatch-row') === String(queueRow.id)
                 && existing.getAttribute('data-dispatch-mode') === mode) return;
             existing.remove();
         }
-        const block = buildDispatchBlock(item, queueRow, mode);
-        // Retry sits beneath the STUCK reason card; Dispatch beneath the entry
-        // textarea. Fall back to appending at the body's end.
-        const anchorAfter = mode === 'retry'
+        const block = buildDispatchBlock(item, queueRow, mode, opts.projectName || '');
+        // Retry and Retry triage sit beneath the STUCK reason card; Dispatch beneath
+        // the entry textarea. Fall back to appending at the body's end.
+        const anchorAfter = mode !== 'dispatch'
             ? body.querySelector('#descEditorModalStuck')
             : body.querySelector('#descEditorModalTextarea');
         if (anchorAfter) body.insertBefore(block, anchorAfter.nextSibling);
