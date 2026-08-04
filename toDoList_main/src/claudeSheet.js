@@ -670,6 +670,51 @@ function saveRunRecords() {
     emitTodoRunStatusChange();
 }
 
+// Register a run dispatched OUTSIDE this sheet — the TODO.md viewer's "Run
+// backlog" button and its per-entry "Run this entry" pill — so it shows in the
+// Runs tab while it's in flight. Those dispatches write only the viewer's own
+// active-run entry, which drives the viewer's header pill and nothing else: no
+// agent_queue row is created for them either, so without this the Runs tab has
+// nothing to show until the entry is checked off in TODO.md and the shipped
+// spine surfaces it as SHIPPED with no preceding QUEUED/RUNNING row.
+//
+// Mirrors the chat-ship path: unshift a QUEUED record keyed by the SAME
+// correlation id the viewer's pill polls, then start this sheet's poller so the
+// row walks QUEUED → RUNNING → SHIPPED/FAILED on its own. Records are re-read
+// from localStorage first (read-modify-write) so a dispatch made before the
+// sheet ever mounted — or after another tab wrote a record — can't clobber the
+// stored list. Returns the new record, or null when the dispatch is already
+// tracked (dedup by correlation id, so a re-entrant call can never stack two
+// rows for one run).
+export function trackDispatchedRun(opts) {
+    if (!opts || !opts.correlationId) return null;
+    loadRunRecords();
+    if (findRunRecord(opts.correlationId)) return null;
+    const record = {
+        // Backlog runs have no entry id — the routine picks the task itself —
+        // so the record stays un-joined to a TODO.md entry and simply never
+        // becomes iterable/revertable, exactly as reconcile already handles.
+        entryId: opts.entryId || null,
+        correlationId: opts.correlationId,
+        title: opts.title || 'Untitled entry',
+        status: 'QUEUED',
+        dispatchedAt: typeof opts.dispatchedAt === 'number' ? opts.dispatchedAt : Date.now(),
+        // The repo this run was dispatched against, so status polling queries
+        // the same repo rather than the Worker's default.
+        repo: opts.repo || null,
+        // The project this run belongs to, so the poller frees that project's
+        // run guard at terminal even when its viewer isn't mounted.
+        project: opts.project || null,
+        // Not a hand-off from an Agent-board card — nothing to settle.
+        agentRowId: null,
+    };
+    runRecords.unshift(record);
+    saveRunRecords();
+    renderRunsList();
+    startRunPoller(record);
+    return record;
+}
+
 // ── CHAT HISTORY (localStorage-backed, per-repo) ──
 // Each workspace repo owns a durable conversation so the chat survives reloads
 // and a project auto-swap resumes that repo's thread. Stored under one key as a

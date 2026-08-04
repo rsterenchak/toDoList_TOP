@@ -538,8 +538,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b101c357-598b-4acb-8b31-699041db068b -->
 
-- [ ] **[MEDIUM]** Make Run-backlog and Run-entry dispatches from the TODO.md viewer appear in the chat sheet's Runs tab
+- [x] **[MEDIUM]** Make Run-backlog and Run-entry dispatches from the TODO.md viewer appear in the chat sheet's Runs tab
   - Type: bug
   - Description: When a run is dispatched via the TODO.md viewer's "Run backlog" button (`runBacklog()` in `toDoList_main/src/todoMdViewer.js:2017-2065`) or its per-entry "Run this entry" pill (`runEntry()`, `todoMdViewer.js:2074-2123`), the dispatch only calls `writeActiveRun()` (`runState.js`) and `startRunPill(correlationId)` (`todoMdViewer.js:1711-1752`), which drive the viewer's own local header pill. Neither path writes an `agent_queue` row nor a `localStorage['todoapp_claudeRuns']` record, so none of the three sources `getDisplayRunRecords()` unions in `claudeSheet.js:4134-4152` (`buildQueueRunRecords`, `buildShippedEntryRecords`, `runRecords`) has anything to show while the run is in flight. The chat sheet's Runs tab therefore shows nothing for these dispatches until the entry is checked off in TODO.md, at which point `buildShippedEntryRecords()` (`claudeSheet.js:3999-4041`) surfaces it directly as SHIPPED with no preceding QUEUED/RUNNING row ever shown. Fix by having `runBacklog()`/`runEntry()` also push a `runRecords`-shaped entry into the `todoapp_claudeRuns` list (mirroring the chat-ship path at `claudeSheet.js:3736-3767`: push a QUEUED record via the exported record-writing helper, then start a poller) so the same correlation id that already drives the viewer's local pill also drives a live QUEUED/RUNNING row in the chat sheet's Runs tab.
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/claudeSheet.js`
+  - Completed: 2026-08-03
   <!-- id: fe106d57-e939-4b7a-bff7-ab0c42963c86 -->

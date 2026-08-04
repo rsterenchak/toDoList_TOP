@@ -531,7 +531,9 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
     it('disables the button while a dispatch is in flight to block double-clicks', () => {
         const start = main.indexOf('async function runBacklog');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 2400);
+        // Bounded by the handler wiring that follows the function rather than a
+        // fixed character count, so the window is exactly runBacklog's body.
+        const block = main.slice(start, main.indexOf('runBacklogBtn.addEventListener', start));
         expect(block).toMatch(/runBacklogBtn\.disabled\s*=\s*true/);
         expect(block).toMatch(/todoMdViewerRunBtn--loading/);
         expect(block).toMatch(/finally[\s\S]{0,160}runBacklogBtn\.disabled\s*=\s*false/);
@@ -539,7 +541,7 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
 
     it('shows a transient confirmation on success and an error variant on failure', () => {
         const start = main.indexOf('async function runBacklog');
-        const block = main.slice(start, start + 2000);
+        const block = main.slice(start, main.indexOf('runBacklogBtn.addEventListener', start));
         expect(block).toMatch(/showInjectToast\([^)]*dispatched/i);
         expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
     });
@@ -746,10 +748,14 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
 
     it('writes the record on a successful dispatch under this project key with target and timestamp', () => {
         const start = main.indexOf('async function runBacklog');
-        const block = main.slice(start, start + 2000);
+        const block = main.slice(start, main.indexOf('runBacklogBtn.addEventListener', start));
         expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
         expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}project:\s*projectName/);
-        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}dispatchedAt:\s*Date\.now\(\)/);
+        // The dispatch instant is captured once and shared with the Runs-tab
+        // record, so the persisted timestamp reads through that local rather
+        // than a second inline Date.now() — same guarantee, one clock.
+        expect(block).toMatch(/const dispatchedAt = Date\.now\(\);/);
+        expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}dispatchedAt:\s*dispatchedAt/);
     });
 
     it('sources the redeploy-flag helpers from runState so run dispatch can gate on a redeploy', () => {
@@ -885,7 +891,9 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
 
     it('hands a successful dispatch to the shared header pill via startRunPill', () => {
         const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, start + 2400);
+        // Bounded by the next function rather than a fixed character count, so
+        // the window is exactly runEntry's body.
+        const block = main.slice(start, main.indexOf('function applyExpandedHeight', start));
         expect(block).toMatch(/dispatchedId\s*=\s*correlationId/);
         expect(block).toMatch(/if\s*\(\s*dispatchedId\s*\)\s*startRunPill\s*\(\s*dispatchedId\s*\)/);
     });
@@ -923,7 +931,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
 
     it('shows the inject/run error toast variant on a failed dispatch', () => {
         const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, start + 2000);
+        const block = main.slice(start, main.indexOf('function applyExpandedHeight', start));
         expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
     });
 
