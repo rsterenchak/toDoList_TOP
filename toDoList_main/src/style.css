@@ -20318,11 +20318,48 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 .injectTargetRow {
   display: flex;
   align-items: center;
+  /* The drift-check verdict is a full-basis child, so it wraps onto its own
+     line beneath the controls while staying inside the row's border. */
+  flex-wrap: wrap;
   gap: 8px;
   padding: 8px 10px;
   border: 0.5px solid var(--border-dim);
   border-radius: var(--radius-sm);
   background: var(--bg-elevated);
+}
+/* Drift-check verdict, rendered by the shared preflight renderer in its
+   expanded form. Full width beneath the row's controls, with the dismiss
+   pinned to its top-right. `[hidden]` needs the guard: the author-level
+   `display: flex` here otherwise beats the UA's [hidden] rule. */
+.injectTargetVerdict {
+  position: relative;
+  flex: 1 0 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 28px 2px 0;
+  border-top: 0.5px solid var(--border-dim);
+}
+.injectTargetVerdict[hidden] { display: none !important; }
+.injectTargetVerdictDismiss {
+  position: absolute;
+  top: 4px;
+  right: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 0 4px;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.injectTargetVerdictDismiss:hover { color: var(--text-primary); }
+.injectTargetVerdictDismiss:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
 }
 .injectTargetInfo {
   flex: 1;
@@ -20784,6 +20821,13 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 12px;
   font-style: italic;
   color: var(--text-muted);
+}
+/* Caveat line above the findings — used by the target rows' Check to say which
+   purpose the missing-file count was measured against. */
+.injectOnboardVerdictNote {
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.45;
 }
 .injectOnboardVerdictBack {
   align-self: flex-start;
