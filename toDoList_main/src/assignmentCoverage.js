@@ -454,6 +454,52 @@ function computeCoverage(aspects, rows) {
     };
 }
 
+// Tally one rubric section's aspects using the same shipped / in-flight /
+// everything-else split computeCoverage applies to the whole rubric, so a
+// section head can never disagree with the modal's header total. Takes the
+// classified items the detail modal already built rather than re-deriving each
+// status from the queue rows a second time.
+function sectionTally(list) {
+    let shipped = 0, inFlight = 0;
+    list.forEach(function (it) {
+        if (it && it.status === 'shipped') shipped++;
+        else if (it && it.status === 'in-flight') inFlight++;
+    });
+    return {
+        total: list.length,
+        shipped: shipped,
+        inFlight: inFlight,
+        outstanding: list.length - shipped - inFlight,
+    };
+}
+
+// Bucket classified aspect items into rubric sections by the letter of their ID,
+// preserving the order letters first appear (the list arrives in rubric-file
+// order from parseAspects) and item order within each bucket. Reuses
+// aspectSortKey, which accepts any object carrying `.aspect`, so there's no
+// second regex to drift. Items whose ID doesn't split into a letter/number pair
+// collect into `other`, which the modal renders as one trailing group — every ID
+// parseAspects yields does split, so that bucket guards against a future ID
+// shape rather than a state today's parse can reach. Exported because that guard
+// is unreachable through the parse path and can only be exercised directly.
+export function groupAspectsBySection(list) {
+    const order = [];
+    const buckets = Object.create(null);
+    const other = [];
+    (Array.isArray(list) ? list : []).forEach(function (it) {
+        const key = aspectSortKey({ aspect: it && it.id });
+        if (!key) { other.push(it); return; }
+        if (!buckets[key.letter]) { buckets[key.letter] = []; order.push(key.letter); }
+        buckets[key.letter].push(it);
+    });
+    return {
+        sections: order.map(function (letter) {
+            return { letter: letter, items: buckets[letter] };
+        }),
+        other: other,
+    };
+}
+
 // Build the filled card's coverage summary — a gap-framed headline plus a
 // segmented progress bar — from the rubric `aspects` and the live agent_queue
 // `rows`. The headline leads with the outstanding count (aspects not yet
@@ -711,14 +757,6 @@ function buildCoverageDetailRow(item, ctx) {
     id.textContent = item.id;
     row.appendChild(id);
 
-    if (item.label) {
-        const sep = document.createElement('span');
-        sep.className = 'coverageDetailSep';
-        sep.setAttribute('aria-hidden', 'true');
-        sep.textContent = '—';
-        row.appendChild(sep);
-    }
-
     const label = document.createElement('span');
     label.className = 'coverageDetailLabel';
     label.textContent = item.label || '(no label)';
@@ -789,6 +827,40 @@ function buildCoverageDetailRow(item, ctx) {
     wireDisclosure(row, wrap);
 
     return wrap;
+}
+
+// A blocked aspect's echo inside its home rubric section. The live, actionable
+// row for a blocked aspect is pinned in the "Waiting on you" group at the top of
+// the modal, but its section still counts it — so without an echo a section
+// reading "1 / 3" would show only two rows. Renders as a dimmed div, never a
+// button: there is nothing to disclose here, no tick and no chevron, and the
+// whole row is aria-hidden so the pinned row stays the single announced one.
+function buildSectionEchoRow(item) {
+    const row = document.createElement('div');
+    row.className =
+        'coverageDetailRow coverageDetailRow--blocked coverageDetailRow--echo';
+    row.setAttribute('aria-hidden', 'true');
+
+    const dot = document.createElement('span');
+    dot.className = 'coverageDetailDot';
+    row.appendChild(dot);
+
+    const id = document.createElement('span');
+    id.className = 'coverageDetailId';
+    id.textContent = item.id;
+    row.appendChild(id);
+
+    const label = document.createElement('span');
+    label.className = 'coverageDetailLabel';
+    label.textContent = item.label || '(no label)';
+    row.appendChild(label);
+
+    const status = document.createElement('span');
+    status.className = 'coverageDetailStatus';
+    status.textContent = 'Waiting on you ↑';
+    row.appendChild(status);
+
+    return row;
 }
 
 // Turn a detail row into a disclosure control: the expandable treatment plus a
@@ -1208,6 +1280,65 @@ function showCoverageDetailModal(preloadedCommitted) {
         body.appendChild(group);
     }
 
+    // One rubric section — the aspects sharing an ID letter — headed by the bare
+    // letter, its "shipped / total" tally and a three-segment mini bar sized to
+    // that section's own aspects. `letter` is null for the trailing catch-all
+    // group of IDs that don't split into a section (see groupAspectsBySection):
+    // it renders a plain "Other aspects" heading with no tally and no bar, since
+    // there is no letter to head it with. A blocked aspect renders as an echo —
+    // its live row is pinned in the "Waiting on you" group above.
+    function appendSection(letter, sectionItems) {
+        if (!sectionItems.length) return;
+        const group = document.createElement('div');
+        group.className = 'coverageDetailGroup coverageDetailGroup--section';
+        if (letter) {
+            const head = document.createElement('div');
+            head.className = 'coverageSectionHead';
+
+            const letterEl = document.createElement('span');
+            letterEl.className = 'coverageSectionLetter';
+            letterEl.textContent = letter;
+            head.appendChild(letterEl);
+
+            const tally = sectionTally(sectionItems);
+            const count = document.createElement('span');
+            count.className = 'coverageSectionCount';
+            count.textContent = tally.shipped + ' / ' + tally.total;
+            head.appendChild(count);
+            group.appendChild(head);
+
+            // Decorative — the tally text above is the accessible summary. Three
+            // proportional segments sized by aspect count via flex-grow, computed
+            // per paint (hence inline), matching buildCoverageSummary's bar.
+            const bar = document.createElement('div');
+            bar.className = 'coverageSectionBar';
+            bar.setAttribute('aria-hidden', 'true');
+            [
+                { key: 'shipped', n: tally.shipped },
+                { key: 'in-flight', n: tally.inFlight },
+                { key: 'outstanding', n: tally.outstanding },
+            ].forEach(function (seg) {
+                const el = document.createElement('div');
+                el.className = 'coverageSectionSeg coverageSectionSeg--' + seg.key;
+                el.style.flexGrow = String(seg.n);
+                el.setAttribute('data-count', String(seg.n));
+                bar.appendChild(el);
+            });
+            group.appendChild(bar);
+        } else {
+            const heading = document.createElement('div');
+            heading.className = 'coverageDetailGroupLabel';
+            heading.textContent = 'Other aspects';
+            group.appendChild(heading);
+        }
+        sectionItems.forEach(function (it) {
+            group.appendChild(it.status === 'blocked'
+                ? buildSectionEchoRow(it)
+                : buildCoverageDetailRow(it, ctx));
+        });
+        body.appendChild(group);
+    }
+
     // Recompute the whole modal body from the LIVE queue rows and repaint the list
     // and the header counts in place. Called once on open and again on every
     // onQueueChange while the modal is mounted, so a row settling from dispatched to
@@ -1240,9 +1371,13 @@ function showCoverageDetailModal(preloadedCommitted) {
         });
         const blocked = items.filter(function (it) { return it.status === 'blocked'; });
         const manual = items.filter(function (it) { return it.process; });
-        const regular = items.filter(function (it) {
-            return !it.process && it.status !== 'blocked';
-        });
+        // Only the manual lane is partitioned off — blocked aspects stay in the
+        // section list so each one renders an echo in its home section, keeping a
+        // section's row count in step with its tally. Their live, actionable row
+        // is the pinned one in the "Waiting on you" group.
+        const grouped = groupAspectsBySection(items.filter(function (it) {
+            return !it.process;
+        }));
 
         const cov = computeCoverage(aspects, rows);
         titleText.textContent = (cov.total - cov.shipped) + ' outstanding · ' +
@@ -1254,10 +1389,14 @@ function showCoverageDetailModal(preloadedCommitted) {
         body.textContent = '';
         ctx.ticks = [];
 
-        // Blocked at the top (amber, expandable into its answer lane), then the
-        // regular lifecycle list, then the manual Git/process lane at the bottom.
+        // Blocked at the top (amber, expandable into its answer lane), then one
+        // group per rubric section letter in first-appearance order, then the
+        // manual Git/process lane at the bottom.
         appendGroup('Waiting on you', blocked, 'blocked');
-        appendGroup(blocked.length || manual.length ? 'Rubric aspects' : '', regular, null);
+        grouped.sections.forEach(function (sec) {
+            appendSection(sec.letter, sec.items);
+        });
+        appendSection(null, grouped.other);
         appendGroup('Manual · Git & process', manual, 'manual');
 
         body.scrollTop = scroll;

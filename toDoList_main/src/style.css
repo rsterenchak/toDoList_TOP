@@ -6905,10 +6905,54 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   padding-top: 10px;
 }
 
-.coverageDetailRow {
+/* One rubric section (all the aspects sharing an ID letter), headed by the bare
+   letter, a shipped/total tally and a mini bar scoped to that section. The
+   rubric parse yields IDs and labels only, so the head shows the letter — never
+   an invented section title. */
+.coverageSectionHead {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
+  margin-bottom: 1px;
+}
+.coverageSectionLetter {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--text-primary);
+}
+.coverageSectionCount {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+/* Segments are sized per paint with an inline flex-grow, as on .agentCoverageSeg. */
+.coverageSectionBar {
+  display: flex;
+  height: 3px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--bg-active);
+  margin-bottom: 3px;
+}
+.coverageSectionSeg { min-width: 0; }
+.coverageSectionSeg--shipped { background: var(--accent); }
+.coverageSectionSeg--in-flight { background: var(--text-warning); }
+.coverageSectionSeg--outstanding { background: var(--border-mid); }
+
+/* Two-line row: line one carries the dot, the ID and the status chip; line two
+   the full label, wrapping freely rather than truncating (on a 390px viewport a
+   single-line row left the label about twenty characters, which is the one part
+   that says what the aspect is). Any tick that lives INSIDE the row drops to a
+   third line. Children are placed by class, not source order — the append order
+   (dot, ID, label, status, tick, chevron) no longer matches the visual one. */
+.coverageDetailRow {
+  display: grid;
+  grid-template-columns: 8px 1fr auto auto;
+  column-gap: 8px;
+  row-gap: 3px;
+  align-items: center;
   width: 100%;
   padding: 7px 8px;
   border-radius: 6px;
@@ -6920,7 +6964,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 .coverageDetailDot {
-  flex: 0 0 auto;
+  grid-area: 1 / 1;
   width: 8px;
   height: 8px;
   border-radius: 50%;
@@ -6937,31 +6981,50 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 .coverageDetailId {
-  flex: 0 0 auto;
+  grid-area: 1 / 2;
+  justify-self: start;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 11px;
   font-weight: 600;
   color: var(--accent-text);
 }
 
-.coverageDetailSep {
-  flex: 0 0 auto;
-  color: var(--text-secondary);
-}
-
 .coverageDetailLabel {
-  flex: 1 1 auto;
+  grid-area: 2 / 2 / 3 / 4;
   min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  text-overflow: clip;
+  white-space: normal;
+  line-height: 1.4;
 }
 
+/* The status reads as a small chip on line one, beside the ID. */
 .coverageDetailStatus {
-  flex: 0 0 auto;
-  font-size: 11px;
+  grid-area: 1 / 3;
+  justify-self: end;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9.5px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-active);
+  border: 0.5px solid var(--border-mid);
   color: var(--text-secondary);
 }
+.coverageDetailRow--shipped .coverageDetailStatus {
+  color: var(--accent-text);
+  border-color: var(--accent-dim);
+}
+.coverageDetailRow--in-flight .coverageDetailStatus,
+.coverageDetailRow--blocked .coverageDetailStatus { color: var(--text-warning); }
+
+/* A tick appended directly to the row drops to its own line, so the label keeps
+   line two to itself. Scoped with the direct-child combinator: .coverageCommitTick
+   is also used inside .coverageCommitTickRow in the commit lane, which is not a
+   grid and must not inherit this placement. */
+.coverageDetailRow > .coverageCommitTick { grid-area: 3 / 2 / 4 / 5; }
 
 /* Blocked rows are amber-tinted disclosure buttons — tapping expands the waiting
    needs_words question into an answer lane below. */
@@ -6971,7 +7034,17 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: var(--text-primary);
   transition: background 0.12s ease, border-color 0.12s ease;
 }
-.coverageDetailRow--blocked .coverageDetailStatus { color: var(--text-warning); }
+
+/* A blocked aspect's echo inside its home rubric section: dimmed and inert, so
+   the section shows as many rows as its tally counts. The live row is the pinned
+   one in "Waiting on you" — this one is aria-hidden and not a button. Declared
+   after the blocked rule so it wins on the shared amber border and pointer. */
+.coverageDetailRow--echo {
+  cursor: default;
+  pointer-events: none;
+  opacity: 0.55;
+  border-color: var(--border-dim);
+}
 
 /* A blocked disclosure row paired with its confirmation tick as siblings — the
    tick <button> can't nest inside the row <button>, so they share a flex row. */
@@ -6981,8 +7054,8 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   gap: 8px;
 }
 /* min-width: 0 overrides a flex item's `auto` minimum, which would otherwise
-   hold the row at its min-content width (id + status word + chevron) and push
-   the tick off the right edge instead of letting the title ellipsize. */
+   hold the row at its min-content width and push the tick off the right edge
+   instead of letting the row shrink and its label wrap. */
 .coverageDetailConfirmable .coverageDetailRow--expandable {
   flex: 1 1 auto;
   min-width: 0;
@@ -7001,9 +7074,11 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
+/* Spans both text lines so it centres against the row as a whole, not line one. */
 .coverageDetailChevron {
-  flex: 0 0 auto;
+  grid-area: 1 / 4 / 3 / 5;
   display: inline-flex;
+  align-self: center;
   color: var(--text-secondary);
   transition: transform 0.12s ease;
 }
