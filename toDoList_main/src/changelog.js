@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-03',
-        added: [
-            "A corner drag handle on the assignment editor resizes the whole dialog on desktop, so a long assignment gets the room it needs.",
+        date: '2026-08-04',
+        fixed: [
+            "The collapse arrow in the TODO.md view is gone on phones, where tapping it did nothing, and the TODO.md sheet always opens fully expanded.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-03',
         fixed: [
             "The confirm control on a blocked rubric aspect is now a compact checkmark button, so the row fits inside the coverage breakdown on narrow screens instead of running off the right edge.",
             "The TODO.md run-status pill now stays visible when the window crosses between the mobile and desktop layouts, instead of vanishing until the run finishes.",

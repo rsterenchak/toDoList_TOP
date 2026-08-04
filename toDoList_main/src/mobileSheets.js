@@ -289,6 +289,19 @@ if (typeof document !== 'undefined' && typeof window !== 'undefined') {
 
 let viewerMobileSheetState = null;
 
+// The viewer card mounts collapsed for its inline #mainList life (on mobile
+// that inline card is just a floored launcher row). The sheet is the full
+// surface, so it always renders expanded: strip the `collapsed` flag on the
+// way in and report the prior state so the close path can put it back. The
+// card's collapse chevron is hidden on mobile, so nothing inside the sheet
+// can flip the flag while it is hosted there.
+function expandCardForViewerSheet(card) {
+    if (!card) return false;
+    const wasCollapsed = card.classList.contains('collapsed');
+    card.classList.remove('collapsed');
+    return wasCollapsed;
+}
+
 function refreshViewerMobileSheetContent() {
     if (!viewerMobileSheetState || !viewerMobileSheetState.open) return;
     const mainListDiv = document.getElementById('mainList');
@@ -304,6 +317,7 @@ function refreshViewerMobileSheetContent() {
     viewerMobileSheetState.body.innerHTML = '';
     viewerMobileSheetState.body.appendChild(liveCard);
     viewerMobileSheetState.movedCard = liveCard;
+    viewerMobileSheetState.cardWasCollapsed = expandCardForViewerSheet(liveCard);
 }
 
 export function openViewerMobileSheet(card) {
@@ -353,6 +367,7 @@ export function openViewerMobileSheet(card) {
     document.body.appendChild(backdrop);
 
     body.appendChild(card);
+    const cardWasCollapsed = expandCardForViewerSheet(card);
     const previouslyFocused = document.activeElement;
 
     viewerMobileSheetState = {
@@ -361,6 +376,7 @@ export function openViewerMobileSheet(card) {
         sheet: sheet,
         body: body,
         movedCard: card,
+        cardWasCollapsed: cardWasCollapsed,
         previouslyFocused: previouslyFocused,
         onKeydown: null,
     };
@@ -401,6 +417,12 @@ function closeViewerMobileSheet() {
         document.removeEventListener('keydown', state.onKeydown, true);
     }
     const mainListDiv = document.getElementById('mainList');
+    // Restore the collapsed flag the card carried before the sheet expanded
+    // it, so the inline card (and its collapse chevron's glyph/aria, which
+    // todoMdViewer.js owns) go back to the state they were left in.
+    if (state.movedCard && state.cardWasCollapsed) {
+        state.movedCard.classList.add('collapsed');
+    }
     // Return the viewer card to #mainList so the inline rendering owns
     // it again. placeViewerCard puts it back before the ghost spacer to
     // match its normal position below the Completed section.
