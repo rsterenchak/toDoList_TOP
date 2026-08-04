@@ -514,3 +514,26 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 8577a9c6-87ce-4f39-a3f6-bcbcf58bcd74 -->
+
+- [ ] **[HIGH]** Add a Retry triage action for runs stuck before a draft exists
+  - Type: bug
+  - Description: When `claude-triage.yml` dies before writing a verdict, `reconcileStuckTriaging` in `agentQueueStore.js` flips the row from `triaging` to `failed` with the reason "The triage sweep didn't finish for this task…". That row has no `entry_id` and no `draft`, so `buildDispatchBlock`'s retry mode computes `canRun = !!(queueRow.entry_id || draftText)` → false and mounts the RETRY button permanently disabled. The only disabled styling is `opacity: 0.6`, so it reads as a live control on both the desktop description panel and the mobile description-editor modal, and tapping it does nothing — the click handler bails on `if (btn.disabled) return`. Even if it were enabled it routes through `dispatchDraft` → `claude-run.yml`, which dispatches an entry; the wrong recovery for a row that never got one. Add a third mode that re-runs triage instead.
+  - Behavior:
+    - A STUCK row with no `entry_id` and no `draft` mounts a control labelled RETRY TRIAGE instead of RETRY, reusing the existing `.descDispatchButton--retry` variant (no new CSS).
+    - Tapping it shows "Retrying…", clears `failure_reason` (null), sets the row back to `triaging` via `listLogic.setAgentRunState`, then calls `fireTriageSweep(projectName)` — the same store-guarded sweep the row's Generate button and the ASKING answer path fire.
+    - On success the control clears on the next repaint as the row leaves STUCK (realtime + `onQueueChange`), exactly as dispatch/retry do today.
+    - If `setAgentRunState` fails, surface the inline error and restore the idle label without firing a sweep.
+    - If `fireTriageSweep` resolves `{ ok: false }`, the row is already back at `triaging`: surface "Triage didn't start — Run it from the Agent tab." inline rather than reverting the state.
+    - If `fireTriageSweep` returns `null` (a sweep is already in flight and the shared guard swallowed the call), leave the row at `triaging` and surface "A sweep is already running — this task will be picked up on the next one." The existing reaper re-marks it failed if that sweep settles without touching it.
+    - A STUCK row that DOES have an `entry_id` or a draft keeps today's RETRY behavior unchanged.
+    - Update the reaper's reason string in `reconcileStuckTriaging` to point at the new control instead of "Remove it and flag the task again to retry."
+  - Implementation notes:
+    - `buildDispatchBlock(item, queueRow, mode)` gains a fourth param `projectName`. `syncDispatchPanel` passes `toDoChild.dataset.value`; `modals.js` `renderDispatchBlock` passes `opts.projectName || ''`.
+    - Mode resolution in both hosts: for STUCK / `failed` / `no_change`, pick `'retriage'` when `!queueRow.entry_id && !(queueRow.draft || '').trim()`, else `'retry'`. The existing `data-dispatch-mode` attribute already distinguishes the mounted block, so the idempotent early return keeps working across repaints.
+    - `fireTriageSweep` is already imported in `toDoRow.js` from `agentQueueStore.js`; no new import there, and `modals.js` needs none since it mounts the shared block.
+    - The retriage branch must not call `dispatchDraft` at all.
+    - Keep the existing anchors: retriage mounts beneath the same STUCK reason block as retry (`.descEditorModalStuck` row-side, `#descEditorModalStuck` in the modal).
+  - Out of scope: the disabled-state styling of `.descDispatchButton`; any Worker or `claude-triage.yml` change; the Agent board's own retry control; per-row triage dispatch (this fires the project-wide sweep).
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/modals.js`, `toDoList_main/src/agentQueueStore.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b101c357-598b-4acb-8b31-699041db068b -->
