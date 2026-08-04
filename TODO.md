@@ -588,7 +588,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 6de6e5b5-dd4b-4579-a33f-17bec574b48e -->
 
-- [ ] **[LOW]** Drift check on inject target rows
+- [x] **[LOW]** Drift check on inject target rows — Completed: 2026-08-04
   - Type: feature
   - Description: The four rows under INJECT TARGETS are all already-onboarded repos, and preflight against them answers a different question than pre-onboard inspection: which scaffold files have gone missing since they were onboarded. `wgu-dsa-prep` returns eight missing files (it predates triage, capture, and the assignment set) while `test-repo-only` returns none. That is a per-repo drift check with no new surface required — the same `preflightRepo()` call and verdict renderer entry 1 builds, mounted on a row.
   - Behavior: Add a third icon button to each `.injectTargetRow`, left of the existing edit pencil, using `.injectTargetIconBtn` with an `aria-label` of `Check <nickname>`. On click, mint a correlation id, subscribe, and dispatch `preflightRepo(target.repo, 'auto', purpose)`. While running, swap the icon for the spinner and disable the button. On the terminal row, expand a verdict strip beneath the row inside the same container, rendered by the shared component from entry 1 in its expanded form — collapsed adds nothing here, since the row already shows the repo name. A clean result shows a single "up to date" line; drift lists the missing files as chips. The strip persists until dismissed or another Check runs on that row. Only one row check may be in flight at a time; while one runs, the other rows' Check buttons are disabled.
