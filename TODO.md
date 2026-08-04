@@ -545,9 +545,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-03
   <!-- id: fe106d57-e939-4b7a-bff7-ab0c42963c86 -->
 
-- [ ] **[MEDIUM]** Add a corner drag handle to resize the assignment edit modal on desktop
+- [x] **[MEDIUM]** Add a corner drag handle to resize the assignment edit modal on desktop
   - Type: feature
   - Description: `#assignmentEditorModal` is currently fixed at max-width:520px/max-height:86vh with overflow:hidden, so the inner textarea's native `resize: vertical` handle gets clipped by the dialog and can't actually grow the surrounding chrome. Add a visible bottom-right drag handle (diagonal grip-dot affordance, ~16x16px, `cursor: nwse-resize`, positioned absolutely on `#assignmentEditorModal` which needs `position: relative`) that resizes the whole dialog box (width and height) via pointer drag, replacing the now-redundant textarea resize with `resize: none` so only the dialog-level handle drives sizing. Constrain resizing to reasonable bounds (e.g. min ~360px/300px, max ~90vw/90vh) and gate the handle to desktop only, matching the existing `@media (max-width: 480px)` breakpoint in style.css:2075 where the handle must be hidden and the mobile max-height:92vh override left untouched. Wire the drag handler in showAssignmentEditorModal alongside the dialog's existing element construction.
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-03
   <!-- id: 70e4ad6e-f528-4592-90e8-bb52b7aa6234 -->
