@@ -4,6 +4,7 @@ import { showConfirmModal } from './modals.js';
 import { isMobileViewport } from './viewport.js';
 import { derivePhase, PHASE } from './phase.js';
 import { onQueueChange } from './agentQueueStore.js';
+import { trackDispatchedRun } from './claudeSheet.js';
 import {
     readActiveRun,
     writeActiveRun,
@@ -43,6 +44,18 @@ function isViewerEntryUnreviewed(entryId) {
         const info = listLogic.getEntryReviewInfo(entryId);
         return !!(info && info.found && !info.reviewed);
     } catch (e) { return false; }
+}
+
+// The Runs-tab title for an entry run, read off the entry row the "Run this
+// entry" button sits in. The rendered label already has the `<!-- id -->`
+// marker and the checkbox stripped, so it reads exactly as the entry does in
+// the viewer. Falls back to a generic label when the row can't be reached (the
+// button is detached, or the caller passed none).
+function runEntryTitle(btn) {
+    const row = btn && btn.closest ? btn.closest('.todoMdViewerCheckRow') : null;
+    const label = row ? row.querySelector('.todoMdViewerCheckText') : null;
+    const text = label ? label.textContent.trim() : '';
+    return text || 'Entry run';
 }
 
 // Entries reverted (merged) this session — once a completed row's change has
@@ -2043,13 +2056,25 @@ function buildTodoMdViewerCard(projectName, target) {
             });
             if (res.ok) {
                 dispatchedId = correlationId;
+                const dispatchedAt = Date.now();
                 // Persist the run under this project's key so the pill can
                 // re-attach after a project switch or full reload.
                 writeActiveRun(projectName, {
                     correlationId: correlationId,
                     project: projectName,
                     target: target ? { repo: target.repo, file_path: target.file_path } : null,
-                    dispatchedAt: Date.now(),
+                    dispatchedAt: dispatchedAt,
+                });
+                // Same correlation id, second surface: give the chat sheet's
+                // Runs tab a live QUEUED row for this dispatch too, so a run
+                // started here is visible there while it's in flight instead of
+                // appearing only once its entry is checked off.
+                trackDispatchedRun({
+                    correlationId: correlationId,
+                    title: 'Backlog run',
+                    repo: target ? target.repo : null,
+                    project: projectName,
+                    dispatchedAt: dispatchedAt,
                 });
                 showInjectToast('Backlog run dispatched');
             } else {
@@ -2103,11 +2128,24 @@ function buildTodoMdViewerCard(projectName, target) {
             });
             if (res.ok) {
                 dispatchedId = correlationId;
+                const dispatchedAt = Date.now();
                 writeActiveRun(projectName, {
                     correlationId: correlationId,
                     project: projectName,
                     target: target ? { repo: target.repo, file_path: target.file_path } : null,
-                    dispatchedAt: Date.now(),
+                    dispatchedAt: dispatchedAt,
+                });
+                // Mirror the dispatch into the chat sheet's Runs tab (see
+                // runBacklog). Entry runs carry their entry id, so the record
+                // joins the shipped entry rather than duplicating it, and the
+                // row becomes iterable/revertable once it lands.
+                trackDispatchedRun({
+                    correlationId: correlationId,
+                    entryId: entryId,
+                    title: runEntryTitle(btn),
+                    repo: target ? target.repo : null,
+                    project: projectName,
+                    dispatchedAt: dispatchedAt,
                 });
                 showInjectToast('Entry run dispatched');
             } else {
