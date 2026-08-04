@@ -551,3 +551,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: 2026-08-03
   <!-- id: 70e4ad6e-f528-4592-90e8-bb52b7aa6234 -->
+
+- [ ] **[MEDIUM]** Hide the collapse/expand toggle in the TODO.md viewer strip on mobile
+  - Type: bug
+  - Description: On mobile, `#todoMdViewerStrip` shows a collapse/expand button, but the sheet is already always expanded automatically when opened, making the toggle redundant and confusing since it has no visible effect. Hide the collapse/expand button on mobile (matching how it's presumably already hidden on desktop), and ensure the sheet always renders expanded on open for mobile viewports. Likely lives in `todoMdViewer.js` with corresponding mobile breakpoint rules in `style.css`.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e8ac91d1-d8b2-4711-bc44-0c48a73f1d50 -->
