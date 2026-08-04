@@ -1929,9 +1929,19 @@ body {
 }
 
 #assignmentEditorModal {
-  width: 100%;
-  max-width: 520px;
-  max-height: 86vh;
+  /* Sizing runs through two custom properties so the bottom-right drag handle
+     can grow the panel live. Unset (the default), the fallbacks reproduce the
+     original 100%/520px-wide, 86vh-tall shell; once a drag sets them, each pair
+     pins width and height to the dragged size. Custom properties rather than
+     inline width/height because the phone media query below has to be able to
+     discard a desktop-dragged size wholesale, and an inline declaration would
+     outrank it. */
+  width: var(--assignment-editor-width, 100%);
+  max-width: var(--assignment-editor-width, 520px);
+  height: var(--assignment-editor-height, auto);
+  max-height: var(--assignment-editor-height, 86vh);
+  /* Positioning context for the absolutely-placed resize grip. */
+  position: relative;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
@@ -2011,7 +2021,10 @@ body {
   flex: 1 1 auto;
   width: 100%;
   min-height: 220px;
-  resize: vertical;
+  /* No native grip: the dialog clips its overflow, so the textarea's own handle
+     could never grow the chrome around it. The dialog-level handle is the one
+     affordance that actually sizes this editor. */
+  resize: none;
   /* 16px floor against iOS Safari auto-zoom (CLAUDE.md mobile-input rule). */
   font-size: 16px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -2072,6 +2085,43 @@ body {
 }
 .assignmentEditorModalBtnPrimary:hover { background: var(--accent-strong, var(--accent)); }
 
+/* Once a drag has sized the dialog the user's height is authoritative, so the
+   textarea's 220px floor stops being the panel's effective minimum — otherwise
+   it would hold the column open and the clipped footer would vanish under the
+   dialog's `overflow: hidden` on the way down. */
+#assignmentEditorModal.assignmentEditorModalResized #assignmentEditorModalTextarea {
+  min-height: 0;
+}
+
+/* Bottom-right resize grip — three dots stepped along the corner diagonal, the
+   conventional "drag me" affordance. Desktop only (hidden under the phone
+   breakpoint below); touch-action:none so a pen/trackpad drag resizes rather
+   than scrolls. */
+#assignmentEditorModalResize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 16px;
+  height: 16px;
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 1;
+  background-image:
+    radial-gradient(circle 1.5px at 12px 12px, var(--text-secondary) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 12px 7px, var(--text-secondary) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 7px 12px, var(--text-secondary) 99%, transparent 100%);
+  transition: opacity 0.12s ease;
+  opacity: 0.65;
+}
+#assignmentEditorModalResize:hover,
+#assignmentEditorModalResize.dragging {
+  opacity: 1;
+  background-image:
+    radial-gradient(circle 1.5px at 12px 12px, var(--accent-text) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 12px 7px, var(--accent-text) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 7px 12px, var(--accent-text) 99%, transparent 100%);
+}
+
 @media (max-width: 480px) {
   #descEditorModal {
     max-height: 92vh;
@@ -2091,7 +2141,21 @@ body {
     padding: 10px 10px;
   }
   #assignmentEditorModal {
+    /* Drop any size the desktop drag handle wrote: resizing is desktop-only, so
+       a dialog dragged wide before the viewport narrowed falls back to the phone
+       shell rather than overflowing it. */
+    width: 100%;
+    max-width: 520px;
+    height: auto;
     max-height: 92vh;
+  }
+  /* ...and with it, the textarea floor the resized state had released. */
+  #assignmentEditorModal.assignmentEditorModalResized #assignmentEditorModalTextarea {
+    min-height: 220px;
+  }
+  /* The grip itself is desktop-only — no drag affordance on touch layouts. */
+  #assignmentEditorModalResize {
+    display: none;
   }
   .assignmentEditorModalBtn {
     font-size: 14px;

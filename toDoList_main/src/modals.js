@@ -940,6 +940,86 @@ function flashCopyFeedback(btn) {
 }
 
 
+// ── ASSIGNMENT EDITOR RESIZE HANDLE ──
+// The assignment dialog clips its overflow, so the textarea's native grip could
+// never grow the chrome around it — dragging it just pushed against a fixed
+// shell. This handle resizes the whole dialog instead: a pointer drag maps the
+// cursor delta onto the panel's own width and height, written as the
+// --assignment-editor-width / --assignment-editor-height custom properties the
+// CSS sizes the dialog from (inline width/height would outrank the phone media
+// query that has to discard a desktop-dragged size). Desktop only — the CSS
+// hides the grip under the 480px breakpoint and the pointerdown guard matches
+// it, so a touch layout never enters the resized state.
+const ASSIGNMENT_EDITOR_MIN_WIDTH = 360;
+const ASSIGNMENT_EDITOR_MIN_HEIGHT = 300;
+// Matches the `@media (max-width: 480px)` assignment-editor block in style.css.
+const ASSIGNMENT_EDITOR_MOBILE_MAX = 480;
+
+function clampAssignmentEditorWidth(px) {
+    // The floor wins on a viewport too narrow to honour both bounds — a dialog
+    // below the minimum is unusable, one slightly past 90vw merely tight.
+    return Math.max(ASSIGNMENT_EDITOR_MIN_WIDTH, Math.min(window.innerWidth * 0.9, px));
+}
+
+function clampAssignmentEditorHeight(px) {
+    return Math.max(ASSIGNMENT_EDITOR_MIN_HEIGHT, Math.min(window.innerHeight * 0.9, px));
+}
+
+function setupAssignmentEditorResize(dialog, grip) {
+    if (!dialog || !grip) return;
+    let dragging = false;
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let startWidth = 0;
+    let startHeight = 0;
+
+    function applySize(width, height) {
+        dialog.style.setProperty('--assignment-editor-width', width + 'px');
+        dialog.style.setProperty('--assignment-editor-height', height + 'px');
+    }
+
+    grip.addEventListener('pointerdown', function(e) {
+        if (window.innerWidth <= ASSIGNMENT_EDITOR_MOBILE_MAX) return;
+        const rect = dialog.getBoundingClientRect();
+        dragging = true;
+        pointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        startWidth = rect.width;
+        startHeight = rect.height;
+        // Pin the current size before the first move, so the dialog can't jump
+        // when the resized state releases the textarea's min-height floor.
+        dialog.classList.add('assignmentEditorModalResized');
+        applySize(clampAssignmentEditorWidth(startWidth), clampAssignmentEditorHeight(startHeight));
+        grip.classList.add('dragging');
+        try { grip.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+        e.preventDefault();
+    });
+
+    grip.addEventListener('pointermove', function(e) {
+        if (!dragging) return;
+        applySize(
+            clampAssignmentEditorWidth(startWidth + (e.clientX - startX)),
+            clampAssignmentEditorHeight(startHeight + (e.clientY - startY))
+        );
+        e.preventDefault();
+    });
+
+    function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        grip.classList.remove('dragging');
+        try {
+            if (pointerId != null) grip.releasePointerCapture(pointerId);
+        } catch (err) { /* already released */ }
+        pointerId = null;
+    }
+
+    grip.addEventListener('pointerup', endDrag);
+    grip.addEventListener('pointercancel', endDrag);
+}
+
 // ── ASSIGNMENT EDITOR MODAL ──
 // Full editor for a routed repo's `assignment.md`, opened by tapping the AGENT
 // board's assignment card. Mirrors showDescEditorModal's header/textarea/actions
@@ -1039,12 +1119,24 @@ export function showAssignmentEditorModal(target, content, sha, options) {
     actions.appendChild(cancelBtn);
     actions.appendChild(saveBtn);
 
+    // Corner drag handle. Pointer-only by nature, so it carries no accessible
+    // name — keyboard and screen-reader users lose nothing, since the dialog's
+    // default size and its internally-scrolling textarea already reach all of
+    // the content the drag would reveal.
+    const resizeGrip = document.createElement('div');
+    resizeGrip.id = 'assignmentEditorModalResize';
+    resizeGrip.setAttribute('aria-hidden', 'true');
+    resizeGrip.title = 'Drag to resize';
+
     dialog.appendChild(header);
     dialog.appendChild(body);
     dialog.appendChild(status);
     dialog.appendChild(actions);
+    dialog.appendChild(resizeGrip);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
+
+    setupAssignmentEditorResize(dialog, resizeGrip);
 
     const previouslyFocused = document.activeElement;
 
