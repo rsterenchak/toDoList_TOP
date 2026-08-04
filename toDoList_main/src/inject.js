@@ -10,6 +10,7 @@
 import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { supabase } from './supabaseClient.js';
+import { isMobileViewport } from './viewport.js';
 import { setShippedMarkerRefresher, setDispatchReconcilerDeps, setAgentAvailabilityDeps } from './agentQueueStore.js';
 
 const URL_KEY              = 'todoapp_injectWorkerUrl';
@@ -1733,6 +1734,53 @@ export async function onboardRepo(targetRepo, shape, purpose) {
     }
 }
 
+// Fire the Worker's preflight route — the same `onboard.yml`, dispatched in
+// report-only mode (ONBOARD_PREFLIGHT=1) so it writes nothing and returns what
+// it *would* do: the resolved shape, the derived commands, a `create[]` list of
+// missing scaffold files, and a `warnings[]` array. Mirrors onboardRepo's
+// payload and error vocabulary, plus the `correlation_id` the caller mints so it
+// can watch the run's `run_outputs` row over subscribeRunOutputs. `purpose` is
+// sent explicitly rather than left to the Worker's `personal` default — an
+// assignment repo expects five more scaffold files, so a defaulted purpose
+// under-reports `create[]`. `shape` goes through as selected; 'auto' is valid.
+export async function preflightRepo(targetRepo, shape, purpose, correlationId) {
+    try {
+        const res = await postToWorker({
+            preflight: true,
+            target_repo: targetRepo,
+            shape: shape || 'auto',
+            purpose: purpose === 'assignment' ? 'assignment' : 'personal',
+            correlation_id: correlationId,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+// Pull the preflight report object out of a terminal run's stdout. The workflow
+// prints it as JSON, but a CI log can carry surrounding noise, so fall back to
+// the outermost `{...}` slice before giving up. Returns null when there's
+// nothing parseable — the caller renders a quiet failure rather than raw JSON.
+function parsePreflightReport(stdout) {
+    const text = String(stdout || '').trim();
+    if (!text) return null;
+    function asObject(candidate) {
+        try {
+            const parsed = JSON.parse(candidate);
+            return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
+        } catch (e) {
+            return null;
+        }
+    }
+    const direct = asObject(text);
+    if (direct) return direct;
+    const start = text.indexOf('{');
+    const end = text.lastIndexOf('}');
+    if (start < 0 || end <= start) return null;
+    return asObject(text.slice(start, end + 1));
+}
+
 // Re-render the settings panel's target rows if it's still mounted, so a
 // resolved/failed onboard placeholder is replaced without reaching into the
 // modal closure. No-op when the panel is closed — pendingOnboards still holds
@@ -1898,6 +1946,19 @@ function showOnboardModal(options) {
     shapeWrap.appendChild(shapeSelect);
     body.appendChild(shapeWrap);
 
+    // Preflight verdict block — empty and hidden until Check runs. Sits below
+    // the shape field so the report reads underneath the inputs that produced
+    // it. Collapsed it's one strip; expanding reveals the warnings and the
+    // missing-scaffold paths.
+    const verdict = document.createElement('div');
+    verdict.id = 'injectOnboardVerdict';
+    verdict.hidden = true;
+    body.appendChild(verdict);
+
+    // The three field wrappers, hidden together when an expanded verdict takes
+    // the sub-modal over on a phone (see setMobileTakeover).
+    const fieldWraps = [repoWrap, purposeWrap, shapeWrap];
+
     const actions = document.createElement('div');
     actions.id = 'injectOnboardActions';
 
@@ -1907,6 +1968,15 @@ function showOnboardModal(options) {
     cancelBtn.className = 'injectSettingsBtn';
     cancelBtn.textContent = 'Cancel';
 
+    // Secondary, non-destructive Check — dispatches the same onboard.yml in
+    // report-only mode so a repo can be inspected before it's touched. Onboard
+    // stays enabled regardless of what the verdict says.
+    const checkBtn = document.createElement('button');
+    checkBtn.id = 'injectOnboardCheck';
+    checkBtn.type = 'button';
+    checkBtn.className = 'injectSettingsBtn';
+    checkBtn.textContent = 'Check';
+
     const onboardBtn = document.createElement('button');
     onboardBtn.id = 'injectOnboardSubmit';
     onboardBtn.type = 'button';
@@ -1914,6 +1984,7 @@ function showOnboardModal(options) {
     onboardBtn.innerHTML = onboardRocketSvg() + '<span>Onboard</span>';
 
     actions.appendChild(cancelBtn);
+    actions.appendChild(checkBtn);
     actions.appendChild(onboardBtn);
 
     dialog.appendChild(header);
@@ -1922,10 +1993,27 @@ function showOnboardModal(options) {
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
+    // The realtime channel for an in-flight Check. Owned here and torn down on
+    // the terminal row, on a re-run, on a dispatch failure, and on close() —
+    // the same discipline captureCard.js follows, so a Check left mid-flight
+    // can't leak a subscription when the sub-modal goes away.
+    let preflightChannel = null;
+    let lastCheckedRepo = '';
+    function disposePreflightChannel() {
+        if (!preflightChannel) return;
+        try {
+            if (supabase && typeof supabase.removeChannel === 'function') {
+                supabase.removeChannel(preflightChannel);
+            }
+        } catch (e) { /* best-effort teardown */ }
+        preflightChannel = null;
+    }
+
     let closed = false;
     function close() {
         if (closed) return;
         closed = true;
+        disposePreflightChannel();
         document.removeEventListener('keydown', onKeydown, true);
         if (backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
     }
@@ -1947,20 +2035,221 @@ function showOnboardModal(options) {
     });
     document.addEventListener('keydown', onKeydown, true);
 
-    // Validate → dispatch. Trim, strip a trailing `.git`, require `owner/name`
-    // (one slash, no spaces). On invalid, show the inline error and don't
-    // dispatch.
-    async function onSubmit() {
+    // Shared field validation for both actions: trim, strip a trailing `.git`,
+    // require `owner/name` (one slash, no spaces). Returns '' and shows the
+    // inline error when the field is unusable.
+    function readValidRepo() {
         repoErr.textContent = '';
         const repo = repoInput.value.trim().replace(/\.git$/i, '');
         if (!repo) {
             repoErr.textContent = 'Repository is required';
-            return;
+            return '';
         }
         if (!/^[^\s/]+\/[^\s/]+$/.test(repo)) {
             repoErr.textContent = 'Use the format owner/name';
+            return '';
+        }
+        return repo;
+    }
+
+    // ── PREFLIGHT VERDICT RENDERING ──
+
+    // On a phone an expanded verdict — a warning row plus eight file chips —
+    // would push #injectOnboardActions below the fold, so it replaces the form
+    // instead of appending to it. Above the breakpoint the form stays put and
+    // the verdict expands inline.
+    function setMobileTakeover(on) {
+        verdict.classList.toggle('injectOnboardVerdict--full', on);
+        fieldWraps.forEach(function(wrap) { wrap.hidden = on; });
+    }
+
+    // Empty the block, reveal it, and restore the form — every render path
+    // starts here so a re-run replaces the prior verdict outright.
+    function resetVerdict() {
+        verdict.innerHTML = '';
+        verdict.hidden = false;
+        setMobileTakeover(false);
+    }
+
+    // Check glyph when the report is clean, warning triangle when it isn't.
+    // Inline SVG, no icon library (CLAUDE.md).
+    function verdictGlyph(clean) {
+        const glyph = document.createElement('span');
+        glyph.className = 'injectOnboardVerdictGlyph'
+            + (clean ? ' injectOnboardVerdictGlyph--ok' : ' injectOnboardVerdictGlyph--warn');
+        glyph.setAttribute('aria-hidden', 'true');
+        glyph.innerHTML = clean
+            ? '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8.4l3.3 3.3L13 4.9"/></svg>'
+            : '<svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2.3l6 11.2H2z"/><path d="M8 6.5v3.2M8 11.5v.1"/></svg>';
+        return glyph;
+    }
+
+    // A non-interactive strip — used for the running and failed states, which
+    // have nothing to expand.
+    function renderVerdictStatic(leading, text) {
+        resetVerdict();
+        const strip = document.createElement('div');
+        strip.className = 'injectOnboardVerdictStrip injectOnboardVerdictStrip--static';
+        strip.appendChild(leading);
+        const label = document.createElement('span');
+        label.className = 'injectOnboardVerdictRepo';
+        label.textContent = text;
+        strip.appendChild(label);
+        verdict.appendChild(strip);
+    }
+
+    function renderVerdictRunning() {
+        const spinner = document.createElement('span');
+        spinner.className = 'injectOnboardSpinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        renderVerdictStatic(spinner, 'Checking ' + lastCheckedRepo + '…');
+    }
+
+    function renderVerdictError(reason) {
+        renderVerdictStatic(verdictGlyph(false), reason || 'Check didn’t complete');
+    }
+
+    // The terminal render: a collapsed strip summarising the report, and an
+    // expandable section listing each warning and each missing scaffold file.
+    function renderVerdictReport(report) {
+        const warnings = Array.isArray(report.warnings) ? report.warnings.filter(Boolean) : [];
+        const create = Array.isArray(report.create) ? report.create.filter(Boolean) : [];
+        resetVerdict();
+
+        const strip = document.createElement('button');
+        strip.type = 'button';
+        strip.className = 'injectOnboardVerdictStrip';
+        strip.setAttribute('aria-expanded', 'false');
+        strip.appendChild(verdictGlyph(warnings.length === 0));
+
+        const repoName = document.createElement('span');
+        repoName.className = 'injectOnboardVerdictRepo';
+        repoName.textContent = String(report.repo || lastCheckedRepo || '');
+        strip.appendChild(repoName);
+
+        // The Worker resolves `auto` to a real shape, so the report's value is
+        // the interesting one; the selected value is only a fallback.
+        const shapeChip = document.createElement('span');
+        shapeChip.className = 'injectOnboardVerdictShape';
+        shapeChip.textContent = String(report.shape || shapeSelect.value || 'auto');
+        strip.appendChild(shapeChip);
+
+        const purposeText = document.createElement('span');
+        purposeText.className = 'injectOnboardVerdictPurpose';
+        purposeText.textContent = String(report.purpose || selectedPurpose);
+        strip.appendChild(purposeText);
+
+        if (warnings.length) {
+            const warnCount = document.createElement('span');
+            warnCount.className = 'injectOnboardVerdictCount injectOnboardVerdictCount--warn';
+            warnCount.textContent = warnings.length + ' warn';
+            strip.appendChild(warnCount);
+        }
+        if (create.length) {
+            const missingCount = document.createElement('span');
+            missingCount.className = 'injectOnboardVerdictCount injectOnboardVerdictCount--missing';
+            missingCount.textContent = create.length + ' missing';
+            strip.appendChild(missingCount);
+        }
+        verdict.appendChild(strip);
+
+        const expanded = document.createElement('div');
+        expanded.className = 'injectOnboardVerdictExpanded';
+        expanded.hidden = true;
+
+        // Only shown while the expanded verdict has taken the sub-modal over on
+        // a phone — it's the way back to the form the desktop layout never hides.
+        const backBtn = document.createElement('button');
+        backBtn.type = 'button';
+        backBtn.className = 'injectOnboardVerdictBack';
+        backBtn.textContent = '‹ Back to the form';
+        backBtn.hidden = true;
+        expanded.appendChild(backBtn);
+
+        warnings.forEach(function(text) {
+            const row = document.createElement('div');
+            row.className = 'injectOnboardVerdictWarning';
+            row.textContent = String(text);
+            expanded.appendChild(row);
+        });
+        if (create.length) {
+            const chips = document.createElement('div');
+            chips.className = 'injectOnboardVerdictChips';
+            create.forEach(function(path) {
+                const chip = document.createElement('span');
+                chip.className = 'injectOnboardVerdictChip';
+                chip.textContent = String(path);
+                chips.appendChild(chip);
+            });
+            expanded.appendChild(chips);
+        }
+        if (!warnings.length && !create.length) {
+            const clean = document.createElement('div');
+            clean.className = 'injectOnboardVerdictClean';
+            clean.textContent = 'Nothing missing and no warnings.';
+            expanded.appendChild(clean);
+        }
+        verdict.appendChild(expanded);
+
+        function setExpanded(on) {
+            expanded.hidden = !on;
+            strip.setAttribute('aria-expanded', on ? 'true' : 'false');
+            const takeover = on && isMobileViewport();
+            backBtn.hidden = !takeover;
+            setMobileTakeover(takeover);
+        }
+        strip.addEventListener('click', function() { setExpanded(expanded.hidden); });
+        backBtn.addEventListener('click', function() { setExpanded(false); });
+    }
+
+    // Live `run_outputs` rows for the in-flight Check. `running` spins; the
+    // terminal row carries the report on stdout, tears the channel down, and
+    // re-enables Check. Any other status is ignored so a spurious event can't
+    // blank a rendered verdict.
+    function onPreflightRow(row) {
+        if (!row) return;
+        if (row.status === 'running') {
+            renderVerdictRunning();
             return;
         }
+        if (row.status !== 'done' && row.status !== 'failed') return;
+        disposePreflightChannel();
+        checkBtn.disabled = false;
+        const report = parsePreflightReport(row.stdout);
+        if (report) renderVerdictReport(report);
+        else renderVerdictError('Check didn’t return a readable report');
+    }
+
+    // Validate → subscribe → dispatch the report-only run. Nothing here touches
+    // the repo, and Onboard is never disabled — Check is optional.
+    async function onCheck() {
+        const repo = readValidRepo();
+        if (!repo) return;
+        // A re-run replaces the prior verdict, including its subscription.
+        disposePreflightChannel();
+        lastCheckedRepo = repo;
+        checkBtn.disabled = true;
+        renderVerdictRunning();
+        const correlationId = mintEntryId();
+        // Subscribe BEFORE dispatching so the Worker's insert of the `running`
+        // row can't land before we're listening.
+        preflightChannel = subscribeRunOutputs(correlationId, onPreflightRow);
+        const res = await preflightRepo(repo, shapeSelect.value, selectedPurpose, correlationId);
+        if (!res || res.ok === false) {
+            disposePreflightChannel();
+            checkBtn.disabled = false;
+            renderVerdictError((res && res.reason) || 'Check failed');
+        }
+    }
+
+    checkBtn.addEventListener('click', onCheck);
+
+    // Validate → dispatch. Trim, strip a trailing `.git`, require `owner/name`
+    // (one slash, no spaces). On invalid, show the inline error and don't
+    // dispatch.
+    async function onSubmit() {
+        const repo = readValidRepo();
+        if (!repo) return;
         onboardBtn.disabled = true;
         const res = await onboardRepo(repo, shapeSelect.value, selectedPurpose);
         if (res && res.ok && res.dispatched) {

@@ -20672,6 +20672,143 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   gap: 6px;
 }
 
+/* ── ONBOARD PREFLIGHT VERDICT ──
+   Report-only Check renders below the shape field. Collapsed it's one tappable
+   strip; expanding reveals the warning rows and the missing-scaffold chips.
+   Every toggled piece carries its own `[hidden]` guard — the author-level
+   `display` declarations here (and on .injectFieldLabel) otherwise beat the
+   UA's [hidden] rule and the block would stay visible. */
+#injectOnboardVerdict {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#injectOnboardVerdict[hidden] { display: none !important; }
+#injectOnboardBody .injectFieldLabel[hidden] { display: none !important; }
+
+/* Collapsed strip. A button when there's a report to expand, a plain div for
+   the running and failed states — both share the layout. */
+.injectOnboardVerdictStrip {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.injectOnboardVerdictStrip--static { cursor: default; }
+.injectOnboardVerdictStrip:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.injectOnboardVerdictGlyph {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+}
+.injectOnboardVerdictGlyph--ok { color: var(--accent); }
+.injectOnboardVerdictGlyph--warn { color: #ffbd5e; }
+.injectOnboardVerdictRepo {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-weight: 600;
+}
+.injectOnboardVerdictShape {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 0.5px solid var(--border-bright);
+  color: var(--text-secondary);
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+}
+.injectOnboardVerdictPurpose {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.injectOnboardVerdictCount {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 600;
+}
+.injectOnboardVerdictCount--warn { color: #ffbd5e; }
+.injectOnboardVerdictCount--missing { color: var(--accent); }
+
+/* Expanded section — one amber left-bordered row per warning, then the missing
+   scaffold paths as accent chips. */
+.injectOnboardVerdictExpanded {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.injectOnboardVerdictExpanded[hidden] { display: none !important; }
+.injectOnboardVerdictWarning {
+  padding: 6px 8px;
+  border-left: 2px solid #ffbd5e;
+  background: rgba(255, 189, 94, 0.07);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.injectOnboardVerdictChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.injectOnboardVerdictChip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 0.5px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.injectOnboardVerdictClean {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+.injectOnboardVerdictBack {
+  align-self: flex-start;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.injectOnboardVerdictBack:hover { color: var(--text-primary); }
+.injectOnboardVerdictBack[hidden] { display: none !important; }
+
+/* Mobile takeover: below 1024px an expanded verdict replaces the form rather
+   than appending to it, so #injectOnboardActions stays above the fold. The
+   field wrappers are hidden in JS; this bounds the verdict itself so a long
+   report scrolls inside the modal's 92vh cap instead of pushing past it. */
+.injectOnboardVerdict--full {
+  max-height: 62vh;
+  overflow-y: auto;
+}
+
 
 /* ── INJECT PROJECT ROUTING ──
    One row per project with a target dropdown. Autosaves on change with
