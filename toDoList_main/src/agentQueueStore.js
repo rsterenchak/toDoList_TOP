@@ -996,7 +996,9 @@ function finishSweep() {
 // a given row, that row is left at 'triaging' indefinitely. Once the tracked run is
 // confirmed finished, flip each still-'triaging' row for the swept project to a visible
 // 'failed' state (surfaced in the Stuck bucket) with an explanatory reason, so the user
-// can remove it and flag the task again rather than stall unseen. The queue is read fresh
+// can re-run triage from the row's Retry triage control rather than stall unseen — that
+// control is the recovery the reason names, since such a row has no entry and no draft
+// and so has nothing a dispatch could ship. The queue is read fresh
 // (not the possibly-stale render cache) so a row the sweep DID resolve is never clobbered,
 // and the board repaints only when the swept project is still the one on screen.
 async function reconcileStuckTriaging(projectName) {
@@ -1011,7 +1013,7 @@ async function reconcileStuckTriaging(projectName) {
     for (let i = 0; i < stuck.length; i++) {
         const res = await listLogic.setAgentRunState(stuck[i].id, {
             state: 'failed',
-            failure_reason: 'The triage sweep didn’t finish for this task. Remove it and flag the task again to retry.',
+            failure_reason: 'The triage sweep didn’t finish for this task. Use Retry triage to run it again.',
         });
         if (res && res.ok) changedAny = true;
     }

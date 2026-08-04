@@ -917,10 +917,14 @@ function syncStuckPanel(toDoChild, item) {
 // next repaint, so nothing polls. In flight the button shows a pending label; a
 // failure surfaces inline beneath it without losing the panel's state.
 //
-// `mode` is 'dispatch' (drafted) or 'retry' (stuck). Retry can proceed on the
-// stored entry_id alone (the marker is already in TODO.md); Dispatch needs the
-// generated draft text to inject — the same empty-case guard the board applies.
-export function buildDispatchBlock(item, queueRow, mode) {
+// `mode` is 'dispatch' (drafted), 'retry' (stuck), or 'retriage' (stuck with
+// nothing to dispatch). Retry can proceed on the stored entry_id alone (the marker
+// is already in TODO.md); Dispatch needs the generated draft text to inject — the
+// same empty-case guard the board applies. Retriage needs neither: it re-runs
+// triage rather than shipping an entry (see isRetriageRow), so it never touches
+// dispatchDraft and takes `projectName` to fire the project-wide sweep.
+export function buildDispatchBlock(item, queueRow, mode, projectName) {
+    const isRetriage = mode === 'retriage';
     const isRetry = mode === 'retry';
     const block = document.createElement('div');
     block.className = 'descDispatchBlock';
@@ -938,38 +942,48 @@ export function buildDispatchBlock(item, queueRow, mode) {
 
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'descDispatchButton' + (isRetry ? ' descDispatchButton--retry' : '');
-    const idleLabel = isRetry ? 'Retry' : 'Dispatch';
-    const pendingLabel = isRetry ? 'Retrying…' : 'Dispatching…';
+    btn.className = 'descDispatchButton' + ((isRetry || isRetriage) ? ' descDispatchButton--retry' : '');
+    const idleLabel = isRetriage ? 'Retry triage' : (isRetry ? 'Retry' : 'Dispatch');
+    const pendingLabel = (isRetry || isRetriage) ? 'Retrying…' : 'Dispatching…';
     btn.textContent = idleLabel;
     actions.appendChild(btn);
     block.appendChild(actions);
 
     const draftText = (queueRow.draft || '').trim();
     // Retry proceeds on the stored entry_id alone; Dispatch needs the draft text.
-    const canRun = isRetry ? !!(queueRow.entry_id || draftText) : !!draftText;
+    // Retriage needs neither — the sweep is what produces them.
+    const canRun = isRetriage ? true
+        : (isRetry ? !!(queueRow.entry_id || draftText) : !!draftText);
     btn.disabled = !canRun;
 
     function fail(message) {
         btn.disabled = !canRun;
         btn.classList.remove('is-pending');
         btn.textContent = idleLabel;
-        errorEl.textContent = message
-            || (isRetry ? 'Could not retry. Try again.' : 'Could not dispatch. Try again.');
+        errorEl.textContent = message || (isRetriage ? 'Could not retry triage. Try again.'
+            : (isRetry ? 'Could not retry. Try again.' : 'Could not dispatch. Try again.'));
+        errorEl.hidden = false;
+    }
+
+    // Surface a message WITHOUT reverting the button or the row's state — used by
+    // the retriage path once the row is already back at `triaging`. Restoring the
+    // idle label there would invite a second sweep for a row that is already queued.
+    function note(message) {
+        errorEl.textContent = message;
         errorEl.hidden = false;
     }
 
     btn.addEventListener('click', function (e) {
         e.stopPropagation();
         if (btn.disabled) return;
+        // Retriage never reaches the draft guard or dispatchDraft — the row it
+        // mounts on has no entry and no draft, which is exactly why it re-runs
+        // triage instead of dispatching one.
+        if (isRetriage) { startPending(); runRetriage(); return; }
         // Guard the empty case the board guards: no draft to dispatch fails with a
         // message rather than dispatching nothing.
         if (!isRetry && !draftText) { fail('No draft to dispatch.'); return; }
-        errorEl.hidden = true;
-        errorEl.textContent = '';
-        btn.disabled = true;
-        btn.classList.add('is-pending');
-        btn.textContent = pendingLabel;
+        startPending();
         Promise.resolve(dispatchDraft(queueRow, draftText, queueRow.entry_id)).then(function (res) {
             if (res && res.ok) {
                 // The shared queue store's realtime subscription moves the row on
@@ -982,14 +996,66 @@ export function buildDispatchBlock(item, queueRow, mode) {
         });
     });
 
+    function startPending() {
+        errorEl.hidden = true;
+        errorEl.textContent = '';
+        btn.disabled = true;
+        btn.classList.add('is-pending');
+        btn.textContent = pendingLabel;
+    }
+
+    // Re-run triage for a row whose sweep died before it wrote a verdict. The row
+    // goes back to `triaging` FIRST (clearing the reaper's failure reason), then the
+    // project-wide sweep fires through the store's shared guard — the same call the
+    // row's Generate button and the ASKING answer path make. Once the state write
+    // lands the row has left STUCK, so a sweep that never starts is surfaced inline
+    // rather than rolled back: the reaper re-marks it failed if the sweep it is
+    // waiting on settles without touching it.
+    function runRetriage() {
+        Promise.resolve(listLogic.setAgentRunState(queueRow.id, {
+            state: 'triaging',
+            failure_reason: null,
+        })).then(function (res) {
+            if (!res || !res.ok) { fail(res && res.error); return; }
+            return Promise.resolve(fireTriageSweep(projectName)).then(function (tr) {
+                // A null result means the store's in-flight guard swallowed the
+                // call — a sweep is already running and will pick this row up.
+                if (tr == null) {
+                    note('A sweep is already running — this task will be picked up on the next one.');
+                    return;
+                }
+                if (tr.ok === false) {
+                    note('Triage didn’t start — Run it from the Agent tab.');
+                }
+                // Otherwise the row is triaging and this action clears on the next
+                // repaint, exactly as dispatch and retry do.
+            });
+        }).catch(function () {
+            fail('Could not retry triage. Try again.');
+        });
+    }
+
     return block;
+}
+
+
+// A STUCK row with neither a stored entry marker nor a generated draft has nothing
+// for dispatchDraft to ship — its triage run died before writing a verdict, so
+// buildDispatchBlock's Retry would mount permanently disabled (canRun is false) and
+// even enabled would dispatch claude-run.yml, the wrong recovery for a row that
+// never got an entry. Those rows take the retriage mode instead. Shared by both
+// hosts (the row panel and the mobile modal) so the two can never disagree about
+// which control a stuck row gets.
+export function isRetriageRow(queueRow) {
+    return !!queueRow && !queueRow.entry_id && !((queueRow.draft || '').trim());
 }
 
 
 // Keep a row's open description panel in sync with its DRAFTED / STUCK phase —
 // mounts a Dispatch action beneath the generated entry text when the row's linked
-// agent_queue row is `drafted`, and a Retry action beneath the STUCK failure-reason
-// block when it is `failed` / `no_change`; removes the action in every other phase.
+// agent_queue row is `drafted`, and a Retry (or Retry triage, when the row has
+// neither an entry nor a draft) action beneath the STUCK failure-reason block when
+// it is `failed` / `no_change`; removes the action in every other phase.
 // Mirrors syncAskingPanel / syncStuckPanel: open-panel guard, idempotent early
 // return (keep the mounted block if it already matches this row + mode so a live
 // sweep doesn't thrash the DOM or drop an in-flight button), and a
@@ -1002,16 +1068,19 @@ function syncDispatchPanel(toDoChild, item) {
     if (!panel) return;
     const existing = panel.querySelector('.descDispatchBlock');
     const phase = item && item.id ? derivePhase(item) : PHASE.NONE;
-    const mode = phase === PHASE.DRAFTED ? 'dispatch'
+    const baseMode = phase === PHASE.DRAFTED ? 'dispatch'
         : (phase === PHASE.STUCK ? 'retry' : null);
-    const queueRow = mode ? getQueueRowForTodo(item.id) : null;
-    if (!mode || !queueRow) {
+    const queueRow = baseMode ? getQueueRowForTodo(item.id) : null;
+    if (!baseMode || !queueRow) {
         if (existing) {
             existing.remove();
             refreshViewerExpandedHeight();
         }
         return;
     }
+    // A stuck row with no entry and no draft has nothing to dispatch — it re-runs
+    // triage instead. Resolved after the queue row, which carries the evidence.
+    const mode = (baseMode === 'retry' && isRetriageRow(queueRow)) ? 'retriage' : baseMode;
     if (existing) {
         // Idempotent: keep the mounted block if it already matches this row + mode
         // so a repaint doesn't drop an in-flight (pending) button or its error.
@@ -1019,11 +1088,12 @@ function syncDispatchPanel(toDoChild, item) {
             && existing.getAttribute('data-dispatch-mode') === mode) return;
         existing.remove();
     }
-    const block = buildDispatchBlock(item, queueRow, mode);
-    // Dispatch sits beneath the generated entry text (#descInput); Retry beneath
-    // the STUCK failure-reason block. Fall back to appending at the panel's end.
+    const block = buildDispatchBlock(item, queueRow, mode, (toDoChild.dataset && toDoChild.dataset.value) || '');
+    // Dispatch sits beneath the generated entry text (#descInput); Retry and Retry
+    // triage beneath the STUCK failure-reason block. Fall back to appending at the
+    // panel's end.
     let anchorAfter;
-    if (mode === 'retry') {
+    if (mode !== 'dispatch') {
         anchorAfter = panel.querySelector('.descEditorModalStuck');
     } else {
         anchorAfter = panel.querySelector('#descInput');

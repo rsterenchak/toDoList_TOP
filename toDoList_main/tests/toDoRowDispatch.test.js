@@ -38,7 +38,9 @@ describe('toDoRow Dispatch / Retry action wiring', () => {
 
     it('guards the empty-draft case for Dispatch rather than dispatching nothing', () => {
         const start = toDoRow.indexOf('function buildDispatchBlock(');
-        const body = toDoRow.slice(start, start + 2200);
+        // Widened from 2200 when the retriage mode landed: the guard is unchanged,
+        // but the retriage branch and its helpers pushed it further down the body.
+        const body = toDoRow.slice(start, start + 3400);
         expect(body).toMatch(/if \(!isRetry && !draftText\)/);
     });
 
