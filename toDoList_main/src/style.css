@@ -14051,6 +14051,16 @@ body.row-dragging * { cursor: grabbing !important; }
   #mainList > #todoMdViewerCard .todoMdViewerSyncLabel {
     display: none;
   }
+  /* Drop the collapse/expand chevron on both mobile surfaces. It has no
+     visible effect on either: the inline launcher already hides its body
+     unconditionally (the rules above), and the bottom sheet always renders
+     the card expanded, so tapping the chevron only swapped its own glyph.
+     Desktop keeps the chevron — there it genuinely collapses the in-list
+     card to its header bar. */
+  #mainList > #todoMdViewerCard .todoMdViewerCollapseBtn,
+  #todoMdViewerMobileSheet .todoMdViewerCollapseBtn {
+    display: none;
+  }
   /* Inside the full-screen mobile sheet the card's header carried the inline
      card's `background: var(--bg-elevated)` — a band darker than the card's
      `--bg-surface` interior. Stacked directly under the sheet's own header it
