@@ -608,7 +608,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 42f4d964-d4f5-4a39-b036-f891325b13ff -->
 
-- [ ] **[MEDIUM]** File names collapse to one character in the Structure tab
+- [x] **[MEDIUM]** File names collapse to one character in the Structure tab — Completed: 2026-08-05
   - Type: bug
   - Description: In the Structure tab's Code lens, file rows render their name truncated to a single character plus an ellipsis — `Program.cs` shows as `P.`. It does not resolve at any window width. `.structureFileName` sets `overflow: hidden` with `text-overflow: ellipsis`, which implies `min-width: 0` on a flex child, but the rule sets neither `flex` nor `min-width`. Its siblings do not shrink: `.structureExplainBtn` is `flex: 0 0 auto` with `margin-left: auto`, and the GitHub link is fixed-width. The name is therefore the only shrinkable item in the row and absorbs the full space deficit. Widening the viewport does not help because `margin-left: auto` assigns all new free space to the gap before the button rather than to the name. Nested files are worst affected — `--structure-depth` adds 14px of left padding per level, so `src/App/*.cs` at depth 2 loses another 32px before the name is measured.
   - Behavior: File names render in full when the row has room, and ellipsize from the end at a readable width when it does not — never below a few characters. The Explain button and GitHub link keep their current size and position at the right edge. Nesting indent is unchanged.

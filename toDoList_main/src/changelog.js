@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-05',
+        fixed: [
+            "File names in the Structure tab's code view show in full instead of collapsing to a single letter.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-04',
         added: [
-            "A Check action in the onboard dialog reports what a repo needs — its detected shape, any warnings, and the scaffold files that are missing — without touching it.",
             "Each row under Inject targets has its own Check, reporting which scaffold files have gone missing from that repo since it was onboarded.",
             "A Repo setup section in settings opens a shape reference — which shape each kind of project is, whether a template or a CLI is needed, and the gotchas that apply — read live so new shapes appear without an app update.",
         ],
