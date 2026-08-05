@@ -6071,6 +6071,25 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   text-decoration: underline;
 }
 
+/* The label-less variant used by the Code lens's file rows. A bare `↗` is a
+   tiny hit target, so the anchor keeps a 28px square box with the glyph centred
+   in it; `flex: 0 0 auto` stops it absorbing width that .structureFileName
+   should get, which is the whole point of dropping the label. */
+.structureGithubLink--glyph {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  min-width: 28px;
+  min-height: 28px;
+  font-size: 13px;
+}
+
+/* The underline reads as a stray dash under a single glyph. */
+.structureGithubLink--glyph:hover {
+  text-decoration: none;
+}
+
 .structurePublishedBanner {
   font-size: 12px;
   color: var(--text-muted);

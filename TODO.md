@@ -628,7 +628,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: ed333c2e-9eac-4ee5-b7a0-bc7e11a4058f -->
 
-- [ ] **[MEDIUM]** Collapse the Structure tab's GitHub link to its arrow
+- [x] **[MEDIUM]** Collapse the Structure tab's GitHub link to its arrow — Completed: 2026-08-05
   - Type: bug
   - Description: File rows in the Structure tab's Code lens still truncate names to a single character — `Greeter.cs` renders as `G.`. The earlier flex fix works but cannot help: the row's fixed-width children over-subscribe the panel. At depth 2 the indent takes 32px, the file icon and gaps ~23px, the Explain button ~145px, and `View on GitHub ↗` ~95px — more than the panel's width before the name is measured, so `.structureFileName` sits pinned at its `min-width: 4ch` floor. The GitHub label is also redundant on every row of a repo tree; the `↗` already carries the meaning.
   - Behavior: `.structureGithubLink` renders only the `↗` glyph, no text label. It keeps its current position at the right edge of the row, its muted colour, its hover and focus-visible treatment, and its existing click behavior. Its accessible name becomes `View <file path> on GitHub` via `aria-label`, so the meaning is not lost when the visible text is. File names then render in full at typical widths and ellipsize only when genuinely long.
