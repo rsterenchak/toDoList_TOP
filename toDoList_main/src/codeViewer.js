@@ -28,6 +28,12 @@
 // Every line node is built with `textContent` — fetched source is never assigned
 // through `innerHTML`. There is no syntax highlighting: a highlighter would mean
 // touching the webpack config, and plain mono in two tones reads fine.
+//
+// EXPLAIN lives here too, as one control in the header acting on the open file,
+// rather than as a per-row button in the tree. The work itself doesn't: the
+// summary is a Sonnet turn keyed by the manifest's commit SHA, which structureView
+// owns, so it registers the doer through `setCodeViewerExplainHandler` and this
+// module only supplies the button and the block the reply renders into.
 
 import { readRepoFile } from './inject.js';
 
@@ -42,6 +48,10 @@ const MIN_WINDOW = 300;
 const CHUNK = 200;
 
 const EMPTY_TEXT = 'Select a file to read its source here.';
+// The Explain control's resting label. Held here because the registered handler
+// swaps it for a working label and restores whatever it read, so a stale
+// "Explaining…" must never be what a fresh open puts back.
+const EXPLAIN_LABEL = 'Explain';
 
 // Fetched source, keyed `repo\0path`, valued `{ sha, lines }`. Keyed WITHOUT the
 // sha because the sha is only known once the read has happened — folding it into
@@ -60,6 +70,19 @@ let renderGen = 0;
 
 const changeListeners = new Set();
 
+// Who actually explains a file, registered by structureView (which owns the
+// manifest SHA the explanation cache is keyed by). Null until then, in which case
+// the control is inert rather than absent — the viewer has no opinion about
+// whether an explainer exists.
+let explainHandler = null;
+
+// An optional veto on the header's close button, registered by whoever hosts the
+// viewer somewhere that closing means more than emptying the column — the mobile
+// sheet dismisses itself and deliberately KEEPS the file open, so the tree row
+// that opened it stays selected. Returning true claims the click; anything else
+// falls through to the default clear.
+let closeHandler = null;
+
 function clearEl(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
 }
@@ -68,6 +91,21 @@ function notifyChange() {
     changeListeners.forEach(function (fn) {
         try { fn(); } catch (e) { /* a listener's failure must not break the viewer */ }
     });
+}
+
+// Register the function the Explain control calls, with the same
+// `(repo, filePath, btn, resultEl)` signature the tree's per-file button used —
+// so the existing explainer moves here unchanged, cache and all. Passing a
+// non-function unregisters.
+export function setCodeViewerExplainHandler(fn) {
+    explainHandler = typeof fn === 'function' ? fn : null;
+}
+
+// Register a close interceptor. It is called with the host element the pane sits
+// in; returning true means the host handled the close and the viewer must NOT be
+// cleared. Passing a non-function unregisters.
+export function setCodeViewerCloseHandler(fn) {
+    closeHandler = typeof fn === 'function' ? fn : null;
 }
 
 // Subscribe to open/close transitions. Returns an unsubscribe function.
@@ -153,6 +191,34 @@ function ensureShell(host) {
     return { pane: pane, empty: empty };
 }
 
+// Fold or unfold the explanation block. The chevron is the affordance and the
+// body's `hidden` is the state, so the registered handler's own
+// `resultEl.hidden = false` (it renders into the body) naturally unfolds it.
+function setExplanationCollapsed(pane, collapsed) {
+    const refs = pane._codeViewerRefs;
+    refs.explanationBody.hidden = !!collapsed;
+    refs.explanationToggle.textContent = collapsed ? '▸' : '▾';
+    refs.explanationToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+    refs.explanationToggle.setAttribute(
+        'aria-label',
+        collapsed ? 'Show the explanation' : 'Hide the explanation'
+    );
+}
+
+// Return the explanation to "nothing shown yet", which every open and close does.
+// The body is REPLACED rather than emptied: an explain call still in flight holds
+// a reference to the old node, so swapping it means a late reply lands in a
+// detached element instead of under whichever file is open by then.
+function resetExplanation(pane) {
+    const refs = pane._codeViewerRefs;
+    refs.explanation.hidden = true;
+    const fresh = document.createElement('div');
+    fresh.className = 'codeViewerExplanationBody';
+    refs.explanation.replaceChild(fresh, refs.explanationBody);
+    refs.explanationBody = fresh;
+    setExplanationCollapsed(pane, false);
+}
+
 // Build the pane's fixed chrome once. Its parts are parked on the element so a
 // re-open can refill them in place instead of rebuilding the whole subtree.
 function buildPane() {
@@ -169,6 +235,18 @@ function buildPane() {
     const meta = document.createElement('span');
     meta.className = 'codeViewerMeta';
     header.appendChild(meta);
+
+    // One Explain control for the open file, left of the GitHub link. Disabled
+    // until a file is open, so it never advertises an action it can't perform.
+    // In the mobile sheet CSS wraps it onto its own full-width row beneath the
+    // rest of the header — the module stays unaware of which host it is in.
+    const explain = document.createElement('button');
+    explain.type = 'button';
+    explain.className = 'codeViewerExplain';
+    explain.textContent = EXPLAIN_LABEL;
+    explain.disabled = true;
+    explain.setAttribute('aria-label', 'Explain this file with Sonnet');
+    header.appendChild(explain);
 
     const gh = document.createElement('a');
     gh.className = 'codeViewerGithub';
@@ -208,6 +286,36 @@ function buildPane() {
     status.hidden = true;
     pane.appendChild(status);
 
+    // The explanation sits between the chrome and the source, so it PUSHES the
+    // code down rather than overlaying it — an overlay would hide the very lines
+    // the summary is describing. The chevron collapses it once read, since a
+    // three-sentence block holds real screen height on a phone.
+    const explanation = document.createElement('div');
+    explanation.className = 'codeViewerExplanation';
+    explanation.hidden = true;
+
+    const explanationHead = document.createElement('div');
+    explanationHead.className = 'codeViewerExplanationHead';
+
+    const explanationToggle = document.createElement('button');
+    explanationToggle.type = 'button';
+    explanationToggle.className = 'codeViewerExplanationToggle';
+    explanationToggle.textContent = '▾';
+    explanationHead.appendChild(explanationToggle);
+
+    const explanationLabel = document.createElement('span');
+    explanationLabel.className = 'codeViewerExplanationLabel';
+    explanationLabel.textContent = 'EXPLANATION';
+    explanationHead.appendChild(explanationLabel);
+
+    explanation.appendChild(explanationHead);
+
+    const explanationBody = document.createElement('div');
+    explanationBody.className = 'codeViewerExplanationBody';
+    explanation.appendChild(explanationBody);
+
+    pane.appendChild(explanation);
+
     const body = document.createElement('div');
     body.className = 'codeViewerBody';
 
@@ -234,21 +342,42 @@ function buildPane() {
     pane._codeViewerRefs = {
         path: path,
         meta: meta,
+        explain: explain,
         gh: gh,
         close: close,
         banner: banner,
         bannerText: bannerText,
         bannerDismiss: bannerDismiss,
         status: status,
+        explanation: explanation,
+        explanationToggle: explanationToggle,
+        explanationBody: explanationBody,
         body: body,
         lines: lines,
         moreUp: moreUp,
         moreDown: moreDown,
     };
+    // The file the Explain control acts on, set synchronously on open (the read
+    // that follows is irrelevant to it) and null while the column is empty.
+    pane._codeViewerFile = null;
+
+    setExplanationCollapsed(pane, false);
 
     close.addEventListener('click', function () {
         const host = pane.parentElement;
-        if (host) clearCodeViewer(host);
+        if (!host) return;
+        if (closeHandler && closeHandler(host) === true) return;
+        clearCodeViewer(host);
+    });
+    explain.addEventListener('click', function () {
+        const file = pane._codeViewerFile;
+        if (!file || !explainHandler) return;
+        explanation.hidden = false;
+        setExplanationCollapsed(pane, false);
+        explainHandler(file.repo, file.filePath, explain, pane._codeViewerRefs.explanationBody);
+    });
+    explanationToggle.addEventListener('click', function () {
+        setExplanationCollapsed(pane, !pane._codeViewerRefs.explanationBody.hidden);
     });
     bannerDismiss.addEventListener('click', function () {
         dismissBanner(pane);
@@ -400,6 +529,12 @@ export function renderCodeViewer(host, opts) {
     refs.meta.textContent = '';
     refs.gh.href = githubBlobUrl(target.repo, filePath, hl);
     refs.gh.setAttribute('aria-label', 'View ' + filePath + ' on GitHub');
+    // A new file means a new subject: the previous file's explanation is dropped
+    // rather than left sitting above unrelated source.
+    pane._codeViewerFile = { repo: target.repo, filePath: filePath };
+    refs.explain.disabled = false;
+    refs.explain.textContent = EXPLAIN_LABEL;
+    resetExplanation(pane);
     clearEl(refs.lines);
     refs.moreUp.hidden = true;
     refs.moreDown.hidden = true;
@@ -465,7 +600,11 @@ export function clearCodeViewer(host) {
     const refs = shell.pane._codeViewerRefs;
     shell.pane.hidden = true;
     shell.pane._codeViewerState = null;
+    shell.pane._codeViewerFile = null;
     clearEl(refs.lines);
+    refs.explain.disabled = true;
+    refs.explain.textContent = EXPLAIN_LABEL;
+    resetExplanation(shell.pane);
     refs.path.textContent = '';
     refs.meta.textContent = '';
     refs.gh.removeAttribute('href');

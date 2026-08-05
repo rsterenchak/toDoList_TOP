@@ -7,9 +7,10 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // scrolled to and highlighting that span, so the code can be read before
 // `Push entry` drafts an entry to extract it.
 //
-// The card resolves the detail column by selector rather than importing
-// structureView.js (which imports THIS module), so these tests mount the column
-// the same way structureView does and assert against it.
+// The card resolves the viewer's host by selector rather than importing
+// structureView.js (which imports THIS module), so these tests mount the host the
+// same way structureView does and assert against it — the detail column above
+// 1023px, the full-screen code sheet below it.
 
 let loadResult = { ok: true, row: null };
 
@@ -55,6 +56,16 @@ function mountColumn() {
     document.body.innerHTML =
         '<div id="structureView"><div class="structureCanvasHost"></div></div>';
     return document.querySelector('#structureView > .structureCanvasHost');
+}
+
+// The mobile home, mounted the way structureView's ensureCodeSheet does.
+function mountSheet() {
+    document.body.innerHTML =
+        '<div id="structureView"></div>' +
+        '<div id="structureCodeSheet" class="structureCodeSheet" hidden>' +
+        '<div class="structureCodeSheetPanel"><div class="structureCodeSheetHost"></div></div>' +
+        '</div>';
+    return document.querySelector('#structureCodeSheet .structureCodeSheetHost');
 }
 
 function makeRow(candidate) {
@@ -128,7 +139,17 @@ describe('NEXT REFACTOR — the jump chip', () => {
         expect(jumpChip(card)).toBeNull();
     });
 
-    it('is absent below 1024px, where there is no detail column to open into', async () => {
+    it('is present below 1024px, where the code sheet is what it opens into', async () => {
+        setWidth(900);
+        mountSheet();
+        const card = renderRefactorCard('o/r', 'My Project');
+        document.body.appendChild(card);
+        await flush();
+
+        expect(jumpChip(card)).toBeTruthy();
+    });
+
+    it('is absent below 1024px when no code sheet has been mounted yet', async () => {
         setWidth(900);
         const card = renderRefactorCard('o/r', 'My Project');
         document.body.appendChild(card);
@@ -194,6 +215,23 @@ describe('NEXT REFACTOR — tapping the jump chip', () => {
         expect(dismissRefactorCandidate).not.toHaveBeenCalled();
         expect(card.querySelector('.refactorCardTitle').textContent).toBe('buildMockupSecondary');
         expect(card.querySelector('.refactorCardPush')).toBeTruthy();
+    });
+
+    it('opens the span in the code sheet’s host below 1024px', async () => {
+        setWidth(900);
+        const host = mountSheet();
+        const card = renderRefactorCard('o/r', 'My Project');
+        document.body.appendChild(card);
+        await flush();
+
+        jumpChip(card).click();
+        await flush();
+
+        expect(reads).toEqual([{ repo: 'o/r', filePath: 'toDoList_main/src/agentView.js' }]);
+        expect(host.querySelector(':scope > .codeViewerPane').hidden).toBe(false);
+        // The banner names the candidate exactly as it does in the detail column.
+        expect(host.querySelector('.codeViewerBanner').textContent)
+            .toContain('buildMockupSecondary');
     });
 
     it('does nothing when the detail column has gone away since the card painted', async () => {

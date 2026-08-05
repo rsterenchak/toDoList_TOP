@@ -4,13 +4,11 @@ import { dirname, resolve } from 'node:path';
 
 // Pins the fix for Structure-tab file names collapsing to one character plus an
 // ellipsis (`Program.cs` rendering as `P.`) in the Code lens. `.structureFileRow`
-// is a flex row holding icon → name → Explain button → GitHub link. Its siblings
-// are all `flex: 0 0 auto`, and `.structureFileName` sets `overflow: hidden`
-// (which zeroes its automatic min-width floor), so the name was the only
-// shrinkable item in the row and absorbed the entire space deficit. Widening the
-// viewport did not help either: `margin-left: auto` on `.structureExplainBtn`
-// assigned all new free space to the gap before the button rather than to the
-// name.
+// is a flex row holding icon → name → GitHub link (the per-row Explain button has
+// since moved into the code viewer, which is what freed the width the name was
+// short of). Its siblings are all `flex: 0 0 auto`, and `.structureFileName` sets
+// `overflow: hidden` (which zeroes its automatic min-width floor), so the name is
+// the only shrinkable item in the row and absorbed the entire space deficit.
 //
 // The fix is a paired change on `.structureFileName` and NEITHER half works
 // alone: `flex: 1 1 auto` so flex-grow claims the row's free space (grow is
@@ -34,8 +32,8 @@ describe('Structure tab — file names keep a readable width', () => {
     it('lets the file name grow into the row’s free space', () => {
         const decl = rule('.structureFileName');
         expect(decl).not.toBeNull();
-        // flex-grow must be non-zero, otherwise `margin-left: auto` on the
-        // Explain button keeps banking every extra pixel into the gap.
+        // flex-grow must be non-zero, otherwise the row's extra width banks into
+        // the gap before the GitHub glyph rather than into the name.
         expect(decl).toMatch(/flex:\s*1\s+1\s+auto/);
     });
 
@@ -53,10 +51,15 @@ describe('Structure tab — file names keep a readable width', () => {
         expect(decl).toMatch(/white-space:\s*nowrap/);
     });
 
-    it('keeps the Explain button unshrinkable so it holds its size at the right edge', () => {
-        const decl = rule('.structureExplainBtn');
+    it('keeps the GitHub glyph unshrinkable so it holds its size at the right edge', () => {
+        const decl = rule('.structureGithubLink--glyph');
         expect(decl).not.toBeNull();
         expect(decl).toMatch(/flex:\s*0\s+0\s+auto/);
+    });
+
+    it('no longer styles a per-row Explain button — the control moved to the viewer', () => {
+        expect(rule('.structureExplainBtn')).toBeNull();
+        expect(rule('.structureExplainResult')).toBeNull();
     });
 
     it('leaves the nesting indent on the file row untouched', () => {

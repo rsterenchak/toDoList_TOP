@@ -65,10 +65,12 @@ describe('Structure-view [hidden] guards override the base display declaration',
     });
 });
 
-// The detail-column code viewer toggles four elements the same way, and each of
-// them declares a `display` too — so each needs the same guard. The pane and its
-// empty state are the pair that swaps as a file opens and closes; the banner and
-// the two chunk loaders come and go within an open file.
+// The code viewer toggles the same way, and each of these declares a `display`
+// too — so each needs the same guard. The pane and its empty state are the pair
+// that swaps as a file opens and closes; the banner and the two chunk loaders come
+// and go within an open file; the explanation block appears when Explain is used
+// and its body folds under the chevron; and the mobile code sheet — the viewer's
+// host below 1024px — is shown and hidden by structureView the same way.
 describe('Code-viewer [hidden] guards override the base display declaration', () => {
     const css = read('style.css');
 
@@ -87,6 +89,9 @@ describe('Code-viewer [hidden] guards override the base display declaration', ()
         '.codeViewerBanner',
         '.codeViewerStatus',
         '.codeViewerMore',
+        '.codeViewerExplanation',
+        '.codeViewerExplanationBody',
+        '.structureCodeSheet',
     ];
 
     for (const selector of cases) {

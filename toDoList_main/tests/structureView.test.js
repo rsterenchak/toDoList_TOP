@@ -2,7 +2,8 @@ import { vi } from 'vitest';
 
 // The STRUCTURE view renders a cross-repo map with two lenses:
 //   • Code lens — a collapsible folder/file tree built from the selected repo's
-//     published src-manifest.json, with a per-file "Explain with Sonnet" action.
+//     published src-manifest.json; tapping a file opens it in the code viewer,
+//     whose header carries the one "Explain" control.
 //   • UI lens — a live, tappable map of the running app's on-screen regions,
 //     walked from the DOM, with per-region "Reference in chat" / "Copy selector".
 // A Code/UI toggle (persisted via prefs, default UI) swaps between them, and the
@@ -54,6 +55,11 @@ vi.mock('../src/inject.js', () => ({
         state.lastChatCall = { messages, entryId, attach, repo, suggested, deep };
         if (state.explainError) return Promise.reject(state.explainError);
         return Promise.resolve({ reply: state.explainReply });
+    }),
+    // The code viewer reads the tapped file's source; these tests only care that
+    // a file is OPEN (that is what enables Explain), so any content will do.
+    readRepoFile: vi.fn(function () {
+        return Promise.resolve({ ok: true, content: 'a\nb\nc', sha: 'file-sha' });
     }),
     // Consumed by the NEXT REFACTOR card (refactorCard.js) mounted in the
     // structure view. Default to a quiet no-candidate response so the card's
@@ -416,24 +422,41 @@ describe('renderStructureView — source tree (Code lens)', () => {
     });
 });
 
+// Explaining a file is one control in the code viewer acting on the open file,
+// so every case here opens a file first and then explains it. The explainer
+// itself — its prompt, its Fast-mode flag, and its cache — is unchanged by that
+// move, which is exactly what these tests hold.
+async function openFirstFile() {
+    renderStructureView();
+    await flush();
+    const row = document.querySelector('.structureFileRow');
+    expect(row).toBeTruthy();
+    row.click();
+    await flush();
+}
+
+async function explainOpenFile() {
+    const btn = document.querySelector('.codeViewerExplain');
+    expect(btn).toBeTruthy();
+    expect(btn.disabled).toBe(false);
+    btn.click();
+    await flush();
+    return btn;
+}
+
 describe('renderStructureView — Explain with Sonnet (Code lens)', () => {
     beforeEach(() => {
         state.repos = ['rsterenchak/toDoList_TOP'];
         setStructureLens('code');
     });
 
-    it('runs a Fast-mode one-shot turn with the file attached and renders the reply inline', async () => {
+    it('runs a Fast-mode one-shot turn with the file attached and renders the reply in the viewer', async () => {
         state.manifests['rsterenchak/toDoList_TOP'] = {
             ok: true,
             files: ['README.md'],
         };
-        renderStructureView();
-        await flush();
-
-        const btn = document.querySelector('.structureExplainBtn');
-        expect(btn).toBeTruthy();
-        btn.click();
-        await flush();
+        await openFirstFile();
+        await explainOpenFile();
 
         // The Explain turn carried the file as the only attachment, the selected
         // repo, and NO deep flag (Fast mode), and sent no entry_id.
@@ -444,7 +467,7 @@ describe('renderStructureView — Explain with Sonnet (Code lens)', () => {
         expect(call.entryId).toBeFalsy();
         expect(call.deep).toBeFalsy();
 
-        const out = document.querySelector('.structureExplainText');
+        const out = document.querySelector('.codeViewerExplanationBody .structureExplainText');
         expect(out).toBeTruthy();
         expect(out.textContent).toBe('This file does a thing.');
     });
@@ -455,11 +478,8 @@ describe('renderStructureView — Explain with Sonnet (Code lens)', () => {
             files: ['README.md'],
         };
         state.explainError = Object.assign(new Error('boom'), { reason: 'boom' });
-        renderStructureView();
-        await flush();
-
-        document.querySelector('.structureExplainBtn').click();
-        await flush();
+        await openFirstFile();
+        await explainOpenFile();
 
         const err = document.querySelector('.structureExplainError');
         expect(err).toBeTruthy();
@@ -476,14 +496,10 @@ describe('renderStructureView — Explain cache (per repo + file + SHA)', () => 
         try { localStorage.removeItem(CACHE_KEY); } catch (e) { /* ignore */ }
     });
 
-    // Render the Code lens, click the first file's Explain button, settle.
+    // Render the Code lens, open the first file, explain it, settle.
     async function clickExplain() {
-        renderStructureView();
-        await flush();
-        const btn = document.querySelector('.structureExplainBtn');
-        btn.click();
-        await flush();
-        return btn;
+        await openFirstFile();
+        return explainOpenFile();
     }
 
     it('serves a second explain of the same file+SHA from cache with no Worker call', async () => {
