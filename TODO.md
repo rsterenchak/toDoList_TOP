@@ -637,3 +637,11 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/structureView.js, toDoList_main/src/style.css
   - Completed:
   <!-- id: 4d9d9a00-280c-4e61-99be-107eb6a59934 -->
+
+- [ ] **[MEDIUM]** Show the actual completed entry's title on a backlog run's Runs tab row instead of the generic "Backlog run" label
+  - Type: bug
+  - Description: "Run backlog" has no entry id up front (the routine picks which TODO.md entry to work on itself), so `runBacklog()` in `toDoList_main/src/todoMdViewer.js` (~line 2030) always calls `trackDispatchedRun()` (`toDoList_main/src/claudeSheet.js` ~line 689) with the hardcoded `title: 'Backlog run'` (todoMdViewer.js:2074). When the run later resolves, `reconcileSuccessConclusion()` (claudeSheet.js ~line 4928) short-circuits any record with no `entryId` straight to SHIPPED and never discovers which entry it actually was, so the Runs tab row (and the localStorage run record) is stuck showing "Backlog run" forever instead of the real task title.
+  - Implementation notes: Capture a snapshot of the current TODO.md body before dispatch (the viewer already holds it in `card.dataset.content`, todoMdViewer.js ~line 1190) and thread it through `trackDispatchedRun` onto the run record. In `reconcileSuccessConclusion`, when a no-`entryId` record resolves to SHIPPED, diff the freshly-read content (`read.content`) against the stored snapshot to find the single task line whose checkbox flipped from `- [ ]` to `- [x]`, and extract its title the same way `parsePastedEntry` does in `toDoList_main/src/entryParse.js` (strip the checkbox and any leading `**[PRIORITY]**`). Update the run record's title with that before calling `setRunRecordStatus`.
+  - Behavior: If the diff finds zero or more than one newly-checked entry (ambiguous), keep the existing "Backlog run" fallback rather than guessing.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/claudeSheet.js`
+  <!-- id: b84069fa-f122-4a7f-9616-8d33de85b379 -->
