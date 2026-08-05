@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-05',
+        added: [
+            "The Repo setup shape reference lets you switch between the Angular, React, and Vue setups for a bundled web app, each with its own scaffold command and config edits to copy.",
+        ],
         fixed: [
             "File names in the Structure tab's code view show in full instead of collapsing to a single letter.",
         ],
@@ -14,7 +17,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-04',
         added: [
-            "Each row under Inject targets has its own Check, reporting which scaffold files have gone missing from that repo since it was onboarded.",
             "A Repo setup section in settings opens a shape reference — which shape each kind of project is, whether a template or a CLI is needed, and the gotchas that apply — read live so new shapes appear without an app update.",
         ],
         changed: [

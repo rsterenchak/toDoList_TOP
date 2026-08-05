@@ -220,11 +220,87 @@ function firstFencedBlock(lines) {
     return body.join('\n').trim();
 }
 
+// `### <variant>` sub-blocks inside a section — the framework variants under
+// build-pipeline, each carrying its own scaffold command and its own config
+// edits. The variant region runs from the first `### ` heading to the
+// `**Gotchas**` marker (or the section's end), so the gotcha list is never
+// absorbed into the last variant. Fenced code is tracked so a `### ` inside a
+// snippet can't open a phantom variant.
+function splitVariants(lines) {
+    let inFence = false;
+    let start = -1;
+    let end = lines.length;
+    for (let i = 0; i < lines.length; i++) {
+        if (/^\s*```/.test(lines[i])) { inFence = !inFence; continue; }
+        if (inFence) continue;
+        if (start === -1) {
+            if (/^###\s+\S/.test(lines[i])) start = i;
+            continue;
+        }
+        if (lines[i].indexOf('**Gotchas**') === 0) { end = i; break; }
+    }
+    if (start === -1) return [];
+
+    const variants = [];
+    let current = null;
+    inFence = false;
+    for (let i = start; i < end; i++) {
+        const line = lines[i];
+        if (/^\s*```/.test(line)) {
+            inFence = !inFence;
+        } else if (!inFence && /^###\s+\S/.test(line)) {
+            current = { name: line.replace(/^###\s+/, '').trim(), lines: [] };
+            variants.push(current);
+            continue;
+        }
+        if (current) current.lines.push(line);
+    }
+    return variants.map(function(variant) {
+        return { name: variant.name, parts: parseVariantBody(variant.lines) };
+    });
+}
+
+// A variant's body as an ordered list of prose paragraphs and fenced blocks,
+// kept in the file's order so a paragraph explaining an edit stays next to the
+// block it explains. Fenced text is taken VERBATIM — leading whitespace and the
+// blank line between the two files in a jsonc edits block are significant, and
+// the copy control ships exactly what is rendered.
+function parseVariantBody(lines) {
+    const parts = [];
+    let para = [];
+    function flushParagraph() {
+        if (!para.length) return;
+        parts.push({ type: 'prose', text: para.join(' ') });
+        para = [];
+    }
+    for (let i = 0; i < lines.length; i++) {
+        if (/^\s*```/.test(lines[i])) {
+            flushParagraph();
+            const body = [];
+            i++;
+            while (i < lines.length && !/^\s*```/.test(lines[i])) {
+                body.push(lines[i]);
+                i++;
+            }
+            parts.push({ type: 'code', text: body.join('\n') });
+            continue;
+        }
+        if (!lines[i].trim()) { flushParagraph(); continue; }
+        para.push(lines[i].trim());
+    }
+    flushParagraph();
+    return parts;
+}
+
 // One picker row's worth of parsed data. `kind` drives the row's chip:
 // 'template' → the TEMPLATE chip and the template repo as the copyable value,
 // 'cli' → the dimmed CLI label and the first fenced block, 'none' → NO SHAPE,
 // which is checked FIRST because a no-shape section also has no template line
 // and would otherwise be mislabelled CLI.
+//
+// A section carrying `### ` variants has no single copyable value — its blocks
+// belong to the variants, one scaffold each — so `copyValue` stays empty there
+// and the row renders the segmented control instead.
 export function parseShapesDoc(text) {
     const clean = stripHtmlComments(text);
     return splitSections(clean.split('\n')).map(function(section) {
@@ -232,6 +308,7 @@ export function parseShapesDoc(text) {
         const body = lines.join('\n');
         const templateLine = readMarkerParagraph(lines, '**Template:**');
         const templateMatch = templateLine.match(/`([^`]+)`/);
+        const variants = splitVariants(lines);
 
         let kind = 'cli';
         if (body.indexOf('**No shape exists.**') !== -1) kind = 'none';
@@ -239,7 +316,7 @@ export function parseShapesDoc(text) {
 
         let copyValue = '';
         if (kind === 'template') copyValue = templateMatch[1].trim();
-        else if (kind === 'cli') copyValue = firstFencedBlock(lines);
+        else if (kind === 'cli' && !variants.length) copyValue = firstFencedBlock(lines);
 
         return {
             name: section.name,
@@ -249,6 +326,7 @@ export function parseShapesDoc(text) {
             warn: /least-proven/i.test(body),
             lead: readLeadParagraph(lines),
             copyValue: copyValue,
+            variants: variants,
             adds: parseAdds(lines),
             gotchas: parseGotchas(lines),
         };
@@ -414,6 +492,106 @@ function copyValueToClipboard(text, button) {
         document.body.removeChild(ta);
         if (ok) flash();
     } catch (e) { /* swallow — the value stays on screen to copy by hand */ }
+}
+
+
+// ── VARIANTS ──
+
+// One fenced block plus its copy control. The first block of a variant is the
+// scaffold command and the second, when present, is the config edits; anything
+// beyond those two renders unlabelled rather than inventing a name for it.
+const VARIANT_BLOCK_LABELS = ['SCAFFOLD', 'EDITS'];
+
+function buildVariantBlock(text, index) {
+    const block = document.createElement('div');
+    block.className = 'repoSetupVariantBlock';
+
+    const labelText = VARIANT_BLOCK_LABELS[index];
+    if (labelText) {
+        const label = document.createElement('div');
+        label.className = 'repoSetupVariantLabel';
+        label.textContent = labelText;
+        block.appendChild(label);
+    }
+
+    const copyWrap = document.createElement('div');
+    copyWrap.className = 'repoSetupCopy';
+    const value = document.createElement('pre');
+    value.className = 'repoSetupCopyValue';
+    // Verbatim: the label lives in its own node and the prose in another, so
+    // what the button copies is exactly the block as written in the file.
+    value.textContent = text;
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'repoSetupGhostBtn repoSetupCopyBtn';
+    copyBtn.textContent = 'COPY';
+    copyBtn.addEventListener('click', function() {
+        copyValueToClipboard(text, copyBtn);
+    });
+    copyWrap.appendChild(value);
+    copyWrap.appendChild(copyBtn);
+    block.appendChild(copyWrap);
+    return block;
+}
+
+// The segmented control plus one body per variant, all mounted at once and
+// toggled by `hidden` — the bodies are small and switching between them is the
+// point of the control, so rebuilding on every tap would only lose the copy
+// buttons' COPIED state mid-flash.
+function buildVariants(variants) {
+    const wrap = document.createElement('div');
+    wrap.className = 'repoSetupVariants';
+
+    const control = document.createElement('div');
+    control.className = 'repoSetupVariantControl';
+    control.setAttribute('role', 'radiogroup');
+    control.setAttribute('aria-label', 'Variant');
+    wrap.appendChild(control);
+
+    const bodies = [];
+    const segs = variants.map(function(variant) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'repoSetupVariantSeg';
+        seg.dataset.variant = variant.name;
+        seg.textContent = variant.name;
+        seg.setAttribute('role', 'radio');
+        control.appendChild(seg);
+
+        const body = document.createElement('div');
+        body.className = 'repoSetupVariantBody';
+        let blockIndex = 0;
+        variant.parts.forEach(function(part) {
+            if (part.type === 'prose') {
+                const prose = document.createElement('div');
+                prose.className = 'repoSetupVariantProse';
+                appendInline(prose, part.text);
+                body.appendChild(prose);
+                return;
+            }
+            body.appendChild(buildVariantBlock(part.text, blockIndex));
+            blockIndex++;
+        });
+        bodies.push(body);
+        wrap.appendChild(body);
+        return seg;
+    });
+
+    function select(index) {
+        segs.forEach(function(seg, i) {
+            const on = i === index;
+            seg.classList.toggle('selected', on);
+            seg.setAttribute('aria-checked', on ? 'true' : 'false');
+            bodies[i].hidden = !on;
+        });
+    }
+    segs.forEach(function(seg, i) {
+        seg.addEventListener('click', function() { select(i); });
+    });
+    // First variant in file order is the one that opens.
+    select(0);
+
+    return wrap;
 }
 
 
@@ -619,6 +797,13 @@ export function showRepoSetupModal() {
                 chips.appendChild(chip);
             });
             rowBody.appendChild(chips);
+        }
+
+        // Variants sit between the shape's own material and its gotchas: the
+        // lead and the chips describe the shape, the gotchas apply to all of
+        // it, and only the middle swaps with the selection.
+        if (section.variants && section.variants.length) {
+            rowBody.appendChild(buildVariants(section.variants));
         }
 
         if (section.gotchas.length) {

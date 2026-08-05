@@ -53,16 +53,50 @@ const FIXTURE = [
     '',
     '**No template** — framework scaffolds go stale. Use the CLI.',
     '',
-    '```bash',
-    'ng new my-app --routing --style=css --directory .',
-    '```',
-    '',
-    '```bash',
-    'echo "a second block the picker must not reach for"',
-    '```',
-    '',
     '**Onboarding adds:** `deploy.yml`, `test.yml`, a manifest generator.',
     'Pages source: `gh-pages`, root.',
+    '',
+    '### angular',
+    '',
+    'Install the CLI first if it is not on the Codespace image.',
+    '',
+    '```bash',
+    'ng new my-app --routing --style=css --directory . --skip-git',
+    '```',
+    '',
+    'Angular is the fussiest of the three.',
+    '',
+    '```jsonc',
+    '// angular.json',
+    '"outputPath": { "base": "dist", "browser": "" }',
+    '',
+    '// package.json',
+    '"build": "ng build --base-href /my-app/",',
+    '```',
+    '',
+    '### react',
+    '',
+    'Vite already outputs to `dist/`.',
+    '',
+    '```bash',
+    'npm create vite@latest . -- --template react',
+    'npm install',
+    '```',
+    '',
+    '```jsonc',
+    '// package.json',
+    '"test:run": "vitest run"',
+    '```',
+    '',
+    '`matchingGame-test` is a working reference for this shape.',
+    '',
+    '### vue',
+    '',
+    '`npm create vue@latest` is interactive — **choose Vitest** when it asks.',
+    '',
+    '```bash',
+    'npm create vue@latest .',
+    '```',
     '',
     '**Gotchas**',
     '- Edit before preflighting. `test_command` is read straight from',
@@ -302,13 +336,20 @@ describe('SHAPES.md parser', () => {
         expect(served.copyValue).toBe('rsterenchak/template-served-from-source');
     });
 
-    it('takes the copyable value from the FIRST fenced block for CLI shapes', () => {
-        const build = sections.find((s) => s.name === 'build-pipeline');
-        expect(build.copyValue).toBe('ng new my-app --routing --style=css --directory .');
-        expect(build.copyValue).not.toContain('a second block');
+    it('takes the copyable value from the FIRST fenced block for a CLI shape with no variants', () => {
         const maui = sections.find((s) => s.name === 'maui');
+        expect(maui.variants).toEqual([]);
         expect(maui.copyValue).toContain('dotnet workload install maui');
         expect(maui.copyValue).toContain('dotnet new maui -n MyApp');
+    });
+
+    it('leaves a variant-carrying shape with no section-level copyable value', () => {
+        // build-pipeline's fenced blocks belong to its variants — one scaffold
+        // each — so reaching for the first would show Angular's and hide the
+        // rest, which is the bug the variants replaced.
+        const build = sections.find((s) => s.name === 'build-pipeline');
+        expect(build.variants.map((v) => v.name)).toEqual(['angular', 'react', 'vue']);
+        expect(build.copyValue).toBe('');
     });
 
     it('reads the onboarding-adds items as chips, stopping at the end of the sentence', () => {
@@ -363,6 +404,62 @@ describe('SHAPES.md parser', () => {
             '',
         ].join('\n'));
         expect(withFence.map((s) => s.name)).toEqual(['real']);
+    });
+
+    it('reads each variant’s body as prose and fenced blocks in file order', () => {
+        const build = sections.find((s) => s.name === 'build-pipeline');
+        const angular = build.variants[0];
+        expect(angular.parts.map((p) => p.type)).toEqual(['prose', 'code', 'prose', 'code']);
+        expect(angular.parts[0].text).toContain('Install the CLI first');
+        expect(angular.parts[1].text).toContain('ng new my-app');
+        // A variant may carry only a scaffold — vue has no edits block here.
+        const vue = build.variants[2];
+        expect(vue.parts.filter((p) => p.type === 'code')).toHaveLength(1);
+    });
+
+    it('keeps the gotchas out of the last variant', () => {
+        // `**Gotchas**` ends the variant region, so vue — the last variant —
+        // stops where the gotcha list begins rather than swallowing it.
+        const build = sections.find((s) => s.name === 'build-pipeline');
+        const vueText = build.variants[2].parts.map((p) => p.text).join('\n');
+        expect(vueText).not.toContain('Edit before preflighting');
+        expect(vueText).not.toContain('Gotchas');
+        expect(build.gotchas).toHaveLength(4);
+    });
+
+    it('preserves a fenced block verbatim, including blank lines and jsonc comments', () => {
+        const build = sections.find((s) => s.name === 'build-pipeline');
+        const edits = build.variants[0].parts.filter((p) => p.type === 'code')[1];
+        expect(edits.text).toBe([
+            '// angular.json',
+            '"outputPath": { "base": "dist", "browser": "" }',
+            '',
+            '// package.json',
+            '"build": "ng build --base-href /my-app/",',
+        ].join('\n'));
+    });
+
+    it('leaves a section with no `### ` headings free of variants', () => {
+        const byName = Object.fromEntries(sections.map((s) => [s.name, s.variants]));
+        Object.keys(byName).forEach((name) => {
+            if (name === 'build-pipeline') return;
+            expect(byName[name], `${name} should carry no variants`).toEqual([]);
+        });
+    });
+
+    it('ignores a `### ` line inside a fenced code block', () => {
+        const withFence = parseShapesDoc([
+            '## real',
+            '',
+            'Lead.',
+            '',
+            '```bash',
+            '### not a variant',
+            '```',
+            '',
+        ].join('\n'));
+        expect(withFence[0].variants).toEqual([]);
+        expect(withFence[0].copyValue).toBe('### not a variant');
     });
 
     it('strips HTML comments so the parsing contract never reaches the UI', () => {
@@ -526,6 +623,112 @@ describe('Repo setup modal', () => {
 });
 
 
+describe('framework variants in an expanded row', () => {
+    // Open build-pipeline and hand back its variant control.
+    async function openVariantRow() {
+        await openModal();
+        const row = rowNamed('build-pipeline');
+        row.querySelector('.repoSetupRowHead').click();
+        return row;
+    }
+
+    function segs(row) {
+        return Array.from(row.querySelectorAll('.repoSetupVariantSeg'));
+    }
+
+    function bodies(row) {
+        return Array.from(row.querySelectorAll('.repoSetupVariantBody'));
+    }
+
+    it('renders one segment per variant in file order, the first selected', async () => {
+        const row = await openVariantRow();
+        expect(segs(row).map((s) => s.textContent)).toEqual(['angular', 'react', 'vue']);
+        expect(segs(row).map((s) => s.getAttribute('aria-checked')))
+            .toEqual(['true', 'false', 'false']);
+        expect(bodies(row).map((b) => b.hidden)).toEqual([false, true, true]);
+        expect(row.querySelector('.repoSetupVariantControl').getAttribute('role'))
+            .toBe('radiogroup');
+    });
+
+    it('swaps the body below when another variant is selected', async () => {
+        const row = await openVariantRow();
+        segs(row)[1].click();
+        expect(bodies(row).map((b) => b.hidden)).toEqual([true, false, true]);
+        expect(segs(row).map((s) => s.getAttribute('aria-checked')))
+            .toEqual(['false', 'true', 'false']);
+        expect(segs(row)[1].classList.contains('selected')).toBe(true);
+        expect(bodies(row)[1].textContent).toContain('npm create vite@latest');
+        expect(bodies(row)[1].textContent).not.toContain('ng new my-app');
+    });
+
+    it('labels the first block SCAFFOLD and the second EDITS, and omits EDITS when absent', async () => {
+        const row = await openVariantRow();
+        const labelsIn = (idx) => Array.from(
+            bodies(row)[idx].querySelectorAll('.repoSetupVariantLabel'),
+        ).map((l) => l.textContent);
+        expect(labelsIn(0)).toEqual(['SCAFFOLD', 'EDITS']);
+        expect(labelsIn(1)).toEqual(['SCAFFOLD', 'EDITS']);
+        // vue carries a scaffold only, so no EDITS heading is invented for it.
+        expect(labelsIn(2)).toEqual(['SCAFFOLD']);
+    });
+
+    it('gives each block its own copy control writing the block’s raw text', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        const priorClipboard = navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        try {
+            const row = await openVariantRow();
+            const blocks = Array.from(bodies(row)[0].querySelectorAll('.repoSetupVariantBlock'));
+            expect(blocks).toHaveLength(2);
+
+            blocks[0].querySelector('.repoSetupCopyBtn').click();
+            expect(writeText).toHaveBeenLastCalledWith(
+                'ng new my-app --routing --style=css --directory . --skip-git',
+            );
+
+            blocks[1].querySelector('.repoSetupCopyBtn').click();
+            const copied = writeText.mock.calls[1][0];
+            // No label, no surrounding prose — the block exactly as written.
+            expect(copied).not.toContain('EDITS');
+            expect(copied).not.toContain('Angular is the fussiest');
+            expect(copied).toBe([
+                '// angular.json',
+                '"outputPath": { "base": "dist", "browser": "" }',
+                '',
+                '// package.json',
+                '"build": "ng build --base-href /my-app/",',
+            ].join('\n'));
+        } finally {
+            Object.defineProperty(navigator, 'clipboard', {
+                value: priorClipboard, configurable: true,
+            });
+        }
+    });
+
+    it('keeps the chips above the control and the gotchas below it', async () => {
+        const row = await openVariantRow();
+        const children = Array.from(row.querySelector('.repoSetupRowBody').children);
+        const indexOf = (selector) => children.findIndex((c) => c.matches(selector));
+        expect(indexOf('.repoSetupLead')).toBeGreaterThan(-1);
+        expect(indexOf('.repoSetupChips')).toBeLessThan(indexOf('.repoSetupVariants'));
+        expect(indexOf('.repoSetupVariants')).toBeLessThan(indexOf('.repoSetupGotchas'));
+        // The section's blocks belong to its variants, so no section-level
+        // copyable value is rendered alongside them.
+        expect(row.querySelector('.repoSetupRowBody > .repoSetupCopy')).toBeNull();
+    });
+
+    it('renders a variant-free shape exactly as before', async () => {
+        await openModal();
+        const row = rowNamed('maui');
+        row.querySelector('.repoSetupRowHead').click();
+        expect(row.querySelector('.repoSetupVariants')).toBeNull();
+        expect(row.querySelector('.repoSetupCopyValue').textContent)
+            .toContain('dotnet workload install maui');
+        expect(row.querySelectorAll('.repoSetupGotcha')).toHaveLength(4);
+    });
+});
+
+
 describe('markdown reader', () => {
     it('renders headings, paragraphs, lists, fenced code, bold, and inline code as nodes', () => {
         const host = document.createElement('div');
@@ -580,6 +783,10 @@ describe('static contracts', () => {
             '.repoSetupGotcha[hidden]',
             '.repoSetupGotchaMore[hidden]',
             '.repoSetupGhostBtn[hidden]',
+            '.repoSetupVariants[hidden]',
+            '.repoSetupVariantControl[hidden]',
+            '.repoSetupVariantBody[hidden]',
+            '.repoSetupVariantBlock[hidden]',
         ].forEach((selector) => {
             const idx = css.indexOf(selector);
             expect(idx, `${selector} missing from style.css`).toBeGreaterThan(-1);

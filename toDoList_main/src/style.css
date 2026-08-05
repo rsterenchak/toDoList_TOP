@@ -20673,11 +20673,15 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
-#injectOnboardPurposeControl {
+/* Segmented control. Shared with the Repo setup picker's variant selector,
+   which takes the same treatment at a smaller type scale. */
+#injectOnboardPurposeControl,
+.repoSetupVariantControl {
   display: flex;
   gap: 6px;
 }
-.injectOnboardPurposeSeg {
+.injectOnboardPurposeSeg,
+.repoSetupVariantSeg {
   appearance: none;
   -webkit-appearance: none;
   flex: 1 1 0;
@@ -20693,13 +20697,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
-.injectOnboardPurposeSeg:hover { color: var(--text-primary); }
-.injectOnboardPurposeSeg:focus-visible {
+.injectOnboardPurposeSeg:hover,
+.repoSetupVariantSeg:hover { color: var(--text-primary); }
+.injectOnboardPurposeSeg:focus-visible,
+.repoSetupVariantSeg:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
-.injectOnboardPurposeSeg.selected {
+.injectOnboardPurposeSeg.selected,
+.repoSetupVariantSeg.selected {
   background: var(--accent-dim);
   color: var(--accent-text);
   border-color: var(--accent);
@@ -21640,6 +21647,45 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 11px;
   overflow-wrap: anywhere;
 }
+/* Framework variants — the `### ` sub-blocks inside a shape. The segmented
+   control takes the onboard Purpose selector's styling (grouped with it above);
+   only the type scale changes here, since variant names are code identifiers in
+   a body whose prose sits at 11-12px. */
+.repoSetupVariants {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.repoSetupVariants[hidden] { display: none !important; }
+.repoSetupVariantControl[hidden] { display: none !important; }
+.repoSetupVariantSeg {
+  font-family: "SpaceMono", monospace;
+  font-size: 12px;
+}
+.repoSetupVariantBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.repoSetupVariantBody[hidden] { display: none !important; }
+.repoSetupVariantBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.repoSetupVariantBlock[hidden] { display: none !important; }
+.repoSetupVariantLabel {
+  font-family: "SpaceMono", monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+.repoSetupVariantProse {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+
 .repoSetupGotchas {
   display: flex;
   flex-direction: column;
