@@ -4585,6 +4585,19 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: var(--text-warning);
 }
 
+/* The scan's line span, as a jump target into the detail-column code viewer.
+   Same chip shell as its siblings so the row stays even, plus the affordances a
+   button needs — the accent text is what marks it as the tappable one. */
+.refactorCardJump {
+  color: #9D93EE;
+  cursor: pointer;
+  text-align: left;
+}
+.refactorCardJump:hover {
+  background: var(--bg-elevated);
+  border-color: var(--border-bright);
+}
+
 .refactorCardModule,
 .refactorCardCluster {
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -5223,6 +5236,21 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   padding-right: 8px;
 }
 
+/* Desktop only: the row opens the detail-column code viewer, so it reads as a
+   control there. Below 1024px there is no detail column and the row carries no
+   role="button", so this never applies. */
+.structureFileRow[role="button"] { cursor: pointer; }
+
+/* The file whose source the detail column is showing. Kept quiet — the viewer
+   beside it already names the file; this only has to say which row it came from. */
+.structureFileRow--selected {
+  background: var(--bg-hover);
+  border-radius: 6px;
+}
+.structureFileRow--selected .structureFileName {
+  color: var(--text-primary);
+}
+
 .structureFileIcon {
   display: inline-flex;
   color: var(--text-muted);
@@ -5430,6 +5458,216 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* ── STRUCTURE CODE VIEWER (Code lens, desktop detail column) ─────────────────
+   The Code lens's use of `.structureCanvasHost`: a header (path, line count,
+   GitHub link, close), an optional jump banner, and a windowed source listing
+   with a line-number gutter. Desktop only — below 1024px the host is display:none
+   and nothing here is mounted. Every element that this module toggles declares a
+   `display`, which outranks the UA's `[hidden] { display: none }`, so each one
+   carries its own `[hidden]` guard directly beneath its base rule. */
+.codeViewerPane {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+}
+.codeViewerPane[hidden] { display: none !important; }
+
+/* The empty column — shown whenever no file is open, hidden while one is. */
+.codeViewerEmpty {
+  display: block;
+  padding: 14px 12px;
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.codeViewerEmpty[hidden] { display: none !important; }
+
+.codeViewerHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding-bottom: 8px;
+  border-bottom: 0.5px solid var(--border-mid);
+}
+
+/* The only shrinkable header item, so the line count, the link and the close
+   control keep their width and the path takes the deficit. */
+.codeViewerPath {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+  flex: 1 1 auto;
+  min-width: 4ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codeViewerMeta {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex: 0 0 auto;
+}
+
+.codeViewerGithub {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  text-decoration: none;
+  font-size: 13px;
+}
+.codeViewerGithub:hover { color: var(--text-primary); }
+
+.codeViewerClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+}
+.codeViewerClose:hover { color: var(--text-primary); }
+
+/* Names the candidate a jump came from. Dismissing it drops the highlight and
+   leaves the file open, so it never blocks reading the rest of the file. */
+.codeViewerBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--bg-hover);
+}
+.codeViewerBanner[hidden] { display: none !important; }
+
+.codeViewerBannerText {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex: 1 1 auto;
+  word-break: break-word;
+}
+
+.codeViewerBannerDismiss {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* Loading / read-failure line. A failed read says so here and renders no source
+   rather than an empty listing. */
+.codeViewerStatus {
+  display: block;
+  padding: 10px 2px;
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.codeViewerStatus[hidden] { display: none !important; }
+
+/* The scroll container. Horizontal overflow (not wrapping) is what keeps a long
+   line one line, so the gutter numbering stays true to the file. */
+.codeViewerBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #0a0b0f;
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+
+/* max-content so every row spans the widest line — otherwise short rows stop at
+   the viewport edge and the selected-line highlight ends mid-scroll. */
+.codeViewerLines {
+  min-width: max-content;
+}
+
+/* The highlight's left border lives on EVERY row, transparent until the row is
+   in the jumped-to span. Colouring a border only on hits would widen those rows
+   by 2px and shift their numbers relative to the rest as the span scrolls past. */
+.codeViewerLine {
+  display: flex;
+  align-items: flex-start;
+  border-left: 2px solid transparent;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.codeViewerLine--hit {
+  border-left-color: #9D93EE;
+  background: rgba(157, 147, 238, 0.10);
+}
+
+/* Sticky so the numbers stay readable while a long line is scrolled sideways.
+   Its width is fixed in ch, so it never resizes as the window grows past 999. */
+.codeViewerGutter {
+  position: sticky;
+  left: 0;
+  flex: 0 0 auto;
+  width: 6ch;
+  padding: 0 8px 0 4px;
+  text-align: right;
+  color: var(--text-muted);
+  background: #0a0b0f;
+  user-select: none;
+}
+
+.codeViewerCode {
+  flex: 0 0 auto;
+  padding-right: 10px;
+  color: var(--text-primary);
+  white-space: pre;
+  tab-size: 4;
+}
+
+/* Chunk loaders, one above and one below the rendered window, each shown only
+   while unrendered lines remain in that direction. */
+.codeViewerMore {
+  display: block;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 6px 8px;
+  background: var(--bg-elevated);
+  border: none;
+  border-bottom: 0.5px solid var(--border-dim);
+  color: #9D93EE;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+.codeViewerMore[hidden] { display: none !important; }
+.codeViewerMore--down {
+  border-bottom: none;
+  border-top: 0.5px solid var(--border-dim);
 }
 
 /* ── STRUCTURE BLOCK CANVAS (UI lens, app's own repo) ─────────────────────────
@@ -12829,6 +13067,12 @@ body.row-dragging * { cursor: grabbing !important; }
     overflow-x: hidden;
   }
   #structureView > .structureCanvasHost > .structureCanvasPane {
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+  /* The Code lens's occupant of the same column. Like the canvas it absorbs the
+     column's height so its own body — not the column — is what scrolls. */
+  #structureView > .structureCanvasHost > .codeViewerPane {
     flex: 1 1 auto;
     min-height: 0;
   }
