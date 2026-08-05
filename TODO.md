@@ -627,3 +627,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/repoSetup.js, toDoList_main/src/style.css
   - Completed:
   <!-- id: ed333c2e-9eac-4ee5-b7a0-bc7e11a4058f -->
+
+- [ ] **[MEDIUM]** Collapse the Structure tab's GitHub link to its arrow
+  - Type: bug
+  - Description: File rows in the Structure tab's Code lens still truncate names to a single character — `Greeter.cs` renders as `G.`. The earlier flex fix works but cannot help: the row's fixed-width children over-subscribe the panel. At depth 2 the indent takes 32px, the file icon and gaps ~23px, the Explain button ~145px, and `View on GitHub ↗` ~95px — more than the panel's width before the name is measured, so `.structureFileName` sits pinned at its `min-width: 4ch` floor. The GitHub label is also redundant on every row of a repo tree; the `↗` already carries the meaning.
+  - Behavior: `.structureGithubLink` renders only the `↗` glyph, no text label. It keeps its current position at the right edge of the row, its muted colour, its hover and focus-visible treatment, and its existing click behavior. Its accessible name becomes `View <file path> on GitHub` via `aria-label`, so the meaning is not lost when the visible text is. File names then render in full at typical widths and ellipsize only when genuinely long.
+  - Implementation notes: In `structureView.js`, `buildGithubLink` at ~line 286 sets `a.textContent = 'View on GitHub ↗'` — change to the glyph alone and add an `aria-label` built from the `file` argument. The function is shared: check every call site before changing it, since the region/line-level rows may also use it and a label-less arrow may read worse there — if so, add an optional parameter rather than changing behavior for all callers. In `style.css`, give `.structureGithubLink` a fixed hit area (min-width and centred content) so the bare glyph is still a comfortable tap target on mobile, and `flex: 0 0 auto` so it never absorbs space the name should get. Leave `.structureFileName`'s `flex: 1 1 auto; min-width: 4ch` as-is — it is correct and the floor is what should be hit only in genuinely tight cases.
+  - Out of scope: resizing or relabelling the Explain button; the Types lens; the indent-guide gradient; any change to what the link points at.
+  - File: toDoList_main/src/structureView.js, toDoList_main/src/style.css
+  - Completed:
+  <!-- id: 4d9d9a00-280c-4e61-99be-107eb6a59934 -->
