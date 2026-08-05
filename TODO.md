@@ -618,7 +618,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 7dd7a948-b221-4ff3-8690-30e472bc39c6 -->
 
-- [ ] **[MEDIUM]** Framework variants in the Repo setup picker
+- [x] **[MEDIUM]** Framework variants in the Repo setup picker — Completed: 2026-08-05
   - Type: feature
   - Description: `SHAPES.md` now splits the `build-pipeline` section into `### angular`, `### react`, and `### vue` sub-blocks, each carrying its own scaffold command and its own config edits. The picker renders only the first fenced block of a section, so it shows Angular's scaffold and nothing else — React's commands are unreachable and Vue's don't appear at all. Render variants as a segmented control inside the expanded row.
   - Behavior: When a parsed section contains `### <variant-name>` headings, render a segmented control above the section body listing each variant in file order, first selected by default. Selecting a variant swaps the body below it to that variant's content: its prose, then its fenced blocks each with its own copy control. Within a variant the first fenced block is the scaffold command and the second, when present, is the edits — label them `SCAFFOLD` and `EDITS` above their respective blocks using the existing mono label style. Copy writes the block's raw text with no label and no surrounding prose. The section's own lead paragraph, `**Onboarding adds:**` chips, and `**Gotchas**` list stay above and below the segmented control respectively — they belong to the shape, not the variant. Sections with no `###` headings render exactly as they do now.
