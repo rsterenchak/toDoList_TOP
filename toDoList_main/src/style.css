@@ -21385,3 +21385,327 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     border-color: var(--border-bright);
   }
 }
+
+
+/* ── REPO SETUP SHAPE REFERENCE ──
+   The SHAPES.md picker opened from the settings menu's Repo setup section.
+   Same modal surface as the onboard sub-modal (backdrop / dialog / header /
+   body / footer, 92vh cap) so the two read as one family.
+
+   Every toggled piece carries its own `[hidden]` guard: the author-level
+   `display` declarations below otherwise beat the UA's [hidden] rule and the
+   element stays visible with `hidden` set. */
+#repoSetupBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 230;
+}
+#repoSetupModal {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  width: min(460px, 92vw);
+  max-height: 92vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+}
+#repoSetupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#repoSetupTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+#repoSetupClose {
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+#repoSetupClose:hover { background: var(--bg-hover); color: var(--text-primary); }
+#repoSetupClose:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+#repoSetupBody {
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+}
+#repoSetupFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+.repoSetupSource {
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* Shared ghost control — retry, copy, show-more, view-full, and the back
+   control out of the full document all take the same low-emphasis treatment. */
+.repoSetupGhostBtn {
+  appearance: none;
+  -webkit-appearance: none;
+  align-self: flex-start;
+  background: transparent;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  padding: 4px 9px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.repoSetupGhostBtn:hover { color: var(--text-primary); border-color: var(--accent); }
+.repoSetupGhostBtn:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.repoSetupGhostBtn[hidden] { display: none !important; }
+
+/* Loading + fetch-failure states. A failed fetch shows copy and a retry rather
+   than an empty modal. */
+#repoSetupStatus {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+#repoSetupStatus[hidden] { display: none !important; }
+#repoSetupError {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#repoSetupError[hidden] { display: none !important; }
+.repoSetupErrorText {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* Picker list — one collapsed row per `## ` section. */
+#repoSetupList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+#repoSetupList[hidden] { display: none !important; }
+.repoSetupRow {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  overflow: hidden;
+}
+.repoSetupRow[hidden] { display: none !important; }
+.repoSetupRowHead {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.repoSetupRowHead:hover { background: var(--bg-hover); }
+.repoSetupRowHead:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--accent-dim);
+}
+.repoSetupRowName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-family: "SpaceMono", monospace;
+  font-weight: 600;
+}
+.repoSetupRowLabel {
+  flex-shrink: 0;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+}
+.repoSetupRowLabel--template {
+  border: 0.5px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent-text);
+}
+/* CLI and NO SHAPE are both "nothing to copy a repo from" — dimmed so the
+   TEMPLATE chip is the one that catches the eye. */
+.repoSetupRowLabel--cli,
+.repoSetupRowLabel--none {
+  border: 0.5px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-muted);
+}
+.repoSetupRowWarn {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: #ffbd5e;
+}
+
+/* Expanded body — lead paragraph, the copyable value, the onboarding chips,
+   then the gotchas. */
+.repoSetupRowBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0 10px 10px;
+}
+.repoSetupRowBody[hidden] { display: none !important; }
+.repoSetupLead {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-secondary);
+}
+.repoSetupCopy {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.repoSetupCopyValue {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-mid);
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.repoSetupCopyBtn { flex-shrink: 0; }
+/* Off-screen textarea used only by the execCommand clipboard fallback. A class
+   rather than inline styles, so the module writes no `style` properties. */
+.repoSetupCopyProbe {
+  position: fixed;
+  top: 0;
+  left: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+.repoSetupChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.repoSetupChip {
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 0.5px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.repoSetupGotchas {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.repoSetupGotcha {
+  padding: 6px 8px;
+  border-left: 2px solid #ffbd5e;
+  background: rgba(255, 189, 94, 0.07);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.repoSetupGotcha[hidden] { display: none !important; }
+.repoSetupGotchaMore[hidden] { display: none !important; }
+
+/* Full-document view. Above 1024px it reads below the picker; below, the
+   picker is hidden in JS so this replaces it rather than appending. */
+#repoSetupFull {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#repoSetupFull[hidden] { display: none !important; }
+.repoSetupDoc {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.repoSetupDocH {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.repoSetupDocH--1 { font-size: 15px; }
+.repoSetupDocH--2 { font-size: 13px; font-family: "SpaceMono", monospace; }
+.repoSetupDocH--3,
+.repoSetupDocH--4,
+.repoSetupDocH--5,
+.repoSetupDocH--6 { font-size: 12px; }
+.repoSetupDocP {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.repoSetupDocList {
+  margin: 0;
+  padding-left: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.repoSetupDocPre {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-mid);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.repoSetupDocRule {
+  height: 0;
+  border-top: 0.5px solid var(--border-dim);
+}
+.repoSetupCode {
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+}

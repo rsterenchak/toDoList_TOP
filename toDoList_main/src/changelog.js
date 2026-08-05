@@ -9,19 +9,13 @@ export const changelog = [
         added: [
             "A Check action in the onboard dialog reports what a repo needs — its detected shape, any warnings, and the scaffold files that are missing — without touching it.",
             "Each row under Inject targets has its own Check, reporting which scaffold files have gone missing from that repo since it was onboarded.",
+            "A Repo setup section in settings opens a shape reference — which shape each kind of project is, whether a template or a CLI is needed, and the gotchas that apply — read live so new shapes appear without an app update.",
         ],
         changed: [
             "The coverage breakdown now groups rubric aspects by section, each with its own tally and progress bar, and every aspect row shows its full label on a second line instead of truncating.",
         ],
         fixed: [
             "The collapse arrow in the TODO.md view is gone on phones, where tapping it did nothing, and the TODO.md sheet always opens fully expanded.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-03',
-        fixed: [
-            "Runs started from the TODO.md view's Run backlog button or an entry's Run this entry pill now show up in the Claude sheet's Runs list while they're in flight, instead of appearing only after they finish.",
         ],
     },
 ];
