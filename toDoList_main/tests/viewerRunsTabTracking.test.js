@@ -124,6 +124,71 @@ describe('Runs tab — viewer-dispatched runs are tracked live', () => {
         expect(storedRuns()[0].entryId).toBe(null);
     });
 
+    // A backlog dispatch names no entry, so "Backlog run" is all the row can say
+    // up front. The tracker keeps a snapshot of which entries were still OPEN at
+    // dispatch; reconcile later diffs it against main to name the entry the run
+    // actually completed. Stored distilled to titles — never the raw body, which
+    // runs to six figures of bytes and would eventually blow the localStorage
+    // quota that saveRunRecords swallows silently.
+    it('stores a backlog run\'s open-entry titles, not the TODO.md body it came from', () => {
+        mountClaudeSheet(document.body);
+        const snapshot = [
+            '# TODO List',
+            '',
+            '- [ ] **[HIGH]** Add a sparkle',
+            '  - Type: feature',
+            '  <!-- id: e1 -->',
+            '',
+            '- [x] **[LOW]** Already done — Completed: 2026-08-01',
+            '  - Type: bug',
+            '',
+            '- [ ] Tidy the sidebar',
+            '  - Type: feature',
+        ].join('\n');
+        trackDispatchedRun({
+            correlationId: 'corr-backlog-snap',
+            title: 'Backlog run',
+            repo: 'owner/repo',
+            project: 'ProjA',
+            dispatchedAt: Date.now(),
+            todoSnapshot: snapshot,
+        });
+
+        const stored = storedRuns();
+        // Only the unchecked entries, checkbox and priority marker stripped.
+        expect(stored[0].openTitles).toEqual(['Add a sparkle', 'Tidy the sidebar']);
+        // The body itself is never persisted.
+        expect(JSON.stringify(stored[0])).not.toContain('Type: feature');
+    });
+
+    it('stores no snapshot for an entry run — it already knows its title', () => {
+        mountClaudeSheet(document.body);
+        trackDispatchedRun({
+            correlationId: 'corr-entry-snap',
+            entryId: 'entry-1',
+            title: 'Fix the run pill',
+            repo: 'owner/repo',
+            project: 'ProjA',
+            dispatchedAt: Date.now(),
+            todoSnapshot: '- [ ] **[HIGH]** Add a sparkle',
+        });
+
+        expect(storedRuns()[0].openTitles).toBe(null);
+    });
+
+    it('stores no snapshot when the backlog dispatch had no TODO.md body to snapshot', () => {
+        mountClaudeSheet(document.body);
+        trackDispatchedRun({
+            correlationId: 'corr-backlog-empty',
+            title: 'Backlog run',
+            repo: 'owner/repo',
+            project: 'ProjA',
+            dispatchedAt: Date.now(),
+        });
+
+        expect(storedRuns()[0].openTitles).toBe(null);
+    });
+
     it('dedups by correlation id — one dispatch can never stack two rows', () => {
         mountClaudeSheet(document.body);
         const first = trackDispatchedRun({
@@ -190,6 +255,15 @@ describe('TODO.md viewer — both dispatch paths feed the Runs tab', () => {
         expect(block).toMatch(/trackDispatchedRun\s*\(\s*\{[\s\S]{0,400}project:\s*projectName/);
         // Only on a successful dispatch — a failed one has no run to track.
         expect(block.indexOf('trackDispatchedRun')).toBeGreaterThan(block.indexOf('if (res.ok)'));
+    });
+
+    it('runBacklog hands the tracker the TODO.md body it is looking at', () => {
+        // The dispatch-time snapshot is the only thing that can later name the
+        // entry a backlog run completed, and the viewer is the only surface
+        // holding that body — so the hand-off has to happen here.
+        const start = viewer.indexOf('async function runBacklog');
+        const block = viewer.slice(start, viewer.indexOf('runBacklogBtn.addEventListener', start));
+        expect(block).toMatch(/trackDispatchedRun\s*\(\s*\{[\s\S]{0,800}todoSnapshot:\s*card\.dataset\.content/);
     });
 
     it('runEntry tracks the dispatch and carries the entry id', () => {

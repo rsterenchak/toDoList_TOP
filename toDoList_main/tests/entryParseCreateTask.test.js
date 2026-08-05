@@ -151,7 +151,11 @@ describe('wiring — source inspection', () => {
 
     it('claudeSheet imports the shared parser + commit helper and mounts the action on assistant bubbles', () => {
         const src = read('claudeSheet.js');
-        expect(src).toMatch(/import\s*\{\s*parsePastedEntry,\s*commitEntryToActiveProject\s*\}\s*from\s*['"]\.\/entryParse\.js['"]/);
+        // Both names come from the shared module's import. The list is matched
+        // by membership, not by exact arity: claudeSheet also pulls the shared
+        // task-line title parser from here, and the point of the assertion is
+        // that these two are imported rather than re-implemented locally.
+        expect(src).toMatch(/import\s*\{[^}]*\bparsePastedEntry\b[^}]*\bcommitEntryToActiveProject\b[^}]*\}\s*from\s*['"]\.\/entryParse\.js['"]/);
         expect(src).toMatch(/function mountCreateTaskAction/);
         // Mounted from both the live reply path and the history replay path.
         const mounts = src.match(/mountCreateTaskAction\(/g) || [];

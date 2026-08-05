@@ -55,7 +55,7 @@ import {
     refreshAssignmentForActiveProject,
 } from './assignmentCoverage.js';
 import { onQueueChange, getQueueRows, getLoadedProjectName } from './agentQueueStore.js';
-import { parsePastedEntry, commitEntryToActiveProject } from './entryParse.js';
+import { parsePastedEntry, commitEntryToActiveProject, taskLineTitle } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
 import { setChatPaneCollapsed, getUsageBudget, setUsageBudget } from './prefs.js';
 import { wireModalDismiss } from './modalDismiss.js';
@@ -686,6 +686,25 @@ function saveRunRecords() {
 // stored list. Returns the new record, or null when the dispatch is already
 // tracked (dedup by correlation id, so a re-entrant call can never stack two
 // rows for one run).
+// Distil a TODO.md body down to the titles of the entries still OPEN in it —
+// the dispatch-time snapshot a backlog run is later diffed against to discover
+// which entry the routine checked off. Deliberately stores the titles rather
+// than the body itself: TODO.md runs to six figures of bytes, run records are
+// uncapped, and saveRunRecords swallows a quota error silently — so persisting
+// whole bodies would eventually break run persistence outright with no signal.
+// The titles are the entire input to the diff, so nothing is lost. Returns null
+// when there is nothing to snapshot, keeping the record free of empty arrays.
+function openTaskTitles(content) {
+    if (typeof content !== 'string' || !content) return null;
+    const titles = [];
+    content.split('\n').forEach(function(line) {
+        if (!/^\s*- \[ \]/.test(line)) return;
+        const title = taskLineTitle(line);
+        if (title) titles.push(title);
+    });
+    return titles.length ? titles : null;
+}
+
 export function trackDispatchedRun(opts) {
     if (!opts || !opts.correlationId) return null;
     loadRunRecords();
@@ -695,6 +714,11 @@ export function trackDispatchedRun(opts) {
         // so the record stays un-joined to a TODO.md entry and simply never
         // becomes iterable/revertable, exactly as reconcile already handles.
         entryId: opts.entryId || null,
+        // …which also means the row opens with a generic "Backlog run" label.
+        // The open-entry snapshot taken at dispatch is what lets reconcile
+        // recover the real title once the run lands. Entry runs already know
+        // their entry (and its title), so they carry no snapshot.
+        openTitles: opts.entryId ? null : openTaskTitles(opts.todoSnapshot),
         correlationId: opts.correlationId,
         title: opts.title || 'Untitled entry',
         status: 'QUEUED',
@@ -4876,6 +4900,42 @@ function entryCheckboxState(content, entryId) {
     return null;
 }
 
+// Find the one entry that flipped from open to checked between a backlog run's
+// dispatch-time snapshot (titles of the entries then open) and main's TODO.md as
+// it reads now. A title that was open before and is checked now is the routine's
+// completed task. Ambiguity is never guessed at: zero matches (nothing checked
+// off, or the title was rewritten by the run) and two-or-more matches (something
+// else was checked off in the same window) both return null so the caller keeps
+// its generic label. Returns the entry title, or null.
+function newlyCheckedTitle(openTitles, content) {
+    if (!Array.isArray(openTitles) || !openTitles.length) return null;
+    if (typeof content !== 'string') return null;
+    const wasOpen = new Set(openTitles);
+    const found = [];
+    content.split('\n').forEach(function(line) {
+        if (!/^\s*- \[[xX]\]/.test(line)) return;
+        const title = taskLineTitle(line);
+        if (title && wasOpen.has(title)) found.push(title);
+    });
+    return found.length === 1 ? found[0] : null;
+}
+
+// Recover the real title of a landed backlog run. A backlog dispatch names no
+// entry, so its row is created as "Backlog run" and — before this — stayed that
+// way forever, because the no-entryId reconcile path shipped the record without
+// ever discovering which task the routine picked. Read main's TODO.md and diff
+// it against the record's dispatch-time snapshot to name that task. Purely
+// cosmetic and strictly best-effort: no snapshot, no target, a failed read or an
+// ambiguous diff all just leave the existing label in place, and none of it
+// changes the SHIPPED verdict or delays it. Returns the resolved title or null.
+async function resolveBacklogRunTitle(rec, target) {
+    if (!rec || !Array.isArray(rec.openTitles) || !rec.openTitles.length) return null;
+    if (!target || !target.repo || !target.file_path) return null;
+    const read = await readTodoMdFromWorker(target);
+    if (!read || read.ok === false) return null;
+    return newlyCheckedTitle(rec.openTitles, read.content);
+}
+
 // Today's date as an ISO YYYY-MM-DD string (local time) — the completion date
 // stamped onto a Conceive board Shipped-log record.
 function todayIsoDate() {
@@ -4924,7 +4984,9 @@ function logConceiveRun(project, rec, verdict, runId, target) {
 //     fail safe to SHIPPED.
 // Fail safe toward SHIPPED on every ambiguity so a genuine ship is never
 // mislabeled. A record with no entryId or no resolvable target can't be
-// verified, so keep the historical success → SHIPPED behavior for those.
+// verified, so keep the historical success → SHIPPED behavior for those — a
+// backlog run (no entryId) additionally gets its real title recovered from its
+// dispatch-time snapshot on the way through (see resolveBacklogRunTitle).
 async function reconcileSuccessConclusion(correlationId, project, runUrl, target, runId) {
     const rec = findRunRecord(correlationId);
     const settle = function() {
@@ -4932,7 +4994,27 @@ async function reconcileSuccessConclusion(correlationId, project, runUrl, target
         freeProjectRunGuard(project);
     };
     if (!rec) { settle(); return; }
-    if (!rec.entryId || !target || !target.repo || !target.file_path) {
+    if (!rec.entryId) {
+        // A backlog run has no entry to check, so the verdict is SHIPPED exactly
+        // as before — but the row is still labelled "Backlog run", and this is
+        // the only moment the completed entry can be identified. Diff main's
+        // TODO.md against the dispatch-time snapshot first, then commit.
+        const resolved = await resolveBacklogRunTitle(rec, target);
+        // Re-find: the await may have spanned a trackDispatchedRun, which
+        // re-reads the records array and would leave `rec` pointing at a
+        // detached object whose mutations never persist.
+        const live = findRunRecord(correlationId) || rec;
+        if (resolved) live.title = resolved;
+        // The snapshot is spent — this record settles terminal here and can
+        // never be diffed again, so don't leave it sitting in localStorage.
+        live.openTitles = null;
+        saveRunRecords();
+        renderRunsList();
+        setRunRecordStatus(correlationId, 'SHIPPED');
+        settle();
+        return;
+    }
+    if (!target || !target.repo || !target.file_path) {
         setRunRecordStatus(correlationId, 'SHIPPED');
         settle();
         return;

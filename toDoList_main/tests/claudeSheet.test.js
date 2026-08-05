@@ -1445,6 +1445,133 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].status).toBe('SHIPPED');
     });
 
+    // ── Backlog runs recover the real entry title on the way to SHIPPED ──
+    // "Run backlog" dispatches with no entry id (the routine picks the task), so
+    // its row is created as "Backlog run". Before, the no-entryId reconcile path
+    // short-circuited straight to SHIPPED and never discovered which entry the
+    // run completed, leaving the row — and its stored record — reading "Backlog
+    // run" forever. It now diffs main's TODO.md against the open-entry snapshot
+    // taken at dispatch and renames the row to the entry that got checked off.
+
+    const BACKLOG_SNAPSHOT = ['Add a sparkle', 'Fix the run pill', 'Tidy the sidebar'];
+
+    it('renames a landed backlog run to the entry that got checked off', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        // 'Fix the run pill' was open at dispatch and reads back checked — with
+        // the routine's ` — Completed: …` note appended, which the title parse
+        // strips exactly as it does for a pasted entry.
+        readJson = {
+            content: [
+                '# TODO List',
+                '',
+                '- [ ] **[HIGH]** Add a sparkle',
+                '  - Type: feature',
+                '',
+                '- [x] **[MEDIUM]** Fix the run pill — Completed: 2026-08-05',
+                '  - Type: bug',
+                '',
+                '- [ ] **[LOW]** Tidy the sidebar',
+                '  - Type: feature',
+            ].join('\n'),
+            sha: 's',
+        };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunTitle').textContent).toBe('Fix the run pill');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].title).toBe('Fix the run pill');
+        // The verdict itself is unchanged: a backlog run still ships.
+        expect(stored[0].status).toBe('SHIPPED');
+        // The snapshot is spent once the record settles — it can never be
+        // diffed again, so it must not linger in localStorage.
+        expect(stored[0].openTitles).toBe(null);
+    });
+
+    it('keeps the "Backlog run" label when two entries read back newly checked', async () => {
+        // Ambiguous: something else was checked off in the same window, so which
+        // one the run did is a guess. Never guess — keep the generic label.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = {
+            content: [
+                '- [x] **[HIGH]** Add a sparkle — Completed: 2026-08-05',
+                '- [x] **[MEDIUM]** Fix the run pill — Completed: 2026-08-05',
+                '- [ ] **[LOW]** Tidy the sidebar',
+            ].join('\n'),
+            sha: 's',
+        };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunTitle').textContent).toBe('Backlog run');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].title).toBe('Backlog run');
+        expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('keeps the "Backlog run" label when no snapshot entry reads back checked', async () => {
+        // Nothing that was open got checked off (or the run rewrote the title),
+        // so there is nothing to name the row with.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = {
+            content: [
+                '- [ ] **[HIGH]** Add a sparkle',
+                '- [x] **[LOW]** Something checked off long before this run',
+            ].join('\n'),
+            sha: 's',
+        };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunTitle').textContent).toBe('Backlog run');
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('SHIPPED');
+    });
+
+    it('still ships a backlog run when the TODO.md read fails — the rename is best-effort', async () => {
+        // Title recovery is cosmetic: a failed read must never hold the row
+        // non-terminal (an entry-id record retries; a backlog record cannot).
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = {}; // no content string → readTodoMdFromWorker returns ok:false
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].title).toBe('Backlog run');
+        expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('does not read TODO.md for a no-entryId record that carries no snapshot', async () => {
+        // Legacy records (and any backlog run dispatched before the snapshot
+        // existed) have nothing to diff, so they must not spend a read at all.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).read).length).toBe(0);
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('SHIPPED');
+    });
+
     it('renders a "No change" row as a non-iterable expand/collapse accordion', () => {
         localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
             { entryId: 'e1', correlationId: 'c1', title: 'No-op', status: 'NOCHANGE', runUrl: 'https://github.com/x/y/actions/runs/9', runId: 9, dispatchedAt: Date.now() },
