@@ -2075,6 +2075,13 @@ function buildTodoMdViewerCard(projectName, target) {
                     repo: target ? target.repo : null,
                     project: projectName,
                     dispatchedAt: dispatchedAt,
+                    // A backlog dispatch names no entry — the routine picks the
+                    // task itself — so "Backlog run" is all the row can say up
+                    // front. Hand the tracker the TODO.md body as it stands at
+                    // dispatch: once the run lands, diffing it against main
+                    // reveals which entry got checked off, and the row can show
+                    // that entry's real title instead of the generic label.
+                    todoSnapshot: card.dataset.content || '',
                 });
                 showInjectToast('Backlog run dispatched');
             } else {

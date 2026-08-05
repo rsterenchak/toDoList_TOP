@@ -12,14 +12,12 @@ export const changelog = [
         fixed: [
             "File names in the Structure tab's code view show in full instead of collapsing to a single letter.",
             "The GitHub link on a Structure tab file row is now just its arrow, freeing the width that was squeezing file names.",
+            "A finished backlog run's row in the Runs tab now names the task it completed instead of staying labelled “Backlog run”.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-04',
-        changed: [
-            "The coverage breakdown now groups rubric aspects by section, each with its own tally and progress bar, and every aspect row shows its full label on a second line instead of truncating.",
-        ],
         fixed: [
             "The collapse arrow in the TODO.md view is gone on phones, where tapping it did nothing, and the TODO.md sheet always opens fully expanded.",
         ],

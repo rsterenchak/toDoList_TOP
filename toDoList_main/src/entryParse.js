@@ -11,6 +11,24 @@ import { listLogic } from './listLogic.js';
 import { activeProjectNameForViewer } from './runState.js';
 
 
+// Reduce a TODO.md task line to its display title: strip the `- [ ]` / `- [x]`
+// checkbox, a leading `**[PRIORITY]**` marker, and a trailing `— Completed: …`
+// note. Returns '' for a line that isn't a task line, so callers can use it as a
+// filter as well as a parser. Exported because the same title must be derived in
+// two places — the pasted-entry parse below, and the Runs tab's recovery of
+// WHICH entry a backlog run completed (claudeSheet.js) — and a second copy of
+// these regexes is exactly the drift this module exists to prevent.
+export function taskLineTitle(line) {
+    const text = String(line == null ? '' : line);
+    if (!/^\s*- \[[ xX]\]/.test(text)) return '';
+    return text
+        .replace(/^\s*- \[[ xX]\]\s*/, '')
+        .replace(/^\*\*\[[^\]]*\]\*\*\s*/, '')
+        .replace(/\s*[—-]\s*Completed:.*$/i, '')
+        .trim();
+}
+
+
 // Parse a pasted / drafted TODO.md entry into a display title + a verbatim
 // description. Deliberately narrow (see the compose-row paste entry's notes):
 //   - strip lines that are just a wrapping code fence (``` optionally + lang),
@@ -35,13 +53,7 @@ export function parsePastedEntry(raw) {
     const checkboxLine = lines.find(function(line) {
         return /^\s*- \[[ xX]\]/.test(line);
     });
-    if (checkboxLine) {
-        title = checkboxLine
-            .replace(/^\s*- \[[ xX]\]\s*/, '')
-            .replace(/^\*\*\[[^\]]*\]\*\*\s*/, '')
-            .replace(/\s*[—-]\s*Completed:.*$/i, '')
-            .trim();
-    }
+    if (checkboxLine) title = taskLineTitle(checkboxLine);
     if (!title) {
         const firstNonEmpty = lines.find(function(line) { return line.trim().length > 0; });
         title = firstNonEmpty ? firstNonEmpty.trim() : '';
