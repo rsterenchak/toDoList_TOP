@@ -32,6 +32,7 @@ import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarouse
 import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { showInjectSettingsModal } from './inject.js';
+import { showRepoSetupModal } from './repoSetup.js';
 import { isFocusInTextInput } from './popoverNav.js';
 
 export function createSettingsMenu(deps) {
@@ -294,6 +295,27 @@ export function createSettingsMenu(deps) {
             function() { openImportPicker(rebuildAfterImport); }
         );
         menu.appendChild(importItem);
+
+        // REPO SETUP section — the pipeline-facing cluster. Shape reference
+        // opens the SHAPES.md picker (which shape a repo is, whether a
+        // template exists, and the gotchas that apply); Configure inject sits
+        // under the same heading because pointing the app at a repo is the
+        // other half of setting one up. The chevron state slot marks the
+        // reference row as "tap to open a flow", matching Replay welcome tour.
+        menu.appendChild(buildSettingsMenuDivider());
+        const repoSetupHeading = document.createElement('div');
+        repoSetupHeading.className = 'settingsMenuSectionHeading';
+        repoSetupHeading.textContent = 'Repo setup';
+        repoSetupHeading.setAttribute('role', 'presentation');
+        menu.appendChild(repoSetupHeading);
+
+        const shapeReferenceItem = buildSettingsMenuItem(
+            'Shape reference',
+            '›',
+            function() { showRepoSetupModal(); },
+            'settingsMenuItem--chevron'
+        );
+        menu.appendChild(shapeReferenceItem);
 
         // Configure inject — opens the per-device Inject settings modal,
         // where the user pastes a Cloudflare Worker URL + shared secret so
