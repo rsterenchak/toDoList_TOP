@@ -124,10 +124,20 @@ describe('Code-viewer [hidden] guards override the base display declaration', ()
         expect(js).toMatch(/banner\.hidden/);
     });
 
-    it('codeViewer.js styles through classes only — no inline style writes, no innerHTML', () => {
+    // Was a blanket ban on `.style.` and `setProperty(`. The size stepper broke
+    // that: the chosen code text size is a value CSS cannot know, so it has to be
+    // written to the pane as a custom property. The ban is narrowed to what it was
+    // actually protecting — the layout and visibility properties the guards above
+    // depend on — and the one permitted write is pinned by name, so a second
+    // inline declaration still fails here rather than quietly escaping style.css.
+    it('codeViewer.js styles through classes, bar the one custom property, and never innerHTML', () => {
         const js = read('codeViewer.js');
-        expect(js).not.toMatch(/\.style\./);
-        expect(js).not.toMatch(/setProperty\(/);
+        expect(js).not.toMatch(/\.style\.(?:display|visibility|opacity|height|width|top|left)\b/);
+        const written = js.match(/setProperty\(\s*'([^']+)'/g) || [];
+        expect(written).toEqual(["setProperty('--code-font-size'"]);
+        // The other two routes to an inline declaration stay closed.
+        expect(js).not.toMatch(/\.style\.cssText/);
+        expect(js).not.toMatch(/setAttribute\(\s*'style'/);
         // Fetched repo source reaches the DOM through textContent, never markup.
         expect(js).not.toMatch(/innerHTML\s*=/);
     });

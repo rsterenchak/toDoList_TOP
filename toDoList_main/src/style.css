@@ -5436,12 +5436,12 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* ── STRUCTURE CODE VIEWER (Code lens, desktop detail column) ─────────────────
-   The Code lens's use of `.structureCanvasHost`: a header (path, line count,
-   GitHub link, close), an optional jump banner, and a windowed source listing
-   with a line-number gutter. Desktop only — below 1024px the host is display:none
-   and nothing here is mounted. Every element that this module toggles declares a
-   `display`, which outranks the UA's `[hidden] { display: none }`, so each one
-   carries its own `[hidden]` guard directly beneath its base rule. */
+   The Code lens's use of `.structureCanvasHost`: a header (path, line count, a
+   text-size stepper, GitHub link, close), an optional jump banner, and a windowed
+   source listing with a line-number gutter. Desktop only — below 1024px the host
+   is display:none and nothing here is mounted. Every element that this module
+   toggles declares a `display`, which outranks the UA's `[hidden] { display: none }`,
+   so each one carries its own `[hidden]` guard directly beneath its base rule. */
 .codeViewerPane {
   display: flex;
   flex-direction: column;
@@ -5487,6 +5487,47 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-size: 11px;
   color: var(--text-muted);
   flex: 0 0 auto;
+}
+
+/* Steps the source text through 10–18px. codeViewer.js writes the chosen size to
+   `--code-font-size` on the pane and `.codeViewerLine` reads it, so the gutter
+   and the code are sized by ONE value and their baselines can never drift apart.
+   The stepper's own type is fixed — this sizes the listing, not the chrome. */
+.codeViewerSize {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.codeViewerSizeStep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.codeViewerSizeStep:hover:not(:disabled) { color: var(--text-primary); }
+.codeViewerSizeStep:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* Fixed at 2ch so stepping 9 → 10 doesn't shuffle the buttons sideways. */
+.codeViewerSizeValue {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 2ch;
+  text-align: center;
 }
 
 /* One Explain control for the open file, left of the GitHub link. Ghost-styled on
@@ -5669,14 +5710,27 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 
 /* The highlight's left border lives on EVERY row, transparent until the row is
    in the jumped-to span. Colouring a border only on hits would widen those rows
-   by 2px and shift their numbers relative to the rest as the span scrolls past. */
+   by 2px and shift their numbers relative to the rest as the span scrolls past.
+
+   The size comes from `--code-font-size`, written on the pane by the header's
+   stepper, with 12px as the fallback for a pane the JS hasn't reached.
+
+   text-size-adjust is what stops iOS Safari inflating each line independently.
+   Its `auto` default boosts text per block by the block's width relative to the
+   viewport, and `.codeViewerCode` is `white-space: pre` — so every line is a
+   different width, lands in a different inflation cluster, and renders at a
+   different size inside one file. `100%` rather than `none`: both disable
+   boosting, but `none` has historically also interfered with user-initiated
+   zoom. Scoped to the listing, not `html`, so no other surface changes. */
 .codeViewerLine {
   display: flex;
   align-items: flex-start;
   border-left: 2px solid transparent;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 12px;
+  font-size: var(--code-font-size, 12px);
   line-height: 1.5;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .codeViewerLine--hit {
@@ -5685,7 +5739,9 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* Sticky so the numbers stay readable while a long line is scrolled sideways.
-   Its width is fixed in ch, so it never resizes as the window grows past 999. */
+   Its width is fixed in ch, so it never resizes as the window grows past 999 —
+   and because `ch` resolves against the inherited font-size, it widens with the
+   header's size stepper instead of clipping six-digit numbers at 18px. */
 .codeViewerGutter {
   position: sticky;
   left: 0;
@@ -5773,16 +5829,22 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* On a phone the reason a file was opened is more often "what is this?" than
-   "show me line 400", so Explain is promoted to a full-width primary button on
-   its own row. `flex-basis: 100%` + the header's wrap is what moves it there —
-   codeViewer.js builds one control and stays unaware of which host it is in. */
+   "show me line 400", so Explain is promoted to a primary button on its own row.
+   The header's wrap + `order: 1` is what moves it there — codeViewer.js builds
+   one control and stays unaware of which host it is in.
+
+   The size stepper joins it on that row rather than staying beside the meta. The
+   top row is already path + count + link + close on a 360px screen, and three
+   more controls there would spend the deficit on the path, which is the one item
+   that truncates. Explain drops to `flex: 1 1 auto` so it still takes the rest of
+   the row; the stepper is the only thing sharing it. */
 .structureCodeSheet .codeViewerHeader {
   flex-wrap: wrap;
   row-gap: 8px;
 }
 .structureCodeSheet .codeViewerExplain {
   order: 1;
-  flex: 1 1 100%;
+  flex: 1 1 auto;
   min-height: 40px;
   font-size: 13px;
   background: #6C5DF5;
@@ -5792,6 +5854,19 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .structureCodeSheet .codeViewerExplain:hover:not(:disabled) {
   background: #7d70f7;
   border-color: #7d70f7;
+}
+.structureCodeSheet .codeViewerSize {
+  order: 1;
+}
+/* Sized to the 40px Explain button beside it, and to a comfortable touch target
+   — the desktop 24px square is a mouse affordance, not a thumb one. */
+.structureCodeSheet .codeViewerSizeStep {
+  min-width: 36px;
+  min-height: 40px;
+  font-size: 16px;
+}
+.structureCodeSheet .codeViewerSizeValue {
+  font-size: 12px;
 }
 
 /* ── STRUCTURE BLOCK CANVAS (UI lens, app's own repo) ─────────────────────────

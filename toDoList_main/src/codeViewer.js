@@ -34,6 +34,15 @@
 // summary is a Sonnet turn keyed by the manifest's commit SHA, which structureView
 // owns, so it registers the doer through `setCodeViewerExplainHandler` and this
 // module only supplies the button and the block the reply renders into.
+//
+// The header also carries a −/+ size stepper for the source text. It exists for
+// two reasons at once: 12px mono is small on a phone, and iOS Safari's text
+// autosizing was inflating each line by its own width, so a file whose lines are
+// all different widths (`white-space: pre`) rendered at visibly different sizes
+// within one view. The listing opts out of autosizing in CSS and the size becomes
+// an explicit preference instead — persisted per device, applied at both
+// breakpoints, and driven through one custom property so the gutter and the code
+// can never step apart.
 
 import { readRepoFile } from './inject.js';
 
@@ -84,6 +93,73 @@ let explainHandler = null;
 // that opened it stays selected. Returning true claims the click; anything else
 // falls through to the default clear.
 let closeHandler = null;
+
+// ── Code text size ───────────────────────────────────────────────────────────
+
+// The stepper's range, in px. 12 is the size the listing has always rendered at,
+// so a device with nothing stored reads exactly as it did before.
+const CODE_FONT_MIN = 10;
+const CODE_FONT_MAX = 18;
+const CODE_FONT_DEFAULT = 12;
+const CODE_FONT_STEP = 1;
+const CODE_FONT_KEY = 'todoapp_codeFontSize';
+
+function clampFontSize(n) {
+    const v = Math.round(Number(n));
+    if (!isFinite(v)) return CODE_FONT_DEFAULT;
+    return Math.min(CODE_FONT_MAX, Math.max(CODE_FONT_MIN, v));
+}
+
+// Both accessors are wrapped: Safari's private mode throws on `localStorage`
+// access outright, and a full quota throws on write. Neither may cost the user
+// the viewer, so a failure falls back to the default / to a session-only size.
+function readStoredFontSize() {
+    try {
+        const raw = localStorage.getItem(CODE_FONT_KEY);
+        if (raw == null || raw === '') return CODE_FONT_DEFAULT;
+        const n = Number(raw);
+        if (!isFinite(n)) return CODE_FONT_DEFAULT;
+        return clampFontSize(n);
+    } catch (e) {
+        return CODE_FONT_DEFAULT;
+    }
+}
+
+function writeStoredFontSize(px) {
+    try { localStorage.setItem(CODE_FONT_KEY, String(px)); }
+    catch (e) { /* the size still applies for this session */ }
+}
+
+let codeFontSize = readStoredFontSize();
+
+// Every pane built so far, so a step taken in one host moves the other one too —
+// the detail column and the mobile sheet each mount their own pane, and a size
+// that only followed the pane you happened to step in would disagree across a
+// resize. Panes the host has discarded (`renderLens` empties it on every lens
+// paint) are pruned here rather than tracked, so the set can't grow unbounded.
+const panes = new Set();
+
+// Push the current size onto one pane: the custom property the listing reads,
+// the readout between the steppers, and the end-of-range disabled states.
+function applyFontSize(pane) {
+    const refs = pane._codeViewerRefs;
+    pane.style.setProperty('--code-font-size', codeFontSize + 'px');
+    refs.sizeValue.textContent = String(codeFontSize);
+    refs.sizeDown.disabled = codeFontSize <= CODE_FONT_MIN;
+    refs.sizeUp.disabled = codeFontSize >= CODE_FONT_MAX;
+    refs.size.setAttribute('aria-label', 'Code text size, ' + codeFontSize + 'px');
+}
+
+function stepFontSize(delta) {
+    const next = clampFontSize(codeFontSize + delta);
+    if (next === codeFontSize) return;
+    codeFontSize = next;
+    writeStoredFontSize(next);
+    panes.forEach(function (p) {
+        if (!p.parentElement) { panes.delete(p); return; }
+        applyFontSize(p);
+    });
+}
 
 function clearEl(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -149,6 +225,10 @@ export function resetCodeViewer() {
     cache.clear();
     active = null;
     renderGen = 0;
+    panes.clear();
+    // Re-read rather than reset to the default: the size is a persisted device
+    // preference, so a reset viewer must still come back at the stored size.
+    codeFontSize = readStoredFontSize();
 }
 
 // Split fetched source into display lines. A file that ends with a newline
@@ -277,6 +357,34 @@ function buildPane() {
     meta.className = 'codeViewerMeta';
     header.appendChild(meta);
 
+    // The size stepper, next to the meta. It is a preference rather than an
+    // action on the open file, so unlike Explain it is never disabled as a whole
+    // — only its two ends, once the range runs out. On mobile CSS drops it onto
+    // the Explain row, where the header has the width to spare.
+    const size = document.createElement('div');
+    size.className = 'codeViewerSize';
+    size.setAttribute('role', 'group');
+
+    const sizeDown = document.createElement('button');
+    sizeDown.type = 'button';
+    sizeDown.className = 'codeViewerSizeStep';
+    sizeDown.textContent = '−';
+    sizeDown.setAttribute('aria-label', 'Decrease code text size');
+    size.appendChild(sizeDown);
+
+    const sizeValue = document.createElement('span');
+    sizeValue.className = 'codeViewerSizeValue';
+    size.appendChild(sizeValue);
+
+    const sizeUp = document.createElement('button');
+    sizeUp.type = 'button';
+    sizeUp.className = 'codeViewerSizeStep';
+    sizeUp.textContent = '+';
+    sizeUp.setAttribute('aria-label', 'Increase code text size');
+    size.appendChild(sizeUp);
+
+    header.appendChild(size);
+
     // One Explain control for the open file, left of the GitHub link. Disabled
     // until a file is open, so it never advertises an action it can't perform.
     // In the mobile sheet CSS wraps it onto its own full-width row beneath the
@@ -383,6 +491,10 @@ function buildPane() {
     pane._codeViewerRefs = {
         path: path,
         meta: meta,
+        size: size,
+        sizeDown: sizeDown,
+        sizeValue: sizeValue,
+        sizeUp: sizeUp,
         explain: explain,
         gh: gh,
         close: close,
@@ -403,6 +515,10 @@ function buildPane() {
     pane._codeViewerFile = null;
 
     setExplanationCollapsed(pane, false);
+    // Before the pane is mounted, so the stored size is what the first painted
+    // line is measured at rather than something the listing reflows into.
+    panes.add(pane);
+    applyFontSize(pane);
 
     close.addEventListener('click', function () {
         const host = pane.parentElement;
@@ -425,6 +541,8 @@ function buildPane() {
     });
     moreUp.addEventListener('click', function () { loadMore(pane, true); });
     moreDown.addEventListener('click', function () { loadMore(pane, false); });
+    sizeDown.addEventListener('click', function () { stepFontSize(-CODE_FONT_STEP); });
+    sizeUp.addEventListener('click', function () { stepFontSize(CODE_FONT_STEP); });
 
     return pane;
 }
