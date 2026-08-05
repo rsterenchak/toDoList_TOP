@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-04T13:15:41.756Z",
-  "sha": "954d2216f04bb767ef68974867e3e55c867c6057",
+  "generatedAt": "2026-08-05T06:59:34.928Z",
+  "sha": "26fd2f909fdf5d652f0b3346a2d099adb1c25345",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -55,6 +55,7 @@
     "projectPicker.js",
     "projectRow.js",
     "refactorCard.js",
+    "repoSetup.js",
     "runState.js",
     "seedTasksModal.js",
     "settingsMenu.js",
@@ -4722,6 +4723,218 @@
       ]
     },
     {
+      "selector": "#repoSetupBackdrop",
+      "label": "Repo Setup Backdrop",
+      "file": "repoSetup.js",
+      "line": 430,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 430
+        },
+        {
+          "file": "style.css",
+          "line": 21398
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupBody",
+      "label": "Repo Setup Body",
+      "file": "repoSetup.js",
+      "line": 452,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 452
+        },
+        {
+          "file": "style.css",
+          "line": 21442
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupClose",
+      "label": "Repo Setup Close",
+      "file": "repoSetup.js",
+      "line": 444,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 444
+        },
+        {
+          "file": "style.css",
+          "line": 21429
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupError",
+      "label": "Repo Setup Error",
+      "file": "repoSetup.js",
+      "line": 464,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 464
+        },
+        {
+          "file": "style.css",
+          "line": 21495
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupFooter",
+      "label": "Repo Setup Footer",
+      "file": "repoSetup.js",
+      "line": 492,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 492
+        },
+        {
+          "file": "style.css",
+          "line": 21449
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupFull",
+      "label": "Repo Setup Full",
+      "file": "repoSetup.js",
+      "line": 487,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 487
+        },
+        {
+          "file": "style.css",
+          "line": 21655
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupFullBack",
+      "label": "Repo Setup Full Back",
+      "file": "repoSetup.js",
+      "line": 678,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 678
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupHeader",
+      "label": "Repo Setup Header",
+      "file": "repoSetup.js",
+      "line": 439,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 439
+        },
+        {
+          "file": "style.css",
+          "line": 21418
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupList",
+      "label": "Repo Setup List",
+      "file": "repoSetup.js",
+      "line": 479,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 479
+        },
+        {
+          "file": "style.css",
+          "line": 21507
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupModal",
+      "label": "Repo Setup Modal",
+      "file": "repoSetup.js",
+      "line": 433,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 433
+        },
+        {
+          "file": "style.css",
+          "line": 21407
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupRetry",
+      "label": "Repo Setup Retry",
+      "file": "repoSetup.js",
+      "line": 470,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 470
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupStatus",
+      "label": "Repo Setup Status",
+      "file": "repoSetup.js",
+      "line": 455,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 455
+        },
+        {
+          "file": "style.css",
+          "line": 21489
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupTitle",
+      "label": "Repo Setup Title",
+      "file": "repoSetup.js",
+      "line": 441,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 441
+        },
+        {
+          "file": "style.css",
+          "line": 21425
+        }
+      ]
+    },
+    {
+      "selector": "#repoSetupViewFull",
+      "label": "Repo Setup View Full",
+      "file": "repoSetup.js",
+      "line": 497,
+      "files": [
+        {
+          "file": "repoSetup.js",
+          "line": 497
+        }
+      ]
+    },
+    {
       "selector": "#rings",
       "label": "Rings",
       "file": "musicVisualizer.js",
@@ -4957,11 +5170,11 @@
       "selector": "#settingsMenu",
       "label": "Settings Menu",
       "file": "settingsMenu.js",
-      "line": 172,
+      "line": 173,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 172
+          "line": 173
         },
         {
           "file": "style.css",
