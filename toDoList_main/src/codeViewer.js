@@ -62,7 +62,9 @@ const EXPLAIN_LABEL = 'Explain';
 const cache = new Map();
 
 // The open viewer's state, or null when the column is empty. One viewer at a
-// time — the detail column has room for exactly one.
+// time — the detail column has room for exactly one. It carries the span (and
+// the banner naming it) the file was opened with as well as the path, so a host
+// that has to tear its column down can reopen the file exactly as it was.
 let active = null;
 // Bumped on every open so a slow read that resolves after the user has clicked a
 // different file is dropped instead of painting over the newer selection.
@@ -121,6 +123,25 @@ export function getOpenCodeViewerFile() {
     return active ? active.filePath : null;
 }
 
+// Everything it would take to open the current file again — its repo, its path,
+// and the span it was opened with — or null when the column is empty.
+// `getOpenCodeViewerFile()` answers "which file is showing"; this answers "how do
+// I show it again", which is what a host whose column is thrown away and rebuilt
+// (the Structure view's lens toggle) needs in order not to lose the user's place.
+// The shape matches `renderCodeViewer`'s options, so a caller can pass it straight
+// back in. A dismissed banner drops the span here too, so a reopen can't resurrect
+// a highlight the user has already waved away.
+export function getOpenCodeViewerRef() {
+    if (!active) return null;
+    const ref = { repo: active.repo, filePath: active.filePath };
+    if (active.hl) {
+        ref.startLine = active.hl.start;
+        ref.endLine = active.hl.end;
+        if (active.banner) ref.banner = active.banner;
+    }
+    return ref;
+}
+
 // Drop the cached source and the open-viewer state. A test seam — nothing in the
 // app calls it, since the cache is keyed by repo + path and never goes stale
 // within a session.
@@ -161,6 +182,26 @@ function normalizeSpan(startLine, endLine) {
     const e = Number(endLine);
     if (!isFinite(s) || !isFinite(e) || s < 1 || e < 1) return null;
     return { start: Math.min(s, e), end: Math.max(s, e) };
+}
+
+// Group a count in threes — `1546` → `1,546`. Written out rather than left to
+// `toLocaleString` because the header is read beside the gutter's own ungrouped
+// numbers, and a locale that groups with `.` or a space would have the two
+// disagree about what a thousand looks like.
+function formatCount(n) {
+    return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+// What the header meta reads. WINDOWING MEANS THE COUNT ALONE LIES: a viewer
+// showing 300 of 1,546 lines with a scrollbar sized to the rendered slice reads
+// as a complete document that inexplicably stops, so the rendered range is named
+// against the total. A whole-file render drops the range — `1–8 of 8 lines` is
+// noise on the short files that need it least.
+function metaText(state) {
+    const total = formatCount(state.total);
+    const unit = state.total === 1 ? ' line' : ' lines';
+    if (state.start <= 1 && state.end >= state.total) return total + unit;
+    return formatCount(state.start) + '–' + formatCount(state.end) + ' of ' + total + unit;
 }
 
 function githubBlobUrl(repo, filePath, hl) {
@@ -430,11 +471,17 @@ function paintRange(state, from, to, atTop) {
     else refs.lines.appendChild(frag);
 }
 
-// Show or hide each "Load 200 more" control against what is still unrendered.
-function refreshMoreControls(state) {
+// Re-state the rendered window: each "Load 200 more" control shows only while
+// unrendered lines remain in its direction, and the header meta names the range.
+// Both read the same three numbers, and both change on every window growth, so
+// they are refreshed together here rather than at each of the three call sites —
+// a meta updated at only some of them is how the header came to report a total
+// the body was never showing.
+function refreshWindowChrome(state) {
     const refs = state.pane._codeViewerRefs;
     refs.moreUp.hidden = state.start <= 1;
     refs.moreDown.hidden = state.end >= state.total;
+    refs.meta.textContent = metaText(state);
 }
 
 function loadMore(pane, atTop) {
@@ -451,7 +498,7 @@ function loadMore(pane, atTop) {
         paintRange(state, state.end + 1, newEnd, false);
         state.end = newEnd;
     }
-    refreshMoreControls(state);
+    refreshWindowChrome(state);
 }
 
 // Drop the jump highlight and hide the banner, leaving the file and the rendered
@@ -463,6 +510,13 @@ function dismissBanner(pane) {
     refs.bannerText.textContent = '';
     if (!state) return;
     state.hl = null;
+    // The span is dropped from the open-file record too, so a host that reopens
+    // this file later (a lens switch, which rebuilds the column) brings back the
+    // file without the highlight the user has just dismissed.
+    if (active && active.host === pane.parentElement) {
+        active.hl = null;
+        active.banner = '';
+    }
     Array.prototype.forEach.call(
         refs.lines.querySelectorAll('.codeViewerLine--hit'),
         function (el) { el.classList.remove('codeViewerLine--hit'); }
@@ -549,7 +603,13 @@ export function renderCodeViewer(host, opts) {
     }
 
     pane._codeViewerState = null;
-    active = { host: host, filePath: filePath, repo: target.repo };
+    active = {
+        host: host,
+        filePath: filePath,
+        repo: target.repo,
+        hl: hl,
+        banner: (hl && opts.banner) ? String(opts.banner) : '',
+    };
     notifyChange();
 
     fetchLines(target, filePath).then(function (res) {
@@ -580,9 +640,8 @@ export function renderCodeViewer(host, opts) {
         state.end = win.end;
         refs.status.hidden = true;
         refs.status.textContent = '';
-        refs.meta.textContent = total + (total === 1 ? ' line' : ' lines');
         if (win.end >= win.start) paintRange(state, win.start, win.end, false);
-        refreshMoreControls(state);
+        refreshWindowChrome(state);
         if (hl) scrollToLine(state, hl.start);
     });
 

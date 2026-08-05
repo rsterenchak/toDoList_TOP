@@ -677,7 +677,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: b555a723-c217-4f8b-b64b-2eec3dad4d3a -->
 
-- [ ] **[LOW]** Show the rendered window, and reopen the last file after a lens switch
+- [x] **[LOW]** Show the rendered window, and reopen the last file after a lens switch — Completed: 2026-08-05
   - Type: bug
   - Description: Two small ways the code viewer misrepresents itself. First, the header meta reads `1546 lines` while the body renders only lines 1–300, and the scrollbar sizes to the rendered slice — so the viewer looks like a complete document that inexplicably stops. The window bounds are already tracked in `state.start` and `state.end` and simply are not shown. Second, switching to the UI lens and back clears the open file, because the detail column's contents are thrown away with the host. That clear is correct — the viewer must not report a file as open after its DOM is gone — but nothing reopens the file afterward, so the lens toggle silently costs you your place.
   - Behavior: The header meta reads the rendered range against the total — `1–300 of 1,546 lines` — and updates whenever the window grows via either Load more control. When the whole file is rendered it reads `1,546 lines` with no range, so short files gain no noise. Separately, remember the last file opened per repo, and when the Code lens paints on desktop with a remembered file for that repo, reopen it in the detail column instead of the empty state, restoring any highlight span it was opened with. Switching repos does not carry a file across. Closing the viewer forgets the file, so an explicit close still returns the column to empty on the next lens switch.

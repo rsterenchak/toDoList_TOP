@@ -54,7 +54,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
     captureRemote: vi.fn(function () { return Promise.resolve({ ok: true, passes: 2 }); }),
 }));
 
-import { renderStructureView } from '../src/structureView.js';
+import { renderStructureView, resetStructureCodeMemory } from '../src/structureView.js';
 import { getOpenCodeViewerFile, resetCodeViewer } from '../src/codeViewer.js';
 import { readRepoFile, chatWithWorker } from '../src/inject.js';
 import { setStructureLens, STRUCTURE_LENS_KEY } from '../src/prefs.js';
@@ -106,6 +106,9 @@ beforeEach(async () => {
     readRepoFile.mockClear();
     chatWithWorker.mockClear();
     resetCodeViewer();
+    // The last-file-per-repo memory outlives a lens repaint by design, so it also
+    // outlives a test — drop it so one test's open file can't reopen in the next.
+    resetStructureCodeMemory();
     // The explanation cache is keyed repo+path+sha, so a leftover entry would let
     // a later Explain resolve without ever calling the Worker.
     try { localStorage.removeItem('todoapp_structureExplain'); } catch (e) { /* ignore */ }
@@ -231,6 +234,133 @@ describe('Code lens — the detail column hosts the code viewer', () => {
 
         expect(getOpenCodeViewerFile()).toBeNull();
         expect(detailHost().querySelector('.codeViewerPane')).toBeNull();
+    });
+});
+
+// A lens repaint throws the detail column's contents away, and clearing the viewer
+// with them is correct — it must not report a file as open once its DOM is gone.
+// Nothing reopened it afterwards, though, so the toggle silently cost the user
+// their place. The file is now recorded on the way out and reopened when the Code
+// lens paints again, per repo, and only until it is explicitly closed.
+describe('Code lens — the open file survives a lens switch', () => {
+    function lensBtn(which) {
+        return Array.from(document.querySelectorAll('.structureLensBtn'))
+            .find((b) => (which === 'code' ? b.dataset.lens === 'code' : b.dataset.lens !== 'code'));
+    }
+
+    async function switchLens(which) {
+        lensBtn(which).click();
+        await flush();
+    }
+
+    it('reopens the file, and its row, when the Code lens paints again', async () => {
+        renderStructureView();
+        await flush();
+        rowFor('main.js').click();
+        await flush();
+
+        await switchLens('ui');
+        expect(getOpenCodeViewerFile()).toBeNull();
+
+        await switchLens('code');
+
+        expect(getOpenCodeViewerFile()).toBe('toDoList_main/src/main.js');
+        expect(detailHost().querySelector('.codeViewerPane').hidden).toBe(false);
+        expect(detailHost().querySelector('.codeViewerEmpty').hidden).toBe(true);
+        // The reopen lands after the tree is painted, so the row on screen — not
+        // the one the repaint replaced — carries the selection.
+        expect(rowFor('main.js').classList.contains('structureFileRow--selected')).toBe(true);
+    });
+
+    it('leaves the column empty when the lens switch was made with no file open', async () => {
+        renderStructureView();
+        await flush();
+
+        await switchLens('ui');
+        await switchLens('code');
+
+        expect(getOpenCodeViewerFile()).toBeNull();
+        expect(detailHost().querySelector('.codeViewerEmpty').hidden).toBe(false);
+        expect(readRepoFile).not.toHaveBeenCalled();
+    });
+
+    it('forgets a file that was explicitly closed, so the column comes back empty', async () => {
+        renderStructureView();
+        await flush();
+        rowFor('main.js').click();
+        await flush();
+        detailHost().querySelector('.codeViewerClose').click();
+
+        await switchLens('ui');
+        await switchLens('code');
+
+        expect(getOpenCodeViewerFile()).toBeNull();
+        expect(detailHost().querySelector('.codeViewerEmpty').hidden).toBe(false);
+    });
+
+    it('reopens the last file, not the first', async () => {
+        renderStructureView();
+        await flush();
+        rowFor('main.js').click();
+        await flush();
+        rowFor('ui/panel.js').click();
+        await flush();
+
+        await switchLens('ui');
+        await switchLens('code');
+
+        expect(getOpenCodeViewerFile()).toBe('toDoList_main/src/ui/panel.js');
+    });
+
+    it('does not carry a file across a repo switch', async () => {
+        const OTHER_REPO = 'rsterenchak/matchingGame-test';
+        state.projectRepos.Game = OTHER_REPO;
+        state.manifests[OTHER_REPO] = { ok: true, srcRoot: 'src', files: ['game.js'] };
+
+        renderStructureView();
+        await flush();
+        rowFor('main.js').click();
+        await flush();
+
+        mountDom('Game');
+        state.reads = [];
+        renderStructureView();
+        await flush();
+
+        // The other repo has no remembered file of its own, and this one's must not
+        // stand in for it — the path wouldn't even exist in that tree. Asserted on
+        // the column rather than getOpenCodeViewerFile(), which still names the
+        // prior repo's file here: a project switch rebuilds the host, so the clear
+        // that would have dropped it runs against the new one. That stale report
+        // predates the reopen and is not what this covers.
+        expect(detailHost().querySelector('.codeViewerEmpty').hidden).toBe(false);
+        expect(detailHost().querySelector('.codeViewerPane').hidden).toBe(true);
+        expect(state.reads).toEqual([]);
+
+        // Coming back does restore it: the memory is per repo, not shared. Read off
+        // the rebuilt column for the same reason as above.
+        mountDom();
+        renderStructureView();
+        await flush();
+        const pane = detailHost().querySelector('.codeViewerPane');
+        expect(pane.hidden).toBe(false);
+        expect(pane.querySelector('.codeViewerPath').textContent).toBe('toDoList_main/src/main.js');
+        expect(rowFor('main.js').classList.contains('structureFileRow--selected')).toBe(true);
+    });
+
+    it('does not reopen the sheet below 1024px — opening it is a deliberate gesture', async () => {
+        setWidth(900);
+        renderStructureView();
+        await flush();
+        rowFor('main.js').click();
+        await flush();
+        expect(sheet().hidden).toBe(false);
+
+        await switchLens('ui');
+        await switchLens('code');
+
+        expect(sheet().hidden).toBe(true);
+        expect(getOpenCodeViewerFile()).toBeNull();
     });
 });
 
@@ -609,6 +739,38 @@ describe('Types lens — an outline row jumps into the code viewer', () => {
         expect(detailHost().querySelector('.codeViewerBanner').hidden).toBe(true);
         expect(hitLines(detailHost())).toEqual([]);
         expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+    });
+
+    it('reopening after a lens switch restores the span the jump opened with', async () => {
+        await renderTypesRepo();
+
+        typeRow('class Greeter').click();
+        await flush();
+
+        // Types → Code repaints the column; the Code lens's paint reopens the file.
+        Array.from(document.querySelectorAll('.structureLensBtn'))
+            .find((b) => b.dataset.lens === 'code').click();
+        await flush();
+
+        expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+        expect(detailHost().querySelector('.codeViewerBannerText').textContent).toBe('class Greeter');
+        expect(hitLines(detailHost())).toEqual(['2']);
+    });
+
+    it('a dismissed highlight does not come back with the file', async () => {
+        await renderTypesRepo();
+
+        typeRow('class Greeter').click();
+        await flush();
+        detailHost().querySelector('.codeViewerBannerDismiss').click();
+
+        Array.from(document.querySelectorAll('.structureLensBtn'))
+            .find((b) => b.dataset.lens === 'code').click();
+        await flush();
+
+        expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+        expect(detailHost().querySelector('.codeViewerBanner').hidden).toBe(true);
+        expect(hitLines(detailHost())).toEqual([]);
     });
 
     it('below 1024px the jump opens the sheet instead of the detail column', async () => {
