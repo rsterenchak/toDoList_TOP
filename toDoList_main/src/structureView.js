@@ -31,6 +31,7 @@ import {
     renderCodeViewer,
     clearCodeViewer,
     getOpenCodeViewerFile,
+    getOpenCodeViewerRef,
     onCodeViewerChange,
     setCodeViewerExplainHandler,
     setCodeViewerCloseHandler,
@@ -767,11 +768,69 @@ function splitSrcRootPath(srcRoot, filePath) {
     return (root && name.indexOf(root + '/') === 0) ? name.slice(root.length + 1) : name;
 }
 
+// Which file the code viewer was last reading, per repo, as the `{ repo, filePath,
+// startLine, endLine, banner }` ref `renderCodeViewer` takes back. A lens repaint
+// throws the detail column's contents away and clears the viewer with them — which
+// is correct, since it must not report a file as open once its DOM is gone — but
+// that is no reason to lose the user's place, so the open file is recorded on the
+// way out and reopened when the Code lens paints again. Keyed by repo so the
+// project switcher never carries a file into a different tree.
+const lastCodeFile = new Map();
+
+// Record what the viewer is showing before a repaint clears it. A no-op when the
+// column is already empty, so a lens switch made with no file open doesn't
+// resurrect an older one.
+function rememberOpenCodeFile() {
+    const ref = getOpenCodeViewerRef();
+    if (!ref || !ref.repo || !ref.filePath) return;
+    lastCodeFile.set(ref.repo, ref);
+}
+
+// Forget this repo's remembered file. Closing the viewer is a decision rather
+// than an accident, so the next Code-lens paint must return the column to its
+// empty state instead of reopening what was just closed.
+function forgetOpenCodeFile() {
+    const ref = getOpenCodeViewerRef();
+    if (ref && ref.repo) lastCodeFile.delete(ref.repo);
+}
+
+// Reopen this repo's remembered file once the Code lens has painted, so a lens
+// toggle costs nothing. Called after the tree resolves rather than before, so the
+// reopened file's row is marked selected in the tree that is actually on screen.
+//
+// DESKTOP ONLY: below 1024px a file opens in a full-screen sheet, and reopening
+// one on a lens switch would trap the user in a sheet they never asked for.
+function restoreCodeFile(repo) {
+    if (!structureIsDesktop() || !currentCanvasHost) return;
+    // The paint this was chained to is stale — the user switched lens or repo
+    // while the manifest was in flight.
+    if (repo !== selectedRepo || lens !== 'code') return;
+    const ref = repo ? lastCodeFile.get(repo) : null;
+    if (!ref) return;
+    // Something opened into this column while the tree was loading (the refactor
+    // card's jump chip is a persistent sibling and can fire mid-paint). That is a
+    // newer choice than the remembered one, so leave it alone.
+    const pane = currentCanvasHost.querySelector(':scope > .codeViewerPane');
+    if (pane && !pane.hidden) return;
+    openFileInCodeViewer(repo, ref.filePath, ref.startLine ? ref : null);
+}
+
+// Drop the remembered files. A test seam, mirroring codeViewer's own
+// `resetCodeViewer()`: the memory deliberately outlives a lens repaint, so a suite
+// that opens a file in one test would otherwise see it reopen in the next.
+export function resetStructureCodeMemory() {
+    lastCodeFile.clear();
+}
+
 // Closing the viewer inside the mobile sheet means dismissing the SHEET, not
 // emptying the viewer — the file stays open so the tree row behind it is still
-// selected when the sheet goes away. Every other host keeps the default clear.
+// selected when the sheet goes away. Every other host keeps the default clear,
+// and that clear is an explicit close: the file is forgotten with it.
 setCodeViewerCloseHandler(function (host) {
-    if (!codeSheetHost || host !== codeSheetHost) return false;
+    if (!codeSheetHost || host !== codeSheetHost) {
+        forgetOpenCodeFile();
+        return false;
+    }
     hideCodeSheet();
     return true;
 });
@@ -2530,6 +2589,9 @@ function renderLens(repo, treeEl) {
     // cleared by each lens's own render). Record the breakpoint this paint targets
     // so a later resize can tell the host would change and re-home the canvas.
     canvasHostDesktop = structureIsDesktop();
+    // Everything below throws the open file away, so record it first — this is the
+    // only point that still knows what the column was reading.
+    rememberOpenCodeFile();
     // The mobile sheet's file is addressed from the tree this repaint is about to
     // rebuild, so it goes with it — otherwise a lens switch would leave a sheet
     // hanging over rows that no longer exist.
@@ -2548,8 +2610,13 @@ function renderLens(repo, treeEl) {
         if (structureIsDesktop() && currentCanvasHost) clearCodeViewer(currentCanvasHost);
         // Return the paint promise so callers that chain on it (filter re-apply,
         // find-in-code flash, the collapse-all pill refresh) run after the tree
-        // is actually painted, not on the next microtask.
-        return renderTree(repo, treeEl);
+        // is actually painted, not on the next microtask. The remembered file is
+        // reopened on the same chain, so its tree row is selected in the tree the
+        // paint just built rather than in the one it replaced.
+        return renderTree(repo, treeEl).then(function (painted) {
+            restoreCodeFile(repo);
+            return painted;
+        });
     }
     if (repo === getRunningAppRepo()) {
         // The running app is the web app — always the live UI map, never Types.

@@ -6,9 +6,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-05',
-        added: [
-            "Tapping a class or one of its members in the Structure tab's Types view opens that file at the declaration, highlighted.",
-        ],
         changed: [
             "Explaining a file is now a single control in the Structure tab's code viewer rather than a button on every file row, and on phones tapping a file opens that viewer full-screen.",
         ],
@@ -16,6 +13,7 @@ export const changelog = [
             "File names in the Structure tab's code view show in full instead of collapsing to a single letter.",
             "The GitHub link on a Structure tab file row is now just its arrow, freeing the width that was squeezing file names.",
             "A finished backlog run's row in the Runs tab now names the task it completed instead of staying labelled “Backlog run”.",
+            "The Structure tab's code viewer names the lines it is actually showing against the file's total, and reopens the file you were reading after a lens switch.",
         ],
     },
 ];

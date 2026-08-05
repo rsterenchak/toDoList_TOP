@@ -39,6 +39,7 @@ import {
     renderCodeViewer,
     clearCodeViewer,
     getOpenCodeViewerFile,
+    getOpenCodeViewerRef,
     onCodeViewerChange,
     resetCodeViewer,
 } from '../src/codeViewer.js';
@@ -118,14 +119,15 @@ describe('renderCodeViewer — cold open', () => {
         expect(first.querySelector('.codeViewerCode').textContent).toBe('line 1');
     });
 
-    it('heads the pane with the path, the file’s TOTAL line count, and a GitHub link', async () => {
+    it('heads the pane with the path, the rendered range against the total, and a GitHub link', async () => {
         renderCodeViewer(host(), { target: TARGET, filePath: 'toDoList_main/src/style.css' });
         await flush();
 
         const r = refs();
         expect(r.path.textContent).toBe('toDoList_main/src/style.css');
-        // 1000, not the 300 rendered — the count describes the file, not the window.
-        expect(r.meta.textContent).toBe('1000 lines');
+        // The 300 rendered NAMED against the file's 1,000 — a bare total would read
+        // as a complete document that inexplicably stops at 300.
+        expect(r.meta.textContent).toBe('1–300 of 1,000 lines');
         expect(r.gh.getAttribute('href'))
             .toBe('https://github.com/rsterenchak/toDoList_TOP/blob/main/toDoList_main/src/style.css');
     });
@@ -223,6 +225,71 @@ describe('renderCodeViewer — windowing and chunk loading', () => {
         // The window's tail is untouched — only the head grew.
         expect(nums[nums.length - 1]).toBe(1239);
         expect(nums.length).toBe(500);
+    });
+});
+
+// The header meta describes the RENDERED WINDOW, not just the file. A viewer that
+// reports `1546 lines` while showing 300 of them — with a scrollbar sized to the
+// slice — reads as a complete document that inexplicably stops, which is the bug
+// these cover. The range is dropped once the whole file is rendered, so short
+// files gain no noise.
+describe('renderCodeViewer — the header meta names the rendered window', () => {
+    it('reads the cold window against the total, grouped in thousands', async () => {
+        state.files['big.js'] = { content: fileOf(1546) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'big.js' });
+        await flush();
+
+        expect(refs().meta.textContent).toBe('1–300 of 1,546 lines');
+    });
+
+    it('grows the range as each "Load 200 more" widens the window', async () => {
+        state.files['big.js'] = { content: fileOf(1546) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'big.js' });
+        await flush();
+
+        refs().moreDown.click();
+        expect(refs().meta.textContent).toBe('1–500 of 1,546 lines');
+
+        refs().moreDown.click();
+        expect(refs().meta.textContent).toBe('1–700 of 1,546 lines');
+    });
+
+    it('names both bounds of a jump window, upward loads included', async () => {
+        state.files['big.js'] = { content: fileOf(3000) };
+        renderCodeViewer(host(), {
+            target: TARGET, filePath: 'big.js', startLine: 1000, endLine: 1100,
+        });
+        await flush();
+        expect(refs().meta.textContent).toBe('940–1,239 of 3,000 lines');
+
+        refs().moreUp.click();
+        expect(refs().meta.textContent).toBe('740–1,239 of 3,000 lines');
+    });
+
+    it('drops the range once the whole file is rendered', async () => {
+        state.files['small.js'] = { content: fileOf(360) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'small.js' });
+        await flush();
+        expect(refs().meta.textContent).toBe('1–300 of 360 lines');
+
+        refs().moreDown.click();
+        expect(refs().meta.textContent).toBe('360 lines');
+    });
+
+    it('reads as a bare count for a file that fits in the cold window', async () => {
+        state.files['tiny.js'] = { content: fileOf(12) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'tiny.js' });
+        await flush();
+
+        expect(refs().meta.textContent).toBe('12 lines');
+    });
+
+    it('keeps the singular for a one-line file', async () => {
+        state.files['one.js'] = { content: 'only' };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'one.js' });
+        await flush();
+
+        expect(refs().meta.textContent).toBe('1 line');
     });
 });
 
@@ -335,6 +402,73 @@ describe('renderCodeViewer — jump to a span', () => {
         expect(lineNumbers()[0]).toBe(1);
         expect(document.querySelectorAll('.codeViewerLine--hit').length).toBe(0);
         expect(refs().banner.hidden).toBe(true);
+    });
+});
+
+// `getOpenCodeViewerRef()` is what a host whose column gets rebuilt reads before
+// tearing it down: it hands back the whole open call, so the file can be reopened
+// exactly as it was rather than approximated from the path alone.
+describe('getOpenCodeViewerRef', () => {
+    beforeEach(() => {
+        state.files['big.js'] = { content: fileOf(3000) };
+    });
+
+    it('is null while the column is empty, and again once it is cleared', async () => {
+        expect(getOpenCodeViewerRef()).toBeNull();
+
+        renderCodeViewer(host(), { target: TARGET, filePath: 'big.js' });
+        await flush();
+        expect(getOpenCodeViewerRef()).toBeTruthy();
+
+        clearCodeViewer(host());
+        expect(getOpenCodeViewerRef()).toBeNull();
+    });
+
+    it('carries the repo and path of a cold open, and no span', async () => {
+        renderCodeViewer(host(), { target: TARGET, filePath: 'big.js' });
+        await flush();
+
+        expect(getOpenCodeViewerRef()).toEqual({
+            repo: 'rsterenchak/toDoList_TOP',
+            filePath: 'big.js',
+        });
+    });
+
+    it('carries a jump’s span and banner, so a reopen lands where the jump did', async () => {
+        renderCodeViewer(host(), {
+            target: TARGET,
+            filePath: 'big.js',
+            startLine: 1000,
+            endLine: 1002,
+            banner: 'Refactor candidate: buildFileRow',
+        });
+        await flush();
+
+        expect(getOpenCodeViewerRef()).toEqual({
+            repo: 'rsterenchak/toDoList_TOP',
+            filePath: 'big.js',
+            startLine: 1000,
+            endLine: 1002,
+            banner: 'Refactor candidate: buildFileRow',
+        });
+    });
+
+    it('drops the span once the banner is dismissed, so a reopen can’t resurrect it', async () => {
+        renderCodeViewer(host(), {
+            target: TARGET,
+            filePath: 'big.js',
+            startLine: 1000,
+            endLine: 1002,
+            banner: 'Refactor candidate: buildFileRow',
+        });
+        await flush();
+
+        refs().bannerDismiss.click();
+
+        expect(getOpenCodeViewerRef()).toEqual({
+            repo: 'rsterenchak/toDoList_TOP',
+            filePath: 'big.js',
+        });
     });
 });
 
