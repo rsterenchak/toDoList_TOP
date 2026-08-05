@@ -11,14 +11,12 @@ export const changelog = [
         ],
         fixed: [
             "File names in the Structure tab's code view show in full instead of collapsing to a single letter.",
+            "The GitHub link on a Structure tab file row is now just its arrow, freeing the width that was squeezing file names.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-04',
-        added: [
-            "A Repo setup section in settings opens a shape reference — which shape each kind of project is, whether a template or a CLI is needed, and the gotchas that apply — read live so new shapes appear without an app update.",
-        ],
         changed: [
             "The coverage breakdown now groups rubric aspects by section, each with its own tally and progress bar, and every aspect row shows its full label on a second line instead of truncating.",
         ],

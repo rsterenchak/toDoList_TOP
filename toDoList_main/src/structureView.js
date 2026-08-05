@@ -283,15 +283,22 @@ function githubBlobUrl(repo, file, line) {
 }
 
 // A quiet "View on GitHub ↗" secondary link, or null when no URL is resolvable.
-function buildGithubLink(repo, file, line) {
+// `glyphOnly` collapses it to the bare arrow, with the label moved into an
+// aria-label so the meaning survives. Only the Code lens's file rows opt in:
+// their fixed-width children over-subscribe the panel, and the ~95px label is
+// the redundant one there (every row of a repo tree points at the same repo, and
+// the ↗ already carries the meaning). The action toolbar and the Find-in-code
+// owner rows are roomy and read worse as a label-less arrow, so they keep it.
+function buildGithubLink(repo, file, line, glyphOnly) {
     const url = githubBlobUrl(repo, file, line);
     if (!url) return null;
     const a = document.createElement('a');
-    a.className = 'structureGithubLink';
+    a.className = 'structureGithubLink' + (glyphOnly ? ' structureGithubLink--glyph' : '');
     a.href = url;
     a.target = '_blank';
     a.rel = 'noopener noreferrer';
-    a.textContent = 'View on GitHub ↗';
+    a.textContent = glyphOnly ? '↗' : 'View on GitHub ↗';
+    if (glyphOnly) a.setAttribute('aria-label', 'View ' + file + ' on GitHub');
     a.addEventListener('click', function (event) { event.stopPropagation(); });
     return a;
 }
@@ -646,7 +653,8 @@ function buildFileRow(repo, file, depth) {
     row.appendChild(explainBtn);
 
     // Quiet escape hatch: open this file on GitHub (no line — it's a whole file).
-    const gh = buildGithubLink(repo, file.path, null);
+    // Glyph-only here so the row's width goes to the file name instead.
+    const gh = buildGithubLink(repo, file.path, null, true);
     if (gh) row.appendChild(gh);
 
     const result = document.createElement('div');

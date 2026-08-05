@@ -389,6 +389,31 @@ describe('renderStructureView — source tree (Code lens)', () => {
         expect(gh).toBeTruthy();
         expect(gh.getAttribute('href')).toBe('https://github.com/rsterenchak/toDoList_TOP/blob/main/src/main.js');
     });
+
+    // The file row's fixed-width children over-subscribed the panel, pinning
+    // .structureFileName at its 4ch floor (`Greeter.cs` rendered as `G.`). The
+    // link's ~95px text label is the redundant one — the arrow already carries
+    // the meaning — so it collapses to the glyph and moves the label into an
+    // aria-label.
+    it('renders the file row GitHub link as the bare arrow with an aria-label naming the file', async () => {
+        state.manifests['rsterenchak/toDoList_TOP'] = {
+            ok: true,
+            srcRoot: 'src',
+            files: ['util/Greeter.cs'],
+        };
+        renderStructureView();
+        await flush();
+        document.querySelector('.structureFolderRow').click();
+
+        const gh = document.querySelector('.structureFileRow .structureGithubLink');
+        expect(gh).toBeTruthy();
+        expect(gh.textContent).toBe('↗');
+        expect(gh.textContent).not.toMatch(/GitHub/);
+        expect(gh.getAttribute('aria-label')).toBe('View util/Greeter.cs on GitHub');
+        // Still the same link, and still stops the click from reaching the row.
+        expect(gh.getAttribute('href')).toBe('https://github.com/rsterenchak/toDoList_TOP/blob/main/src/util/Greeter.cs');
+        expect(gh.getAttribute('target')).toBe('_blank');
+    });
 });
 
 describe('renderStructureView — Explain with Sonnet (Code lens)', () => {
@@ -747,6 +772,35 @@ describe('renderStructureView — published UI map + states (UI lens, non-runnin
         const owner = toolbar.querySelector('.structureOwnerFileBtn');
         expect(owner).toBeTruthy();
         expect(owner.textContent).toBe('app.js:12');
+    });
+
+    // Only the width-starved Code-lens file rows drop the label. The toolbar and
+    // the Find-in-code owner rows are roomy and read worse as a bare arrow, so
+    // they keep the full text.
+    it('keeps the full "View on GitHub" label on the action toolbar and Find-in-code rows', async () => {
+        state.manifests[OTHER] = {
+            ok: true,
+            files: ['app.js'],
+            hasDom: true,
+            srcRoot: 'pkg/src',
+            regions: [
+                { selector: '#board', label: 'Board', file: 'app.js', line: 12, files: [{ file: 'app.js', line: 12 }] },
+            ],
+        };
+        renderStructureView();
+        await flush();
+
+        const toolbar = document.querySelector('.structureActionToolbar');
+        document.querySelector('.structureRegionRow').click();
+        const gh = toolbar.querySelector('.structureGithubLink');
+        expect(gh.textContent).toBe('View on GitHub ↗');
+        expect(gh.getAttribute('aria-label')).toBe(null);
+
+        toolbar.querySelector('.structureFindBtn').click();
+        await flush();
+        const ownerGh = toolbar.querySelector('.structureOwnerFileRow .structureGithubLink');
+        expect(ownerGh).toBeTruthy();
+        expect(ownerGh.textContent).toBe('View on GitHub ↗');
     });
 
     it('a selected published region row also exposes Reference in chat and Copy selector', async () => {
