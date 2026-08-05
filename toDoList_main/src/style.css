@@ -5229,9 +5229,17 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   flex: 0 0 auto;
 }
 
+/* The only shrinkable item in the row — its `overflow: hidden` zeroes the
+   automatic min-width floor, so without these two declarations it absorbed the
+   whole space deficit and rendered `Program.cs` as `P.`. `flex: 1 1 auto` gives
+   it the row's free space (grow resolves before the Explain button's
+   `margin-left: auto`, so extra width lands on the name rather than the gap),
+   and the 4ch floor keeps a readable stub when the row genuinely is too narrow. */
 .structureFileName {
   font-size: 13px;
   color: var(--text-secondary);
+  flex: 1 1 auto;
+  min-width: 4ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
