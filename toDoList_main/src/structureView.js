@@ -27,13 +27,21 @@ import {
     locateHandle,
 } from './structureCanvas.js';
 import { captureRemote } from './structureRemoteCapture.js';
+import {
+    renderCodeViewer,
+    clearCodeViewer,
+    getOpenCodeViewerFile,
+    onCodeViewerChange,
+} from './codeViewer.js';
 import { joinSrcRootPath } from './srcPath.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
 //   • Code lens — the repo's published `src-manifest.json` (the same artifact
 //     the chat's attach-file picker fetches) rendered as a collapsible
-//     folder/file tree, with a per-file "Explain with Sonnet" action.
+//     folder/file tree, with a per-file "Explain with Sonnet" action, and — at
+//     desktop widths — a code viewer in the detail column that reads the tapped
+//     file's source (codeViewer.js).
 //   • UI lens — a live, tappable map of the running app's on-screen regions,
 //     walked straight from the DOM. Tapping a region exposes its selector plus
 //     a "Reference in chat" action that hands the selector to the Claude
@@ -120,6 +128,8 @@ let currentTreeEl = null;
 // column by CSS — rather than into the tree, so the rows stay in the rail while the
 // canvas fills the detail column. Below 1024px there is no detail column, so the
 // canvas mounts inline at the top of the tree exactly as before (resolveCanvasHost).
+// The Code lens has no canvas and fills the same host with the code viewer, so at
+// most one of the two ever occupies the column.
 let currentCanvasHost = null;
 // Tracks the breakpoint the active lens last painted its canvas at, so a resize
 // across 1024px can re-home the canvas between the rail (mobile, inside the tree)
@@ -619,6 +629,33 @@ function explainFile(repo, filePath, btn, resultEl) {
         });
 }
 
+// Keep the Code lens's file rows in sync with whatever the detail column's code
+// viewer is showing — no matter who opened it (a row tap here, or the NEXT
+// REFACTOR card's jump chip). Rows are keyed by their MANIFEST-relative path and
+// the viewer by the REPO-relative one, so the comparison joins the manifest's
+// srcRoot rather than comparing the two directly.
+function applyFileRowSelection() {
+    if (!currentTreeEl) return;
+    const open = getOpenCodeViewerFile();
+    Array.prototype.forEach.call(
+        currentTreeEl.querySelectorAll('.structureFileWrap'),
+        function (wrap) {
+            const row = wrap.querySelector(':scope > .structureFileRow');
+            if (!row) return;
+            const path = wrap.dataset ? wrap.dataset.structureFile : '';
+            const selected = !!open && joinSrcRootPath(currentSrcRoot, path) === open;
+            row.classList.toggle('structureFileRow--selected', selected);
+            if (row.hasAttribute('aria-pressed')) {
+                row.setAttribute('aria-pressed', String(selected));
+            }
+        }
+    );
+}
+
+// One module-level subscription: the viewer outlives any single tree paint, and
+// openers other than a row tap must still move the selection.
+onCodeViewerChange(applyFileRowSelection);
+
 // Render a single file row plus its (initially hidden) Explain affordance and
 // inline result area. Depth drives the left indent so nested files line up under
 // their folder.
@@ -631,6 +668,14 @@ function buildFileRow(repo, file, depth) {
     const row = document.createElement('div');
     row.className = 'structureFileRow';
     row.style.setProperty('--structure-depth', String(depth));
+    // The detail column only exists above 1023px, so only there is the row a
+    // control: below that the row keeps its previous behaviour (Explain + the
+    // GitHub glyph) and advertises no affordance it can't honour.
+    if (structureIsDesktop()) {
+        row.setAttribute('role', 'button');
+        row.setAttribute('tabindex', '0');
+        row.setAttribute('aria-pressed', 'false');
+    }
 
     const icon = document.createElement('span');
     icon.className = 'structureFileIcon';
@@ -661,8 +706,31 @@ function buildFileRow(repo, file, depth) {
     result.className = 'structureExplainResult';
     result.hidden = true;
 
-    explainBtn.addEventListener('click', function () {
+    explainBtn.addEventListener('click', function (event) {
+        // The row itself opens the code viewer; Explain is a separate action on
+        // top of it, so its tap must not also load the file into the column.
+        event.stopPropagation();
         explainFile(repo, file.path, explainBtn, result);
+    });
+
+    // Tapping the row loads the file into the detail column's code viewer. The
+    // manifest names files relative to its own srcRoot, so the path is joined
+    // before it reaches the Worker's `read` route, which wants a repo-relative
+    // one. Re-checked at click time rather than trusted from build time, so a
+    // resize below 1024px can't leave a row opening a column that isn't there.
+    const openInViewer = function () {
+        if (!structureIsDesktop() || !currentCanvasHost) return;
+        renderCodeViewer(currentCanvasHost, {
+            target: { repo: repo },
+            filePath: joinSrcRootPath(currentSrcRoot, file.path),
+        });
+    };
+    row.addEventListener('click', openInViewer);
+    row.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            openInViewer();
+        }
     });
 
     wrap.appendChild(row);
@@ -2316,8 +2384,18 @@ function renderLens(repo, treeEl) {
     // cleared by each lens's own render). Record the breakpoint this paint targets
     // so a later resize can tell the host would change and re-home the canvas.
     canvasHostDesktop = structureIsDesktop();
-    if (currentCanvasHost) clear(currentCanvasHost);
+    if (currentCanvasHost) {
+        // A code viewer mounted in the host goes with the host's contents, so drop
+        // its state first — otherwise it would report a file as open long after the
+        // DOM it painted into was thrown away, and the tree rows would follow it.
+        clearCodeViewer(currentCanvasHost);
+        clear(currentCanvasHost);
+    }
     if (lens === 'code') {
+        // The Code lens owns the detail column: mount the viewer's empty state so
+        // the column reads as ready for a file rather than simply blank. Mobile has
+        // no detail column, so nothing is mounted there.
+        if (structureIsDesktop() && currentCanvasHost) clearCodeViewer(currentCanvasHost);
         // Return the paint promise so callers that chain on it (filter re-apply,
         // find-in-code flash, the collapse-all pill refresh) run after the tree
         // is actually painted, not on the next microtask.

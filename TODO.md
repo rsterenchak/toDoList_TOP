@@ -646,7 +646,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/claudeSheet.js`
   <!-- id: b84069fa-f122-4a7f-9616-8d33de85b379 -->
 
-- [ ] **[MEDIUM]** Code viewer in the Structure tab's detail column
+- [x] **[MEDIUM]** Code viewer in the Structure tab's detail column — Completed: 2026-08-05
   - Type: feature
   - Description: In the Code lens the desktop detail column (`.structureCanvasHost`) renders nothing — the UI lens uses it for the block canvas, but Code leaves it empty. Meanwhile the refactor card reports `start_line`/`end_line` for its candidate as prose the user cannot act on. Render file source in that column, and make the scan's line span a jump target so a candidate can be read before `Push entry` drafts an entry to extract it.
   - Behavior: In the Code lens on desktop, clicking a file row loads its content via `readRepoFile(target, filePath)` and renders it into `.structureCanvasHost` with a line-number gutter and monospace text, `white-space: pre` with horizontal overflow so lines do not wrap. The clicked row stays visually selected in the tree. The viewer header shows the file path, its total line count, an external GitHub link, and a close control that returns the column to empty. The refactor card gains a jump chip reading `<file> : <start>–<end>` built from the candidate's existing `start_line`/`end_line`; clicking it opens that file and scrolls to the span with those lines highlighted, under a dismissible banner naming the candidate. Dismissing the banner clears the highlight and leaves the file open. Below 1024px the detail column does not exist — file rows keep their current behavior and no viewer is rendered.
