@@ -32,6 +32,8 @@ import {
     clearCodeViewer,
     getOpenCodeViewerFile,
     onCodeViewerChange,
+    setCodeViewerExplainHandler,
+    setCodeViewerCloseHandler,
 } from './codeViewer.js';
 import { joinSrcRootPath } from './srcPath.js';
 
@@ -39,9 +41,9 @@ import { joinSrcRootPath } from './srcPath.js';
 // toggle swaps between two lenses of that project's linked repo:
 //   • Code lens — the repo's published `src-manifest.json` (the same artifact
 //     the chat's attach-file picker fetches) rendered as a collapsible
-//     folder/file tree, with a per-file "Explain with Sonnet" action, and — at
-//     desktop widths — a code viewer in the detail column that reads the tapped
-//     file's source (codeViewer.js).
+//     folder/file tree. Tapping a file opens its source in the code viewer
+//     (codeViewer.js) — in the detail column at desktop widths, in a full-screen
+//     sheet below 1024px — where one Explain control summarises the open file.
 //   • UI lens — a live, tappable map of the running app's on-screen regions,
 //     walked straight from the DOM. Tapping a region exposes its selector plus
 //     a "Reference in chat" action that hands the selector to the Claude
@@ -151,6 +153,93 @@ function resolveCanvasHost() {
     return (structureIsDesktop() && currentCanvasHost) ? currentCanvasHost : currentTreeEl;
 }
 
+// ── CODE VIEWER HOST ────────────────────────────────────────────────────────
+// The code viewer takes its host as an argument, so giving it a mobile home is a
+// matter of mounting a second container rather than teaching the module about
+// breakpoints: desktop keeps the detail column, and below 1024px — where there is
+// no detail column — the same pane fills a full-screen sheet over the tab.
+//
+// The sheet is built once and left in the document, hidden, so the pane it hosts
+// (and the viewer state pointing at it) survives a close. That is what lets the
+// sheet's close return to the tree with the tapped row STILL selected: dismissing
+// the sheet doesn't clear the viewer, it only stops showing it.
+let codeSheetEl = null;
+let codeSheetHost = null;
+
+function ensureCodeSheet() {
+    // Rebuild when the node has been detached (a test harness resetting the body);
+    // the module-scoped guards below make the extra key listener a no-op.
+    if (codeSheetEl && codeSheetEl.parentNode) return codeSheetHost;
+    if (typeof document === 'undefined' || !document.body) return null;
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'structureCodeSheet';
+    backdrop.className = 'structureCodeSheet';
+    backdrop.hidden = true;
+
+    const panel = document.createElement('div');
+    panel.className = 'structureCodeSheetPanel';
+    panel.setAttribute('role', 'dialog');
+    panel.setAttribute('aria-modal', 'true');
+    panel.setAttribute('aria-label', 'File source');
+
+    const host = document.createElement('div');
+    host.className = 'structureCodeSheetHost';
+    panel.appendChild(host);
+    backdrop.appendChild(panel);
+
+    // Close affordances: the pane's own ✕ (claimed through the close handler
+    // registered below), the backdrop, and Escape.
+    backdrop.addEventListener('click', function (event) {
+        if (event.target === backdrop) hideCodeSheet();
+    });
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        if (!codeSheetEl || codeSheetEl.hidden) return;
+        event.preventDefault();
+        event.stopPropagation();
+        hideCodeSheet();
+    }, true);
+
+    document.body.appendChild(backdrop);
+    codeSheetEl = backdrop;
+    codeSheetHost = host;
+    return host;
+}
+
+function hideCodeSheet() {
+    if (codeSheetEl) codeSheetEl.hidden = true;
+}
+
+// Dismiss the sheet AND drop what it was showing. Used where the file itself is
+// no longer addressable from the surface behind it — a lens repaint or a resize
+// onto desktop — as opposed to a plain close, which keeps the file open.
+function resetCodeSheet() {
+    // Skip a detached sheet: clearing it would rebuild the viewer's shell inside
+    // an element nothing can see.
+    if (codeSheetHost && codeSheetEl && codeSheetEl.parentNode) clearCodeViewer(codeSheetHost);
+    hideCodeSheet();
+}
+
+// Reveal or hide the sheet from what its host is actually showing, so every
+// opener — a row tap here, the refactor card's jump chip — reveals it just by
+// rendering into the host, and none of them needs to know how it is shown.
+// Desktop is gated here rather than in CSS: it is the one place that can reveal
+// the sheet, so refusing above 1023px is enough to guarantee a full-screen overlay
+// never lands on the two-column layout.
+function syncCodeSheetVisibility() {
+    if (!codeSheetEl || !codeSheetHost) return;
+    const pane = codeSheetHost.querySelector(':scope > .codeViewerPane');
+    if (pane && !pane.hidden && !structureIsDesktop()) codeSheetEl.hidden = false;
+    else hideCodeSheet();
+}
+
+// Where the code viewer lives at the current viewport, or null when there is
+// nowhere to put it (the detail column hasn't been mounted yet).
+function codeViewerHost() {
+    return structureIsDesktop() ? currentCanvasHost : ensureCodeSheet();
+}
+
 // The active repo's manifest-declared second lens and its type outline:
 //   • currentLens — which lens fills the toggle's second (non-Code) slot for this
 //     repo: 'ui' (web repos, the default for back-compat), 'types' (a manifest
@@ -171,8 +260,8 @@ let currentTables = [];
 // in the tree container `clear()` empties on each lens render), so it survives a
 // lens switch; `filterQuery` is the active query, re-applied to the freshly
 // rendered lens after a switch. The filter hides/reveals already-rendered rows
-// rather than re-rendering, so inline "Explain with Sonnet" results and the
-// user's expand/collapse state survive every keystroke.
+// rather than re-rendering, so the user's expand/collapse state survives every
+// keystroke.
 let filterQuery = '';
 let filterInputEl = null;
 let filterCountEl = null;
@@ -501,7 +590,8 @@ function buildTree(paths) {
 }
 
 // Build the one-shot "explain this file" turn and render the reply (or a
-// fallback) inline beneath the file row. Runs through the same stateless
+// fallback) into `resultEl` — the code viewer's explanation block, which reaches
+// this through `setCodeViewerExplainHandler`. Runs through the same stateless
 // chatWithWorker path Conceive's "Suggest plan" uses, so it never writes into
 // the chat transcript. Fast-mode (deep flag omitted) per the task spec.
 // "Explain with Sonnet" results are cached per repo + file + manifest SHA so
@@ -655,10 +745,50 @@ function applyFileRowSelection() {
 // One module-level subscription: the viewer outlives any single tree paint, and
 // openers other than a row tap must still move the selection.
 onCodeViewerChange(applyFileRowSelection);
+onCodeViewerChange(syncCodeSheetVisibility);
 
-// Render a single file row plus its (initially hidden) Explain affordance and
-// inline result area. Depth drives the left indent so nested files line up under
-// their folder.
+// The viewer supplies the Explain button; the explaining is still done here,
+// because the cache is keyed by the manifest SHA this module owns. Registered
+// rather than exported so `currentSha` never leaves module scope.
+//
+// The viewer addresses files REPO-relative while the explanation has always been
+// asked (and cached) against the MANIFEST-relative name, so the path is undone
+// back through the srcRoot on the way in. That is what keeps `repo:path:sha` keys
+// written before Explain moved here still hitting.
+setCodeViewerExplainHandler(function (repo, filePath, btn, resultEl) {
+    explainFile(repo, splitSrcRootPath(currentSrcRoot, filePath), btn, resultEl);
+});
+
+// The inverse of joinSrcRootPath: strip a leading `srcRoot/` when the path
+// carries one, and hand anything else back untouched.
+function splitSrcRootPath(srcRoot, filePath) {
+    const name = String(filePath || '');
+    const root = String(srcRoot || '').replace(/\/+$/, '');
+    return (root && name.indexOf(root + '/') === 0) ? name.slice(root.length + 1) : name;
+}
+
+// Closing the viewer inside the mobile sheet means dismissing the SHEET, not
+// emptying the viewer — the file stays open so the tree row behind it is still
+// selected when the sheet goes away. Every other host keeps the default clear.
+setCodeViewerCloseHandler(function (host) {
+    if (!codeSheetHost || host !== codeSheetHost) return false;
+    hideCodeSheet();
+    return true;
+});
+
+// Open a file in whichever host this viewport has. Shared by the tree's file rows
+// and (through the same `renderCodeViewer` call) the refactor card's jump chip, so
+// both work at both breakpoints.
+function openFileInCodeViewer(repo, filePath) {
+    const host = codeViewerHost();
+    if (!host) return;
+    renderCodeViewer(host, { target: { repo: repo }, filePath: filePath });
+}
+
+// Render a single file row. Depth drives the left indent so nested files line up
+// under their folder. Explaining a file is no longer a per-row action — it is one
+// control in the viewer, acting on whatever the row opened — so the row carries
+// only its icon, name, and GitHub escape hatch, and the name gets the width.
 function buildFileRow(repo, file, depth) {
     const wrap = document.createElement('div');
     wrap.className = 'structureFileWrap';
@@ -668,14 +798,12 @@ function buildFileRow(repo, file, depth) {
     const row = document.createElement('div');
     row.className = 'structureFileRow';
     row.style.setProperty('--structure-depth', String(depth));
-    // The detail column only exists above 1023px, so only there is the row a
-    // control: below that the row keeps its previous behaviour (Explain + the
-    // GitHub glyph) and advertises no affordance it can't honour.
-    if (structureIsDesktop()) {
-        row.setAttribute('role', 'button');
-        row.setAttribute('tabindex', '0');
-        row.setAttribute('aria-pressed', 'false');
-    }
+    // A control at every breakpoint now: desktop opens the detail column, mobile
+    // opens the full-screen sheet, so there is no width at which the row has
+    // nowhere to open into.
+    row.setAttribute('role', 'button');
+    row.setAttribute('tabindex', '0');
+    row.setAttribute('aria-pressed', 'false');
 
     const icon = document.createElement('span');
     icon.className = 'structureFileIcon';
@@ -690,40 +818,18 @@ function buildFileRow(repo, file, depth) {
     name.textContent = file.name;
     row.appendChild(name);
 
-    const explainBtn = document.createElement('button');
-    explainBtn.type = 'button';
-    explainBtn.className = 'structureExplainBtn';
-    explainBtn.textContent = 'Explain with Sonnet';
-    explainBtn.setAttribute('aria-label', 'Explain ' + file.path + ' with Sonnet');
-    row.appendChild(explainBtn);
-
     // Quiet escape hatch: open this file on GitHub (no line — it's a whole file).
     // Glyph-only here so the row's width goes to the file name instead.
     const gh = buildGithubLink(repo, file.path, null, true);
     if (gh) row.appendChild(gh);
 
-    const result = document.createElement('div');
-    result.className = 'structureExplainResult';
-    result.hidden = true;
-
-    explainBtn.addEventListener('click', function (event) {
-        // The row itself opens the code viewer; Explain is a separate action on
-        // top of it, so its tap must not also load the file into the column.
-        event.stopPropagation();
-        explainFile(repo, file.path, explainBtn, result);
-    });
-
-    // Tapping the row loads the file into the detail column's code viewer. The
-    // manifest names files relative to its own srcRoot, so the path is joined
-    // before it reaches the Worker's `read` route, which wants a repo-relative
-    // one. Re-checked at click time rather than trusted from build time, so a
-    // resize below 1024px can't leave a row opening a column that isn't there.
+    // Tapping the row loads the file into the code viewer. The manifest names
+    // files relative to its own srcRoot, so the path is joined before it reaches
+    // the Worker's `read` route, which wants a repo-relative one. The host is
+    // resolved at click time rather than trusted from build time, so a resize
+    // across 1024px can't leave a row opening a container that isn't there.
     const openInViewer = function () {
-        if (!structureIsDesktop() || !currentCanvasHost) return;
-        renderCodeViewer(currentCanvasHost, {
-            target: { repo: repo },
-            filePath: joinSrcRootPath(currentSrcRoot, file.path),
-        });
+        openFileInCodeViewer(repo, joinSrcRootPath(currentSrcRoot, file.path));
     };
     row.addEventListener('click', openInViewer);
     row.addEventListener('keydown', function (event) {
@@ -734,7 +840,6 @@ function buildFileRow(repo, file, depth) {
     });
 
     wrap.appendChild(row);
-    wrap.appendChild(result);
     return wrap;
 }
 
@@ -2384,6 +2489,10 @@ function renderLens(repo, treeEl) {
     // cleared by each lens's own render). Record the breakpoint this paint targets
     // so a later resize can tell the host would change and re-home the canvas.
     canvasHostDesktop = structureIsDesktop();
+    // The mobile sheet's file is addressed from the tree this repaint is about to
+    // rebuild, so it goes with it — otherwise a lens switch would leave a sheet
+    // hanging over rows that no longer exist.
+    resetCodeSheet();
     if (currentCanvasHost) {
         // A code viewer mounted in the host goes with the host's contents, so drop
         // its state first — otherwise it would report a file as open long after the
@@ -2416,7 +2525,7 @@ function renderLens(repo, treeEl) {
 // name/path, in the UI lens by a region's label or selector (and, for the
 // published map, its grouping file). It walks the already-rendered DOM and
 // toggles a `.structureFilterHidden` class plus an ancestor-reveal so matches
-// stay reachable — never a re-render — preserving Explain results and fold state.
+// stay reachable — never a re-render — preserving fold state and selection.
 
 function matchesQuery(text, q) {
     return !!q && String(text).toLowerCase().indexOf(q) !== -1;
@@ -3166,6 +3275,10 @@ export function renderStructureView() {
 // wouldn't change — so it's cheap to call from a shared resize listener.
 export function syncStructureCanvasForViewport() {
     if (!currentTreeEl || !selectedRepo) return;
+    // The code sheet has no desktop counterpart — above 1024px the detail column
+    // is where a file opens — so a resize past the breakpoint dismisses it rather
+    // than leaving a full-screen overlay stranded over the two-column layout.
+    if (structureIsDesktop()) resetCodeSheet();
     if (currentLens !== 'ui') return;
     if (structureIsDesktop() === canvasHostDesktop) return;
     renderLens(selectedRepo, currentTreeEl);

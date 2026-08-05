@@ -7,8 +7,10 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-05',
         added: [
-            "The Repo setup shape reference lets you switch between the Angular, React, and Vue setups for a bundled web app, each with its own scaffold command and config edits to copy.",
             "Tapping a file in the Structure tab's Code view reads its source beside the tree, and a refactor suggestion's line range opens that file at the span it names.",
+        ],
+        changed: [
+            "Explaining a file is now a single control in the Structure tab's code viewer rather than a button on every file row, and on phones tapping a file opens that viewer full-screen.",
         ],
         fixed: [
             "File names in the Structure tab's code view show in full instead of collapsing to a single letter.",

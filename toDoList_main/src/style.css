@@ -5260,9 +5260,10 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 /* The only shrinkable item in the row — its `overflow: hidden` zeroes the
    automatic min-width floor, so without these two declarations it absorbed the
    whole space deficit and rendered `Program.cs` as `P.`. `flex: 1 1 auto` gives
-   it the row's free space (grow resolves before the Explain button's
-   `margin-left: auto`, so extra width lands on the name rather than the gap),
-   and the 4ch floor keeps a readable stub when the row genuinely is too narrow. */
+   it the row's free space, so the name — not the gap before the GitHub glyph —
+   takes every extra pixel, and the 4ch floor keeps a readable stub when the row
+   genuinely is too narrow. Explaining a file is a control in the code viewer, not
+   a per-row button, so the row's remaining width is the name's to spend. */
 .structureFileName {
   font-size: 13px;
   color: var(--text-secondary);
@@ -5273,36 +5274,10 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   white-space: nowrap;
 }
 
-.structureExplainBtn {
-  margin-left: auto;
-  flex: 0 0 auto;
-  font-family: inherit;
-  font-size: 11px;
-  font-weight: 600;
-  background: rgba(108, 93, 245, 0.12);
-  color: #9D93EE;
-  border: 0.5px solid rgba(108, 93, 245, 0.35);
-  border-radius: 6px;
-  padding: 5px 10px;
-  cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
-}
-
-.structureExplainBtn:hover:not(:disabled) {
-  background: rgba(108, 93, 245, 0.22);
-  border-color: #6C5DF5;
-}
-
-.structureExplainBtn:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-.structureExplainResult {
-  padding: 8px 8px 10px;
-  padding-left: calc(20px + var(--structure-depth, 0) * 14px);
-}
-
+/* The explanation's three result states. Written by structureView's explainer,
+   which renders into whichever element it is handed — now the code viewer's
+   explanation block rather than a per-row area, so these carry type only and the
+   block owns the padding. */
 .structureExplainLoading {
   font-size: 12px;
   color: var(--text-muted);
@@ -5514,6 +5489,35 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   flex: 0 0 auto;
 }
 
+/* One Explain control for the open file, left of the GitHub link. Ghost-styled on
+   desktop: it is a secondary read of the file, not the reason the column exists. */
+.codeViewerExplain {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(108, 93, 245, 0.12);
+  color: #9D93EE;
+  border: 0.5px solid rgba(108, 93, 245, 0.35);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.codeViewerExplain:hover:not(:disabled) {
+  background: rgba(108, 93, 245, 0.22);
+  border-color: #6C5DF5;
+}
+
+.codeViewerExplain:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .codeViewerGithub {
   display: inline-flex;
   align-items: center;
@@ -5590,6 +5594,60 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: var(--text-muted);
 }
 .codeViewerStatus[hidden] { display: none !important; }
+
+/* The Explain result, above the source rather than over it — reading a summary
+   should not cost sight of the code it describes. The chevron folds it once read
+   so a three-sentence block doesn't hold the screen, which matters most in the
+   mobile sheet where the body is the whole viewport. */
+.codeViewerExplanation {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 8px 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--bg-hover);
+}
+.codeViewerExplanation[hidden] { display: none !important; }
+
+.codeViewerExplanationHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.codeViewerExplanationToggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  min-height: 24px;
+  flex: 0 0 auto;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.codeViewerExplanationLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+/* Capped so a long summary scrolls inside the block rather than pushing the
+   source out of view; the chevron is the way to reclaim the height entirely. */
+.codeViewerExplanationBody {
+  display: block;
+  max-height: 30vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.codeViewerExplanationBody[hidden] { display: none !important; }
 
 /* The scroll container. Horizontal overflow (not wrapping) is what keeps a long
    line one line, so the gutter numbering stays true to the file. */
@@ -5668,6 +5726,72 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .codeViewerMore--down {
   border-bottom: none;
   border-top: 0.5px solid var(--border-dim);
+}
+
+/* ── STRUCTURE CODE SHEET (Code lens, ≤1023px) ────────────────────────────────
+   Below 1024px there is no detail column, so the same code-viewer pane fills a
+   full-screen sheet over the Structure tab instead. structureView mounts it and
+   toggles the `hidden` attribute; because this rule declares a display, it needs
+   its own guard. There is deliberately no desktop media rule here — the sheet is
+   never revealed above 1023px (structureView gates that in JS, so a resize caught
+   mid-read closes it rather than leaving a stranded overlay), and adding an early
+   `min-width: 1024px` block would put one ahead of top-level rules that are
+   pinned to sit outside every media block. */
+.structureCodeSheet {
+  position: fixed;
+  inset: 0;
+  z-index: 4000;
+  display: flex;
+  background: rgba(0, 0, 0, 0.55);
+}
+.structureCodeSheet[hidden] { display: none !important; }
+
+.structureCodeSheetPanel {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-height: 0;
+  background: var(--bg-surface);
+  padding-top: env(safe-area-inset-top, 0);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
+}
+
+/* The viewer's host inside the sheet. It absorbs the panel's height so the pane's
+   own body — not the panel — is what scrolls, mirroring the detail column. */
+.structureCodeSheetHost {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 10px 12px 12px;
+}
+.structureCodeSheetHost > .codeViewerPane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+/* On a phone the reason a file was opened is more often "what is this?" than
+   "show me line 400", so Explain is promoted to a full-width primary button on
+   its own row. `flex-basis: 100%` + the header's wrap is what moves it there —
+   codeViewer.js builds one control and stays unaware of which host it is in. */
+.structureCodeSheet .codeViewerHeader {
+  flex-wrap: wrap;
+  row-gap: 8px;
+}
+.structureCodeSheet .codeViewerExplain {
+  order: 1;
+  flex: 1 1 100%;
+  min-height: 40px;
+  font-size: 13px;
+  background: #6C5DF5;
+  border-color: #6C5DF5;
+  color: #fff;
+}
+.structureCodeSheet .codeViewerExplain:hover:not(:disabled) {
+  background: #7d70f7;
+  border-color: #7d70f7;
 }
 
 /* ── STRUCTURE BLOCK CANVAS (UI lens, app's own repo) ─────────────────────────

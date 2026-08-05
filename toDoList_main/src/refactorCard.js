@@ -16,9 +16,10 @@
 // tree, never wipes it). A "Skip" control dismisses the shown candidate and
 // advances to the next; a "Push entry" control turns the shown candidate into a
 // real todo, ships its entry and dispatches a run directly (via shipEntryForTodo),
-// then dismisses it and advances. At desktop widths a jump chip carrying the
-// candidate's line span opens that span in the Structure view's detail-column
-// code viewer (codeViewer.js), so the code can be read before it's pushed.
+// then dismisses it and advances. A jump chip carrying the candidate's line span
+// opens that span in the Structure view's code viewer (codeViewer.js) — the detail
+// column on desktop, the full-screen code sheet below 1024px — so the code can be
+// read before it's pushed.
 
 import { getCachedTargets, fetchActiveRuns, dispatchScan, mintEntryId, isInjectConfigured } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
@@ -240,27 +241,32 @@ function buildChip(text, extraClass) {
     return chip;
 }
 
-// The Structure view's detail column, or null when there isn't one — below
-// 1024px the column doesn't exist, and the card also renders on paints where the
-// host hasn't been mounted yet. Resolved here rather than imported from
-// structureView.js, which imports THIS module (the cycle the registered-handler
-// pattern exists to avoid); the code viewer takes any host element, so knowing
-// the selector is all the card needs.
-function detailColumnHost() {
-    if (typeof window === 'undefined' || window.innerWidth <= 1023) return null;
-    return document.querySelector('#structureView > .structureCanvasHost');
+// Where the Structure view's code viewer lives at the current viewport, or null
+// when it hasn't been mounted (the card also renders on paints before the view
+// exists). Above 1023px that's the detail column; below it, the full-screen code
+// sheet — which reveals itself off the viewer's own change event, so rendering
+// into its host is all this side has to do. Resolved by selector rather than
+// imported from structureView.js, which imports THIS module (the cycle the
+// registered-handler pattern exists to avoid); the code viewer takes any host
+// element, so knowing the selectors is all the card needs.
+function codeViewerHost() {
+    if (typeof document === 'undefined') return null;
+    const desktop = typeof window !== 'undefined' && window.innerWidth > 1023;
+    return document.querySelector(desktop
+        ? '#structureView > .structureCanvasHost'
+        : '#structureCodeSheet .structureCodeSheetHost');
 }
 
 // A tappable `<file> : <start>–<end>` chip that opens the candidate's source in
-// the detail column's code viewer, scrolled to and highlighting that span. The
-// scan reports `target_file` repo-relative to the app folder (`src/agentView.js`),
-// and the Worker's read route wants a full repo-relative path, so it goes through
-// the same srcPath normalization the pushed entry's `File:` line uses. Returns
-// null when the scan gave no span or there's no column to render into, so the
-// chip never appears as a control that can't do anything.
+// the code viewer, scrolled to and highlighting that span. The scan reports
+// `target_file` repo-relative to the app folder (`src/agentView.js`), and the
+// Worker's read route wants a full repo-relative path, so it goes through the
+// same srcPath normalization the pushed entry's `File:` line uses. Returns null
+// when the scan gave no span or there's nowhere to render into, so the chip never
+// appears as a control that can't do anything.
 function buildJumpChip(repo, row, cand) {
     if (cand.start_line == null || cand.end_line == null) return null;
-    if (!detailColumnHost()) return null;
+    if (!codeViewerHost()) return null;
     const filePath = srcPath(row.target_file);
     if (!filePath) return null;
 
@@ -273,7 +279,7 @@ function buildJumpChip(repo, row, cand) {
     chip.addEventListener('click', function () {
         // Re-resolved at click time: the card outlives a viewport change, and a
         // host captured at render time could be a detached element by now.
-        const host = detailColumnHost();
+        const host = codeViewerHost();
         if (!host) return;
         renderCodeViewer(host, {
             target: resolveTarget(repo),
