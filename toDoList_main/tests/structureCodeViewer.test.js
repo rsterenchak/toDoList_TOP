@@ -69,10 +69,10 @@ function setWidth(w) {
     Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
 }
 
-function mountDom() {
+function mountDom(name = 'My Project') {
     document.body.innerHTML =
         '<div id="structureView"></div>' +
-        '<div class="selectedProject"><input id="projInput" value="My Project"></div>';
+        '<div class="selectedProject"><input id="projInput" value="' + name + '"></div>';
 }
 
 function fileRows() {
@@ -464,5 +464,166 @@ describe('Code lens — below 1024px the viewer opens in a full-screen sheet', (
 
         expect(sheet().hidden).toBe(true);
         expect(getOpenCodeViewerFile()).toBeNull();
+    });
+});
+
+// The Types lens's outline rows have carried a `file` and a `line` from the
+// manifest all along and did nothing with them. They now jump: the same gesture
+// the Code lens's file rows use, through the SAME shared opener, so the desktop
+// column / mobile sheet split is decided in one place for every caller. These
+// tests cover that wiring — the path read, the span highlighted, the banner, and
+// the rows that deliberately do NOT jump.
+describe('Types lens — an outline row jumps into the code viewer', () => {
+    const OTHER = 'rsterenchak/matchingGame-test';
+
+    // A C# manifest, but with a non-empty srcRoot so the join the Code lens's rows
+    // make is exercised here too. Lines sit inside the mocked 3-line file so the
+    // highlight actually lands on a rendered row. `string Name` deliberately has no
+    // line — the row that must stay selection-only.
+    function typesManifest() {
+        return {
+            ok: true,
+            files: ['Greeter.cs'],
+            hasDom: false,
+            lens: 'types',
+            srcRoot: 'src',
+            types: [
+                {
+                    kind: 'class', name: 'Greeter', file: 'Greeter.cs', line: 2,
+                    members: [
+                        { signature: 'void Main', name: 'Main', line: 3 },
+                        { signature: 'string Name', name: 'Name' },
+                    ],
+                },
+            ],
+        };
+    }
+
+    // Park on a neutral repo first so the render for OTHER is a clean repo change:
+    // structureView holds the manifest's srcRoot/lens/types in module scope.
+    async function renderTypesRepo() {
+        state.projectRepos['__neutral__'] = 'rsterenchak/__neutral__';
+        state.projectRepos.Game = OTHER;
+        state.manifests[OTHER] = typesManifest();
+        // The persisted choice is the "second slot"; a types manifest normalizes it
+        // onto its own outline.
+        setStructureLens('ui');
+        mountDom('__neutral__');
+        renderStructureView();
+        await flush();
+
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        state.reads = [];
+        readRepoFile.mockClear();
+    }
+
+    function typeRow(label) {
+        return Array.from(document.querySelectorAll('.structureRegionRow')).find((r) => {
+            const l = r.querySelector('.structureTypeLabel');
+            return l && l.textContent === label;
+        });
+    }
+
+    function paneIn(host) {
+        return host.querySelector(':scope > .codeViewerPane');
+    }
+
+    function hitLines(host) {
+        return Array.from(host.querySelectorAll('.codeViewerLine--hit'))
+            .map((el) => el.dataset.line);
+    }
+
+    it('opens the type’s file at its srcRoot-joined path, highlighted under a banner naming it', async () => {
+        await renderTypesRepo();
+
+        typeRow('class Greeter').click();
+        await flush();
+
+        expect(state.reads).toEqual([{ repo: OTHER, filePath: 'src/Greeter.cs' }]);
+        expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+
+        const pane = paneIn(detailHost());
+        expect(pane.hidden).toBe(false);
+        expect(pane.querySelector('.codeViewerBanner').hidden).toBe(false);
+        expect(pane.querySelector('.codeViewerBannerText').textContent).toBe('class Greeter');
+        expect(hitLines(detailHost())).toEqual(['2']);
+    });
+
+    it('marks the clicked row selected, the way a Code lens file row is', async () => {
+        await renderTypesRepo();
+
+        const row = typeRow('class Greeter');
+        row.click();
+        await flush();
+
+        expect(row.classList.contains('is-selected')).toBe(true);
+        expect(row.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('a member row jumps to its own line, not the type’s', async () => {
+        await renderTypesRepo();
+
+        typeRow('void Main').click();
+        await flush();
+
+        expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+        expect(detailHost().querySelector('.codeViewerBannerText').textContent).toBe('void Main');
+        expect(hitLines(detailHost())).toEqual(['3']);
+    });
+
+    it('opens on Enter, so the jump is reachable from the keyboard', async () => {
+        await renderTypesRepo();
+
+        typeRow('class Greeter')
+            .dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        await flush();
+
+        expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+    });
+
+    it('a row with no usable line opens nothing, but still selects its handle', async () => {
+        await renderTypesRepo();
+
+        const row = typeRow('string Name');
+        row.click();
+        await flush();
+
+        // No jump: opening the file at the top would land nowhere near the member.
+        expect(readRepoFile).not.toHaveBeenCalled();
+        expect(getOpenCodeViewerFile()).toBeNull();
+        // The row keeps its handle — Reference / Copy / Find still work from it.
+        expect(row.classList.contains('is-selected')).toBe(true);
+        const toolbar = document.querySelector('.structureActionToolbar');
+        expect(toolbar.classList.contains('structureActionToolbar--idle')).toBe(false);
+    });
+
+    it('the banner’s dismiss drops the highlight and leaves the file open', async () => {
+        await renderTypesRepo();
+
+        typeRow('class Greeter').click();
+        await flush();
+        detailHost().querySelector('.codeViewerBannerDismiss').click();
+
+        expect(detailHost().querySelector('.codeViewerBanner').hidden).toBe(true);
+        expect(hitLines(detailHost())).toEqual([]);
+        expect(getOpenCodeViewerFile()).toBe('src/Greeter.cs');
+    });
+
+    it('below 1024px the jump opens the sheet instead of the detail column', async () => {
+        setWidth(900);
+        await renderTypesRepo();
+
+        typeRow('class Greeter').click();
+        await flush();
+
+        expect(sheet().hidden).toBe(false);
+        const pane = paneIn(sheetHost());
+        expect(pane.hidden).toBe(false);
+        expect(pane.querySelector('.codeViewerPath').textContent).toBe('src/Greeter.cs');
+        expect(pane.querySelector('.codeViewerBannerText').textContent).toBe('class Greeter');
+        expect(hitLines(sheetHost())).toEqual(['2']);
+        expect(detailHost().querySelector('.codeViewerPane')).toBeNull();
     });
 });

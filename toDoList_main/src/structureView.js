@@ -776,13 +776,25 @@ setCodeViewerCloseHandler(function (host) {
     return true;
 });
 
-// Open a file in whichever host this viewport has. Shared by the tree's file rows
-// and (through the same `renderCodeViewer` call) the refactor card's jump chip, so
-// both work at both breakpoints.
-function openFileInCodeViewer(repo, filePath) {
+// Open a file in whichever host this viewport has. Shared by the Code lens's file
+// rows and the Types lens's outline rows — and (through the same `renderCodeViewer`
+// call) the refactor card's jump chip — so every opener works at both breakpoints
+// and host resolution stays in one place.
+//
+// `highlight` is optional and carries the SAME `{ startLine, endLine, banner }`
+// shape the refactor card passes straight to `renderCodeViewer`, so a jump from a
+// type row and a jump from a refactor candidate describe their span identically.
+// Omitting it is a plain cold open at the top of the file.
+function openFileInCodeViewer(repo, filePath, highlight) {
     const host = codeViewerHost();
     if (!host) return;
-    renderCodeViewer(host, { target: { repo: repo }, filePath: filePath });
+    const opts = { target: { repo: repo }, filePath: filePath };
+    if (highlight) {
+        opts.startLine = highlight.startLine;
+        opts.endLine = highlight.endLine;
+        opts.banner = highlight.banner;
+    }
+    renderCodeViewer(host, opts);
 }
 
 // Render a single file row. Depth drives the left indent so nested files line up
@@ -1819,9 +1831,11 @@ function renderUiLens(repo, treeEl) {
 // One row in the Types lens — a type (kind + name) or one of its members
 // (signature). Tapping the row body selects it, driving the shared toolbar
 // (Reference in chat + Copy name, Find in code, and a View-on-GitHub deep link
-// to the defining file at the row's line). A type row additionally nests its
-// members as collapsible children (depth + 1), so the filter's ancestor-reveal
-// surfaces a type when one of its members matches. `spec` is
+// to the defining file at the row's line), AND opens its defining file in the
+// code viewer scrolled to its line — the detail column on desktop, the sheet
+// below 1024px, since both go through the shared opener. A type row additionally
+// nests its members as collapsible children (depth + 1), so the filter's
+// ancestor-reveal surfaces a type when one of its members matches. `spec` is
 // { label, name, file, line, members? }.
 function buildTypeOutlineRow(repo, spec, depth) {
     const wrap = document.createElement('div');
@@ -1885,11 +1899,38 @@ function buildTypeOutlineRow(repo, spec, depth) {
             line: spec.line,
         }, row);
     };
-    row.addEventListener('click', select);
+
+    // The outline exists so a declaration can be FOUND, so the row jumps to it as
+    // well as selecting it: the manifest has published `line` all along and the
+    // code viewer already knows how to open a file scrolled to a span, so this is
+    // the Code lens's file-row gesture pointed at one line instead of a whole file.
+    // The banner names the type (`class Greeter`, `void Main`) and its existing
+    // dismiss drops the highlight while leaving the file open, exactly as it does
+    // for a refactor jump.
+    //
+    // A row whose line is missing or nonsensical does NOT open the file: the same
+    // `line > 0` test the toolbar's context line makes, because a jump that lands
+    // at the top of the file is worse than no jump at all. Such a row stays a
+    // selection-only row rather than losing its handle.
+    const jumpLine = (typeof spec.line === 'number' && spec.line > 0) ? spec.line : 0;
+    const canJump = !!(jumpLine && spec.file);
+    const activate = function () {
+        select();
+        // Paths are joined at click time, not build time, so a repo whose manifest
+        // declares a srcRoot resolves the same way the Code lens's rows do.
+        if (canJump) {
+            openFileInCodeViewer(repo, joinSrcRootPath(currentSrcRoot, spec.file), {
+                startLine: jumpLine,
+                endLine: jumpLine,
+                banner: spec.label,
+            });
+        }
+    };
+    row.addEventListener('click', activate);
     row.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            select();
+            activate();
         }
     });
 
