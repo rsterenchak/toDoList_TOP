@@ -667,7 +667,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 0a481577-4d5f-4b76-bd85-260e68bc6d56 -->
 
-- [ ] **[MEDIUM]** Types lens rows jump into the code viewer
+- [x] **[MEDIUM]** Types lens rows jump into the code viewer — Completed: 2026-08-05
   - Type: feature
   - Description: On C# repos the Types lens renders the manifest's class and member outline grouped by defining file, and each row carries `type.line` — but clicking a row does nothing with that number. The outline exists so you can find a declaration, and finding it currently means opening the file yourself and scrolling. The refactor card already turns `start_line`/`end_line` into a jump; the same gesture applies here, on data the manifest has been publishing all along.
   - Behavior: A type outline row becomes clickable. Clicking opens that row's `file` in the code viewer, scrolls to its `line`, and highlights it under the existing span banner naming the type — `class Greeter` or `void Main`. The banner's dismiss control clears the highlight and leaves the file open, as it does for a refactor jump. Member rows behave identically using their own line. On desktop the viewer opens in the detail column; below 1024px it opens in the sheet, matching the Code lens. Rows without a usable line stay non-interactive rather than opening the file at the top — a jump that silently lands nowhere is worse than no jump. The clicked row takes the same selected treatment a Code lens file row gets, and expanding or collapsing a file group is unchanged.
