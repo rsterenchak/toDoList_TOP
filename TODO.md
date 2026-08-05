@@ -687,7 +687,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: f8903aa6-d189-4d00-8195-096aa2d776a5 -->
 
-- [ ] **[MEDIUM]** Code viewer text renders at inconsistent sizes on iOS, and add a size control
+- [x] **[MEDIUM]** Code viewer text renders at inconsistent sizes on iOS, and add a size control — Completed: 2026-08-05
   - Type: bug
   - Description: In the code viewer on mobile, lines render at visibly different font sizes within the same file — long import lines appear smaller than short comment lines despite `.codeViewerLine` setting a single `font-size: 12px`. The cause is iOS Safari's text autosizing (font boosting), which inflates text per block scaled by the block's width relative to the viewport. `.codeViewerCode` uses `white-space: pre`, so every line is a different width and lands in a different inflation cluster with a different multiplier. `style.css` sets `-webkit-text-size-adjust` nowhere, so iOS applies its `auto` default. Desktop browsers do not boost, which is why it only appears on the phone. Separately, 12px monospace is small on a phone and there is no way to adjust it.
   - Behavior: All lines in the viewer render at the same size on iOS, matching desktop. A size control in the viewer header steps the code text through a small range — 10px to 18px in 1px steps — with a minus and plus affordance and the current size between them; the controls disable at each end of the range. Stepping affects the code text and the line-number gutter together so their baselines stay aligned, and does not affect the header, banner, or Explain block. The chosen size persists per device and applies to every file opened afterward, at both breakpoints.
