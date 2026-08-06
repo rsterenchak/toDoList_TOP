@@ -205,8 +205,8 @@ function parseGotchas(lines) {
     return bullets;
 }
 
-// The first fenced code block's contents — the copyable value for a CLI shape,
-// which has no template repo to name.
+// The first fenced code block's contents — the copyable value for a CLI shape
+// whose body is a single unlabelled command, which has no template repo to name.
 function firstFencedBlock(lines) {
     let inFence = false;
     const body = [];
@@ -330,6 +330,39 @@ function parseVariantBody(lines) {
     return parts;
 }
 
+// The markers that end a variant-less section's command sequence. Both own
+// their own surface further down the row — the chips and the gotcha list — so
+// letting either into the sequence would render it twice, or fold a gotcha
+// bullet into the trailing block. The variant path bounds itself the same way
+// (see `splitVariants`); it only needs `**Gotchas**` because a section writes
+// its adds line above the first `### ` heading, which is already outside the
+// variant region.
+const SEQUENCE_END_MARKERS = ['**Onboarding adds:**', '**Gotchas**'];
+
+// A variant-less section's command sequence: the region between its lead
+// paragraph and the first of the markers above. The lead comes off the front
+// because it already renders above the body as the shape's description, and
+// re-emitting it as the sequence's first prose part would print it twice.
+// Fenced code is tracked so a marker line inside a snippet can't cut the region
+// short.
+function sectionSequenceLines(lines) {
+    let start = 0;
+    while (start < lines.length && !lines[start].trim()) start++;
+    while (start < lines.length && lines[start].trim()) start++;
+
+    let end = lines.length;
+    let inFence = false;
+    for (let i = start; i < lines.length; i++) {
+        if (/^\s*```/.test(lines[i])) { inFence = !inFence; continue; }
+        if (inFence) continue;
+        const isMarker = SEQUENCE_END_MARKERS.some(function(marker) {
+            return lines[i].indexOf(marker) === 0;
+        });
+        if (isMarker) { end = i; break; }
+    }
+    return lines.slice(start, end);
+}
+
 // One picker row's worth of parsed data. `kind` drives the row's chip:
 // 'template' → the TEMPLATE chip and the template repo as the copyable value,
 // 'cli' → the dimmed CLI label and the first fenced block, 'none' → NO SHAPE,
@@ -339,6 +372,12 @@ function parseVariantBody(lines) {
 // A section carrying `### ` variants has no single copyable value — its blocks
 // belong to the variants, one scaffold each — so `copyValue` stays empty there
 // and the row renders the segmented control instead.
+//
+// A CLI section with NO variants is read as one implicit variant: its body goes
+// through the same `parseVariantBody` walk and lands on `parts`, so a multi-step
+// setup renders every captioned block instead of only the first. A body holding
+// one unlabelled block is not a sequence — it is the single scaffold command the
+// shape has always shown — so it keeps `copyValue` and renders as before.
 export function parseShapesDoc(text) {
     const clean = stripHtmlComments(text);
     return splitSections(clean.split('\n')).map(function(section) {
@@ -353,8 +392,18 @@ export function parseShapesDoc(text) {
         else if (templateMatch) kind = 'template';
 
         let copyValue = '';
-        if (kind === 'template') copyValue = templateMatch[1].trim();
-        else if (kind === 'cli' && !variants.length) copyValue = firstFencedBlock(lines);
+        let parts = [];
+        if (kind === 'template') {
+            copyValue = templateMatch[1].trim();
+        } else if (kind === 'cli' && !variants.length) {
+            const sequence = parseVariantBody(sectionSequenceLines(lines));
+            const blocks = sequence.filter(function(part) { return part.type === 'code'; });
+            // More than one block, or a captioned one, means the body documents
+            // an ordered setup — render the whole sequence. Anything less is the
+            // lone scaffold command the single copyable value already served.
+            if (blocks.length > 1 || (blocks.length === 1 && blocks[0].label)) parts = sequence;
+            else copyValue = firstFencedBlock(lines);
+        }
 
         return {
             name: section.name,
@@ -364,6 +413,7 @@ export function parseShapesDoc(text) {
             warn: /least-proven/i.test(body),
             lead: readLeadParagraph(lines),
             copyValue: copyValue,
+            parts: parts,
             variants: variants,
             adds: parseAdds(lines),
             gotchas: parseGotchas(lines),
@@ -589,6 +639,35 @@ function buildVariantBlock(part, index) {
     return block;
 }
 
+// A parsed body — prose paragraphs and captioned blocks in file order — mounted
+// into `host`. Shared by the variant bodies and by a variant-less section's own
+// command sequence, which is parsed identically, so the two can never drift.
+// The SCAFFOLD / EDITS fallback counts blocks only, so prose between two blocks
+// doesn't shift the labelling.
+function appendParts(host, parts) {
+    let blockIndex = 0;
+    parts.forEach(function(part) {
+        if (part.type === 'prose') {
+            const prose = document.createElement('div');
+            prose.className = 'repoSetupVariantProse';
+            appendInline(prose, part.text);
+            host.appendChild(prose);
+            return;
+        }
+        host.appendChild(buildVariantBlock(part, blockIndex));
+        blockIndex++;
+    });
+}
+
+// A variant-less section's own sequence. No segmented control above it — there
+// is nothing to choose between — so it is just the body.
+function buildSteps(parts) {
+    const wrap = document.createElement('div');
+    wrap.className = 'repoSetupSteps';
+    appendParts(wrap, parts);
+    return wrap;
+}
+
 // The segmented control plus one body per variant, all mounted at once and
 // toggled by `hidden` — the bodies are small and switching between them is the
 // point of the control, so rebuilding on every tap would only lose the copy
@@ -615,18 +694,7 @@ function buildVariants(variants) {
 
         const body = document.createElement('div');
         body.className = 'repoSetupVariantBody';
-        let blockIndex = 0;
-        variant.parts.forEach(function(part) {
-            if (part.type === 'prose') {
-                const prose = document.createElement('div');
-                prose.className = 'repoSetupVariantProse';
-                appendInline(prose, part.text);
-                body.appendChild(prose);
-                return;
-            }
-            body.appendChild(buildVariantBlock(part, blockIndex));
-            blockIndex++;
-        });
+        appendParts(body, variant.parts);
         bodies.push(body);
         wrap.appendChild(body);
         return seg;
@@ -852,6 +920,14 @@ export function showRepoSetupModal() {
                 chips.appendChild(chip);
             });
             rowBody.appendChild(chips);
+        }
+
+        // A variant-less section's command sequence sits where the variant
+        // control would — the chips above it, the gotchas below — since it is
+        // the same body with nothing to switch between. The two are mutually
+        // exclusive: a section with variants has no sequence of its own.
+        if (section.parts && section.parts.length) {
+            rowBody.appendChild(buildSteps(section.parts));
         }
 
         // Variants sit between the shape's own material and its gotchas: the

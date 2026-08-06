@@ -22230,6 +22230,15 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   line-height: 1.5;
   color: var(--text-secondary);
 }
+/* A variant-less shape's own command sequence — the same captioned blocks and
+   prose a variant body carries, with no segmented control above them, so it
+   takes the variant body's stacking and nothing else. */
+.repoSetupSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.repoSetupSteps[hidden] { display: none !important; }
 
 .repoSetupGotchas {
   display: flex;
