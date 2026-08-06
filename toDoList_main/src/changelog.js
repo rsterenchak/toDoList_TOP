@@ -11,13 +11,7 @@ export const changelog = [
             "A failed request now names the reason it failed, such as a repo not yet in the allowlist, with the status code as secondary detail.",
             "Checking an inject target for missing setup files now uses that repo's own purpose, so an assignment repo no longer reports clean while five of its files are missing.",
             "The filter row above the task list no longer paints a dark band across the top of the list on mobile.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-05',
-        fixed: [
-            "Repo setup's framework variants list every config edit block, each labelled with the file and path it belongs in.",
+            "The TODO.md launcher in the task list reads as a card on mobile again, instead of a flat dark band.",
         ],
     },
 ];
