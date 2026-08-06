@@ -14515,15 +14515,27 @@ body.row-dragging * { cursor: grabbing !important; }
      stayed pinned while overflow:hidden shaved the content's baseline. Mirror
      the todo-row rhythm instead — an explicit `height: var(--item-h)` (44px)
      with `margin: 3px 10px` totals exactly the 50px track, so the launcher
-     fits the floor without ever depending on the track growing. */
+     fits the floor without ever depending on the track growing.
+
      Card-versus-band follow-up: once the mobile canvas was repainted to
      --bg-elevated, the launcher stopped reading as a card. Its body is hidden,
      so the header IS the whole card — and the header paints --bg-elevated, the
      exact fill of the canvas behind it, leaving only two ~3px slivers of
      --bg-surface and a 1px --border-dim edge. Clear the header's background
-     (below) so the launcher paints one contiguous --bg-surface from the card,
-     and raise the card's border to --border-mid so its edge stays legible
-     against the elevated canvas. */
+     (below) so the launcher paints one contiguous fill from the card, and
+     raise the card's border to --border-mid so its edge stays legible against
+     the elevated canvas.
+
+     Row-fill follow-up: that contiguous fill came from .todoMdViewerCard's base
+     --bg-surface (#191a22), but the todo rows the launcher lines up with paint
+     --bg-row, which the mobile interactive-layer pass re-declares to #20222e —
+     so the launcher sat a step darker than its neighbours. Paint it --bg-row
+     here so it sits on the same interactive layer and picks up that mobile
+     re-declaration automatically. The :active feedback below still lifts:
+     --bg-hover is re-declared to #262838 at this breakpoint, brighter than the
+     row fill. Scoped to `#mainList > #todoMdViewerCard`, so the expanded
+     in-list card, the bottom sheet, the pane-hosted card, and the desktop rail
+     strip all keep --bg-surface. */
   #mainList > #todoMdViewerCard {
     min-height: 0;
     height: var(--item-h);
@@ -14532,6 +14544,15 @@ body.row-dragging * { cursor: grabbing !important; }
     overflow: hidden;
     justify-content: center;
     border-color: var(--border-mid);
+    background: var(--bg-row);
+  }
+  /* Restate the pressed feedback at the launcher's own specificity. The
+     general rule above is `#mainList .todoMdViewerCard:active` (0,1,2,0),
+     which the launcher's `#mainList > #todoMdViewerCard` (0,2,0,0) now
+     outranks with its --bg-row fill — so without this the launcher would
+     lose its pressed state the moment it stopped inheriting --bg-surface. */
+  #mainList > #todoMdViewerCard:active {
+    background: var(--bg-hover);
   }
   #mainList > #todoMdViewerCard .todoMdViewerTabs,
   #mainList > #todoMdViewerCard .todoMdViewerBody,
