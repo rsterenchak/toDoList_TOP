@@ -696,3 +696,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/codeViewer.js, toDoList_main/src/style.css
   - Completed:
   <!-- id: 12ec9937-2971-42c7-9036-a537376ac42a -->
+
+- [ ] **[LOW]** Repo setup picker drops fenced blocks past the second
+  - Type: bug
+  - Description: The picker renders a variant's first fenced block as the scaffold command and its second as the edits, ignoring any beyond that. `SHAPES.md`'s angular variant now carries three — the `ng new` command, an `angular.json` edit, and a `package.json` edit — because those are edits to two different files and merging them into one copyable block is what let a `package.json` script get pasted into `angular.json`, overwriting the `test` target. The third block is silently dropped, so the picker shows the scaffold and the `angular.json` edit but not the `package.json` one.
+  - Behavior: Within a variant, the first fenced block remains the scaffold and every block after it is an edit block, each rendered with its own copy control. Label each edit block from the comment on its first line when one is present — `// angular.json → projects.<name>.architect.build.options` renders as that path above the block — falling back to `EDITS` when there is no leading comment. Variants with one edit block (react, vue) render exactly as they do now. The scaffold block keeps its `SCAFFOLD` label.
+  - Implementation notes: The variant parser currently takes fenced blocks positionally; change it to collect all blocks and treat index 0 as the scaffold, the remainder as edits, so no per-variant block count is assumed. As of writing: angular has 3 blocks, react 2, vue 2, and the maui section has 1 with no variants — the single-block, no-variant case must keep rendering as it does today. Read the label from the block's first line only when that line is a `//` comment, and strip it from neither the displayed code nor the copied text — the comment names the file and target path, so it is content the user needs when pasting. Do not add a copy-all control that concatenates blocks; they go to different files and concatenating them is the failure this entry exists to prevent.
+  - Out of scope: rendering blocks outside variants differently; syntax highlighting in blocks; the full-document view; validating that a block's declared path exists.
+  - File: toDoList_main/src/repoSetup.js, toDoList_main/src/style.css
+  - Completed:
+  <!-- id: cf482413-b678-44c1-bd90-667a3dfab372 -->
