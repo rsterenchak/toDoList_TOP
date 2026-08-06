@@ -697,7 +697,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 12ec9937-2971-42c7-9036-a537376ac42a -->
 
-- [ ] **[LOW]** Repo setup picker drops fenced blocks past the second
+- [x] **[LOW]** Repo setup picker drops fenced blocks past the second — Completed: 2026-08-05
   - Type: bug
   - Description: The picker renders a variant's first fenced block as the scaffold command and its second as the edits, ignoring any beyond that. `SHAPES.md`'s angular variant now carries three — the `ng new` command, an `angular.json` edit, and a `package.json` edit — because those are edits to two different files and merging them into one copyable block is what let a `package.json` script get pasted into `angular.json`, overwriting the `test` target. The third block is silently dropped, so the picker shows the scaffold and the `angular.json` edit but not the `package.json` one.
   - Behavior: Within a variant, the first fenced block remains the scaffold and every block after it is an edit block, each rendered with its own copy control. Label each edit block from the comment on its first line when one is present — `// angular.json → projects.<name>.architect.build.options` renders as that path above the block — falling back to `EDITS` when there is no leading comment. Variants with one edit block (react, vue) render exactly as they do now. The scaffold block keeps its `SCAFFOLD` label.
