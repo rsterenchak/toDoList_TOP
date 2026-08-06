@@ -19173,9 +19173,19 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      to --bg-elevated here so the canvas merges into the frame at every list
      length. Rows, the TODO.md card, and the drawers keep their own
      backgrounds, so cards still read as distinct. Desktop, scoped above this
-     media block, keeps its darker canvas. */
+     media block, keeps its darker canvas.
+
+     #taskFilterBar is repainted alongside them because it is the same canvas.
+     It declares its own `background: var(--bg-base)` so it matches #mainBar on
+     desktop, where both are --bg-base and the seam is invisible. Left out of
+     this mobile repaint it kept --bg-base (#0e0f14) over an --bg-elevated
+     (#14151b) pane, so the pill row painted a full-width darker band across the
+     top of the task column, directly above the list that hosts the TODO.md
+     viewer card — the same darker-token-over-lighter-canvas seam this rule
+     exists to close, one element further up. */
   #mainBar,
-  #mainList {
+  #mainList,
+  #taskFilterBar {
     background: var(--bg-elevated);
   }
 
