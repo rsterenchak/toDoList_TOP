@@ -101,19 +101,20 @@ function inMobileMediaBlock(pos) {
     return false;
 }
 
-// Regression: the collapsed in-list TODO.md launcher painted .todoMdViewerCard's
-// base --bg-surface (#191a22) while the todo rows beside it paint --bg-row,
-// which the mobile interactive-layer pass re-declares to #20222e — so the
-// launcher sat a step darker than the rows it lines up with. Fix: paint the
-// launcher --bg-row inside the mobile block, scoped to the inline card only.
+// The collapsed in-list TODO.md launcher was briefly painted --bg-row to put it
+// on the task rows' interactive layer. That was reversed: the rows usually on
+// screen are .todo-row--in_progress (painted --bg-hover), so --bg-row landed the
+// launcher in a near-match rather than a match. It is back on --bg-surface, one
+// clear step below the row layer — see mobileTodoMdLauncherChevron.test.js for
+// the fill contract that supersedes it.
 //
 // The second half of this file guards the delivery mechanism rather than the
 // fill. The launcher's sizing rule shipped behind a comment with a premature
 // `*/`, so its prelude was the leftover prose and browsers dropped the whole
-// rule — the exact place this entry asks for the new background. Source
-// inspection per CLAUDE.md (style.css is large; we assert the CSS contract
-// rather than instantiating a layout engine).
-describe('Mobile TODO.md launcher — fill matches the task rows', () => {
+// rule — the exact place that background lives. Source inspection per CLAUDE.md
+// (style.css is large; we assert the CSS contract rather than instantiating a
+// layout engine).
+describe('Mobile TODO.md launcher — fill sits below the task rows', () => {
     const LAUNCHER_RE = /^#mainList\s*>\s*#todoMdViewerCard$/;
     const LAUNCHER_ACTIVE_RE = /^#mainList\s*>\s*#todoMdViewerCard:active$/;
 
@@ -136,10 +137,10 @@ describe('Mobile TODO.md launcher — fill matches the task rows', () => {
         expect(inMobileMediaBlock(hit.pos)).toBe(true);
     });
 
-    it('paints the launcher on --bg-row, the rows own interactive layer', () => {
+    it('paints the launcher on --bg-surface, below the rows interactive layer', () => {
         const hit = findRule(LAUNCHER_RE);
-        expect(hit.body).toMatch(/background:\s*var\(--bg-row\)/);
-        expect(hit.body).not.toMatch(/background:\s*var\(--bg-surface\)/);
+        expect(hit.body).toMatch(/background:\s*var\(--bg-surface\)/);
+        expect(hit.body).not.toMatch(/background:\s*var\(--bg-row\)/);
     });
 
     it('keeps the pressed state a lift, at a specificity that survives the fill', () => {
@@ -154,7 +155,7 @@ describe('Mobile TODO.md launcher — fill matches the task rows', () => {
         expect(compareSpecificity(active.prelude, fill.prelude)).toBeGreaterThan(0);
     });
 
-    it('re-declares --bg-row and --bg-hover on mobile with hover the brighter of the two', () => {
+    it('keeps the mobile layers ordered surface < row < hover', () => {
         const vars = findRule(/^:root:not\(\[data-theme="light"\]\)$/);
         expect(vars).toBeTruthy();
         expect(inMobileMediaBlock(vars.pos)).toBe(true);
@@ -165,6 +166,13 @@ describe('Mobile TODO.md launcher — fill matches the task rows', () => {
         const sum = (hex) => parseInt(hex.slice(1, 3), 16)
             + parseInt(hex.slice(3, 5), 16)
             + parseInt(hex.slice(5, 7), 16);
+        // The launcher's --bg-surface must read a step below the row layer,
+        // and the :active --bg-hover must still lift above the launcher.
+        const base = findRule(/^\.todoMdViewerCard$/);
+        expect(base.body).toMatch(/background:\s*var\(--bg-surface\)/);
+        const surfaceDecl = css.match(/--bg-surface:\s*(#[0-9a-f]{6})/i);
+        expect(surfaceDecl).toBeTruthy();
+        expect(sum(row[1])).toBeGreaterThan(sum(surfaceDecl[1]));
         expect(sum(hover[1])).toBeGreaterThan(sum(row[1]));
     });
 
@@ -175,7 +183,7 @@ describe('Mobile TODO.md launcher — fill matches the task rows', () => {
         expect(base.body).toMatch(/background:\s*var\(--bg-surface\)/);
         expect(inMobileMediaBlock(base.pos)).toBe(false);
 
-        // No other viewer-card rule anywhere claims --bg-row.
+        // No viewer-card rule anywhere claims --bg-row any more.
         const rowFilled = [];
         const ruleRe = /([^{}]*)\{([^{}]*)\}/g;
         let m;
@@ -185,7 +193,7 @@ describe('Mobile TODO.md launcher — fill matches the task rows', () => {
             if (!/background:\s*var\(--bg-row\)/.test(m[2])) continue;
             rowFilled.push(prelude);
         }
-        expect(rowFilled).toEqual(['#mainList > #todoMdViewerCard']);
+        expect(rowFilled).toEqual([]);
 
         // The sheet, the pane-hosted card, and the rail strip are untouched.
         for (const re of [

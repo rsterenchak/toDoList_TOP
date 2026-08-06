@@ -14526,16 +14526,15 @@ body.row-dragging * { cursor: grabbing !important; }
      raise the card's border to --border-mid so its edge stays legible against
      the elevated canvas.
 
-     Row-fill follow-up: that contiguous fill came from .todoMdViewerCard's base
-     --bg-surface (#191a22), but the todo rows the launcher lines up with paint
-     --bg-row, which the mobile interactive-layer pass re-declares to #20222e —
-     so the launcher sat a step darker than its neighbours. Paint it --bg-row
-     here so it sits on the same interactive layer and picks up that mobile
-     re-declaration automatically. The :active feedback below still lifts:
-     --bg-hover is re-declared to #262838 at this breakpoint, brighter than the
-     row fill. Scoped to `#mainList > #todoMdViewerCard`, so the expanded
-     in-list card, the bottom sheet, the pane-hosted card, and the desktop rail
-     strip all keep --bg-surface. */
+     Row-fill follow-up, and its reversal: the contiguous fill came from
+     .todoMdViewerCard's base --bg-surface (#191a22), and painting it --bg-row
+     (#20222e on mobile) was meant to line the launcher up with the todo rows
+     beside it. In practice it read muddy — the rows actually on screen are
+     usually .todo-row--in_progress, painted --bg-hover (#262838), so --bg-row
+     put the launcher in an awkward near-match rather than a match. Back on
+     --bg-surface it sits one clear step BELOW the row layer while staying
+     lifted off the --bg-elevated mobile canvas, which is the relationship that
+     actually reads. The --border-mid edge above stays either way. */
   #mainList > #todoMdViewerCard {
     min-height: 0;
     height: var(--item-h);
@@ -14544,13 +14543,15 @@ body.row-dragging * { cursor: grabbing !important; }
     overflow: hidden;
     justify-content: center;
     border-color: var(--border-mid);
-    background: var(--bg-row);
+    background: var(--bg-surface);
   }
   /* Restate the pressed feedback at the launcher's own specificity. The
      general rule above is `#mainList .todoMdViewerCard:active` (0,1,2,0),
-     which the launcher's `#mainList > #todoMdViewerCard` (0,2,0,0) now
-     outranks with its --bg-row fill — so without this the launcher would
-     lose its pressed state the moment it stopped inheriting --bg-surface. */
+     which the launcher's `#mainList > #todoMdViewerCard` (0,2,0,0) outranks
+     with its own fill declaration — so without this the launcher would lose
+     its pressed state the moment it stopped inheriting the base card fill.
+     --bg-hover (#262838) is brighter than --bg-surface, so the press still
+     reads as a lift. */
   #mainList > #todoMdViewerCard:active {
     background: var(--bg-hover);
   }
@@ -14581,6 +14582,36 @@ body.row-dragging * { cursor: grabbing !important; }
     letter-spacing: 0.04em;
     color: var(--text-primary);
     white-space: nowrap;
+    order: -2;
+  }
+  /* Tap affordance. The whole launcher opens the bottom sheet, but nothing on
+     it said so — a right-pointing chevron trailing the label is the cue. It
+     lives on ::after rather than being concatenated onto ::before's content so
+     its colour and size stay independent of the label: 14px in the same muted
+     purple-neutral #completedHeader uses, with a small gap off the label on top
+     of the header's own 8px flex gap.
+
+     The header is `display: flex` and its only visible child is
+     .todoMdViewerMeta (the right-aligned run / deploy / sync / overflow
+     buttons), so a default-order ::after would render past that group at the
+     far right. Pin the label and chevron explicitly with order -2 / -1 and
+     leave .todoMdViewerMeta at its default order, where its `margin-left: auto`
+     keeps it right-aligned.
+
+     Decorative only: `pointer-events: none` keeps it from ever hit-testing as
+     its own target, and the empty alt text (`content: '›' / ''`) drops it from
+     the accessibility tree. The plain `content` is declared first so browsers
+     without alt-text support still paint the glyph instead of dropping the
+     whole declaration. */
+  #mainList > #todoMdViewerCard .todoMdViewerHeader::after {
+    content: '›';
+    content: '›' / '';
+    font-size: 14px;
+    line-height: 1;
+    color: #7a74a8;
+    margin-left: 2px;
+    pointer-events: none;
+    order: -1;
   }
   /* Icon-only Run backlog + Redeploy on the collapsed inline launcher. The
      single floored row is tight, so drop both buttons' text labels and show
