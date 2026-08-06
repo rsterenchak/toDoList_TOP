@@ -743,3 +743,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
   - Completed:
   <!-- id: fc5b8547-8443-4520-8be6-72338a748964 -->
+
+- [ ] **[MEDIUM]** Make the mobile TODO.md launcher read as a card instead of a flat band
+  - Type: bug
+  - Description: Follow-up to the earlier black-bar fix, which repainted `#mainBar` / `#mainList` / `#taskFilterBar` to `--bg-elevated` on mobile. That removed the `--bg-base` seam but left a new one: `.todoMdViewerHeader` also paints `background: var(--bg-elevated)`, and on the collapsed in-list launcher (`#mainList > #todoMdViewerCard`, `height: var(--item-h)`, body hidden) the header is effectively the whole card — so the launcher now paints the exact same `#14151b` as the canvas behind it and only shows as two ~3px slivers of `--bg-surface` plus a 1px `--border-dim` edge. Against the todo rows it reads as a flat dark band rather than a card. Inside the existing `@media (max-width: 1023px)` block, in the same rule group that already scopes `#mainList > #todoMdViewerCard .todoMdViewerHeader` (drops its vertical padding and bottom border), also set that header's `background` to `transparent` so the launcher paints one contiguous `var(--bg-surface)` from its own card background, and raise the card's border from `var(--border-dim)` to `var(--border-mid)` so the edge is legible against the elevated canvas. Scope both to `#mainList > #todoMdViewerCard` only — the full-screen mobile sheet (`#todoMdViewerMobileSheet .todoMdViewerCard`), the desktop pane-hosted card (`#descDetailPane .todoMdViewerCard`), and the desktop rail strip must all render unchanged, and the expanded in-list card must keep its header/body divider. Do not change the `--bg-elevated` repaint of `#mainBar` / `#mainList` / `#taskFilterBar`, the launcher's `height` / `margin` / `max-height` sizing, the `::before` "TODO.md" label, or the icon-only run / deploy / sync / overflow buttons.
+  - File: `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: 81bbafeb-80d3-414e-a5b1-87164260db93 -->
