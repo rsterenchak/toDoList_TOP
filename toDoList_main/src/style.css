@@ -14516,6 +14516,14 @@ body.row-dragging * { cursor: grabbing !important; }
      the todo-row rhythm instead — an explicit `height: var(--item-h)` (44px)
      with `margin: 3px 10px` totals exactly the 50px track, so the launcher
      fits the floor without ever depending on the track growing. */
+     Card-versus-band follow-up: once the mobile canvas was repainted to
+     --bg-elevated, the launcher stopped reading as a card. Its body is hidden,
+     so the header IS the whole card — and the header paints --bg-elevated, the
+     exact fill of the canvas behind it, leaving only two ~3px slivers of
+     --bg-surface and a 1px --border-dim edge. Clear the header's background
+     (below) so the launcher paints one contiguous --bg-surface from the card,
+     and raise the card's border to --border-mid so its edge stays legible
+     against the elevated canvas. */
   #mainList > #todoMdViewerCard {
     min-height: 0;
     height: var(--item-h);
@@ -14523,6 +14531,7 @@ body.row-dragging * { cursor: grabbing !important; }
     margin: 3px 10px;
     overflow: hidden;
     justify-content: center;
+    border-color: var(--border-mid);
   }
   #mainList > #todoMdViewerCard .todoMdViewerTabs,
   #mainList > #todoMdViewerCard .todoMdViewerBody,
@@ -14531,12 +14540,18 @@ body.row-dragging * { cursor: grabbing !important; }
   }
   /* Single centered row: drop the header's vertical padding so the label and
      the Run backlog / Sync buttons sit on one line, vertically centered within
-     the floored height by the card's justify-content above. */
+     the floored height by the card's justify-content above. `background:
+     transparent` lets the card's own --bg-surface through so the collapsed
+     launcher reads as a card against the elevated canvas rather than a flat
+     band (see the card rule above); scoped to the collapsed inline launcher,
+     so the expanded in-list card and the desktop header keep their elevated
+     fill and header/body divider. */
   #mainList > #todoMdViewerCard .todoMdViewerHeader {
     flex-wrap: nowrap;
     border-bottom: 0;
     padding-top: 0;
     padding-bottom: 0;
+    background: transparent;
   }
   #mainList > #todoMdViewerCard .todoMdViewerHeader::before {
     content: 'TODO.md';
