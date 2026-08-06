@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-06',
         fixed: [
-            "Repo setup captions each code block with the file and location it belongs in, and copying one now yields just the code.",
             "A failed request now names the reason it failed, such as a repo not yet in the allowlist, with the status code as secondary detail.",
             "Checking an inject target for missing setup files now uses that repo's own purpose, so an assignment repo no longer reports clean while five of its files are missing.",
             "The filter row above the task list no longer paints a dark band across the top of the list on mobile.",
             "The TODO.md launcher in the task list reads as a card on mobile again, instead of a flat dark band.",
+            "The mobile TODO.md launcher is filled to match the task rows beside it, so it no longer sits a shade darker than the list, and it keeps its sizing and pressed-state feedback.",
         ],
     },
 ];
