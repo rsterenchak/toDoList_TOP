@@ -9,13 +9,13 @@ export const changelog = [
         fixed: [
             "Repo setup captions each code block with the file and location it belongs in, and copying one now yields just the code.",
             "A failed request now names the reason it failed, such as a repo not yet in the allowlist, with the status code as secondary detail.",
+            "Checking an inject target for missing setup files now uses that repo's own purpose, so an assignment repo no longer reports clean while five of its files are missing.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-05',
         fixed: [
-            "The Structure tab's code viewer names the lines it is actually showing against the file's total, and reopens the file you were reading after a lens switch.",
             "Source lines in the code viewer render at one consistent size on iOS, and a minus/plus control in its header steps the code text between 10px and 18px.",
             "Repo setup's framework variants list every config edit block, each labelled with the file and path it belongs in.",
         ],

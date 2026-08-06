@@ -727,7 +727,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 48d037cf-b18d-4096-8dbe-2f5076eb352d -->
 
-- [ ] **[MEDIUM]** Row-level drift check hardcodes personal purpose
+- [x] **[MEDIUM]** Row-level drift check hardcodes personal purpose — Completed: 2026-08-06
   - Type: bug
   - Description: The inject target row's drift check calls `preflightRepo` with a hardcoded `'personal'` because `inject_targets` had no purpose to read. Purpose determines whether the five assignment-purpose files — `assignment.md`, `.claude/derive.md`, `claude-derive.yml`, `.claude/style.md`, `.claude/commenting-style.md` — belong in the expected set, so on an assignment repo the row check undercounts missing files by exactly five and reports drift as clean when it is not. Every WGU coursework repo is assignment, which is most of what the check is for. `inject_targets` now carries a `purpose` column and `handleRepos` serializes it, so the value is available on the registry row.
   - Behavior: The row-level drift check sends the target's own purpose instead of the hardcoded string, falling back to `'personal'` when the field is absent so rows predating the column behave as they do today. A drift check on an assignment repo then reports the full expected set, and its count matches what the onboard modal's Check reports for the same repo with Assignment selected.
