@@ -736,3 +736,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/inject.js
   - Completed:
   <!-- id: 1234b678-6e2c-40f3-8e16-7c85392035ec -->
+
+- [ ] **[MEDIUM]** Fix black bar rendering above the TODO.md viewer header on mobile
+  - Type: bug
+  - Description: On mobile (`< 1024px`), the TODO.md viewer renders a full-width dark band directly above the rounded "TODO.md" header card, which does not appear on desktop and is not part of the header card's own styling. Diagnose whether this is an empty/zero-content wrapper element above the header, a sticky-header or scroll-container element painting a darker background token (e.g. `--bg-base` over `--bg-surface`), or leftover padding/margin plus a background on the viewer's outer container; then remove or make transparent whichever element is painting it so the area above the header card matches the surrounding page background with no visible band. The header card itself — its rounded corners, "TODO.md" label, and the run / ship / refresh / overflow buttons — must render unchanged, and the desktop layout must not regress. Likely locations are the viewer's container markup in `toDoList_main/src/todoMdViewer.js` and its mobile breakpoint rules in `toDoList_main/src/style.css`.
+  - File: `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/style.css`
+  - Completed:
+  <!-- id: fc5b8547-8443-4520-8be6-72338a748964 -->
