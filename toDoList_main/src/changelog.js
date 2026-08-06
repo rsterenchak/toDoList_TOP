@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-06',
         fixed: [
-            "Checking an inject target for missing setup files now uses that repo's own purpose, so an assignment repo no longer reports clean while five of its files are missing.",
             "The filter row above the task list no longer paints a dark band across the top of the list on mobile.",
             "The TODO.md launcher in the task list reads as a card on mobile again, instead of a flat dark band.",
             "The mobile TODO.md launcher is filled to match the task rows beside it, so it no longer sits a shade darker than the list, and it keeps its sizing and pressed-state feedback.",
             "The mobile TODO.md launcher now sits a clear step below the task rows instead of muddying into them, and carries a chevron showing it opens the full view when tapped.",
+            "The repo setup shape reference now lists every step of a multi-step CLI setup, each with its own copy button, instead of showing only the first command.",
         ],
     },
 ];

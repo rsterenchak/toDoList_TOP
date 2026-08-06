@@ -181,12 +181,33 @@ const FIXTURE = [
     '',
     '.NET mobile. Mobile Application Development.',
     '',
-    '**No template** — `dotnet new maui` generates a multi-target `.csproj`.',
+    '**No template** — `dotnet new maui` generates a multi-target `.csproj`,',
+    '`Platforms/` folders, XAML pages, and resource directories.',
+    '',
+    // A variant-less CLI section whose body is a numbered sequence, not one
+    // scaffold command — the shape that used to lose everything after step 1.
+    '**1 · Install the workload** — on Linux this is `maui-android`, NOT `maui`.',
     '',
     '```bash',
-    'dotnet workload install maui',
+    'dotnet workload install maui-android',
+    '```',
+    '',
+    '**2 · Scaffold** — into `src/`, so the solution has somewhere to sit',
+    '',
+    '```bash',
     'dotnet new maui -n MyApp -o src/MyApp',
     '```',
+    '',
+    '**3 · Create the solution** — `--format sln` is required',
+    '',
+    '```bash',
+    'dotnet new sln -n MyApp --format sln',
+    'dotnet sln add src/MyApp/MyApp.csproj',
+    '```',
+    '',
+    'Put something real in `MyApp.Core` and test it.',
+    '',
+    '**4 · Commit and push**, then Check from the app.',
     '',
     '**Onboarding adds:** `test.yml` (MAUI Android build on ubuntu), `manifest.yml`.',
     'No Capture card — there is no runnable head.',
@@ -356,11 +377,70 @@ describe('SHAPES.md parser', () => {
         expect(served.copyValue).toBe('rsterenchak/template-served-from-source');
     });
 
-    it('takes the copyable value from the FIRST fenced block for a CLI shape with no variants', () => {
+    it('reads a variant-less CLI section’s body as a sequence, keeping every block', () => {
+        // maui is a numbered setup, not one scaffold command. Reaching for the
+        // first fenced block showed step 1 and silently discarded the rest.
         const maui = sections.find((s) => s.name === 'maui');
         expect(maui.variants).toEqual([]);
-        expect(maui.copyValue).toContain('dotnet workload install maui');
-        expect(maui.copyValue).toContain('dotnet new maui -n MyApp');
+        expect(maui.parts.map((p) => p.type))
+            .toEqual(['prose', 'code', 'code', 'code', 'prose', 'prose']);
+        expect(maui.parts.filter((p) => p.type === 'code').map((p) => p.text)).toEqual([
+            'dotnet workload install maui-android',
+            'dotnet new maui -n MyApp -o src/MyApp',
+            ['dotnet new sln -n MyApp --format sln', 'dotnet sln add src/MyApp/MyApp.csproj'].join('\n'),
+        ]);
+        // Each block carries the `**N · Label**` line above it as its caption.
+        expect(maui.parts.filter((p) => p.type === 'code').map((p) => p.label)).toEqual([
+            '**1 · Install the workload** — on Linux this is `maui-android`, NOT `maui`.',
+            '**2 · Scaffold** — into `src/`, so the solution has somewhere to sit',
+            '**3 · Create the solution** — `--format sln` is required',
+        ]);
+        // The section-level copyable value would have been step 1 alone.
+        expect(maui.copyValue).toBe('');
+    });
+
+    it('bounds the sequence at the onboarding-adds and gotchas markers', () => {
+        // Both own their own surface further down the row, so neither may be
+        // absorbed into the trailing block or re-emitted as body prose.
+        const maui = sections.find((s) => s.name === 'maui');
+        const text = maui.parts.map((p) => p.text).join('\n');
+        expect(text).not.toContain('Onboarding adds');
+        expect(text).not.toContain('Gotchas');
+        expect(text).not.toContain('Least-proven');
+        // The lead already renders above the body — it must not appear twice.
+        expect(text).not.toContain('.NET mobile. Mobile Application Development.');
+        expect(maui.lead).toBe('.NET mobile. Mobile Application Development.');
+        expect(maui.parts[0].text).toContain('No template');
+        expect(maui.parts[5].text).toBe('**4 · Commit and push**, then Check from the app.');
+    });
+
+    it('keeps a single unlabelled block as one plain copyable value', () => {
+        // A shape that never had steps is unchanged: one block, no caption, so
+        // it stays the section's copyable value rather than becoming a sequence.
+        const doc = parseShapesDoc([
+            '## simple',
+            '',
+            'One command and nothing else.',
+            '',
+            '```bash',
+            'npx create-thing .',
+            '```',
+            '',
+            '**Gotchas**',
+            '- Commit the lockfile.',
+            '',
+        ].join('\n'));
+        expect(doc[0].parts).toEqual([]);
+        expect(doc[0].copyValue).toBe('npx create-thing .');
+        expect(doc[0].gotchas).toEqual(['Commit the lockfile.']);
+    });
+
+    it('leaves a template section with no sequence of its own', () => {
+        // Template shapes copy the repo name and carry no command blocks.
+        sections.filter((s) => s.kind === 'template').forEach((s) => {
+            expect(s.parts, `${s.name} should carry no sequence`).toEqual([]);
+            expect(s.copyValue).not.toBe('');
+        });
     });
 
     it('leaves a variant-carrying shape with no section-level copyable value', () => {
@@ -929,14 +1009,88 @@ describe('framework variants in an expanded row', () => {
         expect(row.querySelector('.repoSetupRowBody > .repoSetupCopy')).toBeNull();
     });
 
-    it('renders a variant-free shape exactly as before', async () => {
+    it('renders a variant-free shape’s sequence with no segmented control above it', async () => {
         await openModal();
         const row = rowNamed('maui');
         row.querySelector('.repoSetupRowHead').click();
+        // Nothing to switch between, so the control never mounts — but every
+        // step renders, each with its caption and its own copy button.
         expect(row.querySelector('.repoSetupVariants')).toBeNull();
-        expect(row.querySelector('.repoSetupCopyValue').textContent)
-            .toContain('dotnet workload install maui');
+        expect(row.querySelector('.repoSetupVariantControl')).toBeNull();
+        const steps = row.querySelector('.repoSetupSteps');
+        expect(steps).not.toBeNull();
+        expect(steps.querySelectorAll('.repoSetupVariantBlock')).toHaveLength(3);
+        expect(steps.querySelectorAll('.repoSetupCopyBtn')).toHaveLength(3);
+        expect(Array.from(steps.querySelectorAll('.repoSetupVariantLabel')).map((l) => l.textContent))
+            .toEqual([
+                '1 · Install the workload — on Linux this is maui-android, NOT maui.',
+                '2 · Scaffold — into src/, so the solution has somewhere to sit',
+                '3 · Create the solution — --format sln is required',
+            ]);
+        expect(Array.from(steps.querySelectorAll('.repoSetupCopyValue')).map((v) => v.textContent))
+            .toEqual([
+                'dotnet workload install maui-android',
+                'dotnet new maui -n MyApp -o src/MyApp',
+                ['dotnet new sln -n MyApp --format sln', 'dotnet sln add src/MyApp/MyApp.csproj'].join('\n'),
+            ]);
+        // No section-level copyable value competing with the sequence.
+        expect(row.querySelector('.repoSetupRowBody > .repoSetupCopy')).toBeNull();
         expect(row.querySelectorAll('.repoSetupGotcha')).toHaveLength(4);
+    });
+
+    it('keeps the chips above the sequence and the gotchas below it', async () => {
+        await openModal();
+        const row = rowNamed('maui');
+        row.querySelector('.repoSetupRowHead').click();
+        const children = Array.from(row.querySelector('.repoSetupRowBody').children);
+        const indexOf = (selector) => children.findIndex((c) => c.matches(selector));
+        expect(indexOf('.repoSetupLead')).toBe(0);
+        expect(indexOf('.repoSetupChips')).toBeLessThan(indexOf('.repoSetupSteps'));
+        expect(indexOf('.repoSetupSteps')).toBeLessThan(indexOf('.repoSetupGotchas'));
+    });
+
+    it('renders a single unlabelled block as one plain copyable value, as before', async () => {
+        mockFetchText([
+            '## simple',
+            '',
+            'One command and nothing else.',
+            '',
+            '```bash',
+            'npx create-thing .',
+            '```',
+            '',
+        ].join('\n'));
+        await openModal();
+        const row = rowNamed('simple');
+        row.querySelector('.repoSetupRowHead').click();
+        expect(row.querySelector('.repoSetupSteps')).toBeNull();
+        expect(row.querySelector('.repoSetupVariants')).toBeNull();
+        expect(row.querySelector('.repoSetupRowBody > .repoSetupCopy')).not.toBeNull();
+        expect(row.querySelector('.repoSetupCopyValue').textContent).toBe('npx create-thing .');
+    });
+
+    it('gives each step in a sequence its own copy control writing that block’s raw text', async () => {
+        const writeText = vi.fn(() => Promise.resolve());
+        const priorClipboard = navigator.clipboard;
+        Object.defineProperty(navigator, 'clipboard', { value: { writeText }, configurable: true });
+        try {
+            await openModal();
+            const row = rowNamed('maui');
+            row.querySelector('.repoSetupRowHead').click();
+            const blocks = Array.from(row.querySelectorAll('.repoSetupSteps .repoSetupVariantBlock'));
+            blocks[2].querySelector('.repoSetupCopyBtn').click();
+            // The fence contents verbatim — the caption lives in its own node,
+            // so nothing has to be deleted after pasting.
+            expect(writeText).toHaveBeenLastCalledWith(
+                ['dotnet new sln -n MyApp --format sln', 'dotnet sln add src/MyApp/MyApp.csproj'].join('\n'),
+            );
+            blocks[0].querySelector('.repoSetupCopyBtn').click();
+            expect(writeText).toHaveBeenLastCalledWith('dotnet workload install maui-android');
+        } finally {
+            Object.defineProperty(navigator, 'clipboard', {
+                value: priorClipboard, configurable: true,
+            });
+        }
     });
 });
 
@@ -999,6 +1153,7 @@ describe('static contracts', () => {
             '.repoSetupVariantControl[hidden]',
             '.repoSetupVariantBody[hidden]',
             '.repoSetupVariantBlock[hidden]',
+            '.repoSetupSteps[hidden]',
         ].forEach((selector) => {
             const idx = css.indexOf(selector);
             expect(idx, `${selector} missing from style.css`).toBeGreaterThan(-1);
