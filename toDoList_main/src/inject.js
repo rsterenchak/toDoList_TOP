@@ -126,16 +126,55 @@ async function postToWorker(payload) {
         throw e;
     }
     if (!res.ok) {
-        const e = new Error('HTTP ' + res.status);
+        const worker = await readWorkerError(res);
+        const e = new Error(worker ? worker.message : 'HTTP ' + res.status);
         e.status = res.status;
+        if (worker) {
+            e.workerError = worker.message;
+            if (worker.detail) e.workerDetail = worker.detail;
+        }
         throw e;
     }
     try { return await res.json(); } catch (e) { return null; }
 }
 
+// Every Worker route answers a failure with `json({ error, ...context }, status)`,
+// so the body names the cause exactly ("Target not in allowlist") where the bare
+// status does not. Read it here — the one wrapper every Worker call funnels
+// through — and hand it to describeError. Some routes add a `detail` alongside
+// (the upstream API's own text on the 502 paths), kept but truncated. A body that
+// is absent, unparseable, or carries no `error` yields null so the caller falls
+// back to the bare status: the raw text is never surfaced, since an opaque
+// failure is likelier to be Cloudflare's HTML error page than the Worker's JSON,
+// and dumping markup into the UI is worse than the status alone. Nothing reads
+// the body on the failure path after this, so consuming the stream is safe.
+const WORKER_DETAIL_MAX = 200;
+
+async function readWorkerError(res) {
+    let body = null;
+    try {
+        if (!res || typeof res.json !== 'function') return null;
+        body = await res.json();
+    } catch (e) { return null; }
+    if (!body || typeof body !== 'object') return null;
+    const message = typeof body.error === 'string' ? body.error.trim() : '';
+    if (!message) return null;
+    let detail = typeof body.detail === 'string' ? body.detail.trim() : '';
+    if (detail.length > WORKER_DETAIL_MAX) detail = detail.slice(0, WORKER_DETAIL_MAX) + '…';
+    return { message: message, detail: detail };
+}
+
 function describeError(e) {
     if (!e) return 'Unknown error';
     if (e.notConfigured) return 'Not configured';
+    // The Worker's own `error` string leads and the status trails as secondary
+    // detail, so a failure reads as its cause rather than as a number. The
+    // status-only messages below apply only when the body carried no `error`.
+    if (e.workerError) {
+        let described = e.workerError + (e.status ? ' (' + e.status + ')' : '');
+        if (e.workerDetail) described += ' — ' + e.workerDetail;
+        return described;
+    }
     if (e.status === 401) return '401 Unauthorized';
     if (e.status === 403) return '403 Forbidden';
     if (e.status && e.status >= 500) return 'Server error ' + e.status;
