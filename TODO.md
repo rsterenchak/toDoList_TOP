@@ -726,3 +726,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/inject.js
   - Completed:
   <!-- id: 48d037cf-b18d-4096-8dbe-2f5076eb352d -->
+
+- [ ] **[MEDIUM]** Row-level drift check hardcodes personal purpose
+  - Type: bug
+  - Description: The inject target row's drift check calls `preflightRepo` with a hardcoded `'personal'` because `inject_targets` had no purpose to read. Purpose determines whether the five assignment-purpose files — `assignment.md`, `.claude/derive.md`, `claude-derive.yml`, `.claude/style.md`, `.claude/commenting-style.md` — belong in the expected set, so on an assignment repo the row check undercounts missing files by exactly five and reports drift as clean when it is not. Every WGU coursework repo is assignment, which is most of what the check is for. `inject_targets` now carries a `purpose` column and `handleRepos` serializes it, so the value is available on the registry row.
+  - Behavior: The row-level drift check sends the target's own purpose instead of the hardcoded string, falling back to `'personal'` when the field is absent so rows predating the column behave as they do today. A drift check on an assignment repo then reports the full expected set, and its count matches what the onboard modal's Check reports for the same repo with Assignment selected.
+  - Implementation notes: The hardcoded `'personal'` is in the row check's `preflightRepo` call in `inject.js` (~line 2899, alongside `target.shape || 'auto'`); change it to `target.purpose || 'personal'`, matching the shape fallback's shape. `handleRepos` now returns `purpose` on each repo entry — confirm the client's target objects carry it through from that response rather than from a separate source, since the workspace list and the inject target rows may be built from different places. Remove the note in the row's verdict, if one was added, saying the count assumes a personal repo — it is no longer true. Do not change the onboard modal's Check, which asks the user directly and is already correct.
+  - Out of scope: backfilling purpose on existing rows (done by hand in SQL); editing purpose from the app; changing what the five assignment files are; the onboard modal.
+  - File: toDoList_main/src/inject.js
+  - Completed:
+  <!-- id: 1234b678-6e2c-40f3-8e16-7c85392035ec -->
