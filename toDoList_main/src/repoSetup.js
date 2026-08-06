@@ -262,9 +262,10 @@ function splitVariants(lines) {
 
 // A variant's body as an ordered list of prose paragraphs and fenced blocks,
 // kept in the file's order so a paragraph explaining an edit stays next to the
-// block it explains. Fenced text is taken VERBATIM — leading whitespace and the
-// blank line between the two files in a jsonc edits block are significant, and
-// the copy control ships exactly what is rendered.
+// block it explains. EVERY fenced block is collected — a variant may carry any
+// number of edit blocks after its scaffold. Fenced text is taken VERBATIM —
+// leading whitespace and the `//` comment naming the target file are
+// significant, and the copy control ships exactly what is rendered.
 function parseVariantBody(lines) {
     const parts = [];
     let para = [];
@@ -498,15 +499,35 @@ function copyValueToClipboard(text, button) {
 // ── VARIANTS ──
 
 // One fenced block plus its copy control. The first block of a variant is the
-// scaffold command and the second, when present, is the config edits; anything
-// beyond those two renders unlabelled rather than inventing a name for it.
-const VARIANT_BLOCK_LABELS = ['SCAFFOLD', 'EDITS'];
+// scaffold command; EVERY block after it is an edit block, however many there
+// are. No per-variant count is assumed: a variant carries one edit block per
+// file it touches — angular edits both `angular.json` and `package.json` — and
+// merging those into one copyable block is what let a `package.json` script get
+// pasted into `angular.json` and overwrite the `test` target.
+const SCAFFOLD_LABEL = 'SCAFFOLD';
+const EDITS_LABEL = 'EDITS';
+
+// An edit block names its target on its first line as a `//` comment —
+// `// angular.json → projects.<name>.architect.build.options`. That path is the
+// label. It is read, never removed: the comment is content the user needs when
+// pasting, so it stays in both the rendered code and what the button copies.
+// A block with no leading comment falls back to the generic EDITS heading.
+function readBlockComment(text) {
+    const first = String(text == null ? '' : text).split('\n')[0].trim();
+    const match = first.match(/^\/\/\s*(\S.*)$/);
+    return match ? match[1].trim() : '';
+}
+
+function variantBlockLabel(text, index) {
+    if (index === 0) return SCAFFOLD_LABEL;
+    return readBlockComment(text) || EDITS_LABEL;
+}
 
 function buildVariantBlock(text, index) {
     const block = document.createElement('div');
     block.className = 'repoSetupVariantBlock';
 
-    const labelText = VARIANT_BLOCK_LABELS[index];
+    const labelText = variantBlockLabel(text, index);
     if (labelText) {
         const label = document.createElement('div');
         label.className = 'repoSetupVariantLabel';

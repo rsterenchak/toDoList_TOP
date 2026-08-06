@@ -66,12 +66,17 @@ const FIXTURE = [
     '',
     'Angular is the fussiest of the three.',
     '',
+    // Two edit blocks, one per file — kept separate deliberately, since merging
+    // them is what let a `package.json` script get pasted into `angular.json`.
     '```jsonc',
-    '// angular.json',
+    '// angular.json → projects.<name>.architect.build.options',
     '"outputPath": { "base": "dist", "browser": "" }',
+    '```',
     '',
-    '// package.json',
+    '```jsonc',
+    '// package.json → scripts',
     '"build": "ng build --base-href /my-app/",',
+    '"test:run": "ng test --no-watch"',
     '```',
     '',
     '### react',
@@ -409,7 +414,10 @@ describe('SHAPES.md parser', () => {
     it('reads each variant’s body as prose and fenced blocks in file order', () => {
         const build = sections.find((s) => s.name === 'build-pipeline');
         const angular = build.variants[0];
-        expect(angular.parts.map((p) => p.type)).toEqual(['prose', 'code', 'prose', 'code']);
+        // Three blocks — a scaffold and one edit per file — collected in full
+        // rather than stopping at the second.
+        expect(angular.parts.map((p) => p.type))
+            .toEqual(['prose', 'code', 'prose', 'code', 'code']);
         expect(angular.parts[0].text).toContain('Install the CLI first');
         expect(angular.parts[1].text).toContain('ng new my-app');
         // A variant may carry only a scaffold — vue has no edits block here.
@@ -427,16 +435,39 @@ describe('SHAPES.md parser', () => {
         expect(build.gotchas).toHaveLength(4);
     });
 
-    it('preserves a fenced block verbatim, including blank lines and jsonc comments', () => {
+    it('preserves every fenced block verbatim, including its jsonc target comment', () => {
         const build = sections.find((s) => s.name === 'build-pipeline');
-        const edits = build.variants[0].parts.filter((p) => p.type === 'code')[1];
-        expect(edits.text).toBe([
-            '// angular.json',
+        const blocks = build.variants[0].parts.filter((p) => p.type === 'code');
+        expect(blocks).toHaveLength(3);
+        expect(blocks[1].text).toBe([
+            '// angular.json → projects.<name>.architect.build.options',
             '"outputPath": { "base": "dist", "browser": "" }',
-            '',
-            '// package.json',
-            '"build": "ng build --base-href /my-app/",',
         ].join('\n'));
+        // The third block is the one that used to fall off the end.
+        expect(blocks[2].text).toBe([
+            '// package.json → scripts',
+            '"build": "ng build --base-href /my-app/",',
+            '"test:run": "ng test --no-watch"',
+        ].join('\n'));
+    });
+
+    it('preserves blank lines inside a fenced block', () => {
+        const doc = parseShapesDoc([
+            '## shape',
+            '',
+            'Lead.',
+            '',
+            '### only',
+            '',
+            '```jsonc',
+            '"a": 1',
+            '',
+            '"b": 2',
+            '```',
+            '',
+        ].join('\n'));
+        const block = doc[0].variants[0].parts.filter((p) => p.type === 'code')[0];
+        expect(block.text).toBe(['"a": 1', '', '"b": 2'].join('\n'));
     });
 
     it('leaves a section with no `### ` headings free of variants', () => {
@@ -661,15 +692,57 @@ describe('framework variants in an expanded row', () => {
         expect(bodies(row)[1].textContent).not.toContain('ng new my-app');
     });
 
-    it('labels the first block SCAFFOLD and the second EDITS, and omits EDITS when absent', async () => {
+    const labelsIn = (row, idx) => Array.from(
+        bodies(row)[idx].querySelectorAll('.repoSetupVariantLabel'),
+    ).map((l) => l.textContent);
+
+    it('labels the first block SCAFFOLD and every later block from its target comment', async () => {
         const row = await openVariantRow();
-        const labelsIn = (idx) => Array.from(
-            bodies(row)[idx].querySelectorAll('.repoSetupVariantLabel'),
-        ).map((l) => l.textContent);
-        expect(labelsIn(0)).toEqual(['SCAFFOLD', 'EDITS']);
-        expect(labelsIn(1)).toEqual(['SCAFFOLD', 'EDITS']);
-        // vue carries a scaffold only, so no EDITS heading is invented for it.
-        expect(labelsIn(2)).toEqual(['SCAFFOLD']);
+        // angular carries three blocks — the scaffold and one edit per file.
+        // Every block past the second is an edit block too, labelled like the
+        // rest rather than dropped or left anonymous.
+        expect(labelsIn(row, 0)).toEqual([
+            'SCAFFOLD',
+            'angular.json → projects.<name>.architect.build.options',
+            'package.json → scripts',
+        ]);
+        expect(labelsIn(row, 1)).toEqual(['SCAFFOLD', 'package.json']);
+        // vue carries a scaffold only, so no edits heading is invented for it.
+        expect(labelsIn(row, 2)).toEqual(['SCAFFOLD']);
+    });
+
+    it('falls back to EDITS with no `//` comment, and assumes no block count', async () => {
+        mockFetchText([
+            '## shape',
+            '',
+            'Lead.',
+            '',
+            '### only',
+            '',
+            '```bash',
+            'npm create thing',
+            '```',
+            '',
+            '```jsonc',
+            '"build": "thing build"',
+            '```',
+            '',
+            '```jsonc',
+            '// other.json',
+            '"x": 1',
+            '```',
+            '',
+            '```jsonc',
+            '// fourth.json',
+            '"y": 2',
+            '```',
+            '',
+        ].join('\n'));
+        await openModal();
+        const row = rowNamed('shape');
+        row.querySelector('.repoSetupRowHead').click();
+        expect(labelsIn(row, 0)).toEqual(['SCAFFOLD', 'EDITS', 'other.json', 'fourth.json']);
+        expect(bodies(row)[0].querySelectorAll('.repoSetupVariantBlock')).toHaveLength(4);
     });
 
     it('gives each block its own copy control writing the block’s raw text', async () => {
@@ -679,7 +752,10 @@ describe('framework variants in an expanded row', () => {
         try {
             const row = await openVariantRow();
             const blocks = Array.from(bodies(row)[0].querySelectorAll('.repoSetupVariantBlock'));
-            expect(blocks).toHaveLength(2);
+            // Every block gets its own control — the two edits go to different
+            // files, so there is no combined copy that could paste one into the
+            // other.
+            expect(blocks).toHaveLength(3);
 
             blocks[0].querySelector('.repoSetupCopyBtn').click();
             expect(writeText).toHaveBeenLastCalledWith(
@@ -688,15 +764,20 @@ describe('framework variants in an expanded row', () => {
 
             blocks[1].querySelector('.repoSetupCopyBtn').click();
             const copied = writeText.mock.calls[1][0];
-            // No label, no surrounding prose — the block exactly as written.
-            expect(copied).not.toContain('EDITS');
+            // No surrounding prose — the block exactly as written, target
+            // comment and all, since that comment names where it goes.
             expect(copied).not.toContain('Angular is the fussiest');
             expect(copied).toBe([
-                '// angular.json',
+                '// angular.json → projects.<name>.architect.build.options',
                 '"outputPath": { "base": "dist", "browser": "" }',
-                '',
-                '// package.json',
+            ].join('\n'));
+            expect(copied).not.toContain('package.json');
+
+            blocks[2].querySelector('.repoSetupCopyBtn').click();
+            expect(writeText).toHaveBeenLastCalledWith([
+                '// package.json → scripts',
                 '"build": "ng build --base-href /my-app/",',
+                '"test:run": "ng test --no-watch"',
             ].join('\n'));
         } finally {
             Object.defineProperty(navigator, 'clipboard', {
