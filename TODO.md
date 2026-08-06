@@ -716,3 +716,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/repoSetup.js, toDoList_main/src/style.css
   - Completed:
   <!-- id: f5c3ab7e-ff60-4e8b-b9a4-aaa2d82c7050 -->
+
+- [ ] **[LOW]** Worker error messages are discarded in favour of the bare status
+  - Type: bug
+  - Description: When the TODO.md read failed for a freshly onboarded repo, the viewer showed `Couldn't load TODO.md — HTTP 400`. The Worker's response body carried `{"error":"Target not in allowlist","repo":...}`, which names the cause exactly — the registry cache had not yet picked up the new `inject_targets` row. Discarding it turned a self-explanatory 60-second cache window into an opaque failure. Every Worker route returns a JSON body with an `error` field on failure, so this loses real diagnostic information on every non-2xx response, not just this one.
+  - Behavior: When a Worker call fails, parse the response body and surface its `error` field in the message shown to the user, keeping the status as secondary detail — `Couldn't load TODO.md — Target not in allowlist (400)`. When the body is absent, unparseable, or has no `error` field, fall back to the current bare-status message so a truly opaque failure still reports something. Applies wherever a Worker response's status is currently checked without reading the body.
+  - Implementation notes: Grep `inject.js` for `res.ok`, `HTTP ' +`, and `status` to find the call sites — the fetch wrapper, if there is a single one, is the right place to do this once rather than at each caller. The Worker's shape is consistent: `json({ error, ...context }, status)` from `http.js`, so `error` is a string on every failure path. Some routes add useful context alongside it (`repo`, `filePath`, `detail`); include `detail` when present, truncated, since the 502 paths carry upstream API text there. Do not surface the raw body when parsing fails — it may be an HTML error page from Cloudflare rather than the Worker, and dumping that into the UI is worse than the status alone. Reading the body consumes the stream, so clone or read once and reuse if any caller already reads it on the failure path.
+  - Out of scope: retry logic; changing any Worker response shape; a global error toast; surfacing errors from non-Worker fetches.
+  - File: toDoList_main/src/inject.js
+  - Completed:
+  <!-- id: 48d037cf-b18d-4096-8dbe-2f5076eb352d -->
