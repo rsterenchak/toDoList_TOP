@@ -706,3 +706,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/repoSetup.js, toDoList_main/src/style.css
   - Completed:
   <!-- id: cf482413-b678-44c1-bd90-667a3dfab372 -->
+
+- [ ] **[LOW]** Repo setup picker: read block labels from the File marker
+  - Type: bug
+  - Description: The picker labels each fenced block from a `//` comment on the block's first line, and deliberately keeps that comment in both the rendered code and the copied text. That made every copy dirty — copying the `angular.json` edit yielded a comment naming the file that then had to be deleted, and the path appeared twice on screen, once as the caption and once inside the block. `SHAPES.md` now puts the path in a `**File:** \`path\` → \`location\`` line immediately before the fence, or `**Scaffold**` for the scaffold block, and the fences contain only what should be pasted.
+  - Behavior: A fenced block's label comes from the marker line directly above it — `**File:**` renders as that line's content, `**Scaffold**` renders as `SCAFFOLD`. A block with no marker above it falls back to `SCAFFOLD` when it is the first block in the variant and `EDITS` otherwise. Copy writes the fence contents verbatim with no label and no marker line. Marker lines are not rendered as body prose; they appear only as block captions.
+  - Implementation notes: As of writing, angular has three labelled blocks, react and vue two each, and the maui section has one unlabelled block with no variants — that last case must keep rendering as it does today. Match the marker as a whole line of the form `**File:** ...` or `**Scaffold**` immediately preceding a fence, allowing one blank line between; anything else is body prose. Render the marker's inline code spans as code, since the labels contain backticked paths. The previous behavior of reading the first `//` line as a label should be removed entirely rather than kept as a fallback — no block in the file has one now, and leaving both paths in invites the fenced comments coming back.
+  - Out of scope: syntax highlighting; validating that a labelled path exists; a copy-all control; the full-document view.
+  - File: toDoList_main/src/repoSetup.js, toDoList_main/src/style.css
+  - Completed:
+  <!-- id: f5c3ab7e-ff60-4e8b-b9a4-aaa2d82c7050 -->
