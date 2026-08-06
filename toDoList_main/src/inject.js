@@ -2891,18 +2891,11 @@ export function showInjectSettingsModal(options) {
             setRowChecking(false);
         }
 
-        // `purpose` isn't stored on the registry row and can't be inferred from
-        // it, so the run goes out as `personal` and the verdict says so — an
-        // assignment repo expects five more scaffold files, and a reader who
-        // doesn't know which purpose produced the count can't judge the drift.
-        const PURPOSE_NOTE = 'Checked as a personal repo — an assignment repo expects more scaffold files.';
-
         function renderRowReport(report) {
             renderPreflightVerdictReport(verdictHost, report, {
                 collapsible: false,
                 fallbackRepo: target.repo,
                 cleanText: 'Up to date — nothing missing.',
-                note: PURPOSE_NOTE,
             });
             appendVerdictDismiss();
         }
@@ -2932,11 +2925,18 @@ export function showInjectSettingsModal(options) {
             // `running` row can't land before we're listening.
             rowChannel = subscribeRunOutputs(correlationId, onRowCheckRow);
             if (rowChannel) rowCheckChannels.add(rowChannel);
-            // The registry serializes the shape the repo was onboarded with —
-            // pass it rather than 'auto' so the result is comparable to that
-            // onboarding, and skip a detection step.
+            // The registry serializes the shape and purpose the repo was
+            // onboarded with — pass them rather than 'auto'/'personal' so the
+            // expected file set matches that onboarding and a detection step is
+            // skipped. Purpose matters most: an assignment repo expects five
+            // more scaffold files, so a defaulted purpose undercounts drift by
+            // exactly those and reports clean when it isn't. Rows predating the
+            // `purpose` column fall back to 'personal' as before.
             const res = await preflightRepo(
-                target.repo, target.shape || 'auto', 'personal', correlationId);
+                target.repo,
+                target.shape || 'auto',
+                target.purpose || 'personal',
+                correlationId);
             if (!res || res.ok === false) {
                 finishRowCheck();
                 renderRowError((res && res.reason) || 'Check failed');

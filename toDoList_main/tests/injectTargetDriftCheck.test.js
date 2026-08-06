@@ -33,6 +33,17 @@ const TARGETS = [
         file_path: 'TODO.md',
         enabled: true,
     },
+    // Carries the `purpose` column the registry row now serializes — an
+    // assignment repo expects five more scaffold files than a personal one.
+    {
+        id: 't3',
+        nickname: 'wgu-coursework',
+        repo: 'rsterenchak/wgu-coursework',
+        file_path: 'TODO.md',
+        enabled: true,
+        shape: 'web',
+        purpose: 'assignment',
+    },
 ];
 
 vi.mock('../src/supabaseClient.js', () => {
@@ -162,7 +173,7 @@ describe('inject target rows — Check control', () => {
     it('renders a Check icon button on each row, left of the edit pencil', async () => {
         await openSettings();
         const list = rows();
-        expect(list.length).toBe(2);
+        expect(list.length).toBe(3);
         list.forEach((row, i) => {
             const check = row.querySelector('[aria-label="Check ' + TARGETS[i].nickname + '"]');
             expect(check).toBeTruthy();
@@ -184,17 +195,27 @@ describe('inject target rows — Check control', () => {
         expect(host.textContent).toBe('');
     });
 
-    it('dispatches preflight for that row\'s repo with the registry shape and personal purpose', async () => {
+    it('dispatches preflight for that row\'s repo with the registry shape and purpose', async () => {
+        await openSettings();
+        checkButtons()[2].click();
+        await flush();
+        const body = lastPreflightBody();
+        expect(body.preflight).toBe(true);
+        expect(body.target_repo).toBe('rsterenchak/wgu-coursework');
+        expect(body.shape).toBe('web');
+        expect(body.purpose).toBe('assignment');
+        expect(body.correlation_id).toBeTruthy();
+        expect(channelFor).toHaveBeenCalledWith('run_outputs:' + body.correlation_id);
+    });
+
+    it('falls back to personal when the registry row carries no purpose', async () => {
         await openSettings();
         checkButtons()[0].click();
         await flush();
         const body = lastPreflightBody();
-        expect(body.preflight).toBe(true);
         expect(body.target_repo).toBe('rsterenchak/wgu-dsa-prep');
         expect(body.shape).toBe('console');
         expect(body.purpose).toBe('personal');
-        expect(body.correlation_id).toBeTruthy();
-        expect(channelFor).toHaveBeenCalledWith('run_outputs:' + body.correlation_id);
     });
 
     it('falls back to auto when the registry row carries no shape', async () => {
@@ -257,14 +278,14 @@ describe('inject target rows — Check control', () => {
         expect(host.querySelector('.injectOnboardVerdictChip')).toBeNull();
     });
 
-    it('notes that the file count assumes a personal repo', async () => {
+    // The check now sends the row's own purpose, so the count is right for the
+    // repo as registered and the caveat that used to hedge it is gone.
+    it('renders no purpose caveat on the verdict', async () => {
         await openSettings();
         checkButtons()[0].click();
         await flush();
         await settleWith(DRIFT);
-        const note = rows()[0].querySelector('.injectOnboardVerdictNote');
-        expect(note).toBeTruthy();
-        expect(note.textContent).toContain('personal repo');
+        expect(rows()[0].querySelector('.injectOnboardVerdictNote')).toBeNull();
     });
 
     it('renders warnings as rows alongside the missing-file chips', async () => {
