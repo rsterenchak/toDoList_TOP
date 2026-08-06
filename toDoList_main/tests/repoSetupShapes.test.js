@@ -56,52 +56,67 @@ const FIXTURE = [
     '**Onboarding adds:** `deploy.yml`, `test.yml`, a manifest generator.',
     'Pages source: `gh-pages`, root.',
     '',
+    // Each fence is captioned by the bold marker line above it, and carries
+    // ONLY what should be pasted — the file names the target in the caption
+    // rather than in a `//` comment inside the block, so a copy is clean.
     '### angular',
     '',
-    'Install the CLI first if it is not on the Codespace image.',
+    '**1 · Scaffold** — in the empty repo, both lines',
     '',
     '```bash',
+    'npm install -g @angular/cli',
     'ng new my-app --routing --style=css --directory . --skip-git',
     '```',
     '',
-    'Angular is the fussiest of the three.',
+    // A bold-opening paragraph with no fence under it is ordinary prose.
+    '**2 · Answer the prompts** — say No to SSR, None to AI tools.',
     '',
     // Two edit blocks, one per file — kept separate deliberately, since merging
     // them is what let a `package.json` script get pasted into `angular.json`.
+    // This caption wraps across two source lines.
+    '**3 · Edit `angular.json`** — inside `projects.<name>.architect.build.options`,',
+    'beside `browser` and `tsConfig`',
+    '',
     '```jsonc',
-    '// angular.json → projects.<name>.architect.build.options',
     '"outputPath": { "base": "dist", "browser": "" }',
     '```',
     '',
+    '**4 · Edit `package.json`** — inside `scripts`',
+    '',
     '```jsonc',
-    '// package.json → scripts',
     '"build": "ng build --base-href /my-app/",',
     '"test:run": "ng test --no-watch"',
     '```',
     '',
+    '**5 · Commit and push**, then Check from the app.',
+    '',
     '### react',
     '',
-    'Vite already outputs to `dist/`.',
+    '**1 · Scaffold** — in the empty repo',
     '',
     '```bash',
     'npm create vite@latest . -- --template react',
     'npm install',
     '```',
     '',
+    '**2 · Edit `package.json`** — inside `scripts`',
+    '',
     '```jsonc',
-    '// package.json',
     '"test:run": "vitest run"',
     '```',
     '',
-    '`matchingGame-test` is a working reference for this shape.',
+    'Vite already outputs to `dist/`. `matchingGame-test` is a working reference.',
     '',
     '### vue',
     '',
-    '`npm create vue@latest` is interactive — **choose Vitest** when it asks.',
+    // A bare `**Scaffold**` marker names the block without describing it.
+    '**Scaffold**',
     '',
     '```bash',
     'npm create vue@latest .',
     '```',
+    '',
+    '`npm create vue@latest` is interactive — **choose Vitest** when it asks.',
     '',
     '**Gotchas**',
     '- Edit before preflighting. `test_command` is read straight from',
@@ -415,14 +430,71 @@ describe('SHAPES.md parser', () => {
         const build = sections.find((s) => s.name === 'build-pipeline');
         const angular = build.variants[0];
         // Three blocks — a scaffold and one edit per file — collected in full
-        // rather than stopping at the second.
+        // rather than stopping at the second. The marker lines above the fences
+        // are captions, not body prose, so they do not appear as parts; the two
+        // prose parts are the fenceless steps 2 and 5.
         expect(angular.parts.map((p) => p.type))
-            .toEqual(['prose', 'code', 'prose', 'code', 'code']);
-        expect(angular.parts[0].text).toContain('Install the CLI first');
-        expect(angular.parts[1].text).toContain('ng new my-app');
+            .toEqual(['code', 'prose', 'code', 'code', 'prose']);
+        expect(angular.parts[0].text).toContain('ng new my-app');
+        expect(angular.parts[1].text).toContain('Answer the prompts');
+        expect(angular.parts[4].text).toContain('Commit and push');
         // A variant may carry only a scaffold — vue has no edits block here.
         const vue = build.variants[2];
         expect(vue.parts.filter((p) => p.type === 'code')).toHaveLength(1);
+    });
+
+    it('lifts the marker line above a fence onto the block as its label', () => {
+        const build = sections.find((s) => s.name === 'build-pipeline');
+        const angular = build.variants[0];
+        expect(angular.parts.filter((p) => p.type === 'code').map((p) => p.label)).toEqual([
+            '**1 · Scaffold** — in the empty repo, both lines',
+            '**3 · Edit `angular.json`** — inside `projects.<name>.architect.build.options`, '
+                + 'beside `browser` and `tsConfig`',
+            '**4 · Edit `package.json`** — inside `scripts`',
+        ]);
+        // A bare `**Scaffold**` marker resolves to the generic heading.
+        expect(build.variants[2].parts[0].label).toBe('SCAFFOLD');
+    });
+
+    it('leaves a bold paragraph that no fence follows as body prose', () => {
+        const build = sections.find((s) => s.name === 'build-pipeline');
+        const prose = build.variants[0].parts
+            .filter((p) => p.type === 'prose')
+            .map((p) => p.text);
+        // Step 2 opens with a bold run but carries a table's worth of prose
+        // rather than a block, and step 5 closes the variant with none.
+        expect(prose).toEqual([
+            '**2 · Answer the prompts** — say No to SSR, None to AI tools.',
+            '**5 · Commit and push**, then Check from the app.',
+        ]);
+    });
+
+    it('reads the `**File:**` and `**Scaffold**` marker forms as captions too', () => {
+        const doc = parseShapesDoc([
+            '## shape',
+            '',
+            'Lead.',
+            '',
+            '### only',
+            '',
+            '**Scaffold**',
+            '',
+            '```bash',
+            'npm create thing',
+            '```',
+            '',
+            '**File:** `package.json` → `scripts`',
+            '',
+            '```jsonc',
+            '"test:run": "vitest run"',
+            '```',
+            '',
+        ].join('\n'));
+        const blocks = doc[0].variants[0].parts.filter((p) => p.type === 'code');
+        expect(blocks.map((p) => p.label))
+            .toEqual(['SCAFFOLD', '**File:** `package.json` → `scripts`']);
+        // Neither marker survives as body prose.
+        expect(doc[0].variants[0].parts.every((p) => p.type === 'code')).toBe(true);
     });
 
     it('keeps the gotchas out of the last variant', () => {
@@ -435,20 +507,22 @@ describe('SHAPES.md parser', () => {
         expect(build.gotchas).toHaveLength(4);
     });
 
-    it('preserves every fenced block verbatim, including its jsonc target comment', () => {
+    it('preserves every fenced block verbatim, carrying no caption text', () => {
         const build = sections.find((s) => s.name === 'build-pipeline');
         const blocks = build.variants[0].parts.filter((p) => p.type === 'code');
         expect(blocks).toHaveLength(3);
-        expect(blocks[1].text).toBe([
-            '// angular.json → projects.<name>.architect.build.options',
-            '"outputPath": { "base": "dist", "browser": "" }',
-        ].join('\n'));
+        expect(blocks[1].text).toBe('"outputPath": { "base": "dist", "browser": "" }');
         // The third block is the one that used to fall off the end.
         expect(blocks[2].text).toBe([
-            '// package.json → scripts',
             '"build": "ng build --base-href /my-app/",',
             '"test:run": "ng test --no-watch"',
         ].join('\n'));
+        // The marker names the file above the fence, never inside it — a block
+        // that carried its own comment would copy that comment with the code.
+        blocks.forEach((block) => {
+            expect(block.text).not.toContain('//');
+            expect(block.text).not.toContain('**');
+        });
     });
 
     it('preserves blank lines inside a fenced block', () => {
@@ -696,22 +770,52 @@ describe('framework variants in an expanded row', () => {
         bodies(row)[idx].querySelectorAll('.repoSetupVariantLabel'),
     ).map((l) => l.textContent);
 
-    it('labels the first block SCAFFOLD and every later block from its target comment', async () => {
+    it('captions each block from the marker line above its fence', async () => {
         const row = await openVariantRow();
-        // angular carries three blocks — the scaffold and one edit per file.
-        // Every block past the second is an edit block too, labelled like the
-        // rest rather than dropped or left anonymous.
+        // angular carries three blocks — the scaffold and one edit per file —
+        // each captioned by its own marker rather than left anonymous. The
+        // markup markers are gone from the caption: the bold run and the
+        // backticked paths render as nodes.
         expect(labelsIn(row, 0)).toEqual([
-            'SCAFFOLD',
-            'angular.json → projects.<name>.architect.build.options',
-            'package.json → scripts',
+            '1 · Scaffold — in the empty repo, both lines',
+            '3 · Edit angular.json — inside projects.<name>.architect.build.options, '
+                + 'beside browser and tsConfig',
+            '4 · Edit package.json — inside scripts',
         ]);
-        expect(labelsIn(row, 1)).toEqual(['SCAFFOLD', 'package.json']);
-        // vue carries a scaffold only, so no edits heading is invented for it.
+        expect(labelsIn(row, 1)).toEqual([
+            '1 · Scaffold — in the empty repo',
+            '2 · Edit package.json — inside scripts',
+        ]);
+        // A bare `**Scaffold**` marker renders as the generic heading.
         expect(labelsIn(row, 2)).toEqual(['SCAFFOLD']);
     });
 
-    it('falls back to EDITS with no `//` comment, and assumes no block count', async () => {
+    it('renders a caption’s backticked paths as code, inside its bold run too', async () => {
+        const row = await openVariantRow();
+        const caption = bodies(row)[0].querySelectorAll('.repoSetupVariantLabel')[1];
+        expect(Array.from(caption.querySelectorAll('code')).map((c) => c.textContent))
+            .toEqual([
+                'angular.json',
+                'projects.<name>.architect.build.options',
+                'browser',
+                'tsConfig',
+            ]);
+        expect(caption.querySelector('strong').textContent).toBe('3 · Edit angular.json');
+    });
+
+    it('never renders a marker line as body prose', async () => {
+        const row = await openVariantRow();
+        const prose = Array.from(bodies(row)[0].querySelectorAll('.repoSetupVariantProse'))
+            .map((p) => p.textContent);
+        // Steps 2 and 5 carry no block, so they stay prose; every captioned
+        // step appears once, above its fence, and not a second time here.
+        expect(prose).toEqual([
+            '2 · Answer the prompts — say No to SSR, None to AI tools.',
+            '5 · Commit and push, then Check from the app.',
+        ]);
+    });
+
+    it('falls back to SCAFFOLD then EDITS with no marker, and assumes no block count', async () => {
         mockFetchText([
             '## shape',
             '',
@@ -727,13 +831,13 @@ describe('framework variants in an expanded row', () => {
             '"build": "thing build"',
             '```',
             '',
+            '**File:** `other.json`',
+            '',
             '```jsonc',
-            '// other.json',
             '"x": 1',
             '```',
             '',
             '```jsonc',
-            '// fourth.json',
             '"y": 2',
             '```',
             '',
@@ -741,8 +845,38 @@ describe('framework variants in an expanded row', () => {
         await openModal();
         const row = rowNamed('shape');
         row.querySelector('.repoSetupRowHead').click();
-        expect(labelsIn(row, 0)).toEqual(['SCAFFOLD', 'EDITS', 'other.json', 'fourth.json']);
+        expect(labelsIn(row, 0)).toEqual(['SCAFFOLD', 'EDITS', 'File: other.json', 'EDITS']);
         expect(bodies(row)[0].querySelectorAll('.repoSetupVariantBlock')).toHaveLength(4);
+    });
+
+    it('no longer reads a leading `//` comment as a block label', async () => {
+        // The comment path is gone rather than kept as a fallback: a block that
+        // still carried one would be labelled from it AND copy it, which is the
+        // dirty copy the marker line exists to end.
+        mockFetchText([
+            '## shape',
+            '',
+            'Lead.',
+            '',
+            '### only',
+            '',
+            '```bash',
+            'npm create thing',
+            '```',
+            '',
+            '```jsonc',
+            '// legacy.json → scripts',
+            '"x": 1',
+            '```',
+            '',
+        ].join('\n'));
+        await openModal();
+        const row = rowNamed('shape');
+        row.querySelector('.repoSetupRowHead').click();
+        expect(labelsIn(row, 0)).toEqual(['SCAFFOLD', 'EDITS']);
+        // The fence is still reproduced verbatim — only the labelling changed.
+        expect(bodies(row)[0].querySelectorAll('.repoSetupCopyValue')[1].textContent)
+            .toContain('// legacy.json → scripts');
     });
 
     it('gives each block its own copy control writing the block’s raw text', async () => {
@@ -758,24 +892,21 @@ describe('framework variants in an expanded row', () => {
             expect(blocks).toHaveLength(3);
 
             blocks[0].querySelector('.repoSetupCopyBtn').click();
-            expect(writeText).toHaveBeenLastCalledWith(
+            expect(writeText).toHaveBeenLastCalledWith([
+                'npm install -g @angular/cli',
                 'ng new my-app --routing --style=css --directory . --skip-git',
-            );
+            ].join('\n'));
 
             blocks[1].querySelector('.repoSetupCopyBtn').click();
             const copied = writeText.mock.calls[1][0];
-            // No surrounding prose — the block exactly as written, target
-            // comment and all, since that comment names where it goes.
-            expect(copied).not.toContain('Angular is the fussiest');
-            expect(copied).toBe([
-                '// angular.json → projects.<name>.architect.build.options',
-                '"outputPath": { "base": "dist", "browser": "" }',
-            ].join('\n'));
+            // The fence contents verbatim and nothing else — no caption, no
+            // marker line, nothing that would have to be deleted after pasting.
+            expect(copied).toBe('"outputPath": { "base": "dist", "browser": "" }');
+            expect(copied).not.toContain('Edit');
             expect(copied).not.toContain('package.json');
 
             blocks[2].querySelector('.repoSetupCopyBtn').click();
             expect(writeText).toHaveBeenLastCalledWith([
-                '// package.json → scripts',
                 '"build": "ng build --base-href /my-app/",',
                 '"test:run": "ng test --no-watch"',
             ].join('\n'));
