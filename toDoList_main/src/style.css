@@ -22141,10 +22141,13 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 10px;
   letter-spacing: 0.06em;
   color: var(--text-muted);
-  /* An edit block's label is the target path from its leading comment, which
-     can be longer than the modal is wide — wrap it rather than overflow. */
+  /* A block's label is the marker line above its fence — a target path plus
+     the step's detail, longer than the modal is wide — so wrap it rather than
+     overflow. The backticked paths inside it render as `.repoSetupCode`, whose
+     11px would out-size the caption; hold them to the caption's own size. */
   overflow-wrap: anywhere;
 }
+.repoSetupVariantLabel .repoSetupCode { font-size: 10px; }
 .repoSetupVariantProse {
   font-size: 12px;
   line-height: 1.5;

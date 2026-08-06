@@ -260,12 +260,39 @@ function splitVariants(lines) {
     });
 }
 
+// The headings a block falls back to when its marker line is absent. The first
+// block of a variant is its scaffold command; every block after it is an edit
+// block, however many there are.
+const SCAFFOLD_LABEL = 'SCAFFOLD';
+const EDITS_LABEL = 'EDITS';
+
+// A fenced block's caption comes from the marker line directly above it —
+// `**File:** `angular.json` → `scripts``, `**Scaffold**`, or the numbered step
+// form the file writes today (`**3 · Edit `angular.json`** — inside `scripts`).
+// The rule is one line: a paragraph that OPENS with a bold run and is followed
+// immediately by a fence is that block's caption, not body prose. It is lifted
+// out of the body, so the path is named once as the caption and the fence holds
+// nothing but what should be pasted — the whole point of the marker, since a
+// caption inside the fence copies along with the code.
+const CAPTION_OPENER_RE = /^\*\*[^*]+\*\*/;
+
+// `**Scaffold**` alone names the block without describing it, so it renders as
+// the generic SCAFFOLD heading rather than as its own text.
+const SCAFFOLD_CAPTION_RE = /^\*\*\s*scaffold\s*\*\*$/i;
+
+function captionLabel(text) {
+    const trimmed = String(text == null ? '' : text).trim();
+    if (!CAPTION_OPENER_RE.test(trimmed)) return '';
+    return SCAFFOLD_CAPTION_RE.test(trimmed) ? SCAFFOLD_LABEL : trimmed;
+}
+
 // A variant's body as an ordered list of prose paragraphs and fenced blocks,
 // kept in the file's order so a paragraph explaining an edit stays next to the
 // block it explains. EVERY fenced block is collected — a variant may carry any
-// number of edit blocks after its scaffold. Fenced text is taken VERBATIM —
-// leading whitespace and the `//` comment naming the target file are
-// significant, and the copy control ships exactly what is rendered.
+// number of edit blocks after its scaffold — each carrying the `label` read
+// from its marker line, or '' when it has none. Fenced text is taken VERBATIM:
+// leading whitespace is significant and the copy control ships exactly what is
+// rendered.
 function parseVariantBody(lines) {
     const parts = [];
     let para = [];
@@ -277,13 +304,23 @@ function parseVariantBody(lines) {
     for (let i = 0; i < lines.length; i++) {
         if (/^\s*```/.test(lines[i])) {
             flushParagraph();
+            // The paragraph flushed directly above this fence is its caption
+            // when it opens with a bold run — take it off the body rather than
+            // rendering it twice. A blank line between the two is normal; any
+            // other paragraph in between leaves this one as ordinary prose.
+            let label = '';
+            const above = parts[parts.length - 1];
+            if (above && above.type === 'prose') {
+                label = captionLabel(above.text);
+                if (label) parts.pop();
+            }
             const body = [];
             i++;
             while (i < lines.length && !/^\s*```/.test(lines[i])) {
                 body.push(lines[i]);
                 i++;
             }
-            parts.push({ type: 'code', text: body.join('\n') });
+            parts.push({ type: 'code', text: body.join('\n'), label: label });
             continue;
         }
         if (!lines[i].trim()) { flushParagraph(); continue; }
@@ -352,7 +389,11 @@ function appendInline(host, text) {
         }
         if (part.length > 4 && part.slice(0, 2) === '**' && part.slice(-2) === '**') {
             const strong = document.createElement('strong');
-            strong.textContent = part.slice(2, -2);
+            // A bold run can wrap a backticked path — block captions read
+            // `**3 · Edit `angular.json`**` — so its contents go back through
+            // this same pass. It carries no `**` of its own (the split's bold
+            // pattern excludes them), so the recursion is one level deep.
+            appendInline(strong, part.slice(2, -2));
             host.appendChild(strong);
             return;
         }
@@ -498,40 +539,33 @@ function copyValueToClipboard(text, button) {
 
 // ── VARIANTS ──
 
-// One fenced block plus its copy control. The first block of a variant is the
-// scaffold command; EVERY block after it is an edit block, however many there
-// are. No per-variant count is assumed: a variant carries one edit block per
-// file it touches — angular edits both `angular.json` and `package.json` — and
-// merging those into one copyable block is what let a `package.json` script get
-// pasted into `angular.json` and overwrite the `test` target.
-const SCAFFOLD_LABEL = 'SCAFFOLD';
-const EDITS_LABEL = 'EDITS';
-
-// An edit block names its target on its first line as a `//` comment —
-// `// angular.json → projects.<name>.architect.build.options`. That path is the
-// label. It is read, never removed: the comment is content the user needs when
-// pasting, so it stays in both the rendered code and what the button copies.
-// A block with no leading comment falls back to the generic EDITS heading.
-function readBlockComment(text) {
-    const first = String(text == null ? '' : text).split('\n')[0].trim();
-    const match = first.match(/^\/\/\s*(\S.*)$/);
-    return match ? match[1].trim() : '';
+// One fenced block plus its copy control. No per-variant count is assumed: a
+// variant carries one edit block per file it touches — angular edits both
+// `angular.json` and `package.json` — and merging those into one copyable block
+// is what let a `package.json` script get pasted into `angular.json` and
+// overwrite the `test` target.
+//
+// The caption is the marker line the parser lifted off the block (see
+// `captionLabel`). A block with no marker falls back to SCAFFOLD when it opens
+// the variant and EDITS otherwise, so a file that names none of its blocks
+// still reads the way it did before markers existed.
+function variantBlockLabel(part, index) {
+    if (part && part.label) return part.label;
+    return index === 0 ? SCAFFOLD_LABEL : EDITS_LABEL;
 }
 
-function variantBlockLabel(text, index) {
-    if (index === 0) return SCAFFOLD_LABEL;
-    return readBlockComment(text) || EDITS_LABEL;
-}
-
-function buildVariantBlock(text, index) {
+function buildVariantBlock(part, index) {
+    const text = part.text;
     const block = document.createElement('div');
     block.className = 'repoSetupVariantBlock';
 
-    const labelText = variantBlockLabel(text, index);
+    const labelText = variantBlockLabel(part, index);
     if (labelText) {
         const label = document.createElement('div');
         label.className = 'repoSetupVariantLabel';
-        label.textContent = labelText;
+        // Captions name backticked paths, so they render through appendInline
+        // rather than as flat text — still nodes, never markup.
+        appendInline(label, labelText);
         block.appendChild(label);
     }
 
@@ -590,7 +624,7 @@ function buildVariants(variants) {
                 body.appendChild(prose);
                 return;
             }
-            body.appendChild(buildVariantBlock(part.text, blockIndex));
+            body.appendChild(buildVariantBlock(part, blockIndex));
             blockIndex++;
         });
         bodies.push(body);

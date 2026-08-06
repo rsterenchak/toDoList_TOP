@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-06',
+        fixed: [
+            "Repo setup captions each code block with the file and location it belongs in, and copying one now yields just the code.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-05',
         fixed: [
-            "The GitHub link on a Structure tab file row is now just its arrow, freeing the width that was squeezing file names.",
             "A finished backlog run's row in the Runs tab now names the task it completed instead of staying labelled “Backlog run”.",
             "The Structure tab's code viewer names the lines it is actually showing against the file's total, and reopens the file you were reading after a lens switch.",
             "Source lines in the code viewer render at one consistent size on iOS, and a minus/plus control in its header steps the code text between 10px and 18px.",
