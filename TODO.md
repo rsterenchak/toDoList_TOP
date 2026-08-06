@@ -717,7 +717,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: f5c3ab7e-ff60-4e8b-b9a4-aaa2d82c7050 -->
 
-- [ ] **[LOW]** Worker error messages are discarded in favour of the bare status
+- [x] **[LOW]** Worker error messages are discarded in favour of the bare status — Completed: 2026-08-06
   - Type: bug
   - Description: When the TODO.md read failed for a freshly onboarded repo, the viewer showed `Couldn't load TODO.md — HTTP 400`. The Worker's response body carried `{"error":"Target not in allowlist","repo":...}`, which names the cause exactly — the registry cache had not yet picked up the new `inject_targets` row. Discarding it turned a self-explanatory 60-second cache window into an opaque failure. Every Worker route returns a JSON body with an `error` field on failure, so this loses real diagnostic information on every non-2xx response, not just this one.
   - Behavior: When a Worker call fails, parse the response body and surface its `error` field in the message shown to the user, keeping the status as secondary detail — `Couldn't load TODO.md — Target not in allowlist (400)`. When the body is absent, unparseable, or has no `error` field, fall back to the current bare-status message so a truly opaque failure still reports something. Applies wherever a Worker response's status is currently checked without reading the body.
