@@ -785,7 +785,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 60b18433-68fe-49ea-8bdf-206d2ffe4fb4 -->
 
-- [ ] **[LOW]** View code action for UI region rows
+- [x] **[LOW]** View code action for UI region rows — Completed: 2026-08-07
   - Type: feature
   - Description: Published UI region rows carry `region.file` and `region.line` from the manifest, and `selectHandle` already receives both — the shared action toolbar even renders "Line N." as context. But nothing acts on that number. The Types lens rows already jump into the code viewer from the same line data; regions have the same shape and no equivalent. This was deferred earlier out of a concern that a region row's click already means "select", which drives the toolbar. Putting the jump in the toolbar rather than on the row resolves that: selection keeps its meaning and the jump becomes an explicit second action.
   - Behavior: Add a `View code` action to the shared handle toolbar, beside the existing `Reference in chat` and `Copy selector` actions, as a secondary control. It appears only when the selected handle carries a usable `file` and a `line` greater than zero — a handle without them keeps today's toolbar exactly. Clicking opens that file in the code viewer scrolled to the line, highlighted under the span banner naming the region by its label. The banner's dismiss clears the highlight and leaves the file open. On desktop the viewer opens in the detail column; below 1024px in the sheet. The row stays selected and the toolbar stays visible, so a second region can be inspected without reselecting.
