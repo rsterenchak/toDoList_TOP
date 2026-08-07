@@ -520,6 +520,110 @@ describe('Claude sheet — hydrating stored chat turns', () => {
         expect(bubbleTexts()).toEqual(['legacy question', 'legacy answer', 'newer turn']);
     });
 
+    // ── A wipe on another device replicates here ──
+    // clearChatTurns removes the repo's rows, so the receiving device's fetch
+    // succeeds with zero rows. That is positive proof the thread is empty, not a
+    // failed read, so it must clear rather than bail — and the merge has to drop
+    // local turns the remote set no longer vouches for, or a union would keep
+    // resurrecting them.
+
+    it('clears the thread when a successful fetch returns zero rows', async () => {
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { id: 'wiped-1', ts: 1000, role: 'user', content: 'asked on desktop', created_at: '2026-08-01T10:00:00Z' },
+                { id: 'wiped-2', ts: 1001, role: 'assistant', content: 'answered on desktop', created_at: '2026-08-01T10:00:01Z' },
+            ],
+        }));
+        supa.rows = [];
+
+        mountClaudeSheet(document.body);
+        await flush(10);
+
+        expect(bubbleTexts()).toEqual([]);
+        // Written through, so a reload can't restore what the wipe removed.
+        const thread = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}')[DEFAULT_REPO];
+        expect(thread).toEqual([]);
+    });
+
+    it('hides the New Chat pill once a remote wipe empties the thread', async () => {
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { id: 'wiped-1', ts: 1000, role: 'user', content: 'asked on desktop', created_at: '2026-08-01T10:00:00Z' },
+            ],
+        }));
+        supa.rows = [];
+
+        mountClaudeSheet(document.body);
+        await flush(10);
+
+        const pill = document.getElementById('claudeClearChat');
+        expect(pill).toBeTruthy();
+        expect(pill.hidden).toBe(true);
+    });
+
+    it('drops a previously-persisted local turn that is absent from the remote set', async () => {
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { id: 'deleted', ts: 1000, role: 'user', content: 'deleted elsewhere', created_at: '2026-08-01T10:00:00Z' },
+                { id: 'kept', ts: 1001, role: 'user', content: 'still there', created_at: '2026-08-01T10:00:01Z' },
+            ],
+        }));
+        supa.rows = [row('kept', 'user', 'still there', '2026-08-01T10:00:01Z')];
+
+        mountClaudeSheet(document.body);
+        await flush(10);
+
+        expect(bubbleTexts()).toEqual(['still there']);
+    });
+
+    it('keeps a local turn that has never round-tripped, even against zero rows', async () => {
+        // No created_at: appendChatTurn stamps only id/ts, so this turn's insert
+        // may still be in flight. Dropping it would lose a turn just sent.
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { id: 'pending', ts: 1000, role: 'user', content: 'just sent' },
+            ],
+        }));
+        supa.rows = [];
+
+        mountClaudeSheet(document.body);
+        await flush(10);
+
+        expect(bubbleTexts()).toEqual(['just sent']);
+    });
+
+    it('keeps legacy id-less turns against zero rows', async () => {
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { role: 'user', content: 'legacy question' },
+            ],
+        }));
+        supa.rows = [];
+
+        mountClaudeSheet(document.body);
+        await flush(10);
+
+        expect(bubbleTexts()).toEqual(['legacy question']);
+    });
+
+    it('leaves a persisted thread untouched when a zero-row result is a failed read', async () => {
+        // ok:false with an empty turns array is the offline shape and must NOT be
+        // read as a wipe — the distinction the whole rule rests on.
+        localStorage.setItem(CHAT_KEY, JSON.stringify({
+            [DEFAULT_REPO]: [
+                { id: 'synced', ts: 1000, role: 'user', content: 'synced turn', created_at: '2026-08-01T10:00:00Z' },
+            ],
+        }));
+        supa.selectError = 'offline';
+
+        mountClaudeSheet(document.body);
+        await flush(10);
+
+        expect(bubbleTexts()).toEqual(['synced turn']);
+        const thread = JSON.parse(localStorage.getItem(CHAT_KEY) || '{}')[DEFAULT_REPO];
+        expect(thread.map(t => t.id)).toEqual(['synced']);
+    });
+
     it('does not merge another repo\'s rows when the workspace moved mid-fetch', async () => {
         await seedBothWorkspaces();
         supa.rows = [row('remote-1', 'user', 'default repo turn', '2026-08-01T10:00:00Z')];
