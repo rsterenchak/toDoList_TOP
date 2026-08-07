@@ -504,7 +504,12 @@ describe('Claude sheet — module surface and styling', () => {
         const rule = extractTopLevelRule('#claudeLauncher');
         expect(rule).toMatch(/position:\s*fixed/);
         expect(rule).toMatch(/right:\s*\d+px/);
-        expect(rule).toMatch(/bottom:\s*\d+px/);
+        // The bottom offset is the mobile tab bar's full height (the launcher
+        // rests on its top edge), so it reads as a calc over --mobile-tab-h
+        // plus the home-indicator clearance rather than a bare px literal.
+        expect(rule).toMatch(
+            /bottom:\s*calc\(\s*var\(--mobile-tab-h[^)]*\)\s*\+\s*var\(--mobile-bottom-inset[^)]*\)\s*\)/
+        );
         expect(css).toMatch(/body:has\(#settingsMenu\)\s+#claudeLauncher/);
         expect(css).toMatch(/body:has\(#helpModalBackdrop\)\s+#claudeLauncher/);
     });

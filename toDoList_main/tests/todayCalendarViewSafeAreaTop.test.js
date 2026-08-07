@@ -24,14 +24,17 @@ describe('mobile scroll-padding defers to the tab-bar reservation', () => {
         // them all and assert one carries the tab-bar padding-bottom.
         const re = /#mainList\s*\{([^}]*)\}/g;
         const paddingBottomRe =
-            /padding-bottom\s*:\s*calc\(\s*var\(\s*--mobile-tab-h\s*,\s*56px\s*\)\s*\+\s*env\(safe-area-inset-bottom[^)]*\)\s*\)/;
+            /padding-bottom\s*:\s*calc\(\s*var\(\s*--mobile-tab-h\s*,\s*56px\s*\)\s*\+\s*var\(--mobile-bottom-inset[^)]*\)\s*\)/;
         let match;
         let found = false;
-        // The tab bar now absorbs env(safe-area-inset-bottom) into its
+        // The tab bar now absorbs the home-indicator clearance into its
         // own height (the #footBar that used to reserve the safe-area
         // padding is hidden on mobile), so the scroll padding has to
-        // cover both --mobile-tab-h AND the inset to keep the last row
-        // reachable above the bar.
+        // cover both --mobile-tab-h AND that clearance to keep the last
+        // row reachable above the bar. Both read it from the shared
+        // --mobile-bottom-inset token rather than raw
+        // env(safe-area-inset-bottom), so the padding can't drift from the
+        // bar's real height in iOS standalone display-mode.
         while ((match = re.exec(cleaned)) !== null) {
             if (paddingBottomRe.test(match[1])) found = true;
         }

@@ -103,14 +103,18 @@ describe('mobile bottom-edge layout (footBar removal + flush mobileTabBar)', () 
         expect(rule).toMatch(/bottom:\s*0\s*;/);
     });
 
-    it('mobile #mobileTabBar absorbs the home-indicator safe-area inset into its own height + padding', () => {
+    it('mobile #mobileTabBar absorbs the home-indicator clearance into its own height + padding', () => {
         const rule = extractRule('#mobileTabBar', '(max-width: 1023px)');
-        // Height grows by env(safe-area-inset-bottom) so the elevated bg
-        // covers the home-indicator zone.
-        expect(rule).toMatch(/height:\s*calc\(\s*var\(--mobile-tab-h[^)]*\)\s*\+\s*env\(safe-area-inset-bottom[^)]*\)\s*\)/);
-        // padding-bottom reservation keeps the tab labels clear of the
-        // iOS home pill.
-        expect(rule).toMatch(/padding-bottom:\s*env\(safe-area-inset-bottom[^)]*\)/);
+        // The clearance now comes from --mobile-bottom-inset rather than
+        // raw env(safe-area-inset-bottom): the raw inset is 34px in iOS
+        // standalone against Safari's 0, which lifted the tabs off the
+        // screen edge in standalone only. The shape of the contract is
+        // unchanged — height grows by the clearance so the elevated bg
+        // still covers the home-indicator zone, and the matching
+        // padding-bottom still keeps the labels clear of the home pill.
+        // See tests/mobileTabBarStandaloneInset.test.js for the token.
+        expect(rule).toMatch(/height:\s*calc\(\s*var\(--mobile-tab-h[^)]*\)\s*\+\s*var\(--mobile-bottom-inset[^)]*\)\s*\)/);
+        expect(rule).toMatch(/padding-bottom:\s*var\(--mobile-bottom-inset[^)]*\)/);
     });
 
     it('mobile #drawerFooter is hidden — version + project count live in the Settings modal instead', () => {
