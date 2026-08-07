@@ -1290,6 +1290,49 @@ function appendReferenceCopyActions(actionRow, label, selector, repo, copyLabel)
     actionRow.appendChild(copyBtn);
 }
 
+// A published region row carries the manifest's `file` + `line`, so it can jump
+// into the code viewer exactly as a Types row does. A live region is measured
+// from the running DOM and has neither, so this is the one test that decides
+// whether the jump exists — shared with `handleContextLine` so the "Line N."
+// context and the action can never disagree about the same handle.
+function hasRecordedLine(d) {
+    return !!d && typeof d.line === 'number' && d.line > 0;
+}
+
+// Append the secondary "View code" action to an action row. Always mounted and
+// toggled through `hidden` rather than conditionally appended, so the button's
+// position among its siblings is fixed and one CSS guard governs its absence
+// (`.structureViewCodeBtn[hidden]` in style.css — the base rule declares a
+// `display`, which would otherwise outrank the UA sheet's `[hidden]`).
+//
+// The jump is deliberately a SECOND action rather than the row's own click:
+// tapping a region row means "select", which drives this toolbar, so the jump
+// lives here where it can be explicit without stealing that gesture.
+function appendViewCodeAction(actionRow, d) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'structureViewCodeBtn';
+    btn.textContent = 'View code';
+    const file = d && d.file;
+    const canJump = !!file && hasRecordedLine(d);
+    btn.hidden = !canJump;
+    if (canJump) {
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            // A region is a point, not a span, so both ends are the same line and
+            // the viewer highlights one row. The banner names the region by its
+            // label; its existing dismiss drops the highlight and leaves the file
+            // open. Paths are joined at click time, as every other opener does.
+            openFileInCodeViewer(d.repo, joinSrcRootPath(currentSrcRoot, file), {
+                startLine: d.line,
+                endLine: d.line,
+                banner: d.label,
+            });
+        });
+    }
+    actionRow.appendChild(btn);
+}
+
 // ── SELECTION + SHARED ACTION TOOLBAR ────────────────────────────────────────
 // Tapping a UI/Types row no longer reveals its own action panel; it selects the
 // row, and a single toolbar pinned above the tree acts on that selection.
@@ -1318,7 +1361,7 @@ function handleContextLine(d) {
         }
         return d.value + ' · ' + (d.visible ? 'On screen now.' : 'Not currently on screen.');
     }
-    const line = typeof d.line === 'number' && d.line > 0 ? 'Line ' + d.line + '.' : 'Line not recorded.';
+    const line = hasRecordedLine(d) ? 'Line ' + d.line + '.' : 'Line not recorded.';
     return d.value + ' · ' + line;
 }
 
@@ -1461,6 +1504,10 @@ function renderActionToolbar() {
 
     // Reference in chat (primary, reframes onto the handle's repo) + Copy.
     appendReferenceCopyActions(actionToolbarActionsEl, d.label, d.value, d.repo, d.copyLabel);
+
+    // View code: jump to the handle's defining line. Hidden for a handle with no
+    // file/line (every live-map region), so those toolbars read as they did.
+    appendViewCodeAction(actionToolbarActionsEl, d);
 
     // Find in code: live/published handles resolve a selector through the
     // build-time index; Types rows resolve a name through the in-memory types.

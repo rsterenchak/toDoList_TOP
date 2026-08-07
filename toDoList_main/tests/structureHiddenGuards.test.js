@@ -33,6 +33,7 @@ describe('Structure-view [hidden] guards override the base display declaration',
         '.structureToolbar',
         '.structureActionToolbar',
         '.structureFindResult',
+        '.structureViewCodeBtn',
     ];
 
     for (const selector of cases) {
