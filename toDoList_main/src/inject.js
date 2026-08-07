@@ -955,6 +955,43 @@ export function subscribeRunOutputs(correlationId, onRow) {
 }
 
 
+// Read the `run_outputs` row for one correlation id directly, instead of
+// waiting for a realtime event to deliver it. Realtime rides a WebSocket, and
+// iOS Safari drops those when the tab backgrounds, the screen locks, or the
+// network moves between cellular and wifi — without reconnecting. The row
+// itself settles correctly either way, so a surface that waits only on the
+// socket can hang forever on a result that already exists. Every such surface
+// pairs its subscription with this read. Returns the row, or null when there is
+// none / the read fails, so a caller can tell "still in flight" (a row that
+// isn't terminal yet) from "nothing was recorded" (null).
+export async function readRunOutput(correlationId) {
+    if (!correlationId) return null;
+    try {
+        const res = await Promise.resolve(
+            supabase
+                .from('run_outputs')
+                .select()
+                .eq('correlation_id', correlationId)
+                .limit(1)
+        );
+        if (!res || res.error) return null;
+        const rows = res.data;
+        if (Array.isArray(rows)) return rows.length ? rows[0] : null;
+        return rows || null;
+    } catch (e) {
+        return null;
+    }
+}
+
+
+// A `run_outputs` row is terminal once the workflow has reported back — either
+// outcome. Anything else (`running`, or a status added later) means the run is
+// still in flight and the watcher keeps waiting.
+function isTerminalRunOutput(row) {
+    return !!row && (row.status === 'done' || row.status === 'failed');
+}
+
+
 // Poll a dispatched run's status through the same Worker the dispatch and
 // read flows already use (same URL, same Bearer secret). Sends
 // `{ status: true, correlation_id, repo, filePath }` so the Worker matches
@@ -1820,6 +1857,20 @@ function parsePreflightReport(stdout) {
     return asObject(text.slice(start, end + 1));
 }
 
+// How long a Check waits for its `run_outputs` row before giving up on the
+// realtime socket and reporting what it can. A preflight settles in a few
+// seconds, so this only ever fires when the socket missed the event.
+const PREFLIGHT_GIVE_UP_MS = 45000;
+
+// Copy for a Check that ran out of patience. The two cases read differently and
+// the distinction is the useful part: a non-terminal row means the run may yet
+// finish, while no row at all means nothing was ever recorded for it.
+function preflightGiveUpReason(row) {
+    return row
+        ? 'Check hasn’t reported back yet — the run may still be in flight'
+        : 'Check didn’t report back — nothing was recorded for this run';
+}
+
 // Re-render the settings panel's target rows if it's still mounted, so a
 // resolved/failed onboard placeholder is replaced without reaching into the
 // modal closure. No-op when the panel is closed — pendingOnboards still holds
@@ -1919,9 +1970,24 @@ function renderPreflightVerdictStatic(host, leading, text, options) {
     return strip;
 }
 
+// `options.onRetry` appends a Retry control to the strip. Only the give-up
+// states pass one, and it always RE-READS the run's row rather than
+// re-dispatching — a second preflight against the same correlation id 409s on
+// the unique constraint, and the whole point of the give-up state is that the
+// result probably already exists and simply never reached us.
 function renderPreflightVerdictError(host, reason, options) {
-    return renderPreflightVerdictStatic(
-        host, preflightVerdictGlyph(false), reason || 'Check didn’t complete', options);
+    const opts = options || {};
+    const strip = renderPreflightVerdictStatic(
+        host, preflightVerdictGlyph(false), reason || 'Check didn’t complete', opts);
+    if (typeof opts.onRetry === 'function') {
+        const retry = document.createElement('button');
+        retry.type = 'button';
+        retry.className = 'injectOnboardVerdictRetry';
+        retry.textContent = 'Retry';
+        retry.addEventListener('click', function() { opts.onRetry(); });
+        strip.appendChild(retry);
+    }
+    return strip;
 }
 
 // The terminal render: the report's warnings and its missing-scaffold paths,
@@ -2209,13 +2275,35 @@ function showOnboardModal(options) {
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
-    // The realtime channel for an in-flight Check. Owned here and torn down on
-    // the terminal row, on a re-run, on a dispatch failure, and on close() —
-    // the same discipline captureCard.js follows, so a Check left mid-flight
-    // can't leak a subscription when the sub-modal goes away.
+    // The watch on an in-flight Check: its realtime channel, the give-up timer
+    // that bounds the wait when the socket misses the terminal event, and the
+    // visibilitychange re-read that covers a backgrounded tab. All three are
+    // owned here and torn down together on the terminal row, on a re-run, on a
+    // dispatch failure, and on close() — the same discipline captureCard.js
+    // follows, so a Check left mid-flight can't leak a subscription, a timer,
+    // or a document listener when the sub-modal goes away.
     let preflightChannel = null;
     let lastCheckedRepo = '';
+    let preflightCorrelationId = '';
+    let preflightSettled = false;
+    let preflightTimer = null;
+    let preflightVisibilityBound = false;
+
+    function bindPreflightVisibility() {
+        if (preflightVisibilityBound || typeof document === 'undefined') return;
+        document.addEventListener('visibilitychange', onPreflightVisibility);
+        preflightVisibilityBound = true;
+    }
+
     function disposePreflightChannel() {
+        if (preflightTimer) {
+            clearTimeout(preflightTimer);
+            preflightTimer = null;
+        }
+        if (preflightVisibilityBound && typeof document !== 'undefined') {
+            document.removeEventListener('visibilitychange', onPreflightVisibility);
+        }
+        preflightVisibilityBound = false;
         if (!preflightChannel) return;
         try {
             if (supabase && typeof supabase.removeChannel === 'function') {
@@ -2309,30 +2397,97 @@ function showOnboardModal(options) {
             verdict, spinner, 'Checking ' + lastCheckedRepo + '…', verdictOptions());
     }
 
-    function renderVerdictError(reason) {
-        renderPreflightVerdictError(verdict, reason, verdictOptions());
+    function renderVerdictError(reason, onRetry) {
+        const opts = verdictOptions();
+        opts.onRetry = onRetry;
+        renderPreflightVerdictError(verdict, reason, opts);
     }
 
     function renderVerdictReport(report) {
         renderPreflightVerdictReport(verdict, report, verdictOptions());
     }
 
+    // Render whatever a terminal row carries. Shared by every path that can
+    // deliver one — the realtime event, the read after dispatch, the
+    // visibilitychange re-read, and the give-up read.
+    function renderVerdictForRow(row) {
+        const report = parsePreflightReport(row && row.stdout);
+        if (report) renderVerdictReport(report);
+        else renderVerdictError('Check didn’t return a readable report');
+    }
+
+    // The single terminal funnel for one Check. The immediate read, a
+    // visibilitychange re-read, the give-up timer, and a realtime event can all
+    // deliver the same row, so the first one through wins and the rest are
+    // ignored — no double render, no channel left behind.
+    function settlePreflight(render) {
+        if (preflightSettled) return;
+        preflightSettled = true;
+        disposePreflightChannel();
+        checkBtn.disabled = false;
+        render();
+    }
+
     // Live `run_outputs` rows for the in-flight Check. `running` spins; the
-    // terminal row carries the report on stdout, tears the channel down, and
+    // terminal row carries the report on stdout, tears the watch down, and
     // re-enables Check. Any other status is ignored so a spurious event can't
     // blank a rendered verdict.
     function onPreflightRow(row) {
-        if (!row) return;
+        if (!row || preflightSettled) return;
         if (row.status === 'running') {
             renderVerdictRunning();
             return;
         }
-        if (row.status !== 'done' && row.status !== 'failed') return;
-        disposePreflightChannel();
-        checkBtn.disabled = false;
-        const report = parsePreflightReport(row.stdout);
-        if (report) renderVerdictReport(report);
-        else renderVerdictError('Check didn’t return a readable report');
+        if (!isTerminalRunOutput(row)) return;
+        settlePreflight(function() { renderVerdictForRow(row); });
+    }
+
+    // Read the row directly rather than waiting on an event that may never
+    // arrive. Terminal ⇒ settle; anything else ⇒ keep waiting on realtime.
+    // Returns the row read (or null) so the give-up path can say which case it
+    // is looking at. Guarded on the correlation id both sides of the await so a
+    // re-run started mid-read can't be settled by the old Check's result.
+    async function rereadPreflight(correlationId) {
+        if (preflightSettled || correlationId !== preflightCorrelationId) return null;
+        const row = await readRunOutput(correlationId);
+        if (preflightSettled || correlationId !== preflightCorrelationId) return null;
+        if (isTerminalRunOutput(row)) settlePreflight(function() { renderVerdictForRow(row); });
+        return row;
+    }
+
+    // Returning to the tab is the moment a backgrounded socket is known to have
+    // missed events, so re-read then rather than waiting out the give-up timer.
+    function onPreflightVisibility() {
+        if (typeof document === 'undefined') return;
+        if (document.visibilityState === 'hidden') return;
+        rereadPreflight(preflightCorrelationId);
+    }
+
+    // The give-up state's Retry re-READS the row; it never re-dispatches, since
+    // a second run against the same correlation id 409s on the unique
+    // constraint and the result we're missing already exists.
+    async function retryPreflightRead(correlationId) {
+        if (closed) return;
+        renderVerdictRunning();
+        const row = await readRunOutput(correlationId);
+        if (closed) return;
+        if (isTerminalRunOutput(row)) {
+            renderVerdictForRow(row);
+            return;
+        }
+        renderVerdictError(preflightGiveUpReason(row), function() {
+            retryPreflightRead(correlationId);
+        });
+    }
+
+    async function onPreflightGiveUp(correlationId) {
+        const row = await rereadPreflight(correlationId);
+        if (preflightSettled || correlationId !== preflightCorrelationId) return;
+        settlePreflight(function() {
+            renderVerdictError(preflightGiveUpReason(row), function() {
+                retryPreflightRead(correlationId);
+            });
+        });
     }
 
     // Validate → subscribe → dispatch the report-only run. Nothing here touches
@@ -2346,15 +2501,27 @@ function showOnboardModal(options) {
         checkBtn.disabled = true;
         renderVerdictRunning();
         const correlationId = mintEntryId();
+        preflightCorrelationId = correlationId;
+        preflightSettled = false;
         // Subscribe BEFORE dispatching so the Worker's insert of the `running`
         // row can't land before we're listening.
         preflightChannel = subscribeRunOutputs(correlationId, onPreflightRow);
+        bindPreflightVisibility();
         const res = await preflightRepo(repo, shapeSelect.value, selectedPurpose, correlationId);
+        if (correlationId !== preflightCorrelationId) return;
         if (!res || res.ok === false) {
-            disposePreflightChannel();
-            checkBtn.disabled = false;
-            renderVerdictError((res && res.reason) || 'Check failed');
+            settlePreflight(function() {
+                renderVerdictError((res && res.reason) || 'Check failed');
+            });
+            return;
         }
+        // The dispatch resolved, so the row exists. Start the give-up timer
+        // that bounds the wait, then read the row once directly in case the run
+        // already settled or its event was missed.
+        preflightTimer = setTimeout(function() {
+            onPreflightGiveUp(correlationId);
+        }, PREFLIGHT_GIVE_UP_MS);
+        await rereadPreflight(correlationId);
     }
 
     checkBtn.addEventListener('click', onCheck);
@@ -2632,6 +2799,12 @@ export function showInjectSettingsModal(options) {
     const rowCheckButtons = new Set();
     let rowCheckInFlight = false;
 
+    // A row's check owns more than its channel: a give-up timer and a
+    // visibilitychange re-read, both per row. A repaint destroys the row those
+    // belong to, and the channel set can't reach them, so each row registers a
+    // teardown here for the collective disposal.
+    const rowCheckWatchTeardowns = new Set();
+
     function disposeRowCheckChannel(channel) {
         if (!channel) return;
         rowCheckChannels.delete(channel);
@@ -2643,6 +2816,10 @@ export function showInjectSettingsModal(options) {
     }
 
     function disposeAllRowCheckChannels() {
+        Array.from(rowCheckWatchTeardowns).forEach(function(teardown) {
+            try { teardown(); } catch (e) { /* best-effort teardown */ }
+        });
+        rowCheckWatchTeardowns.clear();
         Array.from(rowCheckChannels).forEach(disposeRowCheckChannel);
         rowCheckInFlight = false;
     }
@@ -2857,6 +3034,10 @@ export function showInjectSettingsModal(options) {
         checkIcon.disabled = rowCheckInFlight;
 
         let rowChannel = null;
+        let rowCorrelationId = '';
+        let rowSettled = false;
+        let rowTimer = null;
+        let rowVisibilityBound = false;
 
         // A dismiss on the verdict, so a read report can be cleared without
         // re-running the check.
@@ -2885,7 +3066,30 @@ export function showInjectSettingsModal(options) {
             reflectRowCheckBusy();
         }
 
+        // The timer and the document listener this row's check owns alongside
+        // its channel. Registered in rowCheckWatchTeardowns while live, so a
+        // repaint that destroys the row takes them with it.
+        function disposeRowWatch() {
+            if (rowTimer) {
+                clearTimeout(rowTimer);
+                rowTimer = null;
+            }
+            if (rowVisibilityBound && typeof document !== 'undefined') {
+                document.removeEventListener('visibilitychange', onRowVisibility);
+            }
+            rowVisibilityBound = false;
+            rowCheckWatchTeardowns.delete(disposeRowWatch);
+        }
+
+        function bindRowVisibility() {
+            if (rowVisibilityBound || typeof document === 'undefined') return;
+            document.addEventListener('visibilitychange', onRowVisibility);
+            rowVisibilityBound = true;
+            rowCheckWatchTeardowns.add(disposeRowWatch);
+        }
+
         function finishRowCheck() {
+            disposeRowWatch();
             disposeRowCheckChannel(rowChannel);
             rowChannel = null;
             setRowChecking(false);
@@ -2900,18 +3104,70 @@ export function showInjectSettingsModal(options) {
             appendVerdictDismiss();
         }
 
-        function renderRowError(reason) {
-            renderPreflightVerdictError(verdictHost, reason);
+        function renderRowError(reason, onRetry) {
+            renderPreflightVerdictError(verdictHost, reason, { onRetry: onRetry });
             appendVerdictDismiss();
         }
 
-        function onRowCheckRow(row) {
-            if (!row) return;
-            if (row.status !== 'done' && row.status !== 'failed') return;
-            finishRowCheck();
-            const report = parsePreflightReport(row.stdout);
+        function renderRowForRow(row) {
+            const report = parsePreflightReport(row && row.stdout);
             if (report) renderRowReport(report);
             else renderRowError('Check didn’t return a readable report');
+        }
+
+        // The single terminal funnel for this row's check — the realtime event,
+        // the read after dispatch, the visibilitychange re-read, and the
+        // give-up read can all deliver the same row, so the first wins.
+        function settleRowCheck(render) {
+            if (rowSettled) return;
+            rowSettled = true;
+            finishRowCheck();
+            render();
+        }
+
+        function onRowCheckRow(row) {
+            if (!row || rowSettled) return;
+            if (!isTerminalRunOutput(row)) return;
+            settleRowCheck(function() { renderRowForRow(row); });
+        }
+
+        // See rereadPreflight in the onboard sub-modal — same contract, scoped
+        // to this row's correlation id.
+        async function rereadRowCheck(correlationId) {
+            if (rowSettled || correlationId !== rowCorrelationId) return null;
+            const row = await readRunOutput(correlationId);
+            if (rowSettled || correlationId !== rowCorrelationId) return null;
+            if (isTerminalRunOutput(row)) settleRowCheck(function() { renderRowForRow(row); });
+            return row;
+        }
+
+        function onRowVisibility() {
+            if (typeof document === 'undefined') return;
+            if (document.visibilityState === 'hidden') return;
+            rereadRowCheck(rowCorrelationId);
+        }
+
+        // Re-reads only — never a re-dispatch, for the same reason the onboard
+        // sub-modal's retry doesn't.
+        async function retryRowRead(correlationId) {
+            const row = await readRunOutput(correlationId);
+            if (isTerminalRunOutput(row)) {
+                renderRowForRow(row);
+                return;
+            }
+            renderRowError(preflightGiveUpReason(row), function() {
+                retryRowRead(correlationId);
+            });
+        }
+
+        async function onRowGiveUp(correlationId) {
+            const row = await rereadRowCheck(correlationId);
+            if (rowSettled || correlationId !== rowCorrelationId) return;
+            settleRowCheck(function() {
+                renderRowError(preflightGiveUpReason(row), function() {
+                    retryRowRead(correlationId);
+                });
+            });
         }
 
         checkIcon.addEventListener('click', async function() {
@@ -2921,10 +3177,13 @@ export function showInjectSettingsModal(options) {
             verdictHost.hidden = true;
             setRowChecking(true);
             const correlationId = mintEntryId();
+            rowCorrelationId = correlationId;
+            rowSettled = false;
             // Subscribe BEFORE dispatching so the Worker's insert of the
             // `running` row can't land before we're listening.
             rowChannel = subscribeRunOutputs(correlationId, onRowCheckRow);
             if (rowChannel) rowCheckChannels.add(rowChannel);
+            bindRowVisibility();
             // The registry serializes the shape and purpose the repo was
             // onboarded with — pass them rather than 'auto'/'personal' so the
             // expected file set matches that onboarding and a detection step is
@@ -2937,10 +3196,18 @@ export function showInjectSettingsModal(options) {
                 target.shape || 'auto',
                 target.purpose || 'personal',
                 correlationId);
+            if (correlationId !== rowCorrelationId) return;
             if (!res || res.ok === false) {
-                finishRowCheck();
-                renderRowError((res && res.reason) || 'Check failed');
+                settleRowCheck(function() {
+                    renderRowError((res && res.reason) || 'Check failed');
+                });
+                return;
             }
+            // The dispatch resolved, so the row exists. Bound the wait, then
+            // read once directly in case the run already settled.
+            rowTimer = setTimeout(function() { onRowGiveUp(correlationId); }, PREFLIGHT_GIVE_UP_MS);
+            rowCheckWatchTeardowns.add(disposeRowWatch);
+            await rereadRowCheck(correlationId);
         });
 
         const editIcon = document.createElement('button');
