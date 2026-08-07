@@ -2741,9 +2741,15 @@ body:has(#settingsMenu) #claudeLauncher {
 }
 .claudeCoverageBreakdown:hover { background: var(--bg-hover); }
 /* The pane's Derive action — a full-width accented button that dispatches a derive
-   run. Disabled while a run is in flight (isDeriveActive). */
+   run. Disabled while a run is in flight (isDeriveActive), where it also grows a
+   spinner ahead of its label; the flex centering keeps the spinner + label pair
+   centered as one group rather than letting the glyph shove the text off-centre. */
 .claudeCoverageDerive {
   align-self: stretch;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
   padding: 8px 12px;
   background: var(--accent-dim);
   color: var(--accent-text);
@@ -2756,6 +2762,15 @@ body:has(#settingsMenu) #claudeLauncher {
 }
 .claudeCoverageDerive:hover:not(:disabled) { background: var(--accent); color: #fff; }
 .claudeCoverageDerive:disabled { opacity: 0.6; cursor: default; }
+/* The in-flight spinner inside the Derive action, present only while a derive run
+   is tracked. Reuses the shared .projRunSpinner ring glyph (12px, #9D93EE accent)
+   and `spin` keyframes; the base class is display:none for the sidebar rows, so it
+   is revealed and animated here. flex-shrink: 0 keeps the ring circular. */
+.claudeCoverageDeriveSpinner {
+  display: inline-block;
+  flex: 0 0 auto;
+  animation: spin 0.7s linear infinite;
+}
 /* The pane's "Review N proposals" action — a quieter surface button matching the
    breakdown action, shown only when proposals are waiting. */
 .claudeCoverageProposals {

@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-07',
-        added: [
-            "A View code action on the Structure view's handle toolbar opens a published UI region's file at its defining line.",
-        ],
         fixed: [
             "Clearing a chat on one device now empties that conversation on your other devices too, instead of leaving the old thread in place.",
             "A backlog run now appears in the Runs tab under the name of the list it was started from, so several runs at once are easy to tell apart.",
             "The Runs tab lists runs newest-first on every device, including the one they were started from.",
             "Accepting a proposal no longer drops the new task when a background sync lands mid-flight, so the run stays linked to its entry.",
+            "The Derive button now spins while a derive run is working, so it clearly reads as busy rather than just greyed out.",
         ],
     },
 ];

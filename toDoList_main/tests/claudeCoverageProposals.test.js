@@ -12,6 +12,7 @@ import { vi } from 'vitest';
 // ── inject.js stub ───────────────────────────────────────────────────
 let assignmentResult = { ok: false, reason: 'No target' };
 let deriveCalls = [];
+let deriveResult = { ok: true };
 let injectCalls = [];
 let dispatchRunCalls = [];
 
@@ -43,7 +44,7 @@ vi.mock('../src/inject.js', () => ({
     dispatchTriage: () => Promise.resolve({ ok: true }),
     dispatchDerive: (projectId, correlationId, target) => {
         deriveCalls.push({ projectId, correlationId, target });
-        return Promise.resolve({ ok: true });
+        return Promise.resolve(deriveResult);
     },
     fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
     findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
@@ -143,6 +144,7 @@ beforeEach(() => {
     listLogic._reset();
     assignmentResult = { ok: false, reason: 'No target' };
     deriveCalls = [];
+    deriveResult = { ok: true };
     injectCalls = [];
     dispatchRunCalls = [];
     setQueueRows([], null);
@@ -195,6 +197,63 @@ describe('COVERAGE tab — Derive action', () => {
         const reopened = coverageView().querySelector('.claudeCoverageDerive');
         expect(reopened.disabled).toBe(true);
         expect(reopened.textContent).toBe('Deriving…');
+    });
+
+    // The in-flight Derive button used to read as working only via its label and
+    // disabled attribute, which doesn't clearly say "still running". A spinner
+    // glyph must accompany the pending label — and must be absent at rest, so an
+    // idle button carries no animating node.
+    it('carries no spinner while idle', async () => {
+        const name = freshProject();
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        const btn = coverageView().querySelector('.claudeCoverageDerive');
+        expect(btn.querySelector('.claudeCoverageDeriveSpinner')).toBeFalsy();
+        expect(btn.textContent).toBe('Derive tasks');
+    });
+
+    it('shows a spinner in the button while a derive run is in flight', async () => {
+        const name = freshProject();
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        const btn = coverageView().querySelector('.claudeCoverageDerive');
+        btn.click();
+        await flush();
+        const spinner = btn.querySelector('.claudeCoverageDeriveSpinner');
+        expect(spinner).toBeTruthy();
+        // Reuses the shared .projRunSpinner ring glyph rather than a new one, and
+        // is hidden from assistive tech since the label already says "Deriving…".
+        expect(spinner.classList.contains('projRunSpinner')).toBe(true);
+        expect(spinner.getAttribute('aria-hidden')).toBe('true');
+        // The spinner is a child element, so the label text is untouched.
+        expect(btn.textContent).toBe('Deriving…');
+    });
+
+    it('rebuilds the spinner on a repaint while the run is still tracked', async () => {
+        const name = freshProject();
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageDerive').click();
+        await flush();
+        document.querySelector('#claudeTabChat').click();
+        coverageTab().click();
+        const reopened = coverageView().querySelector('.claudeCoverageDerive');
+        expect(reopened.querySelector('.claudeCoverageDeriveSpinner')).toBeTruthy();
+        expect(reopened.textContent).toBe('Deriving…');
+    });
+
+    it('removes the spinner when the dispatch fails', async () => {
+        const name = freshProject();
+        deriveResult = { ok: false, error: 'nope' };
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        const btn = coverageView().querySelector('.claudeCoverageDerive');
+        btn.click();
+        await flush();
+        expect(isDeriveActive()).toBe(false);
+        expect(btn.querySelector('.claudeCoverageDeriveSpinner')).toBeFalsy();
+        expect(btn.disabled).toBe(false);
+        expect(btn.textContent).toBe('Derive tasks');
     });
 });
 
