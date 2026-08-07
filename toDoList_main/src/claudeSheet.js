@@ -4246,9 +4246,15 @@ function getDisplayRunRecords() {
     const covered = new Set(queueEntryIds);
     localRecords.forEach(function(rec) { if (rec.entryId) covered.add(rec.entryId); });
     const shippedRecords = buildShippedEntryRecords(getLoadedProjectName(), covered);
-    // Only reorder when merging in queue or shipped-spine records; a local-only
-    // list keeps its existing newest-first insertion order untouched.
-    if (!queueRecords.length && !shippedRecords.length) return localRecords;
+    // ONE ordering for every combination of sources: dispatch time, descending.
+    // A local-only list must not fall back to `runRecords`' insertion order —
+    // that order is only incidentally newest-first (dispatch inserts at the head)
+    // and nothing enforces it: `trackDispatchedRun` accepts an explicit
+    // `dispatchedAt`, and records persisted by earlier versions arrive in
+    // whatever order they were stored. Selecting the ordering by which sources
+    // happen to be loaded is what let the same project read newest-first on one
+    // device and not on the device that dispatched the runs. The concat is a
+    // no-op when the other two arrays are empty, so one sorted path covers all.
     return queueRecords.concat(shippedRecords).concat(localRecords).sort(byDispatchedDesc);
 }
 
