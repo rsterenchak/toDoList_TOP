@@ -21316,6 +21316,25 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   overflow-wrap: anywhere;
   font-weight: 600;
 }
+.injectOnboardVerdictRetry {
+  appearance: none;
+  -webkit-appearance: none;
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 0.5px solid var(--border-bright);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.injectOnboardVerdictRetry:hover { color: var(--text-primary); }
+.injectOnboardVerdictRetry:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
 .injectOnboardVerdictShape {
   flex-shrink: 0;
   padding: 1px 7px;
