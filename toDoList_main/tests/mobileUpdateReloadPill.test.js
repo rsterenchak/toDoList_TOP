@@ -192,7 +192,11 @@ describe('mobile update-reload pill — src/style.css', () => {
         expect(rule).toMatch(/left:\s*50%/);
         expect(rule).toMatch(/translateX\(-50%\)/);
         expect(rule).toMatch(/--mobile-tab-h/);
-        expect(rule).toMatch(/env\(safe-area-inset-bottom/);
+        // The home-indicator clearance rides on the shared
+        // --mobile-bottom-inset token now, not raw env(safe-area-inset-bottom)
+        // — the raw inset is 34px in iOS standalone but 0 in Safari, which
+        // drifted this pill away from the tab bar it is anchored to.
+        expect(rule).toMatch(/var\(--mobile-bottom-inset/);
         expect(rule).toMatch(/z-index:\s*\d+/);
     });
 

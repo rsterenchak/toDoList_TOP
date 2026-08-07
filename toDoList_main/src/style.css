@@ -57,6 +57,25 @@
      Also exposed at desktop for symmetry; the tab bar itself is
      display:none above 1023px so the value is inert there. */
   --mobile-tab-h:  56px;
+  /* Home-indicator clearance for the mobile bottom chrome — the SINGLE
+     source of truth every tab-bar-relative offset must use so the bar,
+     the sheet layers, the update pill, the assistant FAB, and the list's
+     scroll padding can never drift apart.
+
+     Why it is capped rather than raw env(): iOS reports
+     env(safe-area-inset-bottom) as 34px when the app runs from the home
+     screen in standalone display-mode, but 0 in Safari, where the browser
+     toolbar already covers that band. Reserving the raw inset therefore
+     grew the tab bar to 90px in standalone and pushed the tabs 34px up
+     from the screen edge — a dead band under the labels that Safari never
+     showed, so the same build rendered two visibly different bars. The
+     indicator pill itself is only ~5px tall sitting ~8px above the screen
+     edge (the bottom ~13px of the inset); the tab's own internal padding
+     already contributes ~12px below the label. Capping the reserve at 8px
+     keeps the labels clear of the pill while the standalone bar reads
+     flush like Safari's. Safari (inset 0) resolves this to 0px, so its
+     rendering is bit-for-bit unchanged. */
+  --mobile-bottom-inset: min(env(safe-area-inset-bottom, 0px), 8px);
 }
 
 /* ── LIGHT THEME ──
@@ -2387,7 +2406,13 @@ body {
 #claudeLauncher {
   position: fixed;
   right: 18px;
-  bottom: 56px;
+  /* Rests on the tab bar's top edge, so the offset IS the bar's full
+     height — --mobile-tab-h plus the home-indicator clearance. A bare
+     56px matched the bar only while that clearance was 0 (Safari); in
+     iOS standalone the bar is taller and the FAB sank into it. Desktop
+     is inert here: the launcher is display:none above 1023px, where the
+     persistent chat pane replaces it. */
+  bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px));
   z-index: 90;
   width: 36px;
   height: 36px;
@@ -18181,7 +18206,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      dialog covers the tab bar entirely. */
   #bottomSheet[data-state="IDLE"],
   #bottomSheet[data-state="PEEK"] {
-    bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px));
   }
   #bottomSheet[data-state="EXPANDED"] {
     bottom: 0;
@@ -18251,7 +18276,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
        gesture catches at the tabs' top edge instead of being
        intercepted by the tabs. Includes the home-indicator safe-area
        inset since the tab bar now absorbs it. */
-    bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px));
     height: 16px;
     background: transparent;
     pointer-events: none;
@@ -18883,7 +18908,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 @media (max-width: 1023px) {
   #undoToast {
-    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    bottom: calc(64px + var(--mobile-bottom-inset, 0px));
   }
 
   /* ── Hide desktop right-cluster nav buttons on STACK mobile ──
@@ -18941,7 +18966,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     position: fixed;
     left: 50%;
     transform: translateX(-50%);
-    bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px) + 12px);
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) + 12px);
     z-index: 60; /* above the nav (49) / sheet peek, below modals (4000+) */
     display: flex;
     align-items: center;
@@ -19009,13 +19034,18 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     left: 0;
     right: 0;
     /* Flush against the screen bottom now that #footBar is hidden at
-       this breakpoint. The home-indicator safe-area inset is absorbed
-       into the bar's own padding-bottom so its elevated bg paints over
-       the iOS home pill zone instead of leaving an empty band below
-       the tabs. */
+       this breakpoint. The home-indicator clearance is absorbed into the
+       bar's own padding-bottom so its elevated bg paints over the iOS
+       home pill zone instead of leaving an empty band below the tabs.
+
+       That clearance comes from --mobile-bottom-inset, NOT raw
+       env(safe-area-inset-bottom): in standalone display-mode iOS reports
+       34px there against Safari's 0, which grew this bar to 90px and
+       lifted the tabs 34px off the screen edge — the standalone-only dead
+       band this rule now avoids. See the token's definition in :root. */
     bottom: 0;
-    height: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px));
+    padding-bottom: var(--mobile-bottom-inset, 0px);
     background: var(--bg-elevated);
     border-top: 0.5px solid var(--border-mid);
     display: flex;
@@ -19309,7 +19339,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      of being obscured behind the tabs. Applied to the scrollable list
      inside #mainBar so the offset clears the tab bar. */
   #mainList {
-    padding-bottom: calc(var(--mobile-tab-h, 56px) + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px));
   }
 }
 
@@ -21606,10 +21636,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    bottom; the padding is that top edge plus a ~17px clearance gap → 124px. The
    card is in the DOM only when the viewer is open (repo-backed project), so the
    `:has()` selector tracks that state with no JS. Mobile-only: the launcher is
-   replaced by the persistent desktop chat pane at ≥1024px. */
+   replaced by the persistent desktop chat pane at ≥1024px.
+
+   The 124px is measured off the launcher's Safari offset, so it carries the
+   same --mobile-bottom-inset term the launcher does — otherwise the FAB rises
+   with the tab bar in standalone display-mode while this padding stays put and
+   the clearance gap silently shrinks. Safari resolves the term to 0, leaving
+   the 124px arithmetic above exactly as written. */
 @media (max-width: 1023px) {
   body:has(#mainList #todoMdViewerCard) #mainList {
-    padding-bottom: 124px;
+    padding-bottom: calc(124px + var(--mobile-bottom-inset, 0px));
   }
 }
 

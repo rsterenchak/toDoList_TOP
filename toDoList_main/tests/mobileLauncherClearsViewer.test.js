@@ -94,13 +94,19 @@ describe('mobile Claude launcher clears the TODO.md viewer', () => {
     it('adds bottom padding deep enough to scroll the viewer header clear of the FAB (~100px)', () => {
         const rule = paddingRule(mobileMediaText());
         expect(rule, 'expected a viewer-gated #mainList padding rule').toBeTruthy();
-        const m = rule.body.match(/padding-bottom\s*:\s*(\d+)px/);
+        // The px term is the Safari-mode figure; it now carries an added
+        // var(--mobile-bottom-inset) so the clearance tracks the launcher,
+        // which rises with the tab bar in iOS standalone display-mode. That
+        // token resolves to 0 in Safari, so the arithmetic checked here is
+        // unchanged.
+        const m = rule.body.match(/padding-bottom\s*:\s*(?:calc\(\s*)?(\d+)px/);
         expect(m, 'expected the padding rule to set a px padding-bottom').toBeTruthy();
         const padding = parseInt(m[1], 10);
         // Must let the user scroll past the FAB: at least the launcher's base
         // 56px offset plus its height so the header row clears it.
         expect(padding).toBeGreaterThan(56);
         expect(padding).toBeGreaterThanOrEqual(100);
+        expect(rule.body).toMatch(/var\(--mobile-bottom-inset/);
     });
 
     it('no longer lifts the launcher via a viewer-gated bottom offset', () => {
