@@ -833,7 +833,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/shipEntry.js`
   <!-- id: c4c93b3e-3f98-4151-bc11-a3357df5f89f -->
 
-- [ ] **[MEDIUM]** Add a visible spinner to the Derive button while a derive run is in flight
+- [x] **[MEDIUM]** Add a visible spinner to the Derive button while a derive run is in flight — Completed: 2026-08-07
   - Type: bug
   - Description: The Derive action in the coverage pane only flips its label to "Deriving…" and disables itself while isDeriveActive() is true, with no visible spinner glyph, so an in-flight claude-derive.yml run doesn't clearly read as "working." Add a small 12px spinning ring (reusing the shared spin keyframes and #9D93EE accent already used by .projRunSpinner) inline before the label text, centered in the button, shown whenever isDeriveActive() is true and hidden otherwise. Update buildDeriveAction and fireDeriveFromPane in assignmentCoverage.js to render/remove the spinner span alongside the existing label/disabled toggling, and add the spinner styling (reusing the existing spin keyframes) to style.css near the .claudeCoverageDerive rules.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`
