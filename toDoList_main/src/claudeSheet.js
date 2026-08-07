@@ -900,13 +900,30 @@ function chatTurnOrderKey(turn) {
     return typeof turn.ts === 'number' ? turn.ts : 0;
 }
 
+// True when a local turn is known to have come back from a `chat_turns` row, so
+// its absence from a fresh fetch means the row was deleted rather than not yet
+// written. `created_at` is the discriminator: appendChatTurn stamps only `id` and
+// the client `ts`, and the hydrate merge below is the sole place `created_at` is
+// ever assigned — always from `row.created_at`. A turn without one has never
+// round-tripped (its insert may still be in flight, or it may predate the sync
+// entirely) and is preserved.
+function chatTurnWasPersisted(turn) {
+    return !!(turn && turn.created_at && typeof turn.id === 'string' && turn.id);
+}
+
 // Merge `repo`'s stored turns into the live thread, behind the local hydrate
-// that has already painted. Union by turn id with the remote row winning on a
+// that has already painted. Merge by turn id with the remote row winning on a
 // conflict (its row is the durable copy), ordered by created_at falling back to
 // the local ts, capped to the last CHAT_HISTORY_CAP, then re-saved and replayed.
 // A turn's in-memory `images` survive a remote overwrite: the row can't carry
 // them, and dropping them would blank the thumbnails on a turn the user just
 // sent.
+//
+// The merge is deliberately NOT a union: a local turn absent from the remote set
+// is dropped when it has previously round-tripped, so a wipe on another device
+// replicates here (see chatTurnWasPersisted). A ZERO-ROW result therefore runs
+// the same path as any other — it is positive proof the thread is empty, which
+// is exactly what a remote clear produces — and only an ok:false fetch bails.
 //
 // An ok:false fetch — offline, signed out, a failed read — returns without
 // touching chatHistory or the surface and raises no toast. This is a background
@@ -921,7 +938,6 @@ async function hydrateChatTurnsFromRemote(repo) {
     }
     if (!result || result.ok === false) return;
     const rows = Array.isArray(result.turns) ? result.turns : [];
-    if (!rows.length) return;
 
     // GUARD (load-bearing): replayChatHistory below opens with
     // `surface.innerHTML = ''`. If the workspace moved while this fetch was in
@@ -948,7 +964,18 @@ async function hydrateChatTurnsFromRemote(repo) {
         indexById[id] = merged.length;
         merged.push(turn);
     }
-    chatHistory.forEach(put);
+    // Keep only the local turns the remote set still vouches for. A turn that has
+    // round-tripped and is now missing was deleted elsewhere; one that hasn't may
+    // simply be ahead of its insert. Local turns go in first so a remote row
+    // still overwrites them on a conflict.
+    const remoteIds = {};
+    rows.forEach(function(row) {
+        if (row && typeof row.id === 'string' && row.id) remoteIds[row.id] = true;
+    });
+    chatHistory.forEach(function(turn) {
+        if (chatTurnWasPersisted(turn) && !Object.prototype.hasOwnProperty.call(remoteIds, turn.id)) return;
+        put(turn);
+    });
     rows.forEach(function(row) {
         if (!row || (row.role !== 'user' && row.role !== 'assistant')) return;
         put({
@@ -962,9 +989,14 @@ async function hydrateChatTurnsFromRemote(repo) {
 
     try {
         chatHistory = merged.slice(-CHAT_HISTORY_CAP);
+        // Written through even when the merge emptied the thread, so a reload
+        // can't restore turns a wipe on another device removed.
         saveChatHistory();
         replayChatHistory();
     } catch (e) { /* background sync — never surfaced */ }
+    // replayChatHistory ends in this too, but the merge can empty the thread and
+    // the pill must go with it even if the replay above threw.
+    syncClearChatVisibility();
 }
 
 // ── ITERATE ENTRY (localStorage-backed, per-repo) ──
