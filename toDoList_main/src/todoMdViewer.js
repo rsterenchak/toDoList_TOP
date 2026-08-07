@@ -58,6 +58,15 @@ function runEntryTitle(btn) {
     return text || 'Entry run';
 }
 
+// The Runs-tab title for a backlog run. The dispatch names no entry, but it
+// does name a task row — and with several projects able to run at once, that
+// name is what tells two in-flight rows apart. Falls back to the generic label
+// only when the project has no usable name.
+export function backlogRunTitle(projectName) {
+    const name = typeof projectName === 'string' ? projectName.trim() : '';
+    return name || 'Backlog run';
+}
+
 // Entries reverted (merged) this session — once a completed row's change has
 // been rolled back, its Revert control disappears so it can never be triggered
 // again. This is the double-revert guard: a second merged revert of the same PR
@@ -2068,19 +2077,22 @@ function buildTodoMdViewerCard(projectName, target) {
                 // Same correlation id, second surface: give the chat sheet's
                 // Runs tab a live QUEUED row for this dispatch too, so a run
                 // started here is visible there while it's in flight instead of
-                // appearing only once its entry is checked off.
+                // appearing only once its entry is checked off. Label that row
+                // with the task row the dispatch came from — the same name
+                // handed over as `project` — so concurrent backlog runs across
+                // projects stay tellable apart.
                 trackDispatchedRun({
                     correlationId: correlationId,
-                    title: 'Backlog run',
+                    title: backlogRunTitle(projectName),
                     repo: target ? target.repo : null,
                     project: projectName,
                     dispatchedAt: dispatchedAt,
                     // A backlog dispatch names no entry — the routine picks the
-                    // task itself — so "Backlog run" is all the row can say up
-                    // front. Hand the tracker the TODO.md body as it stands at
-                    // dispatch: once the run lands, diffing it against main
-                    // reveals which entry got checked off, and the row can show
-                    // that entry's real title instead of the generic label.
+                    // task itself — so hand the tracker the TODO.md body as it
+                    // stands at dispatch: once the run lands, diffing it
+                    // against main reveals which entry got checked off, and the
+                    // row can show that entry's real title in place of the
+                    // task row's name.
                     todoSnapshot: card.dataset.content || '',
                 });
                 showInjectToast('Backlog run dispatched');
