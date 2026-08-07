@@ -815,7 +815,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 249774a8-4f02-4b8a-9466-257e2d190e40 -->
 
-- [ ] **[MEDIUM]** Runs tab shows oldest-first on the device that dispatched the runs
+- [x] **[MEDIUM]** Runs tab shows oldest-first on the device that dispatched the runs — Completed: 2026-08-07
   - Type: bug
   - Description: The Runs tab lists newest-first on one device and oldest-first on another for the same project. `getDisplayRunRecords` picks between two orderings at ~line 4251: when queue or shipped-spine records are present it sorts everything `byDispatchedDesc`, but when only local records exist it returns `runRecords` unsorted via an early return, commented as keeping its "existing newest-first insertion order". That comment is wrong — `runRecords` is appended to on dispatch, so its insertion order is oldest-first. Because `runRecords` lives in per-device localStorage, the device a run was dispatched from has local records and takes the unsorted path, while any other device has none and takes the sorted one. The split is by dispatch origin, not by breakpoint — it will flip if the runs are started from the phone instead.
   - Behavior: The Runs tab lists newest-first on every device and in every combination of sources. A local-only list orders by dispatch time descending like any other, so a run started moments ago appears at the top rather than beneath older completed rows. The Clear-completed affordance stays pinned beneath the last row.
