@@ -13,13 +13,7 @@ export const changelog = [
             "Clearing a chat on one device now empties that conversation on your other devices too, instead of leaving the old thread in place.",
             "A backlog run now appears in the Runs tab under the name of the list it was started from, so several runs at once are easy to tell apart.",
             "The Runs tab lists runs newest-first on every device, including the one they were started from.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-06',
-        fixed: [
-            "Checking a repo from the phone no longer spins forever — the result is read directly, re-read when you return to the tab, and reported with a retry if it never arrives.",
+            "Accepting a proposal no longer drops the new task when a background sync lands mid-flight, so the run stays linked to its entry.",
         ],
     },
 ];
