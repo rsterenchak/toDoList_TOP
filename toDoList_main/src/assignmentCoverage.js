@@ -1591,6 +1591,27 @@ function computePaneBreakdown(aspects, labels, rows) {
 const DERIVE_LABEL = 'Derive tasks';
 const DERIVE_PENDING_LABEL = 'Deriving…';
 
+// Paint the pane's Derive action for a given pending state — label, disabled
+// flag, and the in-flight spinner, together, so the three can never disagree.
+// The spinner is a sibling element of the label text rather than part of it, so
+// the button's textContent stays the bare label; it exists only while pending,
+// so a resting button carries no animating node. `aria-hidden` keeps it out of
+// the accessibility tree — the "Deriving…" label already announces the state.
+function paintDeriveAction(btn, pending) {
+    if (!btn) return;
+    btn.disabled = !!pending;
+    btn.textContent = '';
+    if (pending) {
+        const spinner = document.createElement('span');
+        spinner.className = 'projRunSpinner claudeCoverageDeriveSpinner';
+        spinner.setAttribute('aria-hidden', 'true');
+        btn.appendChild(spinner);
+    }
+    btn.appendChild(document.createTextNode(
+        pending ? DERIVE_PENDING_LABEL : DERIVE_LABEL
+    ));
+}
+
 // The active project's `proposed` queue rows — derive output waiting on Accept /
 // Dismiss. `getQueueRows()` is already scoped to the loaded project, so this needs
 // no further project filter. This is the SINGLE source the pane's count badge, the
@@ -1616,7 +1637,7 @@ function fireDeriveFromPane(btn) {
     if (!projectId) return;
     // Instant local feedback so a double-tap can't fire two runs before the first
     // paint; the durable disabled state now comes from isDeriveActive().
-    if (btn) { btn.disabled = true; btn.textContent = DERIVE_PENDING_LABEL; }
+    paintDeriveAction(btn, true);
     startDeriveTracking();
     const correlationId = mintEntryId();
     setDeriveCorrelationId(correlationId);
@@ -1625,12 +1646,12 @@ function fireDeriveFromPane(btn) {
             function (res) {
                 if (res && res.ok === false) {
                     stopDeriveTracking();
-                    if (btn) { btn.disabled = false; btn.textContent = DERIVE_LABEL; }
+                    paintDeriveAction(btn, false);
                 }
             },
             function () {
                 stopDeriveTracking();
-                if (btn) { btn.disabled = false; btn.textContent = DERIVE_LABEL; }
+                paintDeriveAction(btn, false);
             }
         );
 }
@@ -1643,12 +1664,7 @@ function buildDeriveAction() {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'claudeCoverageDerive';
-    if (isDeriveActive()) {
-        btn.textContent = DERIVE_PENDING_LABEL;
-        btn.disabled = true;
-    } else {
-        btn.textContent = DERIVE_LABEL;
-    }
+    paintDeriveAction(btn, isDeriveActive());
     btn.addEventListener('click', function () { fireDeriveFromPane(btn); });
     return btn;
 }
