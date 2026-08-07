@@ -805,7 +805,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 486bbe23-bf1b-4a84-a447-fed62d7a4104 -->
 
-- [ ] **[MEDIUM]** Backlog runs show a generic title instead of the task row's name
+- [x] **[MEDIUM]** Backlog runs show a generic title instead of the task row's name — Completed: 2026-08-07
   - Type: bug
   - Description: Dispatching Run backlog from the TODO.md viewer card creates a Runs-tab row titled `Backlog run` for every project, so several concurrent runs are indistinguishable. The hardcoded title at `todoMdViewer.js:2074` is justified by a comment reasoning that a backlog dispatch names no entry — true, since the routine picks the task itself — but that answers a different question. The row does not need the entry's name; it needs the task row's name, and `projectName` is already in scope and already passed to the same `trackDispatchedRun` call as `project`. The per-entry Run button gets this right via `runEntryTitle`, and the chat ship path via `deriveRunTitle`; only the backlog path discards an identity it holds.
   - Behavior: A backlog dispatch titles its Runs-tab row with the task row's name, falling back to `Backlog run` only when that name is empty. The row shows its live status beside the title as it already does for other dispatches — `QUEUED` on dispatch, then running, then terminal. Once the run lands and the TODO.md diff reveals which entry was checked off, the row still swaps to that entry's real title, exactly as it does now; the task row's name is the label before that resolves, not instead of it.
