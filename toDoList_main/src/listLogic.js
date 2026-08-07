@@ -3041,6 +3041,7 @@ export const listLogic = (function () {
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
         allProjectsTotal = 0;
+        _pendingTodoInserts.clear();
     }
 
 
@@ -3355,14 +3356,45 @@ export const listLogic = (function () {
     // empty on the next reload.
     const _pendingProjectInserts = new Map();
 
+    // Ids of todos this session INSERTed that no Supabase SELECT has echoed
+    // back yet. hydrateFromSupabase rebuilds an already-synced project's items
+    // purely from the latest SELECT, so a row created moments earlier — the
+    // todo addEntryTodo materializes for a proposal about to ship — is absent
+    // from that response and would be dropped, taking the id stampTodoEntryId
+    // is about to look up with it ("couldn't link this task to its entry").
+    // Ids here are carried into the merged tree instead; the hydrate removes
+    // an id the moment the server echoes it back, so the carry-over lasts only
+    // as long as the INSERT is genuinely unconfirmed and can never resurrect a
+    // row another device deletes later.
+    const _pendingTodoInserts = new Set();
+
     function noteSelfEcho(id) {
         if (!id) return;
         _selfEchoIds.add(id);
     }
 
+    // Register/retire a pending todo INSERT. Called at the very top of
+    // persistMutation — BEFORE its first await — so the id is visible to a
+    // hydrate that starts in the same tick as the fire-and-forget mutation.
+    // Registering after the `getSession` await would leave exactly the race
+    // window this set exists to close.
+    function trackPendingTodoWrite(req) {
+        if (!req || req.table !== 'todos') return;
+        const payload = req.payload;
+        if (!payload || !payload.id) return;
+        // Blank placeholders never reach the server (filtered in the insert
+        // path below), so they are never pending either.
+        if (req.op === 'insert' && payload.title) {
+            _pendingTodoInserts.add(payload.id);
+        } else if (req.op === 'delete') {
+            _pendingTodoInserts.delete(payload.id);
+        }
+    }
+
     async function persistMutation(req) {
 
         if (!req || !req.op || !req.table) return;
+        trackPendingTodoWrite(req);
         try {
             const sessionResult = await supabase.auth.getSession();
             const session = sessionResult
@@ -3682,11 +3714,17 @@ export const listLogic = (function () {
             const lastSeenServerProjectIds = readLastSeenServerProjectIds();
 
             const todosByProjectId = {};
+            const remoteTodoIds = new Set();
             remoteTodos.forEach(function(t) {
                 if (!todosByProjectId[t.project_id]) {
                     todosByProjectId[t.project_id] = [];
                 }
                 todosByProjectId[t.project_id].push(t);
+                remoteTodoIds.add(t.id);
+                // The server has acknowledged this row — it is no longer an
+                // unconfirmed INSERT, so later hydrates treat it like any
+                // other synced todo (including honouring a remote deletion).
+                _pendingTodoInserts.delete(t.id);
             });
 
             const merged = {};
@@ -3776,6 +3814,23 @@ export const listLogic = (function () {
                             || undefined,
                         created_at: t.created_at || null,
                     });
+                });
+                // Carry over todos this session created whose INSERT the
+                // SELECT above hasn't caught up with yet. Without this, a
+                // hydrate landing between "materialize the todo" and "stamp
+                // its entry id" rebuilds the project from remote rows alone
+                // and silently drops the new row — the local-only-project
+                // branch below preserves its items, an already-synced project
+                // had no equivalent. The item object itself is reused (not a
+                // copy) so references the UI already holds stay live.
+                const localItems = (localEntry && Array.isArray(localEntry.items))
+                    ? localEntry.items
+                    : [];
+                localItems.forEach(function(it) {
+                    if (!it || !it.id) return;
+                    if (!_pendingTodoInserts.has(it.id)) return;
+                    if (remoteTodoIds.has(it.id)) return;
+                    merged[p.name].items.push(it);
                 });
             });
 
@@ -4063,6 +4118,7 @@ export const listLogic = (function () {
         _realtimeChannels = [];
         _realtimeWanted = false;
         _selfEchoIds.clear();
+        _pendingTodoInserts.clear();
 
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         try { localStorage.removeItem('allProjects'); } catch (_) { /* ignore */ }
