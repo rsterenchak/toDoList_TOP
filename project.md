@@ -1,79 +1,79 @@
 # Project
 
-<!-- The brief this project works from. The Coverage tab reads it, and the derive
-     pass proposes backlog entries from it. Fill in Goals at minimum — the tab
-     treats a project.md with an empty Goals section as unfilled, the same way it
-     treats an assignment.md with no Requirements.
-
-     This is not a spec you have to finish before starting. A few honest bullets
-     beat a thorough document written before you know what you're building.
-     Iteration happens in task rows and chat; this is just the cold start. -->
+<!-- SYNTHETIC — written to exercise the Coverage tab and the project-derive
+     pass. Sized so each goal is roughly one entry's work, and deliberately
+     UI-first so the Surfaces section carries real weight. -->
 
 ## Overview
 
-<!-- Optional. What this is and who it's for, in a few sentences. Context that
-     helps derive understand the goals below — not itself something to build.
-     Delete this section if the goals speak for themselves. -->
+A practice log for guitar. I practise most days, usually for twenty minutes,
+usually on my phone propped against something, and I never remember what I
+worked on last time or how long it's been since I touched a particular piece.
+
+Paper notebooks don't survive contact with a guitar case. Existing apps are
+either metronome-first or built around courses I'm not taking.
+
+The thing I actually want is small: start a session, tag what I worked on, stop,
+and later be able to see what I've been neglecting.
 
 ## Goals
 
-<!-- Required. What the thing should do, as bullets. This is what derive reads
-     and turns into proposals, so write outcomes rather than tasks: "offline-first
-     so it works on the subway", not "add a service worker" — the second is an
-     implementation you may not end up choosing.
-
-     Unlike an assignment's requirements these are NOT a closed checklist, and
-     the Coverage tab shows no fraction against them. Add and remove freely as
-     the project changes. -->
-
-- 
+- Starting a session takes one tap from the app opening — no setup, no choosing
+  anything first. Tagging what I worked on happens during or after, never before.
+- A session survives the screen locking, the app backgrounding, and the browser
+  being killed. Losing forty minutes because iOS reclaimed the tab is the failure
+  that would make me stop using it.
+- I can see at a glance which pieces I have not touched recently, because that is
+  the question I actually have and the one a chronological list answers worst.
+- Works with no network. Practice happens in a basement with no signal.
+- Usable one-handed while holding a guitar. Every primary action reachable with a
+  thumb, nothing requiring precision.
 
 ## Surfaces
 
-<!-- For a UI-first project this is the real scope — the screens, panes, sheets,
-     and cards the thing is made of. Name each one and say in a line what it is
-     for. Derive reads these as buildable units, so a surface named here is a
-     proposal it can make; one you only ever described in chat is not.
-
-     Reference a committed mockup by path where one exists (see the note under
-     Look and feel). "As in docs/mockups/queue-rail.html" is worth more than a
-     paragraph describing the same layout, because derive can read the file. -->
-
-- 
+- **Session screen** — the default view. A large start control, the running
+  elapsed time once active, and a stop control. Nothing else competes with it.
+  As in `docs/mockups/session-screen.html`.
+- **Tag sheet** — slides up after stopping. The pieces worked on, chosen from
+  recent ones or typed fresh. Skippable; an untagged session still counts.
+- **Neglect list** — pieces ordered by how long since they were last practised,
+  longest first. The app's actual answer to "what should I work on".
+- **History** — sessions in reverse order, date and duration and tags. Deliberately
+  plain; it exists so nothing feels lost, not to be browsed.
+- **Piece detail** — one piece's total time, last practised, and its sessions.
+  Reached from the neglect list or from a tag.
 
 ## Look and feel
 
-<!-- Optional but valuable on a UI-first project. The visual direction: palette,
-     type, density, the two or three decisions everything else follows from.
+Dark, high contrast, large touch targets — it gets used in a dim room at arm's
+length. One accent colour, used only for the active session state, so "am I
+recording" is answerable from across the room.
 
-     Keep it short and move it OUT once it settles — established design tokens
-     belong in CLAUDE.md as conventions, and duplicating them here means two
-     places to update and one of them going stale. This section is where the
-     direction gets DECIDED, not where it lives forever.
-
-     Commit mockups rather than describing them. An HTML or SVG mockup saved to
-     docs/mockups/ is something derive can read, the code viewer can render, and
-     a later run can be held against — a mockup that only ever existed in a chat
-     is a decision the repo cannot see. -->
+Type large enough to read without leaning in. No decorative chrome; a session
+screen that is mostly empty space is correct.
 
 ## Constraints
 
-<!-- Recommended. Boundaries the work has to respect: a platform, a dependency you
-     will or won't take, a performance or size budget, something that must keep
-     working. Derive treats these as binding on every proposal.
-
-     Project conventions — file layout, naming, test style — belong in CLAUDE.md
-     instead. This is for constraints on WHAT is built, not HOW it is written. -->
-
-- 
+- Offline-first. Every surface must work with no network; sync, if it ever
+  exists, is additive and never a precondition.
+- Local storage only for now. No account, no server, no login wall between
+  opening the app and starting a session.
+- The elapsed timer must be derived from a stored start timestamp rather than an
+  interval counter, so a backgrounded tab resumes correctly instead of losing
+  time.
+- Mobile web, installable. Not a native app.
 
 ## Out of scope
 
-<!-- Recommended. What this project deliberately is not doing, and ideally why.
-     The most useful section for derive, because it is the only one that can stop
-     a plausible-sounding proposal you do not want.
-
-     Write down the things you have already decided against, especially the ones
-     that sound like obvious good ideas. -->
-
-- 
+- **A metronome or tuner.** Every other app has them; I have a physical one and a
+  clip-on tuner, and adding them makes this a different product.
+- **Goals, streaks, or targets.** Deliberately not motivational. A day missed
+  should cost nothing, because the guilt mechanic is why I stopped using the last
+  three of these.
+- **Audio recording.** Storage, permissions, and playback UI for something I would
+  never listen back to.
+- **Sheet music or tab.** I read from a stand or a separate app; duplicating that
+  is a project of its own.
+- **Multi-instrument support.** Guitar only. Generalising the model before there
+  is a second instrument is speculative work.
+- **Sharing or social anything.** No.
