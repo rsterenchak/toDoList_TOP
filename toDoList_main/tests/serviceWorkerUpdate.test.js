@@ -708,7 +708,7 @@ describe('mobile update cue — src/main.js wiring', () => {
         it('Settings modal calls paintAboutVersionUpdateCue on render', () => {
             const showIdx = settingsModal.indexOf('function showSettingsModal()');
             expect(showIdx).toBeGreaterThan(-1);
-            const fnSlice = settingsModal.slice(showIdx, showIdx + 12000);
+            const fnSlice = settingsModal.slice(showIdx, showIdx + 20000);
             expect(fnSlice).toMatch(/paintAboutVersionUpdateCue\s*\(/);
         });
 
@@ -718,7 +718,7 @@ describe('mobile update cue — src/main.js wiring', () => {
             // on the same named handler so future edits can't drop one.
             const showIdx = settingsModal.indexOf('function showSettingsModal()');
             expect(showIdx).toBeGreaterThan(-1);
-            const fnSlice = settingsModal.slice(showIdx, showIdx + 12000);
+            const fnSlice = settingsModal.slice(showIdx, showIdx + 20000);
             expect(fnSlice).toMatch(
                 /document\.addEventListener\(\s*['"]appUpdateAvailable['"]\s*,\s*onAppUpdateAvailableForModal\s*\)/
             );

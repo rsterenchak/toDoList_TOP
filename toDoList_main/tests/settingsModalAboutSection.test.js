@@ -33,7 +33,7 @@ describe('mobile Settings modal — About section', () => {
         expect(idx).toBeGreaterThan(-1);
         // Wide enough to cover the whole modal body, including the new
         // About section + the body.appendChild ordering at the bottom.
-        return settingsModal.slice(idx, idx + 10000);
+        return settingsModal.slice(idx, idx + 20000);
     }
 
     describe('createDrawerInfoRow helper', () => {

@@ -1,7 +1,7 @@
 // Mobile Settings modal extracted from main.js (a behaviour-preserving move).
 // showSettingsModal builds the mobile Settings dialog (View / Appearance /
-// About / Help / Data / Account sections) with the three-way close required by
-// CLAUDE.md. Module singletons it uses (drawer-row factories, listLogic, the
+// About / Help / Data / Repo setup / Account sections) with the three-way
+// close required by CLAUDE.md. Module singletons it uses (drawer-row factories, listLogic, the
 // changelog/tour/export/import helpers, supabase, etc.) are imported directly
 // the same way main.js imports them; the pieces defined inside main.js — the
 // two main-local toggle builders, wireDismissable, the #drawerSettingsBtn node,
@@ -20,6 +20,7 @@ import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarouse
 import { startCoachmarkTour } from './coachmark.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { showInjectSettingsModal } from './inject.js';
+import { showRepoSetupModal } from './repoSetup.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { supabase } from './supabaseClient.js';
 
@@ -205,14 +206,35 @@ export function createSettingsModal({
             openImportPicker(rebuildAfterImport);
         });
         dataSection.appendChild(importRow);
-        // Configure inject — mirrors the desktop ghost menu row. Lives in
-        // the Data section alongside Export/Import so the per-device
-        // Worker URL + shared secret are reachable from a phone too.
+
+        // Repo setup section — mobile parity for the settings menu's own
+        // Repo setup cluster. Shape reference opens the SHAPES.md picker
+        // (which shape a repo is, whether a template exists, the gotchas
+        // that apply); Configure inject sits under the same heading because
+        // pointing the app at a repo is the other half of setting one up.
+        // Built from the modal's local createDrawerActionRow rows rather
+        // than settingsMenu.js's dropdown builders, which carry their own
+        // chrome — the two surfaces are separately built by design.
+        const repoSetupSection = document.createElement('section');
+        repoSetupSection.id = 'settingsRepoSetupSection';
+        repoSetupSection.className = 'settingsSection';
+        const repoSetupHeading = document.createElement('div');
+        repoSetupHeading.className = 'settingsSectionHeading';
+        repoSetupHeading.textContent = 'Repo setup';
+        repoSetupSection.appendChild(repoSetupHeading);
+        const shapeReferenceRow = createDrawerActionRow('Shape reference', function() {
+            close();
+            showRepoSetupModal();
+        });
+        repoSetupSection.appendChild(shapeReferenceRow);
+        // Configure inject — mirrors the desktop ghost menu row, so the
+        // per-device Worker URL + shared secret are reachable from a phone
+        // too.
         const injectRow = createDrawerActionRow('Configure inject', function() {
             close();
             showInjectSettingsModal();
         });
-        dataSection.appendChild(injectRow);
+        repoSetupSection.appendChild(injectRow);
 
         // Account section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP / About section pattern at the same heading typography
@@ -237,6 +259,7 @@ export function createSettingsModal({
         body.appendChild(aboutSection);
         body.appendChild(helpSection);
         body.appendChild(dataSection);
+        body.appendChild(repoSetupSection);
         body.appendChild(accountSection);
 
         dialog.appendChild(header);

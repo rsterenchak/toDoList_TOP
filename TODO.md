@@ -899,7 +899,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 399e3328-f112-4ec9-9fa8-51ba195c212a -->
 
-- [ ] **[MEDIUM]** Shape reference is missing from the mobile settings modal
+- [x] **[MEDIUM]** Shape reference is missing from the mobile settings modal — Completed: 2026-08-08
   - Type: bug
   - Description: The Repo setup section — the `Shape reference` row that opens the `SHAPES.md` picker — was added to `settingsMenu.js`, the gear-button dropdown. On mobile the settings surface is `settingsModal.js`, opened from `#drawerSettingsBtn`, which `main.js` describes as drawer-bound and therefore mobile-only via CSS. That modal lists View, Appearance, About, Help, Data, and Account, and carries `Configure inject` under Data — but has no Repo setup section and no way to reach the picker. So the shape reference, whose whole purpose is being readable from a phone while setting up a repo, is desktop-only.
   - Behavior: The mobile settings modal gains a `Repo setup` section containing `Shape reference`, matching the dropdown's section on desktop. Tapping it opens the same picker via `showRepoSetupModal()`. The section sits immediately before the existing `Configure inject` control, and `Configure inject` moves under the same heading so the two halves of pointing the app at a repo read as one cluster, as they do in the dropdown. Nothing else in the modal moves or changes.
