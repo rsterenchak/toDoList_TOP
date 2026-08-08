@@ -879,7 +879,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: 5af3675c-80df-418d-bd5b-5cbfcec63e54 -->
 
-- [ ] **[MEDIUM]** Coverage tab stays empty until the project is switched
+- [x] **[MEDIUM]** Coverage tab stays empty until the project is switched — Completed: 2026-08-08
   - Type: bug
   - Description: On first paint the Coverage tab shows no card; switching to another project and back makes it appear. `main.js:2904` calls `initInjectTargets()` without awaiting it, so the targets cache is often still empty when the chat pane mounts and calls `refreshAssignmentForActiveProject()` at `claudeSheet.js:5505`. With no targets loaded, `resolveReadTargetFor` returns null and `refreshAssignment` resolves synchronously to `absent` without a Worker call — but it still records `_assignmentProject` for that project. The double-fetch guard then sees the cache already belongs to the active project and no-ops every later call, so nothing ever re-reads. A project switch is the only thing that invalidates it. This is not specific to the brief path; an assignment repo races identically and has since the tab was built.
   - Behavior: The Coverage tab renders its card on first paint without a project switch, for both assignment and personal repos. A project whose target cannot yet be resolved does not settle as `absent` — it stays unresolved, so the next call retries rather than being suppressed by the double-fetch guard. Once the targets cache loads, the tab reads and paints on its own. A project that genuinely has no registry target still resolves to `absent` and renders no card, exactly as today.
