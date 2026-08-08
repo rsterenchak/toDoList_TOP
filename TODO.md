@@ -898,3 +898,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/assignmentCoverage.js
   - Completed:
   <!-- id: 399e3328-f112-4ec9-9fa8-51ba195c212a -->
+
+- [ ] **[MEDIUM]** Shape reference is missing from the mobile settings modal
+  - Type: bug
+  - Description: The Repo setup section — the `Shape reference` row that opens the `SHAPES.md` picker — was added to `settingsMenu.js`, the gear-button dropdown. On mobile the settings surface is `settingsModal.js`, opened from `#drawerSettingsBtn`, which `main.js` describes as drawer-bound and therefore mobile-only via CSS. That modal lists View, Appearance, About, Help, Data, and Account, and carries `Configure inject` under Data — but has no Repo setup section and no way to reach the picker. So the shape reference, whose whole purpose is being readable from a phone while setting up a repo, is desktop-only.
+  - Behavior: The mobile settings modal gains a `Repo setup` section containing `Shape reference`, matching the dropdown's section on desktop. Tapping it opens the same picker via `showRepoSetupModal()`. The section sits immediately before the existing `Configure inject` control, and `Configure inject` moves under the same heading so the two halves of pointing the app at a repo read as one cluster, as they do in the dropdown. Nothing else in the modal moves or changes.
+  - Implementation notes: `settingsModal.js` builds its sections with local heading and item construction rather than importing `buildSettingsMenuItem`/`buildSettingsMenuSectionHeading` from `settingsMenu.js` — follow the modal's own existing pattern (see how the Data section at ~line 196 builds its heading and the `Configure inject` row at ~line 213) rather than importing the dropdown's builders, which are shaped for a dropdown and would need their own styling reconciled. Import `showRepoSetupModal` from `repoSetup.js` the same way the modal already imports `showInjectSettingsModal` from `inject.js` at line 22. Do not add the section to `settingsMenu.js` again — it is already there and correct. Do not attempt to unify the two surfaces in this entry: they are separately built by design and merging them is a much larger change than this bug warrants.
+  - Out of scope: unifying `settingsMenu.js` and `settingsModal.js`; the picker's own rendering; the desktop dropdown; any other section of the mobile modal.
+  - File: toDoList_main/src/settingsModal.js
+  - Completed:
+  <!-- id: 49856619-d84e-463b-a366-e706fca58785 -->
