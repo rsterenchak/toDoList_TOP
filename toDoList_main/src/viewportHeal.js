@@ -17,14 +17,21 @@
 // `#outerContainer` is `height: 100dvh` on mobile, which satisfies the
 // workaround's full-viewport-height requirement.
 //
-// The heal is a strict no-op unless the viewport is measurably shorter than
-// the tallest it has been this session, so Safari, desktop, and a fresh
-// standalone session that has not yet opened the keyboard never see it run.
+// "Too short" is measured against the PHYSICAL SCREEN, never against the
+// tallest viewport seen this session. A session maximum cannot work in the
+// field: iOS keeps the installed app resident, so a launch inside an
+// already-shrunken web process — the common case, since only a force-quit
+// resets it — seeds the maximum FROM the shrunken height and reports a deficit
+// of zero forever, on exactly the sessions that need healing. `screen.height`
+// and `screen.width` are CSS pixels on iOS and do not shrink with this bug,
+// and in standalone with `viewport-fit=cover` the layout viewport should equal
+// the full screen dimension, so the screen is a reference the bug cannot
+// corrupt.
 
-// How far below the session maximum the viewport must sit before we treat it
-// as stuck. The iOS shrink is ~59px; a few pixels of drift (rounding, a
-// scrollbar appearing) is normal and must not trigger a flip.
-const STUCK_THRESHOLD_PX = 4;
+// How far below the expected height the viewport must sit before we treat it
+// as stuck. The real deficit is ~59px; the margin absorbs minor UA quirks
+// (rounding, a layout viewport legitimately inset a few px) without thrashing.
+const STUCK_THRESHOLD_PX = 24;
 
 // iOS keeps resizing the viewport for a beat after the keyboard starts
 // dismissing, so healing on the blur itself would measure mid-animation and
@@ -35,35 +42,69 @@ const FOCUSOUT_HEAL_DELAY_MS = 140;
 // debounce past the burst so the stuck-check reads a settled height.
 const VIEWPORT_SETTLE_MS = 200;
 
+// Launch, resume-from-the-app-switcher, and bfcache restore all land with the
+// viewport still settling, so each defers its check by this much rather than
+// measuring the frame it arrives on.
+const SETTLE_CHECK_DELAY_MS = 300;
+
+// After a flip that changed nothing, back off. Platforms where the expected
+// dimension legitimately differs from the layout viewport — iPad windowed
+// standalone most obviously — would otherwise flip on every trigger forever;
+// this buys them one harmless flip instead of a loop.
+const INEFFECTIVE_HEAL_COOLDOWN_MS = 5000;
+
 // The mobile layout — and therefore `#mobileTabBar`, the element this exists
 // to reseat — is scoped to ≤1023px. At desktop widths the bar is `display:
 // none` and there is nothing to heal, so a desktop-installed PWA whose window
 // the user merely resized smaller never flips anything.
 const DESKTOP_MIN_WIDTH = 1024;
 
-// The tallest `window.innerHeight` seen this session. The iOS shrink is
-// permanent for the session, so the pre-keyboard height is the only reference
-// for "how tall should this be" available at runtime.
-let maxViewportHeight = 0;
+// When the last flip left the deficit exactly where it found it. 0 means no
+// ineffective flip has been recorded.
+let lastIneffectiveHealAt = 0;
 
 function readViewportHeight() {
     const h = window.innerHeight;
     return typeof h === 'number' && h > 0 ? h : 0;
 }
 
-function trackViewportHeight() {
-    const h = readViewportHeight();
-    if (h > maxViewportHeight) maxViewportHeight = h;
+// How tall the layout viewport should be. `screen.width`/`screen.height` are
+// device-native on iOS and do NOT swap with orientation, so the portrait
+// height is `screen.height` and the landscape height is `screen.width`.
+// Orientation is read off the viewport itself rather than `screen.orientation`,
+// which is absent on older iOS. Returns 0 when there is no usable screen to
+// compare against, which makes every caller a no-op rather than a guess.
+function expectedViewportHeight() {
+    const s = window.screen;
+    if (!s) return 0;
+    const w = typeof s.width === 'number' ? s.width : 0;
+    const h = typeof s.height === 'number' ? s.height : 0;
+    const landscape = window.innerWidth > window.innerHeight;
+    const expected = landscape ? w : h;
+    return expected > 0 ? expected : 0;
 }
 
-// True only when the viewport is shorter than its session maximum by more than
-// the threshold, at a width where the mobile layout is actually in play. Every
+// Positive when the viewport is shorter than the screen says it should be.
+// 0 when either measurement is unavailable, so an unknown state reads as
+// healthy.
+function viewportDeficit() {
+    const expected = expectedViewportHeight();
+    const actual = readViewportHeight();
+    if (!expected || !actual) return 0;
+    return expected - actual;
+}
+
+// True only when the viewport is short of the physical screen by more than the
+// threshold, at a width where the mobile layout is actually in play. Every
 // trigger routes through here, so the no-op guarantee lives in one place.
 function isViewportStuck() {
     if (window.innerWidth >= DESKTOP_MIN_WIDTH) return false;
-    const h = readViewportHeight();
-    if (!h || !maxViewportHeight) return false;
-    return (maxViewportHeight - h) > STUCK_THRESHOLD_PX;
+    return viewportDeficit() > STUCK_THRESHOLD_PX;
+}
+
+function inHealCooldown() {
+    if (!lastIneffectiveHealAt) return false;
+    return (Date.now() - lastIneffectiveHealAt) < INEFFECTIVE_HEAL_COOLDOWN_MS;
 }
 
 // Whether anything other than the document body holds focus. Used by the
@@ -85,17 +126,25 @@ function hasFocusedElement() {
 // observable to tests.
 function healViewport() {
     if (!isViewportStuck()) return false;
+    if (inHealCooldown()) return false;
     const outer = document.getElementById('outerContainer');
     if (!outer) return false;
 
     const list = document.getElementById('mainList');
     const scrollTop = list ? list.scrollTop : 0;
+    const before = viewportDeficit();
 
     outer.style.display = 'none';
     void outer.offsetHeight;   // synchronous reflow, between the two writes
     outer.style.display = '';
 
     if (list) list.scrollTop = scrollTop;
+
+    // Re-measure. A flip that left the deficit where it found it either did
+    // not work or was never the right remedy here, and repeating it on every
+    // subsequent trigger would be a loop; a flip that shrank the deficit is
+    // free to run again immediately.
+    if (viewportDeficit() >= before) lastIneffectiveHealAt = Date.now();
     return true;
 }
 
@@ -116,13 +165,22 @@ export function initViewportHeal() {
     if (!standalone) return null;
 
     started = true;
-    trackViewportHeight();
+    lastIneffectiveHealAt = 0;
 
     let focusoutTimer = null;
     let settleTimer = null;
+    let checkTimer = null;
 
-    function onResize() {
-        trackViewportHeight();
+    // Shared by the three "we may have arrived into a stuck viewport" triggers
+    // — launch, resume, bfcache restore. They can fire in quick succession
+    // (a bfcache restore is also a visibility change), so they share one timer
+    // and the last one to arrive decides when the check runs.
+    function scheduleSettledCheck() {
+        if (checkTimer) clearTimeout(checkTimer);
+        checkTimer = setTimeout(function () {
+            checkTimer = null;
+            healViewport();
+        }, SETTLE_CHECK_DELAY_MS);
     }
 
     // Capture phase: blur does not bubble reliably off every control, and a
@@ -148,22 +206,45 @@ export function initViewportHeal() {
         }, VIEWPORT_SETTLE_MS);
     }
 
-    window.addEventListener('resize', onResize);
+    // Coming back from the app switcher. The shrink survives backgrounding, so
+    // a resume is a fresh chance to notice it without waiting for the user to
+    // open and close the keyboard again.
+    function onVisibilityChange() {
+        if (document.visibilityState !== 'visible') return;
+        scheduleSettledCheck();
+    }
+
+    // A bfcache restore replays the page into whatever viewport the process
+    // currently has, which is the shrunken one if the bug already fired.
+    function onPageShow() {
+        scheduleSettledCheck();
+    }
+
     document.addEventListener('focusout', onFocusOut, true);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pageshow', onPageShow);
 
     const vv = window.visualViewport;
     const hasVisualViewport = !!(vv && typeof vv.addEventListener === 'function');
     if (hasVisualViewport) vv.addEventListener('resize', onVisualViewportResize);
 
+    // A session that boots already shrunken heals on its own, with no focus
+    // event and no user action — which is the whole point of measuring against
+    // the screen instead of a session maximum.
+    scheduleSettledCheck();
+
     return function teardownViewportHeal() {
         if (focusoutTimer) clearTimeout(focusoutTimer);
         if (settleTimer) clearTimeout(settleTimer);
+        if (checkTimer) clearTimeout(checkTimer);
         focusoutTimer = null;
         settleTimer = null;
-        window.removeEventListener('resize', onResize);
+        checkTimer = null;
         document.removeEventListener('focusout', onFocusOut, true);
+        document.removeEventListener('visibilitychange', onVisibilityChange);
+        window.removeEventListener('pageshow', onPageShow);
         if (hasVisualViewport) vv.removeEventListener('resize', onVisualViewportResize);
         started = false;
-        maxViewportHeight = 0;
+        lastIneffectiveHealAt = 0;
     };
 }
