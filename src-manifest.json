@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-08T10:56:21.078Z",
-  "sha": "dd978d00ad67822d39b94a625fee6d7279fda8b4",
+  "generatedAt": "2026-08-08T13:39:05.153Z",
+  "sha": "2f29601a79b6693ff891aabd4cd62531b648ef5c",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -5111,11 +5111,11 @@
       "selector": "#settingsAboutSection",
       "label": "Settings About Section",
       "file": "settingsModal.js",
-      "line": 100,
+      "line": 101,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 100
+          "line": 101
         }
       ]
     },
@@ -5123,11 +5123,11 @@
       "selector": "#settingsAccountSection",
       "label": "Settings Account Section",
       "file": "settingsModal.js",
-      "line": 223,
+      "line": 245,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 223
+          "line": 245
         }
       ]
     },
@@ -5135,11 +5135,11 @@
       "selector": "#settingsAppearanceSection",
       "label": "Settings Appearance Section",
       "file": "settingsModal.js",
-      "line": 83,
+      "line": 84,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 83
+          "line": 84
         }
       ]
     },
@@ -5147,11 +5147,11 @@
       "selector": "#settingsDataSection",
       "label": "Settings Data Section",
       "file": "settingsModal.js",
-      "line": 192,
+      "line": 193,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 192
+          "line": 193
         }
       ]
     },
@@ -5159,11 +5159,11 @@
       "selector": "#settingsHelpSection",
       "label": "Settings Help Section",
       "file": "settingsModal.js",
-      "line": 158,
+      "line": 159,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 158
+          "line": 159
         }
       ]
     },
@@ -5187,11 +5187,11 @@
       "selector": "#settingsModal",
       "label": "Settings Modal",
       "file": "settingsModal.js",
-      "line": 48,
+      "line": 49,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 48
+          "line": 49
         },
         {
           "file": "style.css",
@@ -5203,11 +5203,11 @@
       "selector": "#settingsModalBackdrop",
       "label": "Settings Modal Backdrop",
       "file": "settingsModal.js",
-      "line": 45,
+      "line": 46,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 45
+          "line": 46
         },
         {
           "file": "style.css",
@@ -5219,11 +5219,11 @@
       "selector": "#settingsModalBody",
       "label": "Settings Modal Body",
       "file": "settingsModal.js",
-      "line": 70,
+      "line": 71,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 70
+          "line": 71
         },
         {
           "file": "style.css",
@@ -5235,11 +5235,11 @@
       "selector": "#settingsModalClose",
       "label": "Settings Modal Close",
       "file": "settingsModal.js",
-      "line": 61,
+      "line": 62,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 61
+          "line": 62
         },
         {
           "file": "style.css",
@@ -5251,11 +5251,11 @@
       "selector": "#settingsModalHeader",
       "label": "Settings Modal Header",
       "file": "settingsModal.js",
-      "line": 54,
+      "line": 55,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 54
+          "line": 55
         },
         {
           "file": "style.css",
@@ -5267,15 +5267,27 @@
       "selector": "#settingsModalTitle",
       "label": "Settings Modal Title",
       "file": "settingsModal.js",
-      "line": 57,
+      "line": 58,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 57
+          "line": 58
         },
         {
           "file": "style.css",
           "line": 14941
+        }
+      ]
+    },
+    {
+      "selector": "#settingsRepoSetupSection",
+      "label": "Settings Repo Setup Section",
+      "file": "settingsModal.js",
+      "line": 219,
+      "files": [
+        {
+          "file": "settingsModal.js",
+          "line": 219
         }
       ]
     },
@@ -5299,11 +5311,11 @@
       "selector": "#settingsViewSection",
       "label": "Settings View Section",
       "file": "settingsModal.js",
-      "line": 73,
+      "line": 74,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 73
+          "line": 74
         }
       ]
     },
