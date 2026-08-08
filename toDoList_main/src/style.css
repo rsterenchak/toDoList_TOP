@@ -18187,7 +18187,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 @media (max-width: 1023px) {
   #bottomSheet {
     display: block;
-    position: absolute;
+    /* Viewport-anchored for the same reason #mobileTabBar is: every layer
+       in here is positioned off the tab bar's top edge, so the sheet has
+       to resolve `bottom` against the same box the bar does. Left as
+       `absolute` it would keep measuring from the initial containing
+       block, which stops a safe-area short of the screen edge in an
+       installed PWA — the nub and PEEK strip would then float that far
+       above the tabs they are meant to rest on. */
+    position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
@@ -19030,7 +19037,20 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 
 @media (max-width: 1023px) {
   #mobileTabBar {
-    position: absolute;
+    /* Anchored to the VIEWPORT, not to the initial containing block.
+       `position: absolute` here resolved against the ICB — the same box
+       `height: 100%` resolves against — which in an installed PWA
+       (display-mode: standalone, viewport-fit=cover + a black-translucent
+       status bar) stops short of the physical screen edge. `bottom: 0`
+       therefore parked the bar above the home-indicator zone, and the page
+       background (--bg-elevated on mobile, propagated to the canvas so it
+       paints the full screen) showed through underneath as a solid band
+       that pushed the tabs up. Safari, whose toolbar already occupies that
+       strip, looked correct. viewport-fit=cover does extend the viewport
+       to the screen edge, so a fixed box lands flush in both modes.
+       Nothing scrolls the document on mobile (body is overflow:hidden),
+       so Safari's rendering is unchanged by the swap. */
+    position: fixed;
     left: 0;
     right: 0;
     /* Flush against the screen bottom now that #footBar is hidden at
