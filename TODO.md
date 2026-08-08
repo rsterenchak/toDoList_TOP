@@ -888,3 +888,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: toDoList_main/src/assignmentCoverage.js, toDoList_main/src/inject.js
   - Completed:
   <!-- id: d69aff6e-34a4-435e-ac10-ca5ae4af1c17 -->
+
+- [ ] **[MEDIUM]** Untagged proposals render in arbitrary order
+  - Type: bug
+  - Description: Derive emits project proposals foundation-first — data layer, then the surfaces that read it, then the PWA shell — and its closing summary tells the user to accept them top to bottom for a sane build order. The coverage tab discards that order. `compareProposalsByAspect` (~line 199) returns `0` when both rows have a null aspect, which every project proposal does, so the sort is a no-op; `Array.sort` is stable, so the rendered order is the fetch order, and the `agent_queue` select in `agentQueueStore.js` (~line 225) carries no `.order()`, leaving Postgres free to return rows however it likes. On the first real project derive the service-worker proposal — inserted seventh — rendered first, so the top of the list was the last thing that should be built.
+  - Behavior: Two proposals with no aspect order by their insertion time, oldest first, so the list matches the order derive wrote them and accepting top to bottom gives derive's intended build order. Aspect-tagged proposals keep sorting by aspect exactly as they do today, and a tagged proposal still sorts ahead of an untagged one. The ordering is stable across repaints and identical on every device.
+  - Implementation notes: Extend `compareProposalsByAspect`'s final `return 0` to compare `created_at` ascending, falling back to `id` when timestamps tie — seven rows insert within about two seconds, so equal timestamps are possible if the column has coarse precision. Confirm `agent_queue` actually selects `created_at`; the store uses `select('*')` so it should be present, but the comparator must tolerate a missing or unparseable value by treating those rows as equal rather than throwing or sorting them all to one end. Do not fix this by adding `.order()` to the Supabase query instead — the comparator is where ordering is decided for both tagged and untagged rows, and splitting that across two places is how they drift. Leave `aspectSortKey` alone; it is correct and its "untagged sorts last" contract is what keeps tagged proposals ahead.
+  - Out of scope: the coverage tally and section grouping; the Runs tab ordering; `buildQueueRunRecords`; adding an explicit sequence column to `agent_queue`.
+  - File: toDoList_main/src/assignmentCoverage.js
+  - Completed:
+  <!-- id: 399e3328-f112-4ec9-9fa8-51ba195c212a -->
