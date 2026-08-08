@@ -239,9 +239,40 @@ function aspectSortKey(row) {
     return { letter: m[1].toUpperCase(), num: parseInt(m[2], 10) };
 }
 
-// Order proposals by rubric aspect (A1, A2, …, B1, B10, …), untagged last in
-// their existing relative order. Relies on a stable sort so equal keys keep the
-// store's fetch order — which keeps the live onQueueChange repaint from
+// A proposal's insertion time in ms, read from the `created_at` the store's
+// `select('*')` already carries. Returns null for a missing or unparseable
+// value so the comparator can treat such a row as equal to anything rather than
+// sorting every one of them to the same end.
+function proposalInsertedAt(row) {
+    const raw = row && row.created_at;
+    if (raw === null || raw === undefined || raw === '') return null;
+    const t = new Date(raw).getTime();
+    return Number.isFinite(t) ? t : null;
+}
+
+// Tie-break for two proposals inserted inside the same timestamp tick. Ids are
+// numeric in the store and string uuids elsewhere, so compare numerically when
+// both are numbers and lexically otherwise; an absent id on either side leaves
+// the pair equal.
+function compareProposalIds(a, b) {
+    const ia = a && a.id;
+    const ib = b && b.id;
+    if (ia === null || ia === undefined || ib === null || ib === undefined) return 0;
+    if (typeof ia === 'number' && typeof ib === 'number') return ia - ib;
+    const sa = String(ia);
+    const sb = String(ib);
+    if (sa === sb) return 0;
+    return sa < sb ? -1 : 1;
+}
+
+// Order proposals by rubric aspect (A1, A2, …, B1, B10, …), untagged last —
+// and among untagged ones, oldest first by insertion time. A project derive
+// emits every proposal untagged and writes them foundation-first, which is the
+// order its closing summary tells you to accept them in; without the
+// `created_at` comparison the sort is a no-op for that whole set and the
+// rendered order is whatever Postgres returned. Rows whose timestamps are
+// absent, unparseable, or equal fall back to the id, then to the stable sort's
+// fetch order — which also keeps the live onQueueChange repaint from
 // reshuffling cards while the user works through them.
 function compareProposalsByAspect(a, b) {
     const ka = aspectSortKey(a);
@@ -252,7 +283,11 @@ function compareProposalsByAspect(a, b) {
     }
     if (ka) return -1;
     if (kb) return 1;
-    return 0;
+    const ta = proposalInsertedAt(a);
+    const tb = proposalInsertedAt(b);
+    if (ta === null || tb === null) return 0;
+    if (ta !== tb) return ta - tb;
+    return compareProposalIds(a, b);
 }
 
 // Return the raw text under the first top-level `## Requirements` header, up to
