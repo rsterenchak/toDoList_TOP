@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "Runs started from the Agent board or a task's description panel now show up in the assistant's Runs tab right away, tracking from queued through to shipped.",
+            "The coverage tab now fills in on first open instead of staying blank until you switch to another project and back.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-07',
         fixed: [
-            "Launched from the home screen, the bottom tab bar now sits flush against the screen edge instead of floating above a dead band.",
             "The home-screen app's bottom tab bar and utility sheet now reach the true screen edge, clearing the coloured strip that sat beneath the tabs.",
             "Entries shipped straight from the TODO.md list now record when they shipped, so the Runs tab orders them by real ship time instead of sinking them to the bottom.",
         ],
