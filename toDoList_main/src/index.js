@@ -10,10 +10,17 @@ import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { showAuthModal, hideAuthModal } from './auth.js';
 import { maybeMigrateLocalToSupabase } from './migration.js';
+import { initViewportHeal } from './viewportHeal.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
 document.body.appendChild(component()); // build and attach DOM
+
+// Arm the iOS standalone viewport heal now that #outerContainer exists — it
+// reads that element when a heal runs. Self-gating on the standalone display
+// mode and on a measurably shrunken viewport, so this is a no-op in Safari,
+// on desktop, and in any session that never opens the software keyboard.
+initViewportHeal();
 
 // ── AUTH GATE ──
 // Phase 4: render the magic-link sign-in modal as a hard front door
