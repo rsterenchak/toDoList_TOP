@@ -75,7 +75,7 @@ vi.mock('../src/inject.js', () => ({
         assignmentCalls.push(target);
         return Promise.resolve(assignmentResult);
     },
-    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
+    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }),
     showInjectToast: (msg, kind) => { toastCalls.push({ msg, kind }); },
     isInjectConfigured: () => true,
     chatWithWorker: () => Promise.resolve({ ok: true, reply: '' }),
@@ -213,7 +213,9 @@ describe('AGENT assignment card — filled state', () => {
         assignmentResult = { ok: true, content: '## Requirements\nReal content.\n' };
         await loadBoard();
         expect(assignmentCalls.length).toBe(1);
-        expect(assignmentCalls[0]).toEqual({ repo: 'owner/repo', file_path: 'TODO.md' });
+        expect(assignmentCalls[0]).toEqual({
+            repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment',
+        });
     });
 });
 

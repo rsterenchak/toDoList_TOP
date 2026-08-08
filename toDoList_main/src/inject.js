@@ -29,6 +29,17 @@ let cachedSecret = '';
 // extra wiring.
 let cachedTargets = [];
 
+// Each allowlisted repo's registry `purpose`, keyed by lowercased repo slug, as
+// reported by the Worker's `repos` route. Purpose has only ever travelled
+// outbound from the client — onboardRepo / preflightRepo send it and nothing
+// read it back — so no descriptor downstream could tell an assignment repo from
+// a personal one. The coverage surface needs exactly that, since an assignment
+// repo's context lives in `assignment.md` and a personal repo's in `project.md`.
+// Null until the first fetch resolves, so a failed fetch simply retries on the
+// next targets load rather than caching an empty answer.
+let cachedRepoPurposes = null;
+let repoPurposesInFlight = null;
+
 export function initInjectConfig() {
     try {
         cachedUrl    = localStorage.getItem(URL_KEY)    || '';
@@ -536,23 +547,50 @@ export async function readRepoFile(target, filePath) {
     }
 }
 
-// Read the `assignment.md` sibling of the routed repo's TODO.md through the
+// Normalize a registry purpose to the two values the Worker recognizes.
+// Anything unrecognized — a missing value, or a target descriptor cached before
+// the purpose was ever threaded through — resolves to 'personal', matching the
+// Worker's own normalization, so a personal repo can never be sent looking for
+// a file that will never exist.
+export function normalizePurpose(purpose) {
+    return purpose === 'assignment' ? 'assignment' : 'personal';
+}
+
+// Which document holds a routed repo's context. An assignment repo is graded
+// against `assignment.md`; a personal repo is described by a `project.md` beside
+// its TODO.md. Callers pass a target and never a filename, so the one `purpose`
+// field decides the path here and the copy in assignmentCoverage.js alike.
+export function assignmentDocName(target) {
+    return normalizePurpose(target && target.purpose) === 'assignment'
+        ? 'assignment.md'
+        : 'project.md';
+}
+
+// The repo-relative path of that document: the directory portion of the
+// registry's TODO.md path with the purpose-appropriate basename appended. Shared
+// by the read and the write so the two can never resolve different files for the
+// same target.
+function assignmentDocPath(target) {
+    const fp = target.file_path;
+    const slash = fp.lastIndexOf('/');
+    const dir = slash === -1 ? '' : fp.slice(0, slash + 1);
+    return dir + assignmentDocName(target);
+}
+
+// Read the context-document sibling of the routed repo's TODO.md through the
 // Worker. Mirrors readTodoMdFromWorker's wiring exactly (same `{ read: true,
 // repo, filePath }` shape, same `{ ok, content, sha }` return), differing only
-// in the path: it derives the sibling of `target.file_path` — the directory
-// portion of the registry's TODO.md path with `assignment.md` appended — rather
-// than reusing `target.file_path`, which is why readTodoMdFromWorker can't be
-// reused. Assumes the Worker's read handler serves an arbitrary repo-relative
-// path; until an `assignment.md` exists in a routed repo this returns not-ok,
-// which the AGENT view renders as the absent (no-card) state.
+// in the path: it derives the sibling of `target.file_path` via
+// assignmentDocPath rather than reusing `target.file_path`, which is why
+// readTodoMdFromWorker can't be reused. Assumes the Worker's read handler serves
+// an arbitrary repo-relative path; until that document exists in a routed repo
+// this returns not-ok, which the AGENT view renders as the absent (no-card)
+// state.
 export async function readAssignmentFromWorker(target) {
     if (!target || !target.repo || !target.file_path) {
         return { ok: false, reason: 'No target' };
     }
-    const fp = target.file_path;
-    const slash = fp.lastIndexOf('/');
-    const dir = slash === -1 ? '' : fp.slice(0, slash + 1);
-    const assignmentPath = dir + 'assignment.md';
+    const assignmentPath = assignmentDocPath(target);
     try {
         const res = await postToWorker({
             read: true,
@@ -569,9 +607,9 @@ export async function readAssignmentFromWorker(target) {
 }
 
 
-// Write the routed repo's `assignment.md` back through the Worker's `write`
+// Write the routed repo's context document back through the Worker's `write`
 // branch. Derives the sibling path exactly as readAssignmentFromWorker does
-// (the directory of `target.file_path` with `assignment.md` appended) and posts
+// (both go through assignmentDocPath) and posts
 // `{ write: true, repo, filePath, content, sha }`, passing the open-time `sha`
 // as the optimistic-concurrency token so a change landed since the read is
 // caught by the Worker rather than silently overwritten. Returns `{ ok: true,
@@ -583,10 +621,7 @@ export async function writeAssignmentToWorker(target, content, sha) {
     if (!target || !target.repo || !target.file_path) {
         return { ok: false, reason: 'No target' };
     }
-    const fp = target.file_path;
-    const slash = fp.lastIndexOf('/');
-    const dir = slash === -1 ? '' : fp.slice(0, slash + 1);
-    const assignmentPath = dir + 'assignment.md';
+    const assignmentPath = assignmentDocPath(target);
     try {
         const res = await postToWorker({
             write: true,
@@ -1443,7 +1478,14 @@ export function findTargetById(id) {
 // Warm the targets cache at app boot so inject buttons rendering before
 // the settings modal opens can already resolve their project's
 // target_id. Called from main.js after the Supabase session is ready.
+//
+// The repo purposes are warmed FIRST, so no target descriptor is ever reachable
+// through findTargetById before it carries one. Doing it the other way round
+// leaves a window in which the coverage surface resolves a routed target with no
+// purpose and reads `project.md` on an assignment repo — a read that 404s and
+// classifies the project as having no context at all.
 export async function initInjectTargets() {
+    await ensureRepoPurposes();
     await loadInjectTargets();
     refreshAllInjectButtons();
 }
@@ -1471,6 +1513,42 @@ function refreshAllInjectButtons() {
 // writes through here. The inject button itself does NOT consume these
 // yet — per-project routing lands in a follow-up entry.
 
+// Fetch each allowlisted repo's purpose once and remember it. Single-flighted so
+// a burst of loadInjectTargets calls (the onboard poll runs one every 4s) makes
+// at most one request, and left null on failure so a later load retries rather
+// than settling on a blank answer. Never rejects: fetchAllowedRepos already
+// swallows an unreachable or unconfigured Worker.
+async function ensureRepoPurposes() {
+    if (cachedRepoPurposes) return;
+    if (!repoPurposesInFlight) {
+        repoPurposesInFlight = fetchAllowedRepos().then(function(allowed) {
+            repoPurposesInFlight = null;
+            if (!allowed || !Array.isArray(allowed.repos)) return;
+            const map = Object.create(null);
+            allowed.repos.forEach(function(r) {
+                if (r && r.repo && r.purpose) {
+                    map[normalizeOnboardRepo(r.repo)] = normalizePurpose(r.purpose);
+                }
+            });
+            cachedRepoPurposes = map;
+        });
+    }
+    await repoPurposesInFlight;
+}
+
+// Stamp each cached target with its repo's registry purpose so findTargetById
+// returns a descriptor the coverage layer can route on. Only repos the allowlist
+// actually named are touched, so a purpose the target row already carried
+// survives a fetch that failed or answered without one.
+function stampTargetPurposes() {
+    if (!cachedRepoPurposes || !Array.isArray(cachedTargets)) return;
+    cachedTargets.forEach(function(t) {
+        if (!t || !t.repo) return;
+        const purpose = cachedRepoPurposes[normalizeOnboardRepo(t.repo)];
+        if (purpose) t.purpose = purpose;
+    });
+}
+
 export async function loadInjectTargets() {
     try {
         const res = await supabase
@@ -1482,6 +1560,16 @@ export async function loadInjectTargets() {
             return cachedTargets;
         }
         cachedTargets = (res && res.data) || [];
+        stampTargetPurposes();
+        // Never await the allowlist here: loadInjectTargets is on the boot path
+        // and inside the onboard poll, and making it wait on a Worker round-trip
+        // would reorder everything downstream of it. initInjectTargets warms the
+        // purposes BEFORE the first load precisely so this stamp already has an
+        // answer; this only covers a caller that reached here first, or a boot
+        // fetch that failed, by re-stamping a tick later.
+        if (!cachedRepoPurposes) {
+            ensureRepoPurposes().then(stampTargetPurposes);
+        }
         return cachedTargets;
     } catch (e) {
         cachedTargets = [];

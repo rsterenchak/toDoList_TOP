@@ -1021,8 +1021,13 @@ function setupAssignmentEditorResize(dialog, grip) {
 }
 
 // ── ASSIGNMENT EDITOR MODAL ──
-// Full editor for a routed repo's `assignment.md`, opened by tapping the AGENT
-// board's assignment card. Mirrors showDescEditorModal's header/textarea/actions
+// Full editor for a routed repo's context document — `assignment.md` on an
+// assignment repo, `project.md` on a personal one — opened by tapping the AGENT
+// board's card. Which document it is comes in as `options.docKind` ('assignment'
+// | 'brief') from the caller, which already resolved it off the target; the
+// modal only words its header, label and conflict text from it, and defaults to
+// the assignment wording when a caller omits it.
+// Mirrors showDescEditorModal's header/textarea/actions
 // shell and reuses wireModalDismiss for the three-way close (close X, backdrop,
 // Escape — CLAUDE.md modal contract). Unlike the desc editor (save-on-close),
 // this modal saves explicitly: Save writes the whole file back through the
@@ -1038,6 +1043,9 @@ function setupAssignmentEditorResize(dialog, grip) {
 export function showAssignmentEditorModal(target, content, sha, options) {
     const opts = options || {};
     let currentSha = sha;
+    const isBrief = opts.docKind === 'brief';
+    const docName = isBrief ? 'project.md' : 'assignment.md';
+    const docNoun = isBrief ? 'brief' : 'assignment';
 
     const prior = document.getElementById('assignmentEditorModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
@@ -1059,11 +1067,11 @@ export function showAssignmentEditorModal(target, content, sha, options) {
 
     const eyebrow = document.createElement('span');
     eyebrow.id = 'assignmentEditorModalEyebrow';
-    eyebrow.textContent = 'ASSIGNMENT';
+    eyebrow.textContent = isBrief ? 'BRIEF' : 'ASSIGNMENT';
 
     const titleText = document.createElement('span');
     titleText.id = 'assignmentEditorModalTitleText';
-    titleText.textContent = (target && target.repo) ? target.repo : 'assignment.md';
+    titleText.textContent = (target && target.repo) ? target.repo : docName;
 
     title.appendChild(eyebrow);
     title.appendChild(titleText);
@@ -1071,7 +1079,7 @@ export function showAssignmentEditorModal(target, content, sha, options) {
     const closeX = document.createElement('button');
     closeX.id = 'assignmentEditorModalClose';
     closeX.type = 'button';
-    closeX.setAttribute('aria-label', 'Close assignment editor');
+    closeX.setAttribute('aria-label', 'Close ' + docNoun + ' editor');
     closeX.textContent = '×';
 
     header.appendChild(title);
@@ -1082,7 +1090,7 @@ export function showAssignmentEditorModal(target, content, sha, options) {
 
     const textarea = document.createElement('textarea');
     textarea.id = 'assignmentEditorModalTextarea';
-    textarea.setAttribute('aria-label', 'Assignment text');
+    textarea.setAttribute('aria-label', isBrief ? 'Brief text' : 'Assignment text');
     textarea.spellcheck = false;
     textarea.autocapitalize = 'off';
     textarea.autocomplete = 'off';
@@ -1190,9 +1198,9 @@ export function showAssignmentEditorModal(target, content, sha, options) {
                     if (fresh && fresh.ok) {
                         textarea.value = fresh.content;
                         currentSha = fresh.sha;
-                        showStatus('assignment.md changed since you opened it — the latest version is loaded. Reapply your changes and Save again.');
+                        showStatus(docName + ' changed since you opened it — the latest version is loaded. Reapply your changes and Save again.');
                     } else {
-                        showStatus('assignment.md changed since you opened it, and reloading the latest failed. Close and reopen the editor.');
+                        showStatus(docName + ' changed since you opened it, and reloading the latest failed. Close and reopen the editor.');
                     }
                 });
                 return;

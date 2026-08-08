@@ -68,6 +68,13 @@ export function configureAssignmentCoverage(deps) {
 let _assignment = null;
 let _assignmentProject = null;
 
+// Which document the cached descriptor was classified from — 'assignment' for a
+// graded `assignment.md`, 'brief' for a personal repo's `project.md`. Set
+// synchronously by refreshAssignment (the way `_assignmentProject` is) and by
+// openAssignmentEditor, so a post-save reclassify and the no-target toast still
+// read the right kind when there is no descriptor to read it off.
+let _assignmentKind = 'assignment';
+
 // Clear the cached assignment descriptor (the board resets it alongside _rows on
 // a project switch so the stale card doesn't paint before the fresh read lands).
 export function resetAssignmentCache() {
@@ -115,6 +122,26 @@ function resolveReadTargetFor(projectName) {
     if (!projectName) return null;
     const targetId = listLogic.getProjectTargetId(projectName);
     return targetId ? findTargetById(targetId) : null;
+}
+
+// Which document kind a routed target's context lives in, read off the registry
+// `purpose` inject.js now stamps onto every target descriptor. An assignment
+// repo is graded against `assignment.md`; everything else — including a target
+// whose purpose is missing or unrecognized — is a personal repo described by a
+// `project.md` beside its TODO.md. That is the same one-field rule inject.js's
+// assignmentDocName applies to pick the path it reads and writes, so the copy
+// here and the file there cannot disagree.
+function docKindFor(target) {
+    return (target && target.purpose === 'assignment') ? 'assignment' : 'brief';
+}
+
+// The noun each kind goes by in user-visible copy, and the file it lives in. A
+// personal repo says "brief" everywhere the assignment flow says "assignment".
+function docNoun(kind) {
+    return kind === 'brief' ? 'brief' : 'assignment';
+}
+function docFileName(kind) {
+    return kind === 'brief' ? 'project.md' : 'assignment.md';
 }
 
 // Resolve (or re-resolve) the active project's assignment for a non-board host —
@@ -263,32 +290,61 @@ function parseAspectLabels(content) {
     return labels;
 }
 
-// Classify assignment.md content into the card's three states:
+// A project brief's own prose: the document with HTML comments and markdown
+// headings removed. A `project.md` has no fixed section contract — judging it
+// against `## Requirements` the way an assignment is judged would make an
+// ordinary brief classify as unfilled — so its content is whatever survives
+// stripping the seeded heading and comment hints. Returns '' when only those
+// remain.
+function briefBody(content) {
+    return content
+        .replace(/<!--[\s\S]*?-->/g, '')
+        .split('\n')
+        .filter(function (l) { return !/^\s*#{1,6}\s/.test(l); })
+        .join('\n')
+        .trim();
+}
+
+// Classify a context document into the card's three states. `kind` selects the
+// contract: an 'assignment' is judged against its `## Requirements` section, a
+// 'brief' against its body (see briefBody).
 //   'absent'   — no file / empty content: render no card.
-//   'unfilled' — no `## Requirements` header, or the section holds only HTML
-//                comments / whitespace (the seeded hint): render the invite.
-//   'filled'   — `## Requirements` has real content: render the summary.
-function classifyAssignment(content) {
+//   'unfilled' — an assignment with no `## Requirements` header or a section
+//                holding only HTML comments / whitespace (the seeded hint); a
+//                brief with nothing beyond its heading and hints: render the
+//                invite.
+//   'filled'   — the section (or the brief's body) has real content: render the
+//                summary.
+function classifyAssignment(content, kind) {
     if (typeof content !== 'string' || !content.trim()) return 'absent';
+    if (kind === 'brief') return briefBody(content) ? 'filled' : 'unfilled';
     const req = extractRequirementsSection(content);
     if (req === null) return 'unfilled';
     const stripped = req.replace(/<!--[\s\S]*?-->/g, '').trim();
     return stripped ? 'filled' : 'unfilled';
 }
 
-// Build the assignment descriptor the card renders from: `{ state }` for absent
-// / unfilled, and for filled the summary — the first non-comment requirement
-// line as the title, plus a word count over the comment-stripped document, a
-// section count of its `## ` headers, and the ordered rubric aspect IDs. The
-// aspect list is parsed once here (per assignment.md read); the card's coverage
-// tally against agent_queue rows is recomputed each paint in buildAssignmentCard.
-function describeAssignment(content) {
-    const state = classifyAssignment(content);
-    if (state !== 'filled') return { state: state };
-    const req = extractRequirementsSection(content) || '';
-    const firstLine = req.replace(/<!--[\s\S]*?-->/g, '')
+// Build the context descriptor the card renders from: `{ state, kind }` for
+// absent / unfilled, and for filled the summary — the document's first real line
+// as the title, plus a word count over the comment-stripped document, a section
+// count of its `## ` headers, and the ordered rubric aspect IDs. The aspect list
+// is parsed once here (per read); the card's coverage tally against agent_queue
+// rows is recomputed each paint in buildAssignmentCard. `kind` rides on the
+// descriptor so every surface built from it words itself for the right document
+// without re-resolving the target.
+function describeAssignment(content, kind) {
+    const docKind = kind === 'brief' ? 'brief' : 'assignment';
+    const state = classifyAssignment(content, docKind);
+    if (state !== 'filled') return { state: state, kind: docKind };
+    // The title is the document's first real line — a requirement row for an
+    // assignment, the brief's opening sentence for a project.
+    const titleSource = docKind === 'brief'
+        ? briefBody(content)
+        : (extractRequirementsSection(content) || '').replace(/<!--[\s\S]*?-->/g, '');
+    const firstLine = titleSource
         .split('\n').map(function (l) { return l.trim(); })
-        .find(function (l) { return l.length > 0; }) || 'Assignment';
+        .find(function (l) { return l.length > 0; })
+        || (docKind === 'brief' ? 'Project brief' : 'Assignment');
     const cleaned = content.replace(/<!--[\s\S]*?-->/g, '');
     const words = (cleaned.match(/\S+/g) || []).length;
     const sections = cleaned.split('\n').filter(function (l) {
@@ -296,15 +352,22 @@ function describeAssignment(content) {
     }).length;
     return {
         state: 'filled',
+        kind: docKind,
         title: firstLine,
         words: words,
         sections: sections,
-        aspects: parseAspects(content),
-        aspectLabels: parseAspectLabels(content),
+        // A project brief carries no rubric, and reporting no aspects is exactly
+        // what routes it through the untallied paths — no fraction, no bar, and
+        // proposals grouped last. Inventing IDs from its `##` headings would
+        // produce a coverage fraction with a meaningless denominator.
+        aspects: docKind === 'brief' ? [] : parseAspects(content),
+        aspectLabels: docKind === 'brief' ? Object.create(null) : parseAspectLabels(content),
     };
 }
 
-// Fetch a project's assignment.md once and repaint with the classified result.
+// Fetch a project's context document once and repaint with the classified
+// result — `assignment.md` on an assignment repo, `project.md` on a personal one
+// (inject.js resolves the path from the same target).
 // The project the read belongs to is threaded in by the caller (the board and the
 // mount path omit it and fall back to the current DOM selection, unchanged from
 // before); recording it in `_assignmentProject` lets mount + project switch avoid a
@@ -316,8 +379,10 @@ export function refreshAssignment(target, projectName) {
         ? projectName
         : getSelectedProjectName();
     _assignmentProject = name;
+    const kind = docKindFor(target);
+    _assignmentKind = kind;
     if (!target) {
-        _assignment = { state: 'absent' };
+        _assignment = { state: 'absent', kind: kind };
         notifyAssignmentChange();
         return;
     }
@@ -329,7 +394,7 @@ export function refreshAssignment(target, projectName) {
         // dropped. Keying off `_assignmentProject` rather than the DOM selection
         // keeps the guard correct even when the selection reader lags the switch.
         if (_assignmentProject !== name) return;
-        _assignment = describeAssignment(res && res.ok ? res.content : null);
+        _assignment = describeAssignment(res && res.ok ? res.content : null, kind);
         paint();
         notifyAssignmentChange();
     });
@@ -346,7 +411,10 @@ export function refreshAssignment(target, projectName) {
 // mount read and the project-switch read, where there is no local content to use.
 export function applyAssignmentSave(content) {
     _assignmentProject = getSelectedProjectName();
-    _assignment = describeAssignment(typeof content === 'string' ? content : null);
+    // The kind is a property of the routed repo, not of the text just saved, so
+    // it carries over from the read (or the editor open) that preceded this.
+    _assignment = describeAssignment(
+        typeof content === 'string' ? content : null, _assignmentKind);
     paint();
     notifyAssignmentChange();
 }
@@ -390,18 +458,24 @@ function buildFileTextIcon() {
 function openAssignmentEditor() {
     const target = resolveReadTarget();
     if (!target) {
-        showInjectToast('No repo linked — cannot edit the assignment.', 'error');
+        showInjectToast(
+            'No repo linked — cannot edit the ' + docNoun(_assignmentKind) + '.', 'error');
         return;
     }
+    const kind = docKindFor(target);
+    _assignmentKind = kind;
     readAssignmentFromWorker(target).then(function (res) {
         if (!res || !res.ok) {
             showInjectToast(
-                'Could not load assignment.md: ' + ((res && res.reason) || 'Unknown error'),
+                'Could not load ' + docFileName(kind) + ': ' + ((res && res.reason) || 'Unknown error'),
                 'error'
             );
             return;
         }
+        // The modal words its header, its textarea label and its conflict text
+        // from the kind rather than resolving the target a second time.
         showAssignmentEditorModal(target, res.content, res.sha, {
+            docKind: kind,
             onSaved: function (saved) { applyAssignmentSave(saved); },
         });
     });
@@ -1469,6 +1543,7 @@ function showCoverageDetailModal(preloadedCommitted) {
 export function buildAssignmentCard() {
     const a = _assignment;
     if (!a || a.state === 'absent') return null;
+    const kind = a.kind || 'assignment';
 
     const card = document.createElement('div');
     card.className = 'agentAssignmentCard agentAssignmentCard--' + a.state;
@@ -1476,7 +1551,7 @@ export function buildAssignmentCard() {
     // and filled summary), so give it button semantics and keyboard activation.
     card.setAttribute('role', 'button');
     card.setAttribute('tabindex', '0');
-    card.setAttribute('aria-label', 'Edit assignment context');
+    card.setAttribute('aria-label', 'Edit ' + docNoun(kind) + ' context');
     card.addEventListener('click', openAssignmentEditor);
     card.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
@@ -1496,14 +1571,14 @@ export function buildAssignmentCard() {
 
     const eyebrow = document.createElement('div');
     eyebrow.className = 'agentAssignmentEyebrow';
-    eyebrow.textContent = 'ASSIGNMENT';
+    eyebrow.textContent = kind === 'brief' ? 'BRIEF' : 'ASSIGNMENT';
     body.appendChild(eyebrow);
 
     const title = document.createElement('div');
     title.className = 'agentAssignmentTitle';
     title.textContent = a.state === 'filled'
         ? a.title
-        : 'No spec — add assignment context';
+        : 'No spec — add ' + docNoun(kind) + ' context';
     body.appendChild(title);
 
     // Filled with rubric aspects → a live coverage summary (headline + bar),
@@ -1700,20 +1775,23 @@ export function buildCoveragePane() {
     const pane = document.createElement('div');
     pane.className = 'claudeCoveragePane';
     if (!a || a.state === 'absent') return pane;
+    const kind = a.kind || 'assignment';
 
     const header = document.createElement('div');
     header.className = 'claudeCoverageHeader';
 
     const title = document.createElement('div');
     title.className = 'claudeCoverageTitle';
-    title.textContent = a.state === 'filled' ? a.title : 'No assignment spec yet';
+    title.textContent = a.state === 'filled'
+        ? a.title
+        : (kind === 'brief' ? 'No project brief yet' : 'No assignment spec yet');
     header.appendChild(title);
 
     const editBtn = document.createElement('button');
     editBtn.type = 'button';
     editBtn.className = 'claudeCoverageEdit';
     editBtn.textContent = 'Edit';
-    editBtn.setAttribute('aria-label', 'Edit assignment.md');
+    editBtn.setAttribute('aria-label', 'Edit ' + docFileName(kind));
     editBtn.addEventListener('click', function () { openAssignmentEditor(); });
     header.appendChild(editBtn);
 
@@ -1724,8 +1802,9 @@ export function buildCoveragePane() {
     if (a.state !== 'filled') {
         const prompt = document.createElement('div');
         prompt.className = 'claudeCoveragePrompt';
-        prompt.textContent =
-            'Add your assignment requirements and rubric to track coverage here.';
+        prompt.textContent = kind === 'brief'
+            ? 'Add a brief describing this project to track work here.'
+            : 'Add your assignment requirements and rubric to track coverage here.';
         pane.appendChild(prompt);
         return pane;
     }
@@ -1764,8 +1843,9 @@ export function buildCoveragePane() {
 
     // Filled state (aspects or not): a Derive action to enumerate uncovered aspects
     // into `proposed` rows, and — when derive has produced any — a batch review
-    // action. Derive reads the raw assignment.md, so it belongs even on a
-    // filled-but-aspectless spec.
+    // action. Derive reads the raw context document, so it belongs even on a
+    // filled-but-aspectless spec — and on a project brief, which never has
+    // aspects.
     pane.appendChild(buildDeriveAction());
     const proposalsAction = buildProposalsAction();
     if (proposalsAction) pane.appendChild(proposalsAction);

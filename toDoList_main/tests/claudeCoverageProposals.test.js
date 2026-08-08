@@ -47,7 +47,7 @@ vi.mock('../src/inject.js', () => ({
         return Promise.resolve(deriveResult);
     },
     fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
-    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
+    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }),
     readAssignmentFromWorker: () => Promise.resolve(assignmentResult),
     readRepoFile: () => Promise.resolve({ ok: false }),
 }));
