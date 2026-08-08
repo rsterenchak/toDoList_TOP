@@ -419,4 +419,66 @@ describe('COVERAGE tab — proposal review modal', () => {
         notifyQueueChange();
         expect(renderedAspects()).toEqual(['A1', 'C1']);
     });
+
+    // A project derive emits every proposal untagged, in the build order its
+    // closing summary tells you to accept them in. Postgres is free to return
+    // those rows in any order, so the comparator has to restore it from
+    // `created_at` rather than leaning on the fetch order.
+    function untaggedRow(id, title, createdAt) {
+        const row = proposedRow(id, '', title);
+        if (createdAt !== undefined) row.created_at = createdAt;
+        return row;
+    }
+
+    it('orders untagged proposals by created_at, oldest first', async () => {
+        const name = freshProject();
+        setQueueRows([
+            untaggedRow(73, 'service worker', '2026-08-08T10:00:07Z'),
+            untaggedRow(71, 'data layer', '2026-08-08T10:00:01Z'),
+            untaggedRow(72, 'surfaces', '2026-08-08T10:00:04Z'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedTitles()).toEqual(['data layer', 'surfaces', 'service worker']);
+    });
+
+    it('breaks a created_at tie by id, so same-second inserts stay ordered', async () => {
+        const name = freshProject();
+        setQueueRows([
+            untaggedRow(83, 'third', '2026-08-08T10:00:00Z'),
+            untaggedRow(81, 'first', '2026-08-08T10:00:00Z'),
+            untaggedRow(82, 'second', '2026-08-08T10:00:00Z'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedTitles()).toEqual(['first', 'second', 'third']);
+    });
+
+    it('keeps tagged proposals ahead of untagged ones regardless of created_at', async () => {
+        const name = freshProject();
+        setQueueRows([
+            untaggedRow(90, 'untagged early', '2026-08-08T09:00:00Z'),
+            { ...proposedRow(91, 'B1', 'b1'), created_at: '2026-08-08T11:00:00Z' },
+            { ...proposedRow(92, 'A1', 'a1'), created_at: '2026-08-08T12:00:00Z' },
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedTitles()).toEqual(['a1', 'b1', 'untagged early']);
+    });
+
+    it('treats rows with a missing or unparseable created_at as equal, keeping fetch order', async () => {
+        const name = freshProject();
+        setQueueRows([
+            untaggedRow(101, 'no timestamp'),
+            untaggedRow(102, 'garbage timestamp', 'not-a-date'),
+            untaggedRow(103, 'real timestamp', '2026-08-08T10:00:00Z'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedTitles()).toEqual(['no timestamp', 'garbage timestamp', 'real timestamp']);
+    });
 });
