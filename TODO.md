@@ -889,7 +889,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: d69aff6e-34a4-435e-ac10-ca5ae4af1c17 -->
 
-- [ ] **[MEDIUM]** Untagged proposals render in arbitrary order
+- [x] **[MEDIUM]** Untagged proposals render in arbitrary order — Completed: 2026-08-08
   - Type: bug
   - Description: Derive emits project proposals foundation-first — data layer, then the surfaces that read it, then the PWA shell — and its closing summary tells the user to accept them top to bottom for a sane build order. The coverage tab discards that order. `compareProposalsByAspect` (~line 199) returns `0` when both rows have a null aspect, which every project proposal does, so the sort is a no-op; `Array.sort` is stable, so the rendered order is the fetch order, and the `agent_queue` select in `agentQueueStore.js` (~line 225) carries no `.order()`, leaving Postgres free to return rows however it likes. On the first real project derive the service-worker proposal — inserted seventh — rendered first, so the top of the list was the last thing that should be built.
   - Behavior: Two proposals with no aspect order by their insertion time, oldest first, so the list matches the order derive wrote them and accepting top to bottom gives derive's intended build order. Aspect-tagged proposals keep sorting by aspect exactly as they do today, and a tagged proposal still sorts ahead of an untagged one. The ordering is stable across repaints and identical on every device.
