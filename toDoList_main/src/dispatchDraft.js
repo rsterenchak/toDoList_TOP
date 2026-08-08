@@ -2,6 +2,7 @@ import { listLogic } from './listLogic.js';
 import { findTargetById, mintEntryId, embedEntryMarker } from './inject.js';
 import { shipEntryForTodo } from './shipEntry.js';
 import { kickDispatchReconciler } from './agentQueueStore.js';
+import { parsePastedEntry } from './entryParse.js';
 
 // Shared dispatch core for a drafted/stuck agent_queue row's entry. Extracted out
 // of agentView so BOTH the Agent board and the task-row description panel ship a
@@ -81,17 +82,26 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     // `draftText`), and COPY CONTEXT's block carries the marker that makes a follow-up
     // traceable. The minted id is passed on to shipEntryForTodo as its entry id so the
     // two never diverge.
+    // The row's display title, resolved once and reused by both the derive-
+    // proposal create below and the Runs-tab record further down. `context.title`
+    // is where a flagged task's title lives (written at flag time, and what the
+    // Agent board itself renders), so it is preferred; a row whose context is
+    // missing or title-less falls back to the entry's own headline, parsed out of
+    // `draftText` by the shared entry parser rather than a second copy of those
+    // regexes. May be '' — callers treat that as "no usable title".
+    const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
+    const contextTitle = (ctx.title || '').toString().trim();
+    const rowTitle = contextTitle || parsePastedEntry(draftText).title;
+
     let todoId = row.todo_id;
     let shipEntryId = existingEntryId;
     if (!todoId) {
         const projectName = getSelectedProjectName();
-        const ctx = (row.context && typeof row.context === 'object') ? row.context : {};
-        const title = (ctx.title || '').toString().trim();
-        if (projectName && title) {
+        if (projectName && contextTitle) {
             const entryId = existingEntryId || mintEntryId();
             const createdId = await materializeEntryTodo(
                 projectName,
-                title,
+                contextTitle,
                 embedEntryMarker((draftText || '').toString(), entryId),
                 entryId
             );
@@ -124,6 +134,30 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     // todo_id don't rewrite it.
     if (!row.todo_id && todoId) patch.todo_id = todoId;
     await listLogic.setAgentRunState(rowId, patch);
+
+    // Mirror the dispatch into the chat sheet's Runs tab, so a run started from the
+    // Agent board or a task's description panel shows a QUEUED pill immediately and
+    // then progresses RUNNING → SHIPPED/FAILED like the two surfaces that already
+    // did this (todoMdViewer's "Run backlog" / "Run this entry", and chat's own
+    // "Inject & run"). Without it these two surfaces dispatched a real run that the
+    // Runs tab never knew about until a reload reconciled it from the marker cache.
+    // trackDispatchedRun dedups on correlation id (findRunRecord), so a Retry that
+    // re-tracks the same dispatch adds no second row. claudeSheet.js statically
+    // imports materializeEntryTodo from this module, so the import is dynamic to
+    // keep the static graph acyclic — the same reason rebuildSelectedList pulls in
+    // toDoRow.js lazily. Best-effort: a failed import or a Runs-tab write must never
+    // turn a dispatch that actually shipped into a surfaced error.
+    try {
+        const sheet = await import('./claudeSheet.js');
+        sheet.trackDispatchedRun({
+            correlationId: res.correlationId,
+            entryId: res.entryId,
+            title: rowTitle,
+            repo: target ? target.repo : null,
+            project: getSelectedProjectName(),
+            dispatchedAt: Date.now(),
+        });
+    } catch (e) { /* never let Runs-tab tracking fail a dispatch that shipped */ }
 
     // Arm the dispatch reconciler for THIS in-session dispatch, from the one funnel
     // every surface (Dispatch, Retry, mockup Use, proposal Accept) resolves through.
