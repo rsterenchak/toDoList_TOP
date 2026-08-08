@@ -6,24 +6,33 @@ import { dirname, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
 
-// Regression cover for the FOURTH and final iteration of the "band under the
-// mobile tab bar" problem. The first three were static CSS patches — how much
-// room the bar reserves, what `bottom: 0` resolves against, and a pseudo
-// element painting the raw safe-area inset. None of them could work, because
-// the defect is not in the bar's box: it is the known iOS standalone-PWA
-// viewport bug. The first time the software keyboard opens, the layout
-// viewport shrinks ~59px and stays shrunk for the whole session, so a
-// `position: fixed; bottom: 0` bar sits 59px above the physical screen edge
-// with the page background showing through.
+// Regression cover for the "band under the mobile tab bar" problem. The first
+// three attempts were static CSS patches — how much room the bar reserves,
+// what `bottom: 0` resolves against, and a pseudo element painting the raw
+// safe-area inset. None of them could work, because the defect is not in the
+// bar's box: it is the known iOS standalone-PWA viewport bug. The first time
+// the software keyboard opens, the layout viewport shrinks ~59px and stays
+// shrunk for the whole session, so a `position: fixed; bottom: 0` bar sits
+// 59px above the physical screen edge with the page background showing
+// through.
 //
-// The fix is a runtime one: detect that the viewport is shorter than its
-// session maximum and force the browser to re-measure by flipping
-// #outerContainer's display with a synchronous reflow in between. These tests
-// pin the four properties that make that safe — the standalone gate, the
-// stuck threshold, the reflow landing BETWEEN the two display writes, and
-// #mainList's scroll surviving the flip.
+// The fourth attempt was the right shape — detect the shrink at runtime and
+// force the browser to re-measure by flipping #outerContainer's display with a
+// synchronous reflow in between — but measured "short" against the tallest
+// viewport seen this session, which is never short in the field: iOS keeps the
+// installed app resident, so a launch inside an already-shrunken web process
+// seeds the maximum from the shrunken height and the deficit reads zero
+// forever. The reference is now the PHYSICAL SCREEN, which the bug cannot
+// corrupt.
+//
+// These tests pin what makes that safe: the standalone gate, an expectation
+// derived from `screen` rather than from history, the 24px threshold, the
+// launch/resume triggers that need no user action, the reflow landing BETWEEN
+// the two display writes, #mainList's scroll surviving the flip, and the
+// cooldown that stops a platform where expected legitimately differs from
+// actual from flipping in a loop.
 
-// Each test arms a fresh copy of the module so `maxViewportHeight` and the
+// Each test arms a fresh copy of the module so the cooldown clock and the
 // armed latch start clean; teardown removes that copy's listeners so a later
 // test never runs an earlier module instance's handlers.
 let teardown = null;
@@ -49,6 +58,21 @@ function setStandalone(matches) {
 function setViewport(width, height) {
     window.innerWidth = width;
     window.innerHeight = height;
+}
+
+// The physical screen the expectation is derived from. Device-native on iOS:
+// `width`/`height` do not swap with orientation, so a portrait viewport should
+// be `height` tall and a landscape one `width` tall.
+function setScreen(width, height) {
+    Object.defineProperty(window.screen, 'width', { configurable: true, value: width });
+    Object.defineProperty(window.screen, 'height', { configurable: true, value: height });
+}
+
+function setVisibility(state) {
+    Object.defineProperty(document, 'visibilityState', {
+        configurable: true,
+        get() { return state; },
+    });
 }
 
 // The app shell the heal operates on: a full-height #outerContainer and the
@@ -83,8 +107,12 @@ function instrument(outer) {
     return ops;
 }
 
+// Long enough for the launch/resume settle check to have run.
+const PAST_LAUNCH_CHECK = 400;
+
 beforeEach(() => {
     vi.useFakeTimers();
+    setScreen(390, 844);
     setViewport(390, 844);
     setStandalone(true);
     delete window.visualViewport;
@@ -94,6 +122,7 @@ afterEach(() => {
     if (teardown) teardown();
     teardown = null;
     vi.useRealTimers();
+    delete document.visibilityState;
     document.body.innerHTML = '';
 });
 
@@ -109,8 +138,8 @@ describe('viewportHeal — the standalone gate', () => {
         const { initViewportHeal } = await loadModule();
         expect(initViewportHeal()).toBeNull();
 
-        // Nothing armed means nothing listens: a blur after a shrink must not
-        // touch the DOM at all in Safari.
+        // Nothing armed means nothing listens: neither a blur after a shrink
+        // nor the launch window itself may touch the DOM in Safari.
         const { outer } = buildShell();
         const ops = instrument(outer);
         setViewport(390, 785);
@@ -132,10 +161,81 @@ describe('viewportHeal — the standalone gate', () => {
     });
 });
 
-describe('viewportHeal — the stuck threshold', () => {
-    it('heals after a blur once the viewport is more than 4px short', async () => {
+describe('viewportHeal — the expectation comes from the screen', () => {
+    it('heals a session that BOOTS stuck, with no focus event and no user action', async () => {
+        // The field case the session-maximum reference could never catch: iOS
+        // keeps the installed app resident, so a launch inside an
+        // already-shrunken web process starts short and stays short.
+        setScreen(393, 852);
+        setViewport(390, 793);                   // 59px short from the first frame
+
         const { initViewportHeal } = await loadModule();
-        teardown = initViewportHeal();          // records the 844px maximum
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops).toEqual(['display=none', 'reflow@none', 'display=<empty>']);
+    });
+
+    it('does not treat a shrink as healthy just because it was there at init', async () => {
+        // Same boot-stuck session, now checked through the focusout path: a
+        // session maximum seeded at init would read this as a deficit of zero.
+        setScreen(393, 852);
+        setViewport(390, 793);
+
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+
+        expect(ops.length).toBeGreaterThan(0);
+    });
+
+    it('compares against screen.width in landscape, where the screen does not rotate', async () => {
+        // `screen.width`/`screen.height` are device-native on iOS and do not
+        // swap with orientation, so a landscape viewport should be
+        // `screen.width` tall — reading `screen.height` there would report a
+        // permanent phantom deficit.
+        setScreen(390, 844);
+        setViewport(844, 390);                   // healthy landscape
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(ops).toEqual([]);
+
+        setViewport(844, 331);                   // now 59px short of screen.width
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+        expect(ops.length).toBeGreaterThan(0);
+    });
+
+    it('stays inert when there is no usable screen to compare against', async () => {
+        setScreen(0, 0);
+        setViewport(390, 785);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(500);
+
+        expect(ops).toEqual([]);
+    });
+});
+
+describe('viewportHeal — the stuck threshold', () => {
+    it('heals after a blur once the viewport is more than 24px short', async () => {
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
 
@@ -146,20 +246,20 @@ describe('viewportHeal — the stuck threshold', () => {
         expect(ops.length).toBeGreaterThan(0);
     });
 
-    it('never fires while the viewport is within 4px of its session max', async () => {
+    it('never fires while the viewport is within 24px of the screen', async () => {
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
 
-        setViewport(390, 841);                   // 3px of drift, not the bug
+        setViewport(390, 824);                   // 20px of drift, not the bug
         document.dispatchEvent(new Event('focusout', { bubbles: true }));
         vi.advanceTimersByTime(500);
 
         expect(ops).toEqual([]);
     });
 
-    it('is a no-op on a fresh session that has not shrunk at all', async () => {
+    it('is a no-op on a session whose viewport matches the screen', async () => {
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
         const { outer } = buildShell();
@@ -169,35 +269,19 @@ describe('viewportHeal — the stuck threshold', () => {
         vi.advanceTimersByTime(500);
 
         expect(ops).toEqual([]);
-    });
-
-    it('tracks the session maximum across resizes, so a taller viewport rebases it', async () => {
-        const { initViewportHeal } = await loadModule();
-        teardown = initViewportHeal();
-        const { outer } = buildShell();
-
-        // Rotate/expand to a taller viewport, then come back to the original
-        // height: relative to the NEW maximum that is now a shrink.
-        setViewport(390, 900);
-        window.dispatchEvent(new Event('resize'));
-        setViewport(390, 844);
-        const ops = instrument(outer);
-        document.dispatchEvent(new Event('focusout', { bubbles: true }));
-        vi.advanceTimersByTime(200);
-
-        expect(ops.length).toBeGreaterThan(0);
     });
 
     it('leaves desktop alone even when installed and resized smaller', async () => {
-        // A desktop PWA window dragged shorter looks "stuck" by height alone.
-        // The mobile tab bar this exists to reseat is display:none at ≥1024px,
-        // so there is nothing to heal and the flip must not run.
+        // A desktop PWA window dragged shorter is a genuine deficit against
+        // the screen. The mobile tab bar this exists to reseat is display:none
+        // at ≥1024px, so there is nothing to heal and the flip must not run.
+        setScreen(1440, 900);
+        setViewport(1440, 600);
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
 
-        setViewport(1440, 600);
         document.dispatchEvent(new Event('focusout', { bubbles: true }));
         vi.advanceTimersByTime(500);
 
@@ -273,6 +357,146 @@ describe('viewportHeal — scroll restoration', () => {
     });
 });
 
+describe('viewportHeal — the resume triggers', () => {
+    it('checks again when the app comes back visible from the app switcher', async () => {
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);   // spend the launch check while healthy
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        setViewport(390, 785);
+        setVisibility('visible');
+        document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops).toEqual(['display=none', 'reflow@none', 'display=<empty>']);
+    });
+
+    it('ignores a visibilitychange into the background', async () => {
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        setViewport(390, 785);
+        setVisibility('hidden');
+        document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops).toEqual([]);
+    });
+
+    it('checks again on a bfcache restore', async () => {
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        setViewport(390, 785);
+        window.dispatchEvent(new Event('pageshow'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops).toEqual(['display=none', 'reflow@none', 'display=<empty>']);
+    });
+
+    it('stops listening after teardown', async () => {
+        const { initViewportHeal } = await loadModule();
+        const stop = initViewportHeal();
+        stop();
+        teardown = null;
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        setViewport(390, 785);
+        window.dispatchEvent(new Event('pageshow'));
+        setVisibility('visible');
+        document.dispatchEvent(new Event('visibilitychange'));
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(1000);
+
+        expect(ops).toEqual([]);
+    });
+});
+
+describe('viewportHeal — the ineffective-heal cooldown', () => {
+    it('refuses to re-flip for 5s after a flip that changed nothing', async () => {
+        // iPad windowed standalone is the real case: the layout viewport is
+        // legitimately shorter than the screen, so every trigger would look
+        // stuck and flip forever. One harmless flip, then back off.
+        setViewport(390, 785);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(ops.length).toBe(3);              // the one allowed flip
+
+        // The deficit is unchanged, so further triggers inside the window are
+        // refused even though the viewport still reads as stuck.
+        window.dispatchEvent(new Event('pageshow'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+        expect(ops.length).toBe(3);
+    });
+
+    it('tries again once the cooldown expires', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(ops.length).toBe(3);
+
+        vi.advanceTimersByTime(5000);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+
+        expect(ops.length).toBe(6);
+    });
+
+    it('does not arm the cooldown when the flip actually recovered the viewport', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = [];
+        let current = '';
+        Object.defineProperty(outer.style, 'display', {
+            configurable: true,
+            get() { return current; },
+            set(v) {
+                current = v;
+                ops.push('display=' + (v === '' ? '<empty>' : v));
+                // Model the browser re-measuring: restoring the element brings
+                // the viewport back to its full height.
+                if (v === '') window.innerHeight = 844;
+            },
+        });
+        Object.defineProperty(outer, 'offsetHeight', {
+            configurable: true,
+            get() { ops.push('reflow@' + (current === '' ? '<empty>' : current)); return 0; },
+        });
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(ops.length).toBe(3);
+
+        // A second shrink inside what would have been the cooldown window must
+        // still heal, because the first flip worked.
+        setViewport(390, 785);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+
+        expect(ops.length).toBe(6);
+    });
+});
+
 describe('viewportHeal — the visual-viewport trigger', () => {
     function stubVisualViewport() {
         const listeners = {};
@@ -306,6 +530,7 @@ describe('viewportHeal — the visual-viewport trigger', () => {
         const vv = stubVisualViewport();
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);   // spend the launch check while healthy
         const { outer } = buildShell();
         const input = document.createElement('input');
         document.body.appendChild(input);
