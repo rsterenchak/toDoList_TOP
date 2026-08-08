@@ -13,13 +13,7 @@ export const changelog = [
             "Runs started from the Agent board or a task's description panel now show up in the assistant's Runs tab right away, tracking from queued through to shipped.",
             "The coverage tab now fills in on first open instead of staying blank until you switch to another project and back.",
             "Proposals without a rubric tag now list oldest first, so accepting them top to bottom follows the build order they were written in.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-07',
-        fixed: [
-            "Entries shipped straight from the TODO.md list now record when they shipped, so the Runs tab orders them by real ship time instead of sinking them to the bottom.",
+            "Mobile settings now has a Repo setup section, so the shape reference is reachable from a phone alongside Configure inject.",
         ],
     },
 ];

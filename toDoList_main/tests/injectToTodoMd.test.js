@@ -460,8 +460,9 @@ describe('inject feature — ghost menu Configure inject row', () => {
     it('the mobile Settings modal also contains a "Configure inject" row that opens the settings modal', () => {
         // Parity with the desktop ghost menu row above. The mobile Settings
         // modal is built by showSettingsModal() and Configure inject must
-        // live in its Data section (next to Export/Import) so the inject
-        // config is reachable from a phone.
+        // live in its Repo setup section (next to Shape reference, as it
+        // does in the desktop dropdown) so the inject config is reachable
+        // from a phone.
         const fnIdx = settingsModal.indexOf('function showSettingsModal()');
         expect(fnIdx).toBeGreaterThan(-1);
         const slice = settingsModal.slice(fnIdx, fnIdx + 15000);
@@ -476,9 +477,9 @@ describe('inject feature — ghost menu Configure inject row', () => {
         const rowSlice = slice.slice(rowIdx, rowIdx + 400);
         expect(rowSlice).toMatch(/close\(\s*\)/);
         expect(rowSlice).toMatch(/showInjectSettingsModal\s*\(\s*\)/);
-        // Row is appended to the Data section (next to Export/Import),
-        // not Account or About, so it sits alongside the other data-
-        // management actions.
-        expect(slice).toMatch(/dataSection\.appendChild\(\s*injectRow\s*\)/);
+        // Row is appended to the Repo setup section (next to Shape
+        // reference), not Data, Account or About, so both halves of
+        // pointing the app at a repo read as one cluster.
+        expect(slice).toMatch(/repoSetupSection\.appendChild\(\s*injectRow\s*\)/);
     });
 });
