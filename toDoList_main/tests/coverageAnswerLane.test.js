@@ -48,7 +48,7 @@ vi.mock('../src/inject.js', () => ({
     readTodoMdFromWorker: () => Promise.resolve({ ok: false, reason: 'No target' }),
     readRepoFile: () => Promise.resolve({ ok: false }),
     readAssignmentFromWorker: () => Promise.resolve(assignmentResult),
-    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
+    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }),
     showInjectToast: (msg, kind) => { toasts.push({ msg: msg, kind: kind }); },
     isInjectConfigured: () => true,
     chatWithWorker: () => Promise.resolve({ ok: true, reply: '' }),
@@ -123,7 +123,7 @@ function wireBoardless() {
             const input = document.querySelector('.selectedProject #projInput');
             return input ? (input.value || '').trim() : '';
         },
-        resolveReadTarget: function () { return { repo: 'owner/repo', file_path: 'TODO.md' }; },
+        resolveReadTarget: function () { return { repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }; },
         openChatWithSeed: function (seed, rowId) { seeded.push({ seed: seed, rowId: rowId }); },
     });
 }
@@ -131,7 +131,7 @@ function wireBoardless() {
 // Load the assignment + queue and open the coverage detail modal from the
 // COVERAGE pane's "View full breakdown" action.
 async function openDetail() {
-    refreshAssignment({ repo: 'owner/repo', file_path: 'TODO.md' }, currentProject);
+    refreshAssignment({ repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }, currentProject);
     await loadQueueRows(currentProject);
     await flush();
     document.body.appendChild(buildCoveragePane());

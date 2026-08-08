@@ -36,7 +36,7 @@ vi.mock('../src/inject.js', () => ({
     dispatchTriage: () => Promise.resolve({ ok: true }),
     dispatchDerive: () => Promise.resolve({ ok: true }),
     fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
-    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
+    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }),
     readAssignmentFromWorker: () => Promise.resolve(assignmentResult),
     readRepoFile: () => Promise.resolve({ ok: false }),
 }));

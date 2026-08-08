@@ -365,7 +365,9 @@ describe('readAssignmentFromWorker — sibling path derivation', () => {
             ok: true,
             json: () => Promise.resolve({ content: '# Assignment', sha: 'abc' }),
         }));
-        const res = await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'TODO.md' });
+        const res = await readAssignmentFromWorker({
+            repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment',
+        });
         const body = lastReadBody();
         expect(body).toBeTruthy();
         expect(body.repo).toBe('owner/repo');
@@ -378,9 +380,43 @@ describe('readAssignmentFromWorker — sibling path derivation', () => {
             ok: true,
             json: () => Promise.resolve({ content: 'x', sha: 's' }),
         }));
-        await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'docs/plans/TODO.md' });
+        await readAssignmentFromWorker({
+            repo: 'owner/repo', file_path: 'docs/plans/TODO.md', purpose: 'assignment',
+        });
         const body = lastReadBody();
         expect(body.filePath).toBe('docs/plans/assignment.md');
+    });
+
+    // A personal repo has no assignment to be graded against — its context lives
+    // in a `project.md` beside the same TODO.md. The basename is the only thing
+    // the purpose changes; the directory derivation is shared.
+    it('reads project.md instead when the target is a personal repo', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: '# Project brief', sha: 'p' }),
+        }));
+        await readAssignmentFromWorker({
+            repo: 'owner/repo', file_path: 'docs/plans/TODO.md', purpose: 'personal',
+        });
+        expect(lastReadBody().filePath).toBe('docs/plans/project.md');
+    });
+
+    it('treats a missing or unrecognized purpose as personal', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: 'x', sha: 's' }),
+        }));
+        await readAssignmentFromWorker({ repo: 'owner/repo', file_path: 'TODO.md' });
+        expect(lastReadBody().filePath).toBe('project.md');
+
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ content: 'x', sha: 's' }),
+        }));
+        await readAssignmentFromWorker({
+            repo: 'owner/repo', file_path: 'TODO.md', purpose: 'coursework',
+        });
+        expect(lastReadBody().filePath).toBe('project.md');
     });
 
     it('returns ok:false without a Worker call when no target is passed', async () => {
@@ -481,7 +517,7 @@ describe('writeAssignmentToWorker — write branch', () => {
             json: () => Promise.resolve({ sha: 'new-sha' }),
         }));
         const res = await writeAssignmentToWorker(
-            { repo: 'owner/repo', file_path: 'docs/TODO.md' },
+            { repo: 'owner/repo', file_path: 'docs/TODO.md', purpose: 'assignment' },
             '## Requirements\nDo the thing.\n',
             'old-sha',
         );
@@ -493,6 +529,22 @@ describe('writeAssignmentToWorker — write branch', () => {
         expect(body.content).toBe('## Requirements\nDo the thing.\n');
         expect(body.sha).toBe('old-sha');
         expect(res).toEqual({ ok: true, sha: 'new-sha' });
+    });
+
+    // The editor saves back through the same path the read resolved, so a
+    // personal repo's Save must land on project.md rather than creating an
+    // assignment.md the repo never had.
+    it('posts project.md for a personal repo', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ sha: 'new-sha' }),
+        }));
+        await writeAssignmentToWorker(
+            { repo: 'owner/repo', file_path: 'docs/TODO.md', purpose: 'personal' },
+            'A pomodoro companion for studying.\n',
+            'old-sha',
+        );
+        expect(lastWriteBody().filePath).toBe('docs/project.md');
     });
 
     it('returns ok:false without a Worker call when no target is passed', async () => {

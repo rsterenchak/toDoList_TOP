@@ -59,7 +59,7 @@ vi.mock('../src/inject.js', () => ({
     },
     makeInjectButton: () => document.createElement('button'),
     refreshInjectButton: () => {},
-    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md' }),
+    findTargetById: () => ({ repo: 'owner/repo', file_path: 'TODO.md', purpose: 'assignment' }),
     showInjectToast: () => {},
     isInjectConfigured: () => true,
     chatWithWorker: () => Promise.resolve({ ok: true, reply: '' }),
