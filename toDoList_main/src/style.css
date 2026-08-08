@@ -19073,6 +19073,36 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     pointer-events: auto;
   }
 
+  /* ── Safe-area paint-through ──
+     How much room the bar RESERVES and how far its surface REACHES are two
+     different questions, and conflating them is what kept this band alive
+     through two prior fixes. The reserve above is capped at 8px on purpose:
+     reserving the full ~34px standalone inset lifts the labels that far off
+     the screen edge, which is a dead band of its own. But the bar's own box
+     then ends 8px below the labels, so on a device reporting the full inset
+     everything between that edge and the physical screen bottom paints in
+     the page background — a visibly different surface under the tabs.
+
+     So: keep reserving the capped inset, and PAINT the raw one. This strip
+     hangs off the bar's bottom edge in the bar's own background colour, so
+     the two read as one continuous surface all the way down with no seam.
+     Layout is untouched — the strip is out of flow and the bar's height,
+     padding, and `bottom` are exactly as they were, so the labels do not
+     move. Safari reports the inset as 0, collapsing this to zero height and
+     leaving its rendering pixel-identical. Being a child of the bar, it also
+     disappears with it under the hidden-by-drawer / hidden-by-empty rules
+     rather than lingering as a stray band at the screen edge. */
+  #mobileTabBar::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    height: env(safe-area-inset-bottom, 0px);
+    background: var(--bg-elevated);
+    pointer-events: none;
+  }
+
   #mobileTabBar.hidden-by-drawer,
   #mobileTabBar.hidden-by-empty { display: none; }
 
