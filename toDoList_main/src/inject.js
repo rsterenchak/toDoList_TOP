@@ -663,7 +663,10 @@ function parseTodoMdMarkers(text) {
 // overlapping callers share one read. Pass `force` after an inject/delete so the
 // real file reconciles promptly instead of waiting out the TTL. On a resolved
 // read it dispatches TODO_RUN_STATUS_EVENT so rendered glyphs re-evaluate; a
-// missing/malformed read stores two empty sets (no glyph) and never throws.
+// missing/malformed read stores two empty sets (no glyph) and never throws. A
+// resolved read also stamps `shippedAt` on any todo whose entry is newly observed
+// as shipped (see stampNewlyShippedEntries), which is the only ship timestamp
+// entries dispatched outside the agent queue ever get.
 // Returns a promise that settles when the cache is up to date.
 // Seed a repo's marker cache with empty sets ONLY when it has no entry yet, so a
 // first-ever failed read still reads as "no glyph" (fresh timestamp, so the TTL
@@ -675,6 +678,42 @@ function seedEmptyMarkersIfAbsent(repo) {
         present: new Set(),
         shipped: new Set(),
         fetchedAt: Date.now(),
+    });
+}
+
+// Entry ids whose ship stamp is already accounted for — either just stamped or
+// reported already-stamped by listLogic. The ledger is what makes the observer
+// below a one-shot per id without gating on the marker cache's own previous
+// `shipped` set: that set is also written optimistically (markEntryPresentLocally
+// / forgetEntryMarkerLocally) and is replaced wholesale on every read, and a
+// stamp that fails because todos haven't hydrated yet MUST be retried rather
+// than counted as done — the same repairable-invariant discipline
+// reconcileShippedStamps applies to queue rows.
+const shippedStampLedger = new Set();
+
+// Stamp `shippedAt` the first time an entry id is observed in a repo's shipped
+// marker set. Without this, `shippedAt` is only ever written by the agent-queue
+// settle path, so an entry shipped via the TODO.md viewer's "Run backlog" button
+// or an entry's own "Run this entry" pill — neither of which creates an
+// `agent_queue` row — keeps an unset `shippedAt`. The Runs tab's newest-first
+// sort reads that field for marker-derived records, so an unstamped entry
+// resolves to 0 and pins itself to the bottom of the list no matter how recently
+// it actually shipped. Observing the marker set is the only signal available for
+// those ships, and it works cross-device: whichever device first sees the `[x]`
+// entry stamps it and mirrors the stamp to Supabase for the rest.
+//
+// Best-effort by design: an id that resolves to no todo (another project's entry
+// on a shared repo, or todos not yet hydrated) stays out of the ledger and is
+// re-attempted on the next refresh. Never throws — a marker refresh must not fail
+// because a stamp did.
+function stampNewlyShippedEntries(shipped) {
+    if (!shipped || !shipped.size) return;
+    shipped.forEach(function(entryId) {
+        if (!entryId || shippedStampLedger.has(entryId)) return;
+        try {
+            const res = listLogic.stampEntryShippedByEntryId(entryId);
+            if (res && res.ok) shippedStampLedger.add(entryId);
+        } catch (e) { /* retried on the next refresh */ }
     });
 }
 
@@ -700,6 +739,9 @@ export function refreshShippedMarkers(target, force) {
             shipped: markers.shipped,
             fetchedAt: Date.now(),
         });
+        // Stamp before the emit so the repaint the event triggers (the Runs list
+        // re-sorts on it) already sees the fresh `shippedAt` values.
+        stampNewlyShippedEntries(markers.shipped);
         emitTodoRunStatusChange();
     }).catch(function() {
         seedEmptyMarkersIfAbsent(repo);

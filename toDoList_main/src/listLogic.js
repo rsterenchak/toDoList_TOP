@@ -1946,6 +1946,29 @@ export const listLogic = (function () {
     }
 
 
+    // Same ship stamp as stampEntryShipped, keyed by the TODO.md entry MARKER id
+    // instead of the todo id. Needed because the only cross-device trace of a
+    // ship is that marker sitting on a `[x]` entry: a run started from the
+    // TODO.md viewer's "Run backlog" button or an entry's own "Run this entry"
+    // pill never creates an `agent_queue` row, so the queue-row settle path (the
+    // sole caller of stampEntryShipped) never fires for it and the todo keeps an
+    // unset `shippedAt`. The marker observer in inject.js has an entry id in
+    // hand, not a todo id, hence this variant. Resolves the marker to its todo by
+    // scanning every project (marker ids are globally unique, mirroring
+    // getEntryReviewInfo's scan) and then delegates the write, so idempotence,
+    // local save, and the Supabase mirror all stay in one place. Returns
+    // stampEntryShipped's shape, with { ok:false } when the marker is missing or
+    // resolves to no todo — the caller retries a not-found rather than treating
+    // it as stamped, since todos may simply not have hydrated yet.
+    // @category: user-mutation-only
+    function stampEntryShippedByEntryId(entryId) {
+        if (!entryId) return { ok: false, error: 'Missing entry id.' };
+        const info = getEntryReviewInfo(entryId);
+        if (!info.found || !info.todoId) return { ok: false, error: 'Todo not found.' };
+        return stampEntryShipped(info.todoId);
+    }
+
+
     // Resolve a TODO.md entry marker id to its source todo and report whether
     // that entry has been acknowledged. Scans every project for a todo whose
     // `entryId` matches the marker (marker ids are globally unique, mirroring
@@ -4166,6 +4189,7 @@ export const listLogic = (function () {
         markEntryReviewed,
         markDraftSeen,
         stampEntryShipped,
+        stampEntryShippedByEntryId,
         getEntryReviewInfo,
         getTodoById,
         hasHydratedTodos,
