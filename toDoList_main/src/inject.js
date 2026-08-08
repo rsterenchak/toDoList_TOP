@@ -1488,6 +1488,15 @@ export async function initInjectTargets() {
     await ensureRepoPurposes();
     await loadInjectTargets();
     refreshAllInjectButtons();
+    // The cache is warm now. Tell the surfaces that resolve a routed target off
+    // it — the coverage tab mounts long before this lands and leaves its read
+    // unresolved rather than mis-settling as "no context document", so without
+    // this signal it would only re-read on the next project switch. Distinct
+    // from `injectTargetsChanged`, which reports a user edit to the target set;
+    // this one reports the boot warm-up completing, once.
+    try {
+        document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+    } catch (e) { /* defensive: non-DOM environment */ }
 }
 
 function refreshAllInjectButtons() {

@@ -6,6 +6,7 @@ import {
     mintEntryId,
     dispatchDerive,
     findTargetById,
+    getCachedTargets,
 } from './inject.js';
 import { showAssignmentEditorModal, wireModalDismiss } from './modals.js';
 import {
@@ -124,6 +125,39 @@ function resolveReadTargetFor(projectName) {
     return targetId ? findTargetById(targetId) : null;
 }
 
+// Tell "this project has no context document" apart from "the inject-targets
+// cache has not warmed up yet". Both hand refreshAssignment a null descriptor,
+// but only the first is an answer: settling the second as `absent` records the
+// project in `_assignmentProject`, and the double-fetch guard then suppresses
+// every later read, so the tab stays empty until a project switch invalidates
+// the cache. That is the whole bug — the guard is right, an unresolved state
+// just must not satisfy it.
+//
+// A project carrying no routed target id genuinely has none, whatever the cache
+// holds. One that IS routed but resolves against an EMPTY cache is waiting on
+// initInjectTargets; the emptiness of the cache is the registry-not-loaded
+// signal, not the missing lookup, because a loaded cache that simply lacks this
+// id is a real answer.
+function isAwaitingInjectTargets(projectName) {
+    if (!projectName) return false;
+    let targetId = null;
+    try {
+        targetId = listLogic.getProjectTargetId(projectName);
+    } catch (e) {
+        return false;
+    }
+    if (!targetId) return false;
+    let cached = null;
+    try {
+        cached = getCachedTargets();
+    } catch (e) {
+        // Can't read the cache at all — that is not positive evidence it is
+        // cold, so answer "loaded" and let the caller settle as it did before.
+        return false;
+    }
+    return Array.isArray(cached) && cached.length === 0;
+}
+
 // Which document kind a routed target's context lives in, read off the registry
 // `purpose` inject.js now stamps onto every target descriptor. An assignment
 // repo is graded against `assignment.md`; everything else — including a target
@@ -163,6 +197,19 @@ export function refreshAssignmentForActiveProject(projectName) {
     if (getAssignmentProject() === name) return;
     resetAssignmentCache();
     refreshAssignment(resolveReadTargetFor(name), name);
+}
+
+// The other half of the empty-tab fix. main.js fires initInjectTargets() without
+// awaiting it, so the coverage tab routinely mounts and calls
+// refreshAssignmentForActiveProject() before a single target is resolvable. That
+// call now leaves the read unresolved instead of settling as `absent`, which is
+// only useful if something re-drives it — this is that something. Registered at
+// module scope (not per mount) so it survives sheet re-mounts and covers whichever
+// surface got there first.
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('injectTargetsLoaded', function () {
+        refreshAssignmentForActiveProject();
+    });
 }
 
 // A derive aspect badge: a small mono tag ("A1"/"B1") shown near the chip on
@@ -378,6 +425,17 @@ export function refreshAssignment(target, projectName) {
     const name = (typeof projectName === 'string' && projectName)
         ? projectName
         : getSelectedProjectName();
+    // A routed project whose target can't be resolved yet has NOT been answered,
+    // so leave the cache unbound: recording `_assignmentProject` here is what
+    // made the double-fetch guard swallow every later read. Staying unresolved
+    // keeps getAssignmentState() null (the tab hides, as it does before any read
+    // lands) and lets the next call — the `injectTargetsLoaded` retry above, or a
+    // project switch — read for real.
+    if (!target && isAwaitingInjectTargets(name)) {
+        _assignment = null;
+        notifyAssignmentChange();
+        return;
+    }
     _assignmentProject = name;
     const kind = docKindFor(target);
     _assignmentKind = kind;
