@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-08',
+        fixed: [
+            "Runs started from the Agent board or a task's description panel now show up in the assistant's Runs tab right away, tracking from queued through to shipped.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-07',
         fixed: [
-            "Accepting a proposal no longer drops the new task when a background sync lands mid-flight, so the run stays linked to its entry.",
             "The Derive button now spins while a derive run is working, so it clearly reads as busy rather than just greyed out.",
             "Launched from the home screen, the bottom tab bar now sits flush against the screen edge instead of floating above a dead band.",
             "The home-screen app's bottom tab bar and utility sheet now reach the true screen edge, clearing the coloured strip that sat beneath the tabs.",
