@@ -641,18 +641,20 @@ describe('viewportHeal — the ineffective-heal cooldown', () => {
     });
 });
 
-describe('viewportHeal — the CSS fallback', () => {
+describe('viewportHeal — the stuck-session fallback', () => {
     // Field diagnostics settled what the first four attempts could only guess
     // at: the gate passes, the deficit is real (852 vs 793), the flip runs —
     // and WebKit never re-measures. So the flip keeps first refusal, and what
-    // it fails to close is corrected deterministically from the measurement,
-    // by publishing the deficit for style.css to subtract from the
-    // bottom-fixed chrome.
+    // it fails to close is published as a flag: the deficit on the root element
+    // and `vhDeficit` on the body. That flag drove a CSS reseat once and no
+    // longer does — nothing paints below the shrunken viewport — but the
+    // publishing contract is unchanged and the Diagnostics readout depends on
+    // it, so it stays pinned exactly as it was.
     function readDeficitVar() {
         return document.documentElement.style.getPropertyValue('--vh-deficit');
     }
 
-    it('reseats the chrome when a flip leaves the deficit exactly where it found it', async () => {
+    it('flags the session when a flip leaves the deficit exactly where it found it', async () => {
         setScreen(393, 852);
         setViewport(390, 793);                   // the field reading: 59px short
         const { initViewportHeal } = await loadModule();
@@ -665,7 +667,7 @@ describe('viewportHeal — the CSS fallback', () => {
         expect(readDeficitVar()).toBe('59px');
     });
 
-    it('never reseats a session whose viewport matches the screen', async () => {
+    it('never flags a session whose viewport matches the screen', async () => {
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
         buildShell();
@@ -678,7 +680,7 @@ describe('viewportHeal — the CSS fallback', () => {
         expect(readDeficitVar()).toBe('');
     });
 
-    it('clears the reseat once a later measurement reads healthy', async () => {
+    it('clears the flag once a later measurement reads healthy', async () => {
         setViewport(390, 785);
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
@@ -688,8 +690,8 @@ describe('viewportHeal — the CSS fallback', () => {
         expect(document.body.classList.contains('vhDeficit')).toBe(true);
 
         // Whatever recovered it — a force-quit, an orientation change, a flip
-        // that finally took — the offset has to come off, or the chrome ends
-        // up double-corrected and hangs off the bottom of the screen.
+        // that finally took — the flag has to come off, or a healthy session
+        // keeps reporting a deficit it no longer has.
         setViewport(390, 844);
         document.dispatchEvent(new Event('focusout', { bubbles: true }));
         vi.advanceTimersByTime(200);
@@ -701,7 +703,7 @@ describe('viewportHeal — the CSS fallback', () => {
     it('reconciles on a trigger the cooldown refused to flip on', async () => {
         // The cooldown stops a useless flip repeating; it must not stop the
         // viewport being measured, or a session that recovers during the
-        // cooldown window keeps an offset nothing is left to remove.
+        // cooldown window keeps a flag nothing is left to remove.
         setViewport(390, 785);
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
@@ -723,8 +725,8 @@ describe('viewportHeal — the CSS fallback', () => {
     it('refuses a deficit far outside the plausibility band', async () => {
         // 200px is not the iOS shrink. It is a legitimately windowed
         // environment — iPad Stage Manager, a resized installed window — and
-        // shoving the chrome 200px below the viewport would be a worse defect
-        // than the one being corrected.
+        // reporting it as a stuck session would put a number in the readout
+        // that means something else entirely.
         setScreen(390, 844);
         setViewport(390, 644);
         const { initViewportHeal } = await loadModule();
@@ -751,7 +753,7 @@ describe('viewportHeal — the CSS fallback', () => {
         expect(document.body.classList.contains('vhDeficit')).toBe(false);
     });
 
-    it('leaves desktop unreseated even at a deficit inside the band', async () => {
+    it('leaves desktop unflagged even at a deficit inside the band', async () => {
         setScreen(1440, 900);
         setViewport(1440, 841);
         const { initViewportHeal } = await loadModule();
@@ -780,7 +782,7 @@ describe('viewportHeal — the CSS fallback', () => {
         expect(getViewportHealStatus().fallbackDeficitPx).toBeNull();
     });
 
-    it('takes the reseat off the document on teardown', async () => {
+    it('takes the flag off the document on teardown', async () => {
         setViewport(390, 785);
         const { initViewportHeal, getViewportHealStatus } = await loadModule();
         const stop = initViewportHeal();
@@ -890,30 +892,62 @@ describe('viewportHeal — wiring and the retired CSS patch', () => {
         expect(laidOut[0]).toMatch(/padding-bottom:\s*var\(--mobile-bottom-inset[^)]*\)/);
     });
 
-    // Every bottom-fixed element on the compact breakpoint needs a twin under
-    // `body.vhDeficit`, or it stays anchored to the shrunken viewport while the
-    // rest of the chrome moves — a seam that is worse than the uncorrected
-    // band. The stylesheet is the only place that list exists, so pin it here.
-    it('subtracts the measured deficit from every bottom-fixed mobile element', () => {
+    // The reseat is retired. WebKit composites the stuck session onto a surface
+    // exactly as tall as the SHRUNKEN layout viewport, so an element pushed
+    // below that line does not move down — it stops rendering. The device
+    // screenshot showed the reseated tab bar down to its 2px active-tab
+    // indicator with the icons and labels gone. Every bottom-fixed element
+    // therefore keeps its base anchor in a stuck session, and the ban is pinned
+    // here because the reseat is an intuitive thing to re-derive from the bug
+    // report alone.
+    it('reseats no bottom-fixed element below the effective viewport', () => {
         [
             '#mobileTabBar',
             '#claudeLauncher',
             '#bottomSheet\\[data-state="IDLE"\\]',
+            '#bottomSheet\\[data-state="PEEK"\\]',
             '#undoToast',
             '#mobileUpdatePill',
         ].forEach((selector) => {
             const rule = new RegExp(
-                'body\\.vhDeficit\\s+' + selector + '[^{]*\\{[^}]*bottom:\\s*calc\\([^}]*var\\(--vh-deficit'
+                'body\\.vhDeficit\\s+' + selector + '[^{]*\\{[^}]*bottom:'
             );
-            expect(css, selector + ' has no vhDeficit reseat').toMatch(rule);
+            expect(css, selector + ' still carries a vhDeficit reseat').not.toMatch(rule);
         });
+        // Belt and braces: no rule anywhere subtracts the published deficit.
+        expect(css).not.toMatch(/-\s*var\(--vh-deficit/);
     });
 
-    it('leaves the stretched overlays out of the reseat, per the entry', () => {
+    it('leaves the stretched overlays alone, per the entry', () => {
         // EXPANDED and the chat sheet are full-height, not bottom-anchored:
-        // they need a height correction, not an offset, and offsetting them
-        // would pull their tops off the screen.
+        // they would need a height correction, and they are out of scope for
+        // the same reason the reseat was abandoned — nothing paints down there.
         expect(css).not.toMatch(/body\.vhDeficit\s+#bottomSheet\[data-state="EXPANDED"\]/);
         expect(css).not.toMatch(/body\.vhDeficit\s+#claudeSheet/);
+    });
+
+    // With no reseat, the fallback's whole job is that the un-paintable strip
+    // below the bar reads as part of the bar. Two facts make it read that way
+    // with no rule at all, and both are load-bearing enough to pin: the bar and
+    // the document canvas carry the same background token, so the OS extension
+    // of that canvas is the same colour as the bar; and the bar paints no
+    // box-shadow, so nothing is sheared flat at the surface boundary. Add a
+    // downward shadow to the bar and this fails — which is the moment
+    // `body.vhDeficit` needs a suppression rule.
+    it('leaves the tab bar meeting the canvas with no shadow to shear', () => {
+        const barBlocks = [...css.matchAll(/(^|[\s},])#mobileTabBar\s*\{([\s\S]*?)\}/g)]
+            .map(m => m[2]);
+        const laidOut = barBlocks.filter(b => /position:\s*fixed\s*;/.test(b))[0];
+        expect(laidOut).toBeTruthy();
+        expect(laidOut).not.toMatch(/box-shadow/);
+        expect(laidOut).toMatch(/background:\s*var\(--bg-elevated\)/);
+
+        // The canvas the OS extends into the strip comes from `body` on this
+        // breakpoint, and it has to be the same token or the apron reads as a
+        // band rather than as more bar.
+        const bodyBlocks = [...css.matchAll(/(^|[\s},])body\s*\{([\s\S]*?)\}/g)].map(m => m[2]);
+        const mobileBody = bodyBlocks.filter(b => /min-height:\s*100dvh/.test(b))[0];
+        expect(mobileBody).toBeTruthy();
+        expect(mobileBody).toMatch(/background:\s*var\(--bg-elevated\)/);
     });
 });

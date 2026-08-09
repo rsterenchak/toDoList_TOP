@@ -212,15 +212,15 @@ describe('Settings → Diagnostics — the heal readout', () => {
 
 describe('Settings → Diagnostics — the heal fallback row', () => {
     // The reason this row exists: the flip is invisible either way, so the
-    // next device screenshot has to be able to say whether the CSS reseat took
-    // over without anyone guessing from the chrome's position.
-    it('reads "off" while nothing is being reseated', () => {
+    // next device screenshot has to be able to say whether the viewport is
+    // still stuck without anyone guessing from the chrome's position.
+    it('reads "off" while the viewport measures healthy', () => {
         setStandalone(false);
         expect(initViewportHeal()).toBeNull();
         expect(valueOf(mount(), 'healFallback')).toBe('off');
     });
 
-    it('reports the reseat and its measured offset once the fallback engages', () => {
+    it('reports the stuck session and its measured deficit once the fallback engages', () => {
         const screenWidth = Object.getOwnPropertyDescriptor(window.screen, 'width');
         const screenHeight = Object.getOwnPropertyDescriptor(window.screen, 'height');
         const { innerWidth, innerHeight } = window;

@@ -22527,7 +22527,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 
 /* ══════════════════════════════════════════
-   SHRUNKEN-VIEWPORT FALLBACK — reseat the bottom-fixed mobile chrome
+   SHRUNKEN-VIEWPORT FALLBACK — why nothing is reseated here
    ──────────────────────────────────────────
    The iOS standalone keyboard bug shrinks the layout viewport ~59px for the
    rest of the session. viewportHeal.js answers it first with a display flip
@@ -22535,53 +22535,31 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    app (screen 852, innerHeight 793, heal armed, flip attempted) show the flip
    landing with the deficit untouched: WebKit simply never re-measures there.
 
-   So when the flip fails to restore, viewportHeal.js publishes the measured
-   deficit as --vh-deficit on the root element and adds .vhDeficit to the body,
-   and this group subtracts it from every bottom-fixed element on the compact
-   breakpoint. The chrome then sits at its designed offset from the PHYSICAL
-   screen bottom rather than from the short viewport, and the band that showed
-   through beneath the tab bar closes.
+   This block used to answer THAT case by subtracting the measured deficit from
+   every bottom-fixed element's `bottom`, reseating the chrome against the
+   physical screen. It cannot work, and no offset can. WebKit composites the
+   stuck session onto a surface exactly as tall as the SHRUNKEN layout viewport:
+   reseated, #mobileTabBar's box extended below that line and only the sliver
+   above it rendered — the 2px active-tab indicator visible, the icons and
+   labels beneath it gone — while every element whose box stayed above the line
+   rendered normally. Nothing in-page paints below the shrunken viewport bottom,
+   so pushing chrome down there hides it rather than moving it.
 
-   Deliberately `bottom: calc(...)` composition rather than
-   `transform: translateY(...)`: a transform on any of these would create a
-   stacking context and a containing block for fixed descendants, and would
-   collide with the transforms several of them already carry for their own
-   layout (#undoToast and #mobileUpdatePill centre with translateX;
-   #claudeLauncher lifts its glyph with translateY and animates transform on
-   hover). Subtracting from `bottom` touches no transition machinery.
+   So the bottom-fixed chrome keeps its base anchors against the effective
+   (shrunken) viewport, in a stuck session exactly as in a healthy one, and the
+   fallback's remaining job is to make the un-paintable strip below read as
+   intentional rather than as a missing surface. It needs no rule to do that:
+   the strip is the OS extending the document canvas, `body` is --bg-elevated on
+   this breakpoint, #mobileTabBar's background is that same token, and the bar
+   paints no box-shadow (`border-top` is its only edge). Bar and apron are one
+   uniform surface already. The nearest downward shadows — #claudeLauncher,
+   #undoToast, #mobileUpdatePill — float at least the bar's full height above
+   the boundary and never reach it, so none is sheared flat there.
 
-   These calcs SHADOW the base rules above and must move with them: each is its
-   base `bottom` expression verbatim, minus `var(--vh-deficit, 0px)`. Changing a
-   base offset without changing its twin here silently reverts that element to
-   its un-reseated position in exactly the sessions this exists for.
-
-   Inert everywhere else: without .vhDeficit nothing here applies, and the
-   fallback var defaults to 0px, so healthy sessions, Safari, and desktop are
-   pixel-identical to before.
-
-   EXPANDED bottom sheet and the full-screen chat sheet are deliberately out —
-   they are stretched overlays that need a height-side correction, not a bottom
-   offset.
+   viewportHeal.js still publishes --vh-deficit and .vhDeficit; the class is the
+   Diagnostics section's evidence of a stuck session, not a style hook, and the
+   stylesheet deliberately reads neither. If a downward box-shadow is ever added
+   to #mobileTabBar it WILL be sheared at that boundary and will need
+   suppressing here under `body.vhDeficit` — viewportHeal.test.js pins the
+   no-shadow premise so that day is a failing test rather than a field report.
 ══════════════════════════════════════════ */
-@media (max-width: 1023px) {
-  body.vhDeficit #mobileTabBar {
-    bottom: calc(0px - var(--vh-deficit, 0px));
-  }
-
-  body.vhDeficit #claudeLauncher {
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) - var(--vh-deficit, 0px));
-  }
-
-  body.vhDeficit #bottomSheet[data-state="IDLE"],
-  body.vhDeficit #bottomSheet[data-state="PEEK"] {
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) - var(--vh-deficit, 0px));
-  }
-
-  body.vhDeficit #undoToast {
-    bottom: calc(64px + var(--mobile-bottom-inset, 0px) - var(--vh-deficit, 0px));
-  }
-
-  body.vhDeficit #mobileUpdatePill {
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) + 12px - var(--vh-deficit, 0px));
-  }
-}
