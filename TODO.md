@@ -961,3 +961,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Implementation notes: `newlyCheckedTitle` (claudeSheet.js:4948-4959) currently returns `null` for BOTH zero matches and 2-or-more ambiguous matches, so the caller can't tell "definitely nothing changed" from "can't tell which of several changed." It needs to distinguish those two cases (e.g. return the found-titles array, or an object with a count) so the backlog branch can drive NOCHANGE only on a confirmed zero-match, while an ambiguous multi-match still fails safe to SHIPPED per the function's documented fail-safe policy.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 8ef06590-9ea8-4ffa-b103-36ef3e59d75d -->
+
+- [ ] **[LOW]** Verify localStorage keys in toDoList_main/src/listLogic.js follow the `todoapp_` prefix convention
+  - Type: bug
+  - Description: This is a no-op verification entry for testing the pipeline's no-change handling — not a request for a functional change. Confirm that every localStorage key declared in `toDoList_main/src/listLogic.js` (e.g. `LAST_SEEN_SERVER_PROJECT_IDS_KEY = 'todoapp_lastSeenServerProjectIds'` around line 3630) uses the `todoapp_` prefix required by CLAUDE.md's Persistence section. A read of the file shows the convention already holds, so the expected outcome is a clean, empty diff — do not modify any code to "fix" this.
+  - File: `toDoList_main/src/listLogic.js`
+  <!-- id: 394dc068-d21c-488a-acdf-d836bf0e2b9d -->
