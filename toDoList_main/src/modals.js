@@ -17,6 +17,7 @@ import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
 import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
 import { buildManualStatusControl, invokeReviewBadgeTap } from './todoStatus.js';
+import { promptRunInjectedEntry } from './todoMdViewer.js';
 import {
     makeGenerateButton,
     syncGenerateControl,
@@ -753,7 +754,18 @@ export function showDescEditorModal(item, options) {
     // unconfigured / no-target / ready / injected) flow through one code
     // path. Hidden by refreshInjectButton when the textarea is empty and
     // the project already has a routing target.
-    const injectBtn = makeInjectButton(item, { projectName: opts.projectName || '' });
+    // A successful inject leaves the entry sitting in TODO.md undispatched, so
+    // offer to run it straight away — scoped to that one entry, never backlog.
+    // This modal covers the viewer, so the Run path closes it first (Cancel
+    // leaves the modal exactly as it was).
+    const injectBtn = makeInjectButton(item, {
+        projectName: opts.projectName || '',
+        onInjected: function(injectedItem, injectTarget) {
+            promptRunInjectedEntry(injectedItem, injectTarget, opts.projectName || '', {
+                beforeRun: function() { closeDescEditor(); },
+            });
+        },
+    });
     injectBtn.classList.add('descEditorModalBtn');
 
     // Generate — mirror of the desktop description-panel action, so both hosts

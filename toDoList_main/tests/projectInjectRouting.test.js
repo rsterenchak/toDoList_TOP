@@ -247,8 +247,10 @@ describe('project inject routing — wiring into row + modal callers', () => {
     const main = read('main.js');
 
     it('toDoRow.js passes the project name into makeInjectButton', () => {
+        // The options object also carries the post-inject onInjected hook, so
+        // match the field rather than the whole (now multi-key) literal.
         expect(toDoRow).toMatch(
-            /makeInjectButton\s*\(\s*item\s*,\s*\{\s*projectName:\s*toDoName\s*\}\s*\)/
+            /makeInjectButton\s*\(\s*item\s*,\s*\{[\s\S]{0,80}projectName:\s*toDoName\s*,/
         );
     });
 
