@@ -984,3 +984,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/template.html`, `toDoList_main/tests/viewportMeta.test.js`
   - Completed:
   <!-- id: 632b8bfe-ad48-4905-9ff6-e340a6cbbdf6 -->
+
+- [ ] **[MEDIUM]** Default paste-parsed entries to in_progress status on commit
+  - Type: feature
+  - Description: Paste-parsed entries are committed through two near-identical helpers: `commitEntryToActiveProject` in `toDoList_main/src/entryParse.js` (used by the chat "Create task" action) and `commitParsedEntry` in `toDoList_main/src/mobileTaskCreate.js` (the compose-row paste chip). Both set `item.desc` on the blank-placeholder item and then dispatch a synthetic Enter keydown on `#toDoInput` to commit it through the normal handler in `toDoList_main/src/toDoRow.js`. Neither sets `item.status`, so the committed item keeps the `toDo()` factory's default of `'active'` (`toDoList_main/src/toDo.js`) and renders with the same status badge as a freshly typed task. Set `item.status = 'in_progress'` in both commit functions before dispatching the Enter event so a paste-parsed entry lands with the in-progress badge instead. `'in_progress'` is already a valid value in `TODO_STATUSES` (`toDoList_main/src/listLogic.js`), so no new status value or badge needs to be introduced.
+  - File: `toDoList_main/src/entryParse.js`, `toDoList_main/src/mobileTaskCreate.js`
+  <!-- id: 881bcc87-9153-4ba9-8e00-3842a2a7283c -->
