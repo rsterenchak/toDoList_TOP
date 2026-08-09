@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-09T15:28:54.898Z",
-  "sha": "fbafed12d5b48b7c0c203e97006723d23b24d16e",
+  "generatedAt": "2026-08-09T15:48:18.545Z",
+  "sha": "32521958b25153e17976eaa4f7d0a5c516f024d4",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -565,11 +565,11 @@
       "selector": "#bottomSheet",
       "label": "Bottom Sheet",
       "file": "mobileUtilitySheet.js",
-      "line": 46,
+      "line": 227,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 46
+          "line": 227
         },
         {
           "file": "style.css",
@@ -581,11 +581,11 @@
       "selector": "#bottomSheetBackdrop",
       "label": "Bottom Sheet Backdrop",
       "file": "mobileUtilitySheet.js",
-      "line": 51,
+      "line": 232,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 51
+          "line": 232
         },
         {
           "file": "style.css",
@@ -597,11 +597,11 @@
       "selector": "#bottomSheetExpanded",
       "label": "Bottom Sheet Expanded",
       "file": "mobileUtilitySheet.js",
-      "line": 132,
+      "line": 313,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 132
+          "line": 313
         },
         {
           "file": "style.css",
@@ -613,11 +613,11 @@
       "selector": "#bottomSheetMusicPlayerTarget",
       "label": "Bottom Sheet Music Player Target",
       "file": "mobileUtilitySheet.js",
-      "line": 299,
+      "line": 480,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 299
+          "line": 480
         },
         {
           "file": "style.css",
@@ -629,11 +629,11 @@
       "selector": "#bottomSheetNub",
       "label": "Bottom Sheet Nub",
       "file": "mobileUtilitySheet.js",
-      "line": 57,
+      "line": 238,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 57
+          "line": 238
         },
         {
           "file": "style.css",
@@ -645,11 +645,11 @@
       "selector": "#bottomSheetPeek",
       "label": "Bottom Sheet Peek",
       "file": "mobileUtilitySheet.js",
-      "line": 70,
+      "line": 251,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 70
+          "line": 251
         },
         {
           "file": "style.css",
@@ -4173,11 +4173,11 @@
       "selector": "#mobileTabBar",
       "label": "Mobile Tab Bar",
       "file": "mobileUtilitySheet.js",
-      "line": 464,
+      "line": 55,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 464
+          "line": 55
         },
         {
           "file": "style.css",
@@ -4189,11 +4189,11 @@
       "selector": "#mobileTabProjects",
       "label": "Mobile Tab Projects",
       "file": "mobileUtilitySheet.js",
-      "line": 530,
+      "line": 121,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 530
+          "line": 121
         },
         {
           "file": "style.css",
@@ -4205,11 +4205,11 @@
       "selector": "#mobileTabStructure",
       "label": "Mobile Tab Structure",
       "file": "mobileUtilitySheet.js",
-      "line": 531,
+      "line": 122,
       "files": [
         {
           "file": "mobileUtilitySheet.js",
-          "line": 531
+          "line": 122
         },
         {
           "file": "style.css",
