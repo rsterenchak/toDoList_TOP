@@ -577,11 +577,11 @@ function component() {
     mountClaudeSheet(base);
 
     // ── Mobile bottom sheet utility surface ──
-    // The bottom-anchored Pomodoro/music sheet (IDLE nub / PEEK strip /
-    // EXPANDED controls + music picker) and the persistent mobile tab bar are
-    // built in mobileUtilitySheet.js via the same closure-to-factory injection
-    // pattern settingsMenu.js / projectPicker.js use. The factory appends
-    // #bottomSheet and #mobileTabBar into `base` itself and installs
+    // The persistent mobile tab bar — and, behind that module's own gate, the
+    // bottom-anchored Pomodoro/music sheet — are built in mobileUtilitySheet.js
+    // via the same closure-to-factory injection pattern settingsMenu.js /
+    // projectPicker.js use. The factory appends #mobileTabBar (and #bottomSheet
+    // only while its gate is on) into `base` itself and installs
     // window.bottomSheetRefreshVisibility / window.mobileTabBarRefreshVisibility,
     // so the call site stays a pure wire-up.
     createMobileUtilitySheet({
