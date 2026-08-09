@@ -1522,13 +1522,25 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(stored[0].status).toBe('SHIPPED');
     });
 
-    it('keeps the "Backlog run" label when no snapshot entry reads back checked', async () => {
-        // Nothing that was open got checked off (or the run rewrote the title),
-        // so there is nothing to name the row with.
-        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+    // ── A backlog run that checked nothing off is "No change", not "Shipped" ──
+    // A green conclusion is no more proof of a ship for a backlog run than for an
+    // entry run. The dispatch-time snapshot stands in for the entry marker: a
+    // CONFIRMED zero-flip diff (everything that was open at dispatch is still
+    // open) is the positive signature of a no-op, so the row must read "No
+    // change". Before this, every green backlog run settled to SHIPPED, so a run
+    // that found every entry ineligible still showed as shipped with its task row
+    // left pending. Ambiguity still fails safe to SHIPPED, exactly as elsewhere.
+
+    it('commits "No change" when no snapshot entry reads back checked', async () => {
+        // Nothing that was open at dispatch is checked now → the run genuinely
+        // changed nothing, whatever the workflow conclusion says.
+        statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://github.com/x/y/actions/runs/9', runId: 9 };
+        resultJson = { result: 'No actionable tasks — every open entry was too vague.' };
         readJson = {
             content: [
                 '- [ ] **[HIGH]** Add a sparkle',
+                '- [ ] **[MEDIUM]** Fix the run pill',
+                '- [ ] **[LOW]** Tidy the sidebar',
                 '- [x] **[LOW]** Something checked off long before this run',
             ].join('\n'),
             sha: 's',
@@ -1540,8 +1552,102 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         mountClaudeSheet(document.body);
         await flush();
 
-        expect(document.querySelector('.claudeRunTitle').textContent).toBe('Backlog run');
-        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('SHIPPED');
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('No change');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('NOCHANGE');
+        // No snapshot title appears in the summary, so the generic label stays.
+        expect(stored[0].title).toBe('Backlog run');
+        // The log URL and run id are persisted so the verdict panel can link and
+        // fetch, exactly as on the entry-mode no-op path.
+        expect(stored[0].runUrl).toBe('https://github.com/x/y/actions/runs/9');
+        expect(stored[0].runId).toBe(9);
+        // The snapshot is spent either way — a terminal record never re-diffs.
+        expect(stored[0].openTitles).toBe(null);
+    });
+
+    it('names a "No change" backlog row from the task the summary reports it picked', async () => {
+        // A run that picked a task and then aborted (red tests, merge conflict)
+        // checks nothing off but names its task in the closing summary. Matching
+        // against the snapshot — never prose parsing — recovers that title.
+        statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://x', runId: 9 };
+        resultJson = { result: 'Aborted: Fix the run pill — the suite stayed red after three iterations.' };
+        readJson = {
+            content: [
+                '- [ ] **[HIGH]** Add a sparkle',
+                '- [ ] **[MEDIUM]** Fix the run pill',
+                '- [ ] **[LOW]** Tidy the sidebar',
+            ].join('\n'),
+            sha: 's',
+        };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunTitle').textContent).toBe('Fix the run pill');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('NOCHANGE');
+        expect(stored[0].title).toBe('Fix the run pill');
+        // The summary fetched to name the row is cached, so expanding the panel
+        // renders it without a second run_result call.
+        expect(stored[0].result).toBe('Aborted: Fix the run pill — the suite stayed red after three iterations.');
+        const resultCalls = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).run_result);
+        expect(resultCalls.length).toBe(1);
+        document.querySelector('.claudeRunRow').click();
+        await flush();
+        expect(fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).run_result).length).toBe(1);
+    });
+
+    it('keeps the generic label when two snapshot titles appear in the summary', async () => {
+        // Two candidates is a guess, and the label fails safe the same way the
+        // TODO.md diff does — the verdict is still "No change".
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        resultJson = { result: 'Skipped Add a sparkle and Tidy the sidebar as too vague; nothing left to do.' };
+        readJson = {
+            content: [
+                '- [ ] **[HIGH]** Add a sparkle',
+                '- [ ] **[MEDIUM]** Fix the run pill',
+                '- [ ] **[LOW]** Tidy the sidebar',
+            ].join('\n'),
+            sha: 's',
+        };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('NOCHANGE');
+        expect(stored[0].title).toBe('Backlog run');
+    });
+
+    it('does not cache an empty summary on a failed run_result fetch', async () => {
+        // ensureRunResultLoaded skips its own fetch once `result` is set, so
+        // caching '' here would leave the panel permanently unable to retry.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        resultJson = {}; // no result string → fetchRunResult yields nothing usable
+        readJson = {
+            content: [
+                '- [ ] **[HIGH]** Add a sparkle',
+                '- [ ] **[MEDIUM]** Fix the run pill',
+                '- [ ] **[LOW]** Tidy the sidebar',
+            ].join('\n'),
+            sha: 's',
+        };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { correlationId: 'c1', title: 'Backlog run', openTitles: BACKLOG_SNAPSHOT, status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('NOCHANGE');
+        expect(stored[0].result).toBe(undefined);
     });
 
     it('still ships a backlog run when the TODO.md read fails — the rename is best-effort', async () => {
