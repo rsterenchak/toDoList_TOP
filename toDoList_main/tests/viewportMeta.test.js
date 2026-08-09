@@ -5,15 +5,16 @@ import { dirname, resolve } from 'node:path';
 const here = dirname(fileURLToPath(import.meta.url));
 const html = readFileSync(resolve(here, '../src/template.html'), 'utf8');
 
-// Locks the viewport meta's content string. Two attributes are load-bearing
-// and neither is obvious from reading the shell:
+// Locks the viewport meta's content string. Two facts are load-bearing and
+// neither is obvious from reading the shell:
 //   - viewport-fit=cover opts the document into env(safe-area-inset-*), which
 //     the mobile tab bar and bottom sheets rely on to paint flush to the edge.
-//   - interactive-widget=resizes-visual is the probe for the iOS keyboard
-//     shrink bug — it asks the browser to resize only the visual viewport for
-//     the software keyboard, leaving the layout viewport (innerHeight) alone.
+//   - interactive-widget must stay absent. It was probed for the iOS
+//     keyboard-shrink bug and found ignored by the standalone container, so
+//     re-adding it would only risk a silent behavior change on a future iOS
+//     that honors it — putting bottom-anchored inputs behind the keyboard.
 // Both are single-line edits that a formatter or an unrelated head change can
-// silently drop, so pin them here.
+// silently flip, so pin them here.
 describe('viewport meta', () => {
     const meta = html.match(/<meta[^>]+name=["']viewport["'][^>]*>/i);
 
@@ -27,8 +28,8 @@ describe('viewport meta', () => {
         expect(meta[0]).toMatch(/viewport-fit\s*=\s*cover/);
     });
 
-    it('carries interactive-widget=resizes-visual for the keyboard probe', () => {
-        expect(meta[0]).toMatch(/interactive-widget\s*=\s*resizes-visual/);
+    it('carries no interactive-widget directive', () => {
+        expect(meta[0]).not.toMatch(/interactive-widget/);
     });
 
     it('retains the baseline width and initial-scale directives', () => {
