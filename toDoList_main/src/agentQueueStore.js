@@ -840,9 +840,19 @@ export function stopDispatchReconciler() {
 // (registration lag), and SWEEP_HARD_CAP_MS force-stops a wedged poller regardless.
 // GRACE and HARD_CAP are exported because the view's persistent working watch mirrors
 // the same grace arc for the nav dot and shares these exact windows.
+//
+// SWEEP_RECONCILE_QUIET_MS is a SEPARATE, longer window that gates only the row
+// reconcile (never the pill). claude-triage.yml serialises on
+// `concurrency: { group: claude-triage, cancel-in-progress: false }`, so a Generate
+// click fired while an earlier sweep is running dispatches a run that sits QUEUED on
+// GitHub — invisible to the `active_runs` probe until the earlier run frees the slot,
+// routinely well past the 30s grace window. Settling the pill on that is harmless;
+// failing the row is not, so the reconcile waits out this quiet window of CONFIRMED
+// inactivity first (see verifyThenReconcile).
 const SWEEP_POLL_MS = 5000;
 export const SWEEP_GRACE_MS = 30 * 1000;
 export const SWEEP_HARD_CAP_MS = 5 * 60 * 1000;
+export const SWEEP_RECONCILE_QUIET_MS = 90 * 1000;
 
 // Board + Worker callbacks, registered on boot by the wiring module (agentWiring.js
 // in the running app; agentView.js still self-registers them when a test mounts the
@@ -876,6 +886,13 @@ let _sweepSeenActive = false;
 let _sweepGraceDeadline = 0;
 let _sweepHardDeadline = 0;
 let _sweepProjectName = null;
+
+// Pending reconcile-verification state (the quiet window between a settle and the row
+// reconcile). `_sweepVerifyTimer` is the chained timeout handle; `_sweepVerifyGen` is a
+// generation counter so an in-flight probe whose window was cancelled — by a new sweep,
+// a teardown, or a resume — resolves into a no-op instead of writing rows late.
+let _sweepVerifyTimer = null;
+let _sweepVerifyGen = 0;
 
 // Derive-run tracking state, mirroring the sweep tracker but with no post-finish row
 // reconcile (derive rows leave `proposed` via Accept, not a stuck state).
@@ -914,6 +931,9 @@ export function setDeriveCorrelationId(id) { _deriveCorrelationId = (id != null 
 // slow remote probe to observe the run once it registers.
 export function startSweepTracking(alreadyConfirmed) {
     const now = Date.now();
+    // A fresh sweep supersedes any pending reconcile verification: the rows it would
+    // have failed belong to the run we are now tracking again.
+    cancelReconcileVerify();
     _sweepActive = true;
     _sweepSeenActive = !!alreadyConfirmed;
     _sweepProjectName = resolveSelectedProjectName();
@@ -938,6 +958,10 @@ export function stopSweepTracking() {
         clearInterval(_sweepPoller);
         _sweepPoller = null;
     }
+    // Drop any pending reconcile verification too, so a teardown (view exit, test
+    // cleanup) can't leave a timer that fails rows minutes after the tracker is gone.
+    // finishSweep arms its window AFTER calling this, so the settle path is unaffected.
+    cancelReconcileVerify();
     const wasActive = _sweepActive;
     _sweepActive = false;
     _sweepSeenActive = false;
@@ -985,7 +1009,71 @@ function finishSweep() {
     const projectName = _sweepProjectName;
     const wasActive = _sweepActive;
     stopSweepTracking();
-    if (wasActive) reconcileStuckTriaging(projectName);
+    if (wasActive) verifyThenReconcile(projectName);
+}
+
+// Cancel a pending reconcile verification. Bumping the generation is what actually
+// stops it — a probe already in flight compares the generation it captured and returns
+// without writing — while clearing the handle stops the next chained tick.
+function cancelReconcileVerify() {
+    _sweepVerifyGen++;
+    if (_sweepVerifyTimer) {
+        clearTimeout(_sweepVerifyTimer);
+        _sweepVerifyTimer = null;
+    }
+}
+
+// The quiet window between a settled sweep and the row reconcile. finishSweep settles
+// the pill on the FIRST reading that shows no triage run in flight, which is right for
+// the pill but far too eager for the reconcile: claude-triage.yml serialises on the
+// `claude-triage` concurrency group, so a dispatch fired while an earlier sweep is
+// running sits QUEUED and shows up in the probe only once the earlier run frees the
+// slot. Reconciling on the settle flipped that row to `failed` (⌁ STUCK) while its run
+// had not even started.
+//
+// So keep probing for SWEEP_RECONCILE_QUIET_MS after the settle and decide on what the
+// window actually observed:
+//   • any reading with a run in flight → that is the queued run promoted (or a long run
+//     the hard cap cut short). Resume tracking it and never reconcile — resuming keeps
+//     the pill honest and hands the reconcile back to the real completion. The captured
+//     project is restored afterwards so a mid-sweep navigation still reconciles the
+//     project the sweep was dispatched for, not whatever is on screen now.
+//   • at least one CONFIRMED inactive reading and nothing in flight by the deadline →
+//     genuinely abandoned; reconcile as before.
+//   • no successful reading at all (the Worker probe erroring for the whole window) →
+//     write nothing. Absence of evidence is not evidence the run died, and a wrongly
+//     failed row is worse than a row that stays Triaging until the next sweep settles.
+// Only a live GitHub reading can resume tracking, so a wedged probe can never defeat
+// the hard cap by re-arming the poller forever.
+function verifyThenReconcile(projectName) {
+    cancelReconcileVerify();
+    const gen = _sweepVerifyGen;
+    const deadline = Date.now() + SWEEP_RECONCILE_QUIET_MS;
+    let sawInactive = false;
+
+    function probeOnce() {
+        const target = _trackerDeps ? _trackerDeps.resolveDispatchTarget() : null;
+        Promise.resolve(_trackerDeps ? _trackerDeps.fetchActiveRuns(target, 'triage') : null)
+            .then(function (res) {
+                if (gen !== _sweepVerifyGen) return; // superseded — teardown, or a new sweep
+                if (res && res.ok !== false) {
+                    if (res.active) {
+                        _sweepVerifyTimer = null;
+                        startSweepTracking(true);
+                        _sweepProjectName = projectName; // keep the originating project
+                        return;
+                    }
+                    sawInactive = true;
+                }
+                if (Date.now() >= deadline) {
+                    _sweepVerifyTimer = null;
+                    if (sawInactive) reconcileStuckTriaging(projectName);
+                    return;
+                }
+                _sweepVerifyTimer = setTimeout(probeOnce, SWEEP_POLL_MS);
+            });
+    }
+    probeOnce();
 }
 
 // Reconcile rows a finished triage sweep left behind. A flagged todo's agent_queue row
