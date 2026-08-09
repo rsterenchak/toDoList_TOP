@@ -962,7 +962,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 8ef06590-9ea8-4ffa-b103-36ef3e59d75d -->
 
-- [ ] **[HIGH]** Fix triage-sweep reconcile marking a still-queued run as STUCK
+- [x] **[HIGH]** Fix triage-sweep reconcile marking a still-queued run as STUCK — Completed: 2026-08-09
   - Type: bug
   - Description: Clicking Generate on a task row can flip its badge to `⌁ STUCK` (`STUCK_LABEL` in `toDoList_main/src/todoStatus.js`, driven by `derivePhase` in `toDoList_main/src/phase.js`) within about 30 seconds, even though the dispatched `claude-triage.yml` run is genuinely still queued or running in GitHub Actions. `pollSweepOnce`/`finishSweep` in `toDoList_main/src/agentQueueStore.js` only keep the sweep "Working" once the Worker's `active_runs` probe reports it `active`; if that never happens within `SWEEP_GRACE_MS` (30s, declared near line 844), `finishSweep` calls `reconcileStuckTriaging` (around line 1004), which flips every still-`triaging` row for the project to `state:'failed'`. But `.github/workflows/claude-triage.yml` sets `concurrency: { group: claude-triage, cancel-in-progress: false }` with a 30-minute job timeout, so a Generate click fired while an earlier sweep is already running dispatches a run that sits QUEUED behind it on GitHub - routinely longer than the 30s grace window - and the probe won't see it as `active` until the first sweep frees the concurrency slot. The reconcile then wrongly fails a row whose run hasn't even started yet.
   - File: `toDoList_main/src/agentQueueStore.js`, `.github/workflows/claude-triage.yml`
