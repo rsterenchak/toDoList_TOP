@@ -617,6 +617,26 @@ describe('Compose row paste-entry — inline panel', () => {
         restoreClipboard();
     });
 
+    it('PARSE & ADD lands the entry in_progress, not the factory default', async () => {
+        setClipboard(() => Promise.reject(new Error('denied')));
+        const row = makeBlankRow();
+        const item = row.__item;
+        attachMobileCreateChips(row, item);
+
+        tapPasteChip(row);
+        await flush();
+
+        panelFor(row).querySelector('.pasteEntryInput').value =
+            '- [ ] **[HIGH]** Typed entry\n  - Type: feature';
+        panelFor(row).querySelector('.pasteEntryAdd').click();
+
+        // Set before the Enter dispatch so the commit handler builds the
+        // in-progress badge and persists that status. Matches
+        // commitEntryToActiveProject — both paste-commit surfaces agree.
+        expect(item.status).toBe('in_progress');
+        restoreClipboard();
+    });
+
     it('PARSE & ADD with empty text is inert and leaves the panel open', async () => {
         setClipboard(() => Promise.reject(new Error('denied')));
         const row = makeBlankRow();
@@ -636,6 +656,8 @@ describe('Compose row paste-entry — inline panel', () => {
 
         expect(enterFired).toBe(false);
         expect(item.desc).toBeUndefined();
+        // Nothing committed, so the in_progress stamp must not land either.
+        expect(item.status).toBeUndefined();
         expect(panelFor(row)).not.toBeNull();
         restoreClipboard();
     });

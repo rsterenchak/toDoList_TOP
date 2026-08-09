@@ -118,6 +118,11 @@ export function commitEntryToActiveProject(parsed) {
     if (!target) return null;
 
     blankItem.desc = parsed.description;
+    // A pasted / drafted entry describes work already under way, so it lands
+    // in_progress rather than the toDo() factory's 'active' default — the Enter
+    // handler reads item.status to build the row's badge and commitBlankPlaceholder
+    // carries it into the persisted payload, so setting it here is enough.
+    blankItem.status = 'in_progress';
     target.value = parsed.title;
     target.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
     return projectName;
