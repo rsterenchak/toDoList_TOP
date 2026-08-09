@@ -78,6 +78,7 @@ import {
     subscribeAgentView,
     unsubscribeAgentView,
 } from '../src/agentView.js';
+import { SWEEP_RECONCILE_QUIET_MS } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 8) {
@@ -112,6 +113,7 @@ beforeEach(() => {
 
 afterEach(() => {
     unsubscribeAgentView();
+    vi.useRealTimers();
     const toast = document.getElementById('agentViewToast');
     if (toast && toast.parentNode) toast.parentNode.removeChild(toast);
 });
@@ -325,7 +327,14 @@ describe('AGENT view — recover rows stuck at triaging after a finished sweep',
         // Seed arc: the run is in flight on mount (confirmed), then the next probe
         // reports it finished — driving the sweep to its terminal reconcile.
         activeRunsQueue = [{ ok: true, active: true }, { ok: true, active: false }];
-        await loadBoard();
+        // The reconcile only follows once the quiet window closes on confirmed
+        // inactivity — the guard against failing a run still queued behind the
+        // claude-triage concurrency group. Fake timers so it elapses instantly.
+        vi.useFakeTimers();
+        subscribeAgentView();
+        await vi.advanceTimersByTimeAsync(0);
+        await vi.advanceTimersByTimeAsync(SWEEP_RECONCILE_QUIET_MS + 10000);
+        vi.useRealTimers();
         await flush(12);
 
         const patch = failedFor('stuck1');

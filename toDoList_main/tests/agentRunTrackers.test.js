@@ -53,6 +53,7 @@ import {
     stopDeriveTracking,
     setDeriveCorrelationId,
     isDeriveActive,
+    SWEEP_RECONCILE_QUIET_MS,
 } from '../src/agentQueueStore.js';
 
 const POLL_MS = 5000;
@@ -123,7 +124,10 @@ describe('run trackers (relocated to the store) — triage sweep', () => {
         await vi.advanceTimersByTimeAsync(POLL_MS + 50); // next tick → gone → settle
         expect(isSweepActive()).toBe(false);
 
-        // The poller was cleared on settle — a further advance probes nothing more.
+        // The pill settled at once, but the reconcile's quiet window keeps probing for
+        // a run queued behind the claude-triage concurrency group. Once that window
+        // closes with nothing in flight, all probing stops.
+        await vi.advanceTimersByTimeAsync(SWEEP_RECONCILE_QUIET_MS + POLL_MS * 2);
         deps.fetchActiveRuns.mockClear();
         await vi.advanceTimersByTimeAsync(POLL_MS * 4);
         expect(deps.fetchActiveRuns).not.toHaveBeenCalled();
@@ -146,7 +150,10 @@ describe('run trackers (relocated to the store) — triage sweep', () => {
 
         // The user navigates to Beta while the sweep is still running.
         setSelected('Beta');
-        await vi.advanceTimersByTimeAsync(POLL_MS + 50); // run finishes → reconcile
+        await vi.advanceTimersByTimeAsync(POLL_MS + 50); // run finishes → pill settles
+        // The reconcile waits out the quiet window first (nothing queued behind the
+        // concurrency group here, so it closes on confirmed inactivity and fires).
+        await vi.advanceTimersByTimeAsync(SWEEP_RECONCILE_QUIET_MS + POLL_MS * 2);
         vi.useRealTimers();
         await flush();
 
