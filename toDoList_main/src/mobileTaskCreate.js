@@ -116,6 +116,11 @@ function commitParsedEntry(toDoChild, item, raw) {
     if (!parsed.title) return false;
     const toDoInput = toDoChild.querySelector('#toDoInput');
     item.desc = parsed.description;
+    // A pasted / drafted entry describes work already under way, so it lands
+    // in_progress rather than the toDo() factory's 'active' default. Mirrors
+    // commitEntryToActiveProject in entryParse.js — both paste-commit surfaces
+    // must agree on the committed status.
+    item.status = 'in_progress';
     if (toDoInput) {
         toDoInput.value = parsed.title;
         toDoInput.dispatchEvent(new KeyboardEvent('keydown', {

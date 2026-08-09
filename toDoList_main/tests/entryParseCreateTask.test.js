@@ -104,6 +104,20 @@ describe('commitEntryToActiveProject — drives the active project blank placeho
         expect(dispatched.key).toBe('Enter');
     });
 
+    it('lands the committed entry in_progress rather than the factory default', () => {
+        mountActiveProject('Work');
+
+        commitEntryToActiveProject(
+            parsePastedEntry('- [ ] **[HIGH]** Wire the export button\n  - Type: feature'));
+
+        // Set on the SHARED blank item before the Enter dispatch, so the commit
+        // handler builds the in-progress badge and persists that status — a
+        // paste-parsed entry describes work already under way, unlike a freshly
+        // typed task, which keeps toDo()'s 'active' default.
+        const blankItem = listLogic.listItems('Work').find((i) => !i.tit);
+        expect(blankItem.status).toBe('in_progress');
+    });
+
     it('returns null when no project is selected', () => {
         // #mainList with a blank input, but no .selectedProject.
         const mainList = document.createElement('div');
