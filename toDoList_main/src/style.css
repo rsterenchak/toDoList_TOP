@@ -15144,6 +15144,86 @@ body.row-dragging * { cursor: grabbing !important; }
   display: none;
 }
 
+/* DIAGNOSTICS SECTION — read-only runtime readout for the standalone
+   viewport work. Deliberately NOT built from .drawerInfoRow: that row is a
+   44px tap target for a value you might act on, and seventeen of them would
+   be 750px of scroll for values nothing taps. These are compact label/value
+   pairs, with the value in SpaceMono so numbers align column-wise down the
+   list and a deficit is readable at a glance. */
+.settingsSectionHeading--withAction {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 36px;
+}
+
+.diagnosticsRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 26px;
+  padding: 3px 0;
+}
+
+.diagnosticsLabel {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-secondary);
+  /* The labels are API names (visualViewport.offsetTop) and must not wrap
+     mid-token into two lines; the value keeps its own column instead. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.diagnosticsValue {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  color: var(--text-primary);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* 36×36 chip in the heading's trailing slot, matching the app's tappable
+   chip standard. Same resting/hover/copied treatment as the task-row copy
+   chip so the affordance reads identically on both surfaces. */
+.diagnosticsCopyBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.diagnosticsCopyBtn:hover { background: var(--bg-hover); }
+.diagnosticsCopyBtn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+.diagnosticsCopyBtn[data-copied="true"] { color: var(--accent); }
+.diagnosticsCopyIcon { display: block; }
+
+/* Off-screen textarea for the legacy execCommand copy fallback. Positioned
+   by a class rather than inline styles, as the repo-setup copy probe is. */
+.diagnosticsCopyProbe {
+  position: fixed;
+  opacity: 0;
+  pointer-events: none;
+}
+
 /* Hide the mobile-only chrome at desktop sizes — these elements live
    in the DOM at all viewports so the JS path stays single-branch, but
    they should never paint above the breakpoint. (#mobileProjHeader is

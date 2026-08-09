@@ -60,6 +60,15 @@ function setViewport(width, height) {
     window.innerHeight = height;
 }
 
+// iOS's legacy standalone flag. Absent (undefined) everywhere else, including
+// jsdom, so the default state of every other test is "not set".
+function setNavigatorStandalone(value) {
+    Object.defineProperty(window.navigator, 'standalone', {
+        configurable: true,
+        value: value,
+    });
+}
+
 // The physical screen the expectation is derived from. Device-native on iOS:
 // `width`/`height` do not swap with orientation, so a portrait viewport should
 // be `height` tall and a landscape one `width` tall.
@@ -123,6 +132,7 @@ afterEach(() => {
     teardown = null;
     vi.useRealTimers();
     delete document.visibilityState;
+    delete window.navigator.standalone;
     document.body.innerHTML = '';
 });
 
@@ -158,6 +168,136 @@ describe('viewportHeal — the standalone gate', () => {
         const { initViewportHeal } = await loadModule();
         teardown = initViewportHeal();
         expect(initViewportHeal()).toBeNull();
+    });
+
+    // The gate is the leading suspect for why four shipped fixes have never
+    // been observed working: if the installed iOS container reports the
+    // display-mode query as false, every one of them no-ops in silence. Either
+    // reading now arms it.
+    it('arms on the legacy navigator.standalone flag when display-mode says no', async () => {
+        setStandalone(false);
+        setNavigatorStandalone(true);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        expect(typeof teardown).toBe('function');
+    });
+
+    it('heals normally once armed through the legacy flag', async () => {
+        setStandalone(false);
+        setNavigatorStandalone(true);
+        setScreen(393, 852);
+        setViewport(390, 793);
+
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops).toEqual(['display=none', 'reflow@none', 'display=<empty>']);
+    });
+
+    it('stays inert when navigator.standalone is present but false', async () => {
+        setStandalone(false);
+        setNavigatorStandalone(false);
+        const { initViewportHeal } = await loadModule();
+        expect(initViewportHeal()).toBeNull();
+    });
+});
+
+describe('viewportHeal — the status readout', () => {
+    it('records both gate readings and armed:false when the gate rejects', async () => {
+        // The whole point of the readout: a gate that never passed has to be
+        // visible from the device, not inferred from an absence of healing.
+        setStandalone(false);
+        setNavigatorStandalone(false);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        expect(initViewportHeal()).toBeNull();
+
+        const status = getViewportHealStatus();
+        expect(status.armed).toBe(false);
+        expect(status.displayModeStandalone).toBe(false);
+        expect(status.navigatorStandalone).toBe(false);
+    });
+
+    it('records which of the two readings let it through', async () => {
+        setStandalone(false);
+        setNavigatorStandalone(true);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+
+        const status = getViewportHealStatus();
+        expect(status.armed).toBe(true);
+        expect(status.displayModeStandalone).toBe(false);
+        expect(status.navigatorStandalone).toBe(true);
+    });
+
+    it('records the expected height and deficit of the last stuck-check', async () => {
+        setScreen(393, 852);
+        setViewport(390, 793);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        const status = getViewportHealStatus();
+        expect(status.expectedHeight).toBe(852);
+        expect(status.lastDeficit).toBe(59);
+        expect(typeof status.lastCheckAt).toBe('number');
+    });
+
+    it('separates heals attempted from heals that actually recovered the viewport', async () => {
+        // An attempted-but-ineffective flip is the signature of a platform
+        // where expected legitimately differs from actual; counting the two
+        // together would hide it.
+        setViewport(390, 785);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        const status = getViewportHealStatus();
+        expect(status.healsAttempted).toBe(1);
+        expect(status.healsEffective).toBe(0);
+    });
+
+    it('counts a flip that recovered the viewport as effective', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        Object.defineProperty(outer.style, 'display', {
+            configurable: true,
+            get() { return this._d || ''; },
+            set(v) { this._d = v; if (v === '') window.innerHeight = 844; },
+        });
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        const status = getViewportHealStatus();
+        expect(status.healsAttempted).toBe(1);
+        expect(status.healsEffective).toBe(1);
+    });
+
+    it('hands out a copy, so a reader cannot mutate module state', async () => {
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+
+        const first = getViewportHealStatus();
+        first.armed = 'tampered';
+        expect(getViewportHealStatus().armed).toBe(true);
+    });
+
+    it('reports armed:false again after teardown', async () => {
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        const stop = initViewportHeal();
+        expect(getViewportHealStatus().armed).toBe(true);
+        stop();
+        teardown = null;
+        expect(getViewportHealStatus().armed).toBe(false);
     });
 });
 

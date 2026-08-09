@@ -1,7 +1,7 @@
 // Mobile Settings modal extracted from main.js (a behaviour-preserving move).
 // showSettingsModal builds the mobile Settings dialog (View / Appearance /
-// About / Help / Data / Repo setup / Account sections) with the three-way
-// close required by CLAUDE.md. Module singletons it uses (drawer-row factories, listLogic, the
+// About / Help / Data / Repo setup / Diagnostics / Account sections) with the
+// three-way close required by CLAUDE.md. Module singletons it uses (drawer-row factories, listLogic, the
 // changelog/tour/export/import helpers, supabase, etc.) are imported directly
 // the same way main.js imports them; the pieces defined inside main.js — the
 // two main-local toggle builders, wireDismissable, the #drawerSettingsBtn node,
@@ -21,6 +21,7 @@ import { startCoachmarkTour } from './coachmark.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { showInjectSettingsModal } from './inject.js';
 import { showRepoSetupModal } from './repoSetup.js';
+import { buildSettingsDiagnosticsSection } from './settingsDiagnostics.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { supabase } from './supabaseClient.js';
 
@@ -236,6 +237,12 @@ export function createSettingsModal({
         });
         repoSetupSection.appendChild(injectRow);
 
+        // Diagnostics section — read-only runtime state for the viewport work,
+        // which has no other observable surface on the device that has the bug.
+        // Built fresh here rather than mounted once, so every modal open
+        // re-measures; the builder owns its own rows and its copy chip.
+        const diagnosticsSection = buildSettingsDiagnosticsSection();
+
         // Account section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP / About section pattern at the same heading typography
         // so the row chrome reads consistently. Tap closes the modal first
@@ -260,6 +267,7 @@ export function createSettingsModal({
         body.appendChild(helpSection);
         body.appendChild(dataSection);
         body.appendChild(repoSetupSection);
+        body.appendChild(diagnosticsSection);
         body.appendChild(accountSection);
 
         dialog.appendChild(header);
