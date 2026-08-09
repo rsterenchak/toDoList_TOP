@@ -3,7 +3,15 @@
   <head>
     <meta charset="utf-8">
     <title>Task Management</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <!--
+      interactive-widget=resizes-visual is under evaluation for the iOS
+      keyboard-shrink bug: it asks the browser to resize only the visual
+      viewport for the software keyboard and leave the layout viewport
+      alone. The Diagnostics section is the referee — with the keyboard
+      open, an honored attribute holds innerHeight at the full screen
+      height while visualViewport.height drops.
+    -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-visual">
     <meta name="theme-color" content="#0e0f14">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -12,7 +20,7 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="assets/apple-touch-icon-light.png">
-  <script defer src="index.f337f7dad0f530b57c1e.bundle.js"></script></head>
+  <script defer src="index.75b870666e8558bd1a08.bundle.js"></script></head>
   <body>
     <!--
       Boot watchdog. Inline on purpose: the shell ships from an empty <body>

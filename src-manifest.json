@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-09T13:49:00.956Z",
-  "sha": "b5caeb9da2efbdcf0c85bdaa68db52597b0db166",
+  "generatedAt": "2026-08-09T14:31:39.508Z",
+  "sha": "b57d9d724cd36d7b50c37a2091a5deadf5d94add",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -541,11 +541,11 @@
       "selector": "#bootWatchdogOverlay",
       "label": "Boot Watchdog Overlay",
       "file": "template.html",
-      "line": 65,
+      "line": 73,
       "files": [
         {
           "file": "template.html",
-          "line": 65
+          "line": 73
         }
       ]
     },
@@ -553,11 +553,11 @@
       "selector": "#bootWatchdogStyle",
       "label": "Boot Watchdog Style",
       "file": "template.html",
-      "line": 79,
+      "line": 87,
       "files": [
         {
           "file": "template.html",
-          "line": 79
+          "line": 87
         }
       ]
     },
