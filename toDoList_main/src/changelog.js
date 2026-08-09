@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-09',
         changed: [
-            "Tasks created from a pasted or drafted entry now land with the in-progress badge instead of the active one.",
+            "The iPhone keyboard hint that asked the browser to shrink only the visible area has been withdrawn after it was found to have no effect in the installed app.",
         ],
         fixed: [
             "The bottom tab bar's icons and labels stay fully visible in the installed iPhone app when the viewport is stuck short, with the strip beneath the bar reading as part of it.",
