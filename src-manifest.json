@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-09T05:55:15.837Z",
-  "sha": "1c6438dcdca46f4ff33682d4d3ce3bb1550ce2da",
+  "generatedAt": "2026-08-09T08:52:23.805Z",
+  "sha": "f0d6734776e8be81fec970855a2016ad081938b6",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -5161,11 +5161,11 @@
       "selector": "#settingsDiagnosticsCopyBtn",
       "label": "Settings Diagnostics Copy Btn",
       "file": "settingsDiagnostics.js",
-      "line": 214,
+      "line": 227,
       "files": [
         {
           "file": "settingsDiagnostics.js",
-          "line": 214
+          "line": 227
         }
       ]
     },
@@ -5173,11 +5173,11 @@
       "selector": "#settingsDiagnosticsSection",
       "label": "Settings Diagnostics Section",
       "file": "settingsDiagnostics.js",
-      "line": 201,
+      "line": 214,
       "files": [
         {
           "file": "settingsDiagnostics.js",
-          "line": 201
+          "line": 214
         }
       ]
     },
