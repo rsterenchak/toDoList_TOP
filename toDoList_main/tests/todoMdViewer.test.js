@@ -800,8 +800,12 @@ describe('todo.md viewer — run-status pill persistence across navigation/reloa
     });
 
     it('blocks Run this entry dispatch while a redeploy is in progress for this project', () => {
-        const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, start + 800);
+        // The guard moved into the shared dispatchEntryRun, which the per-entry
+        // control and the post-inject prompt both route through — so one copy
+        // of the gate covers both surfaces.
+        const start = main.indexOf('export async function dispatchEntryRun');
+        expect(start).toBeGreaterThan(-1);
+        const block = main.slice(start, main.indexOf('export function promptRunInjectedEntry', start));
         expect(block).toMatch(/if\s*\(\s*readActiveRedeploy\(\s*projectName\s*\)\s*\)\s*\{/);
         expect(block).toMatch(/A redeploy is in progress for this project/);
     });
@@ -864,6 +868,26 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
     const main = read('todoMdViewer.js');
     const css = read('style.css');
 
+    // The single-entry dispatch body — guards, entry-mode dispatch, active-run
+    // record and Runs-tab mirror — is shared between this control and the
+    // post-inject "run it now?" prompt, so the invariants below are asserted
+    // against the shared helper and the control is checked to route through it.
+    function dispatchEntryRunBlock() {
+        const start = main.indexOf('export async function dispatchEntryRun');
+        expect(start).toBeGreaterThan(-1);
+        const end = main.indexOf('export function promptRunInjectedEntry', start);
+        expect(end).toBeGreaterThan(start);
+        return main.slice(start, end);
+    }
+
+    function runEntryBlock() {
+        const start = main.indexOf('async function runEntry');
+        expect(start).toBeGreaterThan(-1);
+        const end = main.indexOf('function applyExpandedHeight', start);
+        expect(end).toBeGreaterThan(start);
+        return main.slice(start, end);
+    }
+
     it('passes an onRunEntry callback into the rendered-body builder', () => {
         // The rendered body is rebuilt on tab swap and on sync; both pass the
         // card-scoped runEntry handler so per-entry controls can dispatch.
@@ -881,26 +905,31 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
     });
 
     it('dispatches an entry-mode run with the resolved id and a fresh correlation id', () => {
-        const start = main.indexOf('async function runEntry');
-        expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 2000);
+        const block = dispatchEntryRunBlock();
         expect(block).toMatch(/mode:\s*['"]entry['"]/);
         expect(block).toMatch(/entryId:\s*entryId/);
         expect(block).toMatch(/crypto\.randomUUID\s*\(\s*\)/);
     });
 
+    it('routes the per-entry control through the shared dispatchEntryRun', () => {
+        // runEntry keeps only its own button styling and the pill start; the
+        // guards, the dispatch and the bookkeeping live in one shared place so
+        // the post-inject prompt can't drift from this control.
+        const block = runEntryBlock();
+        expect(block).toMatch(/dispatchEntryRun\(\s*\{[\s\S]{0,200}entryId:\s*entryId/);
+        expect(block).toMatch(/projectName:\s*projectName/);
+        expect(block).toMatch(/target:\s*target/);
+        expect(block).not.toMatch(/dispatchRun\(/);
+    });
+
     it('hands a successful dispatch to the shared header pill via startRunPill', () => {
-        const start = main.indexOf('async function runEntry');
-        // Bounded by the next function rather than a fixed character count, so
-        // the window is exactly runEntry's body.
-        const block = main.slice(start, main.indexOf('function applyExpandedHeight', start));
-        expect(block).toMatch(/dispatchedId\s*=\s*correlationId/);
+        const block = runEntryBlock();
+        expect(block).toMatch(/dispatchedId\s*=\s*res\.correlationId/);
         expect(block).toMatch(/if\s*\(\s*dispatchedId\s*\)\s*startRunPill\s*\(\s*dispatchedId\s*\)/);
     });
 
     it('persists the active-run record on an entry dispatch so the pill survives navigation', () => {
-        const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, start + 2000);
+        const block = dispatchEntryRunBlock();
         expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}correlationId:\s*correlationId/);
         expect(block).toMatch(/writeActiveRun\(\s*projectName\s*,\s*\{[\s\S]{0,260}project:\s*projectName/);
     });
@@ -908,8 +937,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
     it('refuses to dispatch a second run while this project already has a fresh active run', () => {
         // The single-run model is now scoped per project via runState: a run on
         // a different project no longer blocks; only this project's fresh run does.
-        const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, start + 600);
+        const block = dispatchEntryRunBlock();
         expect(block).toMatch(/if\s*\(\s*readActiveRun\(\s*projectName\s*\)\s*\)\s*\{/);
         expect(block).toMatch(/A run is already in progress for this project/);
     });
@@ -930,9 +958,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
     });
 
     it('shows the inject/run error toast variant on a failed dispatch', () => {
-        const start = main.indexOf('async function runEntry');
-        const block = main.slice(start, main.indexOf('function applyExpandedHeight', start));
-        expect(block).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
+        expect(dispatchEntryRunBlock()).toMatch(/showInjectToast\([^,]*,\s*['"]error['"]\s*\)/);
     });
 
     it('never renders the marker comment as visible content', () => {

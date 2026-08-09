@@ -1302,11 +1302,16 @@ async function testConnection() {
 // description changes (becomes empty / non-empty) or after a successful
 // inject.
 //
-// `options.onInjected(item)` fires after a successful POST so callers can
-// re-sync any other UI they own (e.g., the mobile edit modal can swap its
-// own copy of the button alongside the row's). The handler stashes the
-// item on the button so refreshAllInjectButtons can re-render every visible
-// button after a config change without each caller re-registering.
+// `options.onInjected(item, target)` fires after a successful POST so callers
+// can re-sync any other UI they own (e.g., the mobile edit modal can swap its
+// own copy of the button alongside the row's) and offer follow-up actions on
+// the entry that just landed. The resolved inject target rides along because
+// the click handler is the only place it exists — a caller that wants to run
+// the new entry needs the same repo / file_path this POST wrote to, and
+// re-resolving it call-side would duplicate the routing lookup below. The
+// handler stashes the item on the button so refreshAllInjectButtons can
+// re-render every visible button after a config change without each caller
+// re-registering.
 export function makeInjectButton(item, options) {
     const opts = options || {};
     const btn = document.createElement('button');
@@ -1360,7 +1365,7 @@ export function makeInjectButton(item, options) {
                 // injectDescription just stamped item.injectedAt — surface the
                 // amber pending dot on this row's description indicator now.
                 emitTodoRunStatusChange();
-                if (typeof opts.onInjected === 'function') opts.onInjected(item);
+                if (typeof opts.onInjected === 'function') opts.onInjected(item, target);
             } else {
                 showInjectToast('Inject failed — ' + result.reason, 'error');
                 btn.disabled = false;

@@ -266,12 +266,25 @@ describe('TODO.md viewer — both dispatch paths feed the Runs tab', () => {
         expect(block).toMatch(/trackDispatchedRun\s*\(\s*\{[\s\S]{0,800}todoSnapshot:\s*card\.dataset\.content/);
     });
 
-    it('runEntry tracks the dispatch and carries the entry id', () => {
-        const start = viewer.indexOf('async function runEntry');
-        const block = viewer.slice(start, viewer.indexOf('function applyExpandedHeight', start));
+    it('the shared entry dispatch tracks the run and carries the entry id', () => {
+        // Every single-entry dispatch — the viewer's "Run this entry" control
+        // and the post-inject prompt alike — goes through dispatchEntryRun, so
+        // the Runs-tab mirror lives there rather than in either caller.
+        const start = viewer.indexOf('export async function dispatchEntryRun');
+        expect(start).toBeGreaterThan(-1);
+        const block = viewer.slice(start, viewer.indexOf('export function promptRunInjectedEntry', start));
         expect(block).toMatch(/trackDispatchedRun\s*\(\s*\{[\s\S]{0,400}correlationId:\s*correlationId/);
         expect(block).toMatch(/trackDispatchedRun\s*\(\s*\{[\s\S]{0,400}entryId:\s*entryId/);
-        expect(block.indexOf('trackDispatchedRun')).toBeGreaterThan(block.indexOf('if (res.ok)'));
+        // Only on a successful dispatch — the failure path returns before it.
+        expect(block.indexOf('trackDispatchedRun'))
+            .toBeGreaterThan(block.indexOf('if (!res || !res.ok)'));
+    });
+
+    it('runEntry routes its tracking through the shared dispatch rather than duplicating it', () => {
+        const start = viewer.indexOf('async function runEntry');
+        const block = viewer.slice(start, viewer.indexOf('function applyExpandedHeight', start));
+        expect(block).toMatch(/dispatchEntryRun\(/);
+        expect(block).not.toMatch(/trackDispatchedRun\(/);
     });
 
     it('both paths share one dispatch timestamp between the pill record and the run record', () => {

@@ -104,6 +104,121 @@ export function openViewerAnchoredToEntry(entryId) {
     card.__anchorToEntry(entryId);
 }
 
+// ── SHARED SINGLE-ENTRY RUN DISPATCH ──
+// The dispatch body behind every "run exactly this TODO.md entry" surface: the
+// viewer's per-entry "Run this entry" control and the post-inject prompt below.
+// It owns the per-project guards (one automation run at a time; never overlap a
+// manual redeploy), the entry-mode dispatch itself, the persisted active-run
+// record, and the Runs-tab mirror — so a second caller can't drift from the
+// first by re-implementing a guard slightly differently.
+//
+// Always entry mode: a backlog dispatch lets the routine pick whichever task it
+// likes, which is exactly what a caller naming one entry does not want.
+//
+// The header pill stays with the caller: writeActiveRun emits
+// ACTIVE_RUN_CHANGE_EVENT, which a mounted card turns into a pill on its own,
+// and the viewer's own button additionally starts it directly so the pill is up
+// before the event settles. Returns { ok: true, correlationId } on a dispatched
+// run, or { ok: false } when a guard refused or the dispatch failed — both of
+// which have already raised their own toast.
+export async function dispatchEntryRun(options) {
+    const opts = options || {};
+    const entryId = opts.entryId;
+    if (!entryId) return { ok: false };
+    const projectName = opts.projectName || '';
+    const target = opts.target || null;
+
+    // Per-project single-run guard: never dispatch a second run while this
+    // project already has a fresh active run (here or shipped from chat).
+    if (readActiveRun(projectName)) {
+        showInjectToast('A run is already in progress for this project');
+        return { ok: false };
+    }
+    // Mutual exclusion with a manual redeploy on this project.
+    if (readActiveRedeploy(projectName)) {
+        showInjectToast('A redeploy is in progress for this project');
+        return { ok: false };
+    }
+
+    const correlationId =
+        (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+            ? crypto.randomUUID()
+            : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
+    const res = await dispatchRun({
+        mode: 'entry',
+        entryId: entryId,
+        correlationId: correlationId,
+        target: target,
+    });
+    if (!res || !res.ok) {
+        showInjectToast('Run failed — ' + ((res && res.reason) || 'unknown error'), 'error');
+        return { ok: false };
+    }
+
+    const dispatchedAt = Date.now();
+    writeActiveRun(projectName, {
+        correlationId: correlationId,
+        project: projectName,
+        target: target ? { repo: target.repo, file_path: target.file_path } : null,
+        dispatchedAt: dispatchedAt,
+    });
+    // Mirror the dispatch into the chat sheet's Runs tab. Entry runs carry
+    // their entry id, so the record joins the shipped entry rather than
+    // duplicating it, and the row becomes iterable/revertable once it lands.
+    trackDispatchedRun({
+        correlationId: correlationId,
+        entryId: entryId,
+        title: opts.title || 'Entry run',
+        repo: target ? target.repo : null,
+        project: projectName,
+        dispatchedAt: dispatchedAt,
+    });
+    showInjectToast('Entry run dispatched');
+    return { ok: true, correlationId: correlationId };
+}
+
+// ── POST-INJECT "RUN IT NOW?" PROMPT ──
+// Offered by the per-todo Inject button once its entry has landed in TODO.md,
+// from both of that button's hosts (the desktop description panel and the
+// mobile description modal). Injecting used to end the flow silently, leaving
+// the entry sitting in the file with no hint that running it is one tap away.
+//
+// Confirming opens the viewer anchored to the entry that was just written and
+// dispatches a run scoped to ONLY that entry through dispatchEntryRun.
+// Cancelling leaves the entry injected and undispatched — the viewer's own
+// "Run this entry" control can still start it whenever the user wants.
+//
+// `options.beforeRun` lets a host that covers the viewer (the mobile
+// description modal) close itself on the Run path, so the anchored entry and
+// its run pill are actually visible; it is not called on Cancel.
+export function promptRunInjectedEntry(item, target, projectName, options) {
+    if (!item || !item.entryId) return;
+    const opts = options || {};
+    const project = (projectName || '').trim() || activeProjectNameForViewer();
+    const title = (item.tit || '').toString().trim() || 'Entry run';
+    showConfirmModal({
+        message: 'Injected to TODO.md. Run this entry now?',
+        confirmLabel: 'Run',
+        // Not a destructive action — keep the neutral (non-danger) treatment
+        // the confirm modal's `danger: false` path gives the primary button.
+        danger: false,
+        onConfirm: function() {
+            if (typeof opts.beforeRun === 'function') {
+                try { opts.beforeRun(); } catch (e) { /* host already gone */ }
+            }
+            // Anchor first so the entry is on screen by the time the dispatch's
+            // pill replaces the Run backlog button in the same card's header.
+            openViewerAnchoredToEntry(item.entryId);
+            Promise.resolve(dispatchEntryRun({
+                entryId: item.entryId,
+                projectName: project,
+                target: target,
+                title: title,
+            })).catch(function() { /* dispatchEntryRun toasts its own failures */ });
+        },
+    });
+}
+
 // On the mobile breakpoint the anchored "⋯" overflow dropdown is cramped and
 // easy to mis-tap, so the overflow button opens a slide-up bottom-sheet menu
 // instead (desktop keeps the anchored dropdown). The sheet machinery lives in
@@ -2111,65 +2226,26 @@ function buildTodoMdViewerCard(projectName, target) {
     runBacklogBtn.addEventListener('click', runBacklog);
 
     // Dispatch an entry-mode run for a single resolved TODO.md entry id and
-    // hand it to the same header pill the Run backlog button drives. Mirrors
-    // runBacklog's flow (disable-in-flight, persist the active-run record,
-    // start the pill on success) but targets one entry by id rather than
-    // letting the routine pick the next backlog task.
+    // hand it to the same header pill the Run backlog button drives. The
+    // guards, the dispatch and the bookkeeping live in the shared
+    // dispatchEntryRun (which the post-inject prompt calls too); what stays
+    // here is this button's own in-flight styling plus the pill start.
     async function runEntry(entryId, btn) {
         if (!entryId) return;
         if (btn && btn.disabled) return;
-        // Per-project single-run guard: never dispatch a second run while this
-        // project already has a fresh active run (here or shipped from chat).
-        if (readActiveRun(projectName)) {
-            showInjectToast('A run is already in progress for this project');
-            return;
-        }
-        // Mutual exclusion with a manual redeploy on this project (see runBacklog).
-        if (readActiveRedeploy(projectName)) {
-            showInjectToast('A redeploy is in progress for this project');
-            return;
-        }
         if (btn) {
             btn.disabled = true;
             btn.classList.add('todoMdViewerRunEntryBtn--loading');
         }
         let dispatchedId = null;
         try {
-            const correlationId =
-                (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
-                    ? crypto.randomUUID()
-                    : String(Date.now()) + '-' + Math.random().toString(36).slice(2);
-            const res = await dispatchRun({
-                mode: 'entry',
+            const res = await dispatchEntryRun({
                 entryId: entryId,
-                correlationId: correlationId,
+                projectName: projectName,
                 target: target,
+                title: runEntryTitle(btn),
             });
-            if (res.ok) {
-                dispatchedId = correlationId;
-                const dispatchedAt = Date.now();
-                writeActiveRun(projectName, {
-                    correlationId: correlationId,
-                    project: projectName,
-                    target: target ? { repo: target.repo, file_path: target.file_path } : null,
-                    dispatchedAt: dispatchedAt,
-                });
-                // Mirror the dispatch into the chat sheet's Runs tab (see
-                // runBacklog). Entry runs carry their entry id, so the record
-                // joins the shipped entry rather than duplicating it, and the
-                // row becomes iterable/revertable once it lands.
-                trackDispatchedRun({
-                    correlationId: correlationId,
-                    entryId: entryId,
-                    title: runEntryTitle(btn),
-                    repo: target ? target.repo : null,
-                    project: projectName,
-                    dispatchedAt: dispatchedAt,
-                });
-                showInjectToast('Entry run dispatched');
-            } else {
-                showInjectToast('Run failed — ' + (res.reason || 'unknown error'), 'error');
-            }
+            if (res.ok) dispatchedId = res.correlationId;
         } finally {
             if (btn) {
                 btn.classList.remove('todoMdViewerRunEntryBtn--loading');

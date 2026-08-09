@@ -61,6 +61,7 @@ import { applyTaskFilter, setBlockedItemResolver, setItemPhaseResolver } from '.
 import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { dismissDesktopTodoViewer } from './todoMdViewer.js';
+import { promptRunInjectedEntry } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker, parseFilePathsFromEntry } from './filePicker.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
@@ -4058,7 +4059,14 @@ export function buildToDoRow(item, toDoName) {
     // no-target, ready, injected) via refreshInjectButton — see inject.js.
     // The project name flows through so the no-target / ready states can
     // resolve the project's per-project inject target.
-    const injectBtn = makeInjectButton(item, { projectName: toDoName });
+    // A successful inject leaves the entry sitting in TODO.md undispatched, so
+    // offer to run it straight away — scoped to that one entry, never backlog.
+    const injectBtn = makeInjectButton(item, {
+        projectName: toDoName,
+        onInjected: function(injectedItem, injectTarget) {
+            promptRunInjectedEntry(injectedItem, injectTarget, toDoName);
+        },
+    });
 
     // GENERATE BUTTON — sits beside Inject in the description panel. Flags the
     // task for the agent and fires the triage sweep; the finished draft lands
