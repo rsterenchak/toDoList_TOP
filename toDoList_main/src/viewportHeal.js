@@ -8,8 +8,10 @@
 // ends up ~59px above the physical screen bottom with the page background
 // showing through beneath it.
 //
-// This is a runtime viewport-state bug, not a styling one, so no CSS can fix
-// it: the box is correct, the viewport it resolves against is wrong. The
+// This is a runtime viewport-state bug, not a styling one, so no STATIC CSS
+// can fix it: the box is correct, the viewport it resolves against is wrong.
+// (CSS driven by the runtime measurement is a different matter — see the
+// fallback below, which is what runs when the re-measure never lands.) The
 // documented workaround is to force the browser to re-measure by hiding a
 // full-viewport-height element, flushing layout synchronously while it is
 // hidden, then restoring it — see
@@ -53,6 +55,34 @@ const SETTLE_CHECK_DELAY_MS = 300;
 // this buys them one harmless flip instead of a loop.
 const INEFFECTIVE_HEAL_COOLDOWN_MS = 5000;
 
+// ── THE CSS FALLBACK ──
+//
+// Field diagnostics from the installed app closed the last open question: the
+// gate passes, the deficit is real (screen 852, innerHeight 793 → 59px), the
+// flip runs — and WebKit never re-measures. The flip is the right remedy where
+// it works and stays first in line, but it cannot be the only one, so a
+// measurement that survives it drives a deterministic correction instead.
+//
+// Everything below the shrunken viewport still paints — `#outerContainer` sets
+// no transform, so a `position: fixed` box is not trapped inside it and can be
+// re-anchored into the strip the bug leaves exposed. The deficit is published
+// as a custom property and a body class, and `style.css` subtracts it from the
+// bottom-fixed mobile chrome.
+//
+// The band is a guard, not a tolerance. A viewport legitimately shorter than
+// the screen — iPad Stage Manager, a resized desktop-installed window — would
+// otherwise get its chrome shoved arbitrarily far off the bottom edge. The iOS
+// shrink is ~59px; 30–90px brackets it without admitting a deficit that means
+// something else entirely.
+const FALLBACK_MIN_DEFICIT_PX = 30;
+const FALLBACK_MAX_DEFICIT_PX = 90;
+
+// Read by the `body.vhDeficit` rule group in style.css. Set on the root
+// element rather than on the body so the value resolves for anything that
+// inherits from it, including chrome that is not a body descendant.
+const VH_DEFICIT_PROPERTY = '--vh-deficit';
+const FALLBACK_BODY_CLASS = 'vhDeficit';
+
 // The mobile layout — and therefore `#mobileTabBar`, the element this exists
 // to reseat — is scoped to ≤1023px. At desktop widths the bar is `display:
 // none` and there is nothing to heal, so a desktop-installed PWA whose window
@@ -82,6 +112,8 @@ const healStatus = {
     expectedHeight: null,
     healsAttempted: 0,
     healsEffective: 0,             // flips that actually shrank the deficit
+    fallbackActive: false,         // whether the CSS reseat is currently applied
+    fallbackDeficitPx: null,       // the px value published to --vh-deficit
 };
 
 // A copy, so a reader (the Settings → Diagnostics section) cannot hold a live
@@ -149,16 +181,52 @@ function hasFocusedElement() {
     return !!el && el !== document.body && el !== document.documentElement;
 }
 
-// The heal itself. Hiding `#outerContainer` and reading a layout-forcing
+// Publish the measured deficit for the stylesheet to subtract. Rounded because
+// `bottom: calc(... - 58.6667px)` buys nothing over a whole pixel and a
+// fractional value makes the diagnostics readout harder to eyeball.
+function applyFallback(deficit) {
+    const px = Math.round(deficit);
+    const docEl = document.documentElement;
+    if (docEl && docEl.style) docEl.style.setProperty(VH_DEFICIT_PROPERTY, px + 'px');
+    if (document.body) document.body.classList.add(FALLBACK_BODY_CLASS);
+    healStatus.fallbackActive = true;
+    healStatus.fallbackDeficitPx = px;
+}
+
+// Both the class and the property come off together. Leaving the property
+// behind with the class gone would be harmless today — every rule that reads it
+// is inside the class — but it would also be a stale number sitting in the DOM
+// for the next reader to misinterpret.
+function clearFallback() {
+    const docEl = document.documentElement;
+    if (docEl && docEl.style) docEl.style.removeProperty(VH_DEFICIT_PROPERTY);
+    if (document.body) document.body.classList.remove(FALLBACK_BODY_CLASS);
+    healStatus.fallbackActive = false;
+    healStatus.fallbackDeficitPx = null;
+}
+
+// Re-measure and decide whether the chrome needs reseating. Runs on EVERY
+// trigger, including ones where the flip was skipped for the cooldown — the
+// cooldown exists to stop a useless flip repeating, not to stop the viewport
+// from being measured, and a session that heals on its own later must be able
+// to drop the offset without waiting for a flip it will never get.
+function reconcileFallback() {
+    const stuck = isViewportStuck();
+    const deficit = healStatus.lastDeficit;
+    const inBand = deficit >= FALLBACK_MIN_DEFICIT_PX && deficit <= FALLBACK_MAX_DEFICIT_PX;
+    if (stuck && inBand) applyFallback(deficit);
+    else clearFallback();
+}
+
+// The flip itself. Hiding `#outerContainer` and reading a layout-forcing
 // property while it is hidden makes the browser drop and rebuild the layout
 // against the real viewport; restoring `display` paints it back at the correct
 // height in the same frame, so nothing is ever visible in the hidden state.
 // `#mainList` scrolls independently and would otherwise be reset to 0 by the
 // display flip, so its offset is captured and restored around it.
-// Returns whether a heal actually ran, which is what makes the no-op path
+// Returns whether a flip actually ran, which is what makes the no-op path
 // observable to tests.
-function healViewport() {
-    if (!isViewportStuck()) return false;
+function attemptFlip() {
     if (inHealCooldown()) return false;
     const outer = document.getElementById('outerContainer');
     if (!outer) return false;
@@ -181,6 +249,17 @@ function healViewport() {
     if (viewportDeficit() >= before) lastIneffectiveHealAt = Date.now();
     else healStatus.healsEffective += 1;
     return true;
+}
+
+// What every trigger routes through: measure, flip if that looks worth trying,
+// then reconcile the CSS fallback against a FRESH measurement. The order is the
+// point — the flip gets first refusal, and the fallback only takes over the
+// deficit the flip failed to close, so a platform where the flip works never
+// carries an offset it does not need.
+function healViewport() {
+    const flipped = isViewportStuck() && attemptFlip();
+    reconcileFallback();
+    return flipped;
 }
 
 let started = false;
@@ -218,6 +297,8 @@ export function initViewportHeal() {
     healStatus.armed = true;
     healStatus.healsAttempted = 0;
     healStatus.healsEffective = 0;
+    healStatus.fallbackActive = false;
+    healStatus.fallbackDeficitPx = null;
     lastIneffectiveHealAt = 0;
 
     let focusoutTimer = null;
@@ -297,6 +378,10 @@ export function initViewportHeal() {
         document.removeEventListener('visibilitychange', onVisibilityChange);
         window.removeEventListener('pageshow', onPageShow);
         if (hasVisualViewport) vv.removeEventListener('resize', onVisualViewportResize);
+        // The fallback is applied to the document, not held in module state, so
+        // a teardown that left it behind would leave the chrome permanently
+        // offset with nothing left running to correct it.
+        clearFallback();
         started = false;
         healStatus.armed = false;
         lastIneffectiveHealAt = 0;

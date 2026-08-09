@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-08',
-        added: [
-            "Settings now has a Diagnostics section showing the app's version, viewport and service-worker readings, and the tab-bar fix's own state, with one tap to copy the lot.",
+        date: '2026-08-09',
+        fixed: [
+            "In the installed iPhone app, the tab bar, chat button, bottom sheet, undo toast, and update pill now settle at the screen edge even when the viewport stays shrunken, closing the band that showed beneath them.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-08',
         fixed: [
             "Mobile settings now has a Repo setup section, so the shape reference is reachable from a phone alongside Configure inject.",
             "The bottom tab bar's colour now runs all the way to the screen edge on an installed iPhone app, instead of leaving a dark band beneath the tabs.",

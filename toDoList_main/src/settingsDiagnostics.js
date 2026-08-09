@@ -52,6 +52,18 @@ function since(timestamp) {
     return seconds + 's ago';
 }
 
+// The CSS fallback's two status fields collapsed into one line, because they
+// are one fact: either the chrome is being reseated and by how much, or it is
+// not. Reads `active · 59px` / `off`, with the em dash reserved for a heal that
+// has not measured yet (never armed, or armed and not yet checked).
+function readHealFallback(heal) {
+    if (heal.fallbackActive !== true) {
+        return heal.fallbackActive === false ? 'off' : ABSENT;
+    }
+    const px = num(heal.fallbackDeficitPx);
+    return px === ABSENT ? 'active' : 'active · ' + px + 'px';
+}
+
 function readAppVersion() {
     const newest = changelog && changelog.length ? changelog[0] : null;
     if (!newest) return ABSENT;
@@ -143,6 +155,7 @@ export function collectDiagnostics() {
         { key: 'healLastCheck', label: 'heal last check', value: since(heal.lastCheckAt) },
         { key: 'healsAttempted', label: 'heals attempted', value: num(heal.healsAttempted) },
         { key: 'healsEffective', label: 'heals effective', value: num(heal.healsEffective) },
+        { key: 'healFallback', label: 'heal fallback', value: readHealFallback(heal) },
     ];
 }
 
