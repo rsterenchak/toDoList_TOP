@@ -22525,3 +22525,63 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 11px;
   color: var(--text-primary);
 }
+
+/* ══════════════════════════════════════════
+   SHRUNKEN-VIEWPORT FALLBACK — reseat the bottom-fixed mobile chrome
+   ──────────────────────────────────────────
+   The iOS standalone keyboard bug shrinks the layout viewport ~59px for the
+   rest of the session. viewportHeal.js answers it first with a display flip
+   that forces WebKit to re-measure — but field diagnostics from the installed
+   app (screen 852, innerHeight 793, heal armed, flip attempted) show the flip
+   landing with the deficit untouched: WebKit simply never re-measures there.
+
+   So when the flip fails to restore, viewportHeal.js publishes the measured
+   deficit as --vh-deficit on the root element and adds .vhDeficit to the body,
+   and this group subtracts it from every bottom-fixed element on the compact
+   breakpoint. The chrome then sits at its designed offset from the PHYSICAL
+   screen bottom rather than from the short viewport, and the band that showed
+   through beneath the tab bar closes.
+
+   Deliberately `bottom: calc(...)` composition rather than
+   `transform: translateY(...)`: a transform on any of these would create a
+   stacking context and a containing block for fixed descendants, and would
+   collide with the transforms several of them already carry for their own
+   layout (#undoToast and #mobileUpdatePill centre with translateX;
+   #claudeLauncher lifts its glyph with translateY and animates transform on
+   hover). Subtracting from `bottom` touches no transition machinery.
+
+   These calcs SHADOW the base rules above and must move with them: each is its
+   base `bottom` expression verbatim, minus `var(--vh-deficit, 0px)`. Changing a
+   base offset without changing its twin here silently reverts that element to
+   its un-reseated position in exactly the sessions this exists for.
+
+   Inert everywhere else: without .vhDeficit nothing here applies, and the
+   fallback var defaults to 0px, so healthy sessions, Safari, and desktop are
+   pixel-identical to before.
+
+   EXPANDED bottom sheet and the full-screen chat sheet are deliberately out —
+   they are stretched overlays that need a height-side correction, not a bottom
+   offset.
+══════════════════════════════════════════ */
+@media (max-width: 1023px) {
+  body.vhDeficit #mobileTabBar {
+    bottom: calc(0px - var(--vh-deficit, 0px));
+  }
+
+  body.vhDeficit #claudeLauncher {
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) - var(--vh-deficit, 0px));
+  }
+
+  body.vhDeficit #bottomSheet[data-state="IDLE"],
+  body.vhDeficit #bottomSheet[data-state="PEEK"] {
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) - var(--vh-deficit, 0px));
+  }
+
+  body.vhDeficit #undoToast {
+    bottom: calc(64px + var(--mobile-bottom-inset, 0px) - var(--vh-deficit, 0px));
+  }
+
+  body.vhDeficit #mobileUpdatePill {
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) + 12px - var(--vh-deficit, 0px));
+  }
+}

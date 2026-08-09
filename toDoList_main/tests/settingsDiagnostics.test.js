@@ -58,6 +58,7 @@ const REQUIRED_FIELDS = [
     'healLastCheck',
     'healsAttempted',
     'healsEffective',
+    'healFallback',
 ];
 
 function setStandalone(matches) {
@@ -205,6 +206,44 @@ describe('Settings → Diagnostics — the heal readout', () => {
             expect(valueOf(section, 'healGateDisplayMode')).toBe('true');
         } finally {
             stop();
+        }
+    });
+});
+
+describe('Settings → Diagnostics — the heal fallback row', () => {
+    // The reason this row exists: the flip is invisible either way, so the
+    // next device screenshot has to be able to say whether the CSS reseat took
+    // over without anyone guessing from the chrome's position.
+    it('reads "off" while nothing is being reseated', () => {
+        setStandalone(false);
+        expect(initViewportHeal()).toBeNull();
+        expect(valueOf(mount(), 'healFallback')).toBe('off');
+    });
+
+    it('reports the reseat and its measured offset once the fallback engages', () => {
+        const screenWidth = Object.getOwnPropertyDescriptor(window.screen, 'width');
+        const screenHeight = Object.getOwnPropertyDescriptor(window.screen, 'height');
+        const { innerWidth, innerHeight } = window;
+        vi.useFakeTimers();
+        Object.defineProperty(window.screen, 'width', { configurable: true, value: 393 });
+        Object.defineProperty(window.screen, 'height', { configurable: true, value: 852 });
+        window.innerWidth = 390;
+        window.innerHeight = 793;                // the field reading: 59px short
+        setStandalone(true);
+
+        const stop = initViewportHeal();
+        expect(typeof stop).toBe('function');
+        try {
+            document.body.innerHTML = '<div id="outerContainer"></div>';
+            vi.advanceTimersByTime(400);          // past the launch settle check
+            expect(valueOf(mount(), 'healFallback')).toBe('active · 59px');
+        } finally {
+            stop();
+            vi.useRealTimers();
+            if (screenWidth) Object.defineProperty(window.screen, 'width', screenWidth);
+            if (screenHeight) Object.defineProperty(window.screen, 'height', screenHeight);
+            window.innerWidth = innerWidth;
+            window.innerHeight = innerHeight;
         }
     });
 });

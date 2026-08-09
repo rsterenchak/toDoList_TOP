@@ -134,6 +134,10 @@ afterEach(() => {
     delete document.visibilityState;
     delete window.navigator.standalone;
     document.body.innerHTML = '';
+    // The fallback lives on the document rather than in module state, so a
+    // reset of the module alone would leak it into the next test.
+    document.body.classList.remove('vhDeficit');
+    document.documentElement.style.removeProperty('--vh-deficit');
 });
 
 describe('viewportHeal — the standalone gate', () => {
@@ -637,6 +641,163 @@ describe('viewportHeal — the ineffective-heal cooldown', () => {
     });
 });
 
+describe('viewportHeal — the CSS fallback', () => {
+    // Field diagnostics settled what the first four attempts could only guess
+    // at: the gate passes, the deficit is real (852 vs 793), the flip runs —
+    // and WebKit never re-measures. So the flip keeps first refusal, and what
+    // it fails to close is corrected deterministically from the measurement,
+    // by publishing the deficit for style.css to subtract from the
+    // bottom-fixed chrome.
+    function readDeficitVar() {
+        return document.documentElement.style.getPropertyValue('--vh-deficit');
+    }
+
+    it('reseats the chrome when a flip leaves the deficit exactly where it found it', async () => {
+        setScreen(393, 852);
+        setViewport(390, 793);                   // the field reading: 59px short
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(true);
+        expect(readDeficitVar()).toBe('59px');
+    });
+
+    it('never reseats a session whose viewport matches the screen', async () => {
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(500);
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+        expect(readDeficitVar()).toBe('');
+    });
+
+    it('clears the reseat once a later measurement reads healthy', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(document.body.classList.contains('vhDeficit')).toBe(true);
+
+        // Whatever recovered it — a force-quit, an orientation change, a flip
+        // that finally took — the offset has to come off, or the chrome ends
+        // up double-corrected and hangs off the bottom of the screen.
+        setViewport(390, 844);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+        expect(readDeficitVar()).toBe('');
+    });
+
+    it('reconciles on a trigger the cooldown refused to flip on', async () => {
+        // The cooldown stops a useless flip repeating; it must not stop the
+        // viewport being measured, or a session that recovers during the
+        // cooldown window keeps an offset nothing is left to remove.
+        setViewport(390, 785);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(ops.length).toBe(3);
+        expect(document.body.classList.contains('vhDeficit')).toBe(true);
+
+        setViewport(390, 844);
+        window.dispatchEvent(new Event('pageshow'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops.length).toBe(3);              // still inside the cooldown
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+    });
+
+    it('refuses a deficit far outside the plausibility band', async () => {
+        // 200px is not the iOS shrink. It is a legitimately windowed
+        // environment — iPad Stage Manager, a resized installed window — and
+        // shoving the chrome 200px below the viewport would be a worse defect
+        // than the one being corrected.
+        setScreen(390, 844);
+        setViewport(390, 644);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+        expect(readDeficitVar()).toBe('');
+    });
+
+    it('refuses a deficit below the band, where the flip is the only remedy', async () => {
+        setScreen(390, 844);
+        setViewport(390, 815);                   // 29px: over the threshold, under the band
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(ops.length).toBe(3);              // still worth a flip
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+    });
+
+    it('leaves desktop unreseated even at a deficit inside the band', async () => {
+        setScreen(1440, 900);
+        setViewport(1440, 841);
+        const { initViewportHeal } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+    });
+
+    it('reports the fallback on both paths through the status readout', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(getViewportHealStatus().fallbackActive).toBe(true);
+        expect(getViewportHealStatus().fallbackDeficitPx).toBe(59);
+
+        setViewport(390, 844);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+        expect(getViewportHealStatus().fallbackActive).toBe(false);
+        expect(getViewportHealStatus().fallbackDeficitPx).toBeNull();
+    });
+
+    it('takes the reseat off the document on teardown', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        const stop = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(document.body.classList.contains('vhDeficit')).toBe(true);
+
+        stop();
+        teardown = null;
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+        expect(readDeficitVar()).toBe('');
+        expect(getViewportHealStatus().fallbackActive).toBe(false);
+    });
+});
+
 describe('viewportHeal — the visual-viewport trigger', () => {
     function stubVisualViewport() {
         const listeners = {};
@@ -727,5 +888,32 @@ describe('viewportHeal — wiring and the retired CSS patch', () => {
         expect(laidOut.length).toBe(1);
         expect(laidOut[0]).toMatch(/bottom:\s*0\s*;/);
         expect(laidOut[0]).toMatch(/padding-bottom:\s*var\(--mobile-bottom-inset[^)]*\)/);
+    });
+
+    // Every bottom-fixed element on the compact breakpoint needs a twin under
+    // `body.vhDeficit`, or it stays anchored to the shrunken viewport while the
+    // rest of the chrome moves — a seam that is worse than the uncorrected
+    // band. The stylesheet is the only place that list exists, so pin it here.
+    it('subtracts the measured deficit from every bottom-fixed mobile element', () => {
+        [
+            '#mobileTabBar',
+            '#claudeLauncher',
+            '#bottomSheet\\[data-state="IDLE"\\]',
+            '#undoToast',
+            '#mobileUpdatePill',
+        ].forEach((selector) => {
+            const rule = new RegExp(
+                'body\\.vhDeficit\\s+' + selector + '[^{]*\\{[^}]*bottom:\\s*calc\\([^}]*var\\(--vh-deficit'
+            );
+            expect(css, selector + ' has no vhDeficit reseat').toMatch(rule);
+        });
+    });
+
+    it('leaves the stretched overlays out of the reseat, per the entry', () => {
+        // EXPANDED and the chat sheet are full-height, not bottom-anchored:
+        // they need a height correction, not an offset, and offsetting them
+        // would pull their tops off the screen.
+        expect(css).not.toMatch(/body\.vhDeficit\s+#bottomSheet\[data-state="EXPANDED"\]/);
+        expect(css).not.toMatch(/body\.vhDeficit\s+#claudeSheet/);
     });
 });
