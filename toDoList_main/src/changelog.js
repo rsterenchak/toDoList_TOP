@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-08-09',
         fixed: [
             "In the installed iPhone app, the tab bar, chat button, bottom sheet, undo toast, and update pill now settle at the screen edge even when the viewport stays shrunken, closing the band that showed beneath them.",
+            "The bottom tab bar's icons and labels stay fully visible in the installed iPhone app when the viewport is stuck short, with the strip beneath the bar reading as part of it.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-08',
         fixed: [
-            "Mobile settings now has a Repo setup section, so the shape reference is reachable from a phone alongside Configure inject.",
             "The bottom tab bar's colour now runs all the way to the screen edge on an installed iPhone app, instead of leaving a dark band beneath the tabs.",
             "In the installed iPhone app, closing the keyboard now settles the bottom tab bar back against the screen edge instead of leaving it raised for the rest of the session.",
             "The bottom tab bar now settles flush to the screen edge as soon as the installed iPhone app opens, instead of staying raised until the keyboard had been used at least once.",

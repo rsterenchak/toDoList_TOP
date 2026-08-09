@@ -52,10 +52,10 @@ function since(timestamp) {
     return seconds + 's ago';
 }
 
-// The CSS fallback's two status fields collapsed into one line, because they
-// are one fact: either the chrome is being reseated and by how much, or it is
-// not. Reads `active · 59px` / `off`, with the em dash reserved for a heal that
-// has not measured yet (never armed, or armed and not yet checked).
+// The fallback's two status fields collapsed into one line, because they are
+// one fact: either the viewport is stuck short and by how much, or it is not.
+// Reads `active · 59px` / `off`, with the em dash reserved for a heal that has
+// not measured yet (never armed, or armed and not yet checked).
 function readHealFallback(heal) {
     if (heal.fallbackActive !== true) {
         return heal.fallbackActive === false ? 'off' : ABSENT;
