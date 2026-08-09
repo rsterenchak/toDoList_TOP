@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-09',
-        added: [
-            "Injecting a task to TODO.md now offers to run just that entry right away.",
-        ],
         fixed: [
             "In the installed iPhone app, the tab bar, chat button, bottom sheet, undo toast, and update pill now settle at the screen edge even when the viewport stays shrunken, closing the band that showed beneath them.",
             "The bottom tab bar's icons and labels stay fully visible in the installed iPhone app when the viewport is stuck short, with the strip beneath the bar reading as part of it.",
             "A backlog run that completed no task now reads as “No change” in the Runs tab instead of Shipped, and takes the name of the task its summary says it picked.",
             "A task whose triage run is queued behind another sweep no longer flips to a stuck badge before its run has had a chance to start.",
+            "On iPhone, opening the keyboard now asks the browser to shrink only the visible area instead of the page itself, so the app no longer stays short after the keyboard closes.",
         ],
     },
 ];
