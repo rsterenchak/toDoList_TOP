@@ -63,6 +63,33 @@ const DESKTOP_MIN_WIDTH = 1024;
 // ineffective flip has been recorded.
 let lastIneffectiveHealAt = 0;
 
+// ── INSTRUMENTATION ──
+//
+// Four viewport fixes have shipped without a single field observation, because
+// nothing here is visible from the device that has the bug: if the gate never
+// passes, every fix behind it no-ops in silence and looks exactly like a fix
+// that ran and did not help. This record is what tells those two apart. Both
+// gate readings are written even when arming REJECTS — a dead gate is the
+// leading suspect, so it has to be the first thing readable — and the
+// measurement fields are refreshed by every stuck-check whether or not it
+// leads to a flip.
+const healStatus = {
+    armed: false,
+    displayModeStandalone: null,   // null until initViewportHeal() has read it
+    navigatorStandalone: null,
+    lastCheckAt: null,             // ms epoch of the last stuck-check
+    lastDeficit: null,
+    expectedHeight: null,
+    healsAttempted: 0,
+    healsEffective: 0,             // flips that actually shrank the deficit
+};
+
+// A copy, so a reader (the Settings → Diagnostics section) cannot hold a live
+// handle on module state and cannot mutate it.
+export function getViewportHealStatus() {
+    return Object.assign({}, healStatus);
+}
+
 function readViewportHeight() {
     const h = window.innerHeight;
     return typeof h === 'number' && h > 0 ? h : 0;
@@ -98,8 +125,14 @@ function viewportDeficit() {
 // threshold, at a width where the mobile layout is actually in play. Every
 // trigger routes through here, so the no-op guarantee lives in one place.
 function isViewportStuck() {
+    // Recorded before the width gate so a desktop reading is still observable
+    // — "checked, measured, declined" is a different diagnosis from "never
+    // checked", and the section has to be able to show which one happened.
+    healStatus.lastCheckAt = Date.now();
+    healStatus.expectedHeight = expectedViewportHeight();
+    healStatus.lastDeficit = viewportDeficit();
     if (window.innerWidth >= DESKTOP_MIN_WIDTH) return false;
-    return viewportDeficit() > STUCK_THRESHOLD_PX;
+    return healStatus.lastDeficit > STUCK_THRESHOLD_PX;
 }
 
 function inHealCooldown() {
@@ -133,6 +166,7 @@ function healViewport() {
     const list = document.getElementById('mainList');
     const scrollTop = list ? list.scrollTop : 0;
     const before = viewportDeficit();
+    healStatus.healsAttempted += 1;
 
     outer.style.display = 'none';
     void outer.offsetHeight;   // synchronous reflow, between the two writes
@@ -145,26 +179,45 @@ function healViewport() {
     // subsequent trigger would be a loop; a flip that shrank the deficit is
     // free to run again immediately.
     if (viewportDeficit() >= before) lastIneffectiveHealAt = Date.now();
+    else healStatus.healsEffective += 1;
     return true;
 }
 
 let started = false;
 
-// Arm the heal. Gated on the standalone display mode because the bug is
-// exclusive to the installed PWA — in Safari the viewport recovers on its own
-// and there is nothing to correct. Returns a teardown function when armed, or
-// null when the gate rejected (or it was already armed), so a caller can tell
-// the two apart.
+// Arm the heal. Gated on standalone because the bug is exclusive to the
+// installed PWA — in Safari the viewport recovers on its own and there is
+// nothing to correct. TWO readings satisfy that gate, and either one is
+// enough: the standard `display-mode: standalone` media query, and iOS's
+// legacy `navigator.standalone` flag. The legacy flag is here because the
+// installed-app container is the one place this fix has to work and the one
+// place we cannot prove the media query answers true — a container that
+// reports the query as false would silently no-op every fix behind it, which
+// is indistinguishable from a fix that ran and did not help. Both readings are
+// recorded either way, so the Diagnostics section can show which (if either)
+// let it through. Returns a teardown function when armed, or null when the
+// gate rejected (or it was already armed), so a caller can tell the two apart.
 export function initViewportHeal() {
     if (started) return null;
-    let standalone = false;
+    let displayModeStandalone = false;
     try {
-        standalone = !!(window.matchMedia
+        displayModeStandalone = !!(window.matchMedia
             && window.matchMedia('(display-mode: standalone)').matches);
     } catch (_) { /* matchMedia is absent in some embedded webviews */ }
-    if (!standalone) return null;
+    const navigatorStandalone = !!(navigator && navigator.standalone === true);
+
+    healStatus.displayModeStandalone = displayModeStandalone;
+    healStatus.navigatorStandalone = navigatorStandalone;
+
+    if (!displayModeStandalone && !navigatorStandalone) {
+        healStatus.armed = false;
+        return null;
+    }
 
     started = true;
+    healStatus.armed = true;
+    healStatus.healsAttempted = 0;
+    healStatus.healsEffective = 0;
     lastIneffectiveHealAt = 0;
 
     let focusoutTimer = null;
@@ -245,6 +298,7 @@ export function initViewportHeal() {
         window.removeEventListener('pageshow', onPageShow);
         if (hasVisualViewport) vv.removeEventListener('resize', onVisualViewportResize);
         started = false;
+        healStatus.armed = false;
         lastIneffectiveHealAt = 0;
     };
 }
