@@ -19,6 +19,10 @@ function read(relative) {
 // source is large (see CLAUDE.md note on file size). The sheet's DOM/logic
 // now lives in mobileUtilitySheet.js (extracted from main.js's component()),
 // so the JS assertions read that module.
+// The sheet is now gated off at the mount site (MOUNT_BOTTOM_SHEET in
+// mobileUtilitySheet.js), so these assertions describe the subsystem
+// retained behind that gate rather than DOM the app mounts; the absence
+// of #bottomSheet / .sheetSwipeZone is pinned in mobileUtilitySheet.test.js.
 describe('STACK mobile bottom sheet utility surface', () => {
     const main   = read('mobileUtilitySheet.js');
     const css    = read('style.css');

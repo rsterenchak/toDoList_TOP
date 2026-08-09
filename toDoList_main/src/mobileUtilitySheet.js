@@ -1,24 +1,38 @@
 // Mobile pomodoro/music bottom-sheet subsystem, extracted from the large
 // component() in main.js following the same closure-to-factory injection
 // pattern as projectPicker.js / settingsMenu.js. createMobileUtilitySheet()
-// builds the bottom-anchored utility sheet (IDLE nub / PEEK strip / EXPANDED
-// controls + music picker) and the persistent mobile tab bar, appends both
-// into the `base` container it is handed, and wires the controller
-// subscriptions and gesture handlers. Everything the block reads from
-// component()'s scope is injected (never imported back from main.js — that
-// would be circular): the `base` mount target, `main1` / `mainList` for the
-// drawer / empty-state visibility hooks, `applyActiveView` for tab routing,
-// and the `getPomodoroController` / `getMusicController` accessors. The two
-// leaf helpers it calls come straight from their modules, so those are
-// imported here directly.
+// builds the persistent mobile tab bar and — when the bottom-sheet gate below
+// is on — the bottom-anchored utility sheet (IDLE nub / PEEK strip / EXPANDED
+// controls + music picker), appends them into the `base` container it is
+// handed, and wires the controller subscriptions and gesture handlers.
+// Everything the block reads from component()'s scope is injected (never
+// imported back from main.js — that would be circular): the `base` mount
+// target, `main1` / `mainList` for the drawer / empty-state visibility hooks,
+// `applyActiveView` for tab routing, and the `getPomodoroController` /
+// `getMusicController` accessors. The two leaf helpers it calls come straight
+// from their modules, so those are imported here directly.
 //
 // It installs window.bottomSheetRefreshVisibility and
 // window.mobileTabBarRefreshVisibility exactly as component() used to, so the
 // drawer / empty-state callers that reach for those globals keep working
 // unchanged, and it also returns the built nodes plus the refresh function
-// for direct use.
+// for direct use. window.bottomSheetRefreshVisibility stays installed with the
+// sheet gated off — it still drives the tab bar's own hide rules.
 import { nextSuggestedMode } from './pomodoro.js';
 import { parseYouTubeUrl } from './music.js';
+
+// ── Bottom-sheet gate ──
+// The pomodoro/music bottom sheet is not mounted. Pomodoro and music are used
+// through their own desktop surfaces, so on mobile the sheet only ever cost a
+// persistent IDLE nub, a full-width bottom-edge gesture catcher
+// (.sheetSwipeZone), and IDLE/PEEK state churn on every session. With this
+// flag off, buildBottomSheet() never runs: neither #bottomSheet nor
+// .sheetSwipeZone enters the DOM, no controller subscription is registered,
+// and starting a pomodoro or playing music on mobile simply shows no sheet.
+// The subsystem is kept intact behind the flag rather than deleted so it can
+// be revived by flipping this one constant. #mobileTabBar, built by the same
+// factory, is unaffected either way.
+const MOUNT_BOTTOM_SHEET = false;
 
 export function createMobileUtilitySheet(deps) {
     const {
@@ -26,6 +40,173 @@ export function createMobileUtilitySheet(deps) {
         main1,
         mainList,
         applyActiveView,
+    } = deps;
+
+    // ── Persistent bottom tab bar (mobile only) ──
+    // Two destinations — Stream and Structure — pinned to the
+    // bottom of the viewport at ≤1023px. Tapping a tab routes through
+    // applyActiveView() so the same code path drives mobile tabs and the
+    // desktop pill switcher; the active tab class is set in
+    // applyActiveView. The bar height is exposed as `--mobile-tab-h` so
+    // the bottom-sheet PEEK / IDLE / swipe-zone layers stack directly
+    // above it without any per-element coupling. Hidden on desktop via
+    // CSS (#mobileTabBar { display: none }).
+    const mobileTabBar = document.createElement('nav');
+    mobileTabBar.id = 'mobileTabBar';
+    mobileTabBar.setAttribute('role', 'tablist');
+    mobileTabBar.setAttribute('aria-label', 'Mobile bottom navigation');
+
+    function buildMobileTab(viewKey, label, iconSvg, displayLabel) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'mobileTab';
+        btn.setAttribute('role', 'tab');
+        btn.setAttribute('aria-pressed', 'false');
+        btn.dataset.view = viewKey;
+        btn.setAttribute('aria-label', label);
+        const icon = document.createElement('span');
+        icon.className = 'mobileTabIcon';
+        icon.setAttribute('aria-hidden', 'true');
+        icon.innerHTML = iconSvg;
+        const text = document.createElement('span');
+        text.className = 'mobileTabLabel';
+        // Visible label can differ from the accessible name: callers may pass
+        // a separate `displayLabel` so the on-screen text changes while the
+        // aria-label (and any selectors keyed off it) stay put.
+        text.textContent = displayLabel || label;
+        btn.appendChild(icon);
+        btn.appendChild(text);
+        btn.addEventListener('click', function() {
+            // Every tab navigates unconditionally through the canonical writer;
+            // the view itself renders any in-place "unavailable" message rather
+            // than the tap being a no-op.
+            applyActiveView(viewKey);
+        });
+        return btn;
+    }
+
+    // Inline SVG icons (24×24, currentColor stroke) — no icon library per
+    // CLAUDE.md. List glyph. Built from <rect>
+    // and <path> primitives so the SVG markup stays distinct from the
+    // ghost / kebab assertions in unrelated tests.
+    const ICON_LIST =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<line x1="8" y1="6" x2="20" y2="6"/>' +
+        '<line x1="8" y1="12" x2="20" y2="12"/>' +
+        '<line x1="8" y1="18" x2="20" y2="18"/>' +
+        '<rect x="3" y="5" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
+        '</svg>';
+
+    // Structure — a layered-stack / sitemap glyph signalling the "map of the
+    // source" intent, built from path primitives like the others (no icon
+    // library).
+    const ICON_STRUCTURE =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M12 3 L20 7 L12 11 L4 7 Z"/>' +
+        '<path d="M4 12 L12 16 L20 12"/>' +
+        '<path d="M4 16.5 L12 20.5 L20 16.5"/>' +
+        '</svg>';
+
+    // Two destinations — Stream and Structure. The AGENT tab was retired: the
+    // Agent board's blocked-on-you states (DRAFTED / STUCK / MOCKUP) now reach
+    // the task row's phase badge, so the board is a routed destination reached
+    // by tapping those badges rather than a tab. The Agent view stays mounted
+    // and fully functional. The 'projects' viewKey (and the 'Projects'
+    // aria-label / selectors keyed off it) stay put; only the visible label
+    // changes to "Stream".
+    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Stream');
+    const mobileTabStructure = buildMobileTab('structure', 'Structure', ICON_STRUCTURE);
+    mobileTabProjects.id = 'mobileTabProjects';
+    mobileTabStructure.id = 'mobileTabStructure';
+
+    // Same hollow "no-repo" marker on the STRUCTURE tab — a repo-less project
+    // can't be mapped, so the tab stays tappable (it opens the unlinked-repo
+    // empty state) but carries the marker while body.agentUnavailable is set.
+    const mobileTabStructureMarker = document.createElement('span');
+    mobileTabStructureMarker.className = 'agentNoRepoMarker';
+    mobileTabStructureMarker.setAttribute('aria-hidden', 'true');
+    mobileTabStructure.appendChild(mobileTabStructureMarker);
+
+    // "Agent working" dot on the STREAM tab — the mobile counterpart to the
+    // desktop STREAM pill's dot. Hidden by default, revealed only while the
+    // persistent working watch sets `body.agentWorking`, so a live agent still
+    // reads as alive at a glance after the mobile AGENT tab that used to paint it
+    // was retired.
+    const mobileTabProjectsWorkingDot = document.createElement('span');
+    mobileTabProjectsWorkingDot.className = 'agentWorkingMarker';
+    mobileTabProjectsWorkingDot.setAttribute('aria-hidden', 'true');
+    mobileTabProjects.appendChild(mobileTabProjectsWorkingDot);
+
+    mobileTabBar.appendChild(mobileTabProjects);
+    mobileTabBar.appendChild(mobileTabStructure);
+    base.appendChild(mobileTabBar);
+
+    // Mirror refreshSheetVisibility for the tab bar — hide it whenever
+    // the drawer is open or the NO PROJECTS empty state owns the screen
+    // so it doesn't paint over either surface. The same MutationObserver
+    // wired into refreshSheetVisibility() picks up these calls because
+    // both functions read off main1.classList and #emptyState's class.
+    function refreshTabBarVisibility() {
+        const drawerOpen = main1.classList.contains('sidebar-open');
+        const noProjects = !!document.querySelector('#emptyState.emptyStateNoProjects');
+        mobileTabBar.classList.toggle('hidden-by-drawer', drawerOpen);
+        mobileTabBar.classList.toggle('hidden-by-empty', noProjects);
+    }
+    window.mobileTabBarRefreshVisibility = refreshTabBarVisibility;
+
+    // ── Mobile bottom sheet utility surface, behind the gate ──
+    // `sheet` is null whenever MOUNT_BOTTOM_SHEET is off, and every
+    // sheet-facing entry point below no-ops against that null rather than
+    // reaching for an element that was never built.
+    const sheet = MOUNT_BOTTOM_SHEET ? buildBottomSheet(deps) : null;
+    const bottomSheet = sheet ? sheet.bottomSheet : null;
+
+    // IDLE/PEEK/EXPANDED transitions are a no-op with no sheet element to
+    // drive — a pomodoro start or music playback just produces no sheet.
+    function setSheetState(next) {
+        if (!sheet) return;
+        sheet.setSheetState(next);
+    }
+
+    // Kept as the single visibility entry point (window.bottomSheetRefreshVisibility)
+    // even with the sheet gated off: the tab bar follows the same hide rules —
+    // the drawer-open and NO-PROJECTS states are the two surfaces the bar
+    // shouldn't paint over.
+    function refreshSheetVisibility() {
+        if (sheet) sheet.refreshSheetVisibility();
+        refreshTabBarVisibility();
+    }
+    window.bottomSheetRefreshVisibility = refreshSheetVisibility;
+
+    // Watch the mainList classList + empty-state mutations so the sheet hides
+    // when NO PROJECTS appears or is removed.
+    setTimeout(function() {
+        try {
+            const observer = new MutationObserver(refreshSheetVisibility);
+            observer.observe(mainList, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
+        } catch (err) { /* defensive */ }
+        refreshSheetVisibility();
+    }, 0);
+
+    return {
+        bottomSheet,
+        mobileTabBar,
+        refreshSheetVisibility,
+        refreshTabBarVisibility,
+        setSheetState,
+    };
+}
+
+// Builds and wires the whole bottom-sheet subsystem, returning the node plus
+// the two entry points createMobileUtilitySheet() delegates to. Only called
+// when MOUNT_BOTTOM_SHEET is on, so nothing in here runs — and no listener in
+// here is registered — while the sheet is gated off.
+function buildBottomSheet(deps) {
+    const {
+        base,
+        main1,
         getPomodoroController,
         getMusicController,
     } = deps;
@@ -450,120 +631,6 @@ export function createMobileUtilitySheet(deps) {
     bottomSheet.appendChild(sheetPeek);
     bottomSheet.appendChild(sheetExpanded);
     base.appendChild(bottomSheet);
-
-    // ── Persistent bottom tab bar (mobile only) ──
-    // Two destinations — Stream and Structure — pinned to the
-    // bottom of the viewport at ≤1023px. Tapping a tab routes through
-    // applyActiveView() so the same code path drives mobile tabs and the
-    // desktop pill switcher; the active tab class is set in
-    // applyActiveView. The bar height is exposed as `--mobile-tab-h` so
-    // the bottom-sheet PEEK / IDLE / swipe-zone layers stack directly
-    // above it without any per-element coupling. Hidden on desktop via
-    // CSS (#mobileTabBar { display: none }).
-    const mobileTabBar = document.createElement('nav');
-    mobileTabBar.id = 'mobileTabBar';
-    mobileTabBar.setAttribute('role', 'tablist');
-    mobileTabBar.setAttribute('aria-label', 'Mobile bottom navigation');
-
-    function buildMobileTab(viewKey, label, iconSvg, displayLabel) {
-        const btn = document.createElement('button');
-        btn.type = 'button';
-        btn.className = 'mobileTab';
-        btn.setAttribute('role', 'tab');
-        btn.setAttribute('aria-pressed', 'false');
-        btn.dataset.view = viewKey;
-        btn.setAttribute('aria-label', label);
-        const icon = document.createElement('span');
-        icon.className = 'mobileTabIcon';
-        icon.setAttribute('aria-hidden', 'true');
-        icon.innerHTML = iconSvg;
-        const text = document.createElement('span');
-        text.className = 'mobileTabLabel';
-        // Visible label can differ from the accessible name: callers may pass
-        // a separate `displayLabel` so the on-screen text changes while the
-        // aria-label (and any selectors keyed off it) stay put.
-        text.textContent = displayLabel || label;
-        btn.appendChild(icon);
-        btn.appendChild(text);
-        btn.addEventListener('click', function() {
-            // Every tab navigates unconditionally through the canonical writer;
-            // the view itself renders any in-place "unavailable" message rather
-            // than the tap being a no-op.
-            applyActiveView(viewKey);
-        });
-        return btn;
-    }
-
-    // Inline SVG icons (24×24, currentColor stroke) — no icon library per
-    // CLAUDE.md. List glyph. Built from <rect>
-    // and <path> primitives so the SVG markup stays distinct from the
-    // ghost / kebab assertions in unrelated tests.
-    const ICON_LIST =
-        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<line x1="8" y1="6" x2="20" y2="6"/>' +
-        '<line x1="8" y1="12" x2="20" y2="12"/>' +
-        '<line x1="8" y1="18" x2="20" y2="18"/>' +
-        '<rect x="3" y="5" width="2" height="2" rx="1" fill="currentColor"/>' +
-        '<rect x="3" y="11" width="2" height="2" rx="1" fill="currentColor"/>' +
-        '<rect x="3" y="17" width="2" height="2" rx="1" fill="currentColor"/>' +
-        '</svg>';
-
-    // Structure — a layered-stack / sitemap glyph signalling the "map of the
-    // source" intent, built from path primitives like the others (no icon
-    // library).
-    const ICON_STRUCTURE =
-        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
-        '<path d="M12 3 L20 7 L12 11 L4 7 Z"/>' +
-        '<path d="M4 12 L12 16 L20 12"/>' +
-        '<path d="M4 16.5 L12 20.5 L20 16.5"/>' +
-        '</svg>';
-
-    // Two destinations — Stream and Structure. The AGENT tab was retired: the
-    // Agent board's blocked-on-you states (DRAFTED / STUCK / MOCKUP) now reach
-    // the task row's phase badge, so the board is a routed destination reached
-    // by tapping those badges rather than a tab. The Agent view stays mounted
-    // and fully functional. The 'projects' viewKey (and the 'Projects'
-    // aria-label / selectors keyed off it) stay put; only the visible label
-    // changes to "Stream".
-    const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Stream');
-    const mobileTabStructure = buildMobileTab('structure', 'Structure', ICON_STRUCTURE);
-    mobileTabProjects.id = 'mobileTabProjects';
-    mobileTabStructure.id = 'mobileTabStructure';
-
-    // Same hollow "no-repo" marker on the STRUCTURE tab — a repo-less project
-    // can't be mapped, so the tab stays tappable (it opens the unlinked-repo
-    // empty state) but carries the marker while body.agentUnavailable is set.
-    const mobileTabStructureMarker = document.createElement('span');
-    mobileTabStructureMarker.className = 'agentNoRepoMarker';
-    mobileTabStructureMarker.setAttribute('aria-hidden', 'true');
-    mobileTabStructure.appendChild(mobileTabStructureMarker);
-
-    // "Agent working" dot on the STREAM tab — the mobile counterpart to the
-    // desktop STREAM pill's dot. Hidden by default, revealed only while the
-    // persistent working watch sets `body.agentWorking`, so a live agent still
-    // reads as alive at a glance after the mobile AGENT tab that used to paint it
-    // was retired.
-    const mobileTabProjectsWorkingDot = document.createElement('span');
-    mobileTabProjectsWorkingDot.className = 'agentWorkingMarker';
-    mobileTabProjectsWorkingDot.setAttribute('aria-hidden', 'true');
-    mobileTabProjects.appendChild(mobileTabProjectsWorkingDot);
-
-    mobileTabBar.appendChild(mobileTabProjects);
-    mobileTabBar.appendChild(mobileTabStructure);
-    base.appendChild(mobileTabBar);
-
-    // Mirror refreshSheetVisibility for the tab bar — hide it whenever
-    // the drawer is open or the NO PROJECTS empty state owns the screen
-    // so it doesn't paint over either surface. The same MutationObserver
-    // wired into refreshSheetVisibility() picks up these calls because
-    // both functions read off main1.classList and #emptyState's class.
-    function refreshTabBarVisibility() {
-        const drawerOpen = main1.classList.contains('sidebar-open');
-        const noProjects = !!document.querySelector('#emptyState.emptyStateNoProjects');
-        mobileTabBar.classList.toggle('hidden-by-drawer', drawerOpen);
-        mobileTabBar.classList.toggle('hidden-by-empty', noProjects);
-    }
-    window.mobileTabBarRefreshVisibility = refreshTabBarVisibility;
 
     // ── State machine ──
     // setSheetState centralizes the IDLE/PEEK/EXPANDED transition so we can
@@ -1032,8 +1099,8 @@ export function createMobileUtilitySheet(deps) {
     // so native scrolling is preserved.
     attachSheetTouchSwipe(sheetExpanded, 'close');
 
-    // Expose a tiny imperative API for tests + visibility coordination from
-    // the drawer / empty-state hooks below.
+    // Expose a tiny imperative API for tests + visibility coordination, called
+    // through createMobileUtilitySheet()'s refreshSheetVisibility() wrapper.
     function refreshSheetVisibility() {
         const drawerOpen = main1.classList.contains('sidebar-open');
         const noProjects = !!document.querySelector('#emptyState.emptyStateNoProjects');
@@ -1048,26 +1115,11 @@ export function createMobileUtilitySheet(deps) {
                 setSheetState(active.any ? 'PEEK' : 'IDLE');
             }
         }
-        // Tab bar follows the same hide rules — the drawer-open and
-        // NO-PROJECTS states are the two surfaces the bar shouldn't paint
-        // over.
-        refreshTabBarVisibility();
     }
-    // Watch the mainList classList + empty-state mutations so the sheet hides
-    // when NO PROJECTS appears or is removed.
-    setTimeout(function() {
-        try {
-            const observer = new MutationObserver(refreshSheetVisibility);
-            observer.observe(mainList, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-        } catch (err) { /* defensive */ }
-        refreshSheetVisibility();
-    }, 0);
-    window.bottomSheetRefreshVisibility = refreshSheetVisibility;
 
     return {
         bottomSheet,
-        mobileTabBar,
+        setSheetState,
         refreshSheetVisibility,
-        refreshTabBarVisibility,
     };
 }

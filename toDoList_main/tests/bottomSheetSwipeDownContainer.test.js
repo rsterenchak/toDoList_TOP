@@ -19,6 +19,10 @@ function read(relative) {
 // content would be hijacked into a dismiss commit.
 // The sheet's DOM/logic now lives in mobileUtilitySheet.js (extracted from
 // main.js's component()), so these source assertions read that module.
+// The sheet is now gated off at the mount site (MOUNT_BOTTOM_SHEET in
+// mobileUtilitySheet.js), so these assertions describe the subsystem
+// retained behind that gate rather than DOM the app mounts; the absence
+// of #bottomSheet / .sheetSwipeZone is pinned in mobileUtilitySheet.test.js.
 describe('Mobile bottom drawer swipe-down close gesture (container-bound)', () => {
     const main = read('mobileUtilitySheet.js');
 
