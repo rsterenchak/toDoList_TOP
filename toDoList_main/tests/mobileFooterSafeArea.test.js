@@ -125,15 +125,19 @@ describe('mobile bottom-edge layout (footBar removal + flush mobileTabBar)', () 
     // Follow-up fix from the prior footer-clipping bug: html/body height
     // 100% can resolve to 100svh while #outerContainer is 100dvh; body
     // overflow:hidden crops the outer grid's bottom when body is shorter.
-    // Pinning body to min-height: 100dvh keeps it tall enough, and
-    // matching body's bg to the elevated surface hides any residual gap.
+    // Pinning body to min-height: 100dvh keeps it tall enough.
     it('mobile body is pinned to at least the dynamic viewport height', () => {
         const rule = extractRule('body', '(max-width: 1023px)');
         expect(rule).toMatch(/min-height:\s*100dvh/);
     });
 
-    it('mobile body background matches the elevated surface so any gap blends in', () => {
+    // The canvas token this once pinned to --bg-elevated (matching the tab
+    // bar's surface) is now --bg-base: the OS shading over the bar's bottom
+    // edge in a stuck standalone session lands on base, so a base band
+    // continues it with no visible step. mobileCanvasBand.test.js owns the
+    // full rationale and the surrounding invariants.
+    it('mobile body background is --bg-base so the stuck-session band has no edge', () => {
         const rule = extractRule('body', '(max-width: 1023px)');
-        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(rule).toMatch(/background:\s*var\(--bg-base\)/);
     });
 });

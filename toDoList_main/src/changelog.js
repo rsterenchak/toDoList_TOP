@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-09',
+        date: '2026-08-10',
         changed: [
-            "The pomodoro and music bottom sheet, along with its bottom-edge swipe-up handle, no longer appears on mobile; the bottom tab bar is unchanged.",
+            "In the installed iPhone app, the strip below the bottom tab bar now blends into the bar's own shading instead of showing a visible line where the app ends.",
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-09',
         fixed: [
             "The bottom tab bar's icons and labels stay fully visible in the installed iPhone app when the viewport is stuck short, with the strip beneath the bar reading as part of it.",
             "A backlog run that completed no task now reads as “No change” in the Runs tab instead of Shipped, and takes the name of the task its summary says it picked.",
