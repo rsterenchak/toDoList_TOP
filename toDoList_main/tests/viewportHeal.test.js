@@ -927,13 +927,17 @@ describe('viewportHeal — wiring and the retired CSS patch', () => {
     });
 
     // With no reseat, the fallback's whole job is that the un-paintable strip
-    // below the bar reads as part of the bar. Two facts make it read that way
-    // with no rule at all, and both are load-bearing enough to pin: the bar and
-    // the document canvas carry the same background token, so the OS extension
-    // of that canvas is the same colour as the bar; and the bar paints no
-    // box-shadow, so nothing is sheared flat at the surface boundary. Add a
-    // downward shadow to the bar and this fails — which is the moment
-    // `body.vhDeficit` needs a suppression rule.
+    // below the bar reads as intentional. The bar paints no box-shadow, so
+    // nothing is sheared flat at the surface boundary — add a downward shadow
+    // to the bar and this fails, which is the moment `body.vhDeficit` needs a
+    // suppression rule.
+    //
+    // The canvas token this once pinned to --bg-elevated (matching the bar's
+    // surface) is now --bg-base, per the entry that measured the OS shading
+    // over the bar's bottom ~30px and found it landing on base: a base band
+    // continues that shading rather than stepping away from it at the hard cut.
+    // mobileCanvasBand.test.js owns that declaration; here we only pin that the
+    // bar keeps its elevated surface and its no-shadow premise.
     it('leaves the tab bar meeting the canvas with no shadow to shear', () => {
         const barBlocks = [...css.matchAll(/(^|[\s},])#mobileTabBar\s*\{([\s\S]*?)\}/g)]
             .map(m => m[2]);
@@ -943,11 +947,11 @@ describe('viewportHeal — wiring and the retired CSS patch', () => {
         expect(laidOut).toMatch(/background:\s*var\(--bg-elevated\)/);
 
         // The canvas the OS extends into the strip comes from `body` on this
-        // breakpoint, and it has to be the same token or the apron reads as a
-        // band rather than as more bar.
+        // breakpoint, and it paints --bg-base so the band continues the
+        // system shading's landing colour.
         const bodyBlocks = [...css.matchAll(/(^|[\s},])body\s*\{([\s\S]*?)\}/g)].map(m => m[2]);
         const mobileBody = bodyBlocks.filter(b => /min-height:\s*100dvh/.test(b))[0];
         expect(mobileBody).toBeTruthy();
-        expect(mobileBody).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(mobileBody).toMatch(/background:\s*var\(--bg-base\)/);
     });
 });
