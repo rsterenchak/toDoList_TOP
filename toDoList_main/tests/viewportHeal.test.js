@@ -31,15 +31,54 @@ const srcDir = resolve(here, '../src');
 // the two display writes, #mainList's scroll surviving the flip, and the
 // cooldown that stops a platform where expected legitimately differs from
 // actual from flipping in a loop.
+//
+// ── AND THEN THE VACCINE ──
+//
+// The document-scrollability probe cured the shrink at its source: a shell
+// whose document can scroll is revealed by scrolling, not by resizing, so the
+// viewport never shrinks and the deficit reads 0 on the device that used to
+// report 59. That turned every intervention above into a misfire — the 140ms
+// focusout check lands mid-restore, reads the transient shrunken height, and
+// flips `#outerContainer` during the keyboard's dismiss animation — so
+// `HEAL_INTERVENTIONS` is now false and the module is telemetry-only.
+//
+// Both states are covered here, because the intervention code is a revival kit
+// rather than dead weight. The SHIPPED state (the constant false) is what
+// `loadModule()` gives you, and the telemetry-only describe below pins it:
+// measurement lives, acting does not. The intervention describes load a copy
+// with the constant rewritten to true — the module imports nothing, so a data
+// URL is a faithful copy of it — and every behavior they always asserted still
+// holds, which is what proves flipping the constant back actually revives the
+// flip, the cooldown and the published deficit.
 
 // Each test arms a fresh copy of the module so the cooldown clock and the
 // armed latch start clean; teardown removes that copy's listeners so a later
 // test never runs an earlier module instance's handlers.
 let teardown = null;
 
+const HEAL_SOURCE = readFileSync(resolve(srcDir, 'viewportHeal.js'), 'utf8');
+const GATE_OFF = /const HEAL_INTERVENTIONS = false;/;
+
+// The module as it ships: interventions gated off, telemetry live.
 async function loadModule() {
     vi.resetModules();
     return import('../src/viewportHeal.js');
+}
+
+// The same module with the one constant flipped, so the intervention behaviors
+// are exercised against the real code rather than against a description of it.
+// Asserting the substitution landed matters more than it looks: a rename of the
+// constant would otherwise leave every intervention test silently running the
+// gated-off build and passing vacuously, since "no flip" is what most of them
+// would then see as an empty ops array.
+async function loadModuleWithInterventions() {
+    expect(HEAL_SOURCE).toMatch(GATE_OFF);
+    const revived = HEAL_SOURCE.replace(GATE_OFF, 'const HEAL_INTERVENTIONS = true;');
+    expect(revived).toMatch(/const HEAL_INTERVENTIONS = true;/);
+    vi.resetModules();
+    return import(
+        'data:text/javascript;base64,' + Buffer.from(revived, 'utf8').toString('base64')
+    );
 }
 
 function setStandalone(matches) {
@@ -149,7 +188,7 @@ describe('viewportHeal — the standalone gate', () => {
 
     it('is inert in a browser tab, where the viewport recovers on its own', async () => {
         setStandalone(false);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         expect(initViewportHeal()).toBeNull();
 
         // Nothing armed means nothing listens: neither a blur after a shrink
@@ -192,7 +231,7 @@ describe('viewportHeal — the standalone gate', () => {
         setScreen(393, 852);
         setViewport(390, 793);
 
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -257,7 +296,7 @@ describe('viewportHeal — the status readout', () => {
         // where expected legitimately differs from actual; counting the two
         // together would hide it.
         setViewport(390, 785);
-        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        const { initViewportHeal, getViewportHealStatus } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -270,7 +309,7 @@ describe('viewportHeal — the status readout', () => {
 
     it('counts a flip that recovered the viewport as effective', async () => {
         setViewport(390, 785);
-        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        const { initViewportHeal, getViewportHealStatus } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         Object.defineProperty(outer.style, 'display', {
@@ -313,7 +352,7 @@ describe('viewportHeal — the expectation comes from the screen', () => {
         setScreen(393, 852);
         setViewport(390, 793);                   // 59px short from the first frame
 
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -329,7 +368,7 @@ describe('viewportHeal — the expectation comes from the screen', () => {
         setScreen(393, 852);
         setViewport(390, 793);
 
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -347,7 +386,7 @@ describe('viewportHeal — the expectation comes from the screen', () => {
         // permanent phantom deficit.
         setScreen(390, 844);
         setViewport(844, 390);                   // healthy landscape
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -364,7 +403,7 @@ describe('viewportHeal — the expectation comes from the screen', () => {
     it('stays inert when there is no usable screen to compare against', async () => {
         setScreen(0, 0);
         setViewport(390, 785);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -378,7 +417,7 @@ describe('viewportHeal — the expectation comes from the screen', () => {
 
 describe('viewportHeal — the stuck threshold', () => {
     it('heals after a blur once the viewport is more than 24px short', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -391,7 +430,7 @@ describe('viewportHeal — the stuck threshold', () => {
     });
 
     it('never fires while the viewport is within 24px of the screen', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -404,7 +443,7 @@ describe('viewportHeal — the stuck threshold', () => {
     });
 
     it('is a no-op on a session whose viewport matches the screen', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -421,7 +460,7 @@ describe('viewportHeal — the stuck threshold', () => {
         // at ≥1024px, so there is nothing to heal and the flip must not run.
         setScreen(1440, 900);
         setViewport(1440, 600);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -435,7 +474,7 @@ describe('viewportHeal — the stuck threshold', () => {
 
 describe('viewportHeal — the display flip', () => {
     it('forces the reflow BETWEEN the two display writes, then restores', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -452,7 +491,7 @@ describe('viewportHeal — the display flip', () => {
     });
 
     it('waits out the keyboard dismissal rather than measuring mid-animation', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -466,7 +505,7 @@ describe('viewportHeal — the display flip', () => {
     });
 
     it('does nothing when the shell is absent', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         document.body.innerHTML = '';
 
@@ -480,7 +519,7 @@ describe('viewportHeal — the display flip', () => {
 
 describe('viewportHeal — scroll restoration', () => {
     it('puts #mainList back where it was after the flip', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer, list } = buildShell();
 
@@ -503,7 +542,7 @@ describe('viewportHeal — scroll restoration', () => {
 
 describe('viewportHeal — the resume triggers', () => {
     it('checks again when the app comes back visible from the app switcher', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         vi.advanceTimersByTime(PAST_LAUNCH_CHECK);   // spend the launch check while healthy
         const { outer } = buildShell();
@@ -518,7 +557,7 @@ describe('viewportHeal — the resume triggers', () => {
     });
 
     it('ignores a visibilitychange into the background', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
         const { outer } = buildShell();
@@ -533,7 +572,7 @@ describe('viewportHeal — the resume triggers', () => {
     });
 
     it('checks again on a bfcache restore', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
         const { outer } = buildShell();
@@ -547,7 +586,7 @@ describe('viewportHeal — the resume triggers', () => {
     });
 
     it('stops listening after teardown', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         const stop = initViewportHeal();
         stop();
         teardown = null;
@@ -571,7 +610,7 @@ describe('viewportHeal — the ineffective-heal cooldown', () => {
         // legitimately shorter than the screen, so every trigger would look
         // stuck and flip forever. One harmless flip, then back off.
         setViewport(390, 785);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -590,7 +629,7 @@ describe('viewportHeal — the ineffective-heal cooldown', () => {
 
     it('tries again once the cooldown expires', async () => {
         setViewport(390, 785);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -607,7 +646,7 @@ describe('viewportHeal — the ineffective-heal cooldown', () => {
 
     it('does not arm the cooldown when the flip actually recovered the viewport', async () => {
         setViewport(390, 785);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = [];
@@ -657,7 +696,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
     it('flags the session when a flip leaves the deficit exactly where it found it', async () => {
         setScreen(393, 852);
         setViewport(390, 793);                   // the field reading: 59px short
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -668,7 +707,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
     });
 
     it('never flags a session whose viewport matches the screen', async () => {
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -682,7 +721,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
 
     it('clears the flag once a later measurement reads healthy', async () => {
         setViewport(390, 785);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -705,7 +744,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
         // viewport being measured, or a session that recovers during the
         // cooldown window keeps a flag nothing is left to remove.
         setViewport(390, 785);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -729,7 +768,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
         // that means something else entirely.
         setScreen(390, 844);
         setViewport(390, 644);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -742,7 +781,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
     it('refuses a deficit below the band, where the flip is the only remedy', async () => {
         setScreen(390, 844);
         setViewport(390, 815);                   // 29px: over the threshold, under the band
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -756,7 +795,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
     it('leaves desktop unflagged even at a deficit inside the band', async () => {
         setScreen(1440, 900);
         setViewport(1440, 841);
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -767,7 +806,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
 
     it('reports the fallback on both paths through the status readout', async () => {
         setViewport(390, 785);
-        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        const { initViewportHeal, getViewportHealStatus } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         buildShell();
 
@@ -784,7 +823,7 @@ describe('viewportHeal — the stuck-session fallback', () => {
 
     it('takes the flag off the document on teardown', async () => {
         setViewport(390, 785);
-        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        const { initViewportHeal, getViewportHealStatus } = await loadModuleWithInterventions();
         const stop = initViewportHeal();
         buildShell();
 
@@ -817,7 +856,7 @@ describe('viewportHeal — the visual-viewport trigger', () => {
         // iOS can close the keyboard via the toolbar's Done button without
         // moving focus, so focusout alone would leave the app stuck.
         const vv = stubVisualViewport();
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         const { outer } = buildShell();
         const ops = instrument(outer);
@@ -831,7 +870,7 @@ describe('viewportHeal — the visual-viewport trigger', () => {
 
     it('ignores a resize while a field still holds focus — that is the keyboard opening', async () => {
         const vv = stubVisualViewport();
-        const { initViewportHeal } = await loadModule();
+        const { initViewportHeal } = await loadModuleWithInterventions();
         teardown = initViewportHeal();
         vi.advanceTimersByTime(PAST_LAUNCH_CHECK);   // spend the launch check while healthy
         const { outer } = buildShell();
@@ -851,6 +890,153 @@ describe('viewportHeal — the visual-viewport trigger', () => {
         const { initViewportHeal } = await loadModule();
         expect(() => { teardown = initViewportHeal(); }).not.toThrow();
         expect(typeof teardown).toBe('function');
+    });
+});
+
+describe('viewportHeal — telemetry-only, as it ships', () => {
+    // The scroll-slack vaccine means a genuinely stuck viewport should no
+    // longer occur at all. What these pin is what happens when one is MEASURED
+    // anyway — which is precisely what the mid-restore misfire looked like from
+    // in here, a transient shrunken reading 140ms after a blur: the module
+    // records it in full and does nothing else with it.
+    function readDeficitVar() {
+        return document.documentElement.style.getPropertyValue('--vh-deficit');
+    }
+
+    it('ships with the interventions gated off', () => {
+        expect(HEAL_SOURCE).toMatch(GATE_OFF);
+    });
+
+    it('measures a stuck reading into the status but never flips', async () => {
+        setScreen(393, 852);
+        setViewport(390, 793);                   // the old field reading: 59px short
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        const status = getViewportHealStatus();
+        expect(status.expectedHeight).toBe(852);
+        expect(status.lastDeficit).toBe(59);
+        expect(typeof status.lastCheckAt).toBe('number');
+        expect(ops).toEqual([]);
+        expect(status.healsAttempted).toBe(0);
+        expect(status.healsEffective).toBe(0);
+    });
+
+    it('writes neither the vhDeficit class nor the deficit property', async () => {
+        // 59px sits squarely inside the band the flag used to fire in, so this
+        // is the reading that would have published one.
+        setScreen(393, 852);
+        setViewport(390, 793);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+
+        expect(document.body.classList.contains('vhDeficit')).toBe(false);
+        expect(readDeficitVar()).toBe('');
+        expect(getViewportHealStatus().fallbackActive).toBe(false);
+        expect(getViewportHealStatus().fallbackDeficitPx).toBeNull();
+    });
+
+    it('still measures on every trigger — blur, visual viewport, resume, bfcache', async () => {
+        // Diagnostics is the regression tripwire now, so a trigger that quietly
+        // stopped measuring would blind the one thing left standing. Each
+        // trigger gets its own height so the readout has to have come from that
+        // trigger and not from a stale earlier check.
+        const listeners = {};
+        window.visualViewport = {
+            addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
+            removeEventListener(type, fn) {
+                listeners[type] = (listeners[type] || []).filter(f => f !== fn);
+            },
+            emit(type) { (listeners[type] || []).slice().forEach(fn => fn()); },
+        };
+        setScreen(393, 852);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        setViewport(390, 800);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+        expect(getViewportHealStatus().lastDeficit).toBe(52);
+
+        setViewport(390, 801);
+        window.visualViewport.emit('resize');
+        vi.advanceTimersByTime(200);
+        expect(getViewportHealStatus().lastDeficit).toBe(51);
+
+        setViewport(390, 802);
+        setVisibility('visible');
+        document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(getViewportHealStatus().lastDeficit).toBe(50);
+
+        setViewport(390, 803);
+        window.dispatchEvent(new Event('pageshow'));
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        expect(getViewportHealStatus().lastDeficit).toBe(49);
+
+        expect(ops).toEqual([]);
+        expect(getViewportHealStatus().healsAttempted).toBe(0);
+    });
+
+    it('never engages the cooldown, since nothing is ever flipped', async () => {
+        // The cooldown is armed only by an ineffective flip, and its whole
+        // effect is to skip work. With no flip to arm it, a session reading
+        // stuck on every trigger must keep being measured on every one of them.
+        setViewport(390, 785);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        const { outer } = buildShell();
+        const ops = instrument(outer);
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+        const firstCheck = getViewportHealStatus().lastCheckAt;
+        for (let i = 0; i < 3; i += 1) {
+            document.dispatchEvent(new Event('focusout', { bubbles: true }));
+            vi.advanceTimersByTime(200);
+        }
+        setViewport(390, 786);
+        document.dispatchEvent(new Event('focusout', { bubbles: true }));
+        vi.advanceTimersByTime(200);
+
+        expect(ops).toEqual([]);
+        expect(getViewportHealStatus().healsAttempted).toBe(0);
+        expect(getViewportHealStatus().lastDeficit).toBe(58);
+        expect(getViewportHealStatus().lastCheckAt).toBeGreaterThan(firstCheck);
+    });
+
+    it('keeps the full status shape, so the Diagnostics section needs no change', async () => {
+        setViewport(390, 785);
+        const { initViewportHeal, getViewportHealStatus } = await loadModule();
+        teardown = initViewportHeal();
+        buildShell();
+
+        vi.advanceTimersByTime(PAST_LAUNCH_CHECK);
+
+        expect(Object.keys(getViewportHealStatus()).sort()).toEqual([
+            'armed',
+            'displayModeStandalone',
+            'expectedHeight',
+            'fallbackActive',
+            'fallbackDeficitPx',
+            'healsAttempted',
+            'healsEffective',
+            'lastCheckAt',
+            'lastDeficit',
+            'navigatorStandalone',
+        ]);
+        expect(getViewportHealStatus().armed).toBe(true);
     });
 });
 
