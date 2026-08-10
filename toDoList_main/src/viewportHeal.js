@@ -30,6 +30,41 @@
 // the full screen dimension, so the screen is a reference the bug cannot
 // corrupt.
 
+// ── INTERVENTIONS GATE: THIS MODULE IS TELEMETRY-ONLY ──
+//
+// The shrink no longer happens. The document-scrollability probe in
+// `style.css` — one pixel of root scroll slack on the mobile breakpoint —
+// turned out to be a vaccine rather than a mitigation: WebKit reveals a
+// focused input by SCROLLING a scrollable document instead of resizing the
+// layout viewport, so a shell whose document can scroll never shrinks.
+// Post-keyboard-cycle Diagnostics on the installed app reads innerHeight 852
+// against a screen of 852 — deficit 0, on the device that used to report 59.
+//
+// That left the interventions here firing into the platform's own restore
+// animation rather than into a stuck viewport. The focusout check runs 140ms
+// after the blur, which is still inside the keyboard's dismiss motion: it
+// catches the transient shrunken reading mid-restore, decides the session is
+// stuck, and runs the `#outerContainer` display flip — a full relayout during
+// the animation, visible as a hitch in the tab bar as it settles.
+// healsAttempted was incrementing on a session with nothing wrong with it.
+//
+// So the module stands down to pure TELEMETRY. Every trigger still measures
+// and still publishes: `lastCheckAt`, `lastDeficit`, `expectedHeight` and both
+// gate readings stay live, which is what keeps a future regression legible
+// from the device that has it — the Diagnostics section is unchanged and does
+// not know the difference. What stops is the ACTING: no display flip, so the
+// ineffective-heal cooldown never engages either, and neither the `vhDeficit`
+// class nor the `--vh-deficit` property is ever written to the document (the
+// fallback fields simply report inactive).
+//
+// Nothing is deleted. The flip, the cooldown and the fallback publishing stay
+// exactly as they were, as does the seam-cleanup banner in `style.css`, on the
+// MOUNT_BOTTOM_SHEET precedent in `mobileUtilitySheet.js`: the subsystem is
+// kept intact behind one constant so flipping it back to `true` revives every
+// intervention in one edit, which is what a future iOS regressing past the
+// vaccine would need.
+const HEAL_INTERVENTIONS = false;
+
 // How far below the expected height the viewport must sit before we treat it
 // as stuck. The real deficit is ~59px; the margin absorbs minor UA quirks
 // (rounding, a layout viewport legitimately inset a few px) without thrashing.
@@ -267,8 +302,15 @@ function attemptFlip() {
 // the point — the flip gets first refusal, and the flag only reports the
 // deficit the flip failed to close, so a platform where the flip works never
 // looks stuck in the diagnostics readout.
+//
+// The measurement happens BEFORE the gate is consulted, so a telemetry-only
+// build still refreshes the whole status object on every trigger and only
+// declines to act on what it read. Returning early here is also what keeps the
+// cooldown dormant: `attemptFlip` is the only thing that arms it.
 function healViewport() {
-    const flipped = isViewportStuck() && attemptFlip();
+    const stuck = isViewportStuck();
+    if (!HEAL_INTERVENTIONS) return false;
+    const flipped = stuck && attemptFlip();
     reconcileFallback();
     return flipped;
 }

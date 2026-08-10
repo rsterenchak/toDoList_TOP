@@ -11,13 +11,13 @@ export const changelog = [
         ],
         fixed: [
             "A further guard against the installed iPhone app staying short after the on-screen keyboard closes.",
+            "On iPhone, the bottom tab bar now settles in one smooth motion as the keyboard closes, without the brief hitch a redundant viewport correction was causing.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-09',
         fixed: [
-            "A backlog run that completed no task now reads as “No change” in the Runs tab instead of Shipped, and takes the name of the task its summary says it picked.",
             "A task whose triage run is queued behind another sweep no longer flips to a stuck badge before its run has had a chance to start.",
             "On iPhone, opening the keyboard now asks the browser to shrink only the visible area instead of the page itself, so the app no longer stays short after the keyboard closes.",
         ],

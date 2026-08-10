@@ -220,7 +220,15 @@ describe('Settings → Diagnostics — the heal fallback row', () => {
         expect(valueOf(mount(), 'healFallback')).toBe('off');
     });
 
-    it('reports the stuck session and its measured deficit once the fallback engages', () => {
+    // The heal now ships telemetry-only (HEAL_INTERVENTIONS is false in
+    // viewportHeal.js), because the scroll-slack vaccine cured the shrink and
+    // the interventions were left misfiring into the keyboard's own restore
+    // animation. The fallback flag is one of the interventions, so it stays
+    // "off" even on a reading that would once have engaged it — and this row
+    // earning its place now rests entirely on the MEASUREMENT rows beside it,
+    // which are the regression tripwire and must stay live. Flip the constant
+    // back and the fallback reports again; viewportHeal.test.js pins that path.
+    it('keeps the measurement live on a stuck reading while the fallback stays off', () => {
         const screenWidth = Object.getOwnPropertyDescriptor(window.screen, 'width');
         const screenHeight = Object.getOwnPropertyDescriptor(window.screen, 'height');
         const { innerWidth, innerHeight } = window;
@@ -236,7 +244,11 @@ describe('Settings → Diagnostics — the heal fallback row', () => {
         try {
             document.body.innerHTML = '<div id="outerContainer"></div>';
             vi.advanceTimersByTime(400);          // past the launch settle check
-            expect(valueOf(mount(), 'healFallback')).toBe('active · 59px');
+            const section = mount();
+            expect(valueOf(section, 'healExpectedHeight')).toBe('852');
+            expect(valueOf(section, 'healLastDeficit')).toBe('59');
+            expect(valueOf(section, 'healsAttempted')).toBe('0');
+            expect(valueOf(section, 'healFallback')).toBe('off');
         } finally {
             stop();
             vi.useRealTimers();
