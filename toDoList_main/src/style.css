@@ -13415,6 +13415,64 @@ body.row-dragging * { cursor: grabbing !important; }
     background: var(--bg-base);
   }
 
+  /* ── PROBE: nominal root scrollability vs. the iOS standalone
+     keyboard-shrink bug ──
+     Differential testing isolated that bug to NON-scrollable shells: an app
+     whose document can scroll never shrinks, because WebKit reveals a focused
+     input by scrolling the page instead of resizing the layout viewport. Three
+     things lock this document flat today — the global `body { overflow:
+     hidden }`, `html, body { height: 100% }`, and the `min-height: 100dvh`
+     above — so the root has exactly zero scrollable slack and WebKit is left
+     with only the resize path.
+
+     This block hands the root the smallest slack that could flip that
+     decision: one pixel. `overflow-y: auto` on body propagates to the viewport
+     (the html element's overflow is `visible`, so body's value is the one that
+     propagates) and the `body::after` spacer extends the document exactly 1px
+     past the dynamic viewport. Only the y axis is unlocked — the base rule's
+     `overflow-x: hidden` survives, so no surface gains a horizontal scroll.
+     `overscroll-behavior-y: none` keeps the newly-scrollable root from
+     rubber-banding, and the root scrollbar is suppressed so the 1px of travel
+     never paints a 4px gutter on classic-scrollbar platforms (touch devices
+     use overlay bars and were never affected).
+
+     #outerContainer is deliberately untouched: it keeps `height: 100dvh;
+     overflow: hidden`, so the shell still owns its own clipping and the 1px
+     lives entirely outside it. Reading the touch-gesture modules confirms the
+     slack cannot steal a gesture — #mainList is its own `overflow-y: auto`
+     scroller and consumes vertical touches first, the swipe-on-title handler
+     (#mobileProjTitleRow, `touch-action: pan-y`) abandons the gesture the
+     moment it reads vertical dominance, and the sheet swipe-down handlers ride
+     fixed-position overlays. No `touch-action` change was needed.
+
+     This is a PROBE, not a fix: the verdict is the installed-app Diagnostics
+     reading after a keyboard cycle, and a negative reading means this block
+     (plus the `body::after` spacer) is removed again in one piece. */
+  html,
+  body {
+    overscroll-behavior-y: none;
+    scrollbar-width: none;
+  }
+
+  html::-webkit-scrollbar,
+  body::-webkit-scrollbar {
+    display: none;
+  }
+
+  body {
+    overflow-y: auto;
+  }
+
+  /* The 1px of document slack. A spacer rather than folding `+ 1px` into the
+     canvas rule's `min-height: 100dvh` above, so that declaration and the
+     rationale governing it stay exactly as they are and this probe stays
+     removable on its own. */
+  body::after {
+    content: '';
+    display: block;
+    height: 1px;
+  }
+
   #outerContainer {
     border-radius: 0;
     border: none;
