@@ -1248,6 +1248,29 @@ function component() {
     // desktop (the #bulkDescActions overlay owns Sort there), so exactly one
     // Sort trigger is ever visible.
     const mobileSortHost = taskFilterBar;
+    // ── Mobile refresh chip ──
+    // Standalone (installed) mode has no browser chrome, so there is no way to
+    // reload the app short of force-quitting it. This chip restores plain Safari
+    // refresh semantics: a single tap re-runs window.location.reload(), with no
+    // confirmation (Safari has none) — in-flight unsaved input is lost by design,
+    // exactly as a browser refresh would.
+    //
+    // It joins the filter bar's RIGHT CLUSTER, appended before the Sort trigger
+    // so the cluster reads blocked-count chip → refresh → Sort. That order is
+    // load-bearing for the layout: the blocked chip's `margin-left: auto` is what
+    // absorbs the bar's free space and anchors everything after it to the right
+    // edge, so the refresh chip must sit between the chip and Sort to travel with
+    // them. Mounted unconditionally (the bar is shared across breakpoints and
+    // relocated by desktopHeaderPlacement.js) and gated by CSS, mirroring
+    // #taskSortBtnMobile: display:none at base, revealed only in the ≤1023px
+    // block. Visibility, not mounting, is the breakpoint gate.
+    //
+    // HARD BOUNDARY: this is a plain reload ONLY. It never messages the service
+    // worker, never calls skipWaiting, and never touches the update-pill flow in
+    // index.js / mobileUpdatePill.js — the update pill remains the sole path that
+    // activates a waiting worker.
+    const taskRefreshBtn = buildTaskRefreshBtn();
+    mobileSortHost.appendChild(taskRefreshBtn);
     mobileSortHost.appendChild(mobileSortBtn);
 
     function taskSortButtonText(key) {
@@ -3620,6 +3643,55 @@ export function firstFocusableInActiveMainView() {
     }
     if (allRows.length > 0) return allRows[0];
     return null;
+}
+
+// Plain full-page reload, matching what Safari's refresh button does. Exported
+// (rather than called inline from the click listener) so tests can drive the
+// chip without navigating jsdom, and so the one place the app performs a
+// user-requested reload is greppable. Deliberately NOT an update path: it does
+// not message the service worker or call skipWaiting — a waiting worker is
+// activated only through the update pill.
+export function requestAppReload() {
+    window.location.reload();
+}
+
+// Builds the mobile refresh chip (#taskRefreshBtn) mounted in the filter bar's
+// right cluster. Shares the .bulkDescBtn family with the Sort trigger so both
+// chips pick up the same hover/focus vocabulary, and carries an inline
+// circular-arrow reload glyph stroked in currentColor at the Sort glyph's visual
+// weight. The glyph is aria-hidden — the button's aria-label is its whole
+// accessible name. Separate from component() so a test can mount and activate
+// the real chip without booting the app.
+export function buildTaskRefreshBtn() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'taskRefreshBtn';
+    btn.className = 'bulkDescBtn taskRefreshBtn';
+    btn.setAttribute('aria-label', 'Refresh app');
+
+    const glyph = document.createElement('span');
+    glyph.className = 'taskRefreshBtnGlyph';
+    glyph.setAttribute('aria-hidden', 'true');
+    // Open arc (a 45° gap at the upper right) plus the corner arrowhead that
+    // closes it — the standard reload mark, drawn rather than imported so no
+    // icon package is introduced.
+    glyph.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" '
+        + 'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
+        + 'stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/>'
+        + '<path d="M17.3 2.5v4.2h-4.2"/>'
+        + '</svg>';
+    btn.appendChild(glyph);
+
+    // Pressed feedback is CSS-only (#taskRefreshBtn:active mirrors the chip's
+    // hover treatment, which touch devices never get), so the handler is just the
+    // reload. No confirmation step — Safari's refresh has none, and this control
+    // deliberately mirrors it.
+    btn.addEventListener('click', function () {
+        requestAppReload();
+    });
+
+    return btn;
 }
 
 // ── desktop queue-rail resize handle ──
