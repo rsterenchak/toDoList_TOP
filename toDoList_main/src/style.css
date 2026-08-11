@@ -9691,6 +9691,51 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: #9D93EE;
 }
 
+/* The mobile refresh chip, desktop-hidden. Standalone mode has no browser
+   chrome, so this restores Safari's refresh affordance; desktop browsers already
+   have a reload button and get no chip at all. Sits in the filter bar's right
+   cluster between the blocked chip and the Sort trigger, and mirrors
+   #taskSortBtnMobile exactly — a 36×36 bordered chip — so the two read as peers.
+   Revealed only inside the ≤1023px block, the same visibility-not-mounting gate
+   the Sort trigger uses. */
+#taskRefreshBtn {
+  display: none;
+  position: relative;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+#taskRefreshBtn:hover {
+  background: var(--bg-hover);
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+/* Press feedback for touch devices, which never get :hover — tapping the chip
+   flashes the same treatment before the reload takes the page away. */
+#taskRefreshBtn:active {
+  background: var(--bg-hover);
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+/* The SVG glyph sizes itself, but the wrapper needs to collapse its line box so
+   the icon centres in the square chip. It carries no text, so the ≤420px
+   .bulkDescBtn font-size:0 collapse can't hide it. */
+.taskRefreshBtnGlyph {
+  display: inline-flex;
+  line-height: 0;
+}
+
 /* TODO LIST */
 #mainList {
   display: grid;
@@ -14349,6 +14394,12 @@ body.row-dragging * { cursor: grabbing !important; }
      before this trigger) — a second auto margin here would split the free space
      and push the chip and Sort apart instead of grouping them. */
   #taskSortBtnMobile { display: inline-flex; }
+  /* Standalone mode has no browser chrome and therefore no reload button, so
+     surface the refresh chip here only — desktop browsers already have one. It
+     is DOM-ordered between the blocked chip and Sort, so it rides the same
+     right-cluster anchoring and must NOT carry its own `margin-left: auto`
+     (a second auto margin would split the free space and break the grouping). */
+  #taskRefreshBtn { display: inline-flex; }
   /* The fused divider is retired in the un-fused layout — keep it hidden. */
   .taskFilterBarDivider { display: none; }
 
@@ -16370,6 +16421,10 @@ body.row-dragging * { cursor: grabbing !important; }
      is a fixed 36×36 chip here too, so keep its padding at 0 rather than
      inheriting the .bulkDescBtn 6px that would distort the square. */
   #taskSortBtnMobile { padding: 0; }
+  /* Same reasoning for the refresh chip beside it: it shares .bulkDescBtn, but
+     it is a fixed 36×36 square, so it keeps padding 0 rather than inheriting the
+     6px above. Its glyph is an SVG, so the font-size:0 collapse can't reach it. */
+  #taskRefreshBtn { padding: 0; }
 
   #emptyState { grid-row: span 3; padding: 36px 12px 30px; gap: 8px; }
   .emptyStateIcon { font-size: 26px; }

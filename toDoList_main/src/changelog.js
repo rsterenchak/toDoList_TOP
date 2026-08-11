@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-11',
+        added: [
+            "A refresh button beside the sort control on phones reloads the app, so the installed app no longer has to be force-quit to restart it.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-10',
         changed: [
             "In the installed iPhone app, the strip below the bottom tab bar now blends into the bar's own shading instead of showing a visible line where the app ends.",
@@ -18,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-09',
         fixed: [
-            "A task whose triage run is queued behind another sweep no longer flips to a stuck badge before its run has had a chance to start.",
             "On iPhone, opening the keyboard now asks the browser to shrink only the visible area instead of the page itself, so the app no longer stays short after the keyboard closes.",
         ],
     },
