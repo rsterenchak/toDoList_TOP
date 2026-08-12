@@ -121,11 +121,10 @@ The assistant layers three independent context mechanisms, each sent as a distin
 
 The in-app assistant and its supporting pipeline are concentrated in a handful of source files. When working on assistant behavior, these are the files to reach for:
 
-- `toDoList_main/src/claudeSheet.js` — the in-app Claude assistant sheet: chat tab, author flow, Runs tab, iterate, layout-inspector wiring, file-attach picker, and the workspace pill.
+- `toDoList_main/src/claudeSheet.js` — the in-app Claude assistant sheet: chat tab, author flow, Runs tab, iterate, layout-inspector wiring, file-attach picker, the workspace pill, and POSSESSION (the ghost chip flips the whole sheet into the ghost's identity — ghost thread, ghostly composer, no model picker or attachments — over the shared plumbing in `ghostTalk.js`, never Supabase).
 - `toDoList_main/src/inject.js` — all Worker calls: inject, dispatch, chat, status poll, and entry-id minting.
-- `toDoList_main/src/ghostTalk.js` — the ghost's shared talk plumbing (the Worker ask/history calls through `postToWorker`, the recency-gated greeting, the in-voice error lines, the pending render) plus the DESKTOP skin: the speech bubble and ask input docked to the frozen sprite. Each skin names its surface (`desktop` / `mobile`) on the payload.
-- `toDoList_main/src/ghostModal.js` — the MOBILE skin: a scrim over the app and one big speech-bubble modal anchored above the perch, holding the recent conversation. Built on the shared plumbing in `ghostTalk.js`.
-- `toDoList_main/src/mobileGhost.js` — the mobile ghost perch: swipe up on the bottom tab bar to summon it into the bottom-left corner, tap it to open the ghost modal, swipe down to dismiss. Visibility persists under `todoapp_mobileGhostVisible`.
+- `toDoList_main/src/ghostTalk.js` — the ghost's shared talk plumbing (the Worker ask/history calls through `postToWorker`, the recency-gated greeting, the in-voice error lines, the pending render) plus the DESKTOP skin: the speech bubble and ask input docked to the frozen sprite. Each surface names itself (`desktop` / `mobile`) on the payload.
+- `toDoList_main/src/mobileGhost.js` — the mobile ghost perch: swipe up on the bottom tab bar to summon it into the bottom-left corner, tap it to open the Claude sheet already possessed, swipe down to dismiss. Visibility persists under `todoapp_mobileGhostVisible`.
 - `toDoList_main/src/runState.js` — per-project active-run state shared by the TODO.md viewer's header pill and the chat ship path, so a run shipped from either surface drives the same pill and a project only runs one at a time.
 - `toDoList_main/src/layoutInspect.js` — serializes an element's live computed layout for the inspector.
 - `toDoList_main/src/main.js` — DOM, UI, and event wiring; very large, so grep with `offset`/`limit` rather than reading it in full.

@@ -18,6 +18,15 @@
 // resolves that entry's merged diff and seeds the conversation. Follow-ups
 // flow through the same drafted-entry card → Inject & run path as the author
 // flow — fixing forward as a brand-new entry with a fresh id.
+//
+// The sheet also wears a SECOND identity: possession. Tapping the ghost chip in
+// the composer chip area (or arriving from the mobile perch, which opens the
+// sheet already possessed) hands the whole surface to the ghost — the work
+// thread hides with its state intact, a ghost thread takes its place, and the
+// composer goes ghostly. Possession is presence, not agency: it carries no
+// model picker, no attachments and no task scope, and every byte of it flows
+// through ghostTalk.js's Worker plumbing, never through the chat route and
+// never through Supabase. See the POSSESSION section below.
 
 import {
     chatWithWorker,
@@ -46,6 +55,14 @@ import {
     readActiveRedeploy,
     activeProjectNameForViewer,
 } from './runState.js';
+import {
+    GHOST_PLACEHOLDER,
+    askGhost,
+    fetchGhostHistory,
+    ghostOpeningLine,
+    isGhostWireReady,
+    renderGhostPending,
+} from './ghostTalk.js';
 import { listLogic } from './listLogic.js';
 import {
     buildCoveragePane,
@@ -73,6 +90,24 @@ const MOBILE_MAX_WIDTH = 1023;
 const SWIPE_CLOSE_PX = 120;
 const SWIPE_CLOSE_FLICK_PX = 60;
 const SWIPE_CLOSE_VELOCITY_PX_PER_MS = 0.5;
+
+// ── POSSESSION ──
+// How much of the ghost transcript the possessed thread carries: deep enough
+// that re-entering shows a conversation rather than a fragment, shallow enough
+// that the hydrate stays one screen of DOM. Mirrors the limit the retired
+// standalone modal used, so the thread reads the same after the move.
+const GHOST_THREAD_LIMIT = 20;
+// Fired on the document whenever possession is entered or left, so surfaces
+// outside the sheet can react without importing it. The mobile perch listens
+// and holds the ghost still while it is wearing the sheet.
+export const POSSESSION_EVENT = 'claudeGhostPossession';
+// The chip that stands in for the model picker and the attach rail while
+// possessed — the composer says who is listening instead of offering tools the
+// ghost has no use for.
+const GHOST_LISTENING_COPY = 'the ghost is listening';
+// The work composer's prompt. Possession swaps it for GHOST_PLACEHOLDER and
+// swaps it back on the way out, so the placeholder always names who is reading.
+const CHAT_PLACEHOLDER = 'Ask Claude…';
 
 const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
@@ -210,6 +245,25 @@ let selectedAttachRepo = DEFAULT_ATTACH_REPO;
 // free-text mode); `files` is its path list (empty when not ok). Cached for the
 // module's lifetime so re-selecting a repo never re-fetches.
 let srcManifestCache = {};
+// ── POSSESSION STATE ──
+// True while the ghost is wearing the sheet. It is session state, never
+// persisted: possession is a mood the surface is in, and a reload should land
+// on the work chat rather than resuming a conversation the user can't see the
+// start of. Everything visual hangs off the `is-possessed` class this drives.
+let possessed = false;
+// Whether the ghost thread has been hydrated from the transcript during THIS
+// sheet-open. One readback per open, not per flip — flipping back and forth
+// shouldn't re-fetch (or re-append) the same rows.
+let ghostHydrated = false;
+// Bumped on every possession flip and every sheet close. In-flight ghost work
+// captures it and bails when it no longer matches, so a reply landing after the
+// user has flipped back to the work chat can never paint into a stale thread.
+let ghostSession = 0;
+// The composer text banked for the identity the user is NOT currently in.
+// Flipping identity swaps them, so a half-written prompt survives a trip
+// through the ghost and vice versa.
+let workDraft = '';
+let ghostDraft = '';
 // Run records, newest-first: [{ entryId, correlationId, title, status,
 // dispatchedAt }]. Mirrored to localStorage so they survive a reload.
 let runRecords = [];
@@ -247,6 +301,11 @@ function placeChatContent() {
 function setActiveTab(tab) {
     if (!sheetEl) return;
     sheetEl.setAttribute('data-tab', tab);
+    // Leaving CHAT ends possession: the ghost has no runs and no coverage to
+    // show, and a possessed composer hovering over a run list would be lying
+    // about what the send button does. Returning to CHAT lands on the work
+    // chat with the ghost chip available again.
+    if (tab !== 'chat') setPossessed(false);
     const chatTab = sheetQuery('#claudeTabChat');
     const runsTab = sheetQuery('#claudeTabRuns');
     const coverageTab = sheetQuery('#claudeTabCoverage');
@@ -354,8 +413,17 @@ function refreshCoverageBadge() {
     }
 }
 
-export function openClaudeSheet() {
+// `options.possessed` opens the sheet with the ghost already wearing it — the
+// mobile perch's entry point. Omitted (the default, and what every existing
+// caller passes) the sheet opens on the work chat exactly as before; callers
+// that pass an event object land there too, since an Event carries no
+// `possessed` field.
+export function openClaudeSheet(options) {
     if (!sheetEl) return;
+    const wantPossessed = !!(options && options.possessed);
+    // Possession is scoped to one open: a sheet that was closed comes back on
+    // the work chat with a fresh (un-hydrated) ghost thread.
+    if (!isClaudeSheetOpen()) ghostHydrated = false;
     sheetEl.classList.add('open');
     sheetEl.setAttribute('aria-hidden', 'false');
     if (backdropEl) backdropEl.classList.add('open');
@@ -367,6 +435,17 @@ export function openClaudeSheet() {
     // intact. Repaints the pill/menu only — chatHistory, attachments, and the
     // active workspace survive.
     refreshWorkspaceRepos();
+
+    if (wantPossessed) {
+        // The ghost only ever wears the CHAT tab — there is nothing for it to
+        // say over a run list.
+        setActiveTab('chat');
+        setPossessed(true);
+        // Idempotent (ghostHydrated gates it), so a perch tap against an
+        // already-possessed sheet re-focuses rather than re-appending the
+        // transcript.
+        hydrateGhostThread();
+    }
 }
 
 export function closeClaudeSheet() {
@@ -374,6 +453,12 @@ export function closeClaudeSheet() {
     // Don't leave a dictation running in the background if the sheet is
     // dismissed mid-recording.
     stopDictation();
+    // Possession resets with the sheet: the ghost doesn't wait behind a closed
+    // door, and the thread it was holding is dropped so the next open hydrates
+    // fresh rather than stacking a second copy of the transcript.
+    setPossessed(false);
+    ghostHydrated = false;
+    clearGhostThread();
     sheetEl.classList.remove('open');
     sheetEl.setAttribute('aria-hidden', 'true');
     if (backdropEl) backdropEl.classList.remove('open');
@@ -2361,6 +2446,17 @@ function buildChatView() {
     surface.id = 'claudeChatSurface';
     surface.className = 'claudeChatSurface';
 
+    // The ghost thread — the possessed identity's transcript, a sibling of the
+    // work surface rather than a takeover of it, so flipping hides one and shows
+    // the other with both their contents intact. Hidden until the state class
+    // says otherwise (see the possession block in style.css).
+    const ghostThread = document.createElement('div');
+    ghostThread.id = 'claudeGhostThread';
+    ghostThread.className = 'claudeGhostThread';
+    // Replies arrive asynchronously, so the thread announces its own additions.
+    ghostThread.setAttribute('role', 'log');
+    ghostThread.setAttribute('aria-live', 'polite');
+
     // Task-scope chip — always present above the composer so the conversation's
     // scope is never ambiguous: it reads "🎯 <title>" (with a detach ✕) when a
     // task is attached, or a muted "Unscoped" otherwise. renderScopeChip() fills
@@ -2369,10 +2465,15 @@ function buildChatView() {
     scopeChip.id = 'claudeScopeChip';
     scopeChip.className = 'claudeScopeChip';
 
-    // Selected-attachment chips — sit directly above the composer.
+    // Selected-attachment chips — sit directly above the composer. The chip
+    // area also holds the two permanent residents of possession: the ghost chip
+    // that toggles it (always visible, glowing while active) and the "the ghost
+    // is listening" chip that stands in for the attachment chips while it is.
     const chips = document.createElement('div');
     chips.id = 'claudeAttachChips';
     chips.className = 'claudeAttachChips';
+    chips.appendChild(buildGhostChip());
+    chips.appendChild(buildGhostListeningChip());
 
     // Pending-image rail — thumbnail tiles for images staged for the next turn,
     // a separate rail from the file-attach chips. Sits directly above the
@@ -2387,7 +2488,7 @@ function buildChatView() {
     const input = document.createElement('textarea');
     input.id = 'claudeComposerInput';
     input.className = 'claudeComposerInput';
-    input.setAttribute('placeholder', 'Ask Claude…');
+    input.setAttribute('placeholder', CHAT_PLACEHOLDER);
     input.setAttribute('rows', '1');
     // Split send button: one main action that sends in the persistent default
     // mode (chatMode — 'fast' or 'deep', its label reflecting that mode) plus a
@@ -2474,14 +2575,17 @@ function buildChatView() {
     composer.appendChild(input);
     composer.appendChild(sendGroup);
 
-    // Main send + Enter both use the persisted default mode (deep → deep_think).
-    send.addEventListener('click', function() { sendChatTurn(chatMode === 'deep'); });
+    // Main send + Enter both use the persisted default mode (deep → deep_think)
+    // — unless the ghost has the sheet, in which case the same two gestures
+    // whisper to it instead. One composer, two destinations, decided by the
+    // identity the surface is currently wearing.
+    send.addEventListener('click', function() { submitComposer(); });
     sendCaret.addEventListener('click', function() { toggleModeMenu(); });
     // Enter sends; Shift+Enter inserts a newline.
     input.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
-            sendChatTurn(chatMode === 'deep');
+            submitComposer();
         }
     });
 
@@ -2547,6 +2651,7 @@ function buildChatView() {
     // spans the view width instead of stretching the right-aligned header row.
     view.appendChild(clearChatConfirm);
     view.appendChild(surface);
+    view.appendChild(ghostThread);
     view.appendChild(scopeChip);
     view.appendChild(chips);
     view.appendChild(imageRail);
@@ -2840,7 +2945,13 @@ function clearAttachments() {
 function renderComposerChipArea() {
     const chips = sheetQuery('#claudeAttachChips');
     if (!chips) return;
-    chips.innerHTML = '';
+    // Clear the attachment chips only — the ghost chip and the listening chip
+    // are permanent residents of this row, so a repaint must not evict them
+    // (and with them the possession toggle's click handler).
+    const stale = chips.querySelectorAll('.claudeAttachChip');
+    for (let i = 0; i < stale.length; i++) {
+        if (stale[i].parentNode) stale[i].parentNode.removeChild(stale[i]);
+    }
     attachedFiles.forEach(function(path) {
         // Default-repo chips read as a bare basename; chips from any other repo
         // carry their repo subtly so a mixed-looking set stays unambiguous.
@@ -3105,6 +3216,197 @@ function renderWorkspacePill() {
     if (!pill) return;
     pill.textContent = '📂 ' + repoShortName(activeChatRepo) + ' ▾';
     pill.title = 'Workspace: ' + activeChatRepo;
+}
+
+// ── POSSESSION ──
+// The ghost wearing the sheet. One flag drives one state class, and the class
+// drives the whole identity in CSS: the work thread hides (state intact — it is
+// display:none, never emptied), the ghost thread shows, the composer goes
+// ghostly, and every affordance that belongs to the work chat — model picker,
+// scope chip, attach / image / voice circles, chip rail — steps aside for a
+// single "the ghost is listening" chip.
+//
+// The plumbing under it is ghostTalk.js's, the same two Worker calls the desktop
+// floating skin makes. Nothing here talks to the Worker directly and nothing
+// here touches Supabase: the ghost transcript lives server-side in
+// `ghost_messages` and the work chat's own history (chatHistory / appendChatTurn)
+// is never written to from possession, so the two conversations can't bleed.
+//
+// The greeting is the one line on screen that is not transcript. When the last
+// exchange has gone cold it renders as the newest ghost row — deliberately
+// indistinguishable from a real one — but it is never persisted and never rides
+// a payload, so the next hydrate simply doesn't contain it.
+
+export function isSheetPossessed() {
+    return possessed;
+}
+
+// The one writer for possession. Banks the draft of the identity being left,
+// restores the other's, repaints the affordances, and announces the flip.
+function setPossessed(next) {
+    const want = !!next;
+    if (possessed === want) return;
+    const input = sheetQuery('#claudeComposerInput');
+    if (input) {
+        if (possessed) ghostDraft = input.value || '';
+        else workDraft = input.value || '';
+    }
+    possessed = want;
+    // Any ghost reply still in flight belongs to the identity we just left.
+    ghostSession++;
+    if (input) {
+        input.value = possessed ? ghostDraft : workDraft;
+        input.placeholder = possessed ? GHOST_PLACEHOLDER : CHAT_PLACEHOLDER;
+    }
+    applyPossessionState();
+    if (possessed) hydrateGhostThread();
+    emitPossessionChange();
+}
+
+export function togglePossession() {
+    setPossessed(!possessed);
+}
+
+// Paint everything the state flag governs that CSS can't reach on its own: the
+// class the stylesheet keys off, the chip's pressed/glow state, and the send
+// button's caption (which names the model outside possession, and the ghost has
+// no model to name). The mode menu closes on every flip so a popover can't
+// linger over the other identity.
+function applyPossessionState() {
+    if (contentEl) contentEl.classList.toggle('is-possessed', possessed);
+    closeModeMenu();
+    const chip = sheetQuery('#claudeGhostChip');
+    if (chip) {
+        chip.classList.toggle('is-active', possessed);
+        chip.setAttribute('aria-pressed', possessed ? 'true' : 'false');
+    }
+    if (possessed) {
+        const label = sheetQuery('#claudeComposerSend .claudeSendModeLabel');
+        if (label) label.textContent = 'Send';
+    } else {
+        renderSendMode();
+    }
+}
+
+// Announce the flip so surfaces outside the sheet can follow it (the mobile
+// perch stills its bob while the ghost is here). Fire-and-forget and guarded:
+// an environment without CustomEvent simply gets no announcement.
+function emitPossessionChange() {
+    if (typeof document === 'undefined' || typeof CustomEvent !== 'function') return;
+    try {
+        document.dispatchEvent(new CustomEvent(POSSESSION_EVENT, {
+            detail: { possessed: possessed },
+        }));
+    } catch (e) { /* defensive */ }
+}
+
+// The ghost chip — the possession toggle, living in the composer chip area. It
+// wears the same committed sprite the desktop companion and the mobile perch do
+// (--ghost-sprite), so the three surfaces can never fork the art, and it glows
+// while the ghost has the sheet.
+function buildGhostChip() {
+    const chip = document.createElement('button');
+    chip.id = 'claudeGhostChip';
+    chip.type = 'button';
+    chip.className = 'claudeGhostChip';
+    chip.setAttribute('aria-label', 'Talk to the ghost');
+    chip.setAttribute('aria-pressed', 'false');
+    chip.addEventListener('click', function() { togglePossession(); });
+    return chip;
+}
+
+// What the chip rail says while possessed, in place of the attachment chips.
+function buildGhostListeningChip() {
+    const chip = document.createElement('span');
+    chip.id = 'claudeGhostListening';
+    chip.className = 'claudeGhostListening';
+    chip.textContent = GHOST_LISTENING_COPY;
+    return chip;
+}
+
+// The newest rows, oldest-to-newest, then the opening line. A warm conversation
+// already ends on the ghost's last reply, so only a cold one adds a row — the
+// greeting, which exists in this thread and nowhere else. Runs at most once per
+// sheet-open; a failed readback resolves empty (ghostTalk swallows it), so the
+// thread opens on a greeting rather than an error.
+function hydrateGhostThread() {
+    if (ghostHydrated) return;
+    const thread = sheetQuery('#claudeGhostThread');
+    if (!thread) return;
+    ghostHydrated = true;
+    const mySession = ghostSession;
+    fetchGhostHistory().then(function(rows) {
+        if (mySession !== ghostSession || !sheetQuery('#claudeGhostThread')) return;
+        const recent = rows.slice(-GHOST_THREAD_LIMIT);
+        recent.forEach(function(row) { appendGhostRow(row.role, row.text); });
+        const opening = ghostOpeningLine(rows);
+        if (opening.greeting) appendGhostRow('ghost', opening.text);
+        scrollGhostThread();
+    });
+}
+
+function appendGhostRow(role, text) {
+    const thread = sheetQuery('#claudeGhostThread');
+    if (!thread) return null;
+    const row = document.createElement('div');
+    row.className = 'claudeGhostRow claudeGhostRow--' + (role === 'user' ? 'user' : 'ghost');
+    row.textContent = text;
+    thread.appendChild(row);
+    return row;
+}
+
+function scrollGhostThread() {
+    const thread = sheetQuery('#claudeGhostThread');
+    if (thread) thread.scrollTop = thread.scrollHeight;
+}
+
+function clearGhostThread() {
+    const thread = sheetQuery('#claudeGhostThread');
+    if (thread) thread.textContent = '';
+}
+
+// The breakpoint names the surface, so the transcript still records where a
+// whisper happened now that one sheet serves both — "mobile" under 1024px,
+// "desktop" above, exactly the two names the standalone skins used.
+function ghostSurface() {
+    return window.innerWidth <= MOBILE_MAX_WIDTH ? 'mobile' : 'desktop';
+}
+
+// Optimistic: the user's turn and a pending ghost row go up immediately, and the
+// reply swaps into the row already holding its place. Both turns land in
+// `ghost_messages` server-side, so the next hydrate agrees with what was shown.
+function sendGhostTurn() {
+    const input = sheetQuery('#claudeComposerInput');
+    if (!input) return Promise.resolve();
+    const message = (input.value || '').trim();
+    if (!message) return Promise.resolve();
+    input.value = '';
+    ghostDraft = '';
+    const mySession = ghostSession;
+    appendGhostRow('user', message);
+    const pendingRow = appendGhostRow('ghost', '');
+    // No dots where there is no wire — the answer is already known, and dots
+    // that never resolve into anything read as a hang.
+    if (pendingRow && isGhostWireReady()) {
+        pendingRow.classList.add('claudeGhostRow--pending');
+        renderGhostPending(pendingRow);
+    }
+    scrollGhostThread();
+
+    return askGhost(message, ghostSurface()).then(function(text) {
+        if (mySession !== ghostSession || !pendingRow) return;
+        pendingRow.classList.remove('claudeGhostRow--pending');
+        pendingRow.textContent = text;
+        scrollGhostThread();
+    });
+}
+
+// The single composer entry point, shared by the send button and Enter. Which
+// conversation the text joins is decided here and nowhere else, so the two
+// gestures can never disagree about who is being spoken to.
+function submitComposer() {
+    if (possessed) return sendGhostTurn();
+    return sendChatTurn(chatMode === 'deep');
 }
 
 // ── CHAT ──
@@ -5493,6 +5795,15 @@ export function mountClaudeSheet(parent) {
     pendingSuggestedFiles = [];
     pendingImages = [];
     attachedRepo = null;
+    // A fresh mount is never possessed, and it inherits neither identity's
+    // banked draft. ghostSession is bumped rather than reset so any reply still
+    // in flight from the previous mount can't paint into the new DOM.
+    possessed = false;
+    ghostHydrated = false;
+    ghostSession++;
+    workDraft = '';
+    ghostDraft = '';
+    applyPossessionState();
     activeChatRepo = DEFAULT_ATTACH_REPO;
     selectedAttachRepo = DEFAULT_ATTACH_REPO;
     // Reset to the safe fallback so a fresh mount never inherits a prior mount's

@@ -7,10 +7,12 @@
 //
 // The mobile perch does NOT wear that skin. Phone screens are dense enough that
 // a floating bubble lands on top of the TODO.md pill, the list rows and the FAB,
-// so the perch opens the big-bubble chat modal in `ghostModal.js` instead. What
-// the two skins share lives at the top of this file under SHARED PLUMBING: the
-// two Worker calls, the recency-gated opening line, the in-voice error strings
-// and the pending render. Neither skin reaches for the Worker itself.
+// so the perch opens the Claude sheet already possessed (see the POSSESSION
+// section of the Claude sheet module) and the ghost speaks through that surface
+// instead. What the two surfaces share lives at the top of this file under
+// SHARED PLUMBING: the two Worker calls, the recency-gated opening line, the
+// in-voice error strings and the pending render. Neither reaches for the Worker
+// itself.
 //
 // Two things are deliberate about the plumbing. First, the desktop surface is
 // ephemeral — the exchange is kept server-side in `ghost_messages`, and the
@@ -25,23 +27,23 @@
 //
 // The desktop cluster is fixed-positioned at pixel coordinates captured at open.
 // That is safe here because the desktop mount has no software keyboard to be
-// buried under; the mobile skin is bottom-anchored in CSS and rides the cured
-// viewport for free, which is why no viewport-docking code lives in this module.
+// buried under; the possessed sheet is a layout box that already rides the cured
+// viewport, which is why no viewport-docking code lives in this module.
 //
 // The desktop mount rides the companion: this module subscribes to the sprite's
 // activation event, which only ever fires from a mounted sprite. The mobile
-// perch (mobileGhost.js) mounts `ghostModal.js` against itself. Each skin names
-// its surface on the Worker payload so the transcript records where the exchange
-// happened, and each re-checks its own viewport gate — so neither skin can ever
-// open on the other's viewport.
+// perch (mobileGhost.js) opens the possessed Claude sheet instead. Each surface
+// names itself on the Worker payload so the transcript records where the
+// exchange happened, and the floating skin re-checks its own viewport gate — so
+// it can never open on a phone.
 
 import { postToWorker, isInjectConfigured } from './inject.js';
 import { supportsDesktopCompanion, onCompanionActivate, prefersReducedMotion } from './companion.js';
 
 // ── SHARED PLUMBING ──
-// Everything in this section is skin-agnostic: the desktop bubble below and the
-// mobile modal in ghostModal.js both build on exactly these pieces, so the two
-// can never drift on what the ghost says or what goes out over the wire.
+// Everything in this section is surface-agnostic: the desktop bubble below and
+// the possessed Claude sheet both build on exactly these pieces, so the two can
+// never drift on what the ghost says or what goes out over the wire.
 
 // In-voice copy. The ghost never says "request failed" — it says the wire is
 // dead. These strings are the whole error surface for this feature.
@@ -67,13 +69,13 @@ export const GHOST_GREETINGS = [
 ];
 
 // The mobile perch's viewport gate. It lives here rather than in
-// mobileGhost.js so the perch, the modal and this module all check the same
-// predicate without any two of them importing each other.
+// mobileGhost.js so the perch and this module check the same predicate without
+// either importing the other.
 export function supportsMobileGhostTalk() {
     return !!(window.matchMedia && window.matchMedia('(max-width: 1023px)').matches);
 }
 
-// Whether there is a Worker to talk to at all. Skins read this to decide
+// Whether there is a Worker to talk to at all. Surfaces read this to decide
 // whether a pending state is worth showing before the answer comes back.
 export function isGhostWireReady() {
     return isInjectConfigured();
@@ -81,7 +83,7 @@ export function isGhostWireReady() {
 
 // Post one question and resolve with the line the ghost says back — the reply
 // when the wire holds, an in-voice failure line when it doesn't. NEVER rejects:
-// both skins paint whatever comes back straight into their bubble, and a throw
+// both surfaces paint whatever comes back straight into their thread, and a throw
 // out of a keydown handler is exactly the assistant-tone failure this feature
 // exists to avoid.
 export function askGhost(message, surface) {
@@ -169,8 +171,8 @@ export function pickGhostGreeting() {
 // and `greeting` is false; anything older — or nothing at all — gets a greeting,
 // because a stale reply shown without its question reads as the ghost answering
 // an empty room. Skins use the flag to tell theatre from transcript: the desktop
-// bubble shows one line either way, while the modal appends a greeting as a row
-// the thread never had (and never sends).
+// bubble shows one line either way, while the possessed sheet appends a greeting
+// as a row the thread never had (and never sends).
 export function ghostOpeningLine(rows) {
     const entry = lastGhostReply(rows);
     if (entry && isGhostReplyWarm(entry.createdAt)) return { text: entry.text, greeting: false };
@@ -179,7 +181,7 @@ export function ghostOpeningLine(rows) {
 
 // Blinking dots while a reply is in flight, written into `host`. Under reduced
 // motion the same state renders as a static ellipsis — same shape, no animation.
-// Both skins share the dot element so one stylesheet rule drives both.
+// Both surfaces share the dot element so one stylesheet rule drives both.
 export function renderGhostPending(host) {
     if (!host) return;
     if (prefersReducedMotion()) {
@@ -268,7 +270,7 @@ let openingPending = false;
 
 // Subscribe once to sprite activation. Safe to call repeatedly; a no-op on
 // viewports where the companion never runs, so this mount contributes nothing
-// on mobile (where the perch opens the modal instead).
+// on mobile (where the perch opens the possessed sheet instead).
 export function ensureGhostTalk() {
     if (unsubscribe) return true;
     if (!supportsDesktopCompanion()) return false;

@@ -3,9 +3,10 @@
 // The ghost has no ambient presence on mobile: it is summoned. Swiping UP from
 // the bottom tab bar raises a small ghost from behind the bar to a perch in the
 // bottom-LEFT corner just above it; swiping DOWN on the bar or on the ghost
-// itself sinks it away again. Tapping the perched ghost opens the big-bubble
-// chat modal (ghostModal.js), which posts with `surface: "mobile"` so the
-// exchange lands in the same transcript the desktop sprite writes to.
+// itself sinks it away again. Tapping the perched ghost opens the Claude sheet
+// already possessed (claudeSheet.js), where the ghost wears the whole surface
+// and posts with `surface: "mobile"` so the exchange lands in the same
+// transcript the desktop sprite writes to.
 //
 // Three constraints shape the gesture handling. The bar's tabs must keep
 // working: only a predominantly-vertical drag past the threshold counts, and
@@ -21,7 +22,7 @@
 
 import { supportsDesktopCompanion } from './companion.js';
 import { supportsMobileGhostTalk } from './ghostTalk.js';
-import { openGhostModal, closeGhostModal } from './ghostModal.js';
+import { openClaudeSheet, POSSESSION_EVENT } from './claudeSheet.js';
 
 const STORAGE_KEY = 'todoapp_mobileGhostVisible';
 
@@ -74,6 +75,7 @@ export function ensureMobileGhost() {
     // Capture phase, so the swallow lands before the tab's own click handler
     // navigates.
     barEl.addEventListener('click', onBarClickCapture, true);
+    document.addEventListener(POSSESSION_EVENT, onPossessionChange);
 
     mountPerch();
     // Restore where the user left the ghost. Applied before the element has
@@ -84,6 +86,7 @@ export function ensureMobileGhost() {
 }
 
 export function destroyMobileGhost() {
+    document.removeEventListener(POSSESSION_EVENT, onPossessionChange);
     if (barEl) {
         barEl.removeEventListener('touchstart', onBarTouchStart);
         barEl.removeEventListener('touchmove', onBarTouchMove);
@@ -142,8 +145,12 @@ function applyVisible(next) {
     perchEl.classList.toggle('is-visible', visible);
     perchEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
     perchEl.tabIndex = visible ? 0 : -1;
-    // A ghost that sinks away takes its conversation with it.
-    if (!visible && talkOpen) closeGhostModal();
+    // A sunk perch stops holding still — but it does NOT close the sheet it
+    // opened. The perch is a door, not the room: once the ghost is wearing the
+    // sheet the conversation belongs to that surface, and dismissing the perch
+    // out from under a sheet the user is mid-sentence in would be a data loss
+    // dressed up as a gesture.
+    if (!visible && talkOpen) setStill(false);
 }
 
 // The one writer for visibility. Persists first so the preference survives even
@@ -271,28 +278,21 @@ function onPerchClick() {
 
 // ── TALK SURFACE ──
 
-// The controls ghostModal.js drives while the modal is open. The perch doesn't
-// wander, so "freeze" here just stills the idle bob for as long as the ghost is
-// being spoken to — and `is-still` doubles as the state that lifts the perch
-// above the modal's scrim, so the ghost keeps holding its own bubble.
-const talkApi = {
-    freeze:      function () { setStill(true); },
-    resume:      function () { setStill(false); },
-    setTalkOpen: function (open) {
-        talkOpen = !!open;
-        setStill(!!open);
-    },
-};
+// The perch has no talk surface of its own: tapping it hands the ghost the
+// Claude sheet. The sheet announces every possession flip on the document, and
+// the perch follows that rather than tracking the sheet's state itself — so the
+// bob stills whether possession was entered from here or from the sheet's own
+// ghost chip, and releases on every exit (chip, RUNS tab, or sheet close).
+function onPossessionChange(e) {
+    talkOpen = !!(e && e.detail && e.detail.possessed);
+    setStill(talkOpen);
+}
 
 function setStill(still) {
     if (perchEl) perchEl.classList.toggle('is-still', !!still);
 }
 
 function openTalk() {
-    if (!perchEl) return null;
-    const handle = openGhostModal(talkApi);
-    // A refused open (gate flipped mid-session) must not leave the perch stuck
-    // in its talking state.
-    if (!handle) { talkOpen = false; setStill(false); }
-    return handle;
+    if (!perchEl) return;
+    openClaudeSheet({ possessed: true });
 }
