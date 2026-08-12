@@ -9,26 +9,31 @@ import { dirname, resolve } from 'node:path';
 // The gesture is the risky part: it shares the tab bar with the app's primary
 // mobile navigation, so a regression that made every tab tap summon the ghost
 // (or, worse, stopped tabs navigating at all) would be a silent nav outage. The
-// rest is the wiring the feature exists for — the perch tap opening the ghost
-// modal with `surface: "mobile"` on the payload, and the visibility preference
-// surviving a reload.
+// rest is the wiring the feature exists for — the perch tap opening the Claude
+// sheet ALREADY POSSESSED, with `surface: "mobile"` on the payload, and the
+// visibility preference surviving a reload.
 //
-// inject.js is mocked so the Worker call the modal makes is observable with no
-// network and no configured Worker.
+// inject.js is mocked over its real module (the sheet imports far more of it
+// than the ghost does) so the Worker call the possessed sheet makes is
+// observable with no network and no configured Worker.
 
 const { state } = vi.hoisted(() => ({
     state: { configured: true, calls: [] },
 }));
 
-vi.mock('../src/inject.js', () => ({
-    isInjectConfigured: vi.fn(() => state.configured),
-    postToWorker: vi.fn(function (payload) {
-        state.calls.push(payload);
-        return Promise.resolve({ reply: 'boo' });
-    }),
-}));
+vi.mock('../src/inject.js', async (importOriginal) => {
+    const actual = await importOriginal();
+    return {
+        ...actual,
+        isInjectConfigured: vi.fn(() => state.configured),
+        postToWorker: vi.fn(function (payload) {
+            state.calls.push(payload);
+            return Promise.resolve({ reply: 'boo' });
+        }),
+    };
+});
 
-import { resetGhostModal } from '../src/ghostModal.js';
+import { mountClaudeSheet, closeClaudeSheet, isClaudeSheetOpen, isSheetPossessed } from '../src/claudeSheet.js';
 import {
     ensureMobileGhost,
     destroyMobileGhost,
@@ -47,6 +52,14 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 // gate. `mobile` decides whether the max-width query passes; the desktop
 // companion's own query answers the inverse so the two ghosts stay exclusive.
 function stubMatchMedia({ mobile = true, reducedMotion = false } = {}) {
+    // The possessed sheet names its surface from window.innerWidth (the same
+    // breakpoint the sheet's own layout reads), so the stub has to move the
+    // viewport width with the media query or the two would disagree.
+    Object.defineProperty(window, 'innerWidth', {
+        value: mobile ? 390 : 1280,
+        configurable: true,
+        writable: true,
+    });
     window.matchMedia = (query) => ({
         matches: /prefers-reduced-motion/.test(query) ? reducedMotion
                : /max-width/.test(query)             ? mobile
@@ -96,11 +109,15 @@ function mountTabBar() {
 function perch() {
     return document.getElementById('mobileGhostPerch');
 }
-function modal() {
-    return document.getElementById('ghostModal');
+// The possessed Claude sheet is the perch's talk surface now.
+function sheetBody() {
+    return document.getElementById('claudeSheetBody');
 }
-function modalInput() {
-    return document.getElementById('ghostModalInput');
+function ghostThread() {
+    return document.getElementById('claudeGhostThread');
+}
+function composer() {
+    return document.getElementById('claudeComposerInput');
 }
 
 beforeEach(() => {
@@ -113,7 +130,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    resetGhostModal();
+    closeClaudeSheet();
     destroyMobileGhost();
     document.body.innerHTML = '';
     localStorage.removeItem(STORAGE_KEY);
@@ -267,6 +284,7 @@ describe('mobile ghost — the perch gesture', () => {
     });
 
     it('does not open the talk surface on the click trailing a dismiss swipe', () => {
+        mountClaudeSheet(document.body);
         const { bar } = mountTabBar();
         ensureMobileGhost();
         swipe(bar, 700, 660);
@@ -274,7 +292,7 @@ describe('mobile ghost — the perch gesture', () => {
         swipe(perch(), 600, 640);
         perch().click();
 
-        expect(modal()).toBeNull();
+        expect(isClaudeSheetOpen()).toBe(false);
     });
 });
 
@@ -313,22 +331,28 @@ describe('mobile ghost — visibility persists', () => {
 });
 
 describe('mobile ghost — the talk surface', () => {
+    // The sheet has to be mounted for the perch to have anything to open; the
+    // real app mounts it at boot.
     function summon() {
+        mountClaudeSheet(document.body);
         const { bar } = mountTabBar();
         ensureMobileGhost();
         swipe(bar, 700, 660);
         return bar;
     }
 
-    it('tapping the perched ghost opens the modal, not the desktop floating bubble', () => {
+    it('tapping the perched ghost opens the Claude sheet already possessed', () => {
         summon();
         perch().click();
 
-        expect(modal()).not.toBeNull();
-        expect(document.getElementById('ghostModalScrim')).not.toBeNull();
-        expect(modalInput()).not.toBeNull();
-        expect(modalInput().placeholder).toBe('whisper something…');
-        // The floating skin belongs to the desktop companion now.
+        expect(isClaudeSheetOpen()).toBe(true);
+        expect(isSheetPossessed()).toBe(true);
+        expect(sheetBody().classList.contains('is-possessed')).toBe(true);
+        expect(ghostThread()).not.toBeNull();
+        expect(composer().placeholder).toBe('whisper something…');
+        // Neither retired surface comes back: no standalone modal, and the
+        // floating skin belongs to the desktop companion.
+        expect(document.getElementById('ghostModal')).toBeNull();
         expect(document.getElementById('ghostTalkBubble')).toBeNull();
         expect(document.getElementById('ghostTalkInput')).toBeNull();
     });
@@ -337,8 +361,8 @@ describe('mobile ghost — the talk surface', () => {
         summon();
         perch().click();
 
-        modalInput().value = 'is it colder over there';
-        modalInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        composer().value = 'is it colder over there';
+        composer().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         await tick();
 
         const ask = state.calls.find((c) => c && c.message);
@@ -349,29 +373,35 @@ describe('mobile ghost — the talk surface', () => {
         });
     });
 
-    it('stills the idle bob while the modal is open and releases it on dismiss', () => {
+    it('stills the idle bob while possessed and releases it when possession ends', () => {
         summon();
         perch().click();
         expect(perch().classList.contains('is-still')).toBe(true);
 
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        closeClaudeSheet();
         expect(perch().classList.contains('is-still')).toBe(false);
     });
 
     it('does nothing when the ghost is not summoned', () => {
+        mountClaudeSheet(document.body);
         mountTabBar();
         ensureMobileGhost();
         perch().click();
-        expect(modal()).toBeNull();
+
+        expect(isClaudeSheetOpen()).toBe(false);
+        expect(isSheetPossessed()).toBe(false);
     });
 
-    it('closes an open modal when the ghost is sunk away', () => {
+    it('leaves the sheet open when the perch is sunk away mid-conversation', () => {
         const bar = summon();
         perch().click();
-        expect(modal()).not.toBeNull();
+        expect(isSheetPossessed()).toBe(true);
 
+        // The perch is the door, not the room — sinking it must not close a
+        // sheet the user may be mid-sentence in.
         swipe(bar, 660, 700);
-        expect(modal().classList.contains('is-closing')).toBe(true);
+        expect(isClaudeSheetOpen()).toBe(true);
+        expect(isSheetPossessed()).toBe(true);
         expect(perch().classList.contains('is-still')).toBe(false);
     });
 });
@@ -432,16 +462,6 @@ describe('mobile ghost — styling and wiring', () => {
         expect(css).toMatch(/\.mobileGhostPerch\.is-still\s+\.mobileGhostSprite\s*\{\s*animation:\s*none/);
     });
 
-    // The scrim dims the whole app, so the perch has to outrank it or the ghost
-    // goes dark under its own bubble. `is-still` is the state that lifts it.
-    it('lifts the perch above the modal scrim while it is being spoken to', () => {
-        const still = css.match(/\.mobileGhostPerch\.is-still\s*\{[^}]*\}/);
-        expect(still).not.toBeNull();
-        const perchZ = Number(still[0].match(/z-index:\s*(\d+)/)[1]);
-        const scrim = css.match(/\.ghostModalScrim\s*\{[^}]*position:\s*fixed[^}]*\}/)[0];
-        expect(perchZ).toBeGreaterThan(Number(scrim.match(/z-index:\s*(\d+)/)[1]));
-    });
-
     it('drops the rise and the bob under reduced motion, keeping the fade', () => {
         const block = css.match(
             /@media \(prefers-reduced-motion: reduce\) \{\s*\.mobileGhostPerch,[\s\S]*?\n\}/
@@ -458,14 +478,15 @@ describe('mobile ghost — styling and wiring', () => {
         expect(js).toMatch(/setTimeout\(ensureMobileGhost,\s*0\)/);
     });
 
-    it('opens the ghost modal rather than posting to the worker itself', () => {
+    it('opens the possessed sheet rather than posting to the worker itself', () => {
         const js = read('mobileGhost.js');
-        expect(js).toMatch(/import\s*\{[^}]*openGhostModal[^}]*\}\s*from\s*['"]\.\/ghostModal\.js['"]/);
+        expect(js).toMatch(/import\s*\{[^}]*openClaudeSheet[^}]*\}\s*from\s*['"]\.\/claudeSheet\.js['"]/);
+        expect(js).toMatch(/openClaudeSheet\(\s*\{\s*possessed:\s*true\s*\}\s*\)/);
+        // The retired modal leaves no trace behind.
+        expect(js).not.toMatch(/ghostModal/);
         expect(js).not.toMatch(/openGhostTalk/);
         expect(js).not.toMatch(/\bfetch\s*\(/);
         expect(js).not.toMatch(/postToWorker/);
-        // The perch is a presence surface, not an agent one.
-        expect(js).not.toMatch(/claudeSheet/);
         expect(js).not.toMatch(/supabase/i);
     });
 });

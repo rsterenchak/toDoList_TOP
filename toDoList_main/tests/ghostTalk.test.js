@@ -533,8 +533,8 @@ describe('ghost talk — mobile has zero presence', () => {
     });
 });
 
-// This module is the DESKTOP skin. The mobile perch wears the big-bubble modal
-// (ghostModal.js) instead, so the floating surface must stay off phone
+// This module is the DESKTOP skin. The mobile perch opens the possessed Claude
+// sheet instead, so the floating surface must stay off phone
 // viewports entirely — and must keep naming itself on the Worker payload, since
 // the transcript's `surface` field is the only record of where an exchange
 // happened.
@@ -848,11 +848,11 @@ describe('ghost talk — reflow on content change', () => {
 
 // The mobile mount used to wear this same floating cluster, which is
 // fixed-positioned from pixel coordinates captured at open — so it needed
-// visualViewport listeners to stay off the software keyboard. The phone skin is
-// now the bottom-anchored modal (ghostModal.js), which rides the cured viewport
+// visualViewport listeners to stay off the software keyboard. The phone surface
+// is now the possessed Claude sheet, a layout box that rides the cured viewport
 // in CSS, and that docking code was deleted rather than left dormant. These pin
 // the deletion: a dormant listener re-attached later would silently fight the
-// modal for the same keyboard.
+// sheet for the same keyboard.
 describe('ghost talk — no viewport docking left behind', () => {
     // jsdom has no visualViewport. This stand-in counts anything that subscribes
     // to it.
