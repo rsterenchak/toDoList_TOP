@@ -394,6 +394,112 @@ describe('ghost talk — mobile has zero presence', () => {
     });
 });
 
+// The surface is per-mount, not desktop-only: the mobile perch opens the same
+// bubble against its own element. The gate that used to be a flat
+// desktop-or-nothing check is now one gate per surface, and the surface name
+// rides the Worker payload — both easy to regress into "everything is desktop"
+// without anything looking broken.
+describe('ghost talk — per-mount surface', () => {
+    // The file-wide stubMatchMedia answers the same `matches` to every query,
+    // which can't express "mobile breakpoint but not desktop companion". These
+    // two are query-aware so each gate is exercised against a real viewport
+    // shape rather than a blanket yes.
+    function stubViewport(mobile) {
+        window.matchMedia = (query) => ({
+            matches: /prefers-reduced-motion/.test(query) ? false
+                   : /max-width/.test(query)             ? mobile
+                   : !mobile,
+            media: query,
+            addListener() {},
+            removeListener() {},
+            addEventListener() {},
+            removeEventListener() {},
+        });
+    }
+    const stubMobileViewport  = () => stubViewport(true);
+    const stubDesktopViewport = () => stubViewport(false);
+
+    function mobileAnchor() {
+        const el = document.createElement('button');
+        el.className = 'mobileGhostPerch';
+        el.getBoundingClientRect = () => ({
+            left: 14, top: 600, right: 48, bottom: 634, width: 34, height: 34, x: 14, y: 600,
+        });
+        document.body.appendChild(el);
+        return el;
+    }
+
+    it('opens against an anchor element and tags the mobile mount', () => {
+        stubMobileViewport();
+        const anchor = mobileAnchor();
+
+        expect(openGhostTalk(null, { surface: 'mobile', anchor })).not.toBeNull();
+        expect(bubble().classList.contains('ghostTalkSurface--mobile')).toBe(true);
+        expect(input().classList.contains('ghostTalkSurface--mobile')).toBe(true);
+        // Docked to the anchor's real box, not to a sprite that isn't there.
+        expect(parseInt(bubble().style.top, 10)).toBeLessThan(600);
+    });
+
+    it('sends surface "mobile" from the mobile mount', async () => {
+        stubMobileViewport();
+        openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() });
+
+        input().value = 'still cold?';
+        pressEnter(input());
+        await flush();
+
+        const ask = state.calls.find((c) => c && c.message);
+        expect(ask).toEqual({ ghost: true, message: 'still cold?', surface: 'mobile' });
+    });
+
+    it('refuses the mobile mount on a desktop viewport', () => {
+        stubDesktopViewport();
+        expect(openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() })).toBeNull();
+        expect(bubble()).toBeNull();
+    });
+
+    it('treats an absent or unknown surface as the desktop mount', async () => {
+        mountCompanion();
+        hit().click();
+
+        expect(bubble().classList.contains('ghostTalkSurface--desktop')).toBe(true);
+        input().value = 'hello';
+        pressEnter(input());
+        await flush();
+
+        const ask = state.calls.find((c) => c && c.message);
+        expect(ask.surface).toBe('desktop');
+    });
+
+    it('keeps the surface open when the perch itself is tapped', () => {
+        stubMobileViewport();
+        const anchor = mobileAnchor();
+        openGhostTalk(null, { surface: 'mobile', anchor });
+
+        // The perch re-opens (re-docks) the surface itself, so the click-away
+        // handler must not race it closed.
+        anchor.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        expect(bubble().classList.contains('is-closing')).toBe(false);
+    });
+
+    it('dismisses on a touch outside the surface, without waiting for a synthetic mousedown', () => {
+        stubMobileViewport();
+        openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() });
+
+        const outside = document.createElement('div');
+        document.body.appendChild(outside);
+        outside.dispatchEvent(new Event('touchstart', { bubbles: true }));
+
+        expect(bubble().classList.contains('is-closing')).toBe(true);
+    });
+
+    it('opens nothing when neither an api nor a usable anchor is supplied', () => {
+        stubMobileViewport();
+        expect(openGhostTalk(null, { surface: 'mobile' })).toBeNull();
+        expect(bubble()).toBeNull();
+    });
+});
+
 describe('ghost talk — positioning', () => {
     it('clamps the bubble inside the viewport for an edge-wandered ghost', () => {
         mountCompanion();
@@ -719,5 +825,11 @@ describe('ghost talk — module wiring', () => {
         expect(block).toMatch(/\(pointer:\s*coarse\)/);
         expect(block).toMatch(/\.companionHit\s*\{\s*display:\s*none/);
         expect(block).toMatch(/\.ghostTalkBubble[\s\S]*display:\s*none/);
+        // Scoped to the DESKTOP mount only — the mobile perch mounts the same
+        // bubble on exactly these viewports, so an unscoped rule here would
+        // hide the mobile surface the moment it opened.
+        expect(block).toMatch(/\.ghostTalkBubble\.ghostTalkSurface--desktop/);
+        expect(block).toMatch(/\.ghostTalkInput\.ghostTalkSurface--desktop/);
+        expect(block).not.toMatch(/ghostTalkSurface--mobile/);
     });
 });

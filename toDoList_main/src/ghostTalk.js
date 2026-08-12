@@ -1,6 +1,6 @@
-// Desktop ghost talk surface — tap-to-talk for the wandering companion.
+// Ghost talk surface — tap-to-talk, shared by both ghost mounts.
 //
-// Clicking the sprite freezes it and mounts two elements docked to the frozen
+// Tapping the ghost freezes it and mounts two elements docked to the frozen
 // position: a comic speech bubble above the ghost and a single-line ask input
 // beside it. Typing a question posts it to the Worker's `ghost` route and the
 // reply lands in the bubble.
@@ -14,9 +14,14 @@
 // the click handler. Technical detail goes to console.warn where a developer
 // can find it and the user never sees it.
 //
-// Mounting rides the companion: the module subscribes to the sprite's
-// activation event, which only ever fires from a mounted sprite, and the
-// desktop gate is re-checked here so nothing is created on mobile.
+// There are two mounts, and the surface is per-mount rather than desktop-only.
+// The desktop mount rides the companion: the module subscribes to the sprite's
+// activation event, which only ever fires from a mounted sprite. The mobile
+// mount is the swipe-summoned perch (mobileGhost.js), which opens this surface
+// against its own element. Each mount names its surface when it opens, that
+// name rides the Worker payload so the transcript records where the exchange
+// happened, and the matching viewport gate is re-checked here — so neither
+// mount can ever create a surface on the other's viewport.
 
 import { postToWorker, isInjectConfigured } from './inject.js';
 import { supportsDesktopCompanion, onCompanionActivate, prefersReducedMotion } from './companion.js';
@@ -45,8 +50,13 @@ let textEl   = null;
 let tailEl   = null;
 let inputEl  = null;
 let closeId  = null;
-let spriteApi = null;
+// The freeze/position controls of whichever mount opened the surface — the
+// wandering sprite on desktop, the perch on mobile.
+let mountApi = null;
 let unsubscribe = null;
+// Which mount is showing. Read at ask() time so the Worker records the surface
+// the question was actually asked from.
+let activeSurface = 'desktop';
 // Placement inputs captured at open. The sprite is frozen for the whole life of
 // the surface and the input never moves, so only the bubble's own size changes
 // — which is exactly what drives a reflow.
@@ -58,8 +68,24 @@ let sizeObserver = null;
 // user has already asked for — or paint into a torn-down bubble.
 let session = 0;
 
+// The mobile perch's viewport gate. It lives here rather than in
+// mobileGhost.js so this module can check the same predicate the perch mounts
+// under without the two importing each other; mobileGhost.js imports it back.
+export function supportsMobileGhostTalk() {
+    return !!(window.matchMedia && window.matchMedia('(max-width: 1023px)').matches);
+}
+
+// One gate per mount surface. A surface only ever opens on the viewport its
+// own ghost lives on, so a resize across the breakpoint can't leave the wrong
+// mount holding a bubble.
+const SURFACE_GATES = {
+    desktop: supportsDesktopCompanion,
+    mobile:  supportsMobileGhostTalk,
+};
+
 // Subscribe once to sprite activation. Safe to call repeatedly; a no-op on
-// viewports where the companion never runs, so mobile gets zero presence.
+// viewports where the companion never runs, so the desktop mount contributes
+// nothing on mobile (where the perch mounts this surface instead).
 export function ensureGhostTalk() {
     if (unsubscribe) return true;
     if (!supportsDesktopCompanion()) return false;
@@ -67,24 +93,31 @@ export function ensureGhostTalk() {
     return true;
 }
 
-// Open the talk surface against a frozen sprite. `api` is the narrow surface
-// companion.js hands to activation subscribers: getPosition + freeze controls.
-export function openGhostTalk(api) {
-    if (!supportsDesktopCompanion()) return null;
-    if (!api || typeof api.getPosition !== 'function') return null;
-    const pos = api.getPosition();
+// Open the talk surface against a frozen ghost. `api` carries the freeze
+// controls — on desktop it is the narrow surface companion.js hands to
+// activation subscribers (getPosition + freeze/resume/setTalkOpen); on mobile
+// the perch passes the same controls and names itself through `opts.anchor`.
+// `opts` is `{ surface, anchor }`; an absent surface reads as 'desktop', which
+// keeps the companion's `openGhostTalk(api)` call site unchanged.
+export function openGhostTalk(api, opts) {
+    const options = opts || {};
+    const surface = options.surface === 'mobile' ? 'mobile' : 'desktop';
+    if (!SURFACE_GATES[surface]()) return null;
+    const pos = anchorBox(api, options.anchor);
     if (!pos) return null;
 
-    // A second click on the ghost while the bubble is up just re-docks it
+    // A second tap on the ghost while the bubble is up just re-docks it
     // rather than stacking a second surface.
     teardown();
-    spriteApi = api;
+    mountApi = api || null;
+    activeSurface = surface;
     session++;
     const mySession = session;
-    // Hold the freeze until the surface closes — without this the ghost walks
-    // out from under its own bubble the moment the pointer leaves the sprite.
-    if (typeof api.setTalkOpen === 'function') api.setTalkOpen(true);
-    if (typeof api.freeze === 'function') api.freeze();
+    // Hold the freeze until the surface closes — without this the desktop ghost
+    // walks out from under its own bubble the moment the pointer leaves the
+    // sprite, and the perch keeps bobbing while it is being spoken to.
+    if (mountApi && typeof mountApi.setTalkOpen === 'function') mountApi.setTalkOpen(true);
+    if (mountApi && typeof mountApi.freeze === 'function') mountApi.freeze();
 
     mount();
     position(pos);
@@ -101,14 +134,14 @@ export function openGhostTalk(api) {
 
 export function closeGhostTalk() {
     if (!bubbleEl && !inputEl) return;
-    const api = spriteApi;
+    const api = mountApi;
     session++;
     fadeOutAndTeardown();
     // Release in the same order the open took it: the surface stops claiming
-    // the sprite, then the wander is re-armed from the frozen position.
+    // the ghost, then its idle motion is re-armed from the frozen position.
     if (api && typeof api.setTalkOpen === 'function') api.setTalkOpen(false);
     if (api && typeof api.resume === 'function') api.resume();
-    spriteApi = null;
+    mountApi = null;
 }
 
 // ── DOM ──
@@ -116,9 +149,13 @@ export function closeGhostTalk() {
 function mount() {
     const doc = document;
 
+    // The surface modifier is what the mobile-viewport hide rule keys off: the
+    // desktop mount is barred below 1024px, the mobile mount is not.
+    const surfaceClass = 'ghostTalkSurface--' + activeSurface;
+
     bubbleEl = doc.createElement('div');
     bubbleEl.id = 'ghostTalkBubble';
-    bubbleEl.className = 'ghostTalkBubble ghostTalkSurface';
+    bubbleEl.className = 'ghostTalkBubble ghostTalkSurface ' + surfaceClass;
     // Replies arrive asynchronously, so the bubble announces itself.
     bubbleEl.setAttribute('role', 'status');
     bubbleEl.setAttribute('aria-live', 'polite');
@@ -134,7 +171,7 @@ function mount() {
 
     inputEl = doc.createElement('input');
     inputEl.id = 'ghostTalkInput';
-    inputEl.className = 'ghostTalkInput ghostTalkSurface';
+    inputEl.className = 'ghostTalkInput ghostTalkSurface ' + surfaceClass;
     inputEl.type = 'text';
     inputEl.placeholder = PLACEHOLDER;
     inputEl.setAttribute('aria-label', 'Ask the ghost');
@@ -150,7 +187,12 @@ function mount() {
 
     inputEl.addEventListener('keydown', onInputKeydown);
     doc.addEventListener('keydown', onDocKeydown, true);
-    doc.addEventListener('mousedown', onDocMouseDown, true);
+    doc.addEventListener('mousedown', onDocPointerDown, true);
+    // Touch gets its own listener rather than relying on the synthetic mousedown
+    // iOS emits after the tap: on the perch the surface has to dismiss the
+    // moment the finger lands, or a tap-away while the keyboard is up reads as
+    // a dead first tap.
+    doc.addEventListener('touchstart', onDocPointerDown, true);
 
     // The bubble is bottom-anchored, so every content change (greeting swap,
     // pending dots, reply, error line) has to re-place it or the box grows
@@ -181,7 +223,8 @@ function teardown() {
     if (closeId) { clearTimeout(closeId); closeId = null; }
     releaseObserver();
     document.removeEventListener('keydown', onDocKeydown, true);
-    document.removeEventListener('mousedown', onDocMouseDown, true);
+    document.removeEventListener('mousedown', onDocPointerDown, true);
+    document.removeEventListener('touchstart', onDocPointerDown, true);
     if (inputEl) {
         inputEl.removeEventListener('keydown', onInputKeydown);
         if (inputEl.parentNode) inputEl.parentNode.removeChild(inputEl);
@@ -207,7 +250,8 @@ function fadeOutAndTeardown() {
     releaseObserver();
     if (input) input.removeEventListener('keydown', onInputKeydown);
     document.removeEventListener('keydown', onDocKeydown, true);
-    document.removeEventListener('mousedown', onDocMouseDown, true);
+    document.removeEventListener('mousedown', onDocPointerDown, true);
+    document.removeEventListener('touchstart', onDocPointerDown, true);
     bubbleEl = null;
     textEl   = null;
     tailEl   = null;
@@ -287,6 +331,25 @@ export function computeTalkLayout(spriteRect, bubbleSize, inputRect, viewport) {
     const tailX = clamp(centreX - bubbleX, TAIL_INSET, Math.max(TAIL_INSET, bw - TAIL_INSET));
 
     return { bubbleX: bubbleX, bubbleY: bubbleY, tailX: tailX, placement: placement };
+}
+
+// The box the surface docks to, however the mount describes it. The wandering
+// sprite has no stable element box worth reading — it is lerped from JS — so it
+// reports through getPosition(); the perch is a real fixed element and reports
+// through its own rect. Returns null when neither is usable, which is the
+// caller's cue to open nothing at all.
+function anchorBox(api, anchor) {
+    if (api && typeof api.getPosition === 'function') return api.getPosition();
+    if (anchor && typeof anchor.getBoundingClientRect === 'function') {
+        const r = anchor.getBoundingClientRect();
+        return {
+            x:      num(r.left, 0),
+            y:      num(r.top, 0),
+            width:  num(r.width, 0)  || anchor.offsetWidth  || 0,
+            height: num(r.height, 0) || anchor.offsetHeight || 0,
+        };
+    }
+    return null;
 }
 
 // Dock the input beside the frozen sprite and record both boxes, then place the
@@ -389,7 +452,7 @@ function ask(message) {
         return;
     }
     sayPending();
-    postToWorker({ ghost: true, message: message, surface: 'desktop' })
+    postToWorker({ ghost: true, message: message, surface: activeSurface })
         .then(function (res) {
             if (mySession !== session) return;
             const reply = readText(res);
@@ -457,14 +520,14 @@ function onDocKeydown(e) {
     if (e.key === 'Escape') closeGhostTalk();
 }
 
-function onDocMouseDown(e) {
+function onDocPointerDown(e) {
     const t = e.target;
     if (!t) { closeGhostTalk(); return; }
     if (bubbleEl && bubbleEl.contains(t)) return;
     if (inputEl && (inputEl === t || inputEl.contains(t))) return;
-    // Clicks on the sprite's hit target belong to the companion — it re-opens
-    // (re-docks) the surface itself, so closing here would fight it.
-    if (typeof t.closest === 'function' && t.closest('.companionHit')) return;
+    // Taps on either ghost belong to its own mount — both re-open (re-dock) the
+    // surface themselves, so closing here would fight them.
+    if (typeof t.closest === 'function' && t.closest('.companionHit, .mobileGhostPerch')) return;
     closeGhostTalk();
 }
 
@@ -473,6 +536,7 @@ function onDocMouseDown(e) {
 export function resetGhostTalk() {
     session++;
     teardown();
-    spriteApi = null;
+    mountApi = null;
+    activeSurface = 'desktop';
     if (unsubscribe) { unsubscribe(); unsubscribe = null; }
 }

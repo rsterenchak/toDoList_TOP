@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-08-12',
         added: [
             "Click the desktop ghost to stop it and open a speech bubble, then ask it anything and it answers right where it stands.",
+            "On phones, swipe up from the bottom tab bar to summon a small ghost into the corner, tap it to ask it something, and swipe down to send it away.",
         ],
         fixed: [
             "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",
@@ -19,13 +20,6 @@ export const changelog = [
         added: [
             "A refresh button beside the sort control on phones reloads the app, so the installed app no longer has to be force-quit to restart it.",
             "Tapping refresh now shows a spinning refresh screen that stays up through the reload until your lists are ready, instead of flashing a blank app.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-10',
-        fixed: [
-            "On iPhone, the bottom tab bar now settles in one smooth motion as the keyboard closes, without the brief hitch a redundant viewport correction was causing.",
         ],
     },
 ];
