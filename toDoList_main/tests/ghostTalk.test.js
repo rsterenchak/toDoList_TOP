@@ -53,6 +53,7 @@ import {
     openGhostTalk,
     closeGhostTalk,
     resetGhostTalk,
+    computeTalkLayout,
 } from '../src/ghostTalk.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -412,6 +413,231 @@ describe('ghost talk — positioning', () => {
     });
 });
 
+// The placement math is pulled out as a pure function precisely so it can be
+// exercised at bubble sizes jsdom can never produce — a layout-less DOM reports
+// every box as 0×0, which is what let the original top-anchored bug ship green.
+describe('computeTalkLayout', () => {
+    const VIEWPORT = { width: 1024, height: 768 };
+    const sprite = (x, y) => ({ x, y, width: 48, height: 56 });
+    // The ask input as position() places it: centred on the sprite, to its right.
+    const inputFor = (s) => ({ x: s.x + s.width + 12, y: s.y + s.height / 2 - 16, width: 180, height: 32 });
+
+    it('bottom-anchors in above mode — growing the bubble moves it up, not down', () => {
+        const s = sprite(400, 400);
+        const short = computeTalkLayout(s, { width: 250, height: 44 }, inputFor(s), VIEWPORT);
+        const tall  = computeTalkLayout(s, { width: 250, height: 140 }, inputFor(s), VIEWPORT);
+
+        expect(short.placement).toBe('above');
+        expect(tall.placement).toBe('above');
+        expect(tall.bubbleY).toBeLessThan(short.bubbleY);
+        // The bottom edge is the anchor, so it does not move as content grows.
+        expect(tall.bubbleY + 140).toBe(short.bubbleY + 44);
+    });
+
+    it('clears both the sprite and the ask input by at least 8px at any height', () => {
+        const s = sprite(400, 400);
+        const inp = inputFor(s);
+        // The input hangs below the sprite's top edge, so it is the binding
+        // constraint — a bubble that only cleared the sprite would sit on it.
+        for (const height of [20, 44, 90, 160, 300]) {
+            const l = computeTalkLayout(s, { width: 250, height }, inp, VIEWPORT);
+            expect(l.placement).toBe('above');
+            expect(s.y - (l.bubbleY + height)).toBeGreaterThanOrEqual(8);
+            expect(inp.y - (l.bubbleY + height)).toBeGreaterThanOrEqual(8);
+        }
+    });
+
+    it('flips below when a tall bubble has no headroom over a sprite near the top', () => {
+        const s = sprite(400, 60);
+        const inp = inputFor(s);
+        const l = computeTalkLayout(s, { width: 250, height: 140 }, inp, VIEWPORT);
+
+        expect(l.placement).toBe('below');
+        // Docked under the whole cluster, clearing the lower of sprite and input.
+        expect(l.bubbleY).toBeGreaterThanOrEqual(Math.max(s.y + s.height, inp.y + inp.height) + 8);
+        expect(l.bubbleY + 140).toBeLessThanOrEqual(VIEWPORT.height - 8);
+        // The tail still points at the sprite; only its edge flips (in CSS).
+        expect(l.tailX).toBe(s.x + s.width / 2 - l.bubbleX);
+    });
+
+    it('stays above when a short bubble fits over a sprite near the top', () => {
+        const s = sprite(400, 60);
+        expect(computeTalkLayout(s, { width: 250, height: 30 }, inputFor(s), VIEWPORT).placement).toBe('above');
+    });
+
+    it('keeps the tail pointed at the sprite when the bubble is clamped against the left edge', () => {
+        const s = sprite(4, 400);
+        const l = computeTalkLayout(s, { width: 250, height: 44 }, inputFor(s), VIEWPORT);
+
+        // The bubble is clamped to the edge margin, but the tail tracks the
+        // sprite's centre (x=28) inside it rather than the bubble's own centre.
+        expect(l.bubbleX).toBe(8);
+        expect(l.tailX).toBe(28 - 8);
+    });
+
+    it('holds the tail off the bubble corner when the sprite centre falls outside it', () => {
+        // A sprite centred left of the clamped bubble would put the tail at a
+        // negative offset; the inset keeps it on the rounded corner instead.
+        const l = computeTalkLayout({ x: 0, y: 400, width: 8, height: 56 }, { width: 250, height: 44 }, null, VIEWPORT);
+        expect(l.bubbleX).toBe(8);
+        expect(l.tailX).toBe(14);
+    });
+
+    it('keeps the bubble on-screen when the sprite hugs the right edge', () => {
+        const s = sprite(1000, 400);
+        const l = computeTalkLayout(s, { width: 250, height: 44 }, inputFor(s), VIEWPORT);
+        expect(l.bubbleX + 250).toBeLessThanOrEqual(VIEWPORT.width - 8);
+        expect(l.tailX).toBeLessThanOrEqual(250 - 14);
+    });
+
+    it('tolerates a missing input rect and anchors on the sprite alone', () => {
+        const s = sprite(400, 400);
+        const l = computeTalkLayout(s, { width: 250, height: 44 }, null, VIEWPORT);
+        expect(l.placement).toBe('above');
+        expect(l.bubbleY + 44).toBe(s.y - 12);
+    });
+});
+
+describe('ghost talk — reflow on content change', () => {
+    function openAt(pos) {
+        mountCompanion();
+        const api = {
+            getPosition: () => pos,
+            freeze: vi.fn(),
+            resume: vi.fn(),
+            setTalkOpen: vi.fn(),
+        };
+        openGhostTalk(api);
+        return api;
+    }
+
+    // jsdom reports every box as 0×0, so the bubble's height is stubbed to
+    // stand in for the wrap the real greeting would cause.
+    function stubHeight(el, initial) {
+        const box = { h: initial };
+        Object.defineProperty(el, 'offsetHeight', { configurable: true, get: () => box.h });
+        return box;
+    }
+
+    it('re-places the bubble when the greeting replaces the placeholder', async () => {
+        state.historyResult = { messages: [{ role: 'ghost', content: 'i have been waiting a while' }] };
+        openAt({ x: 400, y: 400, width: 48, height: 56 });
+
+        const b = bubble();
+        const before = parseInt(b.style.top, 10);
+        // The greeting wraps to three lines where the "…" placeholder was one.
+        const box = stubHeight(b, 120);
+
+        await flush();
+
+        expect(bubbleText()).toBe('i have been waiting a while');
+        const after = parseInt(b.style.top, 10);
+        expect(after).toBeLessThan(before);
+        // Grown upward: the bottom edge is where it was, so the sprite and the
+        // ask input below it are untouched.
+        expect(after + box.h).toBe(before + 44);
+    });
+
+    it('keeps the bottom edge fixed across the pending-dots to reply swap', async () => {
+        state.defer = true;
+        state.askResult = { reply: 'a much longer answer than the dots were' };
+        openAt({ x: 400, y: 400, width: 48, height: 56 });
+
+        const b = bubble();
+        const bottomAt = () => parseInt(b.style.top, 10) + b.offsetHeight;
+        const box = stubHeight(b, 44);
+        const bottom = bottomAt();
+
+        input().value = 'how long have you been here';
+        pressEnter(input());
+        box.h = 44;
+        expect(bottomAt()).toBe(bottom);
+
+        box.h = 96;
+        state.pending.forEach((release) => release());
+        await flush();
+
+        expect(bubbleText()).toBe('a much longer answer than the dots were');
+        expect(bottomAt()).toBe(bottom);
+        // And still clear of the sprite it is docked to.
+        expect(parseInt(b.style.top, 10) + box.h).toBeLessThanOrEqual(400 - 8);
+    });
+
+    it('flips to the below placement class for a tall bubble near the viewport top', async () => {
+        state.historyResult = { messages: [{ role: 'ghost', content: 'no room up here' }] };
+        openAt({ x: 400, y: 40, width: 48, height: 56 });
+
+        const b = bubble();
+        stubHeight(b, 200);
+        await flush();
+
+        expect(b.classList.contains('ghostTalkBubble--below')).toBe(true);
+        expect(parseInt(b.style.top, 10)).toBeGreaterThan(40 + 56);
+    });
+
+    it('observes the bubble for size changes and disconnects on dismissal mid-pending', async () => {
+        const observe = vi.fn();
+        const disconnect = vi.fn();
+        const had = 'ResizeObserver' in globalThis;
+        const saved = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            constructor(cb) { this.cb = cb; }
+            observe(el) { observe(el); }
+            disconnect() { disconnect(); }
+        };
+        try {
+            state.defer = true;
+            openAt({ x: 400, y: 400, width: 48, height: 56 });
+            expect(observe).toHaveBeenCalledWith(bubble());
+
+            input().value = 'are you still there';
+            pressEnter(input());
+            expect(bubble().classList.contains('ghostTalkBubble--pending')).toBe(true);
+
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+            expect(disconnect).toHaveBeenCalledTimes(1);
+
+            // Teardown is idempotent — a second dismissal is a no-op, and the
+            // deferred reply landing afterwards must not paint or throw.
+            closeGhostTalk();
+            state.pending.forEach((release) => release());
+            await flush();
+            expect(disconnect).toHaveBeenCalledTimes(1);
+
+            await new Promise((r) => setTimeout(r, 260));
+            expect(bubble()).toBeNull();
+            expect(input()).toBeNull();
+        } finally {
+            if (had) globalThis.ResizeObserver = saved;
+            else delete globalThis.ResizeObserver;
+        }
+    });
+
+    it('re-places the bubble when the size observer fires without a content write', () => {
+        let fire = null;
+        const had = 'ResizeObserver' in globalThis;
+        const saved = globalThis.ResizeObserver;
+        globalThis.ResizeObserver = class {
+            constructor(cb) { fire = cb; }
+            observe() {}
+            disconnect() { fire = null; }
+        };
+        try {
+            openAt({ x: 400, y: 400, width: 48, height: 56 });
+            const b = bubble();
+            const before = parseInt(b.style.top, 10);
+            stubHeight(b, 130);
+
+            fire();
+
+            expect(parseInt(b.style.top, 10)).toBe(before + 44 - 130);
+        } finally {
+            if (had) globalThis.ResizeObserver = saved;
+            else delete globalThis.ResizeObserver;
+        }
+    });
+});
+
 describe('ghost talk — module wiring', () => {
     it('inject.js exports postToWorker so the talk surface reuses the one worker caller', () => {
         expect(read('inject.js')).toMatch(/export\s+async\s+function\s+postToWorker\s*\(/);
@@ -460,6 +686,16 @@ describe('ghost talk — module wiring', () => {
         expect(bubbleRule[1]).toMatch(/max-width:\s*250px/);
         const tailRule = css.match(/\.ghostTalkTail\s*\{([^}]*)\}/);
         expect(tailRule[1]).toMatch(/transform:\s*rotate\(45deg\)/);
+    });
+
+    it('flips the tail to the top edge for the below placement', () => {
+        const css = read('style.css');
+        const flipped = css.match(/\.ghostTalkBubble--below\s+\.ghostTalkTail\s*\{([^}]*)\}/);
+        expect(flipped).not.toBeNull();
+        expect(flipped[1]).toMatch(/bottom:\s*auto/);
+        expect(flipped[1]).toMatch(/top:\s*-5px/);
+        expect(flipped[1]).toMatch(/border-top:\s*1px solid var\(--border-mid\)/);
+        expect(flipped[1]).toMatch(/border-left:\s*1px solid var\(--border-mid\)/);
     });
 
     it('hides the talk surface on viewports where the companion never runs', () => {

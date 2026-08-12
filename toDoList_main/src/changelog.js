@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             "Click the desktop ghost to stop it and open a speech bubble, then ask it anything and it answers right where it stands.",
         ],
+        fixed: [
+            "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",
+        ],
     },
     {
         version: '1.1',
@@ -22,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-10',
         fixed: [
-            "A further guard against the installed iPhone app staying short after the on-screen keyboard closes.",
             "On iPhone, the bottom tab bar now settles in one smooth motion as the keyboard closes, without the brief hitch a redundant viewport correction was causing.",
         ],
     },

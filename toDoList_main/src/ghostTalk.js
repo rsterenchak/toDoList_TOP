@@ -32,6 +32,7 @@ const PLACEHOLDER = 'whisper something…';
 // resolves where there is no layout engine to measure against.
 const GAP      = 12;   // sprite → bubble / sprite → input
 const EDGE     = 8;    // minimum distance from any viewport edge
+const CLEAR    = 8;    // floor on the bubble→sprite / bubble→input separation
 const BUBBLE_W = 250;  // matches max-width on .ghostTalkBubble
 const BUBBLE_H = 44;
 const INPUT_W  = 180;
@@ -46,6 +47,12 @@ let inputEl  = null;
 let closeId  = null;
 let spriteApi = null;
 let unsubscribe = null;
+// Placement inputs captured at open. The sprite is frozen for the whole life of
+// the surface and the input never moves, so only the bubble's own size changes
+// — which is exactly what drives a reflow.
+let spriteBox = null;
+let inputBox  = null;
+let sizeObserver = null;
 // Bumped on every open and close. Async work captures it and bails when it no
 // longer matches, so a slow history readback can never overwrite a reply the
 // user has already asked for — or paint into a torn-down bubble.
@@ -144,10 +151,35 @@ function mount() {
     inputEl.addEventListener('keydown', onInputKeydown);
     doc.addEventListener('keydown', onDocKeydown, true);
     doc.addEventListener('mousedown', onDocMouseDown, true);
+
+    // The bubble is bottom-anchored, so every content change (greeting swap,
+    // pending dots, reply, error line) has to re-place it or the box grows
+    // downward over the sprite and the input. Watching the element itself
+    // catches wrapping changes the callers can't predict.
+    observeBubbleSize();
+}
+
+// Keep the observer optional: jsdom has no ResizeObserver, and the explicit
+// reflow() after each content write covers that case on its own.
+function observeBubbleSize() {
+    if (typeof ResizeObserver === 'undefined' || !bubbleEl) return;
+    try {
+        sizeObserver = new ResizeObserver(function () { reflow(); });
+        sizeObserver.observe(bubbleEl);
+    } catch (err) {
+        sizeObserver = null;
+    }
+}
+
+function releaseObserver() {
+    if (!sizeObserver) return;
+    sizeObserver.disconnect();
+    sizeObserver = null;
 }
 
 function teardown() {
     if (closeId) { clearTimeout(closeId); closeId = null; }
+    releaseObserver();
     document.removeEventListener('keydown', onDocKeydown, true);
     document.removeEventListener('mousedown', onDocMouseDown, true);
     if (inputEl) {
@@ -159,6 +191,8 @@ function teardown() {
     textEl   = null;
     tailEl   = null;
     inputEl  = null;
+    spriteBox = null;
+    inputBox  = null;
 }
 
 function fadeOutAndTeardown() {
@@ -167,7 +201,10 @@ function fadeOutAndTeardown() {
     if (bubble) bubble.classList.add('is-closing');
     if (input)  input.classList.add('is-closing');
     // Detach listeners now so a keystroke during the fade can't reopen work
-    // against a surface that is on its way out.
+    // against a surface that is on its way out. The size observer goes with
+    // them — the fading bubble still resizes, and a reflow into a surface the
+    // user has dismissed is wasted work at best.
+    releaseObserver();
     if (input) input.removeEventListener('keydown', onInputKeydown);
     document.removeEventListener('keydown', onDocKeydown, true);
     document.removeEventListener('mousedown', onDocMouseDown, true);
@@ -175,6 +212,8 @@ function fadeOutAndTeardown() {
     textEl   = null;
     tailEl   = null;
     inputEl  = null;
+    spriteBox = null;
+    inputBox  = null;
     if (closeId) clearTimeout(closeId);
     closeId = setTimeout(function () {
         closeId = null;
@@ -191,27 +230,72 @@ function reveal() {
     if (inputEl)  { void inputEl.offsetHeight;  inputEl.classList.add('is-open'); }
 }
 
-// Dock the bubble above the sprite and the input beside it, clamped so an
-// edge-wandered ghost never pushes either element off-screen.
+// Where the bubble goes, given the boxes around it. Pure — no DOM, no module
+// state — because this is the part that has to stay correct as the bubble's
+// height changes underneath it, and the only way to pin that is to test it
+// directly at sizes a layout-less test environment can't produce.
+//
+// The bubble is BOTTOM-anchored in 'above' mode: its bottom edge is pinned a
+// fixed distance over the top of the cluster (sprite and ask input), so growing
+// content pushes the box upward into empty space instead of downward over the
+// two things it is docked to. When there isn't room overhead for that — a ghost
+// frozen near the top of the viewport, or a bubble tall enough to run off it —
+// placement flips to 'below', where the bubble sits under the cluster and the
+// caller flips the tail to point back up at the sprite.
+//
+// `spriteRect` and `inputRect` are `{x, y, width, height}` in viewport
+// coordinates; `inputRect` may be null. `bubbleSize` is `{width, height}` and
+// `viewport` is `{width, height}`.
+export function computeTalkLayout(spriteRect, bubbleSize, inputRect, viewport) {
+    const sx = num(spriteRect && spriteRect.x, 0);
+    const sy = num(spriteRect && spriteRect.y, 0);
+    const sw = num(spriteRect && spriteRect.width, 0);
+    const sh = num(spriteRect && spriteRect.height, 0);
+    const bw = num(bubbleSize && bubbleSize.width, BUBBLE_W);
+    const bh = num(bubbleSize && bubbleSize.height, BUBBLE_H);
+    const vw = num(viewport && viewport.width, 1024);
+    const vh = num(viewport && viewport.height, 768);
+
+    // The cluster the bubble must clear: the sprite, plus the ask input when
+    // one is placed. Anchoring on the extremes of both is what keeps the three
+    // elements from ever stacking on top of each other.
+    let clusterTop    = sy;
+    let clusterBottom = sy + sh;
+    if (inputRect) {
+        const iy = num(inputRect.y, sy);
+        const ih = num(inputRect.height, 0);
+        clusterTop    = Math.min(clusterTop, iy);
+        clusterBottom = Math.max(clusterBottom, iy + ih);
+    }
+
+    // GAP is the intended separation and CLEAR the hard floor; taking the max
+    // states the invariant in code rather than leaving it to the constants.
+    const sep = Math.max(GAP, CLEAR);
+    const centreX = sx + sw / 2;
+    const bubbleX = clamp(centreX - bw / 2, EDGE, vw - EDGE - bw);
+
+    let placement = 'above';
+    let bubbleY = clusterTop - sep - bh;
+    if (bubbleY < EDGE) {
+        // Not enough headroom for the whole box plus its gap and edge margin.
+        placement = 'below';
+        bubbleY = clamp(clusterBottom + sep, EDGE, Math.max(EDGE, vh - EDGE - bh));
+    }
+
+    // The tail tracks the sprite rather than the bubble's centre, so a bubble
+    // clamped against a viewport edge still points back at the ghost.
+    const tailX = clamp(centreX - bubbleX, TAIL_INSET, Math.max(TAIL_INSET, bw - TAIL_INSET));
+
+    return { bubbleX: bubbleX, bubbleY: bubbleY, tailX: tailX, placement: placement };
+}
+
+// Dock the input beside the frozen sprite and record both boxes, then place the
+// bubble against them. Only the input placement lives here — the bubble's runs
+// through reflow() so it can be repeated on every size change.
 function position(pos) {
     if (!bubbleEl || !inputEl) return;
     const vw = window.innerWidth  || 1024;
     const vh = window.innerHeight || 768;
-    const centreX = pos.x + pos.width / 2;
-
-    const bw = bubbleEl.offsetWidth  || BUBBLE_W;
-    const bh = bubbleEl.offsetHeight || BUBBLE_H;
-    const bx = clamp(centreX - bw / 2, EDGE, vw - EDGE - bw);
-    const by = clamp(pos.y - GAP - bh, EDGE, vh - EDGE - bh);
-    bubbleEl.style.left = Math.round(bx) + 'px';
-    bubbleEl.style.top  = Math.round(by) + 'px';
-
-    // The tail tracks the sprite rather than the bubble's centre, so a bubble
-    // clamped against a viewport edge still points back at the ghost.
-    if (tailEl) {
-        const tailX = clamp(centreX - bx, TAIL_INSET, Math.max(TAIL_INSET, bw - TAIL_INSET));
-        tailEl.style.left = Math.round(tailX) + 'px';
-    }
 
     const iw = inputEl.offsetWidth  || INPUT_W;
     const ih = inputEl.offsetHeight || INPUT_H;
@@ -219,8 +303,36 @@ function position(pos) {
     // past the edge.
     let ix = pos.x + pos.width + GAP;
     if (ix + iw > vw - EDGE) ix = pos.x - GAP - iw;
-    inputEl.style.left = Math.round(clamp(ix, EDGE, vw - EDGE - iw)) + 'px';
-    inputEl.style.top  = Math.round(clamp(pos.y + pos.height / 2 - ih / 2, EDGE, vh - EDGE - ih)) + 'px';
+    ix = clamp(ix, EDGE, vw - EDGE - iw);
+    const iy = clamp(pos.y + pos.height / 2 - ih / 2, EDGE, vh - EDGE - ih);
+    inputEl.style.left = Math.round(ix) + 'px';
+    inputEl.style.top  = Math.round(iy) + 'px';
+
+    spriteBox = { x: pos.x, y: pos.y, width: pos.width, height: pos.height };
+    inputBox  = { x: ix, y: iy, width: iw, height: ih };
+    reflow();
+}
+
+// Re-place the bubble against the boxes captured at open. Called by the size
+// observer and explicitly after every content write, so the bottom-anchoring
+// holds even where ResizeObserver doesn't exist.
+function reflow() {
+    if (!bubbleEl || !spriteBox) return;
+    const size = {
+        width:  bubbleEl.offsetWidth  || BUBBLE_W,
+        height: bubbleEl.offsetHeight || BUBBLE_H,
+    };
+    const viewport = { width: window.innerWidth || 1024, height: window.innerHeight || 768 };
+    const layout = computeTalkLayout(spriteBox, size, inputBox, viewport);
+
+    bubbleEl.style.left = Math.round(layout.bubbleX) + 'px';
+    bubbleEl.style.top  = Math.round(layout.bubbleY) + 'px';
+    bubbleEl.classList.toggle('ghostTalkBubble--below', layout.placement === 'below');
+    if (tailEl) tailEl.style.left = Math.round(layout.tailX) + 'px';
+}
+
+function num(v, fallback) {
+    return typeof v === 'number' && isFinite(v) ? v : fallback;
 }
 
 function clamp(v, lo, hi) {
@@ -234,6 +346,7 @@ function say(text) {
     if (!textEl) return;
     textEl.textContent = text;
     if (bubbleEl) bubbleEl.classList.remove('ghostTalkBubble--pending');
+    reflow();
 }
 
 // Blinking dots while a reply is in flight. Under reduced motion the same
@@ -243,6 +356,7 @@ function sayPending() {
     bubbleEl.classList.add('ghostTalkBubble--pending');
     if (prefersReducedMotion()) {
         textEl.textContent = QUIET;
+        reflow();
         return;
     }
     textEl.textContent = '';
@@ -251,6 +365,7 @@ function sayPending() {
         dot.className = 'ghostTalkDot';
         textEl.appendChild(dot);
     }
+    reflow();
 }
 
 // ── WORKER ──
