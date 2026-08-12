@@ -1,13 +1,29 @@
 // Desktop-only ghost companion. Lives in the bottom strip of the viewport,
 // drifts between idle and walking on a slow random timer, and cheers when
-// the host app calls `cheer()` on a todo completion. The companion is
-// purely decorative — it holds no app state and has no side effects beyond
-// its own DOM element. When disabled (or on non-qualifying viewports) the
-// DOM element is never created, so no timers or paint work are incurred.
-// The ghost sprite itself is declared in style.css (background-image on
-// .companion) so this module stays asset-import-free and testable.
+// the host app calls `cheer()` on a todo completion. The companion holds no
+// app state and has no side effects beyond its own DOM elements. When
+// disabled (or on non-qualifying viewports) they are never created, so no
+// timers or paint work are incurred. The ghost sprite itself is declared in
+// style.css (background-image on .companion) so this module stays
+// asset-import-free and testable.
+//
+// The sprite is also a tap target: hovering freezes the wander loop in place
+// and clicking emits an "activate" event that the talk surface (ghostTalk.js)
+// subscribes to. Pointer handling lives on a slightly larger `.companionHit`
+// wrapper rather than on `.companion` itself, so the sprite keeps its
+// `pointer-events: none` and never intercepts a click meant for the app
+// chrome it happens to be drifting over.
 
 const STORAGE_KEY = 'todoapp_companion_enabled';
+
+// Sprite box, mirrored from the `.companion` rule in style.css. Used as the
+// fallback when offsetWidth/offsetHeight read 0 (no layout engine under test)
+// so `getPosition()` always hands the talk surface a usable box.
+const SPRITE_W = 48;
+const SPRITE_H = 56;
+// The hit wrapper is inset by this much on every side, giving the pointer a
+// forgiving margin around a sprite that is constantly drifting.
+const HIT_PAD = 10;
 
 // Default on. A missing key counts as enabled so the feature is discoverable
 // without the user having to opt in.
@@ -36,17 +52,51 @@ export function supportsDesktopCompanion() {
               window.matchMedia('(min-width: 1024px) and (pointer: fine)').matches);
 }
 
-function prefersReducedMotion() {
+export function prefersReducedMotion() {
     return !!(window.matchMedia &&
               window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 }
 
+// ── SPRITE ACTIVATION ──
+// Module-level rather than per-controller on purpose: the companion is torn
+// down and rebuilt whenever the user toggles the floating ghost off and on,
+// so a subscription held against one controller instance would silently go
+// dead after the first toggle. Subscribers register once and keep receiving
+// activations from whichever controller is currently mounted.
+const activateHandlers = [];
+
+export function onCompanionActivate(handler) {
+    if (typeof handler !== 'function') return function () {};
+    activateHandlers.push(handler);
+    return function () {
+        const i = activateHandlers.indexOf(handler);
+        if (i >= 0) activateHandlers.splice(i, 1);
+    };
+}
+
+function emitActivate(api) {
+    activateHandlers.slice().forEach(function (handler) {
+        try { handler(api); } catch (e) { /* a bad subscriber never breaks the sprite */ }
+    });
+}
+
 // Factory — each call returns an independent controller. The typical app
-// creates exactly one. Returns { cheer, setEnabled, isEnabled, destroy }.
+// creates exactly one. Returns { cheer, setEnabled, isEnabled, destroy } plus
+// the sprite API the talk surface needs — see `spriteApi` below.
 export function createCompanion(doc) {
     doc = doc || document;
 
     let el        = null;
+    // Transparent pointer target tracking the sprite. Separate element so the
+    // sprite itself stays pointer-events: none.
+    let hitEl     = null;
+    // Wander paused in place (pointer is over the sprite, or the talk surface
+    // holds it still). Position is never reset while frozen, so resuming
+    // continues from where the ghost stopped rather than teleporting.
+    let frozen    = false;
+    // The talk surface is open — mouseleave must NOT resume while it is, or
+    // the ghost would walk out from under its own speech bubble.
+    let talkOpen  = false;
     let rafId     = null;
     let timerId   = null;
     let cheerId   = null;
@@ -72,6 +122,7 @@ export function createCompanion(doc) {
         el.className = 'companion idle';
         el.setAttribute('aria-hidden', 'true');
         doc.body.appendChild(el);
+        mountHit();
         placeInitial();
         // Wander runs regardless of reduced-motion — the slow drift is mild
         // enough to read as ambient. Only the attention-grabby cheer pop is
@@ -80,15 +131,113 @@ export function createCompanion(doc) {
         scheduleBlink();
     }
 
+    // The pointer target. It rides one layer under the sprite's z-index so a
+    // click lands on it rather than on whatever the ghost is drifting over,
+    // and stays aria-hidden like the sprite — it is a decorative mascot, not
+    // a control in the tab order.
+    function mountHit() {
+        if (hitEl) return;
+        hitEl = doc.createElement('div');
+        hitEl.id = 'companionHit';
+        hitEl.className = 'companionHit';
+        hitEl.setAttribute('aria-hidden', 'true');
+        hitEl.addEventListener('mouseenter', onHitEnter);
+        hitEl.addEventListener('mouseleave', onHitLeave);
+        hitEl.addEventListener('click', onHitClick);
+        doc.body.appendChild(hitEl);
+    }
+
+    function onHitEnter() {
+        freeze();
+    }
+
+    function onHitLeave() {
+        // The talk surface owns the freeze while it is open; releasing it here
+        // would let the ghost wander away from its own bubble.
+        if (talkOpen) return;
+        resume();
+    }
+
+    function onHitClick() {
+        if (!el) return;
+        // Hold the ghost still for whatever the activation opens. A subscriber
+        // that declines to open anything leaves `talkOpen` false, so the next
+        // mouseleave resumes the wander as usual.
+        freeze();
+        emitActivate(spriteApi);
+    }
+
     function destroy() {
         if (rafId)   { cancelAnimationFrame(rafId); rafId = null; }
         if (timerId) { clearTimeout(timerId); timerId = null; }
         if (cheerId) { clearTimeout(cheerId); cheerId = null; }
         if (blinkId) { clearTimeout(blinkId); blinkId = null; }
         if (el && el.parentNode) el.parentNode.removeChild(el);
+        if (hitEl) {
+            hitEl.removeEventListener('mouseenter', onHitEnter);
+            hitEl.removeEventListener('mouseleave', onHitLeave);
+            hitEl.removeEventListener('click', onHitClick);
+            if (hitEl.parentNode) hitEl.parentNode.removeChild(hitEl);
+            hitEl = null;
+        }
         el = null;
+        frozen = false;
+        talkOpen = false;
         state = 'IDLE';
     }
+
+    // ── FREEZE / RESUME ──
+    // The explicit contract the talk surface drives. Freezing cancels the
+    // in-flight walk and the pending hop timer but leaves curX/curY alone;
+    // resuming just re-arms the hop timer, so the next target is picked
+    // relative to the frozen position.
+    function freeze() {
+        if (!el || frozen) return;
+        frozen = true;
+        if (rafId)   { cancelAnimationFrame(rafId); rafId = null; }
+        if (timerId) { clearTimeout(timerId); timerId = null; }
+        if (state === 'WALKING') setState('IDLE');
+    }
+
+    function resume() {
+        if (!frozen) return;
+        frozen = false;
+        if (!el) return;
+        // A cheer in flight re-arms the wander itself when it settles.
+        if (state === 'CHEERING') return;
+        setState('IDLE');
+        scheduleWanderTick();
+    }
+
+    function isFrozen() {
+        return frozen;
+    }
+
+    function setTalkOpen(open) {
+        talkOpen = !!open;
+    }
+
+    // Current sprite box in viewport coordinates. Returns null when the
+    // companion is not mounted so callers can bail without guessing.
+    function getPosition() {
+        if (!el) return null;
+        return {
+            x:      curX,
+            y:      curY,
+            width:  el.offsetWidth  || SPRITE_W,
+            height: el.offsetHeight || SPRITE_H,
+        };
+    }
+
+    // The narrow surface handed to activation subscribers — position plus
+    // freeze controls, and nothing that reaches into the wander internals.
+    const spriteApi = {
+        getPosition: getPosition,
+        freeze:      freeze,
+        resume:      resume,
+        isFrozen:    isFrozen,
+        setTalkOpen: setTalkOpen,
+    };
 
     function placeInitial() {
         const vw = window.innerWidth  || 1024;
@@ -102,6 +251,11 @@ export function createCompanion(doc) {
         if (!el) return;
         el.style.left = curX + 'px';
         el.style.top  = curY + 'px';
+        if (hitEl) {
+            // Same box as the sprite, grown by HIT_PAD on every side.
+            hitEl.style.left = (curX - HIT_PAD) + 'px';
+            hitEl.style.top  = (curY - HIT_PAD) + 'px';
+        }
     }
 
     function pickTarget() {
@@ -127,11 +281,12 @@ export function createCompanion(doc) {
     // timer fires (vs the old 70/30 idle bias) — roaming is the default mode,
     // the pause just adds a natural breath between direction changes.
     function scheduleWanderTick() {
-        if (!el) return;
+        if (!el || frozen) return;
+        if (timerId) return;
         const delay = 500 + Math.random() * 1500;
         timerId = setTimeout(function() {
             timerId = null;
-            if (!el) return;
+            if (!el || frozen) return;
             if (state === 'CHEERING') { scheduleWanderTick(); return; }
             startWalking();
         }, delay);
@@ -144,7 +299,7 @@ export function createCompanion(doc) {
     }
 
     function stepWalk() {
-        if (!el) return;
+        if (!el || frozen) return;
         const dx = tgtX - curX;
         const dy = tgtY - curY;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -180,7 +335,9 @@ export function createCompanion(doc) {
             if (!el) return;
             el.classList.remove('big-cheer');
             setState('IDLE');
-            scheduleWanderTick();
+            // A cheer that lands mid-freeze parks in place; resume() re-arms
+            // the wander when the pointer (or the talk surface) lets go.
+            if (!frozen) scheduleWanderTick();
         }, dur);
     }
 
@@ -232,10 +389,16 @@ export function createCompanion(doc) {
     if (isCompanionEnabled()) mount();
 
     return {
-        cheer:      cheer,
-        setEnabled: setEnabled,
-        isEnabled:  isCompanionEnabled,
-        destroy:    destroy,
+        cheer:       cheer,
+        setEnabled:  setEnabled,
+        isEnabled:   isCompanionEnabled,
+        destroy:     destroy,
+        // Sprite API — also handed to activation subscribers directly.
+        getPosition: getPosition,
+        freeze:      freeze,
+        resume:      resume,
+        isFrozen:    isFrozen,
+        setTalkOpen: setTalkOpen,
     };
 }
 

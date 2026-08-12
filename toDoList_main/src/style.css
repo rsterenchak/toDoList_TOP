@@ -16753,11 +16753,124 @@ body.row-dragging * { cursor: grabbing !important; }
   100% { transform: translateY(0)     scale(1); }
 }
 
+/* Pointer target for the sprite. The sprite itself keeps pointer-events: none
+   so it never swallows a click meant for the chrome it drifts over; this
+   transparent wrapper is the only interactive part, positioned from JS to the
+   sprite's box grown by 10px on every side (see HIT_PAD in companion.js). It
+   sits one layer below the sprite so the ghost still paints on top. */
+.companionHit {
+  position: fixed;
+  width: 68px;
+  height: 76px;
+  background: transparent;
+  cursor: pointer;
+  pointer-events: auto;
+  z-index: 10000;
+}
+
+/* ── GHOST TALK — speech bubble + ask input docked to the frozen sprite ──
+   Both elements are position: fixed and placed from ghostTalk.js (left/top in
+   px, viewport-clamped). They ride one layer above the sprite so the ghost
+   never paints over its own words. */
+.ghostTalkSurface {
+  position: fixed;
+  z-index: 10002;
+  opacity: 0;
+  transform: scale(0.94);
+  transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+}
+
+.ghostTalkSurface.is-open {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.ghostTalkSurface.is-closing {
+  opacity: 0;
+  transform: scale(0.94);
+}
+
+/* Reduced motion: fade only. The scale pop is the part that reads as motion,
+   so it is dropped while the cross-fade — mild enough to stay legible as a
+   state change — remains. */
+.ghostTalkSurface--calm,
+.ghostTalkSurface--calm.is-open,
+.ghostTalkSurface--calm.is-closing {
+  transform: none;
+}
+
+.ghostTalkBubble {
+  max-width: 250px;
+  padding: 9px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: break-word;
+}
+
+/* Comic tail — a rotated square straddling the bubble's bottom edge, sharing
+   its background and the two borders that end up facing out. `left` is set
+   from JS so the tail points at the sprite even when the bubble is clamped
+   against a viewport edge. */
+.ghostTalkTail {
+  position: absolute;
+  bottom: -5px;
+  width: 9px;
+  height: 9px;
+  margin-left: -4.5px;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-mid);
+  border-bottom: 1px solid var(--border-mid);
+  transform: rotate(45deg);
+}
+
+.ghostTalkInput {
+  width: 180px;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  color: var(--text-primary);
+  /* 16px keeps iOS Safari from auto-zooming on focus; this surface is desktop
+     only, but the floor is cheap and the rule is house-wide. */
+  font-size: 16px;
+}
+
+.ghostTalkInput:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+/* Pending state — three dots blinking in sequence while a reply is in flight. */
+.ghostTalkDot {
+  display: inline-block;
+  width: 4px;
+  height: 4px;
+  margin-right: 3px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: ghostTalkDots 1.1s ease-in-out infinite;
+}
+
+.ghostTalkDot:nth-child(2) { animation-delay: 0.18s; }
+.ghostTalkDot:nth-child(3) { animation-delay: 0.36s; }
+
+@keyframes ghostTalkDots {
+  0%, 60%, 100% { opacity: 0.25; }
+  30%           { opacity: 1; }
+}
+
 /* Hide entirely on viewports that don't qualify for the companion. The JS
    gate prevents mounting on these viewports already; this is belt-and-braces
    for flicker during resize across the breakpoint. */
 @media not all and (min-width: 1024px), (pointer: coarse) {
   .companion { display: none; }
+  .companionHit { display: none; }
+  .ghostTalkBubble,
+  .ghostTalkInput { display: none; }
 }
 
 /* Reduced-motion: silence the attention-grabby cheer keyframes and the idle
@@ -16771,6 +16884,16 @@ body.row-dragging * { cursor: grabbing !important; }
   .companion.cheering,
   .companion.cheering.big-cheer {
     animation: none;
+  }
+}
+
+/* Reduced motion: ghostTalk.js already renders the pending state as a static
+   ellipsis instead of dots, so this only catches a surface that was already
+   open when the preference flipped. */
+@media (prefers-reduced-motion: reduce) {
+  .ghostTalkDot {
+    animation: none;
+    opacity: 0.6;
   }
 }
 

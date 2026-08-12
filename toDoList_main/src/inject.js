@@ -115,7 +115,7 @@ export function showInjectToast(message, variant) {
 
 
 // ── WORKER CALLS ──
-async function postToWorker(payload) {
+export async function postToWorker(payload) {
     if (!isInjectConfigured()) {
         const e = new Error('Not configured');
         e.notConfigured = true;

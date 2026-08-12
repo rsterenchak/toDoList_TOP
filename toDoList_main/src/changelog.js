@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-12',
+        added: [
+            "Click the desktop ghost to stop it and open a speech bubble, then ask it anything and it answers right where it stands.",
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-11',
         added: [
             "A refresh button beside the sort control on phones reloads the app, so the installed app no longer has to be force-quit to restart it.",
@@ -14,9 +21,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-10',
-        changed: [
-            "In the installed iPhone app, the strip below the bottom tab bar now blends into the bar's own shading instead of showing a visible line where the app ends.",
-        ],
         fixed: [
             "A further guard against the installed iPhone app staying short after the on-screen keyboard closes.",
             "On iPhone, the bottom tab bar now settles in one smooth motion as the keyboard closes, without the brief hitch a redundant viewport correction was causing.",
