@@ -9,12 +9,12 @@ import { dirname, resolve } from 'node:path';
 // The gesture is the risky part: it shares the tab bar with the app's primary
 // mobile navigation, so a regression that made every tab tap summon the ghost
 // (or, worse, stopped tabs navigating at all) would be a silent nav outage. The
-// rest is the wiring the feature exists for — the perch tap opening the shared
-// talk surface with `surface: "mobile"` on the payload, and the visibility
-// preference surviving a reload.
+// rest is the wiring the feature exists for — the perch tap opening the ghost
+// modal with `surface: "mobile"` on the payload, and the visibility preference
+// surviving a reload.
 //
-// inject.js is mocked so the Worker call the talk surface makes is observable
-// with no network and no configured Worker.
+// inject.js is mocked so the Worker call the modal makes is observable with no
+// network and no configured Worker.
 
 const { state } = vi.hoisted(() => ({
     state: { configured: true, calls: [] },
@@ -28,7 +28,7 @@ vi.mock('../src/inject.js', () => ({
     }),
 }));
 
-import { resetGhostTalk, computeTalkLayout } from '../src/ghostTalk.js';
+import { resetGhostModal } from '../src/ghostModal.js';
 import {
     ensureMobileGhost,
     destroyMobileGhost,
@@ -96,19 +96,11 @@ function mountTabBar() {
 function perch() {
     return document.getElementById('mobileGhostPerch');
 }
-function bubble() {
-    return document.getElementById('ghostTalkBubble');
+function modal() {
+    return document.getElementById('ghostModal');
 }
-function talkInput() {
-    return document.getElementById('ghostTalkInput');
-}
-
-// The perch is fixed-positioned by CSS jsdom doesn't apply, so hand the talk
-// surface the box the real perch would occupy above the tab bar.
-function stubPerchBox() {
-    perch().getBoundingClientRect = () => ({
-        left: 14, top: 600, right: 48, bottom: 634, width: 34, height: 34, x: 14, y: 600,
-    });
+function modalInput() {
+    return document.getElementById('ghostModalInput');
 }
 
 beforeEach(() => {
@@ -121,7 +113,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-    resetGhostTalk();
+    resetGhostModal();
     destroyMobileGhost();
     document.body.innerHTML = '';
     localStorage.removeItem(STORAGE_KEY);
@@ -282,7 +274,7 @@ describe('mobile ghost — the perch gesture', () => {
         swipe(perch(), 600, 640);
         perch().click();
 
-        expect(bubble()).toBeNull();
+        expect(modal()).toBeNull();
     });
 });
 
@@ -325,29 +317,28 @@ describe('mobile ghost — the talk surface', () => {
         const { bar } = mountTabBar();
         ensureMobileGhost();
         swipe(bar, 700, 660);
-        stubPerchBox();
         return bar;
     }
 
-    it('tapping the perched ghost opens the bubble and the whisper input', () => {
+    it('tapping the perched ghost opens the modal, not the desktop floating bubble', () => {
         summon();
         perch().click();
 
-        expect(bubble()).not.toBeNull();
-        expect(talkInput()).not.toBeNull();
-        expect(talkInput().placeholder).toBe('whisper something…');
-        // Tagged as the mobile mount, which is what keeps the desktop-only hide
-        // rule off it.
-        expect(bubble().classList.contains('ghostTalkSurface--mobile')).toBe(true);
-        expect(bubble().classList.contains('ghostTalkSurface--desktop')).toBe(false);
+        expect(modal()).not.toBeNull();
+        expect(document.getElementById('ghostModalScrim')).not.toBeNull();
+        expect(modalInput()).not.toBeNull();
+        expect(modalInput().placeholder).toBe('whisper something…');
+        // The floating skin belongs to the desktop companion now.
+        expect(document.getElementById('ghostTalkBubble')).toBeNull();
+        expect(document.getElementById('ghostTalkInput')).toBeNull();
     });
 
     it('sends surface "mobile" on the worker payload', async () => {
         summon();
         perch().click();
 
-        talkInput().value = 'is it colder over there';
-        talkInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        modalInput().value = 'is it colder over there';
+        modalInput().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
         await tick();
 
         const ask = state.calls.find((c) => c && c.message);
@@ -358,7 +349,7 @@ describe('mobile ghost — the talk surface', () => {
         });
     });
 
-    it('stills the idle bob while the surface is open and releases it on dismiss', () => {
+    it('stills the idle bob while the modal is open and releases it on dismiss', () => {
         summon();
         perch().click();
         expect(perch().classList.contains('is-still')).toBe(true);
@@ -371,16 +362,17 @@ describe('mobile ghost — the talk surface', () => {
         mountTabBar();
         ensureMobileGhost();
         perch().click();
-        expect(bubble()).toBeNull();
+        expect(modal()).toBeNull();
     });
 
-    it('closes an open surface when the ghost is sunk away', () => {
+    it('closes an open modal when the ghost is sunk away', () => {
         const bar = summon();
         perch().click();
-        expect(bubble()).not.toBeNull();
+        expect(modal()).not.toBeNull();
 
         swipe(bar, 660, 700);
-        expect(bubble().classList.contains('is-closing')).toBe(true);
+        expect(modal().classList.contains('is-closing')).toBe(true);
+        expect(perch().classList.contains('is-still')).toBe(false);
     });
 });
 
@@ -430,22 +422,6 @@ describe('mobile ghost — styling and wiring', () => {
         expect(Math.abs(h - w * (56 / 48))).toBeLessThanOrEqual(0.5);
     });
 
-    // The perch grew 6px taller, so the bubble's anchor moved up with it. The
-    // existing reflow machinery should absorb that; assert it rather than
-    // assume it.
-    it('leaves the bubble fully clear of the taller perch', () => {
-        const perchRect = { x: 14, y: 728, width: 34, height: 40 };
-        const inputRect = { x: 56, y: 736, width: 180, height: 34 };
-        const layout = computeTalkLayout(
-            perchRect, { width: 232, height: 120 }, inputRect, { width: 390, height: 844 }
-        );
-        expect(layout.placement).toBe('above');
-        // Bottom of the bubble stays above the top of the sprite/input cluster.
-        const clusterTop = Math.min(perchRect.y, inputRect.y);
-        expect(layout.bubbleY + 120).toBeLessThan(clusterTop);
-        expect(layout.bubbleY).toBeGreaterThanOrEqual(0);
-    });
-
     it('rises with a translateY and fades, and stills the bob while talking', () => {
         const rule = css.match(/\.mobileGhostPerch\s*\{[^}]*position:\s*fixed[^}]*\}/)[0];
         expect(rule).toMatch(/transform:\s*translateY\(\d+px\)/);
@@ -454,6 +430,16 @@ describe('mobile ghost — styling and wiring', () => {
         expect(visible).toMatch(/transform:\s*translateY\(0\)/);
         expect(visible).toMatch(/opacity:\s*1/);
         expect(css).toMatch(/\.mobileGhostPerch\.is-still\s+\.mobileGhostSprite\s*\{\s*animation:\s*none/);
+    });
+
+    // The scrim dims the whole app, so the perch has to outrank it or the ghost
+    // goes dark under its own bubble. `is-still` is the state that lifts it.
+    it('lifts the perch above the modal scrim while it is being spoken to', () => {
+        const still = css.match(/\.mobileGhostPerch\.is-still\s*\{[^}]*\}/);
+        expect(still).not.toBeNull();
+        const perchZ = Number(still[0].match(/z-index:\s*(\d+)/)[1]);
+        const scrim = css.match(/\.ghostModalScrim\s*\{[^}]*position:\s*fixed[^}]*\}/)[0];
+        expect(perchZ).toBeGreaterThan(Number(scrim.match(/z-index:\s*(\d+)/)[1]));
     });
 
     it('drops the rise and the bob under reduced motion, keeping the fade', () => {
@@ -466,20 +452,16 @@ describe('mobile ghost — styling and wiring', () => {
         expect(block[0]).toMatch(/\.mobileGhostSprite\s*\{\s*animation:\s*none/);
     });
 
-    it('keeps the whisper input at 16px so iOS never auto-zooms on focus', () => {
-        const rule = css.match(/\.ghostTalkInput\s*\{[^}]*\}/);
-        expect(rule[0]).toMatch(/font-size:\s*16px/);
-    });
-
     it('main.js mounts the perch at boot', () => {
         const js = read('main.js');
         expect(js).toMatch(/import\s*\{[^}]*ensureMobileGhost[^}]*\}\s*from\s*['"]\.\/mobileGhost\.js['"]/);
         expect(js).toMatch(/setTimeout\(ensureMobileGhost,\s*0\)/);
     });
 
-    it('reuses the shared talk surface rather than posting to the worker itself', () => {
+    it('opens the ghost modal rather than posting to the worker itself', () => {
         const js = read('mobileGhost.js');
-        expect(js).toMatch(/import\s*\{[^}]*openGhostTalk[^}]*\}\s*from\s*['"]\.\/ghostTalk\.js['"]/);
+        expect(js).toMatch(/import\s*\{[^}]*openGhostModal[^}]*\}\s*from\s*['"]\.\/ghostModal\.js['"]/);
+        expect(js).not.toMatch(/openGhostTalk/);
         expect(js).not.toMatch(/\bfetch\s*\(/);
         expect(js).not.toMatch(/postToWorker/);
         // The perch is a presence surface, not an agent one.

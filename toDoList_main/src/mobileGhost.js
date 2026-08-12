@@ -3,9 +3,9 @@
 // The ghost has no ambient presence on mobile: it is summoned. Swiping UP from
 // the bottom tab bar raises a small ghost from behind the bar to a perch in the
 // bottom-LEFT corner just above it; swiping DOWN on the bar or on the ghost
-// itself sinks it away again. Tapping the perched ghost opens the shared talk
-// surface (ghostTalk.js) with `surface: "mobile"`, so the exchange lands in the
-// same transcript the desktop sprite writes to.
+// itself sinks it away again. Tapping the perched ghost opens the big-bubble
+// chat modal (ghostModal.js), which posts with `surface: "mobile"` so the
+// exchange lands in the same transcript the desktop sprite writes to.
 //
 // Three constraints shape the gesture handling. The bar's tabs must keep
 // working: only a predominantly-vertical drag past the threshold counts, and
@@ -20,7 +20,8 @@
 // two ghosts are mutually exclusive by gate, not by luck.
 
 import { supportsDesktopCompanion } from './companion.js';
-import { openGhostTalk, closeGhostTalk, supportsMobileGhostTalk } from './ghostTalk.js';
+import { supportsMobileGhostTalk } from './ghostTalk.js';
+import { openGhostModal, closeGhostModal } from './ghostModal.js';
 
 const STORAGE_KEY = 'todoapp_mobileGhostVisible';
 
@@ -142,7 +143,7 @@ function applyVisible(next) {
     perchEl.setAttribute('aria-hidden', visible ? 'false' : 'true');
     perchEl.tabIndex = visible ? 0 : -1;
     // A ghost that sinks away takes its conversation with it.
-    if (!visible && talkOpen) closeGhostTalk();
+    if (!visible && talkOpen) closeGhostModal();
 }
 
 // The one writer for visibility. Persists first so the preference survives even
@@ -270,9 +271,10 @@ function onPerchClick() {
 
 // ── TALK SURFACE ──
 
-// The controls ghostTalk.js drives while the surface is open. The perch doesn't
+// The controls ghostModal.js drives while the modal is open. The perch doesn't
 // wander, so "freeze" here just stills the idle bob for as long as the ghost is
-// being spoken to.
+// being spoken to — and `is-still` doubles as the state that lifts the perch
+// above the modal's scrim, so the ghost keeps holding its own bubble.
 const talkApi = {
     freeze:      function () { setStill(true); },
     resume:      function () { setStill(false); },
@@ -288,7 +290,7 @@ function setStill(still) {
 
 function openTalk() {
     if (!perchEl) return null;
-    const handle = openGhostTalk(talkApi, { surface: 'mobile', anchor: perchEl });
+    const handle = openGhostModal(talkApi);
     // A refused open (gate flipped mid-session) must not leave the perch stuck
     // in its talking state.
     if (!handle) { talkOpen = false; setStill(false); }

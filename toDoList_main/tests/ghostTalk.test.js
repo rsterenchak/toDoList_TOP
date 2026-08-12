@@ -533,21 +533,19 @@ describe('ghost talk — mobile has zero presence', () => {
     });
 });
 
-// The surface is per-mount, not desktop-only: the mobile perch opens the same
-// bubble against its own element. The gate that used to be a flat
-// desktop-or-nothing check is now one gate per surface, and the surface name
-// rides the Worker payload — both easy to regress into "everything is desktop"
-// without anything looking broken.
-describe('ghost talk — per-mount surface', () => {
+// This module is the DESKTOP skin. The mobile perch wears the big-bubble modal
+// (ghostModal.js) instead, so the floating surface must stay off phone
+// viewports entirely — and must keep naming itself on the Worker payload, since
+// the transcript's `surface` field is the only record of where an exchange
+// happened.
+describe('ghost talk — the desktop skin only', () => {
     // The file-wide stubMatchMedia answers the same `matches` to every query,
-    // which can't express "mobile breakpoint but not desktop companion". These
-    // two are query-aware so each gate is exercised against a real viewport
+    // which can't express "mobile breakpoint but not desktop companion". This
+    // one is query-aware so each gate is exercised against a real viewport
     // shape rather than a blanket yes.
-    function stubViewport(mobile) {
+    function stubMobileViewport() {
         window.matchMedia = (query) => ({
-            matches: /prefers-reduced-motion/.test(query) ? false
-                   : /max-width/.test(query)             ? mobile
-                   : !mobile,
+            matches: /prefers-reduced-motion/.test(query) ? false : /max-width/.test(query),
             media: query,
             addListener() {},
             removeListener() {},
@@ -555,53 +553,13 @@ describe('ghost talk — per-mount surface', () => {
             removeEventListener() {},
         });
     }
-    const stubMobileViewport  = () => stubViewport(true);
-    const stubDesktopViewport = () => stubViewport(false);
 
-    function mobileAnchor() {
-        const el = document.createElement('button');
-        el.className = 'mobileGhostPerch';
-        el.getBoundingClientRect = () => ({
-            left: 14, top: 600, right: 48, bottom: 634, width: 34, height: 34, x: 14, y: 600,
-        });
-        document.body.appendChild(el);
-        return el;
-    }
-
-    it('opens against an anchor element and tags the mobile mount', () => {
-        stubMobileViewport();
-        const anchor = mobileAnchor();
-
-        expect(openGhostTalk(null, { surface: 'mobile', anchor })).not.toBeNull();
-        expect(bubble().classList.contains('ghostTalkSurface--mobile')).toBe(true);
-        expect(input().classList.contains('ghostTalkSurface--mobile')).toBe(true);
-        // Docked to the anchor's real box, not to a sprite that isn't there.
-        expect(parseInt(bubble().style.top, 10)).toBeLessThan(600);
-    });
-
-    it('sends surface "mobile" from the mobile mount', async () => {
-        stubMobileViewport();
-        openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() });
-
-        input().value = 'still cold?';
-        pressEnter(input());
-        await flush();
-
-        const ask = state.calls.find((c) => c && c.message);
-        expect(ask).toEqual({ ghost: true, message: 'still cold?', surface: 'mobile' });
-    });
-
-    it('refuses the mobile mount on a desktop viewport', () => {
-        stubDesktopViewport();
-        expect(openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() })).toBeNull();
-        expect(bubble()).toBeNull();
-    });
-
-    it('treats an absent or unknown surface as the desktop mount', async () => {
+    it('tags the surface as the desktop mount and names it on the payload', async () => {
         mountCompanion();
         hit().click();
 
         expect(bubble().classList.contains('ghostTalkSurface--desktop')).toBe(true);
+        expect(bubble().classList.contains('ghostTalkSurface--mobile')).toBe(false);
         input().value = 'hello';
         pressEnter(input());
         await flush();
@@ -610,20 +568,23 @@ describe('ghost talk — per-mount surface', () => {
         expect(ask.surface).toBe('desktop');
     });
 
-    it('keeps the surface open when the perch itself is tapped', () => {
+    it('refuses to open on a phone viewport, where the modal skin runs instead', () => {
         stubMobileViewport();
-        const anchor = mobileAnchor();
-        openGhostTalk(null, { surface: 'mobile', anchor });
+        const api = {
+            getPosition: () => ({ x: 14, y: 600, width: 34, height: 40 }),
+            freeze: vi.fn(),
+            resume: vi.fn(),
+            setTalkOpen: vi.fn(),
+        };
 
-        // The perch re-opens (re-docks) the surface itself, so the click-away
-        // handler must not race it closed.
-        anchor.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
-        expect(bubble().classList.contains('is-closing')).toBe(false);
+        expect(openGhostTalk(api)).toBeNull();
+        expect(bubble()).toBeNull();
+        expect(input()).toBeNull();
     });
 
     it('dismisses on a touch outside the surface, without waiting for a synthetic mousedown', () => {
-        stubMobileViewport();
-        openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() });
+        mountCompanion();
+        hit().click();
 
         const outside = document.createElement('div');
         document.body.appendChild(outside);
@@ -632,9 +593,9 @@ describe('ghost talk — per-mount surface', () => {
         expect(bubble().classList.contains('is-closing')).toBe(true);
     });
 
-    it('opens nothing when neither an api nor a usable anchor is supplied', () => {
-        stubMobileViewport();
-        expect(openGhostTalk(null, { surface: 'mobile' })).toBeNull();
+    it('opens nothing without a sprite api to dock against', () => {
+        mountCompanion();
+        expect(openGhostTalk(null)).toBeNull();
         expect(bubble()).toBeNull();
     });
 });
@@ -885,170 +846,36 @@ describe('ghost talk — reflow on content change', () => {
     });
 });
 
-// The cluster is fixed-positioned from pixel coordinates captured at open, so
-// it does not ride the keyboard the way bottom-anchored chrome does. The mobile
-// mount watches the visual viewport instead — the failure this pins is silent
-// (the input simply sits under the keyboard) and desktop looks fine either way.
-describe('ghost talk — mobile keyboard avoidance', () => {
-    function stubMobileViewport() {
-        window.matchMedia = (query) => ({
-            matches: /prefers-reduced-motion/.test(query) ? false : /max-width/.test(query),
-            media: query,
-            addListener() {},
-            removeListener() {},
-            addEventListener() {},
-            removeEventListener() {},
-        });
-    }
-
-    // Query-aware the other way round, so the desktop companion's gate passes
-    // and the mobile one does not.
-    function stubDesktopViewport() {
-        window.matchMedia = (query) => ({
-            matches: /prefers-reduced-motion/.test(query) ? false : !/max-width/.test(query),
-            media: query,
-            addListener() {},
-            removeListener() {},
-            addEventListener() {},
-            removeEventListener() {},
-        });
-    }
-
-    // jsdom has no visualViewport. This stand-in reports a height the test
-    // drives directly, which is how the keyboard is simulated.
-    function stubVisualViewport(height = 768, offsetTop = 0) {
+// The mobile mount used to wear this same floating cluster, which is
+// fixed-positioned from pixel coordinates captured at open — so it needed
+// visualViewport listeners to stay off the software keyboard. The phone skin is
+// now the bottom-anchored modal (ghostModal.js), which rides the cured viewport
+// in CSS, and that docking code was deleted rather than left dormant. These pin
+// the deletion: a dormant listener re-attached later would silently fight the
+// modal for the same keyboard.
+describe('ghost talk — no viewport docking left behind', () => {
+    // jsdom has no visualViewport. This stand-in counts anything that subscribes
+    // to it.
+    function stubVisualViewport() {
         const listeners = {};
         window.visualViewport = {
-            height,
-            offsetTop,
+            height: 768,
+            offsetTop: 0,
             addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
             removeEventListener(type, fn) {
                 listeners[type] = (listeners[type] || []).filter((f) => f !== fn);
             },
-            emit(type) { (listeners[type] || []).slice().forEach((fn) => fn()); },
             count(type) { return (listeners[type] || []).length; },
         };
         return window.visualViewport;
     }
 
-    // The keyboard rising and falling: the visual viewport shrinks, then the
-    // browser fires resize on the same object.
-    function setKeyboard(vv, visibleHeight) {
-        vv.height = visibleHeight;
-        vv.emit('resize');
-    }
-
-    const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
-
-    function mobileAnchor() {
-        const el = document.createElement('button');
-        el.className = 'mobileGhostPerch';
-        el.getBoundingClientRect = () => ({
-            left: 14, top: 600, right: 48, bottom: 634, width: 34, height: 34, x: 14, y: 600,
-        });
-        document.body.appendChild(el);
-        return el;
-    }
-
-    function openMobile() {
-        stubMobileViewport();
-        return openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() });
-    }
-
-    const topOf = (el) => parseInt(el.style.top, 10);
-
     afterEach(() => {
         delete window.visualViewport;
     });
 
-    it('lifts the whisper input above the keyboard and returns it to the perch', async () => {
+    it('subscribes to nothing on the visual viewport when the surface opens', () => {
         const vv = stubVisualViewport();
-        openMobile();
-
-        // Unshrunken viewport: the input rests at its perch beside the ghost.
-        const perch = topOf(input());
-        expect(perch).toBeGreaterThan(500);
-
-        setKeyboard(vv, 380);
-        await frame();
-
-        // Docked 12px above the keyboard's edge, with its own height (32px
-        // under jsdom's layout-less fallback) allowed for.
-        expect(topOf(input())).toBe(380 - 12 - 32);
-        expect(topOf(input()) + 32).toBeLessThanOrEqual(380 - 12);
-
-        setKeyboard(vv, 768);
-        await frame();
-        expect(topOf(input())).toBe(perch);
-    });
-
-    it('honours the visual viewport offset so a scrolled-out viewport still docks', async () => {
-        const vv = stubVisualViewport();
-        openMobile();
-
-        vv.offsetTop = 40;
-        setKeyboard(vv, 380);
-        await frame();
-
-        expect(topOf(input())).toBe(40 + 380 - 12 - 32);
-    });
-
-    it('keeps the bubble clear of the docked input rather than following the perch', async () => {
-        const vv = stubVisualViewport();
-        openMobile();
-
-        setKeyboard(vv, 380);
-        await frame();
-
-        const b = bubble();
-        // The bubble reflowed against the box the input actually occupies, not
-        // the perch it left behind — the whole point of threading the docked
-        // rect back through computeTalkLayout. 44 is the bubble's fallback
-        // height where there is no layout engine, and 336 the docked input top.
-        expect(topOf(input())).toBe(336);
-        expect(topOf(b) + 44).toBeLessThanOrEqual(336 - 8);
-        // A bubble still anchored on the perch would sit far below the input.
-        expect(topOf(b)).toBeLessThan(topOf(input()));
-    });
-
-    it('leaves the input at its perch while the keyboard is down', async () => {
-        const vv = stubVisualViewport();
-        openMobile();
-        const perch = topOf(input());
-
-        // A scroll of the unshrunken viewport must not drag the cluster around.
-        vv.emit('scroll');
-        await frame();
-
-        expect(topOf(input())).toBe(perch);
-    });
-
-    it('coalesces repositioning into a frame instead of writing on every event', async () => {
-        const vv = stubVisualViewport();
-        openMobile();
-        const perch = topOf(input());
-
-        vv.height = 380;
-        vv.emit('resize');
-        vv.emit('resize');
-        vv.emit('scroll');
-        // Nothing written yet — the placement is waiting on the frame.
-        expect(topOf(input())).toBe(perch);
-
-        await frame();
-        expect(topOf(input())).toBe(336);
-    });
-
-    it('attaches the viewport listener for the mobile mount', () => {
-        const vv = stubVisualViewport();
-        openMobile();
-        expect(vv.count('resize')).toBe(1);
-        expect(vv.count('scroll')).toBe(1);
-    });
-
-    it('never attaches it for the desktop mount', () => {
-        const vv = stubVisualViewport();
-        stubDesktopViewport();
         mountCompanion();
         hit().click();
 
@@ -1057,33 +884,8 @@ describe('ghost talk — mobile keyboard avoidance', () => {
         expect(vv.count('scroll')).toBe(0);
     });
 
-    it('detaches the viewport listener when the surface is dismissed', () => {
-        const vv = stubVisualViewport();
-        openMobile();
-        expect(vv.count('resize')).toBe(1);
-
-        closeGhostTalk();
-
-        expect(vv.count('resize')).toBe(0);
-        expect(vv.count('scroll')).toBe(0);
-    });
-
-    it('blurs the input on a dismissal mid-typing so the keyboard drops with it', () => {
-        stubVisualViewport();
-        openMobile();
-        const el = input();
-        el.focus();
-        expect(document.activeElement).toBe(el);
-
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-
-        expect(document.activeElement).not.toBe(el);
-    });
-
-    it('opens and positions normally in a browser with no visualViewport', () => {
-        openMobile();
-        expect(input()).not.toBeNull();
-        expect(topOf(input())).toBeGreaterThan(500);
+    it('carries no visualViewport code at all', () => {
+        expect(read('ghostTalk.js')).not.toMatch(/visualViewport/);
     });
 });
 

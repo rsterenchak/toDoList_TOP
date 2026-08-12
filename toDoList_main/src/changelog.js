@@ -6,12 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-12',
-        added: [
-            "On phones, swipe up from the bottom tab bar to summon a small ghost into the corner, tap it to ask it something, and swipe down to send it away.",
-        ],
         changed: [
             "The corner ghost on phones now wears the same crisp pixel body as the desktop ghost instead of a different, softer one.",
             "The ghost now greets you when you open its speech bubble after a while away, and only picks up on its last answer if you were just talking to it.",
+            "Tapping the corner ghost on phones now opens a large chat bubble holding your recent conversation, instead of a small floating one that crowded the list.",
         ],
         fixed: [
             "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",
