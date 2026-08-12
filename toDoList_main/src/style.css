@@ -16983,6 +16983,13 @@ body.row-dragging * { cursor: grabbing !important; }
   .mobileGhostPerch.is-still .mobileGhostSprite {
     animation: none;
   }
+
+  /* The same state lifts the perch over the modal's scrim. The ghost has to
+     stay lit while the app behind it dims, or the bubble reads as floating on
+     nothing — so `is-still` doubles as "I am the one being spoken to". */
+  .mobileGhostPerch.is-still {
+    z-index: 10005;
+  }
 }
 
 @keyframes mobileGhostBob {
@@ -17001,6 +17008,147 @@ body.row-dragging * { cursor: grabbing !important; }
 
   .mobileGhostSprite {
     animation: none;
+  }
+}
+
+/* ── MOBILE GHOST MODAL ──
+   The phone skin of the talk surface (ghostModal.js): a scrim over the app and
+   one big speech bubble anchored above the perch, replacing the floating bubble
+   the desktop companion wears. Everything here is bottom-anchored CSS rather
+   than JS-written pixels, which is what lets the box ride the software keyboard
+   in the cured visual viewport with no listeners of its own. Mobile only, by
+   the same breakpoint the perch mounts under. */
+.ghostModalScrim,
+.ghostModal { display: none; }
+
+@media (max-width: 1023px) {
+  .ghostModalScrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    /* Over every sheet, modal backdrop and FAB in the app (the highest of which
+       sits at 4200), but under the perch's talking state at 10005 so the ghost
+       stays lit while everything else dims. */
+    z-index: 10004;
+    background: rgba(5, 6, 10, 0.55);
+    opacity: 0;
+    transition: opacity 0.18s ease-out;
+  }
+
+  .ghostModalScrim.is-open { opacity: 1; }
+  .ghostModalScrim.is-closing { opacity: 0; }
+
+  .ghostModal {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    /* Clears the tab bar, the home-indicator inset and the 40px perch above
+       them, leaving ~16px between the bubble's tail and the ghost's head. */
+    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) + 66px);
+    /* Never more than 60% of the (visual) viewport, and never taller than the
+       room actually left above the perch — whichever is smaller. With the
+       keyboard up, dvh shrinks and the bubble shrinks with it. */
+    max-height: min(
+      60dvh,
+      calc(100dvh - var(--mobile-tab-h, 56px) - var(--mobile-bottom-inset, 0px) - 120px)
+    );
+    z-index: 10006;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
+    border-radius: 16px;
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+    opacity: 0;
+    transform: scale(0.96);
+    /* Grows out of the corner the ghost is standing in. */
+    transform-origin: bottom left;
+    transition: opacity 0.18s ease-out, transform 0.18s ease-out;
+  }
+
+  .ghostModal.is-open { opacity: 1; transform: scale(1); }
+  .ghostModal.is-closing { opacity: 0; transform: scale(0.96); }
+
+  /* Reduced motion: fade only, same trade the desktop skin makes. */
+  .ghostModal--calm,
+  .ghostModal--calm.is-open,
+  .ghostModal--calm.is-closing {
+    transform: none;
+  }
+
+  /* Comic tail — a rotated square straddling the bubble's bottom edge, pointing
+     down at the perched ghost. The perch is 34px wide at left:14px, so its
+     centre sits 31px from the viewport edge — 19px inside a bubble inset by
+     12px. Fixed rather than JS-written: neither box ever moves. */
+  .ghostModalTail {
+    position: absolute;
+    bottom: -6px;
+    left: 19px;
+    width: 11px;
+    height: 11px;
+    margin-left: -5.5px;
+    background: var(--bg-elevated);
+    border-right: 1px solid var(--border-mid);
+    border-bottom: 1px solid var(--border-mid);
+    transform: rotate(45deg);
+  }
+
+  /* The conversation. min-height:0 is what lets it actually scroll inside the
+     flex column instead of stretching the bubble past its max-height. */
+  .ghostModalThread {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 12px 4px;
+  }
+
+  .ghostModalRow {
+    max-width: 82%;
+    padding: 7px 10px;
+    border-radius: 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-wrap: break-word;
+  }
+
+  /* The ghost speaks from the left, filled; the user answers from the right,
+     outlined — the same two-weight split the chat tab uses. */
+  .ghostModalRow--ghost {
+    align-self: flex-start;
+    background: var(--bg-card);
+  }
+
+  .ghostModalRow--user {
+    align-self: flex-end;
+    background: transparent;
+    border: 1px solid var(--border-mid);
+  }
+
+  .ghostModalFoot {
+    flex: 0 0 auto;
+    padding: 8px 12px 12px;
+  }
+
+  .ghostModalInput {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 8px 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-mid);
+    border-radius: 10px;
+    color: var(--text-primary);
+    /* 16px keeps iOS Safari from auto-zooming on focus. */
+    font-size: 16px;
+  }
+
+  .ghostModalInput:focus {
+    outline: none;
+    border-color: var(--accent);
   }
 }
 
