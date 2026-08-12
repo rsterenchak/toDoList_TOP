@@ -744,6 +744,208 @@ describe('ghost talk — reflow on content change', () => {
     });
 });
 
+// The cluster is fixed-positioned from pixel coordinates captured at open, so
+// it does not ride the keyboard the way bottom-anchored chrome does. The mobile
+// mount watches the visual viewport instead — the failure this pins is silent
+// (the input simply sits under the keyboard) and desktop looks fine either way.
+describe('ghost talk — mobile keyboard avoidance', () => {
+    function stubMobileViewport() {
+        window.matchMedia = (query) => ({
+            matches: /prefers-reduced-motion/.test(query) ? false : /max-width/.test(query),
+            media: query,
+            addListener() {},
+            removeListener() {},
+            addEventListener() {},
+            removeEventListener() {},
+        });
+    }
+
+    // Query-aware the other way round, so the desktop companion's gate passes
+    // and the mobile one does not.
+    function stubDesktopViewport() {
+        window.matchMedia = (query) => ({
+            matches: /prefers-reduced-motion/.test(query) ? false : !/max-width/.test(query),
+            media: query,
+            addListener() {},
+            removeListener() {},
+            addEventListener() {},
+            removeEventListener() {},
+        });
+    }
+
+    // jsdom has no visualViewport. This stand-in reports a height the test
+    // drives directly, which is how the keyboard is simulated.
+    function stubVisualViewport(height = 768, offsetTop = 0) {
+        const listeners = {};
+        window.visualViewport = {
+            height,
+            offsetTop,
+            addEventListener(type, fn) { (listeners[type] = listeners[type] || []).push(fn); },
+            removeEventListener(type, fn) {
+                listeners[type] = (listeners[type] || []).filter((f) => f !== fn);
+            },
+            emit(type) { (listeners[type] || []).slice().forEach((fn) => fn()); },
+            count(type) { return (listeners[type] || []).length; },
+        };
+        return window.visualViewport;
+    }
+
+    // The keyboard rising and falling: the visual viewport shrinks, then the
+    // browser fires resize on the same object.
+    function setKeyboard(vv, visibleHeight) {
+        vv.height = visibleHeight;
+        vv.emit('resize');
+    }
+
+    const frame = () => new Promise((r) => requestAnimationFrame(() => r()));
+
+    function mobileAnchor() {
+        const el = document.createElement('button');
+        el.className = 'mobileGhostPerch';
+        el.getBoundingClientRect = () => ({
+            left: 14, top: 600, right: 48, bottom: 634, width: 34, height: 34, x: 14, y: 600,
+        });
+        document.body.appendChild(el);
+        return el;
+    }
+
+    function openMobile() {
+        stubMobileViewport();
+        return openGhostTalk(null, { surface: 'mobile', anchor: mobileAnchor() });
+    }
+
+    const topOf = (el) => parseInt(el.style.top, 10);
+
+    afterEach(() => {
+        delete window.visualViewport;
+    });
+
+    it('lifts the whisper input above the keyboard and returns it to the perch', async () => {
+        const vv = stubVisualViewport();
+        openMobile();
+
+        // Unshrunken viewport: the input rests at its perch beside the ghost.
+        const perch = topOf(input());
+        expect(perch).toBeGreaterThan(500);
+
+        setKeyboard(vv, 380);
+        await frame();
+
+        // Docked 12px above the keyboard's edge, with its own height (32px
+        // under jsdom's layout-less fallback) allowed for.
+        expect(topOf(input())).toBe(380 - 12 - 32);
+        expect(topOf(input()) + 32).toBeLessThanOrEqual(380 - 12);
+
+        setKeyboard(vv, 768);
+        await frame();
+        expect(topOf(input())).toBe(perch);
+    });
+
+    it('honours the visual viewport offset so a scrolled-out viewport still docks', async () => {
+        const vv = stubVisualViewport();
+        openMobile();
+
+        vv.offsetTop = 40;
+        setKeyboard(vv, 380);
+        await frame();
+
+        expect(topOf(input())).toBe(40 + 380 - 12 - 32);
+    });
+
+    it('keeps the bubble clear of the docked input rather than following the perch', async () => {
+        const vv = stubVisualViewport();
+        openMobile();
+
+        setKeyboard(vv, 380);
+        await frame();
+
+        const b = bubble();
+        // The bubble reflowed against the box the input actually occupies, not
+        // the perch it left behind — the whole point of threading the docked
+        // rect back through computeTalkLayout. 44 is the bubble's fallback
+        // height where there is no layout engine, and 336 the docked input top.
+        expect(topOf(input())).toBe(336);
+        expect(topOf(b) + 44).toBeLessThanOrEqual(336 - 8);
+        // A bubble still anchored on the perch would sit far below the input.
+        expect(topOf(b)).toBeLessThan(topOf(input()));
+    });
+
+    it('leaves the input at its perch while the keyboard is down', async () => {
+        const vv = stubVisualViewport();
+        openMobile();
+        const perch = topOf(input());
+
+        // A scroll of the unshrunken viewport must not drag the cluster around.
+        vv.emit('scroll');
+        await frame();
+
+        expect(topOf(input())).toBe(perch);
+    });
+
+    it('coalesces repositioning into a frame instead of writing on every event', async () => {
+        const vv = stubVisualViewport();
+        openMobile();
+        const perch = topOf(input());
+
+        vv.height = 380;
+        vv.emit('resize');
+        vv.emit('resize');
+        vv.emit('scroll');
+        // Nothing written yet — the placement is waiting on the frame.
+        expect(topOf(input())).toBe(perch);
+
+        await frame();
+        expect(topOf(input())).toBe(336);
+    });
+
+    it('attaches the viewport listener for the mobile mount', () => {
+        const vv = stubVisualViewport();
+        openMobile();
+        expect(vv.count('resize')).toBe(1);
+        expect(vv.count('scroll')).toBe(1);
+    });
+
+    it('never attaches it for the desktop mount', () => {
+        const vv = stubVisualViewport();
+        stubDesktopViewport();
+        mountCompanion();
+        hit().click();
+
+        expect(bubble()).not.toBeNull();
+        expect(vv.count('resize')).toBe(0);
+        expect(vv.count('scroll')).toBe(0);
+    });
+
+    it('detaches the viewport listener when the surface is dismissed', () => {
+        const vv = stubVisualViewport();
+        openMobile();
+        expect(vv.count('resize')).toBe(1);
+
+        closeGhostTalk();
+
+        expect(vv.count('resize')).toBe(0);
+        expect(vv.count('scroll')).toBe(0);
+    });
+
+    it('blurs the input on a dismissal mid-typing so the keyboard drops with it', () => {
+        stubVisualViewport();
+        openMobile();
+        const el = input();
+        el.focus();
+        expect(document.activeElement).toBe(el);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+        expect(document.activeElement).not.toBe(el);
+    });
+
+    it('opens and positions normally in a browser with no visualViewport', () => {
+        openMobile();
+        expect(input()).not.toBeNull();
+        expect(topOf(input())).toBeGreaterThan(500);
+    });
+});
+
 describe('ghost talk — module wiring', () => {
     it('inject.js exports postToWorker so the talk surface reuses the one worker caller', () => {
         expect(read('inject.js')).toMatch(/export\s+async\s+function\s+postToWorker\s*\(/);

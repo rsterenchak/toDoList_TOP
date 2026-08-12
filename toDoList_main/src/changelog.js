@@ -12,13 +12,13 @@ export const changelog = [
         ],
         fixed: [
             "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",
+            "The ghost's whisper box on phones now rides above the keyboard while you type instead of hiding behind it, and drops back beside the ghost when the keyboard closes.",
         ],
     },
     {
         version: '1.1',
         date: '2026-08-11',
         added: [
-            "A refresh button beside the sort control on phones reloads the app, so the installed app no longer has to be force-quit to restart it.",
             "Tapping refresh now shows a spinning refresh screen that stays up through the reload until your lists are ready, instead of flashing a blank app.",
         ],
     },

@@ -14,6 +14,12 @@
 // the click handler. Technical detail goes to console.warn where a developer
 // can find it and the user never sees it.
 //
+// Third, the cluster is fixed-positioned at pixel coordinates captured at open,
+// which on mobile puts it under the software keyboard the moment the whisper
+// input is focused — scroll-to-reveal cannot lift a fixed element. The mobile
+// mount therefore watches the visual viewport and docks the input against its
+// bottom edge for as long as the keyboard holds that edge above the perch.
+//
 // There are two mounts, and the surface is per-mount rather than desktop-only.
 // The desktop mount rides the companion: the module subscribes to the sprite's
 // activation event, which only ever fires from a mounted sprite. The mobile
@@ -43,6 +49,7 @@ const BUBBLE_H = 44;
 const INPUT_W  = 180;
 const INPUT_H  = 32;
 const TAIL_INSET = 14; // keeps the tail from sliding off the bubble's corners
+const KEY_GAP  = 12;   // docked input bottom → visual viewport bottom edge
 const FADE_MS  = 200;
 
 let bubbleEl = null;
@@ -63,6 +70,13 @@ let activeSurface = 'desktop';
 let spriteBox = null;
 let inputBox  = null;
 let sizeObserver = null;
+// The input's y at its perch — where it returns to when the keyboard drops.
+// Held separately from inputBox.y, which tracks where the input actually is.
+let perchInputY = null;
+// The visual viewport being watched for keyboard motion (mobile mount only),
+// and the frame its next placement has been coalesced into.
+let viewportTarget = null;
+let viewportFrame  = null;
 // Bumped on every open and close. Async work captures it and bails when it no
 // longer matches, so a slow history readback can never overwrite a reply the
 // user has already asked for — or paint into a torn-down bubble.
@@ -199,6 +213,9 @@ function mount() {
     // downward over the sprite and the input. Watching the element itself
     // catches wrapping changes the callers can't predict.
     observeBubbleSize();
+    // And the keyboard, which moves the input rather than the bubble. A no-op
+    // on the desktop mount, whose cluster nothing ever slides under.
+    observeVisualViewport();
 }
 
 // Keep the observer optional: jsdom has no ResizeObserver, and the explicit
@@ -222,6 +239,7 @@ function releaseObserver() {
 function teardown() {
     if (closeId) { clearTimeout(closeId); closeId = null; }
     releaseObserver();
+    releaseVisualViewport();
     document.removeEventListener('keydown', onDocKeydown, true);
     document.removeEventListener('mousedown', onDocPointerDown, true);
     document.removeEventListener('touchstart', onDocPointerDown, true);
@@ -236,6 +254,7 @@ function teardown() {
     inputEl  = null;
     spriteBox = null;
     inputBox  = null;
+    perchInputY = null;
 }
 
 function fadeOutAndTeardown() {
@@ -248,6 +267,11 @@ function fadeOutAndTeardown() {
     // them — the fading bubble still resizes, and a reflow into a surface the
     // user has dismissed is wasted work at best.
     releaseObserver();
+    releaseVisualViewport();
+    // Dismissing mid-typing has to drop the keyboard with the surface. The
+    // input is detached a frame later anyway, but on iOS the keyboard only
+    // retracts if the focus is released explicitly first.
+    if (input && activeSurface === 'mobile' && typeof input.blur === 'function') input.blur();
     if (input) input.removeEventListener('keydown', onInputKeydown);
     document.removeEventListener('keydown', onDocKeydown, true);
     document.removeEventListener('mousedown', onDocPointerDown, true);
@@ -258,6 +282,7 @@ function fadeOutAndTeardown() {
     inputEl  = null;
     spriteBox = null;
     inputBox  = null;
+    perchInputY = null;
     if (closeId) clearTimeout(closeId);
     closeId = setTimeout(function () {
         closeId = null;
@@ -369,11 +394,77 @@ function position(pos) {
     ix = clamp(ix, EDGE, vw - EDGE - iw);
     const iy = clamp(pos.y + pos.height / 2 - ih / 2, EDGE, vh - EDGE - ih);
     inputEl.style.left = Math.round(ix) + 'px';
-    inputEl.style.top  = Math.round(iy) + 'px';
 
-    spriteBox = { x: pos.x, y: pos.y, width: pos.width, height: pos.height };
-    inputBox  = { x: ix, y: iy, width: iw, height: ih };
+    spriteBox   = { x: pos.x, y: pos.y, width: pos.width, height: pos.height };
+    inputBox    = { x: ix, y: iy, width: iw, height: ih };
+    perchInputY = iy;
+    // Writes the input's `top`: the perch y, or the docked one when a mobile
+    // keyboard is already up at open.
+    placeInput();
     reflow();
+}
+
+// ── KEYBOARD AVOIDANCE (mobile mount only) ──
+
+function observeVisualViewport() {
+    if (activeSurface !== 'mobile') return;
+    const vv = window.visualViewport;
+    if (!vv || typeof vv.addEventListener !== 'function') return;
+    viewportTarget = vv;
+    vv.addEventListener('resize', onViewportChange);
+    vv.addEventListener('scroll', onViewportChange);
+}
+
+function releaseVisualViewport() {
+    if (viewportFrame !== null) { cancelFrame(viewportFrame); viewportFrame = null; }
+    if (!viewportTarget) return;
+    viewportTarget.removeEventListener('resize', onViewportChange);
+    viewportTarget.removeEventListener('scroll', onViewportChange);
+    viewportTarget = null;
+}
+
+// Coalesce to one placement per frame — resize and scroll both fire repeatedly
+// through the keyboard's open animation, and re-placing on each would thrash.
+function onViewportChange() {
+    if (viewportFrame !== null) return;
+    viewportFrame = requestFrame(function () {
+        viewportFrame = null;
+        if (placeInput()) reflow();
+    });
+}
+
+function requestFrame(cb) {
+    return typeof requestAnimationFrame === 'function' ? requestAnimationFrame(cb) : setTimeout(cb, 16);
+}
+
+function cancelFrame(id) {
+    if (typeof requestAnimationFrame === 'function') cancelAnimationFrame(id);
+    else clearTimeout(id);
+}
+
+// Where the input sits vertically: its perch y, lifted to clear the visual
+// viewport's bottom edge by KEY_GAP while the keyboard holds that edge above
+// the perch. Never pushes the input DOWN — an unshrunken viewport, a desktop
+// mount, or a browser with no visualViewport all leave the perch untouched.
+function dockedInputY() {
+    if (activeSurface !== 'mobile' || !inputBox) return perchInputY;
+    const vv = window.visualViewport;
+    const vh = vv ? num(vv.height, 0) : 0;
+    if (vh <= 0) return perchInputY;
+    const docked = num(vv.offsetTop, 0) + vh - KEY_GAP - inputBox.height;
+    return docked < perchInputY ? Math.max(EDGE, docked) : perchInputY;
+}
+
+// Write the input's `top` — transformless, matching the rest of this module —
+// and keep inputBox in sync so the bubble reflows against the box the input
+// actually occupies. Returns whether it moved.
+function placeInput() {
+    if (!inputEl || !inputBox || perchInputY === null) return false;
+    const y = dockedInputY();
+    const moved = y !== inputBox.y;
+    inputBox = { x: inputBox.x, y: y, width: inputBox.width, height: inputBox.height };
+    inputEl.style.top = Math.round(y) + 'px';
+    return moved;
 }
 
 // Re-place the bubble against the boxes captured at open. Called by the size
