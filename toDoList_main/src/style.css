@@ -76,6 +76,13 @@
      flush like Safari's. Safari (inset 0) resolves this to 0px, so its
      rendering is bit-for-bit unchanged. */
   --mobile-bottom-inset: min(env(safe-area-inset-bottom, 0px), 8px);
+
+  /* The ghost's one body. The desktop companion and the mobile perch render
+     the same pixel sprite, so the asset is named once here and both selectors
+     read it from this property — otherwise the two surfaces drift apart the
+     next time either one is restyled. Sized 48x56 natively; any box pointing
+     at it must keep that aspect and set image-rendering: pixelated. */
+  --ghost-sprite: url('./assets/companion-ghost.svg');
 }
 
 /* ── LIGHT THEME ──
@@ -16700,7 +16707,7 @@ body.row-dragging * { cursor: grabbing !important; }
   position: fixed;
   width: 48px;
   height: 56px;
-  background-image: url('./assets/companion-ghost.svg');
+  background-image: var(--ghost-sprite);
   background-repeat: no-repeat;
   background-size: 100% 100%;
   image-rendering: pixelated;
@@ -16929,8 +16936,10 @@ body.row-dragging * { cursor: grabbing !important; }
        clearance, the same pair #claudeLauncher uses — then lifts 10px clear of
        its top edge so the perch sits above the tabs rather than on them. */
     bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) + 10px);
+    /* The sprite is 48x56 natively, so the box carries that aspect at the
+       perch's 34px width — a square box would stretch the pixel art. */
     width: 34px;
-    height: 34px;
+    height: 40px;
     padding: 0;
     border: none;
     background: transparent;
@@ -16958,10 +16967,14 @@ body.row-dragging * { cursor: grabbing !important; }
     display: block;
     width: 100%;
     height: 100%;
-    background-image: url('./ghost_purple.svg');
+    /* Same body as the desktop companion — see --ghost-sprite. The perch box
+       already matches the sprite's aspect, so it fills edge to edge, and the
+       crispness declaration comes along with the art: scaled pixel art blurs
+       without it. */
+    background-image: var(--ghost-sprite);
     background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
+    background-size: 100% 100%;
+    image-rendering: pixelated;
     animation: mobileGhostBob 2.6s ease-in-out infinite;
   }
 

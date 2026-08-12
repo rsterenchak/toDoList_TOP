@@ -10,16 +10,12 @@ export const changelog = [
             "Click the desktop ghost to stop it and open a speech bubble, then ask it anything and it answers right where it stands.",
             "On phones, swipe up from the bottom tab bar to summon a small ghost into the corner, tap it to ask it something, and swipe down to send it away.",
         ],
+        changed: [
+            "The corner ghost on phones now wears the same crisp pixel body as the desktop ghost instead of a different, softer one.",
+        ],
         fixed: [
             "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",
             "The ghost's whisper box on phones now rides above the keyboard while you type instead of hiding behind it, and drops back beside the ghost when the keyboard closes.",
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-11',
-        added: [
-            "Tapping refresh now shows a spinning refresh screen that stays up through the reload until your lists are ready, instead of flashing a blank app.",
         ],
     },
 ];

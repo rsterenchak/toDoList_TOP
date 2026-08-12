@@ -28,7 +28,7 @@ vi.mock('../src/inject.js', () => ({
     }),
 }));
 
-import { resetGhostTalk } from '../src/ghostTalk.js';
+import { resetGhostTalk, computeTalkLayout } from '../src/ghostTalk.js';
 import {
     ensureMobileGhost,
     destroyMobileGhost,
@@ -407,10 +407,43 @@ describe('mobile ghost — styling and wiring', () => {
         expect(mobileBlock).toMatch(/@media \(max-width:\s*1023px\)/);
     });
 
-    it('uses the committed ghost_purple.svg asset rather than an icon library', () => {
+    // One ghost, one body: the perch renders the same committed pixel sprite as
+    // the desktop companion, and both read it from the shared :root property so
+    // restyling one surface can't silently fork the art.
+    it('renders the shared pixel sprite rather than a second asset or an icon library', () => {
         const sprite = css.match(/\.mobileGhostSprite\s*\{[^}]*\}/);
-        expect(sprite[0]).toMatch(/background-image:\s*url\('\.\/ghost_purple\.svg'\)/);
+        expect(sprite[0]).toMatch(/background-image:\s*var\(\s*--ghost-sprite\s*\)/);
+        expect(sprite[0]).not.toMatch(/ghost_purple\.svg/);
         expect(sprite[0]).toMatch(/animation:\s*mobileGhostBob/);
+    });
+
+    // Scaled pixel art blurs without this, and a square box would stretch a
+    // 48x56 sprite — 34px wide therefore demands 40px tall.
+    it('keeps the sprite crisp and the perch box at the sprite\'s 48:56 aspect', () => {
+        const sprite = css.match(/\.mobileGhostSprite\s*\{[^}]*\}/)[0];
+        expect(sprite).toMatch(/image-rendering:\s*pixelated/);
+        expect(sprite).toMatch(/background-size:\s*100%\s+100%/);
+
+        const perch = css.match(/\.mobileGhostPerch\s*\{[^}]*position:\s*fixed[^}]*\}/)[0];
+        const w = Number(perch.match(/width:\s*(\d+)px/)[1]);
+        const h = Number(perch.match(/height:\s*(\d+)px/)[1]);
+        expect(Math.abs(h - w * (56 / 48))).toBeLessThanOrEqual(0.5);
+    });
+
+    // The perch grew 6px taller, so the bubble's anchor moved up with it. The
+    // existing reflow machinery should absorb that; assert it rather than
+    // assume it.
+    it('leaves the bubble fully clear of the taller perch', () => {
+        const perchRect = { x: 14, y: 728, width: 34, height: 40 };
+        const inputRect = { x: 56, y: 736, width: 180, height: 34 };
+        const layout = computeTalkLayout(
+            perchRect, { width: 232, height: 120 }, inputRect, { width: 390, height: 844 }
+        );
+        expect(layout.placement).toBe('above');
+        // Bottom of the bubble stays above the top of the sprite/input cluster.
+        const clusterTop = Math.min(perchRect.y, inputRect.y);
+        expect(layout.bubbleY + 120).toBeLessThan(clusterTop);
+        expect(layout.bubbleY).toBeGreaterThanOrEqual(0);
     });
 
     it('rises with a translateY and fades, and stills the bob while talking', () => {

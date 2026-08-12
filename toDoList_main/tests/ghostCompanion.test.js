@@ -79,9 +79,12 @@ describe('ghost companion — sprite asset', () => {
         expect(svg).toMatch(/<svg[\s\S]*<\/svg>/);
     });
 
-    it('style.css references the sprite as the .companion background image', () => {
+    // The asset path is named once, on :root, so the desktop companion and the
+    // mobile perch can never drift onto different bodies.
+    it('style.css references the sprite through the shared --ghost-sprite property', () => {
         const css = read('style.css');
-        expect(css).toMatch(/\.companion\s*\{[^}]*background-image:\s*url\(\s*['"]?\.\/assets\/companion-ghost\.svg/);
+        expect(css).toMatch(/--ghost-sprite:\s*url\(\s*['"]?\.\/assets\/companion-ghost\.svg/);
+        expect(css).toMatch(/\.companion\s*\{[^}]*background-image:\s*var\(\s*--ghost-sprite\s*\)/);
     });
 
     // The wandering ghost is decorative and must sit above every other
