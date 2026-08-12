@@ -3645,14 +3645,135 @@ export function firstFocusableInActiveMainView() {
     return null;
 }
 
-// Plain full-page reload, matching what Safari's refresh button does. Exported
-// (rather than called inline from the click listener) so tests can drive the
-// chip without navigating jsdom, and so the one place the app performs a
-// user-requested reload is greppable. Deliberately NOT an update path: it does
-// not message the service worker or call skipWaiting — a waiting worker is
-// activated only through the update pill.
+// ── refresh splash ──
+// The refresh chip's reload crosses a document boundary, so no single element
+// can span it: the old document is torn down mid-navigation and the new one
+// boots through an empty <body>. The splash is therefore two halves painting
+// the same picture — this one, mounted before the reload commits, and the
+// inline twin in template.html that the new document paints at literal first
+// paint. `todoapp_refreshing` in sessionStorage is the baton handed between
+// them; template.html's head script reads AND immediately clears it, so an
+// abandoned session can never leak the splash into a normal launch.
+//
+// Both halves are styled by the SAME inline <style> block in template.html.
+// The old document was served from that template too, so those rules are
+// already loaded there — nothing needs duplicating into style.css, where a
+// second copy could only drift out of sync with the one that matters.
+export const REFRESH_FLAG_KEY = 'todoapp_refreshing';
+const REFRESH_SPLASH_ID = 'refreshSplash';
+const REFRESH_SPLASH_FADE_MS = 200;
+const REFRESH_SPLASH_FAILSAFE_MS = 8000;
+
+// The circular-arrow reload mark — an open arc with a 45° gap at the upper
+// right plus the corner arrowhead that closes it. Drawn rather than imported so
+// no icon package is introduced, and shared by the 17px chip and the 64px
+// splash so the tap and the screen it opens are literally the same glyph.
+// template.html carries a hand-kept copy of the same paths: it has to paint
+// before the bundle exists, so it cannot import this. A test pins the two
+// copies together.
+function reloadGlyphSvg(size, strokeWidth) {
+    return '<svg viewBox="0 0 24 24" width="' + size + '" height="' + size + '" '
+        + 'fill="none" stroke="currentColor" stroke-width="' + strokeWidth + '" '
+        + 'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+        + '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/>'
+        + '<path d="M17.3 2.5v4.2h-4.2"/>'
+        + '</svg>';
+}
+
+// The old document's overlay: the glyph at splash scale on a full-viewport
+// void. Decorative only — the reload was announced by the chip that started it
+// and the splash carries no text, so it stays out of the accessibility tree.
+export function buildRefreshSplash() {
+    const el = document.createElement('div');
+    el.id = REFRESH_SPLASH_ID;
+    el.setAttribute('aria-hidden', 'true');
+    const glyph = document.createElement('span');
+    glyph.className = 'refreshSplashGlyph';
+    glyph.innerHTML = reloadGlyphSvg(64, 1.4);
+    el.appendChild(glyph);
+    return el;
+}
+
+// Mount the old document's half and open the `refreshing` gate the inline
+// styles key off. Idempotent, so a double tap paints one splash, not two.
+export function mountRefreshSplash() {
+    const existing = document.getElementById(REFRESH_SPLASH_ID);
+    if (existing) return existing;
+    const el = buildRefreshSplash();
+    document.documentElement.classList.add('refreshing');
+    (document.body || document.documentElement).appendChild(el);
+    return el;
+}
+
+// Plain full-page reload, matching what Safari's refresh button does, wrapped
+// in the splash hand-off. Exported (rather than called inline from the click
+// listener) so tests can drive the chip without navigating jsdom, and so the
+// one place the app performs a user-requested reload is greppable.
+// Deliberately NOT an update path: it does not message the service worker or
+// call skipWaiting — a waiting worker is activated only through the update pill.
 export function requestAppReload() {
-    window.location.reload();
+    mountRefreshSplash();
+    try {
+        sessionStorage.setItem(REFRESH_FLAG_KEY, '1');
+    } catch (_) {
+        // Storage denied (private mode): the reload still happens, the new
+        // document just boots without its half of the splash.
+    }
+    const go = function () { window.location.reload(); };
+    // Two frames, not one: the first lets the freshly-appended overlay get
+    // style and layout, the second guarantees it has actually been painted
+    // before the navigation commits. Reloading inside the first frame can
+    // still hand the browser a blank teardown.
+    if (typeof window.requestAnimationFrame === 'function') {
+        window.requestAnimationFrame(function () {
+            window.requestAnimationFrame(go);
+        });
+    } else {
+        go();
+    }
+}
+
+let refreshSplashFailsafeTimer = null;
+
+// Idempotent teardown shared by the hydration handler and the failsafe: fade
+// the overlay out, then drop both the node and the gate class. Calling it with
+// no splash mounted — every normal launch — is a no-op.
+export function dismissRefreshSplash() {
+    if (refreshSplashFailsafeTimer !== null) {
+        clearTimeout(refreshSplashFailsafeTimer);
+        refreshSplashFailsafeTimer = null;
+    }
+    const root = document.documentElement;
+    const el = document.getElementById(REFRESH_SPLASH_ID);
+    if (!el) {
+        if (root) root.classList.remove('refreshing');
+        return;
+    }
+    if (el.classList.contains('refreshSplashFading')) return;
+    el.classList.add('refreshSplashFading');
+    setTimeout(function () {
+        if (el.parentNode) el.parentNode.removeChild(el);
+        if (root) root.classList.remove('refreshing');
+    }, REFRESH_SPLASH_FADE_MS);
+}
+
+// Boot-path wiring for the new document's half. Arms only when this document
+// actually painted the splash (the inline head script found the flag and set
+// `refreshing` on <html>), so a normal launch registers no listener and
+// schedules no timer. Hydration is the real dismissal signal; the failsafe
+// exists because it may never arrive — a signed-out session or an offline
+// hydrate would otherwise trap the user behind the splash indefinitely.
+export function initRefreshSplash() {
+    const root = typeof document !== 'undefined' ? document.documentElement : null;
+    if (!root || !root.classList.contains('refreshing')) return false;
+    document.addEventListener('listLogicHydrated', dismissRefreshSplash);
+    if (refreshSplashFailsafeTimer !== null) clearTimeout(refreshSplashFailsafeTimer);
+    refreshSplashFailsafeTimer = setTimeout(dismissRefreshSplash, REFRESH_SPLASH_FAILSAFE_MS);
+    return true;
+}
+
+if (typeof document !== 'undefined' && typeof window !== 'undefined') {
+    initRefreshSplash();
 }
 
 // Builds the mobile refresh chip (#taskRefreshBtn) mounted in the filter bar's
@@ -3672,15 +3793,9 @@ export function buildTaskRefreshBtn() {
     const glyph = document.createElement('span');
     glyph.className = 'taskRefreshBtnGlyph';
     glyph.setAttribute('aria-hidden', 'true');
-    // Open arc (a 45° gap at the upper right) plus the corner arrowhead that
-    // closes it — the standard reload mark, drawn rather than imported so no
-    // icon package is introduced.
-    glyph.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" '
-        + 'stroke="currentColor" stroke-width="1.9" stroke-linecap="round" '
-        + 'stroke-linejoin="round" aria-hidden="true">'
-        + '<path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/>'
-        + '<path d="M17.3 2.5v4.2h-4.2"/>'
-        + '</svg>';
+    // Same mark the refresh splash blows up to 64px, at the Sort glyph's
+    // visual weight — see reloadGlyphSvg.
+    glyph.innerHTML = reloadGlyphSvg(17, 1.9);
     btn.appendChild(glyph);
 
     // Pressed feedback is CSS-only (#taskRefreshBtn:active mirrors the chip's

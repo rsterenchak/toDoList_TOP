@@ -20,7 +20,19 @@ import { buildTaskRefreshBtn, requestAppReload } from '../src/main.js';
 // jsdom cannot spy on window.location.reload (the property is non-configurable),
 // so the tests swap window.location for a stub object and restore it after —
 // activation is asserted, no navigation happens.
+//
+// The reload is deferred by a double requestAnimationFrame so the refresh
+// splash is guaranteed a painted frame before the navigation commits (see
+// refreshSplash.test.js), hence the flushFrames() awaits below. Our own frame
+// callbacks are registered first, so a double-rAF chain queued afterwards
+// always settles behind them — the wait is deterministic, not a sleep.
 const here = dirname(fileURLToPath(import.meta.url));
+
+function flushFrames() {
+    return new Promise(resolve => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+    });
+}
 const srcDir = resolve(here, '../src');
 function read(relative) {
     return readFileSync(resolve(srcDir, relative), 'utf8');
@@ -110,22 +122,26 @@ describe('refresh chip — activation', () => {
             writable: true,
             value: realLocation,
         });
+        document.documentElement.classList.remove('refreshing');
+        sessionStorage.clear();
     });
 
-    it('reloads the page exactly once per activation', () => {
+    it('reloads the page exactly once per activation', async () => {
         const btn = buildTaskRefreshBtn();
         document.body.appendChild(btn);
         btn.click();
+        await flushFrames();
         expect(reload).toHaveBeenCalledTimes(1);
     });
 
-    it('exposes the reload as a plain window.location.reload()', () => {
+    it('exposes the reload as a plain window.location.reload()', async () => {
         requestAppReload();
+        await flushFrames();
         expect(reload).toHaveBeenCalledTimes(1);
         expect(reload).toHaveBeenCalledWith();
     });
 
-    it('asks for no confirmation — one tap reloads', () => {
+    it('asks for no confirmation — one tap reloads', async () => {
         // Safari's refresh has no confirmation step and this control mirrors it;
         // in-flight unsaved input is lost by design. Guard against a confirm()
         // creeping in: jsdom's confirm is not implemented, so a call would throw,
@@ -137,6 +153,7 @@ describe('refresh chip — activation', () => {
             const btn = buildTaskRefreshBtn();
             document.body.appendChild(btn);
             btn.click();
+            await flushFrames();
             expect(confirmSpy).not.toHaveBeenCalled();
             expect(reload).toHaveBeenCalledTimes(1);
         } finally {
@@ -144,7 +161,7 @@ describe('refresh chip — activation', () => {
         }
     });
 
-    it('never touches the service worker — the update pill owns that path', () => {
+    it('never touches the service worker — the update pill owns that path', async () => {
         // HARD BOUNDARY: a plain reload only. No postMessage, no skipWaiting, no
         // registration lookup. Asserted against the built element's live handler
         // by failing loudly if the SW surface is reached at all.
@@ -158,6 +175,7 @@ describe('refresh chip — activation', () => {
             const btn = buildTaskRefreshBtn();
             document.body.appendChild(btn);
             btn.click();
+            await flushFrames();
             expect(swCalls).toEqual([]);
             expect(reload).toHaveBeenCalledTimes(1);
         } finally {
