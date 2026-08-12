@@ -12,8 +12,74 @@
     <link rel="icon" type="image/svg+xml" href="favicon.svg">
     <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
     <link rel="apple-touch-icon" sizes="180x180" media="(prefers-color-scheme: light)" href="assets/apple-touch-icon-light.png">
-  <script defer src="index.7943478173a557e0372d.bundle.js"></script></head>
+
+    <!--
+      Refresh splash. Inline on purpose: the shell ships from an empty <body>
+      and is entirely JS-injected, with style.css bundled through style-loader,
+      so anything that must be correct at LITERAL first paint cannot wait for
+      the bundle to arrive. Tapping the mobile refresh chip mounts a matching
+      overlay in the OLD document and sets `todoapp_refreshing` (see
+      requestAppReload in src/main.js); the script below reads that flag AND
+      immediately clears it, so an abandoned session can never leak the splash
+      into a normal launch. The old document was served from this same template,
+      so these rules are already loaded there and style the old half too — there
+      is deliberately no second copy in style.css to drift out of sync.
+      Dismissal is main.js's (hydration event, plus an 8s failsafe).
+    -->
+    <style>
+      #refreshSplash {
+        position: fixed;
+        inset: 0;
+        /* Above all app chrome, below the boot watchdog: a failed boot's
+           recovery prompt must still win over a stale splash. */
+        z-index: 2147483646;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        /* The var() resolves once style.css and data-theme are live — always
+           the case in the old document. The fallbacks cover the new document's
+           first frame, tracking the same prefers-color-scheme default
+           resolveInitialTheme() uses when no theme has been saved. */
+        background: var(--bg-base, #0e0f14);
+      }
+      @media (prefers-color-scheme: light) {
+        #refreshSplash { background: var(--bg-base, #e8eaef); }
+      }
+      html.refreshing #refreshSplash { display: flex; }
+      #refreshSplash.refreshSplashFading { opacity: 0; transition: opacity 200ms ease; }
+      #refreshSplash .refreshSplashGlyph {
+        display: inline-flex;
+        line-height: 0;
+        color: var(--accent-glow, rgba(139, 123, 255, 0.55));
+        animation: refreshSplashSpin 1.6s linear infinite;
+      }
+      @keyframes refreshSplashSpin { to { transform: rotate(360deg); } }
+      @media (prefers-reduced-motion: reduce) {
+        #refreshSplash .refreshSplashGlyph { animation: none; }
+      }
+    </style>
+    <script>
+    (function () {
+      try {
+        var KEY = 'todoapp_refreshing';
+        var flag = sessionStorage.getItem(KEY);
+        // Read AND clear in one breath: the flag describes exactly one
+        // navigation, so a reload that never completed must not arm the next.
+        sessionStorage.removeItem(KEY);
+        if (flag) document.documentElement.className += ' refreshing';
+      } catch (_) { /* the splash must never break a healthy boot */ }
+    })();
+    </script>
+  <script defer src="index.9736fa0a813dbfc26b4c.bundle.js"></script></head>
   <body>
+    <!--
+      Painted only when the head script above found the refresh flag. The glyph
+      is a hand-kept copy of reloadGlyphSvg() in src/main.js (the template can't
+      import from the bundle it has to paint ahead of); a test pins the two
+      copies to the same paths.
+    -->
+    <div id="refreshSplash" aria-hidden="true"><span class="refreshSplashGlyph"><svg viewBox="0 0 24 24" width="64" height="64" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M17.3 2.5v4.2h-4.2"/></svg></span></div>
+
     <!--
       Boot watchdog. Inline on purpose: the shell ships from an empty <body>
       and is entirely JS-injected, with style.css bundled through style-loader.

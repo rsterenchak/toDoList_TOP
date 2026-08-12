@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-11T15:55:11.698Z",
-  "sha": "e2e76ffa1e82ee4b2dd5a07d58c72389679cb6db",
+  "generatedAt": "2026-08-12T05:43:50.592Z",
+  "sha": "11eb963023015f445e5f0966e12faa165b3ad903",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -541,11 +541,11 @@
       "selector": "#bootWatchdogOverlay",
       "label": "Boot Watchdog Overlay",
       "file": "template.html",
-      "line": 65,
+      "line": 131,
       "files": [
         {
           "file": "template.html",
-          "line": 65
+          "line": 131
         }
       ]
     },
@@ -553,11 +553,11 @@
       "selector": "#bootWatchdogStyle",
       "label": "Boot Watchdog Style",
       "file": "template.html",
-      "line": 79,
+      "line": 145,
       "files": [
         {
           "file": "template.html",
-          "line": 79
+          "line": 145
         }
       ]
     },
@@ -4726,6 +4726,18 @@
       ]
     },
     {
+      "selector": "#refreshSplash",
+      "label": "Refresh Splash",
+      "file": "template.html",
+      "line": 81,
+      "files": [
+        {
+          "file": "template.html",
+          "line": 81
+        }
+      ]
+    },
+    {
       "selector": "#repoSetupBackdrop",
       "label": "Repo Setup Backdrop",
       "file": "repoSetup.js",
@@ -5705,11 +5717,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3668,
+      "line": 3789,
       "files": [
         {
           "file": "main.js",
-          "line": 3668
+          "line": 3789
         },
         {
           "file": "style.css",
