@@ -25,6 +25,7 @@ const { state } = vi.hoisted(() => ({
         pending: [],
         // Canned resolution for non-deferred calls, per kind.
         historyResult: null,
+        historyRejects: null,
         askResult: { reply: 'boo' },
         askRejects: null,
     },
@@ -35,12 +36,13 @@ vi.mock('../src/inject.js', () => ({
     postToWorker: vi.fn(function (payload) {
         state.calls.push(payload);
         const isHistory = !!(payload && payload.history);
-        if (!isHistory && state.askRejects) return Promise.reject(state.askRejects);
+        const rejection = isHistory ? state.historyRejects : state.askRejects;
+        if (rejection) return Promise.reject(rejection);
         const result = isHistory ? state.historyResult : state.askResult;
         if (!state.defer) return Promise.resolve(result);
         return new Promise(function (resolve, reject) {
             state.pending.push(function () {
-                if (!isHistory && state.askRejects) reject(state.askRejects);
+                if (rejection) reject(rejection);
                 else resolve(result);
             });
         });
@@ -54,6 +56,8 @@ import {
     closeGhostTalk,
     resetGhostTalk,
     computeTalkLayout,
+    GHOST_GREETINGS,
+    GHOST_CONTINUATION_MS,
 } from '../src/ghostTalk.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -103,6 +107,10 @@ function input() {
 function pressEnter(el) {
     el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
 }
+// Transcript timestamps in the shape the Worker sends them (ISO strings).
+function minutesAgo(m) {
+    return new Date(Date.now() - m * 60 * 1000).toISOString();
+}
 
 beforeEach(() => {
     state.configured = true;
@@ -110,6 +118,7 @@ beforeEach(() => {
     state.defer = false;
     state.pending = [];
     state.historyResult = null;
+    state.historyRejects = null;
     state.askResult = { reply: 'boo' };
     state.askRejects = null;
     vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -165,7 +174,7 @@ describe('ghost talk — opening from the sprite', () => {
         state.historyResult = {
             messages: [
                 { role: 'user',  content: 'are you there' },
-                { role: 'ghost', content: 'still here. always.' },
+                { role: 'ghost', content: 'still here. always.', created_at: minutesAgo(3) },
             ],
         };
         mountCompanion();
@@ -180,12 +189,142 @@ describe('ghost talk — opening from the sprite', () => {
         expect(bubbleText()).toBe('still here. always.');
     });
 
-    it('stays quiet when the transcript has no ghost line yet', async () => {
+    it('greets instead of staying quiet when the transcript has no ghost line yet', async () => {
         state.historyResult = { messages: [] };
         mountCompanion();
         hit().click();
         await flush();
-        expect(bubbleText()).toBe('…');
+        expect(GHOST_GREETINGS).toContain(bubbleText());
+    });
+});
+
+// The bubble's first line is a recency question, not a replay: a reply from
+// minutes ago is a conversation still going, while one from hours ago is an
+// answer with no question in sight. The greeting is theatre — it exists only
+// in the bubble and must never reach the transcript.
+describe('ghost talk — the opening line', () => {
+    it('replays the last reply when the exchange is still warm', async () => {
+        state.historyResult = {
+            messages: [{ role: 'ghost', content: 'i was mid-sentence', created_at: minutesAgo(3) }],
+        };
+        mountCompanion();
+        hit().click();
+        await flush();
+
+        expect(bubbleText()).toBe('i was mid-sentence');
+    });
+
+    it('greets rather than replaying a reply from hours ago', async () => {
+        state.historyResult = {
+            messages: [{ role: 'ghost', content: 'that was a long time ago', created_at: minutesAgo(180) }],
+        };
+        mountCompanion();
+        hit().click();
+        await flush();
+
+        expect(bubbleText()).not.toBe('that was a long time ago');
+        expect(GHOST_GREETINGS).toContain(bubbleText());
+    });
+
+    it('holds the reply right up to the continuation window and greets just past it', async () => {
+        // Re-tapping the ghost re-docks the same surface, so each pass opens
+        // fresh without a fading duplicate left in the document.
+        const at = async (ms) => {
+            state.historyResult = {
+                messages: [{ role: 'ghost', content: 'on the edge', created_at: new Date(Date.now() - ms).toISOString() }],
+            };
+            hit().click();
+            await flush();
+            return bubbleText();
+        };
+        mountCompanion();
+
+        expect(await at(GHOST_CONTINUATION_MS - 60 * 1000)).toBe('on the edge');
+        expect(GHOST_GREETINGS).toContain(await at(GHOST_CONTINUATION_MS + 60 * 1000));
+    });
+
+    it('greets when the last reply carries no timestamp at all', async () => {
+        state.historyResult = { messages: [{ role: 'ghost', content: 'undated and unmoored' }] };
+        mountCompanion();
+        hit().click();
+        await flush();
+
+        expect(GHOST_GREETINGS).toContain(bubbleText());
+    });
+
+    it('greets when the readback fails, and never shows an error', async () => {
+        state.historyRejects = new Error('wire cut');
+        mountCompanion();
+        hit().click();
+        await flush();
+
+        expect(GHOST_GREETINGS).toContain(bubbleText());
+        expect(document.getElementById('injectToast')).toBeNull();
+    });
+
+    it('greets with no Worker configured, without posting anything', async () => {
+        state.configured = false;
+        mountCompanion();
+        hit().click();
+        await flush();
+
+        expect(GHOST_GREETINGS).toContain(bubbleText());
+        expect(state.calls.length).toBe(0);
+    });
+
+    it('draws only from the greeting set, across the whole random range', async () => {
+        const seen = new Set();
+        state.historyResult = { messages: [] };
+        mountCompanion();
+
+        for (const r of [0, 0.2, 0.45, 0.79, 0.999999]) {
+            vi.spyOn(Math, 'random').mockReturnValue(r);
+            hit().click();
+            await flush();
+            const line = bubbleText();
+            expect(GHOST_GREETINGS).toContain(line);
+            seen.add(line);
+        }
+        // Every slot of the array is reachable, so no greeting is dead copy.
+        expect(seen.size).toBe(GHOST_GREETINGS.length);
+    });
+
+    it('keeps the greeting out of the transcript and off every Worker payload', async () => {
+        state.historyResult = { messages: [] };
+        mountCompanion();
+        hit().click();
+        await flush();
+
+        const greeting = bubbleText();
+        expect(GHOST_GREETINGS).toContain(greeting);
+
+        input().value = 'what were we saying';
+        pressEnter(input());
+        await flush();
+
+        // The ask goes out as the user typed it, and nothing the client
+        // invented rides along in any field of any call.
+        const ask = state.calls.find((c) => c && c.message);
+        expect(ask).toEqual({ ghost: true, message: 'what were we saying', surface: 'desktop' });
+        const wire = JSON.stringify(state.calls);
+        GHOST_GREETINGS.forEach((line) => expect(wire).not.toContain(line));
+        expect(bubbleText()).toBe('boo');
+    });
+
+    it('lets a reply the user asked for outrank a readback still in flight', async () => {
+        state.defer = true;
+        state.historyResult = { messages: [{ role: 'ghost', content: 'stale news', created_at: minutesAgo(1) }] };
+        mountCompanion();
+        hit().click();
+
+        input().value = 'never mind that';
+        pressEnter(input());
+        // History resolves first, then the reply — the bubble must end on the
+        // reply, not on a line the readback painted over the pending dots.
+        state.pending.forEach((release) => release());
+        await flush();
+
+        expect(bubbleText()).toBe('boo');
     });
 });
 
@@ -626,7 +765,9 @@ describe('ghost talk — reflow on content change', () => {
     }
 
     it('re-places the bubble when the greeting replaces the placeholder', async () => {
-        state.historyResult = { messages: [{ role: 'ghost', content: 'i have been waiting a while' }] };
+        state.historyResult = {
+            messages: [{ role: 'ghost', content: 'i have been waiting a while', created_at: minutesAgo(2) }],
+        };
         openAt({ x: 400, y: 400, width: 48, height: 56 });
 
         const b = bubble();

@@ -8,7 +8,9 @@
 // Two things are deliberate here. First, the surface is ephemeral — the
 // exchange is kept server-side in `ghost_messages`, and this bubble shows one
 // line at a time, never a history list. On open it asks the Worker for the
-// last thing the ghost said, so the ghost greets you where you left off.
+// last thing the ghost said and shows it only while the exchange is still
+// warm; past that window a replayed answer reads as an answer without its
+// question, so the ghost greets instead.
 // Second, every failure speaks in the ghost's own voice inside the bubble:
 // there is no toast, no assistant-tone error copy, and nothing throws out of
 // the click handler. Technical detail goes to console.warn where a developer
@@ -38,6 +40,22 @@ const WIRE_DEAD   = "the wire's dead. try again later.";
 const NO_WIRE     = 'no wire to the other side yet.';
 const QUIET       = '…';
 const PLACEHOLDER = 'whisper something…';
+
+// How long a conversation stays warm. Reopen inside this window and the bubble
+// comes back on the ghost's last reply — the thread was never really dropped.
+// Outside it, that reply is stale and gets a greeting instead.
+export const GHOST_CONTINUATION_MS = 10 * 60 * 1000;
+
+// Cold-open lines, one picked at random. These are theatre only: a greeting is
+// never posted to the Worker and never reaches `ghost_messages`, so it can
+// never turn up later as something the ghost actually said.
+export const GHOST_GREETINGS = [
+    'you again. good.',
+    'still here.',
+    'quiet in here.',
+    "the list isn't going anywhere. neither am i.",
+    "speak, or don't. i have time.",
+];
 
 // Docking geometry. The fallbacks mirror the CSS box so positioning still
 // resolves where there is no layout engine to measure against.
@@ -81,6 +99,10 @@ let viewportFrame  = null;
 // longer matches, so a slow history readback can never overwrite a reply the
 // user has already asked for — or paint into a torn-down bubble.
 let session = 0;
+// True from open until the bubble has said anything the user asked for. The
+// opening line is slower than the user is: without this, a readback landing
+// after the first Enter would paint over the pending dots.
+let openingPending = false;
 
 // The mobile perch's viewport gate. It lives here rather than in
 // mobileGhost.js so this module can check the same predicate the perch mounts
@@ -138,10 +160,11 @@ export function openGhostTalk(api, opts) {
     reveal();
     if (inputEl && typeof inputEl.focus === 'function') inputEl.focus();
 
-    // Non-blocking greeting: the bubble opens quiet and fills in if the Worker
-    // still remembers the last thing the ghost said.
+    // Non-blocking: the bubble opens quiet and fills in with either a greeting
+    // or the tail of a conversation still in progress.
     say(QUIET);
-    loadLastLine(mySession);
+    openingPending = true;
+    loadOpeningLine(mySession);
 
     return { close: closeGhostTalk };
 }
@@ -535,6 +558,9 @@ function onInputKeydown(e) {
 
 function ask(message) {
     const mySession = session;
+    // The bubble now belongs to this exchange; a readback still in flight
+    // stays out of it.
+    openingPending = false;
     if (!isInjectConfigured()) {
         // The user has no Worker wired up. In-voice in the bubble; the actual
         // cause goes to the console for whoever is debugging the setup.
@@ -556,19 +582,57 @@ function ask(message) {
         });
 }
 
-// Greeting readback. Quiet by design: a failure here leaves the bubble on its
-// "…" rather than opening with an error the user did not ask for.
-function loadLastLine(mySession) {
-    if (!isInjectConfigured()) return;
+// The opening line. The readback decides it: a ghost reply from the last few
+// minutes is a conversation being picked back up, so it comes back verbatim;
+// anything older — or nothing at all — gets a greeting, because a stale reply
+// shown without its question reads as the ghost answering a room.
+//
+// Quiet by design: every failure path here greets rather than surfacing an
+// error the user did not ask for. That includes an unconfigured Worker, where
+// there is no transcript to be fresh, and no request is made.
+function loadOpeningLine(mySession) {
+    if (!isInjectConfigured()) { sayOpening(mySession, pickGreeting()); return; }
     postToWorker({ ghost: true, history: true })
         .then(function (res) {
-            if (mySession !== session) return;
-            const line = readLastGhostLine(res);
-            if (line) say(line);
+            const entry = readLastGhostEntry(res);
+            const warm = entry && isRecent(entry.createdAt);
+            sayOpening(mySession, warm ? entry.text : pickGreeting());
         })
         .catch(function (err) {
             console.warn('[ghostTalk] history readback failed', err);
+            sayOpening(mySession, pickGreeting());
         });
+}
+
+// Paint the opening line, but only into a bubble nobody has spoken to yet —
+// a reply the user actually asked for outranks a late readback.
+function sayOpening(mySession, text) {
+    if (mySession !== session || !openingPending || !text) return;
+    openingPending = false;
+    say(text);
+}
+
+function pickGreeting() {
+    const i = Math.floor(Math.random() * GHOST_GREETINGS.length);
+    return GHOST_GREETINGS[clamp(i, 0, GHOST_GREETINGS.length - 1)];
+}
+
+// A missing or unparseable timestamp reads as stale. The gate is "provably
+// warm" — without a time to check, the greeting is the safer line. Times in
+// the future count as warm, so a little clock skew doesn't cost the thread.
+function isRecent(createdAt) {
+    const t = parseTime(createdAt);
+    if (t === null) return false;
+    return Date.now() - t < GHOST_CONTINUATION_MS;
+}
+
+function parseTime(value) {
+    if (typeof value === 'number') return isFinite(value) ? value : null;
+    if (typeof value === 'string' && value) {
+        const t = Date.parse(value);
+        if (!isNaN(t)) return t;
+    }
+    return null;
 }
 
 // The Worker owns the transcript shape, so read it forgivingly: a bare
@@ -585,24 +649,37 @@ function readText(row) {
     return '';
 }
 
-function readLastGhostLine(res) {
-    if (!res) return '';
+// The ghost's last word and when it said it, as `{ text, createdAt }`, or null
+// when the transcript holds nothing the ghost said. `createdAt` rides along
+// because the recency gate needs it; it is null where the row carries no time.
+function readLastGhostEntry(res) {
+    if (!res) return null;
     const list = Array.isArray(res)                ? res
                : Array.isArray(res.messages)       ? res.messages
                : Array.isArray(res.history)        ? res.history
                : Array.isArray(res.ghost_messages) ? res.ghost_messages
                : null;
-    if (!list) return readText(res);
+    if (!list) {
+        const bare = readText(res);
+        return bare ? { text: bare, createdAt: readTime(res) } : null;
+    }
     for (let i = list.length - 1; i >= 0; i--) {
         const row = list[i];
         if (!row) continue;
-        // Skip the user's own turns — the greeting is the ghost's last word.
+        // Skip the user's own turns — the line to resume on is the ghost's.
         const role = typeof row === 'string' ? '' : (row.role || row.author || '');
         if (role && role !== 'ghost' && role !== 'assistant') continue;
         const text = readText(row);
-        if (text) return text;
+        if (text) return { text: text, createdAt: readTime(row) };
     }
-    return '';
+    return null;
+}
+
+function readTime(row) {
+    if (!row || typeof row === 'string') return null;
+    if (row.created_at != null) return row.created_at;
+    if (row.createdAt  != null) return row.createdAt;
+    return null;
 }
 
 // ── DISMISSAL ──
