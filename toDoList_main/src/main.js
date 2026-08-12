@@ -10,6 +10,9 @@ import {
     destroyCompanion,
 } from './companion.js';
 import {
+    ensureGhostTalk,
+} from './ghostTalk.js';
+import {
     ensurePomodoro,
     nextSuggestedMode,
     createPomodoroUI,
@@ -2786,6 +2789,12 @@ function component() {
     // the viewport qualifies. Deferred by a tick so document.body exists
     // (index.js appends the component right after component() returns).
     setTimeout(ensureCompanion, 0);
+
+    // Subscribe the tap-to-talk surface to sprite clicks. The subscription is
+    // module-level, so it survives the companion being toggled off and back on;
+    // on viewports where the companion never runs this is a no-op and nothing
+    // is created.
+    setTimeout(ensureGhostTalk, 0);
 
     // Mirror the desktop companion-enabled flag onto a body class so the
     // mobile empty-state ghost spacer (Today + Projects views) can hide its
