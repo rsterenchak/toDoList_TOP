@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-12T11:27:20.456Z",
-  "sha": "572c8cc125db4348ea31c5e24bae871607e1e231",
+  "generatedAt": "2026-08-12T11:56:00.288Z",
+  "sha": "9a3a48409b7dacd1b6788808159c47830518659c",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -2759,11 +2759,11 @@
       "selector": "#ghostTalkBubble",
       "label": "Ghost Talk Bubble",
       "file": "ghostTalk.js",
-      "line": 157,
+      "line": 171,
       "files": [
         {
           "file": "ghostTalk.js",
-          "line": 157
+          "line": 171
         }
       ]
     },
@@ -2771,11 +2771,11 @@
       "selector": "#ghostTalkInput",
       "label": "Ghost Talk Input",
       "file": "ghostTalk.js",
-      "line": 173,
+      "line": 187,
       "files": [
         {
           "file": "ghostTalk.js",
-          "line": 173
+          "line": 187
         }
       ]
     },
