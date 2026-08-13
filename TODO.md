@@ -1165,7 +1165,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: a6f79a20-81e9-4a72-a59d-5ded156b96a1 -->
 
-- [ ] **[MEDIUM]** Tighten addBtn click handler in seedTasksModal.js from O(k·m) to O(k+m)
+- [x] **[MEDIUM]** Tighten addBtn click handler in seedTasksModal.js from O(k·m) to O(k+m) — Completed: 2026-08-13
   - Type: feature
   - Description: Reduce the time complexity of `addBtn click handler` in `toDoList_main/src/seedTasksModal.js` from O(k·m) to O(k+m). The scan located it around lines 462–506 — locate by name if the file has drifted. Current complexity: time O(k·m), space O(m). Rationale: For each checked task with an entry, it re-fetches the full item list via listLogic.listItems and filters/pops it to find the just-created item, so cost scales with checked tasks (k) times project size (m). Implementation: Fetch listItems once before the forEach, build a Map from title to item, and look up each created item in O(1) instead of re-listing and filtering per task. Preserve behaviour exactly: the same inputs must produce the same outputs, no signature or public API changes, no data-model changes, and no test files modified.
   - File: `toDoList_main/src/seedTasksModal.js`
