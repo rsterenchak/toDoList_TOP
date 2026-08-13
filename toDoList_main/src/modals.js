@@ -1268,6 +1268,16 @@ export function updateChangelogDot() {
 // cue surfaces without the user having to open Settings.
 let pendingUpdateRegistration = null;
 
+// Per-tab baton for the update hand-off. applyPendingUpdate stamps it into
+// sessionStorage immediately before posting SKIP_WAITING; the
+// `controllerchange` handler in index.js reads and clears it. The new worker's
+// clients.claim() fires controllerchange in EVERY open client, so without this
+// flag a desktop user applying an update in one tab hard-reloads all the
+// others mid-task. sessionStorage rather than localStorage on purpose: the
+// flag has to be per-tab, or every tab would read it and claim to be the
+// initiator, which is exactly the behavior being fixed.
+export const SW_UPDATE_INITIATOR_KEY = 'todoapp_swUpdateInitiator';
+
 export function hasPendingUpdate() {
     return pendingUpdateRegistration !== null;
 }
@@ -1292,6 +1302,16 @@ export function applyPendingUpdate() {
     if (!registration) return false;
     const worker = registration.waiting || registration.installing;
     if (worker && typeof worker.postMessage === 'function') {
+        // Claim initiator status BEFORE the message goes out: the worker can
+        // activate the instant it receives SKIP_WAITING, so a flag written
+        // afterwards could lose the race against its own controllerchange.
+        try {
+            sessionStorage.setItem(SW_UPDATE_INITIATOR_KEY, '1');
+        } catch (_) {
+            // Storage denied (private mode): index.js can't read the baton
+            // either, so it falls back to reloading on any controllerchange —
+            // the pre-existing behavior, which at least keeps this tap working.
+        }
         worker.postMessage({ type: 'SKIP_WAITING' });
     } else {
         // Fallback — nothing to message, just reload so the user sees the cue clear.

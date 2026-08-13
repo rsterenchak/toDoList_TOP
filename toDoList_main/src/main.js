@@ -120,6 +120,7 @@ import {
 import './agentWiring.js';
 import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
+import { setAppReloader } from './aboutVersionCue.js';
 import { attachDragDropImport } from './exportImport.js';
 import { maybeStartFirstRunTour } from './coachmark.js';
 import {
@@ -139,6 +140,11 @@ initInjectConfig();
 // Give the Structure canvas's "Locate" action a way back to Tasks View without
 // making that leaf module import this heavy entry (which would form a cycle).
 setLocateTabSwitch(function () { applyActiveView('projects'); });
+
+// Same shape for the About → Version row's "Reload to finish" pill, which
+// appears when another tab applied a service-worker update: aboutVersionCue.js
+// stays a leaf and gets the reload handed to it here.
+setAppReloader(requestAppReload);
 
 // touch: verify SW revisioning 2026-05-31 //
 
