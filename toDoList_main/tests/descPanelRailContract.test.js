@@ -93,6 +93,7 @@ describe('desc panel child contract — (b) every mount site is a listed child',
         'modeStrip',       // .descModeStrip (WRITE / PASTE / GENERATE strip)
         'pasteBody',       // .descPasteBody (PASTE mode body)
         'generateBody',    // .descGenerateBody (GENERATE mode body)
+        'footer',          // .descPanelFooter (the docked bottom stack wrapper)
     ]);
 
     it('every descSibling.appendChild/insertBefore mounts a known, placed child', () => {

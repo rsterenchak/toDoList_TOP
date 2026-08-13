@@ -11963,6 +11963,58 @@ body.row-dragging * { cursor: grabbing !important; }
 #descInput:focus { outline: none; color: var(--text-primary); border-bottom: 0.5px solid var(--accent-dim); }
 #descInput:focus::placeholder { color: transparent; }
 
+/* DETAIL-PANE REFLOW — in the pane the panel stacks as a FLEX COLUMN instead of
+   the mobile host's 3-column grid, because a grid cannot dock its last row to the
+   container floor (implicit rows have no `1fr` track to hand the slack to, and an
+   auto margin on a grid item only absorbs space inside its own row). The pane is
+   itself a flex column, so `flex: 1 0 auto` fills its leftover height without ever
+   letting the panel shrink below its content — a tall panel still scrolls in the
+   pane exactly as before. `align-items: stretch` overrides the base rule's
+   `center`, which means horizontal centring once the axis flips.
+   The mobile inline drawer keeps the grid untouched: every grid-column rule stays
+   in place (and stays the contract the structural guard reads), it is simply inert
+   under this host's flex formatting context. */
+#descDetailPane #descSibling {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  flex: 1 0 auto;
+  min-height: 0;
+}
+/* The panel's `2` content column is what inset these from the panel edge; under
+   flex there are no gutter tracks, so each carries the 14px itself and stays
+   aligned with the padded full-width blocks around it. */
+#descDetailPane #descSibling > .phaseRail,
+#descDetailPane #descSibling > .descModeStrip,
+#descDetailPane #descSibling > .filePickTrigger,
+#descDetailPane #descSibling > #descInput {
+  margin-inline: 14px;
+}
+/* `justify-self: end` is a grid-only alignment; the trigger keeps its right edge
+   on the textarea's through the flex cross-axis instead. */
+#descDetailPane #descSibling > .filePickTrigger {
+  align-self: flex-end;
+}
+/* The entry textarea is the flex-fill middle: it takes the height left between
+   the top cluster (rail + mode strip) and the docked footer, so a short entry no
+   longer leaves the bottom two-thirds of the pane empty. `width: auto` replaces
+   the base `width: 100%`, which would overflow by the 14px margins above, and
+   min-height keeps a short pane from crushing it to nothing — the pane's own
+   scroll takes over past that floor. */
+#descDetailPane #descSibling > #descInput {
+  width: auto;
+  flex: 1 1 auto;
+  min-height: 96px;
+}
+/* Pin the footer stack to the pane floor. The textarea's `flex-grow` already
+   consumes the free space while it is visible (auto margins are resolved after
+   flexible lengths), so this governs the cases where the entry region is hidden —
+   the `done` / `accept` phases, PASTE / GENERATE mode, and a live triage — where
+   the footer would otherwise ride up under the top cluster. */
+#descDetailPane #descSibling > .descPanelFooter {
+  margin-top: auto;
+}
+
 /* The shared MANUAL STATUS control mounted at the foot of the desktop detail
    pane. #descSibling is a three-column grid (14px 1fr 14px); this block carries
    its own padding (from the #descEditorModalStatusRow rule it shares with the
@@ -20206,6 +20258,31 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    button, the ASKING block, and #descInput itself in turn. Full-width action
    controls and blocks span `1 / -1`; the textarea sits in the `2` content
    column (see #descInput). */
+/* PANEL FOOTER — the trailing sections of the description panel grouped into one
+   wrapper: the file picker's filter panel, the actions row, the FILE readout and
+   the MANUAL STATUS control, in that order. It exists so the detail pane has a
+   single element to pin to its floor (see the `margin-top: auto` rule on the pane
+   host) while the entry textarea absorbs the leftover height above it. A
+   #descSibling grid child in the mobile inline host, so it spans gutter-to-gutter
+   like the other padded blocks; the 14px content inset its children used to take
+   from the panel's `2` column is supplied by the wrapper's own padding instead,
+   so a section reads identically whichever host it renders in. */
+#descSibling .descPanelFooter {
+  grid-column: 1 / -1;
+}
+.descPanelFooter {
+  display: flex;
+  flex-direction: column;
+  padding-inline: 14px;
+}
+/* The two footer sections that spanned the panel gutter-to-gutter (the picker
+   panel, and the status control with its own 16px padding + top divider) keep
+   doing so — they cancel the wrapper's content inset rather than inheriting it. */
+#descSibling .descPanelFooter .filePickPanel,
+#descSibling .descPanelFooter #descEditorModalStatusRow {
+  margin-inline: -14px;
+}
+
 /* Inject / Generate / Discuss are grouped into ONE horizontal actions row rather
    than each spanning the panel full-width as its own stacked bar. The wrapper
    sits in the content column (grid-column: 2, aligning with the textarea); the
