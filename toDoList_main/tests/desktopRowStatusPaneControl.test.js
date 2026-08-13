@@ -105,11 +105,14 @@ describe('desktop detail pane — mounts the shared MANUAL STATUS control below 
         );
     });
 
-    it('mounts it via descSibling.appendChild AFTER the actions row', () => {
+    it('mounts it into the footer stack AFTER the actions row', () => {
         // Inject / Generate / Discuss now live inside the `.descActionsRow`
         // wrapper; MANUAL STATUS still mounts below that whole row at the foot.
-        const actionsIdx = toDoRow.indexOf('descSibling.appendChild(actionsRow)');
-        const statusIdx = toDoRow.indexOf('descSibling.appendChild(manualStatusRow)');
+        // Both now sit in the `.descPanelFooter` wrapper the detail pane pins to
+        // its floor, so the mount parent is the footer rather than #descSibling —
+        // the relative order this pin guards is unchanged.
+        const actionsIdx = toDoRow.indexOf('footer.appendChild(actionsRow)');
+        const statusIdx = toDoRow.indexOf('footer.appendChild(manualStatusRow)');
         expect(actionsIdx).toBeGreaterThan(-1);
         expect(statusIdx).toBeGreaterThan(-1);
         expect(statusIdx).toBeGreaterThan(actionsIdx);

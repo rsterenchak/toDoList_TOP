@@ -297,9 +297,12 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
     it('mounts the trigger above the textarea and the panel inside #descSibling', () => {
         const idx = toDoRow.indexOf('function mountDescFilePicker(');
         // Window widened past the original 900 to fit the reopen-dedup cleanup now
-        // mounted at the top of the function; both insertBefore assertions below are
-        // unchanged, so wrong mount code still fails.
-        const fn = toDoRow.slice(idx, idx + 1300);
+        // mounted at the top of the function, then again for the `.descPanelFooter`
+        // branch; both insertBefore assertions below are unchanged, so wrong mount
+        // code still fails. The panel now leads the docked footer stack when the
+        // panel has one and falls back to this slot below the textarea when it
+        // does not, so the historic assertion pins the fallback.
+        const fn = toDoRow.slice(idx, idx + 2000);
         expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.trigger\s*,\s*descInput\s*\)/);
         expect(fn).toMatch(/descSibling\.insertBefore\(\s*picker\.panel\s*,\s*descInput\.nextSibling\s*\)/);
     });
@@ -308,8 +311,9 @@ describe('File:-path picker — desktop panel host (toDoRow.js)', () => {
         expect(toDoRow).toMatch(/mountDescFilePicker\(descSibling,\s*descInput,\s*item,\s*projectName,\s*injectBtn\)/);
         const openIdx = toDoRow.indexOf('function wireDescToggle(');
         // Window widened to cover the panel's mount block, which now also groups
-        // the actions row and mounts the FILE readout before the picker call.
-        const openBlock = toDoRow.slice(openIdx, openIdx + 4500);
+        // the actions row, builds the `.descPanelFooter` wrapper and mounts the
+        // FILE readout before the picker call.
+        const openBlock = toDoRow.slice(openIdx, openIdx + 5400);
         expect(openBlock).toMatch(/mountDescFilePicker\(/);
     });
 

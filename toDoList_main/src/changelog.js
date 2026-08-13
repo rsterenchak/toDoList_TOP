@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-08-13',
         changed: [
             'Adding a batch of generated tasks to a project now stays fast no matter how many todos the project already holds.',
+            'The desktop task detail pane now stretches the entry editor to fill the space, with the file filter, action buttons, file readout and status control docked along the bottom of the pane.',
         ],
         fixed: [
             'The Structure tab header no longer sits underneath the status bar on phones.',
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-12',
         fixed: [
-            "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",
             "The ghost's whisper box on phones now rides above the keyboard while you type instead of hiding behind it, and drops back beside the ghost when the keyboard closes.",
         ],
     },

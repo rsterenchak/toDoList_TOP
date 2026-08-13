@@ -28,7 +28,10 @@ describe('detail panel — actions grouped into one horizontal row', () => {
         expect(toDoRow).toMatch(/actionsRow\.appendChild\(injectBtn\)/);
         expect(toDoRow).toMatch(/actionsRow\.appendChild\(generateBtn\)/);
         expect(toDoRow).toMatch(/actionsRow\.appendChild\(discussBtn\)/);
-        expect(toDoRow).toMatch(/descSibling\.appendChild\(actionsRow\)/);
+        // The row now mounts into the panel's docked `.descPanelFooter` stack
+        // rather than straight onto #descSibling — the wrapper is what the detail
+        // pane pins to its floor. The grouping this pin exists for is unchanged.
+        expect(toDoRow).toMatch(/footer\.appendChild\(actionsRow\)/);
         // The buttons are no longer mounted directly onto #descSibling.
         expect(toDoRow).not.toMatch(/descSibling\.appendChild\(injectBtn\)/);
         expect(toDoRow).not.toMatch(/descSibling\.appendChild\(generateBtn\)/);

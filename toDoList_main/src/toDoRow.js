@@ -578,6 +578,26 @@ export function descPanelTopAnchor(panel) {
 }
 
 
+// The panel's docked bottom stack: the filter panel, the actions row, the FILE
+// readout and the MANUAL STATUS control, grouped into one `.descPanelFooter`
+// wrapper so the detail pane can pin them to its floor (margin-top: auto) while
+// the entry textarea absorbs the leftover height between the top cluster and the
+// footer. Returns the wrapper for a panel that has one, else null.
+export function descPanelFooterHost(panel) {
+    return panel ? panel.querySelector('.descPanelFooter') : null;
+}
+
+
+// The mirror of descPanelTopAnchor for blocks that fall back to "append at the
+// panel's end": the footer is the LAST panel child, so appending would drop the
+// block below the docked stack. Returning the footer (or null when there is
+// none) makes `panel.insertBefore(block, descPanelBottomAnchor(panel))` land the
+// block above the footer and degrade to a plain append on a footer-less panel.
+export function descPanelBottomAnchor(panel) {
+    return descPanelFooterHost(panel);
+}
+
+
 // Mount (idempotently) the read-only phase rail and THE ENTRY section label at
 // the head of an OPEN description panel, and repaint the rail for the row's
 // current derived phase. The desktop counterpart to the mobile modal's rail +
@@ -646,6 +666,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descReviewActions',
     '#descSibling .descRunReportBlock',
     '#descSibling .descMockupBlock',
+    '#descSibling .descPanelFooter',
 ]);
 
 
@@ -1100,7 +1121,7 @@ function syncDispatchPanel(toDoChild, item) {
         anchorAfter = panel.querySelector('#descInput');
     }
     if (anchorAfter) panel.insertBefore(block, anchorAfter.nextSibling);
-    else panel.appendChild(block);
+    else panel.insertBefore(block, descPanelBottomAnchor(panel));
     refreshViewerExpandedHeight();
 }
 
@@ -1992,10 +2013,11 @@ export function syncTriageBlock(toDoChild, item) {
         const startMs = resolveTriageStart(row);
         if (startMs != null) block.setAttribute('data-triage-start', String(startMs));
         // Sits where the entry region is — before the File: picker trigger /
-        // textarea it replaces. Falls back to appending at the panel's end.
+        // textarea it replaces. Falls back to the panel's end, above the docked
+        // footer stack (descPanelBottomAnchor) rather than below it.
         const anchor = panel.querySelector('.filePickTrigger') || panel.querySelector('#descInput');
         if (anchor) panel.insertBefore(block, anchor);
-        else panel.appendChild(block);
+        else panel.insertBefore(block, descPanelBottomAnchor(panel));
         startTriageClock(block);
         hideEntryRegionForTriage(panel);
         refreshViewerExpandedHeight();
@@ -2044,9 +2066,15 @@ export function mountDescFilePicker(descSibling, descInput, item, projectName, i
         },
     });
     descSibling.insertBefore(picker.trigger, descInput);
-    // Panel drops in directly below the textarea; both are placed explicitly
-    // by CSS grid-column, so this only sets DOM/row order, not the column.
-    descSibling.insertBefore(picker.panel, descInput.nextSibling);
+    // The searchable panel is the "filter row" of the docked footer stack, so it
+    // leads that wrapper (filter → actions → FILE → status). On a panel with no
+    // footer (a bare test panel, or a host that never built one) it falls back to
+    // its historic slot directly below the textarea. Placement in the pane comes
+    // from the footer's flex column, and in the mobile grid host from the panel's
+    // grid-column rules — this only sets DOM order.
+    const footer = descPanelFooterHost(descSibling);
+    if (footer) footer.insertBefore(picker.panel, footer.firstChild);
+    else descSibling.insertBefore(picker.panel, descInput.nextSibling);
 }
 
 
@@ -3638,6 +3666,21 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // affects layout — the two gutter-filler spacers this panel used to
         // carry are gone.
         descSibling.appendChild(descInput);
+        // The docked footer stack. In the detail pane the panel is a flex column
+        // whose textarea absorbs the leftover height, so anything left as a plain
+        // panel child after it would float directly beneath the entry rather than
+        // sitting at the pane floor. Grouping the trailing sections — the picker's
+        // filter panel, the actions row, the FILE readout and MANUAL STATUS — into
+        // one wrapper gives the pane a single element to pin (margin-top: auto).
+        // Reuse the persistent wrapper across reopens (panel children survive
+        // close) and re-append it so it stays LAST even after descInput's own
+        // re-append above moved it to the end.
+        let footer = descSibling.querySelector('.descPanelFooter');
+        if (!footer) {
+            footer = document.createElement('div');
+            footer.className = 'descPanelFooter';
+        }
+        descSibling.appendChild(footer);
         // Group Inject / Generate / Discuss into ONE horizontal actions row so
         // they sit side by side at their natural label width, rather than each
         // spanning the panel full-width as its own stacked bar. The wrapper takes
@@ -3664,7 +3707,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         if (discussBtn && item.id) {
             actionsRow.appendChild(discussBtn);
         }
-        descSibling.appendChild(actionsRow);
+        footer.appendChild(actionsRow);
         if (injectBtn) {
             refreshInjectButton(injectBtn, item, projectName);
         }
@@ -3682,7 +3725,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         if (item.tit) {
             let fileReadout = descSibling.querySelector('.descFileReadout');
             if (!fileReadout) fileReadout = buildFileReadout();
-            descSibling.appendChild(fileReadout);
+            footer.appendChild(fileReadout);
         }
         descInput.value = item["desc"] || "";
         // Trigger the textarea's auto-grow handler now that it's in the
@@ -3754,8 +3797,8 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         if (item.id) {
             syncTriageBlock(toDoChild, item);
         }
-        // Mount the shared MANUAL STATUS control at the FOOT of the panel, below
-        // the action buttons — the desktop counterpart to the mobile modal's
+        // Mount the shared MANUAL STATUS control at the FOOT of the footer stack,
+        // below the action buttons — the desktop counterpart to the mobile modal's
         // last-in-dialog placement. Committed rows only: a blank placeholder has
         // no task to annotate yet. It reuses buildManualStatusControl so the two
         // hosts stay in step. Deliberately NOT in DESC_AUTHORING_GROUP_SELECTORS,
@@ -3767,7 +3810,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         if (item.tit) {
             let manualStatusRow = descSibling.querySelector('#descEditorModalStatusRow');
             if (!manualStatusRow) manualStatusRow = buildManualStatusControl(item, projectName);
-            descSibling.appendChild(manualStatusRow);
+            footer.appendChild(manualStatusRow);
         }
     }
 
