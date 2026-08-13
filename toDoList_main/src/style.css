@@ -12006,6 +12006,16 @@ body.row-dragging * { cursor: grabbing !important; }
   flex: 1 1 auto;
   min-height: 96px;
 }
+/* The read-only entry view takes the SAME flex contract as the textarea it stands in
+   for: in `accept` the authoring group (textarea included) is hidden, so this is what
+   fills the middle and keeps the footer docked at the pane floor. Same 96px floor —
+   a short window compresses it into the pane's existing scroll rather than crushing
+   the entry to nothing — and `min-height: 0` on its own text region (see the block's
+   rule) lets a long entry scroll in place instead of growing the pane. */
+#descDetailPane #descSibling > .descReviewEntryView {
+  flex: 1 1 auto;
+  min-height: 96px;
+}
 /* Pin the footer stack to the pane floor. The textarea's `flex-grow` already
    consumes the free space while it is visible (auto margins are resolved after
    flexible lengths), so this governs the cases where the entry region is hidden —
@@ -20530,6 +20540,61 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-size: 11px;
   line-height: 1.4;
   color: var(--text-muted);
+}
+
+/* THE SHIPPED ENTRY, READ-ONLY — mounted in review only (buildReviewEntryView in
+   toDoRow.js), in the slot the entry textarea occupies in every other phase. The
+   authoring group is hidden in `accept`, so without this the pane's flex-fill middle
+   is a void between the WHAT CHANGED card and the docked footer and the shipped
+   entry text is nowhere readable. An editor-style frame — a muted eyebrow above a
+   scrollable mono text region matching #descInput's type treatment — deliberately
+   with no edit affordance: it is a div, not a disabled textarea. Spans the full
+   3-column #descSibling grid like the WHAT CHANGED card (it carries its own
+   padding), so the mobile inline host can never auto-place it into a 14px gutter. */
+#descSibling .descReviewEntryView {
+  grid-column: 1 / -1;
+}
+.descReviewEntryView {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 12px 10px;
+  padding: 10px 12px;
+  background: var(--bg-hover);
+  border-left: 3px solid var(--border-mid);
+  border-radius: 8px;
+  /* A column flex item defaults to `min-height: auto` (sized to its content), which
+     would let a long entry grow the block instead of scrolling its text region. The
+     pane rule replaces this 0 with the block's 96px floor. */
+  min-height: 0;
+}
+/* Re-assert the hidden state explicitly: the block sets an author-level `display`,
+   which outranks the UA `[hidden] { display: none }` rule — the same hardening every
+   other display-setting #descSibling child carries. */
+#descSibling .descReviewEntryView[hidden] {
+  display: none;
+}
+.descReviewEntryViewEyebrow {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+/* Matches #descInput's type treatment (SpaceMono, 12px, 1.5, pre-wrap) so the
+   shipped entry reads exactly as it did while it was being authored. Scrolls in
+   place past the block's share of the pane rather than pushing the footer down. */
+.descReviewEntryViewText {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  letter-spacing: 0.02em;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
 }
 
 /* WHAT THE RUN REPORTED — the run's own closing summary, rendered as a block
