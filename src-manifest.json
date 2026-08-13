@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-13T12:24:18.195Z",
-  "sha": "a4f7654cda540ff605d27924a940dc0ad875bd14",
+  "generatedAt": "2026-08-13T13:14:50.951Z",
+  "sha": "7e27e0ad5f1890789aa837234432305cd82c2cdc",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -6407,11 +6407,11 @@
       "selector": "[data-region=\"…\"]",
       "label": "…",
       "file": "structureView.js",
-      "line": 1168,
+      "line": 1160,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1168
+          "line": 1160
         }
       ]
     }
