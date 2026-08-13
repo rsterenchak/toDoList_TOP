@@ -664,6 +664,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .descTriageBlock',
     '#descSibling .descReviewBlock',
     '#descSibling .descReviewActions',
+    '#descSibling .descReviewEntryView',
     '#descSibling .descRunReportBlock',
     '#descSibling .descMockupBlock',
     '#descSibling .descPanelFooter',
@@ -1227,6 +1228,40 @@ export function buildReviewBlock(item, queueRow) {
 }
 
 
+// Build the read-only ENTRY view for the review surface — the block that fills the
+// pane's flex-fill middle while a shipped entry awaits a decision. The authoring
+// group (textarea included) is hidden in `accept`, so without this the slot between
+// the review furniture and the docked footer is a void and the shipped entry text is
+// nowhere readable in the pane.
+//
+// Read-only is STRICT: a plain div, not a disabled textarea. Text stays selectable so
+// it can be copied, but no edit affordance exists — Iterate is the change path for a
+// shipped entry, and OPEN IN TODO.MD routes to the real text. Returns null for an
+// empty entry so the caller mounts nothing and the middle reads as it does today.
+export function buildReviewEntryView(item) {
+    const text = (item && item.desc) || '';
+    if (!text.trim()) return null;
+
+    const block = document.createElement('div');
+    block.className = 'descReviewEntryView';
+
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'descReviewEntryViewEyebrow';
+    eyebrow.textContent = 'Entry · Shipped · Read only';
+    block.appendChild(eyebrow);
+
+    // `textContent` + `white-space: pre-wrap` renders the entry VERBATIM — every
+    // newline and run of indentation the entry carries, exactly as #descInput shows
+    // it while the entry is still being authored.
+    const body = document.createElement('div');
+    body.className = 'descReviewEntryViewText';
+    body.textContent = text;
+    block.appendChild(body);
+
+    return block;
+}
+
+
 // Confirm, then roll a shipped change back through the SAME Worker `revert` route
 // the viewer's and the Agent board's Revert controls use (revertEntry), targeting
 // the active project's dispatch target. Handles the three Worker outcomes exactly
@@ -1726,12 +1761,14 @@ function syncReviewPanel(toDoChild, item, projectName) {
     if (!panel) return;
     const existingBlock = panel.querySelector('.descReviewBlock');
     const existingActions = panel.querySelector('.descReviewActions');
+    const existingEntryView = panel.querySelector('.descReviewEntryView');
     const phase = item && item.id ? derivePhase(item) : PHASE.NONE;
     const wantReview = phase === PHASE.ACCEPT;
     if (!wantReview) {
         let changed = false;
         if (existingBlock) { existingBlock.remove(); changed = true; }
         if (existingActions) { existingActions.remove(); changed = true; }
+        if (existingEntryView) { existingEntryView.remove(); changed = true; }
         if (changed) refreshViewerExpandedHeight();
         return;
     }
@@ -1743,6 +1780,7 @@ function syncReviewPanel(toDoChild, item, projectName) {
     }
     if (existingBlock) existingBlock.remove();
     if (existingActions) existingActions.remove();
+    if (existingEntryView) existingEntryView.remove();
     const queueRow = getQueueRowForTodo(item.id);
     // Both mount immediately after the phase rail (via descPanelTopAnchor): the
     // WHAT CHANGED card first, the action row right after it.
@@ -1750,6 +1788,14 @@ function syncReviewPanel(toDoChild, item, projectName) {
     panel.insertBefore(buildReviewBlock(item, queueRow), anchor);
     const reviewActions = buildReviewActions(item, projectName);
     panel.insertBefore(reviewActions, anchor);
+    // The read-only entry fills the pane's flex-fill middle — the slot the hidden
+    // textarea occupies in every other phase. descPanelBottomAnchor lands it ABOVE
+    // the docked footer (a plain append would drop it below the pinned stack), so it
+    // takes the editor's place between the review furniture and the footer. Mounted
+    // and torn down by this same branch as the review card, so leaving `accept`
+    // restores the normal editor with no leftovers.
+    const entryView = buildReviewEntryView(item);
+    if (entryView) panel.insertBefore(entryView, descPanelBottomAnchor(panel));
     refreshViewerExpandedHeight();
     // The run's closing summary is fetched async and mounted BETWEEN the WHAT
     // CHANGED card and the action row once (if) it resolves — a run with none, or a
