@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-13',
         changed: [
-            'Adding a batch of generated tasks to a project now stays fast no matter how many todos the project already holds.',
             'The desktop task detail pane now stretches the entry editor to fill the space, with the file filter, action buttons, file readout and status control docked along the bottom of the pane.',
+            'In the Structure tab’s Types outline, Find in code now jumps straight to the selected type or member’s declaration, and the copy action reads Copy name.',
         ],
         fixed: [
             'The Structure tab header no longer sits underneath the status bar on phones.',

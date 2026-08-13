@@ -276,7 +276,8 @@ let currentNoMatchEl = null;
 // the toolbar reflects that selection and runs Reference / Copy / Find / GitHub
 // against it — replacing the per-row action panels that used to repeat under
 // every row. The selection is a small descriptor the toolbar can drive for any
-// kind: { kind, label, value, copyLabel, repo, file, line, visible }. It's
+// kind: { kind, label, value, copyLabel, repo, file, line, visible, parentType }
+// (`parentType` is the Types lens's own field — the type owning a member row). It's
 // ephemeral (not persisted): cleared on repo change and lens change, and
 // re-applied to the matching row on a same-repo/same-lens repaint (match by
 // `value` + `kind`), falling to idle if that handle no longer exists.
@@ -444,6 +445,10 @@ function flashFileRow(file) {
 
 // "Find in code" tap-through: switch to the Code lens (persisting the choice),
 // expand the file's ancestors, repaint the tree, then flash the file row.
+//
+// Returns the paint promise so a caller that must act on the revealed lens — the
+// Types-lens declaration jump opens the code viewer straight after — can chain
+// onto it rather than race the repaint, which throws the detail column away.
 function revealFileInCodeLens(file) {
     expandAncestors(file);
     if (lens !== 'code') {
@@ -452,7 +457,7 @@ function revealFileInCodeLens(file) {
         applyLensToggleState();
     }
     const painted = renderLens(selectedRepo, currentTreeEl);
-    Promise.resolve(painted).then(function () {
+    return Promise.resolve(painted).then(function () {
         flashFileRow(file);
         refreshCollapseAllPill();
         // Now on the Code lens, which has no handles — hide the action toolbar.
@@ -519,51 +524,38 @@ function findInCode(repo, selector, resultEl, btn) {
     });
 }
 
+// The banner a Types-lens declaration jump opens the viewer under. A type reads
+// `Greeter · declaration`; a member is qualified by the type that owns it, so
+// `Greeter.Greet · declaration` says which `Greet` this is when several classes
+// define one.
+function declarationBanner(d) {
+    const name = d.parentType ? d.parentType + '.' + d.value : d.value;
+    return name + ' · declaration';
+}
+
 // The Types-lens counterpart to findInCode. A C# manifest carries no `regions`,
-// so type/member rows resolve their "Find in code" against the in-memory
-// `currentTypes` index instead: list every place `name` is *defined* — a type
-// whose name matches (its `file`/`line`) and every member whose name matches
-// (its owning type's `file`, the member's own `line`). The same name defined in
-// several classes lists all of them, which the single-line GitHub link can't.
-// Synchronous — `currentTypes` is already loaded for the rendering lens.
-function findTypeInCode(repo, name, resultEl, btn) {
-    clear(resultEl);
-    resultEl.hidden = false;
-
-    const owners = [];
-    const seen = new Set();
-    const addOwner = function (file, line) {
-        const key = (file || '') + '#' + (typeof line === 'number' ? line : '');
-        if (seen.has(key)) return;
-        seen.add(key);
-        owners.push({ file: file, line: line });
-    };
-    currentTypes.forEach(function (type) {
-        if (!type) return;
-        if (type.name === name) addOwner(type.file, type.line);
-        const members = Array.isArray(type.members) ? type.members : [];
-        members.forEach(function (member) {
-            if (member && member.name === name) addOwner(type.file, member.line);
+// so a type/member selection resolves its "Find in code" against the in-memory
+// type outline instead — and the outline records the exact declaration site, so
+// the resolution is total rather than a list of candidate owner files: the
+// descriptor already carries the entry's `file`/`line`, and the action jumps
+// straight there. Switch to the Code lens (persisting the choice, as every
+// tap-through does), flash the defining file's row, then open the viewer on the
+// declaration line — the same one-line span + banner contract the refactor card
+// and hotspot rows pass to `renderCodeViewer`.
+//
+// The open is chained onto the reveal rather than fired beside it: the lens
+// repaint clears the detail column, so opening first would paint into a column
+// that is about to be thrown away.
+function revealTypeDeclarationInCode(d) {
+    const banner = declarationBanner(d);
+    return revealFileInCodeLens(d.file).then(function () {
+        // Joined at click time like every other opener, so a manifest that
+        // declares a srcRoot resolves the same way the Code lens's rows do.
+        openFileInCodeViewer(d.repo, joinSrcRootPath(currentSrcRoot, d.file), {
+            startLine: d.line,
+            endLine: d.line,
+            banner: banner,
         });
-    });
-    owners.sort(function (a, b) {
-        const fa = a.file || '';
-        const fb = b.file || '';
-        if (fa !== fb) return fa < fb ? -1 : 1;
-        const la = typeof a.line === 'number' ? a.line : 0;
-        const lb = typeof b.line === 'number' ? b.line : 0;
-        return la - lb;
-    });
-
-    if (!owners.length) {
-        const none = document.createElement('div');
-        none.className = 'structureFindNone';
-        none.textContent = 'Not found in the type index.';
-        resultEl.appendChild(none);
-        return;
-    }
-    owners.forEach(function (owner) {
-        resultEl.appendChild(buildOwnerFileRow(repo, owner));
     });
 }
 
@@ -1545,17 +1537,26 @@ function renderActionToolbar() {
     appendViewCodeAction(actionToolbarActionsEl, d);
 
     // Find in code: live/published handles resolve a selector through the
-    // build-time index; Types rows resolve a name through the in-memory types.
-    const findBtn = document.createElement('button');
-    findBtn.type = 'button';
-    findBtn.className = 'structureFindBtn';
-    findBtn.textContent = 'Find in code';
-    findBtn.addEventListener('click', function (event) {
-        event.stopPropagation();
-        if (d.kind === 'type') findTypeInCode(d.repo, d.value, actionToolbarResultEl, findBtn);
-        else findInCode(d.repo, d.value, actionToolbarResultEl, findBtn);
-    });
-    actionToolbarActionsEl.appendChild(findBtn);
+    // build-time index and list its owner files; a Types row resolves against the
+    // outline entry it selected with and jumps straight to the declaration.
+    //
+    // An outline entry with no usable file/line has nowhere to jump — an older
+    // manifest predating the generator's per-member `line` — so the action is
+    // omitted for that selection rather than mounted as a dead click. Only the
+    // Types lens can be in that state; UI/SQL handles always get the button.
+    const isTypeDeclaration = d.kind === 'type';
+    if (!isTypeDeclaration || (!!d.file && hasRecordedLine(d))) {
+        const findBtn = document.createElement('button');
+        findBtn.type = 'button';
+        findBtn.className = 'structureFindBtn';
+        findBtn.textContent = 'Find in code';
+        findBtn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            if (isTypeDeclaration) revealTypeDeclarationInCode(d);
+            else findInCode(d.repo, d.value, actionToolbarResultEl, findBtn);
+        });
+        actionToolbarActionsEl.appendChild(findBtn);
+    }
 
     // Locate (canvas only): jump to the live element in Tasks View and pulse it.
     // Shown for a live, non-overlay, visible-in-snapshot handle while the block
@@ -1971,13 +1972,13 @@ function renderUiLens(repo, treeEl) {
 
 // One row in the Types lens — a type (kind + name) or one of its members
 // (signature). Tapping the row body selects it, driving the shared toolbar
-// (Reference in chat + Copy name, Find in code, and a View-on-GitHub deep link
-// to the defining file at the row's line), AND opens its defining file in the
-// code viewer scrolled to its line — the detail column on desktop, the sheet
-// below 1024px, since both go through the shared opener. A type row additionally
-// nests its members as collapsible children (depth + 1), so the filter's
-// ancestor-reveal surfaces a type when one of its members matches. `spec` is
-// { label, name, file, line, members? }.
+// (Reference in chat + Copy name, Find in code jumping to the declaration, and a
+// View-on-GitHub deep link to the defining file at the row's line), AND opens its
+// defining file in the code viewer scrolled to its line — the detail column on
+// desktop, the sheet below 1024px, since both go through the shared opener. A
+// type row additionally nests its members as collapsible children (depth + 1), so
+// the filter's ancestor-reveal surfaces a type when one of its members matches.
+// `spec` is { label, name, file, line, members?, parentType? }.
 function buildTypeOutlineRow(repo, spec, depth) {
     const wrap = document.createElement('div');
     wrap.className = 'structureRegionWrap';
@@ -2025,6 +2026,9 @@ function buildTypeOutlineRow(repo, spec, depth) {
                 name: member.name || '',
                 file: spec.file,
                 line: member.line,
+                // The owning type, carried so the selection can qualify the bare
+                // member name where a name alone is ambiguous (the jump banner).
+                parentType: spec.name,
             }, depth + 1));
         });
     }
@@ -2038,6 +2042,9 @@ function buildTypeOutlineRow(repo, spec, depth) {
             repo: repo,
             file: spec.file,
             line: spec.line,
+            // Empty on a type row; the owning type's name on a member row, which
+            // is everything the toolbar needs to read the jump off the selection.
+            parentType: spec.parentType || '',
         }, row);
     };
 

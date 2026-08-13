@@ -1979,9 +1979,10 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         expect(toolbar.querySelector('.structureCopyBtn').textContent).toBe('Copy name');
     });
 
-    it('Find in code lists every definition of a name from the type index, sorted by file then line', async () => {
-        // Two classes in different files each define a member named `Reset`; Find in
-        // code must surface both definitions, which a single-line GitHub link can't.
+    it('Find in code jumps a member row to its own declaration rather than listing same-named ones', async () => {
+        // Two classes in different files each define a member named `Reset`. The
+        // outline records where THIS `Reset` is declared, so the action jumps
+        // straight there — no list of same-named definitions to pick from.
         state.manifests[OTHER] = {
             ok: true, files: ['A.cs', 'B.cs'], hasDom: false, lens: 'types', srcRoot: '',
             types: [
@@ -2004,6 +2005,7 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
             const l = r.querySelector('.structureTypeLabel');
             return l ? l.textContent : '';
         };
+        // Files group alphabetically, so the first `Reset()` row is Tree's, in A.cs.
         const resetRow = rows.find((r) => labelOf(r) === 'Reset()');
         expect(resetRow).toBeTruthy();
         resetRow.click();
@@ -2011,13 +2013,13 @@ describe('renderStructureView — adaptive second lens (Types for a C# repo)', (
         toolbar.querySelector('.structureFindBtn').click();
         await flush();
 
-        const owners = Array.from(toolbar.querySelectorAll('.structureOwnerFileBtn')).map((b) => b.textContent);
-        expect(owners).toEqual(['A.cs:9', 'B.cs:44']);
-
-        // The owner file row taps through to the Code lens, like the UI-lens Find.
-        toolbar.querySelector('.structureOwnerFileBtn').click();
-        await flush();
+        // The lens switch persists, as it does for the UI lens's tap-through…
         expect(localStorage.getItem(STRUCTURE_LENS_KEY)).toBe('code');
+        // …and the viewer opens on the member's own declaration, named by its
+        // owning type so the ambiguous bare name is never what the banner shows.
+        const host = document.querySelector('#structureView > .structureCanvasHost');
+        expect(host.querySelector('.codeViewerBannerText').textContent).toBe('Tree.Reset · declaration');
+        expect(document.querySelector('.structureOwnerFileBtn')).toBeFalsy();
     });
 
     it('a manifest without a lens field keeps the UI lens (back-compat)', async () => {
