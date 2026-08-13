@@ -1230,7 +1230,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-13
   <!-- id: a0cfa3ae-33a3-468b-8308-b6ab4788ab6c -->
 
-- [ ] **[MEDIUM]** Make Types lens Find in code jump to the declaration line and relabel Copy to Copy name
+- [x] **[MEDIUM]** Make Types lens Find in code jump to the declaration line and relabel Copy to Copy name
   - Type: feature
   - Description: The Structure tab's shared selection toolbar (UI + Types lenses — Reference / Copy / Find / GitHub, built around `structureView.js` ~1299–1325) speaks selector vocabulary even when a Types-lens type or member row is selected. Adapt the two actions to the lens. Copy: when the selection is a Types-lens row, the button reads `Copy name` via the existing `copyLabel` override (line ~1320) and copies the bare identifier — a member row copies its own name (`GetById`), never the dotted path; the UI lens keeps `Copy selector` and its selector payload untouched. Find in code: for type/member selections, resolve against the in-memory type outline (the partial resolution noted at ~line 523), switch to the Code lens with the existing persistence behavior, reveal/flash the defining file's row via its `wrap.dataset.structureFile` tag (~line 868), and open the code viewer at the declaration — `renderCodeViewer` with `startLine`/`endLine` both set to the outline entry's `line` and a banner of `<Name> · declaration` for types or `<Type>.<Member> · declaration` for members, exactly the jump contract the refactor card and hotspot rows use. The manifest guarantees the data: the C# generator records exact `line` on every type and member (`{name, kind, file, line, members:[{name, kind, signature, line}]}`). Join the outline's repo-root-relative `file` through `joinSrcRootPath(currentSrcRoot, ...)` like every other jump, even though csharp manifests ship `srcRoot: ''` today. Extend the Types-lens selection descriptor to carry `{ name, kind, file, line, parentType? }` if it doesn't already, so the toolbar reads everything from the selection.
   - Behavior:
@@ -1239,5 +1239,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Copy keeps the existing flash-label feedback from `copySelector`; only the label and payload change for Types rows.
   - Out of scope: SQL lens rows (tables/columns get no Find or relabel); any change to the UI lens's Find result-list flow or the Reference action; GitHub deep-links with `#L<line>` anchors (possible follow-up); the row-chip and hybrid variants; generator/manifest changes; `codeViewer.js`.
   - File: `toDoList_main/src/structureView.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-13
   <!-- id: d69e98eb-ea94-40ad-97a8-5db23680b30e -->
