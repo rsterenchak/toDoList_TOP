@@ -8,10 +8,9 @@ import {
     setCompanionEnabled,
     ensureCompanion,
     destroyCompanion,
+    onCompanionActivate,
+    supportsDesktopCompanion,
 } from './companion.js';
-import {
-    ensureGhostTalk,
-} from './ghostTalk.js';
 import {
     ensurePomodoro,
     nextSuggestedMode,
@@ -62,6 +61,7 @@ import { mountClaudeSheet } from './claudeSheet.js';
 import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry } from './claudeSheet.js';
 import { openSpendPanel } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
+import { openClaudeSheet, isSheetPossessed, togglePossession, POSSESSION_EVENT } from './claudeSheet.js';
 import { updateCompletedSection, updateEmptyState } from './emptyState.js';
 import { applyProjectAccent } from './projectMenu.js';
 import {
@@ -2790,11 +2790,11 @@ function component() {
     // (index.js appends the component right after component() returns).
     setTimeout(ensureCompanion, 0);
 
-    // Subscribe the tap-to-talk surface to sprite clicks. The subscription is
-    // module-level, so it survives the companion being toggled off and back on;
-    // on viewports where the companion never runs this is a no-op and nothing
-    // is created.
-    setTimeout(ensureGhostTalk, 0);
+    // Wire sprite clicks to possession — the desktop ghost's only door. The
+    // subscription is module-level, so it survives the companion being toggled
+    // off and back on; on viewports where the companion never runs this is a
+    // no-op and nothing is created.
+    setTimeout(ensureDesktopGhostPossession, 0);
 
     // Mirror the desktop companion-enabled flag onto a body class so the
     // mobile empty-state ghost spacer (Today + Projects views) can hide its
@@ -3975,6 +3975,47 @@ function applyActiveView(view) {
 function applyCompanionGhostPreference() {
     if (!document.body) return;
     document.body.classList.toggle('companion-ghost-off', !isCompanionEnabled());
+}
+
+// ── THE DESKTOP GHOST'S DOOR ──
+// Clicking the wandering companion is how the ghost gets into the Claude pane
+// on desktop, and the only way — the sheet's ghost chip is hidden at this
+// breakpoint so the sprite is the single affordance. A click enters possession
+// while the pane wears its work identity and leaves it while the ghost already
+// has it, which makes the sprite both doors in one target.
+//
+// The perch runs the other way round: the sprite FOLLOWS the state rather than
+// driving it. Docking hangs off the possession event the sheet fires, so a flip
+// from any other path — the RUNS tab, a sheet close — moves the ghost too,
+// instead of leaving it perched on a pane that handed itself back.
+//
+// Wired once at module level: the companion is destroyed and rebuilt whenever
+// the user toggles the floating ghost, and companion.js keeps activation
+// subscriptions module-level for exactly that reason, so this survives the
+// rebuild. A no-op on viewports where the companion never runs.
+let desktopGhostPossessionWired = false;
+
+export function ensureDesktopGhostPossession() {
+    if (desktopGhostPossessionWired) return true;
+    if (!supportsDesktopCompanion()) return false;
+    desktopGhostPossessionWired = true;
+
+    onCompanionActivate(function() {
+        if (isSheetPossessed()) togglePossession();
+        else openClaudeSheet({ possessed: true });
+    });
+
+    document.addEventListener(POSSESSION_EVENT, function(event) {
+        // Null when the user has the floating ghost turned off — there is no
+        // sprite to perch, and possession itself is unaffected.
+        const companion = ensureCompanion();
+        if (!companion) return;
+        const possessed = !!(event && event.detail && event.detail.possessed);
+        if (possessed) companion.dock(document.getElementById('desktopChatPane'));
+        else companion.release();
+    });
+
+    return true;
 }
 
 

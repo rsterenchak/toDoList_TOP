@@ -8,11 +8,17 @@
 // asset-import-free and testable.
 //
 // The sprite is also a tap target: hovering freezes the wander loop in place
-// and clicking emits an "activate" event that the talk surface (ghostTalk.js)
-// subscribes to. Pointer handling lives on a slightly larger `.companionHit`
-// wrapper rather than on `.companion` itself, so the sprite keeps its
-// `pointer-events: none` and never intercepts a click meant for the app
-// chrome it happens to be drifting over.
+// and clicking emits an "activate" event. That activation is the ghost's only
+// door on desktop — main.js listens for it and flips the Claude pane into (and
+// back out of) the ghost's identity. Pointer handling lives on a slightly
+// larger `.companionHit` wrapper rather than on `.companion` itself, so the
+// sprite keeps its `pointer-events: none` and never intercepts a click meant
+// for the app chrome it happens to be drifting over.
+//
+// While the ghost wears the pane the sprite parks on it: `dock()` glides it to
+// the pane's rim and holds it there, `release()` hands it back to the wander
+// from wherever it was left. Both are driven from outside — this module knows
+// nothing about possession beyond the element it is asked to perch on.
 
 const STORAGE_KEY = 'todoapp_companion_enabled';
 
@@ -24,6 +30,15 @@ const SPRITE_H = 56;
 // The hit wrapper is inset by this much on every side, giving the pointer a
 // forgiving margin around a sprite that is constantly drifting.
 const HIT_PAD = 10;
+
+// Where the sprite parks while it is docked: straddling the target's left rim
+// (half the sprite hangs over it) and this far below its top edge, so the ghost
+// reads as perched ON the pane rather than standing beside it.
+const DOCK_TOP_INSET = 18;
+// Glide pace toward the dock point: a fixed fraction of the remaining distance
+// with a floor under it, so a long trip eases in and a short one still arrives.
+const DOCK_EASE = 0.14;
+const DOCK_MIN_SPEED = 2;
 
 // Default on. A missing key counts as enabled so the feature is discoverable
 // without the user having to opt in.
@@ -90,12 +105,13 @@ export function createCompanion(doc) {
     // Transparent pointer target tracking the sprite. Separate element so the
     // sprite itself stays pointer-events: none.
     let hitEl     = null;
-    // Wander paused in place (pointer is over the sprite, or the talk surface
-    // holds it still). Position is never reset while frozen, so resuming
-    // continues from where the ghost stopped rather than teleporting.
+    // Wander paused in place (pointer is over the sprite, or the ghost is
+    // docked). Position is never reset while frozen, so resuming continues from
+    // where the ghost stopped rather than teleporting.
     let frozen    = false;
-    // The talk surface is open — mouseleave must NOT resume while it is, or
-    // the ghost would walk out from under its own speech bubble.
+    // Something outside is holding the ghost still — today, possession holding
+    // it on its perch. mouseleave must NOT resume while it is set, or the ghost
+    // would walk off the pane it is supposed to be sitting on.
     let talkOpen  = false;
     let rafId     = null;
     let timerId   = null;
@@ -113,6 +129,14 @@ export function createCompanion(doc) {
     // between walks is the cheapest source of unpredictable rhythm — a fixed
     // step rate reads as a constant treadmill.
     let stepSpeed = 0.5;
+    // The element the sprite is perched on, or null when it is free to wander.
+    // Held rather than reduced to a boolean because the rim has to be
+    // re-measured whenever the window resizes under a docked ghost.
+    let dockEl    = null;
+    let dockRafId = null;
+    let dockResize = null;
+    let dockTgtX  = 0;
+    let dockTgtY  = 0;
 
     function mount() {
         if (el) return;
@@ -172,6 +196,10 @@ export function createCompanion(doc) {
         if (timerId) { clearTimeout(timerId); timerId = null; }
         if (cheerId) { clearTimeout(cheerId); cheerId = null; }
         if (blinkId) { clearTimeout(blinkId); blinkId = null; }
+        // A destroy mid-dock takes the perch with it: the glide and the resize
+        // listener would otherwise outlive the sprite they were placing.
+        stopDockGlide();
+        forgetDock();
         if (el && el.parentNode) el.parentNode.removeChild(el);
         if (hitEl) {
             hitEl.removeEventListener('mouseenter', onHitEnter);
@@ -215,6 +243,113 @@ export function createCompanion(doc) {
 
     function setTalkOpen(open) {
         talkOpen = !!open;
+    }
+
+    // ── DOCK / RELEASE ──
+    // Possession's half of the freeze contract. `dock` parks the ghost on the
+    // rim of the element it is given and claims the still-state for as long as
+    // it sits there — the same hold a hover takes, so a mouseleave can't walk
+    // the ghost off its perch. `release` gives the wander back from wherever
+    // the sprite ended up; nothing here ever teleports it.
+    //
+    // Both are idempotent enough to be driven straight off a state event: a
+    // second dock re-measures, and a release with nothing docked is a no-op.
+    function dock(target) {
+        if (!el || !target) return;
+        dockEl = target;
+        setTalkOpen(true);
+        freeze();
+        if (!dockResize) {
+            // A resize moves the rim out from under the sprite, so re-measure
+            // for as long as it is docked. Placement is instant here rather
+            // than a second glide — the layout has already jumped, and a ghost
+            // gliding after it would read as lag.
+            dockResize = function() { if (dockEl) placeAtDock(); };
+            window.addEventListener('resize', dockResize);
+        }
+        glideToDock();
+    }
+
+    function release() {
+        if (!dockEl) return;
+        stopDockGlide();
+        forgetDock();
+        setTalkOpen(false);
+        resume();
+    }
+
+    function isDocked() {
+        return !!dockEl;
+    }
+
+    function forgetDock() {
+        dockEl = null;
+        if (dockResize) {
+            window.removeEventListener('resize', dockResize);
+            dockResize = null;
+        }
+    }
+
+    // The perch in viewport coordinates, or null when the target can't be
+    // measured. Clamped to the viewport so a pane hanging off-screen still
+    // leaves the ghost somewhere a user can see (and click) it.
+    function dockPoint() {
+        if (!dockEl || typeof dockEl.getBoundingClientRect !== 'function') return null;
+        const rect = dockEl.getBoundingClientRect();
+        const w  = (el && el.offsetWidth)  || SPRITE_W;
+        const h  = (el && el.offsetHeight) || SPRITE_H;
+        const vw = window.innerWidth  || 1024;
+        const vh = window.innerHeight || 768;
+        return {
+            x: Math.max(0, Math.min(vw - w, rect.left - w / 2)),
+            y: Math.max(0, Math.min(vh - h, rect.top + DOCK_TOP_INSET)),
+        };
+    }
+
+    function placeAtDock() {
+        const p = dockPoint();
+        if (!p) return;
+        stopDockGlide();
+        curX = p.x;
+        curY = p.y;
+        applyTransform();
+    }
+
+    // Reduced motion places the sprite outright. Everything else walks it over,
+    // so the move reads as the ghost drifting to its perch rather than cutting
+    // to it. The glide runs on its own rAF: the wander is frozen by now, and
+    // borrowing its loop would resume it the moment the walk finished.
+    function glideToDock() {
+        const p = dockPoint();
+        if (!p) return;
+        if (prefersReducedMotion()) { placeAtDock(); return; }
+        dockTgtX = p.x;
+        dockTgtY = p.y;
+        stopDockGlide();
+        stepDock();
+    }
+
+    function stepDock() {
+        dockRafId = null;
+        if (!el || !dockEl) return;
+        const dx = dockTgtX - curX;
+        const dy = dockTgtY - curY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 1.5) {
+            curX = dockTgtX;
+            curY = dockTgtY;
+            applyTransform();
+            return;
+        }
+        const speed = Math.max(DOCK_MIN_SPEED, dist * DOCK_EASE);
+        curX += (dx / dist) * speed;
+        curY += (dy / dist) * speed;
+        applyTransform();
+        dockRafId = requestAnimationFrame(stepDock);
+    }
+
+    function stopDockGlide() {
+        if (dockRafId) { cancelAnimationFrame(dockRafId); dockRafId = null; }
     }
 
     // Current sprite box in viewport coordinates. Returns null when the
@@ -399,6 +534,10 @@ export function createCompanion(doc) {
         resume:      resume,
         isFrozen:    isFrozen,
         setTalkOpen: setTalkOpen,
+        // Perch controls, driven by whoever owns the state the perch reflects.
+        dock:        dock,
+        release:     release,
+        isDocked:    isDocked,
     };
 }
 

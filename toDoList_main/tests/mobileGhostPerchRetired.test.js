@@ -75,17 +75,19 @@ describe('mobile ghost perch — retired', () => {
             expect(js).not.toMatch(/from\s*['"]\.\/mobileGhost\.js['"]/);
             expect(js).not.toMatch(/ensureMobileGhost/);
             // The neighbouring desktop mounts are untouched — the removal took
-            // one call site, not the boot block around it.
+            // one call site, not the boot block around it. (The talk-surface
+            // bootstrap that used to sit beside them is now the possession
+            // glue: the floating skin it subscribed retired later.)
             expect(js).toMatch(/setTimeout\(ensureCompanion,\s*0\)/);
-            expect(js).toMatch(/setTimeout\(ensureGhostTalk,\s*0\)/);
+            expect(js).toMatch(/setTimeout\(ensureDesktopGhostPossession,\s*0\)/);
         });
 
-        it('drops the orphaned mobile gate from ghostTalk.js, keeping the desktop plumbing', () => {
+        it('drops the orphaned mobile gate from ghostTalk.js, keeping the plumbing', () => {
             const js = read('ghostTalk.js');
             expect(js).not.toMatch(/supportsMobileGhostTalk/);
-            // The perch was that gate's only consumer. Everything the desktop
-            // skin and the possessed sheet share stays exported.
-            ['askGhost', 'fetchGhostHistory', 'ensureGhostTalk', 'isGhostWireReady']
+            // The perch was that gate's only consumer. Everything possession
+            // builds on stays exported.
+            ['askGhost', 'fetchGhostHistory', 'isGhostWireReady']
                 .forEach((name) => {
                     expect(js).toMatch(new RegExp('export function ' + name + '\\b'));
                 });

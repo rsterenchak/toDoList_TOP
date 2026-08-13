@@ -3568,6 +3568,10 @@ button.claudeAttachChipLabel { cursor: pointer; }
   opacity: 1;
   filter: drop-shadow(0 0 6px rgba(122, 108, 240, 0.75));
 }
+/* The chip is MOBILE's door only. Desktop possesses by clicking the wandering
+   companion, so the chip is hidden there — see the `.claudeGhostChip` rule in
+   the desktop chat-pane block further down, which lives beside the rest of that
+   breakpoint's pane styling rather than opening a second desktop query here. */
 
 /* The ghost's thread — a sibling of the work surface, shown only while
    possessed. The work surface keeps its scroll position and its bubbles the
@@ -16169,6 +16173,18 @@ body.row-dragging * { cursor: grabbing !important; }
        clipped. */
     box-shadow: -1px 0 0 0 rgba(108, 93, 245, 0.18);
   }
+  /* The possession chip steps aside on desktop: clicking the wandering
+     companion is what hands the pane to the ghost here, so the chip would be a
+     second door sitting inside the surface the ghost is about to wear — the
+     pane at rest carries no ghost affordance at all. It is still BUILT at every
+     breakpoint (one DOM shape across the relocation), just not shown here; the
+     chip has no author-level `display` of its own, so a plain `display: none`
+     outranks nothing and needs no `!important` (unlike the [hidden] guards
+     elsewhere in the claude* family). The "ghost is listening" indicator is
+     untouched — it only renders while possessed, which is the state this
+     breakpoint reaches through the sprite. */
+  .claudeGhostChip { display: none; }
+
   /* The relocated tab row IS the chat pane's sub-header. Compress it to the
      sub-band's height, vertically center it, and reserve room at the start for
      the absolutely-placed collapse button so CHAT/RUNS don't sit beneath it.
@@ -16892,94 +16908,11 @@ body.row-dragging * { cursor: grabbing !important; }
   z-index: 10000;
 }
 
-/* ── GHOST TALK — speech bubble + ask input docked to the frozen sprite ──
-   Both elements are position: fixed and placed from ghostTalk.js (left/top in
-   px, viewport-clamped). They ride one layer above the sprite so the ghost
-   never paints over its own words. */
-.ghostTalkSurface {
-  position: fixed;
-  z-index: 10002;
-  opacity: 0;
-  transform: scale(0.94);
-  transition: opacity 0.18s ease-out, transform 0.18s ease-out;
-}
-
-.ghostTalkSurface.is-open {
-  opacity: 1;
-  transform: scale(1);
-}
-
-.ghostTalkSurface.is-closing {
-  opacity: 0;
-  transform: scale(0.94);
-}
-
-/* Reduced motion: fade only. The scale pop is the part that reads as motion,
-   so it is dropped while the cross-fade — mild enough to stay legible as a
-   state change — remains. */
-.ghostTalkSurface--calm,
-.ghostTalkSurface--calm.is-open,
-.ghostTalkSurface--calm.is-closing {
-  transform: none;
-}
-
-.ghostTalkBubble {
-  max-width: 250px;
-  padding: 9px 12px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-mid);
-  border-radius: 12px;
-  color: var(--text-primary);
-  font-size: 12.5px;
-  line-height: 1.45;
-  overflow-wrap: break-word;
-}
-
-/* Comic tail — a rotated square straddling the bubble's bottom edge, sharing
-   its background and the two borders that end up facing out. `left` is set
-   from JS so the tail points at the sprite even when the bubble is clamped
-   against a viewport edge. */
-.ghostTalkTail {
-  position: absolute;
-  bottom: -5px;
-  width: 9px;
-  height: 9px;
-  margin-left: -4.5px;
-  background: var(--bg-card);
-  border-right: 1px solid var(--border-mid);
-  border-bottom: 1px solid var(--border-mid);
-  transform: rotate(45deg);
-}
-
-/* Flipped placement — a ghost frozen near the top of the viewport has no room
-   for a bubble overhead, so the bubble docks under the cluster instead and the
-   tail moves to the top edge pointing up at the sprite. Rotated 45deg, the
-   top and left borders are the two that face outward. */
-.ghostTalkBubble--below .ghostTalkTail {
-  bottom: auto;
-  top: -5px;
-  border-right: none;
-  border-bottom: none;
-  border-top: 1px solid var(--border-mid);
-  border-left: 1px solid var(--border-mid);
-}
-
-.ghostTalkInput {
-  width: 180px;
-  padding: 6px 10px;
-  background: var(--bg-card);
-  border: 1px solid var(--border-mid);
-  border-radius: 8px;
-  color: var(--text-primary);
-  /* 16px keeps iOS Safari from auto-zooming on focus; this surface is desktop
-     only, but the floor is cheap and the rule is house-wide. */
-  font-size: 16px;
-}
-
-.ghostTalkInput:focus {
-  outline: none;
-  border-color: var(--accent);
-}
+/* ── GHOST TALK — the pending render shared by every ghost surface ──
+   All that is left of this family: the floating bubble and its ask input
+   retired with the desktop skin (the ghost speaks through the possessed Claude
+   pane now), and the dots below are drawn by renderGhostPending in ghostTalk.js
+   into whichever thread is waiting on a reply. */
 
 /* Pending state — three dots blinking in sequence while a reply is in flight. */
 .ghostTalkDot {
@@ -17002,15 +16935,10 @@ body.row-dragging * { cursor: grabbing !important; }
 
 /* Hide entirely on viewports that don't qualify for the companion. The JS
    gate prevents mounting on these viewports already; this is belt-and-braces
-   for flicker during resize across the breakpoint. The selectors stay scoped to
-   the DESKTOP mount because that is the only floating talk surface there is —
-   mobile speaks through the possessed Claude sheet, which these rules never
-   touch. */
+   for flicker during resize across the breakpoint. */
 @media not all and (min-width: 1024px), (pointer: coarse) {
   .companion { display: none; }
   .companionHit { display: none; }
-  .ghostTalkBubble.ghostTalkSurface--desktop,
-  .ghostTalkInput.ghostTalkSurface--desktop { display: none; }
 }
 
 /* Reduced-motion: silence the attention-grabby cheer keyframes and the idle
