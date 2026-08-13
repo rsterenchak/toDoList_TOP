@@ -206,17 +206,21 @@ describe('Code lens — the detail column hosts the code viewer', () => {
         expect(getOpenCodeViewerFile()).toBe('toDoList_main/src/main.js');
     });
 
-    it('carries no per-row Explain button — the row is icon, name, GitHub link', async () => {
+    it('carries no per-row Explain button — the row is icon, name, GitHub link, complexity chip', async () => {
         renderStructureView();
         await flush();
 
         const row = rowFor('main.js');
         expect(row.querySelector('.structureExplainBtn')).toBeNull();
         expect(row.parentElement.querySelector('.structureExplainResult')).toBeNull();
+        // Explaining a file is a control in the viewer, never a per-row button.
+        // The trailing complexity chip (complexityHotspots.js) is the one control
+        // the row does carry, after the GitHub glyph.
         expect(Array.from(row.children).map((c) => c.className)).toEqual([
             'structureFileIcon',
             'structureFileName',
             'structureGithubLink structureGithubLink--glyph',
+            'complexityChip',
         ]);
     });
 

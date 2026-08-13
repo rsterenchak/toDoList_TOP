@@ -972,6 +972,35 @@ export async function dispatchScan(correlationId, target) {
 }
 
 
+// Dispatch a per-file "complexity scan" run through the same Worker the other
+// dispatch flows use (same URL + Bearer secret). POSTs
+// `{ dispatch_complexity_scan: true, repo, filePath, target_file }` so the Worker
+// fires claude-complexity-scan.yml against the project's linked repo; that
+// workflow calls the Worker's inline `complexity_scan` route (~90s Sonnet pass),
+// which writes the `complexity_scans` row for `target_file` at the END of the
+// run. `target_file` is the repo-relative path of the file to scan (e.g.
+// `toDoList_main/src/taskSort.js`) — `filePath` stays the target's TODO.md path,
+// exactly as the other dispatch payloads use it. Unlike dispatchScan there is no
+// correlation id: completion is detected by polling the stored row for a newer
+// `scanned_at`, not through active_runs, so nothing needs to correlate a run
+// here. Mirrors dispatchScan's return shape — the Worker payload spread onto
+// `{ ok: true }` on success, `{ ok: false, reason }` via describeError on any
+// failure — so the chip's error state speaks the same vocabulary as the rest.
+export async function dispatchComplexityScan(target, targetFile) {
+    try {
+        const res = await postToWorker({
+            dispatch_complexity_scan: true,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+            target_file: targetFile,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Dispatch a "capture" run through the same Worker the dispatch, triage, and
 // derive flows already use (same URL + Bearer secret). Mirrors dispatchRun's
 // shape: POSTs `{ dispatch_capture: true, correlation_id, args, project, repo,

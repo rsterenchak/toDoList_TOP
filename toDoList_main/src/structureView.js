@@ -37,6 +37,8 @@ import {
     setCodeViewerCloseHandler,
 } from './codeViewer.js';
 import { joinSrcRootPath } from './srcPath.js';
+import { buildComplexityChip, setComplexityScans } from './complexityHotspots.js';
+import { listLogic } from './listLogic.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
@@ -894,6 +896,15 @@ function buildFileRow(repo, file, depth) {
     const gh = buildGithubLink(repo, file.path, null, true);
     if (gh) row.appendChild(gh);
 
+    // Trailing complexity chip — scan this file, then read its open hotspot
+    // count. Null for anything the complexity pass can't read, so non-JS/TS rows
+    // are unchanged. The chip speaks repo-relative paths (what the Worker and the
+    // stored `file_path` column use), so the manifest's srcRoot-relative name is
+    // joined exactly as the row's own open handler does.
+    const complexity = buildComplexityChip(
+        repo, joinSrcRootPath(currentSrcRoot, file.path), file.name);
+    if (complexity) row.appendChild(complexity);
+
     // Tapping the row loads the file into the code viewer. The manifest names
     // files relative to its own srcRoot, so the path is joined before it reaches
     // the Worker's `read` route, which wants a repo-relative one. The host is
@@ -995,6 +1006,30 @@ function renderTree(repo, treeEl) {
         }
         const tree = buildTree(result.files);
         renderNode(repo, tree, treeEl, 0);
+        loadComplexityScansForTree(repo);
+    });
+}
+
+// Read this repo's stored complexity scans ONCE per Code-lens render and hand
+// them to the chips, which repaint themselves from the result (a file with a
+// stored row becomes a count badge; everything else stays offering a scan). A
+// failed or unavailable read hands over an empty set rather than an error: the
+// file row has no room to explain one, and "not scanned yet" is the truthful
+// fallback. Guarded with typeof so a partial mock of listLogic degrades the same
+// way instead of throwing mid-render.
+function loadComplexityScansForTree(repo) {
+    if (!listLogic || typeof listLogic.loadComplexityScans !== 'function') {
+        setComplexityScans(repo, []);
+        return;
+    }
+    Promise.resolve(listLogic.loadComplexityScans(repo)).then(function (res) {
+        // The lens or repo may have changed while the read was in flight; a late
+        // result must not paint counts onto a tree it doesn't describe.
+        if (repo !== selectedRepo || lens !== 'code') return;
+        setComplexityScans(repo, (res && res.ok !== false && res.rows) ? res.rows : []);
+    }, function () {
+        if (repo !== selectedRepo || lens !== 'code') return;
+        setComplexityScans(repo, []);
     });
 }
 
