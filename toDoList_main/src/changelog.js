@@ -6,9 +6,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-13',
-        added: [
-            'The shipped entry is now readable, read-only, in the middle of the desktop task detail pane while a change waits on your accept or revert decision.',
-        ],
         changed: [
             'Adding a batch of generated tasks to a project now stays fast no matter how many todos the project already holds.',
             'The desktop task detail pane now stretches the entry editor to fill the space, with the file filter, action buttons, file readout and status control docked along the bottom of the pane.',
@@ -16,6 +13,7 @@ export const changelog = [
         fixed: [
             'The Structure tab header no longer sits underneath the status bar on phones.',
             'Applying an update in one browser tab no longer reloads every other open tab; the others keep running and offer their own reload from Settings when you are ready.',
+            'A long shipped entry now scrolls inside its own box in the desktop review pane, so the file, discuss and status controls stay in view instead of being pushed below the fold.',
         ],
     },
 ];

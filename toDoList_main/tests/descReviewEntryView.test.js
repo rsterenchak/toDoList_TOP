@@ -56,6 +56,34 @@ function declares(needle, decl) {
     return bodies.some((body) => decl.test(body));
 }
 
+// The same walk, keeping each rule's selector beside its body — what proves a
+// declaration appears ONLY under the selectors meant to carry it, rather than merely
+// appearing somewhere. Comments are stripped from the selector so a preamble above an
+// @media block can't be mistaken for part of one.
+function topLevelRules(source) {
+    const rules = [];
+    let depth = 0;
+    let selectorStart = 0;
+    for (let i = 0; i < source.length; i++) {
+        const c = source[i];
+        if (c === '{') {
+            if (depth === 0) {
+                rules.push({
+                    selector: source.slice(selectorStart, i).replace(/\/\*[\s\S]*?\*\//g, '').trim(),
+                    body: source.slice(i + 1, source.indexOf('}', i)),
+                });
+            }
+            depth++;
+            continue;
+        }
+        if (c === '}') {
+            depth--;
+            if (depth === 0) selectorStart = i + 1;
+        }
+    }
+    return rules;
+}
+
 describe('review entry view — the block', () => {
     it('renders the entry text VERBATIM, newlines and indentation intact', () => {
         const desc = '- [ ] **[HIGH]** Ship it\n  - Type: feature\n  - File: a.js';
@@ -141,6 +169,67 @@ describe('review entry view — the pane flex contract', () => {
     it('leaves the footer pinned to the pane floor', () => {
         expect(declares('#descDetailPane #descSibling > .descPanelFooter', /margin-top:\s*auto\s*;/))
             .toBe(true);
+    });
+});
+
+// The block shipped with `flex: 1 1 auto` on itself and `min-height: 0` on its text
+// region — which reads like a clamp but never was one. `flex: 1 1 auto` only bounds a
+// child when every ancestor between it and the height-bounded pane can actually give
+// height back, and the panel that stacks it (#descDetailPane #descSibling) carries
+// `flex: 1 0 auto`: a flex item with shrink 0 grows to its content no matter what its
+// children declare. The editor stage never exposed the gap because a textarea has an
+// intrinsic height regardless of how much text it holds, while the read-only div does
+// not — so a long entry grew the panel, the PANE became the scroller instead of the
+// text region, and the docked footer (Discuss / FILE / MANUAL STATUS) went below the
+// fold, defeating the reflow that docked it there.
+describe('review entry view — the flex-clamp chain', () => {
+    // The pane's own layout lives inside the ≥1024px media block, which ruleBodies
+    // (top-level rules only) can't reach — pull the bare `#descDetailPane` rules out
+    // directly and pick the desktop one out by its grid placement.
+    const paneRule = css.split(/#descDetailPane\s*\{/).slice(1)
+        .map((chunk) => chunk.slice(0, chunk.indexOf('}')))
+        .find((body) => /grid-column:\s*3\s*;/.test(body)) || '';
+
+    it('bounds the pane against its own grid track, so the chain divides a real height', () => {
+        expect(paneRule).toMatch(/overflow-y:\s*auto\s*;/);
+        // Without this the grid item's automatic minimum size is its content, so a tall
+        // panel inflates the track instead of scrolling inside a fixed-height pane.
+        expect(paneRule).toMatch(/min-height:\s*0\s*;/);
+    });
+
+    it('lets the panel shrink back to the pane in review — what actually docks the footer', () => {
+        const sel = '#descSibling:has(> .descReviewEntryView';
+        expect(declares(sel, /flex-shrink:\s*1\s*;/)).toBe(true);
+        expect(declares(sel, /min-height:\s*0\s*;/)).toBe(true);
+    });
+
+    it('grants that shrink in review ONLY, leaving the authoring stages as they render today', () => {
+        // WRITE / PASTE / GENERATE keep the unscoped `flex: 1 0 auto`: a tall authoring
+        // panel still grows past the pane and scrolls it rather than being crushed.
+        expect(declares('#descDetailPane #descSibling', /flex:\s*1\s+0\s+auto\s*;/)).toBe(true);
+        const shrinkRules = topLevelRules(css).filter(
+            (r) => r.selector.includes('#descSibling') && /flex-shrink:\s*1\s*;/.test(r.body));
+        expect(shrinkRules.length).toBeGreaterThan(0);
+        shrinkRules.forEach((r) => {
+            expect(r.selector, `unscoped panel shrink in: ${r.selector}`)
+                .toMatch(/:has\(\s*>\s*\.descReviewEntryView/);
+        });
+    });
+
+    it('makes the block a clamped frame rather than one that grows to its text', () => {
+        expect(declares('.descReviewEntryView', /flex-direction:\s*column\s*;/)).toBe(true);
+        expect(declares('.descReviewEntryView', /overflow:\s*hidden\s*;/)).toBe(true);
+    });
+
+    it('leaves the text region the SOLE scroller, with the eyebrow pinned above it', () => {
+        // Basis 0, not auto: the region grows from nothing into its share of the block
+        // instead of starting at its full content height and shrinking back.
+        expect(declares('.descReviewEntryViewText', /flex:\s*1\s+1\s+0\s*;/)).toBe(true);
+        expect(declares('.descReviewEntryViewText', /min-height:\s*0\s*;/)).toBe(true);
+        expect(declares('.descReviewEntryViewText', /overflow-y:\s*auto\s*;/)).toBe(true);
+        expect(declares('.descReviewEntryViewText', /-webkit-overflow-scrolling:\s*touch\s*;/))
+            .toBe(true);
+        expect(declares('.descReviewEntryViewEyebrow', /flex:\s*0\s+0\s+auto\s*;/)).toBe(true);
     });
 });
 
