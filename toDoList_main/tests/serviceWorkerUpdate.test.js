@@ -115,12 +115,20 @@ describe('service worker update discovery — src/index.js', () => {
             expect(index).toMatch(/window\.location\.reload\(\s*\)/);
         });
 
-        it('reloads on an UPDATE controllerchange but NOT on a first-ever install', () => {
+        it('reloads on an UPDATE controllerchange, but not on a first-ever install and not in collateral tabs', () => {
             // The new worker calls clients.claim() on activate, which fires
             // controllerchange. On a first-ever install (no prior controller)
             // a reload would be a pointless flash — the page is already on the
             // current build — so the handler must only reload when a controller
             // already existed at load (a genuine update took over).
+            //
+            // clients.claim() also fires controllerchange in EVERY other open
+            // tab, none of which asked for the update. Reloading those yanks
+            // focus and uncommitted typing out from under the user, so the
+            // reload is additionally gated on the per-tab initiator baton that
+            // applyPendingUpdate() stamps into sessionStorage (modals.js):
+            // flag present → this tab asked, clear it and reload; flag absent →
+            // collateral tab, announce appUpdateAppliedElsewhere and stay put.
             const startIdx = index.indexOf("if ('serviceWorker' in navigator)");
             const braceStart = index.indexOf('{', startIdx);
             let depth = 0;
@@ -134,9 +142,28 @@ describe('service worker update discovery — src/index.js', () => {
             }
             const block = index.slice(startIdx, end + 1);
 
-            function runScenario(hadController) {
+            const INITIATOR_KEY = 'todoapp_swUpdateInitiator';
+
+            function runScenario(hadController, isInitiator, storageDenied) {
                 let reloadCalls = 0;
+                const dispatched = [];
                 let controllerChangeHandler = null;
+                const store = new Map();
+                if (isInitiator) store.set(INITIATOR_KEY, '1');
+                const fakeSessionStorage = {
+                    getItem: (key) => {
+                        if (storageDenied) throw new Error('storage denied');
+                        return store.has(key) ? store.get(key) : null;
+                    },
+                    setItem: (key, value) => {
+                        if (storageDenied) throw new Error('storage denied');
+                        store.set(key, value);
+                    },
+                    removeItem: (key) => {
+                        if (storageDenied) throw new Error('storage denied');
+                        store.delete(key);
+                    },
+                };
                 const fakeRegistration = {
                     waiting: null,
                     installing: null,
@@ -155,7 +182,7 @@ describe('service worker update discovery — src/index.js', () => {
                 const fakeDocument = {
                     visibilityState: 'visible',
                     addEventListener: () => {},
-                    dispatchEvent: () => {},
+                    dispatchEvent: (event) => { dispatched.push(event && event.type); },
                 };
                 const fakeWindow = {
                     addEventListener: (event, handler) => { if (event === 'load') handler(); },
@@ -163,24 +190,57 @@ describe('service worker update discovery — src/index.js', () => {
                 };
                 const factory = new Function(
                     'navigator', 'document', 'window', 'setInterval', 'notifyUpdateAvailable', 'CustomEvent',
+                    'sessionStorage', 'SW_UPDATE_INITIATOR_KEY',
                     block
                 );
-                factory(fakeNavigator, fakeDocument, fakeWindow, () => 0, () => {}, function () {});
-                return { fire: () => controllerChangeHandler && controllerChangeHandler(), get reloadCalls() { return reloadCalls; } };
+                factory(
+                    fakeNavigator, fakeDocument, fakeWindow, () => 0, () => {},
+                    function (type) { this.type = type; },
+                    fakeSessionStorage, INITIATOR_KEY
+                );
+                return {
+                    fire: () => controllerChangeHandler && controllerChangeHandler(),
+                    get reloadCalls() { return reloadCalls; },
+                    get dispatched() { return dispatched; },
+                    hasFlag: () => store.has(INITIATOR_KEY),
+                };
             }
 
-            // First-ever install: controller was null at load → no reload.
-            const fresh = runScenario(false);
+            // First-ever install: controller was null at load → no reload,
+            // and no "applied" announcement of either kind.
+            const fresh = runScenario(false, true);
             fresh.fire();
             expect(fresh.reloadCalls).toBe(0);
+            expect(fresh.dispatched).toEqual([]);
 
-            // Update: a controller already existed at load → reload exactly once.
-            const update = runScenario(true);
-            update.fire();
-            expect(update.reloadCalls).toBe(1);
+            // Update in the tab that asked for it → reload exactly once, the
+            // existing appUpdateApplied event still fires, and the baton is
+            // consumed so it can't outlive this update.
+            const initiator = runScenario(true, true);
+            initiator.fire();
+            expect(initiator.reloadCalls).toBe(1);
+            expect(initiator.dispatched).toEqual(['appUpdateApplied']);
+            expect(initiator.hasFlag()).toBe(false);
             // Re-firing must not reload again (reload-once guard preserved).
-            update.fire();
-            expect(update.reloadCalls).toBe(1);
+            initiator.fire();
+            expect(initiator.reloadCalls).toBe(1);
+
+            // Collateral tab — same controllerchange, no baton: it must keep
+            // running and announce appUpdateAppliedElsewhere instead, so the
+            // Version row can offer a reload on the user's own terms.
+            const collateral = runScenario(true, false);
+            collateral.fire();
+            expect(collateral.reloadCalls).toBe(0);
+            expect(collateral.dispatched).toEqual(['appUpdateAppliedElsewhere']);
+
+            // sessionStorage denied (private mode): the baton can't be read, so
+            // there is no way to tell initiator from collateral — fall back to
+            // the pre-existing reload-on-update behavior rather than stranding
+            // the tab that just tapped "Update available" with nothing happening.
+            const denied = runScenario(true, false, true);
+            denied.fire();
+            expect(denied.reloadCalls).toBe(1);
+            expect(denied.dispatched).toEqual(['appUpdateApplied']);
         });
     });
 
@@ -697,7 +757,9 @@ describe('mobile update cue — src/main.js wiring', () => {
         it('paintAboutVersionUpdateCue mounts a .settingsAboutUpdatePill when hasPendingUpdate() is true', () => {
             const fnIdx = aboutVersionCue.indexOf('function paintAboutVersionUpdateCue');
             expect(fnIdx).toBeGreaterThan(-1);
-            const fnSlice = aboutVersionCue.slice(fnIdx, fnIdx + 2000);
+            // Wide enough to reach past the "applied in another tab" branch
+            // that now precedes the hasPendingUpdate() one.
+            const fnSlice = aboutVersionCue.slice(fnIdx, fnIdx + 4000);
             expect(fnSlice).toMatch(/hasPendingUpdate\(\s*\)/);
             expect(fnSlice).toMatch(/['"]settingsAboutUpdatePill['"]/);
             // The pill must call applyPendingUpdate on click (the same
@@ -754,6 +816,7 @@ describe('mobile update cue — src/main.js wiring', () => {
             let applyCalls = 0;
             const factory = new Function(
                 'document', 'versionRow', 'hasPendingUpdate', 'applyPendingUpdate',
+                'updateAppliedElsewhere', 'appReloader', 'cueRow',
                 body
             );
 
@@ -765,7 +828,7 @@ describe('mobile update cue — src/main.js wiring', () => {
             row.appendChild(pill);
 
             // First call with pending=true → pill mounts.
-            factory(document, row, () => pendingUpdate, () => { applyCalls++; });
+            factory(document, row, () => pendingUpdate, () => { applyCalls++; }, false, () => {}, null);
             const updatePill = row.querySelector('.settingsAboutUpdatePill');
             expect(updatePill).not.toBeNull();
             expect(row.classList.contains('hasUpdate')).toBe(true);
@@ -778,12 +841,12 @@ describe('mobile update cue — src/main.js wiring', () => {
             // Re-running with pending=true must NOT mount a second pill
             // (idempotent — safe to call from both initial render and the
             // event handler).
-            factory(document, row, () => pendingUpdate, () => { applyCalls++; });
+            factory(document, row, () => pendingUpdate, () => { applyCalls++; }, false, () => {}, null);
             expect(row.querySelectorAll('.settingsAboutUpdatePill').length).toBe(1);
 
             // Flipping pending=false removes the pill and clears the class.
             pendingUpdate = false;
-            factory(document, row, () => pendingUpdate, () => { applyCalls++; });
+            factory(document, row, () => pendingUpdate, () => { applyCalls++; }, false, () => {}, null);
             expect(row.querySelector('.settingsAboutUpdatePill')).toBeNull();
             expect(row.classList.contains('hasUpdate')).toBe(false);
         });
@@ -808,10 +871,11 @@ describe('mobile update cue — src/main.js wiring', () => {
             }
             const factory = new Function(
                 'document', 'versionRow', 'hasPendingUpdate', 'applyPendingUpdate',
+                'updateAppliedElsewhere', 'appReloader', 'cueRow',
                 body
             );
-            expect(() => factory(document, null, () => true, () => {})).not.toThrow();
-            expect(() => factory(document, undefined, () => false, () => {})).not.toThrow();
+            expect(() => factory(document, null, () => true, () => {}, false, () => {}, null)).not.toThrow();
+            expect(() => factory(document, undefined, () => false, () => {}, false, () => {}, null)).not.toThrow();
         });
     });
 });
@@ -844,5 +908,215 @@ describe('mobile update cue — src/style.css', () => {
         expect(css).toMatch(
             /#drawerSettingsBtn\.hasUpdate\s+\.drawerSettingsBtnUpdateDot\s*\{[^}]*display:\s*block/
         );
+    });
+});
+
+
+// ── COLLATERAL-TAB GUARD ──
+// Applying a pending worker in one desktop tab used to hard-reload every other
+// open tab: the new worker's clients.claim() fires controllerchange in all
+// clients and index.js reloaded unconditionally. The fix is a per-tab
+// sessionStorage baton — applyPendingUpdate() stamps it, the controllerchange
+// handler consumes it, and only the stamped tab reloads. Every other tab keeps
+// running its already-loaded bundle (safe: the shell is one webpack bundle
+// fetched at boot, so an old page under the new worker makes no further
+// build-critical fetches) and surfaces a "reload to finish" cue instead.
+describe('collateral-tab reload guard — the initiator baton', () => {
+    const modals = read('modals.js');
+    const index = read('index.js');
+    const main = read('main.js');
+    const aboutVersionCue = read('aboutVersionCue.js');
+
+    describe('the shared key', () => {
+        it('modals.js exports SW_UPDATE_INITIATOR_KEY as a sessionStorage key', () => {
+            expect(modals).toMatch(
+                /export const SW_UPDATE_INITIATOR_KEY\s*=\s*['"]todoapp_swUpdateInitiator['"]/
+            );
+        });
+
+        it('index.js imports the key from modals.js rather than re-typing the literal', () => {
+            // A drifted literal would silently revert the guard to
+            // reload-everything — the exact bug this pins.
+            const importMatch = index.match(
+                /import\s*\{([\s\S]*?)\}\s*from\s*['"]\.\/modals\.js['"]/
+            );
+            expect(importMatch).not.toBeNull();
+            expect(importMatch[1]).toMatch(/SW_UPDATE_INITIATOR_KEY/);
+        });
+
+        it('uses sessionStorage, not localStorage, so the flag is per-tab', () => {
+            // localStorage is shared across tabs — every tab would read the
+            // flag and claim to be the initiator, restoring the old behavior.
+            expect(modals).toMatch(/sessionStorage\.setItem\(\s*SW_UPDATE_INITIATOR_KEY/);
+            expect(modals).not.toMatch(/localStorage\.[a-zA-Z]+\(\s*SW_UPDATE_INITIATOR_KEY/);
+            expect(index).not.toMatch(/localStorage\.[a-zA-Z]+\(\s*SW_UPDATE_INITIATOR_KEY/);
+        });
+
+        it('index.js clears a stale flag on boot', () => {
+            // An update requested but never activated (tab reloaded or closed
+            // first) would leave this tab claiming the NEXT controllerchange.
+            expect(index).toMatch(/sessionStorage\.removeItem\(\s*SW_UPDATE_INITIATOR_KEY\s*\)/);
+        });
+    });
+
+    describe('runtime behavior — applyPendingUpdate stamps the baton', () => {
+        function liftApplyPendingUpdate() {
+            const idx = modals.indexOf('export function applyPendingUpdate');
+            expect(idx).toBeGreaterThan(-1);
+            const braceStart = modals.indexOf('{', idx);
+            let depth = 0;
+            for (let i = braceStart; i < modals.length; i++) {
+                if (modals[i] === '{') depth++;
+                else if (modals[i] === '}') {
+                    depth--;
+                    if (depth === 0) return modals.slice(braceStart + 1, i);
+                }
+            }
+            return undefined;
+        }
+
+        function run(registration, storageDenied) {
+            const calls = [];
+            const fakeSessionStorage = {
+                setItem: (key, value) => {
+                    if (storageDenied) throw new Error('storage denied');
+                    calls.push('setItem:' + key + '=' + value);
+                },
+            };
+            const fakeWindow = { location: { reload: () => { calls.push('reload'); } } };
+            const body = liftApplyPendingUpdate();
+            expect(body).toBeDefined();
+            const factory = new Function(
+                'pendingUpdateRegistration', 'sessionStorage', 'SW_UPDATE_INITIATOR_KEY', 'window',
+                body
+            );
+            const returned = factory(
+                registration, fakeSessionStorage, 'todoapp_swUpdateInitiator', fakeWindow
+            );
+            return { calls, returned };
+        }
+
+        it('stamps the flag BEFORE posting SKIP_WAITING', () => {
+            // Order matters: the worker can activate the instant it receives
+            // the message, so a flag written afterwards could lose the race
+            // against its own controllerchange.
+            const posted = [];
+            const registration = {
+                waiting: { postMessage: (msg) => { posted.push(msg.type); } },
+                installing: null,
+            };
+            const { calls, returned } = run(registration);
+            expect(returned).toBe(true);
+            expect(posted).toEqual(['SKIP_WAITING']);
+            expect(calls).toEqual(['setItem:todoapp_swUpdateInitiator=1']);
+        });
+
+        it('keeps its boolean return contract when nothing is pending', () => {
+            // claudeSheet.js's Runs-tab reload nudge branches on this return
+            // to clear a stale cue, so it must stay false-on-nothing-pending.
+            const { calls, returned } = run(null);
+            expect(returned).toBe(false);
+            expect(calls).toEqual([]);
+        });
+
+        it('still reloads (and returns true) when there is no worker to message', () => {
+            const { calls, returned } = run({ waiting: null, installing: null });
+            expect(returned).toBe(true);
+            expect(calls).toEqual(['reload']);
+        });
+
+        it('survives sessionStorage being denied and still posts SKIP_WAITING', () => {
+            const posted = [];
+            const registration = {
+                waiting: { postMessage: (msg) => { posted.push(msg.type); } },
+                installing: null,
+            };
+            const { returned } = run(registration, true);
+            expect(returned).toBe(true);
+            expect(posted).toEqual(['SKIP_WAITING']);
+        });
+    });
+
+    describe('aboutVersionCue.js — the "reload to finish" state', () => {
+        it('subscribes to appUpdateAppliedElsewhere at module scope', () => {
+            expect(aboutVersionCue).toMatch(
+                /document\.addEventListener\(\s*['"]appUpdateAppliedElsewhere['"]/
+            );
+        });
+
+        it('takes main.js\'s requestAppReload by registration, not by importing main.js', () => {
+            // The collateral reload is a plain splash-wrapped reload, NOT
+            // applyPendingUpdate: the new worker is already active, so there is
+            // no waiting worker left to send skipWaiting to. main.js hands the
+            // function over at bootstrap (the setLocateTabSwitch idiom) so this
+            // leaf never imports the heavy entry — a static import would form a
+            // cycle and drag main's bootstrap into every test that mounts the
+            // Settings modal in isolation.
+            expect(aboutVersionCue).toMatch(/export function setAppReloader\s*\(/);
+            expect(aboutVersionCue).not.toMatch(/from\s*['"]\.\/main\.js['"]/);
+            expect(main).toMatch(
+                /import\s*\{[^}]*setAppReloader[^}]*\}\s*from\s*['"]\.\/aboutVersionCue\.js['"]/
+            );
+            expect(main).toMatch(/setAppReloader\(\s*requestAppReload\s*\)/);
+        });
+
+        it('paints a reload pill that calls requestAppReload, replacing any tap-to-apply pill', () => {
+            // Lift the paint body and run it in the elsewhere state against a
+            // row that already carries the "Update available" pill — the old
+            // pill's click would message a worker that no longer exists, so it
+            // must be swapped out rather than left in place.
+            const idx = aboutVersionCue.indexOf('function paintAboutVersionUpdateCue');
+            expect(idx).toBeGreaterThan(-1);
+            const braceStart = aboutVersionCue.indexOf('{', idx);
+            let depth = 0;
+            let body;
+            for (let i = braceStart; i < aboutVersionCue.length; i++) {
+                if (aboutVersionCue[i] === '{') depth++;
+                else if (aboutVersionCue[i] === '}') {
+                    depth--;
+                    if (depth === 0) {
+                        body = aboutVersionCue.slice(braceStart + 1, i);
+                        break;
+                    }
+                }
+            }
+            expect(body).toBeDefined();
+
+            const factory = new Function(
+                'document', 'versionRow', 'hasPendingUpdate', 'applyPendingUpdate',
+                'updateAppliedElsewhere', 'appReloader', 'cueRow',
+                body
+            );
+
+            const row = document.createElement('div');
+            row.className = 'drawerInfoRow';
+            let applyCalls = 0;
+            let reloadCalls = 0;
+
+            // Start in the ordinary pending state so a tap-to-apply pill exists.
+            factory(document, row, () => true, () => { applyCalls++; }, false, () => { reloadCalls++; }, null);
+            expect(row.querySelectorAll('.settingsAboutUpdatePill').length).toBe(1);
+
+            // Another tab applied the update → repaint in the elsewhere state.
+            factory(document, row, () => true, () => { applyCalls++; }, true, () => { reloadCalls++; }, row);
+            const pills = row.querySelectorAll('.settingsAboutUpdatePill');
+            expect(pills.length).toBe(1);
+            expect(row.classList.contains('hasUpdate')).toBe(true);
+            const pill = pills[0];
+            expect(pill.tagName).toBe('BUTTON');
+            expect(pill.textContent.toLowerCase()).toMatch(/reload/);
+
+            // Clicking reloads; it must NOT run the skipWaiting apply path.
+            pill.click();
+            expect(reloadCalls).toBe(1);
+            expect(applyCalls).toBe(0);
+
+            // Idempotent: repainting leaves exactly one pill, still wired.
+            factory(document, row, () => true, () => { applyCalls++; }, true, () => { reloadCalls++; }, row);
+            expect(row.querySelectorAll('.settingsAboutUpdatePill').length).toBe(1);
+            row.querySelector('.settingsAboutUpdatePill').click();
+            expect(reloadCalls).toBe(2);
+            expect(applyCalls).toBe(0);
+        });
     });
 });

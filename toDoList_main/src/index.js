@@ -5,6 +5,7 @@ import './style.css';
 import './manifest.webmanifest';
 import './favicon.svg';
 import { component, restoreFromStorage, notifyUpdateAvailable } from './main.js';
+import { SW_UPDATE_INITIATOR_KEY } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
@@ -164,6 +165,16 @@ export function requestUpdateCheck() {
 }
 document.addEventListener('requestSwUpdateCheck', requestUpdateCheck);
 
+// Drop any initiator baton left over from an earlier life of this tab. An
+// update that was requested but never activated — the user reloaded or the tab
+// was restored before the worker took over — would otherwise leave this tab
+// claiming to have initiated the NEXT controllerchange, and reloading on
+// someone else's update is precisely what the baton exists to prevent. Runs at
+// module scope so it lands before any listener below can fire.
+try {
+    sessionStorage.removeItem(SW_UPDATE_INITIATOR_KEY);
+} catch (_) { /* storage denied (private mode) */ }
+
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', function () {
         navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (registration) {
@@ -208,6 +219,32 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.addEventListener('controllerchange', function () {
             if (!hadControllerAtLoad) return;
             if (reloading) return;
+
+            // clients.claim() fires this in EVERY open client, not just the one
+            // that asked for the update, so only the tab holding the initiator
+            // baton (stamped by applyPendingUpdate in modals.js) may reload.
+            // When sessionStorage is unreadable there is no way to tell the two
+            // apart, so fall back to reloading — the pre-existing behavior —
+            // rather than stranding the tab that just tapped "Update available".
+            let initiated = true;
+            try {
+                initiated = sessionStorage.getItem(SW_UPDATE_INITIATOR_KEY) === '1';
+                if (initiated) sessionStorage.removeItem(SW_UPDATE_INITIATOR_KEY);
+            } catch (_) { /* storage denied (private mode) */ }
+
+            if (!initiated) {
+                // Collateral tab: it keeps running the bundle it already has.
+                // That is safe because the shell is a single webpack bundle
+                // fully loaded at boot with cache-first assets, so an old page
+                // under the new worker makes no further build-critical fetches;
+                // its own next reload — user-initiated, via the Version row cue
+                // or otherwise — boots the new build. Announce the takeover so
+                // that cue can offer the reload on the user's terms instead of
+                // yanking focus (and uncommitted typing) out from under them.
+                document.dispatchEvent(new CustomEvent('appUpdateAppliedElsewhere'));
+                return;
+            }
+
             reloading = true;
             // The new build is now controlling the page, so any "update ready"
             // nudge is obsolete. Announce that the update applied before we
