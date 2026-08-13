@@ -1191,3 +1191,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/index.js`, `toDoList_main/src/aboutVersionCue.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: f3cc97e2-5e4a-4b04-ab3a-b55fe74fc603 -->
+
+- [ ] **[MEDIUM]** Pin filter, generate, discuss, file and status controls to the bottom of the desktop entry pane
+  - Type: feature
+  - Description: In the desktop detail pane (`#descDetailPane`, hosting `#descSibling`), every control renders in a top cluster and the description editor is left a sliver while the bottom two-thirds of the pane sits empty. Reflow the pane so the editor breathes: the phase tracker and the WRITE/PASTE/GENERATE authoring strip stay pinned at the top as mode context, the description editor block becomes the flex-fill middle, and a new footer wrapper (`descPanelFooter`) pins the remaining sections to the pane floor in their current DOM order — the `.descGenerateBody` (filter-files input + Generate + Discuss actions), the FILE readout block (`.descFileReadout*`), and the manual status control (`buildManualStatusControl` from `todoStatus.js`). Mechanically: whichever element currently stacks these sections vertically inside the detail pane gets a flex-column treatment, the editor block takes `flex: 1 1 auto; min-height: 0` with the textarea filling its wrapper's height, and the footer wrapper takes `margin-top: auto` — apply `min-height: 0` up the ancestor chain wherever the flex-fill needs it, per the house pattern in the Structure view's grid.
+  - Behavior:
+    - Section contents, controls, and behavior are unchanged — this is a placement-only reflow. The footer keeps today's visual sizes and ordering (filter row, then actions row, then FILE, then status), just docked.
+    - `descPanelTopAnchor` insertion semantics must survive: the asking/stuck/dispatch/review/mockup blocks that `panel.insertBefore(..., descPanelTopAnchor(panel))` mounts must keep landing above the editor region, never inside or below the footer. If the anchor's current reference node ends up inside the footer wrapper, re-point the anchor rather than reordering the dynamic blocks.
+    - Give the editor block a sane floor (`min-height` around 96px) so a short window compresses the pane into its existing scroll behavior instead of crushing the textarea to zero.
+  - Implementation notes: desktop pane selectors only — the mobile description editor sheets are a separate surface and must not change. The description textarea keeps its 16px font-size (Vitest-enforced iOS rule); only sizing/flex properties change. All styling in `style.css` as classes.
+  - Out of scope: the compressed one-row toolbar and collapsible drawer variants; any change to the phase tracker or authoring strip placement; Generate/Discuss/filter/status behavior; mobile sheets; `main.js`; the chat pane in `claudeSheet.js`.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4217bd87-494e-4c10-9ae8-dbf27853bfee -->
