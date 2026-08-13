@@ -7,7 +7,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // `clean`). These tests mock inject.js (dispatchComplexityScan / getCachedTargets)
 // and listLogic (loadComplexityScans) and drive the poll on fake timers, so the
 // dispatch payload, the tree-wide single-scan guard, the settle, and both failure
-// paths are exercised end to end.
+// paths are exercised end to end. The nest that a settled chip opens is covered
+// separately in complexityHotspotsNest.test.js.
 
 let dispatchResult = { ok: true };
 let loadResult = { ok: true, rows: [] };
@@ -18,11 +19,22 @@ const loadComplexityScans = vi.fn(function () { return Promise.resolve(loadResul
 vi.mock('../src/inject.js', () => ({
     getCachedTargets: () => [{ repo: 'o/r', file_path: 'TODO.md', id: 't1' }],
     dispatchComplexityScan: (...a) => dispatchComplexityScan(...a),
+    fetchActiveRuns: () => Promise.resolve({ ok: true, active: false }),
+    isInjectConfigured: () => true,
+}));
+
+vi.mock('../src/shipEntry.js', () => ({
+    shipEntryForTodo: () => Promise.resolve({ ok: true, entryId: 'e1' }),
+}));
+
+vi.mock('../src/codeViewer.js', () => ({
+    renderCodeViewer: () => null,
 }));
 
 vi.mock('../src/listLogic.js', () => ({
     listLogic: {
         loadComplexityScans: (...a) => loadComplexityScans(...a),
+        markComplexityHotspotPushed: () => Promise.resolve({ ok: true }),
     },
 }));
 
@@ -136,18 +148,21 @@ describe('states derived from the stored rows', () => {
         expect(b.chip.dataset.state).toBe('clean');
     });
 
-    it('leaves badge and clean chips inert — Part 1 has no expansion', () => {
+    it('makes badge and clean chips the nest toggle rather than a second scan', () => {
         const a = mountChip('toDoList_main/src/one.js', 'one.js');
         const b = mountChip('toDoList_main/src/two.js', 'two.js');
         setComplexityScans('o/r', [
             scanRow('toDoList_main/src/one.js'),
             scanRow('toDoList_main/src/two.js', { hotspots: [] }),
         ]);
+        expect(a.chip.disabled).toBe(false);
+        expect(b.chip.disabled).toBe(false);
         a.chip.click();
         b.chip.click();
-        expect(a.chip.disabled).toBe(true);
-        expect(b.chip.disabled).toBe(true);
+        // A settled chip never re-dispatches — that is the nest header's `rescan`.
         expect(dispatchComplexityScan).not.toHaveBeenCalled();
+        expect(a.chip.getAttribute('aria-expanded')).toBe('true');
+        expect(b.chip.getAttribute('aria-expanded')).toBe('true');
     });
 
     it('never reads another repo’s stored rows', () => {
@@ -221,9 +236,9 @@ describe('polling for the stored row', () => {
         const { chip } = mountChip('toDoList_main/src/taskSort.js', 'taskSort.js');
         // A file that already carries a row: only a NEWER scanned_at (or a
         // different sha) settles the re-scan, never the row it started from.
-        // Part 1 offers no re-scan affordance on an already-scanned file (that is
-        // Part 2's expanded header), so the badge's inert state is forced open
-        // here to reach the baseline comparison the poll is built around.
+        // Driven through the chip's own `scan` state rather than the nest's
+        // `rescan` chip, so this stays a pin on the poll's baseline comparison
+        // alone (the nest's rescan path has its own tests).
         setComplexityScans('o/r', [stale]);
         loadResult = { ok: true, rows: [stale] };
         chip.dataset.state = 'scan';

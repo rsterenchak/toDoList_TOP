@@ -1812,6 +1812,70 @@ export const listLogic = (function () {
     }
 
 
+    // Append a hotspot `name` to a stored complexity-scan row's `pushed` array —
+    // the Code lens's tighten / relax dial push, which retires that hotspot once
+    // its entry has shipped so the file's badge count drops and the row dims.
+    // Mirrors dismissRefactorCandidate exactly, swapping `refactor_scans` →
+    // `complexity_scans`, `dismissed` → `pushed`, and `target_file` →
+    // `file_path`; like that table, `complexity_scans` is keyed on `user_id`
+    // directly (the inject_targets pattern, NOT the todos table), so `user_id` is
+    // filtered explicitly on both the read and the write. Read-modify-write and
+    // idempotent: a name already in `pushed` writes nothing. Returns
+    // { ok, error? }.
+    // @category: user-mutation-only
+    async function markComplexityHotspotPushed(repo, filePath, name) {
+        if (!repo || !filePath || !name) {
+            return { ok: false, error: 'Missing argument.' };
+        }
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const userId = session.user.id;
+            const readResult = await Promise.resolve(
+                supabase
+                    .from('complexity_scans')
+                    .select('pushed')
+                    .eq('user_id', userId)
+                    .eq('repo', repo)
+                    .eq('file_path', filePath)
+                    .limit(1)
+            );
+            if (readResult && readResult.error) {
+                return {
+                    ok: false,
+                    error: (readResult.error && readResult.error.message) || 'Update failed.',
+                };
+            }
+            const rows = (readResult && readResult.data) || [];
+            const current = rows.length && Array.isArray(rows[0].pushed)
+                ? rows[0].pushed
+                : [];
+            if (current.indexOf(name) !== -1) return { ok: true };
+            const next = current.concat([name]);
+            const result = await Promise.resolve(
+                supabase
+                    .from('complexity_scans')
+                    .update({ pushed: next })
+                    .eq('user_id', userId)
+                    .eq('repo', repo)
+                    .eq('file_path', filePath)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Update failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Update failed.' };
+        }
+    }
+
+
     // Stamp an injected entry's id onto the source todo so its row's run-status
     // glyph lights. The Agent board's dispatch path injects a drafted entry into
     // the routed TODO.md but tracks state only on the agent_queue row; without
@@ -4225,6 +4289,7 @@ export const listLogic = (function () {
         loadMonthlyUsage,
         localMonthStartISO,
         dismissRefactorCandidate,
+        markComplexityHotspotPushed,
         stampTodoEntryId,
         markEntryReviewed,
         markDraftSeen,

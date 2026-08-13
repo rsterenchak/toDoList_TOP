@@ -6793,19 +6793,28 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* The settled badge: open hotspots read in the warning colour, a clean file
-   recedes. Both are inert in Part 1 — expansion arrives in Part 2 — so neither
-   takes a hover treatment. */
+   recedes. Both are the hotspot nest's disclosure control, so both take a hover
+   treatment and read as pressed while their nest is open. */
 .complexityChip[data-state="count"] {
   color: var(--text-warning);
   border-color: var(--text-warning);
-  cursor: default;
 }
 
 .complexityChip[data-state="clean"] {
   color: var(--text-muted);
   border-color: var(--border-dim);
   opacity: 0.65;
-  cursor: default;
+}
+
+.complexityChip[data-state="count"]:hover,
+.complexityChip[data-state="clean"]:hover {
+  background: var(--bg-hover);
+  opacity: 1;
+}
+
+.complexityChip[aria-expanded="true"] {
+  background: var(--bg-hover);
+  opacity: 1;
 }
 
 .complexityChip[data-state="error"] {
@@ -6827,6 +6836,188 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   border-top-color: var(--accent-text);
   animation: spin 0.7s linear infinite;
   pointer-events: none;
+}
+
+/* ── Code-lens hotspot nest ───────────────────────────────────────────────
+   The block that opens inside .structureFileWrap, directly under the file row,
+   when a settled complexity chip is tapped (complexityHotspots.js). Header row
+   first — scanned age on the left, `rescan` on the right — then one row per
+   hotspot, each of which can open an action row carrying the tighten / relax
+   dials and a line-span jump chip. Indent rides the row's own --structure-depth
+   plus one level, so the nest sits under its file rather than at the tree edge. */
+.complexityNest {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 8px 6px calc(18px + var(--structure-depth, 0) * 14px);
+}
+
+/* Guard: these rules declare `display`, which outranks the UA stylesheet's
+   `[hidden] { display: none }` — the trap the .structure* family has hit before. */
+.complexityNest[hidden],
+.complexityNestHeader[hidden],
+.complexityHotspotRow[hidden],
+.complexityActionRow[hidden],
+.complexityActionChips[hidden],
+.complexityNestChip[hidden] { display: none; }
+
+.complexityNestHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 0 4px;
+}
+
+/* Eyebrow treatment, matching the refactor card's scanned-age meta. */
+.complexityNestAge {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* The transient line a no-change rescan leaves behind — quieter still, because
+   nothing happened. */
+.complexityNestAge--note {
+  color: var(--text-secondary, var(--text-muted));
+  font-style: italic;
+  letter-spacing: 0.04em;
+}
+
+/* Shared chip base for everything inside the nest: rescan, the time readout,
+   the pushed marker, both dials, and the jump chip. */
+.complexityNestChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+button.complexityNestChip { cursor: pointer; }
+
+button.complexityNestChip:hover:not(:disabled) {
+  color: var(--text-secondary);
+  border-color: var(--border-bright);
+  background: var(--bg-hover);
+}
+
+button.complexityNestChip:disabled {
+  cursor: default;
+  opacity: 0.4;
+}
+
+.complexityNestChip:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.complexityHotspotRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 6px 5px 8px;
+  border: none;
+  /* The selection marker is a 2px accent bar; every row reserves its width so
+     opening one doesn't shift the others sideways. */
+  border-left: 2px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.complexityHotspotRow:hover:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.complexityHotspotRow--open {
+  border-left-color: var(--accent-text);
+  background: var(--bg-hover);
+}
+
+/* Already pushed: its entry is in TODO.md and there is nothing left to dial. */
+.complexityHotspotRow--pushed {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.complexityHotspotName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.complexityHotspotTime {
+  color: var(--text-warning);
+  border-color: var(--text-warning);
+}
+
+.complexityHotspotPushed {
+  color: var(--text-muted);
+  border-color: var(--border-dim);
+}
+
+.complexityActionRow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 2px 6px 8px 10px;
+}
+
+.complexityActionChips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.complexityDialChip--tighten:not(:disabled) {
+  color: var(--accent-text);
+  border-color: var(--accent-text);
+}
+
+.complexityDialChip--relax:not(:disabled) {
+  color: var(--text-secondary);
+}
+
+.complexityJumpChip {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Quiet inline outcomes — never a toast. */
+.complexityActionNote {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-danger);
+}
+
+.complexityActionShipped {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--accent-text);
+  padding: 2px 6px 8px 10px;
 }
 
 /* Brief highlight when "Find in code" reveals a file row in the Code lens. */
