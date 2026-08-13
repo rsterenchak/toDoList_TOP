@@ -1218,7 +1218,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-13
   <!-- id: 4889080e-815e-498c-b09c-695064a5731a -->
 
-- [ ] **[MEDIUM]** Fix review entry view growing past the pane instead of scrolling in place
+- [x] **[MEDIUM]** Fix review entry view growing past the pane instead of scrolling in place
   - Type: bug
   - Description: In the review stage, the read-only entry view (`descReviewEntryView`) grows to its full content height instead of clamping to the available middle region, pushing the docked footer (Discuss, FILE, MANUAL STATUS) below the fold — long entries force a pane scroll to reach the status control, defeating the docked-footer reflow. Root cause is a broken flex-clamp chain: `flex: 1 1 auto` only bounds a child when every ancestor between it and the height-bounded pane carries `min-height: 0` (flex items default to `min-height: auto`, which lets content win), and the editor stage never exposed the gap because a textarea has intrinsic height regardless of content while the new div does not. Fix the chain end to end: the pane's stacking container must be height-bounded by its grid/flex track with `min-height: 0`; `descReviewEntryView` takes `flex: 1 1 auto; min-height: 0` (keep the ~96px floor) with `overflow: hidden` and an internal column layout; `.descReviewEntryViewText` becomes the sole scroller — `flex: 1; min-height: 0; overflow-y: auto; -webkit-overflow-scrolling: touch` — with the eyebrow row fixed above it. Result: WHAT CHANGED card, actions, eyebrow, and the full footer are all visible without scrolling the pane at any entry length; only the entry text scrolls.
   - Behavior:
@@ -1227,5 +1227,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Implementation notes: expected to be a `style.css`-only fix following the house pattern (`.structureTree`'s `min-height: 0; overflow-y: auto` row in the Structure grid); touch `toDoRow.js` only if the block genuinely lacks the internal wrapper the eyebrow/text split needs. Desktop detail pane selectors only; mobile sheets untouched.
   - Out of scope: footer composition or ordering; review card and action row; entry view content or read-only semantics; other stages' behavior beyond the no-regression check; mobile.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-13
   <!-- id: a0cfa3ae-33a3-468b-8308-b6ab4788ab6c -->
