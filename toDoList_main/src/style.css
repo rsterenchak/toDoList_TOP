@@ -12016,6 +12016,25 @@ body.row-dragging * { cursor: grabbing !important; }
   flex: 1 1 auto;
   min-height: 96px;
 }
+/* THE LINK THE CHAIN WAS MISSING. `flex: 1 1 auto` on the block above only bounds it
+   if this panel can hand height BACK to the pane, and the rule above sets
+   `flex: 1 0 auto` — shrink 0, so the panel grows to its content and the block grows
+   with it, whatever its own children declare. The editor stage never exposed the gap:
+   a textarea has an intrinsic height regardless of how much text it holds, so the
+   panel's content never outgrew the pane; the read-only div has no such height, so a
+   long entry pushed the docked footer below the fold and made the PANE the scroller.
+   Granting shrink is scoped to review (`:has` the mounted block, and only while it is
+   actually shown) rather than applied to the panel outright, because WRITE / PASTE /
+   GENERATE stack blocks with no internal scrollers — letting the panel shrink under
+   them would crush their content instead of scrolling the pane, which is the behavior
+   they render with today. In review every sibling here (WHAT CHANGED card, action
+   row, footer) is a plain block whose automatic minimum size is its own content, so
+   the shrink lands entirely on the one child that declares a floor and a scroller:
+   the entry view, down to its 96px. */
+#descDetailPane #descSibling:has(> .descReviewEntryView:not([hidden])) {
+  flex-shrink: 1;
+  min-height: 0;
+}
 /* Pin the footer stack to the pane floor. The textarea's `flex-grow` already
    consumes the free space while it is visible (auto margins are resolved after
    flexible lengths), so this governs the cases where the entry region is hidden —
@@ -13622,6 +13641,12 @@ body.row-dragging * { cursor: grabbing !important; }
     display: flex;
     flex-direction: column;
     min-width: 0;
+    /* The head of the pane's height chain: a grid item's automatic minimum size is
+       its CONTENT, so without this a tall panel inflates the row track and the pane
+       grows with it — `overflow-y: auto` below then never engages, because there is
+       no bound to overflow. Pinned to 0 so the track holds the pane at the visible
+       height and everything inside divides a real number. */
+    min-height: 0;
     overflow-y: auto;
     border-left: 0.5px solid var(--border-mid);
     background: var(--bg-base);
@@ -20567,6 +20592,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      would let a long entry grow the block instead of scrolling its text region. The
      pane rule replaces this 0 with the block's 96px floor. */
   min-height: 0;
+  /* The frame clips; the text region inside it scrolls. Without this the block's own
+     content can spill past the height the pane hands it — the eyebrow and the text
+     region are laid out in a column, and only the text region owns a scroller. */
+  overflow: hidden;
 }
 /* Re-assert the hidden state explicitly: the block sets an author-level `display`,
    which outranks the UA `[hidden] { display: none }` rule — the same hardening every
@@ -20586,9 +20615,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    shipped entry reads exactly as it did while it was being authored. Scrolls in
    place past the block's share of the pane rather than pushing the footer down. */
 .descReviewEntryViewText {
-  flex: 1 1 auto;
+  /* Basis 0, not auto: the region grows from nothing into whatever the block has
+     left under the eyebrow, instead of starting at its full content height and
+     relying on shrink to claw it back. `min-height: 0` is what lets it be smaller
+     than the entry it holds at all — this is the sole scroller in the block. */
+  flex: 1 1 0;
   min-height: 0;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
   line-height: 1.5;
