@@ -20,7 +20,8 @@
 // flow — fixing forward as a brand-new entry with a fresh id.
 //
 // The sheet also wears a SECOND identity: possession. Tapping the ghost chip in
-// the composer chip area hands the whole surface to the ghost — the work
+// the composer chip area (mobile) or clicking the wandering companion (desktop,
+// where the chip is hidden) hands the whole surface to the ghost — the work
 // thread hides with its state intact, a ghost thread takes its place, and the
 // composer goes ghostly. Possession is presence, not agency: it carries no
 // model picker, no attachments and no task scope, and every byte of it flows
@@ -97,9 +98,11 @@ const SWIPE_CLOSE_VELOCITY_PX_PER_MS = 0.5;
 // standalone modal used, so the thread reads the same after the move.
 const GHOST_THREAD_LIMIT = 20;
 // Fired on the document whenever possession is entered or left, so surfaces
-// outside the sheet can react without importing it. Nothing listens today — the
-// chip is the ghost's only door — but the announcement stays the seam any future
-// outside surface reads instead of tracking the sheet's state itself.
+// outside the sheet can react without importing it. main.js listens on desktop
+// and parks the wandering companion on the pane's rim for as long as the ghost
+// has it — the seam exists so the sprite reads the state rather than tracking
+// the sheet, and follows a flip from any door (the chip, the sprite, the RUNS
+// tab, a sheet close).
 export const POSSESSION_EVENT = 'claudeGhostPossession';
 // The chip that stands in for the model picker and the attach rail while
 // possessed — the composer says who is listening instead of offering tools the
@@ -437,6 +440,15 @@ export function openClaudeSheet(options) {
     refreshWorkspaceRepos();
 
     if (wantPossessed) {
+        // Desktop possession arrives from the companion, and the pane the ghost
+        // is about to wear may be collapsed — uncollapse it the same way the
+        // other programmatic entry points do (openChatWithTask, openChatWithSeed)
+        // or the flip would happen behind a shut pane. Mobile needs none of
+        // this: the sheet itself was just opened above.
+        if (window.innerWidth > MOBILE_MAX_WIDTH) {
+            document.body.classList.remove('chatPaneCollapsed');
+            setChatPaneCollapsed(false);
+        }
         // The ghost only ever wears the CHAT tab — there is nothing for it to
         // say over a run list.
         setActiveTab('chat');
@@ -2467,8 +2479,9 @@ function buildChatView() {
 
     // Selected-attachment chips — sit directly above the composer. The chip
     // area also holds the two permanent residents of possession: the ghost chip
-    // that toggles it (always visible, glowing while active) and the "the ghost
-    // is listening" chip that stands in for the attachment chips while it is.
+    // that toggles it (mobile's door, glowing while active; hidden on desktop,
+    // which possesses from the companion) and the "the ghost is listening" chip
+    // that stands in for the attachment chips while it is.
     const chips = document.createElement('div');
     chips.id = 'claudeAttachChips';
     chips.className = 'claudeAttachChips';
@@ -3302,7 +3315,9 @@ function emitPossessionChange() {
 // The ghost chip — the possession toggle, living in the composer chip area. It
 // wears the same committed sprite the desktop companion does (--ghost-sprite),
 // so the two surfaces can never fork the art, and it glows while the ghost has
-// the sheet.
+// the sheet. Built at every breakpoint but shown only on mobile: desktop
+// possesses by clicking the companion, and the stylesheet hides the chip there
+// so the pane at rest carries no ghost affordance at all.
 function buildGhostChip() {
     const chip = document.createElement('button');
     chip.id = 'claudeGhostChip';
