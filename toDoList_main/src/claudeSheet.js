@@ -20,8 +20,7 @@
 // flow — fixing forward as a brand-new entry with a fresh id.
 //
 // The sheet also wears a SECOND identity: possession. Tapping the ghost chip in
-// the composer chip area (or arriving from the mobile perch, which opens the
-// sheet already possessed) hands the whole surface to the ghost — the work
+// the composer chip area hands the whole surface to the ghost — the work
 // thread hides with its state intact, a ghost thread takes its place, and the
 // composer goes ghostly. Possession is presence, not agency: it carries no
 // model picker, no attachments and no task scope, and every byte of it flows
@@ -98,8 +97,9 @@ const SWIPE_CLOSE_VELOCITY_PX_PER_MS = 0.5;
 // standalone modal used, so the thread reads the same after the move.
 const GHOST_THREAD_LIMIT = 20;
 // Fired on the document whenever possession is entered or left, so surfaces
-// outside the sheet can react without importing it. The mobile perch listens
-// and holds the ghost still while it is wearing the sheet.
+// outside the sheet can react without importing it. Nothing listens today — the
+// chip is the ghost's only door — but the announcement stays the seam any future
+// outside surface reads instead of tracking the sheet's state itself.
 export const POSSESSION_EVENT = 'claudeGhostPossession';
 // The chip that stands in for the model picker and the attach rail while
 // possessed — the composer says who is listening instead of offering tools the
@@ -413,9 +413,9 @@ function refreshCoverageBadge() {
     }
 }
 
-// `options.possessed` opens the sheet with the ghost already wearing it — the
-// mobile perch's entry point. Omitted (the default, and what every existing
-// caller passes) the sheet opens on the work chat exactly as before; callers
+// `options.possessed` opens the sheet with the ghost already wearing it. Omitted
+// (the default, and what every existing caller passes) the sheet opens on the
+// work chat exactly as before; callers
 // that pass an event object land there too, since an Event carries no
 // `possessed` field.
 export function openClaudeSheet(options) {
@@ -441,7 +441,7 @@ export function openClaudeSheet(options) {
         // say over a run list.
         setActiveTab('chat');
         setPossessed(true);
-        // Idempotent (ghostHydrated gates it), so a perch tap against an
+        // Idempotent (ghostHydrated gates it), so a possessed-open against an
         // already-possessed sheet re-focuses rather than re-appending the
         // transcript.
         hydrateGhostThread();
@@ -3288,9 +3288,8 @@ function applyPossessionState() {
     }
 }
 
-// Announce the flip so surfaces outside the sheet can follow it (the mobile
-// perch stills its bob while the ghost is here). Fire-and-forget and guarded:
-// an environment without CustomEvent simply gets no announcement.
+// Announce the flip so surfaces outside the sheet can follow it. Fire-and-forget
+// and guarded: an environment without CustomEvent simply gets no announcement.
 function emitPossessionChange() {
     if (typeof document === 'undefined' || typeof CustomEvent !== 'function') return;
     try {
@@ -3301,9 +3300,9 @@ function emitPossessionChange() {
 }
 
 // The ghost chip — the possession toggle, living in the composer chip area. It
-// wears the same committed sprite the desktop companion and the mobile perch do
-// (--ghost-sprite), so the three surfaces can never fork the art, and it glows
-// while the ghost has the sheet.
+// wears the same committed sprite the desktop companion does (--ghost-sprite),
+// so the two surfaces can never fork the art, and it glows while the ghost has
+// the sheet.
 function buildGhostChip() {
     const chip = document.createElement('button');
     chip.id = 'claudeGhostChip';

@@ -77,11 +77,12 @@
      rendering is bit-for-bit unchanged. */
   --mobile-bottom-inset: min(env(safe-area-inset-bottom, 0px), 8px);
 
-  /* The ghost's one body. The desktop companion and the mobile perch render
-     the same pixel sprite, so the asset is named once here and both selectors
-     read it from this property — otherwise the two surfaces drift apart the
-     next time either one is restyled. Sized 48x56 natively; any box pointing
-     at it must keep that aspect and set image-rendering: pixelated. */
+  /* The ghost's one body. The desktop companion and the Claude sheet's
+     possession chip render the same pixel sprite, so the asset is named once
+     here and both selectors read it from this property — otherwise the two
+     surfaces drift apart the next time either one is restyled. Sized 48x56
+     natively; any box pointing at it must keep that aspect and set
+     image-rendering: pixelated. */
   --ghost-sprite: url('./assets/companion-ghost.svg');
 }
 
@@ -3543,8 +3544,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
    back is instant and lossless. */
 
 /* The possession toggle: the same committed pixel sprite the desktop companion
-   and the mobile perch wear (--ghost-sprite), so the three surfaces can't fork
-   the art. Dim at rest, lit and glowing while the ghost has the sheet. */
+   wears (--ghost-sprite), so the two surfaces can't fork the art. Dim at rest,
+   lit and glowing while the ghost has the sheet. */
 .claudeGhostChip {
   flex: 0 0 auto;
   width: 34px;
@@ -17001,9 +17002,10 @@ body.row-dragging * { cursor: grabbing !important; }
 
 /* Hide entirely on viewports that don't qualify for the companion. The JS
    gate prevents mounting on these viewports already; this is belt-and-braces
-   for flicker during resize across the breakpoint. Only the DESKTOP mount of
-   the talk surface is barred here — the mobile perch mounts the same bubble and
-   input on exactly these viewports, tagged .ghostTalkSurface--mobile. */
+   for flicker during resize across the breakpoint. The selectors stay scoped to
+   the DESKTOP mount because that is the only floating talk surface there is —
+   mobile speaks through the possessed Claude sheet, which these rules never
+   touch. */
 @media not all and (min-width: 1024px), (pointer: coarse) {
   .companion { display: none; }
   .companionHit { display: none; }
@@ -17034,93 +17036,6 @@ body.row-dragging * { cursor: grabbing !important; }
     opacity: 0.6;
   }
 }
-
-/* ── MOBILE GHOST PERCH ──
-   The swipe-summoned mobile ghost (mobileGhost.js). Docks in the bottom-LEFT
-   corner just above #mobileTabBar — the opposite corner from #claudeLauncher,
-   so the two never overlap and the ghost never reads as a second FAB. Desktop
-   never sees it: the perch is display:none outside the mobile breakpoint, and
-   the JS gate refuses to mount it there in the first place. */
-.mobileGhostPerch { display: none; }
-
-@media (max-width: 1023px) {
-  .mobileGhostPerch {
-    display: block;
-    position: fixed;
-    left: 14px;
-    /* Clears the bar's full height — --mobile-tab-h plus the home-indicator
-       clearance, the same pair #claudeLauncher uses — then lifts 10px clear of
-       its top edge so the perch sits above the tabs rather than on them. */
-    bottom: calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px) + 10px);
-    /* The sprite is 48x56 natively, so the box carries that aspect at the
-       perch's 34px width — a square box would stretch the pixel art. */
-    width: 34px;
-    height: 40px;
-    padding: 0;
-    border: none;
-    background: transparent;
-    /* Under the tab bar (49) so the summon reads as the ghost rising from
-       behind it. At rest the two boxes don't overlap, so nothing is covered. */
-    z-index: 48;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    /* Dismissed state: sunk behind the bar and untouchable. */
-    opacity: 0;
-    transform: translateY(56px);
-    pointer-events: none;
-    transition: opacity 0.2s ease-out, transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-
-  .mobileGhostPerch.is-visible {
-    opacity: 1;
-    transform: translateY(0);
-    pointer-events: auto;
-  }
-
-  /* The sprite is a separate element from the button because the rise and the
-     bob are both transforms — one box could only carry one of them. */
-  .mobileGhostSprite {
-    display: block;
-    width: 100%;
-    height: 100%;
-    /* Same body as the desktop companion — see --ghost-sprite. The perch box
-       already matches the sprite's aspect, so it fills edge to edge, and the
-       crispness declaration comes along with the art: scaled pixel art blurs
-       without it. */
-    background-image: var(--ghost-sprite);
-    background-repeat: no-repeat;
-    background-size: 100% 100%;
-    image-rendering: pixelated;
-    animation: mobileGhostBob 2.6s ease-in-out infinite;
-  }
-
-  /* Still while the ghost is possessing the Claude sheet — it holds its breath
-     to listen, and a bobbing perch under a sheet it is speaking through reads
-     as two ghosts rather than one. */
-  .mobileGhostPerch.is-still .mobileGhostSprite {
-    animation: none;
-  }
-}
-
-@keyframes mobileGhostBob {
-  0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-3px); }
-}
-
-/* Reduced motion: fade only. The rise and the bob are the parts that read as
-   motion; the cross-fade stays so the summon is still legible as a change. */
-@media (prefers-reduced-motion: reduce) {
-  .mobileGhostPerch,
-  .mobileGhostPerch.is-visible {
-    transform: none;
-    transition: opacity 0.2s ease-out;
-  }
-
-  .mobileGhostSprite {
-    animation: none;
-  }
-}
-
 
 /* ── IMPORT DROP OVERLAY ──
    Full-window dim while a file is being dragged over the app. Pointer events

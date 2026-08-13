@@ -6,12 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-12',
-        added: [
-            "The ghost can now take over the Claude sheet: tap the ghost chip above the composer to whisper to it there, and tapping the corner ghost on phones opens the sheet already in its hands.",
-        ],
         changed: [
             "The ghost now greets you when you open its speech bubble after a while away, and only picks up on its last answer if you were just talking to it.",
             "Tapping the corner ghost on phones now opens a large chat bubble holding your recent conversation, instead of a small floating one that crowded the list.",
+            "The swipe-up ghost above the phone tab bar is gone — the ghost chip in the Claude sheet is now the only way to whisper to it on mobile.",
         ],
         fixed: [
             "The ghost's speech bubble now grows upward as its answer arrives instead of covering the ghost and the ask box, and flips below the ghost when it is standing near the top of the screen.",

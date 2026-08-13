@@ -519,7 +519,7 @@ describe('possession — styling and wiring', () => {
     it('leaves no trace of the retired standalone modal', () => {
         expect(existsSync(resolve(srcDir, 'ghostModal.js'))).toBe(false);
         expect(existsSync(resolve(here, 'ghostModal.test.js'))).toBe(false);
-        ['claudeSheet.js', 'mobileGhost.js', 'ghostTalk.js', 'style.css'].forEach((file) => {
+        ['claudeSheet.js', 'ghostTalk.js', 'style.css'].forEach((file) => {
             expect(read(file)).not.toMatch(/ghostModal/);
         });
     });
