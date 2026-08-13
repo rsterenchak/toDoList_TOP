@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-12',
+        added: [
+            "Source files in the Structure tab's Code lens now carry a scan chip that measures the file's complexity, then turns into a badge counting the hotspots it found.",
+        ],
         changed: [
-            "Tapping the corner ghost on phones now opens a large chat bubble holding your recent conversation, instead of a small floating one that crowded the list.",
             "The swipe-up ghost above the phone tab bar is gone — the ghost chip in the Claude sheet is now the only way to whisper to it on mobile.",
             "Clicking the wandering ghost on desktop now hands the Claude pane over to it and perches the ghost on the pane's edge, replacing the floating speech bubble.",
         ],

@@ -6740,6 +6740,95 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   outline-offset: 2px;
 }
 
+/* ── Code-lens complexity chips ───────────────────────────────────────────
+   The trailing control on every scannable file row (complexityHotspots.js):
+   `scan` dispatches a per-file complexity scan, `scanning` spins while the
+   Worker runs it, and the settled row renders as a hotspot-count badge or a
+   dimmed `clean`. Sized to sit inside the 36px file-row rhythm without growing
+   it, and `flex: 0 0 auto` so it never steals width from .structureFileName. */
+.complexityChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  flex: 0 0 auto;
+  min-width: 26px;
+  height: 20px;
+  padding: 0 5px;
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+/* Guard: the base rule declares `display`, which outranks the UA stylesheet's
+   `[hidden] { display: none }`, so a `hidden` toggle would otherwise be a
+   no-op — the same trap the .structure* family has hit before. */
+.complexityChip[hidden] { display: none; }
+
+.complexityChipIcon { flex: 0 0 auto; }
+
+.complexityChipLabel {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.complexityChip[data-state="scan"]:hover:not(:disabled) {
+  color: var(--text-secondary);
+  border-color: var(--border-bright);
+  background: var(--bg-hover);
+}
+
+/* While another file is scanning, every other `scan` chip is disabled — the
+   tree-wide single-scan guard, made visible. */
+.complexityChip:disabled { cursor: default; }
+.complexityChip[data-state="scan"]:disabled { opacity: 0.4; }
+
+.complexityChip[data-state="scanning"] {
+  border-color: var(--border-bright);
+}
+
+/* The settled badge: open hotspots read in the warning colour, a clean file
+   recedes. Both are inert in Part 1 — expansion arrives in Part 2 — so neither
+   takes a hover treatment. */
+.complexityChip[data-state="count"] {
+  color: var(--text-warning);
+  border-color: var(--text-warning);
+  cursor: default;
+}
+
+.complexityChip[data-state="clean"] {
+  color: var(--text-muted);
+  border-color: var(--border-dim);
+  opacity: 0.65;
+  cursor: default;
+}
+
+.complexityChip[data-state="error"] {
+  color: var(--text-danger);
+  border-color: var(--text-danger);
+}
+
+.complexityChip:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.complexityChipSpinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 2px solid var(--border-mid);
+  border-top-color: var(--accent-text);
+  animation: spin 0.7s linear infinite;
+  pointer-events: none;
+}
+
 /* Brief highlight when "Find in code" reveals a file row in the Code lens. */
 .structureFileWrap--flash {
   background: rgba(108, 93, 245, 0.16);

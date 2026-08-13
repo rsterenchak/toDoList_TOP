@@ -1127,7 +1127,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: bca2ea95-d528-4c38-b993-a7c08fe4ad47 -->
 
-- [ ] **[MEDIUM]** Add complexity scan chip and hotspot-count badge to Code lens file rows
+- [x] **[MEDIUM]** Add complexity scan chip and hotspot-count badge to Code lens file rows — Completed: 2026-08-12
   - Type: feature
   - Description: Part 1 of the Code-lens complexity feature (Part 2 adds the nested hotspot rows and O↓/O↑ push dials). Give every scannable file row in the Structure tab's Code lens a trailing chip that dispatches a per-file complexity scan through the Worker and, once the scan lands, becomes a badge showing the file's open hotspot count. The Worker side is already live: posting `{ dispatch_complexity_scan: true, repo, filePath, target_file }` fires the `claude-complexity-scan.yml` workflow, whose runner calls the Worker's inline `complexity_scan` route (~90s Sonnet pass) and persists a row into the `complexity_scans` Supabase table keyed on `(user_id, repo, file_path)` with columns `sha`, `hotspots` (jsonb array), `pushed` (jsonb array of hotspot names), `scanned_at`. Each hotspot object carries `name`, `start_line`, `end_line`, `time`, `space`, `rationale`, and nullable `tighten` / `relax` objects (`{ target, how }`). The client is a pure reader that polls the row until `scanned_at` advances — the browser never calls the inline route.
   - Behavior:

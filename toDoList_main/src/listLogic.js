@@ -1625,6 +1625,45 @@ export const listLogic = (function () {
         }
     }
 
+    // Read every stored complexity-scan row for a repo. The Code lens's per-file
+    // complexity chips call this once per render (and again on each poll tick
+    // while a scan is in flight), then match rows to file rows by `file_path`.
+    // Mirrors loadLatestRefactorScan's auth and error shape — `complexity_scans`
+    // is keyed on `user_id` directly (the inject_targets pattern, NOT the todos
+    // table), so `user_id` is filtered explicitly here — but selects ALL rows for
+    // the repo rather than the newest one, because the chips need every scanned
+    // file at once. Only the columns the chips read are selected. Returns
+    // { ok, rows } (an empty array when the repo has never been scanned) or
+    // { ok:false, error } so the chips can degrade to their unscanned state
+    // instead of surfacing a toast.
+    // @category: user-mutation-only
+    async function loadComplexityScans(repo) {
+        if (!repo) return { ok: false, error: 'Missing repo.' };
+        try {
+            const sessionResult = await supabase.auth.getSession();
+            const session = sessionResult
+                && sessionResult.data
+                && sessionResult.data.session;
+            if (!session) return { ok: false, error: 'Not signed in.' };
+            const result = await Promise.resolve(
+                supabase
+                    .from('complexity_scans')
+                    .select('file_path, sha, hotspots, pushed, scanned_at')
+                    .eq('user_id', session.user.id)
+                    .eq('repo', repo)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Load failed.',
+                };
+            }
+            return { ok: true, rows: (result && result.data) || [] };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Load failed.' };
+        }
+    }
+
     // Read the most recent stored capture row for a repo. The Structure tab's
     // RUN & CAPTURE card calls this on mount to recover the last capture's
     // readout (exit code, command, stdout/stderr) — or to resume an in-flight
@@ -4181,6 +4220,7 @@ export const listLogic = (function () {
         pruneChatTurns,
         clearChatTurns,
         loadLatestRefactorScan,
+        loadComplexityScans,
         loadLatestCapture,
         loadMonthlyUsage,
         localMonthStartISO,
