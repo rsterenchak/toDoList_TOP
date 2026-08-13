@@ -14631,6 +14631,21 @@ body.row-dragging * { cursor: grabbing !important; }
     touch-action: manipulation;
   }
 
+  /* Structure view top inset. The structure tab hides #mobileProjHeader,
+     so #structureView is the topmost chrome on this breakpoint and has to
+     reserve the status-bar / notch / Dynamic Island area itself — the base
+     rule's flat `padding: 24px 24px 96px` left the REPOSITORY eyebrow
+     painted under the device chrome in standalone PWA mode. Same rationale
+     as the header and welcome empty state above: the max(..., 24px) floor
+     keeps regular browser-tab contexts (which report a 0 inset) from
+     hugging the viewport top, and the + 24px content offset preserves the
+     view's existing visible gap so nothing shifts on desktop-like insets.
+     #structureView is itself the scroll container, so scrolled content
+     slides under the transparent inset region — matching the todo list. */
+  #structureView {
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
+  }
+
   /* ── STACK mobile project header ──
      Mounts above the todo list at the ≤1023px breakpoint as a
      screen-level header: PROJECT N OF M label, a two-line project

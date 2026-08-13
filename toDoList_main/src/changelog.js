@@ -9,12 +9,14 @@ export const changelog = [
         changed: [
             'Adding a batch of generated tasks to a project now stays fast no matter how many todos the project already holds.',
         ],
+        fixed: [
+            'The Structure tab header no longer sits underneath the status bar on phones.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-08-12',
         changed: [
-            "The swipe-up ghost above the phone tab bar is gone — the ghost chip in the Claude sheet is now the only way to whisper to it on mobile.",
             "Clicking the wandering ghost on desktop now hands the Claude pane over to it and perches the ghost on the pane's edge, replacing the floating speech bubble.",
         ],
         fixed: [
