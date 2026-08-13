@@ -455,29 +455,42 @@ export function openSeedTasksModal(projectName) {
     // Confirm: create each checked, non-duplicate task as a committed todo in
     // the selected project through the existing add-todo path (saveToStorage +
     // Supabase insert), in list order. When the task carries a TODO.md entry,
-    // set it as the todo's description right after create via the existing
-    // description-update path (editToDoItem) so the mirror carries it — the
-    // add path takes only a title. Then close and switch to Projects so the
-    // new tasks are immediately visible.
+    // set it as the todo's description via the existing description-update
+    // path (editToDoItem) so the mirror carries it — the add path takes only a
+    // title. Then close and switch to Projects so the new tasks are
+    // immediately visible.
     addBtn.addEventListener('click', function () {
         const toAdd = rows.filter(function (r) { return !r.cb.disabled && r.cb.checked; });
         if (!toAdd.length) return;
+        // Two passes rather than one: creating every todo first lets the
+        // entry backfill index the project's items ONCE instead of re-listing
+        // and filtering the whole list per task — O(k+m) over the k checked
+        // tasks and m project items, not O(k·m). The split is safe because the
+        // description update only ever touches the item its own add created,
+        // and each insert still precedes its own update on the mirror queue.
         toAdd.forEach(function (r) {
             listLogic.addToDo(projectName, r.title);
-            if (r.entry) {
-                const items = listLogic.listItems(projectName) || [];
+        });
+        const withEntries = toAdd.filter(function (r) { return !!r.entry; });
+        if (withEntries.length) {
+            const created = listLogic.listItems(projectName) || [];
+            // Title → item, later occurrences overwriting earlier ones, so a
+            // lookup resolves to the same item the old filter().pop() did.
+            const byTitle = new Map();
+            created.forEach(function (it) {
+                if (it) byTitle.set(it.tit, it);
+            });
+            withEntries.forEach(function (r) {
                 // The title is non-duplicate within the project (dups are
                 // skipped above), so exactly one item carries it — the one
                 // just added. Backfill its description and mirror the update.
-                const created = items.filter(function (it) {
-                    return it && it.tit === r.title;
-                }).pop();
-                if (created) {
-                    created.desc = r.entry;
-                    listLogic.editToDoItem(projectName, created);
+                const item = byTitle.get(r.title);
+                if (item) {
+                    item.desc = r.entry;
+                    listLogic.editToDoItem(projectName, item);
                 }
-            }
-        });
+            });
+        }
         close();
         // Switch to the Projects view via its pill so the wiring stays in
         // main.js (the modal keeps no back-edge into the view switcher).

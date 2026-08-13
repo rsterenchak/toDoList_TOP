@@ -48,7 +48,7 @@ vi.mock('../src/listLogic.js', () => ({
         // modal targets the Build-plan stage in this fixture.
         getProjectLifecycle: function () { return 'spec'; },
         getProjectTargetId: function () { return state.targetId; },
-        listItems: function () { return state.items; },
+        listItems: vi.fn(function () { return state.items; }),
         // Mirror the real add path: append a committed item (empty desc) so the
         // confirm flow can find it by title and backfill its description.
         addToDo: vi.fn(function (project, title) {
@@ -94,6 +94,7 @@ beforeEach(() => {
     chatWithWorker.mockClear();
     listLogic.addToDo.mockClear();
     listLogic.editToDoItem.mockClear();
+    listLogic.listItems.mockClear();
     addToDos_restore.mockClear();
     addAllToDo_DOM.mockClear();
 });
@@ -374,6 +375,36 @@ describe('openSeedTasksModal — confirm sets the entry as the todo description'
         const editedItem = state.edited[0];
         expect(editedItem.tit).toBe('First');
         expect(editedItem.desc).toBe('- [ ] **[HIGH]** First\n  - Type: feature');
+    });
+
+    it('backfills every entry onto its own item while listing the project once', async () => {
+        // Pre-existing items make the list longer than the batch, so a
+        // per-task re-list would show up as extra listItems calls.
+        document.body.innerHTML = '<div id="mainList"></div>';
+        state.items = [{ tit: '' }, { tit: 'Old one' }, { tit: 'Old two' }];
+        state.reply = JSON.stringify([
+            { title: 'Alpha', entry: 'entry-alpha' },
+            { title: 'Beta', entry: 'entry-beta' },
+            { title: 'Gamma', entry: 'entry-gamma' },
+        ]);
+        openSeedTasksModal('Proj');
+        await flush();
+
+        // Count only the confirm path — rendering the checklist lists items too.
+        listLogic.listItems.mockClear();
+        document.getElementById('seedTasksModalAdd').click();
+
+        // Each entry lands on the item its own add created — no cross-wiring.
+        expect(state.edited.map((i) => [i.tit, i.desc])).toEqual([
+            ['Alpha', 'entry-alpha'],
+            ['Beta', 'entry-beta'],
+            ['Gamma', 'entry-gamma'],
+        ]);
+        // The pre-existing items are untouched.
+        expect(state.items[1].desc).toBeUndefined();
+        // One list for the entry index plus one for the post-batch re-render —
+        // never one per checked task, which is what made this O(k·m).
+        expect(listLogic.listItems).toHaveBeenCalledTimes(2);
     });
 });
 
