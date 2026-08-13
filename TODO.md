@@ -1204,3 +1204,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: 2026-08-13
   <!-- id: 4217bd87-494e-4c10-9ae8-dbf27853bfee -->
+
+- [ ] **[MEDIUM]** Show the shipped entry read-only in the middle of the review-stage pane
+  - Type: feature
+  - Description: In the desktop detail pane, the review stage mounts the WHAT CHANGED card and action row above `descPanelTopAnchor` (toDoRow.js ~1727–1731) but renders no editor, so after the footer-docking reflow the flex-fill middle is a conspicuous void and the shipped entry text is nowhere readable. Fill it: during review stage only, mount a read-only entry view (`descReviewEntryView`) in the flex-fill middle region — the slot the editor block occupies in earlier stages, between the review furniture and the `descPanelFooter`. The block renders the entry text from `item.desc` verbatim in an editor-style frame: a small eyebrow row (`ENTRY · SHIPPED · READ ONLY`, ~10px Space Mono, letterspaced, muted) above a scrollable pre-wrap mono text region matching the editor's type treatment. It takes the same flex contract as the editor block (`flex: 1 1 auto; min-height: 0`, ~96px floor, `overflow-y: auto` on the text region) so the footer stays docked and long entries scroll in place.
+  - Behavior:
+    - Read-only is strict: render as a div (text selectable for copying), never a disabled textarea — no edit affordance exists in review; Iterate is the change path. No new buttons or actions in the block.
+    - Lifecycle mirrors the review card exactly: mounted by the same stage branch that inserts `buildReviewBlock` + review actions, and torn down/absent whenever they are, so leaving review restores the normal editor with no leftovers. Guard the empty case — if `item.desc` is empty, mount nothing and leave the middle as it is today.
+    - The WHAT CHANGED card, review actions, footer sections, and header marker are unchanged — this adds one block, removes and rewords nothing.
+  - Implementation notes: desktop detail pane selectors only; mobile description sheets untouched. Styling in `style.css` as classes (`descReviewEntryView`, `descReviewEntryViewEyebrow`, `descReviewEntryViewText`); any new class that sets `display` on an element toggled via `hidden` gets an explicit `[hidden] { display: none; }` guard.
+  - Out of scope: folding the entry into the WHAT CHANGED card; any editing path in review; changes to review card content, action row, or `descPanelTopAnchor` semantics; mobile sheets; other stages' layouts.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4889080e-815e-498c-b09c-695064a5731a -->
