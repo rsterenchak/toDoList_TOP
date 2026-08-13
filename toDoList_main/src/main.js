@@ -13,9 +13,6 @@ import {
     ensureGhostTalk,
 } from './ghostTalk.js';
 import {
-    ensureMobileGhost,
-} from './mobileGhost.js';
-import {
     ensurePomodoro,
     nextSuggestedMode,
     createPomodoroUI,
@@ -2798,12 +2795,6 @@ function component() {
     // on viewports where the companion never runs this is a no-op and nothing
     // is created.
     setTimeout(ensureGhostTalk, 0);
-
-    // Mount the mobile ghost perch and its tab-bar swipe gesture. Deferred for
-    // the same reason as the companion — #mobileTabBar has to exist first — and
-    // gated internally, so on desktop viewports nothing is created and no
-    // listener is registered.
-    setTimeout(ensureMobileGhost, 0);
 
     // Mirror the desktop companion-enabled flag onto a body class so the
     // mobile empty-state ghost spacer (Today + Projects views) can hide its

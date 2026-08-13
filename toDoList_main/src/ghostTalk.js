@@ -5,14 +5,14 @@
 // input beside it. Typing a question posts it to the Worker's `ghost` route and
 // the reply lands in the bubble.
 //
-// The mobile perch does NOT wear that skin. Phone screens are dense enough that
-// a floating bubble lands on top of the TODO.md pill, the list rows and the FAB,
-// so the perch opens the Claude sheet already possessed (see the POSSESSION
-// section of the Claude sheet module) and the ghost speaks through that surface
-// instead. What the two surfaces share lives at the top of this file under
-// SHARED PLUMBING: the two Worker calls, the recency-gated opening line, the
-// in-voice error strings and the pending render. Neither reaches for the Worker
-// itself.
+// Mobile does NOT wear that skin. Phone screens are dense enough that a
+// floating bubble lands on top of the TODO.md pill, the list rows and the FAB,
+// so the ghost's only mobile door is the possession chip in the Claude sheet
+// (see the POSSESSION section of the Claude sheet module) and it speaks through
+// that surface instead. What the two surfaces share lives at the top of this
+// file under SHARED PLUMBING: the two Worker calls, the recency-gated opening
+// line, the in-voice error strings and the pending render. Neither reaches for
+// the Worker itself.
 //
 // Two things are deliberate about the plumbing. First, the desktop surface is
 // ephemeral — the exchange is kept server-side in `ghost_messages`, and the
@@ -31,9 +31,9 @@
 // viewport, which is why no viewport-docking code lives in this module.
 //
 // The desktop mount rides the companion: this module subscribes to the sprite's
-// activation event, which only ever fires from a mounted sprite. The mobile
-// perch (mobileGhost.js) opens the possessed Claude sheet instead. Each surface
-// names itself on the Worker payload so the transcript records where the
+// activation event, which only ever fires from a mounted sprite. Mobile has no
+// mount here at all — the possessed Claude sheet is the whole surface. Each
+// surface names itself on the Worker payload so the transcript records where the
 // exchange happened, and the floating skin re-checks its own viewport gate — so
 // it can never open on a phone.
 
@@ -67,13 +67,6 @@ export const GHOST_GREETINGS = [
     "the list isn't going anywhere. neither am i.",
     "speak, or don't. i have time.",
 ];
-
-// The mobile perch's viewport gate. It lives here rather than in
-// mobileGhost.js so the perch and this module check the same predicate without
-// either importing the other.
-export function supportsMobileGhostTalk() {
-    return !!(window.matchMedia && window.matchMedia('(max-width: 1023px)').matches);
-}
 
 // Whether there is a Worker to talk to at all. Surfaces read this to decide
 // whether a pending state is worth showing before the answer comes back.
@@ -270,7 +263,7 @@ let openingPending = false;
 
 // Subscribe once to sprite activation. Safe to call repeatedly; a no-op on
 // viewports where the companion never runs, so this mount contributes nothing
-// on mobile (where the perch opens the possessed sheet instead).
+// on mobile (where the possessed Claude sheet is the ghost's only door).
 export function ensureGhostTalk() {
     if (unsubscribe) return true;
     if (!supportsDesktopCompanion()) return false;
