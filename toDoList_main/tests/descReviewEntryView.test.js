@@ -154,8 +154,10 @@ describe('review entry view — where it lands in the panel', () => {
 
 describe('review entry view — the pane flex contract', () => {
     it('takes the same flex-fill contract as the textarea it stands in for', () => {
+        // Both later moved from basis `auto` to 0: a div has no intrinsic height, so
+        // with basis auto a long shipped entry grew the block and the stack with it.
         const sel = '#descDetailPane #descSibling > .descReviewEntryView';
-        expect(declares(sel, /flex:\s*1\s+1\s+auto\s*;/)).toBe(true);
+        expect(declares(sel, /flex:\s*1\s+1\s+0\s*;/)).toBe(true);
         expect(declares(sel, /min-height:\s*96px\s*;/)).toBe(true);
     });
 
@@ -175,13 +177,17 @@ describe('review entry view — the pane flex contract', () => {
 // The block shipped with `flex: 1 1 auto` on itself and `min-height: 0` on its text
 // region — which reads like a clamp but never was one. `flex: 1 1 auto` only bounds a
 // child when every ancestor between it and the height-bounded pane can actually give
-// height back, and the panel that stacks it (#descDetailPane #descSibling) carries
+// height back, and the panel that stacks it (#descDetailPane #descSibling) carried
 // `flex: 1 0 auto`: a flex item with shrink 0 grows to its content no matter what its
-// children declare. The editor stage never exposed the gap because a textarea has an
-// intrinsic height regardless of how much text it holds, while the read-only div does
-// not — so a long entry grew the panel, the PANE became the scroller instead of the
-// text region, and the docked footer (Discuss / FILE / MANUAL STATUS) went below the
-// fold, defeating the reflow that docked it there.
+// children declare. The editor stage looked exempt because a textarea has an intrinsic
+// height regardless of how much text it holds, while the read-only div does not — so a
+// long entry grew the panel, the PANE became the scroller instead of the text region,
+// and the docked footer (Discuss / FILE / MANUAL STATUS) went below the fold, defeating
+// the reflow that docked it there.
+//
+// Shrink was granted to the panel in review only, which left the WRITE stage on the
+// same defect. It is now unscoped, and both entry regions size from a ZERO basis so
+// neither can feed content height upward in any stage — see descPaneStackBasis.test.js.
 describe('review entry view — the flex-clamp chain', () => {
     // The pane's own layout lives inside the ≥1024px media block, which ruleBodies
     // (top-level rules only) can't reach — pull the bare `#descDetailPane` rules out
@@ -197,23 +203,20 @@ describe('review entry view — the flex-clamp chain', () => {
         expect(paneRule).toMatch(/min-height:\s*0\s*;/);
     });
 
-    it('lets the panel shrink back to the pane in review — what actually docks the footer', () => {
-        const sel = '#descSibling:has(> .descReviewEntryView';
-        expect(declares(sel, /flex-shrink:\s*1\s*;/)).toBe(true);
-        expect(declares(sel, /min-height:\s*0\s*;/)).toBe(true);
+    it('lets the panel shrink back to the pane — what actually docks the footer', () => {
+        expect(declares('#descDetailPane #descSibling', /flex:\s*1\s+1\s+auto\s*;/)).toBe(true);
+        expect(declares('#descDetailPane #descSibling', /min-height:\s*0\s*;/)).toBe(true);
     });
 
-    it('grants that shrink in review ONLY, leaving the authoring stages as they render today', () => {
-        // WRITE / PASTE / GENERATE keep the unscoped `flex: 1 0 auto`: a tall authoring
-        // panel still grows past the pane and scrolls it rather than being crushed.
-        expect(declares('#descDetailPane #descSibling', /flex:\s*1\s+0\s+auto\s*;/)).toBe(true);
-        const shrinkRules = topLevelRules(css).filter(
-            (r) => r.selector.includes('#descSibling') && /flex-shrink:\s*1\s*;/.test(r.body));
-        expect(shrinkRules.length).toBeGreaterThan(0);
-        shrinkRules.forEach((r) => {
-            expect(r.selector, `unscoped panel shrink in: ${r.selector}`)
-                .toMatch(/:has\(\s*>\s*\.descReviewEntryView/);
-        });
+    it('grants that shrink in every stage, not review alone', () => {
+        // Superseded: the shrink was once scoped to `:has(> .descReviewEntryView)`, on
+        // the reasoning that the authoring stages stack blocks with no internal
+        // scrollers and would be crushed. That left WRITE on the original defect, and
+        // the zero-basis entry region now absorbs the compression instead — every other
+        // child keeps min-height: auto, so the dynamic blocks still render in full.
+        const scoped = topLevelRules(css).filter(
+            (r) => r.selector.includes('#descSibling:has(> .descReviewEntryView'));
+        expect(scoped.map((r) => r.selector)).toEqual([]);
     });
 
     it('makes the block a clamped frame rather than one that grows to its text', () => {

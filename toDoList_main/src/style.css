@@ -11967,10 +11967,22 @@ body.row-dragging * { cursor: grabbing !important; }
    the mobile host's 3-column grid, because a grid cannot dock its last row to the
    container floor (implicit rows have no `1fr` track to hand the slack to, and an
    auto margin on a grid item only absorbs space inside its own row). The pane is
-   itself a flex column, so `flex: 1 0 auto` fills its leftover height without ever
-   letting the panel shrink below its content — a tall panel still scrolls in the
-   pane exactly as before. `align-items: stretch` overrides the base rule's
+   itself a flex column, so `flex: 1 1 auto` makes the panel span the pane's full
+   height and the footer's `margin-top: auto` pins to the PANE floor rather than to
+   the bottom of the content. `align-items: stretch` overrides the base rule's
    `center`, which means horizontal centring once the axis flips.
+   SHRINK 1 IS LOAD-BEARING, and it applies to every stage. It shipped as
+   `flex: 1 0 auto` with shrink granted only in review (`:has(> .descReviewEntryView)`),
+   on the reasoning that WRITE / PASTE / GENERATE stack blocks with no internal
+   scrollers and would be crushed rather than scrolled. But a shrink-0 panel cannot
+   hand height BACK to the pane, so whatever the entry region declared, a long entry
+   grew the panel past the pane, the pane's `overflow-y: auto` engaged, and the docked
+   footer sank below the fold. The entry region now sizes from a ZERO basis (see the
+   #descInput / .descReviewEntryView rules below), so it never feeds content height
+   upward and it is the one child that absorbs the compression — down to its 96px
+   floor, past which it scrolls internally. Every other child keeps `min-height: auto`,
+   whose automatic minimum size is its own content, so the dynamic blocks
+   (asking / stuck / dispatch / review / mockup) still render in full.
    The mobile inline drawer keeps the grid untouched: every grid-column rule stays
    in place (and stays the contract the structural guard reads), it is simply inert
    under this host's flex formatting context. */
@@ -11978,7 +11990,7 @@ body.row-dragging * { cursor: grabbing !important; }
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   min-height: 0;
 }
 /* The panel's `2` content column is what inset these from the panel edge; under
@@ -12000,10 +12012,15 @@ body.row-dragging * { cursor: grabbing !important; }
    longer leaves the bottom two-thirds of the pane empty. `width: auto` replaces
    the base `width: 100%`, which would overflow by the 14px margins above, and
    min-height keeps a short pane from crushing it to nothing — the pane's own
-   scroll takes over past that floor. */
+   scroll takes over past that floor.
+   BASIS 0, NOT AUTO. With basis `auto` a flex child's hypothetical main size is its
+   CONTENT, so a long entry's height propagated up through the panel and pushed the
+   docked footer out of the pane. From a zero basis the textarea sizes purely from
+   the slack the panel distributes — it can never inflate the stack — and grows into
+   that slack down to the 96px floor, scrolling internally past it. */
 #descDetailPane #descSibling > #descInput {
   width: auto;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 96px;
   /* THE FILL ONLY LANDS IF THE LEGACY SIZING MODEL IS TAKEN OUT OF THE WAY.
      Two leftovers from the inline row still sized this textarea and between
@@ -12030,32 +12047,14 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 /* The read-only entry view takes the SAME flex contract as the textarea it stands in
    for: in `accept` the authoring group (textarea included) is hidden, so this is what
-   fills the middle and keeps the footer docked at the pane floor. Same 96px floor —
-   a short window compresses it into the pane's existing scroll rather than crushing
-   the entry to nothing — and `min-height: 0` on its own text region (see the block's
-   rule) lets a long entry scroll in place instead of growing the pane. */
+   fills the middle and keeps the footer docked at the pane floor. Same zero basis for
+   the same reason — a div has no intrinsic height, so with basis `auto` a long shipped
+   entry grew the block, the panel, and finally the pane — and the same 96px floor,
+   below which `min-height: 0` on its own text region (see the block's rule) scrolls
+   the entry in place rather than growing the stack. */
 #descDetailPane #descSibling > .descReviewEntryView {
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-height: 96px;
-}
-/* THE LINK THE CHAIN WAS MISSING. `flex: 1 1 auto` on the block above only bounds it
-   if this panel can hand height BACK to the pane, and the rule above sets
-   `flex: 1 0 auto` — shrink 0, so the panel grows to its content and the block grows
-   with it, whatever its own children declare. The editor stage never exposed the gap:
-   a textarea has an intrinsic height regardless of how much text it holds, so the
-   panel's content never outgrew the pane; the read-only div has no such height, so a
-   long entry pushed the docked footer below the fold and made the PANE the scroller.
-   Granting shrink is scoped to review (`:has` the mounted block, and only while it is
-   actually shown) rather than applied to the panel outright, because WRITE / PASTE /
-   GENERATE stack blocks with no internal scrollers — letting the panel shrink under
-   them would crush their content instead of scrolling the pane, which is the behavior
-   they render with today. In review every sibling here (WHAT CHANGED card, action
-   row, footer) is a plain block whose automatic minimum size is its own content, so
-   the shrink lands entirely on the one child that declares a floor and a scroller:
-   the entry view, down to its 96px. */
-#descDetailPane #descSibling:has(> .descReviewEntryView:not([hidden])) {
-  flex-shrink: 1;
-  min-height: 0;
 }
 /* Pin the footer stack to the pane floor. The textarea's `flex-grow` already
    consumes the free space while it is visible (auto margins are resolved after

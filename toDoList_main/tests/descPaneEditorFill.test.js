@@ -79,7 +79,10 @@ describe('detail pane entry editor — the CSS fill contract', () => {
     });
 
     it('keeps the flex-fill contract the footer reflow established', () => {
-        expect(declares(css, PANE_TEXTAREA, /flex:\s*1\s+1\s+auto\s*;/)).toBe(true);
+        // The basis later tightened from `auto` to 0 — with basis auto the textarea's
+        // hypothetical main size is its content, which is what kept feeding a long
+        // entry's height up the stack (see descPaneStackBasis.test.js).
+        expect(declares(css, PANE_TEXTAREA, /flex:\s*1\s+1\s+0\s*;/)).toBe(true);
         expect(declares(css, PANE_TEXTAREA, /min-height:\s*96px\s*;/)).toBe(true);
     });
 
@@ -100,7 +103,7 @@ describe('detail pane entry editor — the CSS fill contract', () => {
         // The fix is scoped to the WRITE-stage textarea; `accept` hides it and
         // .descReviewEntryView fills instead, with sizing of its own.
         expect(ruleBodies(css, PANE_TEXTAREA).join('\n')).not.toMatch(/descReviewEntryView/);
-        expect(declares(css, '#descDetailPane #descSibling > .descReviewEntryView', /flex:\s*1\s+1\s+auto\s*;/))
+        expect(declares(css, '#descDetailPane #descSibling > .descReviewEntryView', /flex:\s*1\s+1\s+0\s*;/))
             .toBe(true);
     });
 });

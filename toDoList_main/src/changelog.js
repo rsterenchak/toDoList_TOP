@@ -8,14 +8,12 @@ export const changelog = [
         date: '2026-08-14',
         fixed: [
             'The description editor in the desktop task detail pane now fills the height down to the docked controls instead of stopping after about ten lines and leaving a gap beneath it.',
+            'A long entry no longer pushes the desktop detail pane’s controls below the fold: the editor scrolls in place while the filter, file, discuss and status controls stay docked at the bottom of the pane.',
         ],
     },
     {
         version: '1.1',
         date: '2026-08-13',
-        changed: [
-            'In the Structure tab’s Types outline, Find in code now jumps straight to the selected type or member’s declaration, and the copy action reads Copy name.',
-        ],
         fixed: [
             'The Structure tab header no longer sits underneath the status bar on phones.',
             'Applying an update in one browser tab no longer reloads every other open tab; the others keep running and offer their own reload from Settings when you are ready.',
