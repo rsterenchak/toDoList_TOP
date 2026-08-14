@@ -1285,3 +1285,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`
   - Completed: 2026-08-14
   <!-- id: b86e5b98-4e06-4c76-a006-16ea10cbb7f2 -->
+
+- [ ] **[MEDIUM]** Fix live view reverting to the block canvas seconds after opening
+  - Type: bug
+  - Description: A few seconds into viewing the UI lens's live view, the pane reverts on its own to canvas mode (the Mobile/Desktop bucket toggle reappears). Root cause: `renderLens()` (`structureView.js`) and `renderStructureCanvas()` (`structureCanvas.js`) both call `exitLiveView()` unconditionally on every repaint, and the guest UI lens repaints itself asynchronously — `renderSecondLens`'s `ensureRegionsLoaded(repo).then(...)` continuation (the "Loading UI map…" flow) clears the tree and re-mounts the canvas via `renderGuestUiLens` when the published-map fetch resolves, which can land seconds after the user has already tapped Live. Its stale guard (`repo !== selectedRepo || lens !== 'ui'`) doesn't cover live mode, so the late continuation silently resets it. Fix by making live mode survive same-repo, same-lens repaints instead of guarding individual triggers: split the current `exitLiveView()` into `suspendLiveView()` (DOM/resource teardown only — iframe, scroll/resize listeners, load timer — leaving `liveMode`/`liveInteract`/`liveInspectBlocked` intact) and full exit (teardown plus flag reset). `renderLens` and `renderStructureCanvas` call the suspend variant when the repaint targets the same repo with the UI lens active, so the fresh pane's `rebuild()` re-enters the live branch and remounts the iframe; full exit remains for lens switches to code/types, repo switches (`resetCanvasState`), and leaving the Structure tab (`exitStructureLiveView` unchanged). Keep `failLive()` as a full exit — a genuinely unreachable page should still drop to canvas with its status line.
+  - Acceptance criteria:
+    - Opening live view on a guest repo with a cold regions cache stays in live view when the published-map fetch resolves; the overlay repaints against the remounted iframe.
+    - Self-repo live view survives the complexity-scan merge continuation and any other same-repo UI-lens repaint.
+    - Lens switch, repo switch, and leaving the Structure tab still fully exit live mode and tear the iframe down (no idling guest timers/service workers).
+    - A genuine load failure (error or `LIVE_LOAD_TIMEOUT_MS`) still reverts to canvas and shows the "Couldn't reach a deployed site for this repo." line.
+  - Out of scope: debouncing or restructuring `ensureRegionsLoaded`'s render flow; preserving guest-page state across the iframe remount a surviving repaint causes; changes to the capture flow or `structureRemoteCapture.js`.
+  - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 396049d0-7865-4b06-ad4e-56dda21a501c -->
