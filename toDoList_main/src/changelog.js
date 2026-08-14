@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-14',
         added: [
-            'A Live chip in the Structure tab’s UI lens swaps the block canvas for the deployed page itself, with tappable region outlines over it and an interact mode for using the page directly.',
+            'Region outlines in the Structure tab’s live view now drill: tapping an already-selected region again shows its children, and a breadcrumb above the page steps back out.',
         ],
         fixed: [
             'The description editor in the desktop task detail pane now fills the height down to the docked controls instead of stopping after about ten lines and leaving a gap beneath it.',

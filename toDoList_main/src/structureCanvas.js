@@ -435,6 +435,12 @@ export function resetCanvasState() {
 // tap uses, so the shared action toolbar's Reference / Copy selector work
 // identically in both renderings.
 //
+// The overlay carries the canvas's DRILL vocabulary too, as its own session-only
+// state: one level's regions are outlined at a time, a second tap on an already-
+// selected region descends into it, and a breadcrumb above the viewport pops back
+// out. Every drill, pop and crumb tap is an overlay repaint — never a `rebuild()`,
+// which would tear the iframe down and reload the guest page.
+//
 // The mode is SESSION-ONLY — never written to prefs — and every Structure open
 // starts on the canvas, so no iframe ever loads without an explicit tap. Every
 // exit path (the chip, a lens switch, a repo switch, leaving the tab) runs the
@@ -466,9 +472,23 @@ let liveInteract = false;
 let liveInspectBlocked = false;
 // Failure copy shown in CANVAS mode after a live load couldn't be reached.
 let liveError = '';
+// The live view's own drill path: selectors from the guest's top level down to
+// the container whose children the overlay currently outlines ([] = top level).
+// Deliberately SEPARATE from the canvas's `drillPath` — live geometry comes from
+// walking the guest document, whose selectors need not match the tree the canvas
+// stored, so one path can't stand in for the other. Session-only: it survives
+// inspect/interact flips and reload-chip remounts (both keep live mode) and is
+// dropped by the full exit and by a repo switch.
+let liveDrillPath = [];
 // Live DOM handles held for teardown.
 let liveFrame = null;
 let liveLayer = null;
+// The breadcrumb row between the snapshot chip and the viewport, shown only while
+// drilled. Held so a drill can repaint it WITHOUT a rebuild (which would reload
+// the iframe).
+let liveCrumbEl = null;
+// The muted notice line inside the viewport, held so any repaint path can reach it.
+let liveNotice = null;
 // The scaler wrapping BOTH the frame and the overlay — what carries the
 // scale-to-fit transform on narrow hosts.
 let liveScaler = null;
@@ -492,7 +512,9 @@ function shortRepoName(repo) {
 
 // Drop every live-view resource: the guest scroll listener, the host resize
 // listener, the pending load timer, and the iframe itself. Idempotent, so a
-// rebuild can call it unconditionally before emptying the pane.
+// rebuild can call it unconditionally before emptying the pane. The DRILL PATH is
+// not part of this — it is mode state, not a resource, so it rides through the
+// teardown+remount a repaint or the reload chip performs.
 function teardownLive() {
     if (liveLoadTimer) { clearTimeout(liveLoadTimer); liveLoadTimer = null; }
     if (liveWin && liveScrollHandler) {
@@ -503,9 +525,12 @@ function teardownLive() {
     }
     if (liveFrame && liveFrame.parentNode) liveFrame.parentNode.removeChild(liveFrame);
     if (liveScaler && liveScaler.parentNode) liveScaler.parentNode.removeChild(liveScaler);
+    if (liveCrumbEl && liveCrumbEl.parentNode) liveCrumbEl.parentNode.removeChild(liveCrumbEl);
     liveFrame = null;
     liveLayer = null;
     liveScaler = null;
+    liveCrumbEl = null;
+    liveNotice = null;
     liveWin = null;
     liveScrollHandler = null;
     liveResizeHandler = null;
@@ -530,6 +555,7 @@ export function exitLiveView() {
     liveMode = false;
     liveInteract = false;
     liveInspectBlocked = false;
+    liveDrillPath = [];
 }
 
 // The repo whose live view is currently mounted, or null in canvas mode. Lets the
@@ -585,6 +611,7 @@ function buildLiveChip() {
             liveMode = true;
             liveInteract = false;
             liveInspectBlocked = false;
+            liveDrillPath = [];
             liveError = '';
         }
         rebuild();
@@ -625,12 +652,13 @@ function buildLiveViewport() {
     const notice = document.createElement('div');
     notice.className = 'structureLiveNotice';
     notice.hidden = true;
+    liveNotice = notice;
 
     scaler.appendChild(frame);
     scaler.appendChild(overlay);
     wrap.appendChild(scaler);
     wrap.appendChild(notice);
-    wrap.appendChild(buildLivePills(notice));
+    wrap.appendChild(buildLivePills());
     applyLiveInteraction(wrap);
 
     frame.addEventListener('load', function () {
@@ -639,7 +667,7 @@ function buildLiveViewport() {
         if (liveLoadTimer) { clearTimeout(liveLoadTimer); liveLoadTimer = null; }
         attachLiveScroll();
         applyLiveScale();
-        paintLiveOverlay(notice);
+        paintLiveOverlay();
     });
     frame.addEventListener('error', function () {
         if (liveFrame === frame) failLive();
@@ -653,7 +681,7 @@ function buildLiveViewport() {
     // resize (which re-widths the iframe and reflows the guest) needs a re-walk —
     // preceded by a fresh scale, so a rotation or breakpoint re-home re-fits the
     // virtual viewport before the walk measures the guest at its new width.
-    liveResizeHandler = function () { applyLiveScale(); paintLiveOverlay(notice); };
+    liveResizeHandler = function () { applyLiveScale(); paintLiveOverlay(); };
     if (typeof window !== 'undefined') window.addEventListener('resize', liveResizeHandler);
 
     const url = liveUrl(activeRepo);
@@ -707,7 +735,7 @@ function applyLiveScale() {
 // The two floating icon pills, absolutely positioned top-right INSIDE the wrapper
 // — over the glass, so they stay reachable while the guest page scrolls beneath
 // them. Inspect is active by default.
-function buildLivePills(notice) {
+function buildLivePills() {
     const pills = document.createElement('div');
     pills.className = 'structureLivePills';
     [
@@ -728,8 +756,9 @@ function buildLivePills(notice) {
             liveInteract = wantInteract;
             applyLiveInteraction(pills.parentNode);
             // Flipping back to inspect re-walks the guest, so the overlay matches
-            // whatever the page became while it was being interacted with.
-            if (!wantInteract) paintLiveOverlay(notice);
+            // whatever the page became while it was being interacted with. The
+            // drill path rides through the flip and is re-resolved by that walk.
+            if (!wantInteract) paintLiveOverlay();
         });
         pills.appendChild(btn);
     });
@@ -762,48 +791,126 @@ function setLiveNotice(el, text) {
     el.hidden = !text;
 }
 
+// The guest document, or null when the frame is gone or isn't readable.
+function liveDoc() {
+    if (!liveFrame) return null;
+    try { return liveFrame.contentDocument; } catch (e) { return null; }
+}
+
 // Re-walk the guest document with the SAME region-discovery rules the canvas uses
-// (`buildUiTree`) and repaint the overlay's outline boxes. Runs on iframe load, on
-// every flip back to inspect, and on host resize. A `contentDocument` that throws
-// or comes back empty means the page isn't reachable for inspection, so the view
-// falls back to interact-only with a muted line rather than a dead inspect mode.
-function paintLiveOverlay(notice) {
+// (`buildUiTree`) and repaint the overlay's outline boxes plus the breadcrumb.
+// Runs on iframe load, on every flip back to inspect, on host resize, and on every
+// drill / pop. A `contentDocument` that throws or comes back empty means the page
+// isn't reachable for inspection, so the view falls back to interact-only with a
+// muted line rather than a dead inspect mode.
+function paintLiveOverlay() {
     if (!liveLayer || !liveFrame) return;
-    let doc = null;
-    try { doc = liveFrame.contentDocument; } catch (e) { doc = null; }
+    const doc = liveDoc();
     if (!doc || !doc.body) {
         liveInspectBlocked = true;
         liveInteract = true;
         clear(liveLayer);
+        paintLiveBreadcrumb([]);
         applyLiveInteraction(liveWrapEl());
-        setLiveNotice(notice, 'Can’t inspect this page — showing it interactively.');
+        setLiveNotice(liveNotice, 'Can’t inspect this page — showing it interactively.');
         return;
     }
     liveInspectBlocked = false;
-    setLiveNotice(notice, '');
+    setLiveNotice(liveNotice, '');
     applyLiveInteraction(liveWrapEl());
     clear(liveLayer);
     let win = null;
     try { win = liveFrame.contentWindow; } catch (e) { win = null; }
-    paintLiveRegions(buildUiTree(doc), doc, win);
+    // The guest DOM may have changed since the path was set (a re-walk after an
+    // interact session, a reload, a breakpoint re-home), so clamp the path to the
+    // deepest level that still resolves — the same contract `resolveDrill` gives
+    // the canvas.
+    const drill = resolveLiveDrill(buildUiTree(doc), liveDrillPath, doc);
+    if (drill.chain.length < liveDrillPath.length) {
+        liveDrillPath = drill.chain.map(function (n) { return n.selector; });
+    }
+    paintLiveBreadcrumb(drill.chain);
+    paintLiveRegions(drill.children, doc, win);
     syncLiveScroll();
 }
 
-// One outline box per region the walk kept, in the canvas's outline vocabulary.
-// Parents are visited before their children, so a nested region paints last and
-// wins the tap — the innermost region under the finger is what gets selected.
+// One outline box per region at the CURRENT drill level, in the canvas's outline
+// vocabulary. Only this level is painted — a region's children appear once it is
+// drilled into — so every container at the level is tappable instead of being
+// covered by its own descendants.
 function paintLiveRegions(nodes, doc, win) {
     const scrollX = (win && win.scrollX) || 0;
     const scrollY = (win && win.scrollY) || 0;
-    const visit = function (list) {
-        (list || []).forEach(function (node) {
-            if (!node || node.type !== 'region' || !node.selector) return;
-            const box = liveRectFor(node.selector, doc, scrollX, scrollY);
-            if (box) liveLayer.appendChild(buildLiveRegionBox(node, box));
-            visit(regionChildren(node));
-        });
-    };
-    visit(nodes);
+    (nodes || []).forEach(function (node) {
+        const box = liveRectFor(node.selector, doc, scrollX, scrollY);
+        if (box) liveLayer.appendChild(buildLiveRegionBox(node, box));
+    });
+}
+
+// The regions that make up one live drill level. A node with no box of its own but
+// with region children is a pass-through wrapper (`display: contents`, or any node
+// the guest lays out boxlessly): it can never be outlined or tapped, so its
+// children are hoisted up to this level rather than stranded behind it — the same
+// transparency `hoistPassthrough` gives the block canvas, measured against the
+// guest's live rects instead of a stored bucket.
+function liveLevelRegions(nodes, doc) {
+    const out = [];
+    (nodes || []).forEach(function (node) {
+        if (!node || node.type !== 'region' || !node.selector) return;
+        const kids = regionChildren(node);
+        if (kids.length && !liveRectFor(node.selector, doc, 0, 0)) {
+            liveLevelRegions(kids, doc).forEach(function (kid) { out.push(kid); });
+            return;
+        }
+        out.push(node);
+    });
+    return out;
+}
+
+// Resolve a live drill path against a freshly-walked guest tree, clamping a stale
+// path to its valid prefix. Mirrors `resolveDrill`, but every level goes through
+// `liveLevelRegions` so hoisted pass-through children are drillable targets.
+function resolveLiveDrill(tree, path, doc) {
+    const chain = [];
+    let level = liveLevelRegions(tree || [], doc);
+    for (let i = 0; i < (path || []).length; i++) {
+        const found = level.find(function (n) { return n.selector === path[i]; });
+        if (!found) break;
+        chain.push(found);
+        level = liveLevelRegions(regionChildren(found), doc);
+    }
+    return { chain: chain, children: level };
+}
+
+// The children a live region can be drilled into: its level's regions that
+// actually have an on-screen box to outline. Empty means tapping again is a no-op
+// rather than a drill into a blank level.
+function liveDrillChildren(node, doc) {
+    return liveLevelRegions(regionChildren(node), doc).filter(function (kid) {
+        return !!liveRectFor(kid.selector, doc, 0, 0);
+    });
+}
+
+// Descend one level and repaint the overlay in place. Never a `rebuild()` — that
+// would tear the iframe down and reload the guest page on every drill.
+function drillLive(selector) {
+    liveDrillPath = liveDrillPath.concat(selector);
+    paintLiveOverlay();
+}
+
+// The live breadcrumb, rendered between the snapshot chip and the viewport and
+// shown ONLY while drilled (at the top level there is nothing to pop back to).
+// Reuses the block canvas's crumb row wholesale, so the two renderings share one
+// breadcrumb vocabulary and its SpaceMono chip styling.
+function paintLiveBreadcrumb(chain) {
+    if (!liveCrumbEl) return;
+    clear(liveCrumbEl);
+    liveCrumbEl.hidden = !(chain && chain.length);
+    if (!(chain && chain.length)) return;
+    liveCrumbEl.appendChild(buildCrumbRow(chain, function (depth) {
+        liveDrillPath = liveDrillPath.slice(0, depth);
+        paintLiveOverlay();
+    }));
 }
 
 // A region's rect in guest-DOCUMENT coordinates (its viewport rect plus the
@@ -843,15 +950,29 @@ function buildLiveRegionBox(node, box) {
 
     el.addEventListener('click', function (event) {
         event.stopPropagation();
-        selectLiveRegion(node);
+        tapLiveRegion(node);
     });
     el.addEventListener('keydown', function (event) {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            selectLiveRegion(node);
+            tapLiveRegion(node);
         }
     });
     return el;
+}
+
+// A tap on an outline box: the first one selects the region exactly as before, and
+// a second tap on the region that is ALREADY selected drills into it, so the
+// overlay repaints with its children outlined. A tap-again on a region with no
+// outlineable children is a no-op — better a level that doesn't move than one that
+// empties.
+function tapLiveRegion(node) {
+    if (selectedSelector === node.selector) {
+        const doc = liveDoc();
+        if (doc && liveDrillChildren(node, doc).length) drillLive(node.selector);
+        return;
+    }
+    selectLiveRegion(node);
 }
 
 // A live-overlay tap selects exactly as a canvas block tap does: mark the
@@ -1003,6 +1124,24 @@ function findParentPath(tree, selector) {
     return result;
 }
 
+// The same lookup against a freshly-walked GUEST tree: the live drill path that
+// puts `selector`'s own outline on screen. Every level goes through
+// `liveLevelRegions`, so the path it returns is one `resolveLiveDrill` can walk
+// (a hoisted pass-through wrapper never appears in it). Null when the guest has no
+// such region.
+function findLiveParentPath(tree, selector, doc) {
+    let result = null;
+    const walk = function (nodes, path) {
+        liveLevelRegions(nodes, doc).forEach(function (node) {
+            if (result) return;
+            if (node.selector === selector) { result = path.slice(); return; }
+            walk(regionChildren(node), path.concat(node.selector));
+        });
+    };
+    walk(tree || [], []);
+    return result;
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────────
 
 function clear(el) {
@@ -1071,6 +1210,14 @@ function rebuild() {
     // instead of the breadcrumb / block canvas / ghost tray.
     if (liveMode) {
         paneEl.appendChild(buildSnapshotChip());
+        // The drill breadcrumb's slot, between the chip and the viewport. It mounts
+        // empty and hidden; the overlay walk fills it, so a drill repaints only this
+        // row and the outlines rather than the whole pane (which would reload the
+        // guest page).
+        liveCrumbEl = document.createElement('div');
+        liveCrumbEl.className = 'structureLiveBreadcrumb';
+        liveCrumbEl.hidden = true;
+        paneEl.appendChild(liveCrumbEl);
         paneEl.appendChild(buildLiveViewport());
         paneEl.appendChild(buildLiveReload());
         // The wrapper only has a measurable box once it is in the document, so the
@@ -1342,9 +1489,11 @@ function formatTime(date) {
 }
 
 // The breadcrumb row: an "App" root crumb then one crumb per drilled node,
-// separated by `›`, with the current leaf accented. Each crumb navigates up to
-// its level.
-function buildBreadcrumb(chain) {
+// separated by `›`, with the current leaf accented. Each crumb calls `onNavigate`
+// with the depth to pop to (0 = the root level). Both renderings build their row
+// through here, so the block canvas and the live overlay share one breadcrumb
+// vocabulary and its styling — only the path they pop differs.
+function buildCrumbRow(chain, onNavigate) {
     const bar = document.createElement('div');
     bar.className = 'structureCanvasBreadcrumb';
 
@@ -1367,12 +1516,19 @@ function buildBreadcrumb(chain) {
         btn.textContent = crumb.label;
         btn.addEventListener('click', function (event) {
             event.stopPropagation();
-            drillPath = drillPath.slice(0, crumb.depth);
-            rebuild();
+            onNavigate(crumb.depth);
         });
         bar.appendChild(btn);
     });
     return bar;
+}
+
+// The block canvas's breadcrumb: pops the canvas drill path and repaints the pane.
+function buildBreadcrumb(chain) {
+    return buildCrumbRow(chain, function (depth) {
+        drillPath = drillPath.slice(0, depth);
+        rebuild();
+    });
 }
 
 // ── LAYOUT NORMALIZATION ──────────────────────────────────────────────────────
@@ -1675,11 +1831,19 @@ function notifySelect(selector) {
 export function revealSelector(selector) {
     if (!ctx) return;
     selectedSelector = selector;
-    // Live mode has no drill levels and its geometry comes from the guest page, so
-    // mirroring a tree selection is just a re-mark — never a rebuild, which would
+    // Live mode drills too, but off the GUEST's tree — so resolve the row's parent
+    // path there and repaint the overlay at that level, otherwise a row outside the
+    // current drill level would mark nothing. Still never a rebuild, which would
     // reload the iframe on every tree-row tap.
     if (liveMode) {
-        paintLiveSelection();
+        const doc = liveDoc();
+        const livePath = doc ? findLiveParentPath(buildUiTree(doc), selector, doc) : null;
+        if (livePath) {
+            liveDrillPath = livePath;
+            paintLiveOverlay();
+        } else {
+            paintLiveSelection();
+        }
         return;
     }
     const parentPath = findParentPath(ctx.tree || [], selector);

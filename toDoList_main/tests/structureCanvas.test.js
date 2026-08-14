@@ -1328,7 +1328,9 @@ describe('structureCanvas — live view mode', () => {
         expect(host3.querySelector('.structureCanvasBlocks')).toBeTruthy();
     });
 
-    it('paints one outline box per walked region once the guest loads', () => {
+    // Test updated for drill levels: the overlay now paints ONE level at a time
+    // (the top level here), so `#hud` appears only once `#app` is drilled into.
+    it('paints one outline box per region at the current level once the guest loads', () => {
         const host = mountHost();
         render(host);
         enterLive(host);
@@ -1336,7 +1338,7 @@ describe('structureCanvas — live view mode', () => {
         loadGuest(host, doc, makeGuestWin(doc));
 
         const boxes = Array.from(host.querySelectorAll('.structureLiveRegion'));
-        expect(boxes.map((b) => b.dataset.selector)).toEqual(['#app', '#hud']);
+        expect(boxes.map((b) => b.dataset.selector)).toEqual(['#app']);
         const app = boxes[0];
         // Guest-document coordinates, taken straight off the guest's own rects.
         expect(app.style.width).toBe('400px');
@@ -1352,19 +1354,19 @@ describe('structureCanvas — live view mode', () => {
         const doc = makeGuestDoc();
         loadGuest(host, doc, makeGuestWin(doc));
 
-        host.querySelector('.structureLiveRegion[data-selector="#hud"]').click();
+        host.querySelector('.structureLiveRegion[data-selector="#app"]').click();
 
         expect(onSelect).toHaveBeenCalledTimes(1);
         expect(onSelect.mock.calls[0][0]).toMatchObject({
             kind: 'live',
-            label: 'Hud',
-            value: '#hud',
+            label: 'App',
+            value: '#app',
             copyLabel: 'Copy selector',
             repo: SELF_REPO,
             visible: true,
         });
         expect(
-            host.querySelector('.structureLiveRegion[data-selector="#hud"]').classList.contains('is-selected')
+            host.querySelector('.structureLiveRegion[data-selector="#app"]').classList.contains('is-selected')
         ).toBe(true);
     });
 
@@ -1419,8 +1421,9 @@ describe('structureCanvas — live view mode', () => {
         expect(overlay.hidden).toBe(true);
 
         // Flipping back to inspect re-walks the guest, so a region added while the
-        // page was being interacted with shows up.
-        doc.getElementById('app').insertAdjacentHTML('beforeend', '<div id="late"></div>');
+        // page was being interacted with shows up. It goes in at the top level,
+        // which is the level the undrilled overlay paints.
+        doc.body.insertAdjacentHTML('beforeend', '<div id="late"></div>');
         stubRect(doc.getElementById('late'), 400, 40, 0, 100);
         inspect.click();
         expect(overlay.hidden).toBe(false);
@@ -1638,6 +1641,269 @@ describe('structureCanvas — live view mode', () => {
     });
 });
 
+// ── LIVE OVERLAY DRILL ───────────────────────────────────────────────────────
+// The overlay carries the block canvas's drill vocabulary as its own session-only
+// state: one level of regions is outlined at a time, a second tap on the already-
+// selected region descends, and a breadcrumb above the viewport pops back out.
+// The invariant every test here leans on is that NONE of that reloads the guest —
+// a drill is an overlay repaint, never a rebuild.
+
+// A guest with two levels below the root, so a drill has somewhere to go and the
+// level below that is still reachable.
+function makeDeepGuestDoc() {
+    const doc = document.implementation.createHTMLDocument('guest');
+    doc.body.innerHTML =
+        '<div id="app">' +
+        '  <div id="hud"><div id="hudTitle"></div></div>' +
+        '  <div id="sheet"></div>' +
+        '</div>';
+    stubRect(doc.getElementById('app'), 400, 900, 0, 0);
+    stubRect(doc.getElementById('hud'), 400, 80, 0, 0);
+    stubRect(doc.getElementById('hudTitle'), 200, 40, 0, 0);
+    stubRect(doc.getElementById('sheet'), 400, 820, 0, 80);
+    return doc;
+}
+
+function liveSelectors(host) {
+    return Array.from(host.querySelectorAll('.structureLiveRegion')).map((b) => b.dataset.selector);
+}
+
+function liveCrumbs(host) {
+    return Array.from(
+        host.querySelectorAll('.structureLiveBreadcrumb .structureCanvasCrumb')
+    ).map((c) => c.textContent);
+}
+
+function tapLive(host, selector) {
+    host.querySelector('.structureLiveRegion[data-selector="' + selector + '"]').click();
+}
+
+describe('structureCanvas — live overlay drill', () => {
+    it('a second tap on the selected region drills to its children', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        expect(liveSelectors(host)).toEqual(['#app']);
+        tapLive(host, '#app');                       // first tap selects
+        expect(liveSelectors(host)).toEqual(['#app']);
+        tapLive(host, '#app');                       // second tap drills
+
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+        // And the level below that is reachable the same way.
+        tapLive(host, '#hud');
+        tapLive(host, '#hud');
+        expect(liveSelectors(host)).toEqual(['#hudTitle']);
+    });
+
+    it('drilling never rebuilds the pane or reloads the guest', () => {
+        const onSelect = vi.fn();
+        const host = mountHost();
+        render(host, { onSelect });
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+        const frame = host.querySelector('.structureLiveFrame');
+        const src = frame.getAttribute('src');
+
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+        host.querySelector('.structureLiveBreadcrumb .structureCanvasCrumb').click();
+
+        // Same iframe element, same src — no teardown, no cache-busted remount.
+        expect(host.querySelector('.structureLiveFrame')).toBe(frame);
+        expect(frame.getAttribute('src')).toBe(src);
+        // The drill itself is not a selection, so the toolbar heard about the first
+        // tap only.
+        expect(onSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it('renders the breadcrumb only while drilled and pops back through its crumbs', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        const bar = host.querySelector('.structureLiveBreadcrumb');
+        expect(bar).toBeTruthy();
+        // The slot sits between the snapshot chip and the viewport...
+        expect(bar.previousElementSibling.classList.contains('structureCanvasSnapChip')).toBe(true);
+        expect(bar.nextElementSibling.classList.contains('structureLiveViewport')).toBe(true);
+        // ...and stays hidden at the top level, where there is nothing to pop to.
+        expect(bar.hidden).toBe(true);
+
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+        expect(bar.hidden).toBe(false);
+        expect(liveCrumbs(host)).toEqual(['App', 'App']);   // root crumb + #app's label
+
+        tapLive(host, '#hud');
+        tapLive(host, '#hud');
+        expect(liveCrumbs(host)).toEqual(['App', 'App', 'Hud']);
+        expect(liveSelectors(host)).toEqual(['#hudTitle']);
+
+        // A mid-path crumb pops to exactly its level.
+        host.querySelectorAll('.structureLiveBreadcrumb .structureCanvasCrumb')[1].click();
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+        expect(liveCrumbs(host)).toEqual(['App', 'App']);
+
+        // The root crumb restores the full top-level outline set and hides the row.
+        host.querySelector('.structureLiveBreadcrumb .structureCanvasCrumb').click();
+        expect(liveSelectors(host)).toEqual(['#app']);
+        expect(host.querySelector('.structureLiveBreadcrumb').hidden).toBe(true);
+    });
+
+    it('a tap-again on a region with no children is a no-op', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+        tapLive(host, '#sheet');                     // a childless leaf
+        tapLive(host, '#sheet');                     // ...tapped again
+
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+        expect(host.querySelector('.structureLiveBreadcrumb').hidden).toBe(false);
+        expect(liveCrumbs(host)).toEqual(['App', 'App']);
+        expect(
+            host.querySelector('.structureLiveRegion[data-selector="#sheet"]').classList.contains('is-selected')
+        ).toBe(true);
+    });
+
+    it('re-resolves the drill path against a re-walked guest and clamps a stale one', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+        tapLive(host, '#hud');
+        tapLive(host, '#hud');
+        expect(liveSelectors(host)).toEqual(['#hudTitle']);
+
+        // The guest drops #hud while the user is interacting with the page; the
+        // re-walk on the flip back must clamp to the deepest level that still
+        // resolves rather than paint an empty overlay.
+        host.querySelector('.structureLivePill[data-live-mode="interact"]').click();
+        doc.getElementById('hud').remove();
+        host.querySelector('.structureLivePill[data-live-mode="inspect"]').click();
+
+        expect(liveSelectors(host)).toEqual(['#sheet']);
+        expect(liveCrumbs(host)).toEqual(['App', 'App']);
+    });
+
+    it('survives an inspect/interact flip and a reload-chip remount, and clears on exit', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        let doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+
+        // A flip out and back keeps the level.
+        host.querySelector('.structureLivePill[data-live-mode="interact"]').click();
+        host.querySelector('.structureLivePill[data-live-mode="inspect"]').click();
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+
+        // So does the reload chip, which tears the frame down and remounts it.
+        host.querySelector('.structureLiveReload').click();
+        doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+        expect(host.querySelector('.structureLiveBreadcrumb').hidden).toBe(false);
+
+        // A full exit drops it: the next live entry starts at the top level.
+        exitLiveView();
+        const host2 = mountHost();
+        render(host2);
+        enterLive(host2);
+        const doc2 = makeDeepGuestDoc();
+        loadGuest(host2, doc2, makeGuestWin(doc2));
+        expect(liveSelectors(host2)).toEqual(['#app']);
+        expect(host2.querySelector('.structureLiveBreadcrumb').hidden).toBe(true);
+    });
+
+    it('a repo switch clears the drill path too', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+
+        resetCanvasState();
+
+        const host2 = mountHost();
+        render(host2);
+        enterLive(host2);
+        const doc2 = makeDeepGuestDoc();
+        loadGuest(host2, doc2, makeGuestWin(doc2));
+        expect(liveSelectors(host2)).toEqual(['#app']);
+    });
+
+    // REGRESSION: with the overlay painting one level at a time, a tree row outside
+    // the current level has no box to mark — mirroring it silently marked nothing
+    // unless the reveal drills to the row's own level first.
+    it('mirroring a tree row drills the overlay to that row’s level', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeDeepGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+        const frame = host.querySelector('.structureLiveFrame');
+        const src = frame.getAttribute('src');
+
+        revealSelector('#hudTitle');
+
+        expect(liveSelectors(host)).toEqual(['#hudTitle']);
+        expect(liveCrumbs(host)).toEqual(['App', 'App', 'Hud']);
+        expect(
+            host.querySelector('.structureLiveRegion[data-selector="#hudTitle"]').classList.contains('is-selected')
+        ).toBe(true);
+        // Still never a rebuild.
+        expect(host.querySelector('.structureLiveFrame')).toBe(frame);
+        expect(frame.getAttribute('src')).toBe(src);
+    });
+
+    // A boxless (display:contents) wrapper can never be outlined or tapped, so its
+    // children are hoisted to its level rather than stranded behind it — the same
+    // transparency the block canvas gives such nodes.
+    it('hoists a boxless pass-through wrapper’s children into its level', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = document.implementation.createHTMLDocument('guest');
+        doc.body.innerHTML =
+            '<div id="app"><div id="wrap"><div id="hud"></div><div id="sheet"></div></div></div>';
+        stubRect(doc.getElementById('app'), 400, 900, 0, 0);
+        stubRect(doc.getElementById('wrap'), 0, 0, 0, 0);     // display: contents
+        stubRect(doc.getElementById('hud'), 400, 80, 0, 0);
+        stubRect(doc.getElementById('sheet'), 400, 820, 0, 80);
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        tapLive(host, '#app');
+        tapLive(host, '#app');
+
+        // #wrap itself is transparent; its children stand in its place, and the
+        // breadcrumb names the drilled node, not the wrapper.
+        expect(liveSelectors(host)).toEqual(['#hud', '#sheet']);
+        expect(liveCrumbs(host)).toEqual(['App', 'App']);
+    });
+});
+
 // The live view's own CSS contract. An author-level `display` declaration
 // outranks the UA stylesheet's `[hidden] { display: none }`, so every live-view
 // family that declares `display` AND is toggled through the `hidden` attribute
@@ -1648,7 +1914,7 @@ describe('structureCanvas — live view CSS contract', () => {
 
     // The overlay is hidden in interact mode; the notice is hidden until the
     // interact-only fallback fires.
-    ['.structureLiveOverlay', '.structureLiveNotice'].forEach((selector) => {
+    ['.structureLiveOverlay', '.structureLiveNotice', '.structureLiveBreadcrumb'].forEach((selector) => {
         it(`${selector} declares display and re-asserts it under [hidden]`, () => {
             const base = css.indexOf(selector + ' {');
             expect(base).toBeGreaterThan(-1);

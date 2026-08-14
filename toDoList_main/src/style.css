@@ -6427,6 +6427,17 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
    instead (see the ≥1024px rule). `overscroll-behavior: contain` keeps the guest
    page's internal scrolling from chaining into the shell's scroll-slack probe on
    iOS standalone. */
+/* The live overlay's drill breadcrumb, docked between the snapshot chip and the
+   viewport. The slot is mounted on every live entry but stays hidden at the top
+   level, so the row appears only once there is a level to pop back to (and, being
+   display:none until then, eats none of the pane's flex gap). Its crumbs are the
+   block canvas's own `.structureCanvasBreadcrumb` row, so both renderings of the
+   region model read identically. */
+.structureLiveBreadcrumb {
+  display: block;
+}
+.structureLiveBreadcrumb[hidden] { display: none; }
+
 .structureLiveViewport {
   position: relative;
   display: block;
