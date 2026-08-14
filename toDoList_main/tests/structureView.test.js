@@ -117,6 +117,9 @@ function mountDom(name = 'My Project', extraHtml = '') {
 }
 
 beforeEach(() => {
+    // Live view is module-scoped session state that a same-repo repaint now keeps
+    // (only a lens/repo switch or leaving the tab exits), so drop it between tests.
+    exitStructureLiveView();
     mountDom();
     state.projectRepos = {
         'My Project': 'rsterenchak/toDoList_TOP',
@@ -1175,6 +1178,33 @@ describe('renderStructureView — desktop navigator/detail canvas host', () => {
 
         expect(frame.parentNode).toBe(null);
         expect(document.querySelector('.structureLiveFrame')).toBe(null);
+    });
+
+    // REGRESSION: the UI lens repaints itself asynchronously (the published-map
+    // fetch resolving, a capture merge, this breakpoint re-home), and every such
+    // repaint used to run the full exit — so the pane reverted to the block canvas
+    // on its own a few seconds after the user tapped Live. A repaint that lands
+    // back on the same repo's UI lens now only suspends the mode and remounts the
+    // frame in the fresh pane.
+    it('a same-repo UI-lens repaint keeps the live view mounted', async () => {
+        setWidth(800);
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        document.querySelector('.structureCanvasLiveChip').click();
+        expect(document.querySelector('.structureLiveFrame')).toBeTruthy();
+
+        // Re-home across the breakpoint: renderLens repaints the same repo's UI lens
+        // into the other host, exactly as a late async continuation would.
+        setWidth(1280);
+        syncStructureCanvasForViewport();
+        await flush();
+
+        // Still live, with exactly one frame — the suspended one went with its pane.
+        expect(document.querySelectorAll('.structureLiveFrame').length).toBe(1);
+        const chip = document.querySelector('.structureCanvasLiveChip');
+        expect(chip.classList.contains('is-live')).toBe(true);
+        expect(document.querySelector('.structureCanvasBlocks')).toBe(null);
     });
 
     it('re-homes the canvas across the breakpoint when the viewport resizes', async () => {

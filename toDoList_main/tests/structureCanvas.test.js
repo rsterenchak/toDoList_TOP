@@ -1246,18 +1246,73 @@ describe('structureCanvas — live view mode', () => {
         expect(chip.querySelector('.structureCanvasLiveChip').classList.contains('is-live')).toBe(false);
     });
 
-    it('never persists the mode: nothing is written and a re-mount starts on the canvas', () => {
+    it('never persists the mode: nothing is written and a session exit starts on the canvas', () => {
         const host = mountHost();
         render(host, { onRecapture: vi.fn() });
         const before = Object.keys(localStorage).sort();
         enterLive(host);
         expect(Object.keys(localStorage).sort()).toEqual(before);
 
-        // A fresh mount (what every Structure open does) is back on the canvas.
+        // The mode is session-only: leaving the Structure tab runs the full exit, so
+        // the next mount is back on the canvas with no iframe loaded. (A same-repo
+        // re-mount WITHOUT that exit keeps live mode — see the regression below.)
+        exitLiveView();
         const host2 = mountHost();
         render(host2, { onRecapture: vi.fn() });
         expect(host2.querySelector('.structureLiveFrame')).toBe(null);
         expect(host2.querySelector('.structureCanvasBlocks')).toBeTruthy();
+    });
+
+    // REGRESSION: the UI lens re-mounts this canvas from async continuations (the
+    // guest's published-map fetch, the self repo's capture merge), which can land
+    // seconds after the user tapped Live. Those re-mounts used to run the full
+    // exit, so the pane reverted to the block canvas on its own.
+    it('a same-repo re-mount keeps live mode and remounts the frame', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        enterLive(host);
+        expect(host.querySelector('.structureLiveFrame')).toBeTruthy();
+
+        // What the late continuation does: mount the canvas again for the same repo.
+        const host2 = mountHost();
+        render(host2, { onRecapture: vi.fn() });
+
+        expect(host2.querySelector('.structureLiveFrame')).toBeTruthy();
+        expect(host2.querySelector('.structureCanvasBlocks')).toBe(null);
+        expect(host2.querySelector('.structureCanvasLiveChip').classList.contains('is-live')).toBe(true);
+        // The suspended frame went with the pane it lived in — no orphan iframe.
+        expect(host.querySelector('.structureLiveFrame')).toBe(null);
+    });
+
+    it('a repo switch still fully exits live mode', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        enterLive(host);
+
+        // resetCanvasState is what a project/repo switch runs before the repaint.
+        resetCanvasState();
+        expect(host.querySelector('.structureLiveFrame')).toBe(null);
+
+        const host2 = mountHost();
+        render(host2, { onRecapture: vi.fn() });
+        expect(host2.querySelector('.structureLiveFrame')).toBe(null);
+        expect(host2.querySelector('.structureCanvasBlocks')).toBeTruthy();
+    });
+
+    it('mounting another repo’s canvas fully exits live mode', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        enterLive(host);
+
+        // A guest repo with no stored geometry mounts nothing, but the mode must
+        // still drop — live view is scoped to the repo it was entered on.
+        render(mountHost(), { repo: 'rsterenchak/matchingGame-test', onRecapture: vi.fn() });
+        expect(host.querySelector('.structureLiveFrame')).toBe(null);
+
+        const host3 = mountHost();
+        render(host3, { onRecapture: vi.fn() });
+        expect(host3.querySelector('.structureLiveFrame')).toBe(null);
+        expect(host3.querySelector('.structureCanvasBlocks')).toBeTruthy();
     });
 
     it('paints one outline box per walked region once the guest loads', () => {
