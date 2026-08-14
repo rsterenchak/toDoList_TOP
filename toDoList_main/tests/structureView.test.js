@@ -78,11 +78,18 @@ vi.mock('../src/inject.js', () => ({
 
 // The deployed-site capture is stubbed so the capture-button flow can be exercised
 // without a real off-screen iframe fetch — tests assert the button routes into it.
+// `pagesUrlFor` keeps its real behavior — the canvas's Live chip is gated on it
+// resolving, so stubbing it away would silently drop the chip from these renders.
 vi.mock('../src/structureRemoteCapture.js', () => ({
     captureRemote: vi.fn(function () { return Promise.resolve({ ok: true, passes: 2 }); }),
+    pagesUrlFor: vi.fn(function (repo) {
+        const parts = String(repo || '').split('/');
+        if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+        return 'https://' + parts[0] + '.github.io/' + parts[1] + '/';
+    }),
 }));
 
-import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport } from '../src/structureView.js';
+import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport, exitStructureLiveView } from '../src/structureView.js';
 import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { captureRemote } from '../src/structureRemoteCapture.js';
@@ -1133,6 +1140,41 @@ describe('renderStructureView — desktop navigator/detail canvas host', () => {
         const tree = document.querySelector('#structureView > .structureTree');
         expect(tree.querySelector('.structureCanvasPane')).toBeTruthy();
         expect(host.querySelector('.structureCanvasPane')).toBeFalsy();
+    });
+
+    // The UI lens's live view mounts an iframe of the deployed page. It is only
+    // ever hidden — never unmounted — by a lens switch or a tab switch, so the
+    // teardown has to be explicit or the guest's timers and service worker keep
+    // running off-screen. Both exits are pinned here.
+    it('a lens switch tears the live view’s iframe down', async () => {
+        setWidth(800);
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        document.querySelector('.structureCanvasLiveChip').click();
+        expect(document.querySelector('.structureLiveFrame')).toBeTruthy();
+
+        const codeBtn = Array.from(document.querySelectorAll('.structureLensBtn'))
+            .find((b) => b.dataset.lens === 'code');
+        codeBtn.click();
+        await flush();
+
+        expect(document.querySelector('.structureLiveFrame')).toBe(null);
+    });
+
+    it('exitStructureLiveView (the leaving-the-tab hook) tears the iframe down', async () => {
+        setWidth(800);
+        mountSelfUiDom();
+        renderStructureView();
+        await flush();
+        document.querySelector('.structureCanvasLiveChip').click();
+        const frame = document.querySelector('.structureLiveFrame');
+        expect(frame).toBeTruthy();
+
+        exitStructureLiveView();
+
+        expect(frame.parentNode).toBe(null);
+        expect(document.querySelector('.structureLiveFrame')).toBe(null);
     });
 
     it('re-homes the canvas across the breakpoint when the viewport resizes', async () => {

@@ -19,6 +19,7 @@ import {
     captureSnapshot,
     renderStructureCanvas,
     resetCanvasState,
+    exitLiveView,
     revealSelector,
     applyCanvasFilter,
     markGhostRows,
@@ -2673,6 +2674,11 @@ function startGuestCapture(repo, treeEl) {
 // adaptive: the running app is always the live UI map; any other repo resolves
 // its second lens (UI or Types) from the manifest via renderSecondLens.
 function renderLens(repo, treeEl) {
+    // The UI lens's live view holds a mounted iframe of a deployed page; this
+    // repaint is about to throw away the host it lives in, so tear it down first.
+    // This is what makes every Structure open (and every lens switch, repo switch,
+    // or breakpoint re-home) start back on the block canvas with no iframe loaded.
+    exitLiveView();
     // Each repaint re-mounts the canvas via resolveCanvasHost(); clear the detail-
     // column host first so a prior canvas can't linger there (the tree host is
     // cleared by each lens's own render). Record the breakpoint this paint targets
@@ -3461,6 +3467,14 @@ export function renderStructureView() {
         refreshCollapseAllPill();
         refreshActionToolbar();
     });
+}
+
+// Tear down the UI lens's live view. Called by main.js when the user leaves the
+// Structure tab: the tab is only hidden, not unmounted, so without this the guest
+// page's timers and service worker would keep running in an off-screen iframe.
+// A no-op when the live view isn't mounted, so it's cheap to call on every switch.
+export function exitStructureLiveView() {
+    exitLiveView();
 }
 
 // Re-home the block canvas when the viewport crosses the 1024px breakpoint while
