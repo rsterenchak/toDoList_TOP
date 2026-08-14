@@ -447,6 +447,13 @@ export function resetCanvasState() {
 const LIVE_LOAD_TIMEOUT_MS = 10000;
 // The unreachable copy, matching the deployed-capture flow's own status line.
 const LIVE_UNREACHABLE = 'Couldn’t reach a deployed site for this repo.';
+// The guest's VIRTUAL viewport width. A phone host measures ~360 CSS px, which is
+// narrower than the guest page's own natural mobile viewport, so laying the guest
+// out at the wrapper's width clips fixed-width clusters at the right edge. The
+// frame is instead held at this width — the same 390 the deployed capture flow's
+// mobile pass uses — and the whole thing is scaled down to fit. Hosts at or above
+// 390 (the desktop detail column) never scale.
+const LIVE_VIRTUAL_W = 390;
 
 // Whether the pane is currently rendering the live view.
 let liveMode = false;
@@ -462,6 +469,9 @@ let liveError = '';
 // Live DOM handles held for teardown.
 let liveFrame = null;
 let liveLayer = null;
+// The scaler wrapping BOTH the frame and the overlay — what carries the
+// scale-to-fit transform on narrow hosts.
+let liveScaler = null;
 let liveWin = null;
 let liveScrollHandler = null;
 let liveResizeHandler = null;
@@ -492,8 +502,10 @@ function teardownLive() {
         window.removeEventListener('resize', liveResizeHandler);
     }
     if (liveFrame && liveFrame.parentNode) liveFrame.parentNode.removeChild(liveFrame);
+    if (liveScaler && liveScaler.parentNode) liveScaler.parentNode.removeChild(liveScaler);
     liveFrame = null;
     liveLayer = null;
+    liveScaler = null;
     liveWin = null;
     liveScrollHandler = null;
     liveResizeHandler = null;
@@ -582,13 +594,21 @@ function buildLiveChip() {
 
 // The live viewport: the deployed page in a same-origin iframe, the region overlay
 // over it, the inspect / interact pills floating top-right inside the wrapper, and
-// a muted notice line for the interact-only fallback. Sizing is CSS's job — the
-// wrapper fills the host width, takes a viewport-proportional height inline, and
-// absorbs the detail column at desktop widths — with the guest page scrolling
-// INSIDE the iframe.
+// a muted notice line for the interact-only fallback. The wrapper's own sizing is
+// CSS's job — it fills the host width, takes a viewport-proportional height
+// inline, and absorbs the detail column at desktop widths — with the guest page
+// scrolling INSIDE the iframe. Inside it, the frame and the overlay share a
+// SCALER element, which is what `applyLiveScale` shrinks on narrow hosts.
 function buildLiveViewport() {
     const wrap = document.createElement('div');
     wrap.className = 'structureLiveViewport';
+
+    // The frame and the overlay live together in here so a scale on narrow hosts
+    // moves both at once: region rects and the scroll-sync translate stay in
+    // guest-document units with no per-rect math.
+    const scaler = document.createElement('div');
+    scaler.className = 'structureLiveScaler';
+    liveScaler = scaler;
 
     const frame = document.createElement('iframe');
     frame.className = 'structureLiveFrame';
@@ -606,8 +626,9 @@ function buildLiveViewport() {
     notice.className = 'structureLiveNotice';
     notice.hidden = true;
 
-    wrap.appendChild(frame);
-    wrap.appendChild(overlay);
+    scaler.appendChild(frame);
+    scaler.appendChild(overlay);
+    wrap.appendChild(scaler);
     wrap.appendChild(notice);
     wrap.appendChild(buildLivePills(notice));
     applyLiveInteraction(wrap);
@@ -617,6 +638,7 @@ function buildLiveViewport() {
         if (liveFrame !== frame) return;
         if (liveLoadTimer) { clearTimeout(liveLoadTimer); liveLoadTimer = null; }
         attachLiveScroll();
+        applyLiveScale();
         paintLiveOverlay(notice);
     });
     frame.addEventListener('error', function () {
@@ -628,8 +650,10 @@ function buildLiveViewport() {
     }, LIVE_LOAD_TIMEOUT_MS);
 
     // The overlay's boxes are measured against the guest's own layout, so a host
-    // resize (which re-widths the iframe and reflows the guest) needs a re-walk.
-    liveResizeHandler = function () { paintLiveOverlay(notice); };
+    // resize (which re-widths the iframe and reflows the guest) needs a re-walk —
+    // preceded by a fresh scale, so a rotation or breakpoint re-home re-fits the
+    // virtual viewport before the walk measures the guest at its new width.
+    liveResizeHandler = function () { applyLiveScale(); paintLiveOverlay(notice); };
     if (typeof window !== 'undefined') window.addEventListener('resize', liveResizeHandler);
 
     const url = liveUrl(activeRepo);
@@ -645,6 +669,39 @@ function buildLiveViewport() {
         }, 0);
     }
     return wrap;
+}
+
+// The live viewport wrapper the frame currently sits in, or null. The frame's own
+// parent is the SCALER, so anything reaching for the wrapper (the interact class,
+// the pills) must go up past it rather than take `liveFrame.parentNode`.
+function liveWrapEl() {
+    if (!liveFrame || typeof liveFrame.closest !== 'function') return null;
+    return liveFrame.closest('.structureLiveViewport');
+}
+
+// Fit the guest's virtual viewport into the host wrapper. `k` is the wrapper's
+// measured width over `LIVE_VIRTUAL_W`; the scaler is sized to the virtual
+// viewport (390 × wrapperHeight / k) and scaled by `k` from its top-left, so its
+// painted size is exactly the wrapper's box and nothing clips. `k` is never above
+// 1 — a wrapper at or beyond 390 keeps the untransformed full-width layout — and
+// an unmeasurable wrapper (width or height 0, e.g. a pane still detached from the
+// document) is left untransformed too rather than collapsed to nothing.
+function applyLiveScale() {
+    if (!liveScaler) return;
+    const wrap = liveWrapEl();
+    const w = (wrap && wrap.clientWidth) || 0;
+    const h = (wrap && wrap.clientHeight) || 0;
+    if (!(w > 0 && h > 0 && w < LIVE_VIRTUAL_W)) {
+        // Back to full width (a rotation to a wide host clears a prior scale).
+        liveScaler.style.width = '';
+        liveScaler.style.height = '';
+        liveScaler.style.transform = '';
+        return;
+    }
+    const k = w / LIVE_VIRTUAL_W;
+    liveScaler.style.width = LIVE_VIRTUAL_W + 'px';
+    liveScaler.style.height = (h / k) + 'px';
+    liveScaler.style.transform = 'scale(' + k + ')';
 }
 
 // The two floating icon pills, absolutely positioned top-right INSIDE the wrapper
@@ -718,13 +775,13 @@ function paintLiveOverlay(notice) {
         liveInspectBlocked = true;
         liveInteract = true;
         clear(liveLayer);
-        applyLiveInteraction(liveFrame.parentNode);
+        applyLiveInteraction(liveWrapEl());
         setLiveNotice(notice, 'Can’t inspect this page — showing it interactively.');
         return;
     }
     liveInspectBlocked = false;
     setLiveNotice(notice, '');
-    applyLiveInteraction(liveFrame.parentNode);
+    applyLiveInteraction(liveWrapEl());
     clear(liveLayer);
     let win = null;
     try { win = liveFrame.contentWindow; } catch (e) { win = null; }
@@ -995,6 +1052,9 @@ export function renderStructureCanvas(host, opts) {
     paneEl = pane;
     rebuild();
     host.insertBefore(pane, host.firstChild);
+    // rebuild() ran while the pane was still detached, so a live view carried
+    // through this render (a same-repo repaint) measures its wrapper only now.
+    if (liveMode) applyLiveScale();
     return pane;
 }
 
@@ -1013,6 +1073,9 @@ function rebuild() {
         paneEl.appendChild(buildSnapshotChip());
         paneEl.appendChild(buildLiveViewport());
         paneEl.appendChild(buildLiveReload());
+        // The wrapper only has a measurable box once it is in the document, so the
+        // scale-to-fit runs after the append (and again on load and on resize).
+        applyLiveScale();
         return;
     }
 

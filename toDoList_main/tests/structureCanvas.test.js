@@ -1193,6 +1193,19 @@ function enterLive(host) {
     host.querySelector('.structureCanvasLiveChip').click();
 }
 
+// jsdom lays nothing out, so the live wrapper's measured box (what the
+// scale-to-fit reads) is stubbed the way rects are elsewhere in this file.
+function stubClientBox(el, w, h) {
+    Object.defineProperty(el, 'clientWidth', { configurable: true, get: function () { return w; } });
+    Object.defineProperty(el, 'clientHeight', { configurable: true, get: function () { return h; } });
+}
+
+// Give the mounted viewport a measured box and re-run the host-resize path.
+function resizeLiveHost(host, w, h) {
+    stubClientBox(host.querySelector('.structureLiveViewport'), w, h);
+    window.dispatchEvent(new Event('resize'));
+}
+
 describe('structureCanvas — live view mode', () => {
     it('offers the Live chip beside the canvas controls and starts in canvas mode', () => {
         const host = mountHost();
@@ -1479,6 +1492,139 @@ describe('structureCanvas — live view mode', () => {
         expect(status.textContent).toBe('Couldn’t reach a deployed site for this repo.');
     });
 
+    // ── SCALE-TO-FIT ─────────────────────────────────────────────────────────
+    // A phone host measures ~360 CSS px, narrower than the guest page's own mobile
+    // viewport, so laying the guest out at the wrapper's width clipped fixed-width
+    // clusters at the right edge. The frame is held at a 390px virtual viewport
+    // and the scaler shrinks it to fit instead.
+
+    it('scales a 390px virtual viewport down to fit a narrow host', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        resizeLiveHost(host, 360, 600);
+
+        const scaler = host.querySelector('.structureLiveScaler');
+        expect(scaler).toBeTruthy();
+        expect(scaler.style.width).toBe('390px');
+        // 600 / (360/390) — the guest gets proportionally MORE viewport height,
+        // so the painted box is exactly the wrapper's 360×600.
+        expect(scaler.style.height).toBe('650px');
+        expect(scaler.style.transform).toBe('scale(' + (360 / 390) + ')');
+    });
+
+    it('scales the frame and the overlay together, leaving the pills and notice at wrapper level', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        resizeLiveHost(host, 360, 600);
+
+        const scaler = host.querySelector('.structureLiveScaler');
+        // Both scaled surfaces live inside the scaler...
+        expect(scaler.contains(host.querySelector('.structureLiveFrame'))).toBe(true);
+        expect(scaler.contains(host.querySelector('.structureLiveOverlayLayer'))).toBe(true);
+        // ...while the chrome that must stay full-size does not.
+        expect(scaler.contains(host.querySelector('.structureLivePills'))).toBe(false);
+        expect(scaler.contains(host.querySelector('.structureLiveNotice'))).toBe(false);
+        expect(host.querySelector('.structureLiveReload').closest('.structureLiveViewport')).toBe(null);
+    });
+
+    it('never scales up: a host at or above the virtual width stays untransformed', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const scaler = host.querySelector('.structureLiveScaler');
+
+        // Unmeasured (jsdom's 0×0 default, or a pane not yet in the document).
+        expect(scaler.style.transform).toBe('');
+
+        resizeLiveHost(host, 390, 600);       // exactly the virtual width
+        expect(scaler.style.transform).toBe('');
+        expect(scaler.style.width).toBe('');
+        expect(scaler.style.height).toBe('');
+
+        resizeLiveHost(host, 900, 600);       // the desktop detail column
+        expect(scaler.style.transform).toBe('');
+        expect(scaler.style.width).toBe('');
+        expect(scaler.style.height).toBe('');
+    });
+
+    it('drops the scale when the host widens back (rotation, breakpoint re-home)', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        resizeLiveHost(host, 360, 600);
+        const scaler = host.querySelector('.structureLiveScaler');
+        expect(scaler.style.transform).toBe('scale(' + (360 / 390) + ')');
+
+        resizeLiveHost(host, 780, 400);       // landscape
+        expect(scaler.style.transform).toBe('');
+        expect(scaler.style.width).toBe('');
+        expect(scaler.style.height).toBe('');
+    });
+
+    it('fits the viewport on the guest’s load, not only on a later resize', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        stubClientBox(host.querySelector('.structureLiveViewport'), 360, 600);
+        const doc = makeGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        expect(host.querySelector('.structureLiveScaler').style.transform).toBe(
+            'scale(' + (360 / 390) + ')'
+        );
+    });
+
+    it('keeps overlay boxes in guest-document units under the transform', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeGuestDoc();
+        const win = makeGuestWin(doc);
+        loadGuest(host, doc, win);
+        resizeLiveHost(host, 360, 600);
+
+        // The scaler carries the transform, so no rect is pre-multiplied by k —
+        // the boxes stay exactly the guest's own rects.
+        const app = host.querySelector('.structureLiveRegion[data-selector="#app"]');
+        expect(app.style.width).toBe('400px');
+        expect(app.style.height).toBe('900px');
+        // ...and the scroll sync still translates in those same units.
+        win.scrollY = 240;
+        win.listeners.filter((l) => l[0] === 'scroll').forEach((l) => l[1]());
+        expect(host.querySelector('.structureLiveOverlayLayer').style.transform).toBe(
+            'translate(0px, -240px)'
+        );
+    });
+
+    it('still routes the overlay walk’s interact flip to the wrapper, not the scaler', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        // The unreachable-guest fallback is the one path where the overlay walk is
+        // the ONLY thing applying the interact state, so it pins which element the
+        // walk reaches for — the frame's own parent is now the scaler.
+        loadGuest(host, null, null, true);
+
+        expect(host.querySelector('.structureLiveViewport').classList.contains('is-interact')).toBe(true);
+        expect(host.querySelector('.structureLiveScaler').classList.contains('is-interact')).toBe(false);
+    });
+
+    it('unmounts the scaler with the frame on teardown', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const scaler = host.querySelector('.structureLiveScaler');
+        const frame = host.querySelector('.structureLiveFrame');
+
+        exitLiveView();
+
+        expect(frame.parentNode).toBe(null);
+        expect(scaler.parentNode).toBe(null);
+        expect(host.querySelector('.structureLiveScaler')).toBe(null);
+    });
+
     it('a guest repo with stored geometry gets the same Live chip', () => {
         const GUEST = 'rsterenchak/matchingGame-test';
         captureSnapshot(sampleTree(), GUEST);
@@ -1529,6 +1675,21 @@ describe('structureCanvas — live view CSS contract', () => {
         const body = css.slice(css.indexOf('{', rule), css.indexOf('}', rule));
         expect(body).toMatch(/height:\s*auto/);
         expect(body).toMatch(/flex:\s*1 1 auto/);
+    });
+
+    // The scaler fills the wrapper at rest and anchors its transform top-left, so
+    // an unscaled host renders exactly as it did before the scaler existed and a
+    // scaled one can't drift part of the guest outside the wrapper.
+    it('anchors the scaler at the wrapper’s top-left with a top-left transform origin', () => {
+        const start = css.indexOf('.structureLiveScaler {');
+        expect(start).toBeGreaterThan(-1);
+        const body = css.slice(start, css.indexOf('}', start));
+        expect(body).toMatch(/position:\s*absolute/);
+        expect(body).toMatch(/left:\s*0/);
+        expect(body).toMatch(/top:\s*0/);
+        expect(body).toMatch(/width:\s*100%/);
+        expect(body).toMatch(/height:\s*100%/);
+        expect(body).toMatch(/transform-origin:\s*0 0/);
     });
 
     it('sizes the floating pills at 36×36 with a 10px radius', () => {

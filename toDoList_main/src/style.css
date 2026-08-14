@@ -6441,6 +6441,23 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .structureLiveViewport[hidden] { display: none; }
 
+/* The scale-to-fit layer. It holds BOTH the iframe and the overlay, so a phone
+   host (narrower than the guest's own mobile viewport) can lay the guest out at a
+   390px virtual width and shrink the pair together — outline boxes stay in
+   guest-document units with no per-rect math. Unstyled here it is simply the
+   wrapper's box at scale 1; the inline width / height / transform that JS sets
+   when the wrapper measures under 390px is what does the fitting, anchored at the
+   top-left so no part of the guest drifts out of the wrapper. The floating pills,
+   the notice line, and the reload chip stay outside it and never scale. */
+.structureLiveScaler {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+}
+
 .structureLiveFrame {
   display: block;
   width: 100%;
@@ -6450,9 +6467,10 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .structureLiveFrame[hidden] { display: none; }
 
-/* The overlay sits over the iframe and is hit-testable in inspect mode; interact
-   mode hides it outright, which drops its pointer-events with it so every tap
-   reaches the guest page. */
+/* The overlay sits over the iframe — inside the scaler, so it inherits any
+   scale-to-fit and covers exactly the guest's virtual viewport — and is
+   hit-testable in inspect mode; interact mode hides it outright, which drops its
+   pointer-events with it so every tap reaches the guest page. */
 .structureLiveOverlay {
   position: absolute;
   display: block;

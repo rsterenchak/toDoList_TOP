@@ -1299,7 +1299,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-14
   <!-- id: 396049d0-7865-4b06-ad4e-56dda21a501c -->
 
-- [ ] **[MEDIUM]** Fix live view clipping guest elements on narrow hosts by scaling a 390px virtual viewport
+- [x] **[MEDIUM]** Fix live view clipping guest elements on narrow hosts by scaling a 390px virtual viewport
   - Type: bug
   - Description: On phones, the live view's iframe lays the guest page out at the wrapper's own width (~360 CSS px), which is narrower than the guest's natural mobile viewport — fixed-width clusters overflow and clip at the right edge (e.g., a guest's own chip rows truncate mid-control). Fix by giving the guest a virtual viewport and scaling to fit: in `buildLiveViewport` (`structureCanvas.js`), when the wrapper measures narrower than a `LIVE_VIRTUAL_W` of 390 (matching the capture flow's mobile pass width), wrap the iframe and the overlay layer in a shared inner scaler element, set the iframe to 390px wide with height `wrapperHeight / k`, and apply `transform: scale(k)` with `transform-origin: 0 0` on the scaler, where `k = wrapperWidth / 390`. Never scale up — hosts at or above 390px (the desktop detail column) keep `k = 1` and full-width layout, byte-identical to current behavior. Because the overlay layer lives inside the scaler, region rects and the scroll-sync translate stay in guest-document units with no per-rect math; the inspect/interact pills, notice line, and reload chip stay outside the scaler at wrapper level, unscaled. Recompute `k` and re-apply sizing in the existing `liveResizeHandler` alongside the overlay re-walk so rotation and breakpoint re-homes stay aligned.
   - Acceptance criteria:
@@ -1309,5 +1309,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Inspect taps and interact-mode taps both land on the correct guest elements under the transform.
   - Out of scope: a user-facing zoom control or virtual-width toggle; scaling the floating pills or reload chip; an embedded-mode query param controlling the guest's initial view (the same-origin guest resuming the outer session's persisted view is a separate, known quirk); changes to the capture flow's 390/1280 passes.
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-14
   <!-- id: 024f06a0-5b21-4030-bd09-a6d1b61ac19f -->
