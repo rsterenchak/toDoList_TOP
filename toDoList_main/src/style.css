@@ -6125,7 +6125,8 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 /* The deployed-site Capture / Re-capture control: one compact button sitting in the
    snapshot chip for both repos (and reused in the tree's top slot for a never-captured
    guest that has no chip yet), so the affordance looks identical across states. */
-.structureCanvasRecapture {
+.structureCanvasRecapture,
+.structureCanvasLiveChip {
   display: inline-flex;
   align-items: center;
   min-height: 24px;
@@ -6138,8 +6139,27 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-size: 11px;
   cursor: pointer;
 }
-.structureCanvasRecapture:hover {
+.structureCanvasRecapture:hover,
+.structureCanvasLiveChip:hover {
   background: rgba(108, 93, 245, 0.12);
+}
+
+/* The `Live` chip: the same compact chip shape as Capture/Re-capture (it shares
+   the rule above), with an engaged treatment while the pane is showing the
+   deployed page instead of the block canvas. */
+.structureCanvasLiveChip[hidden] { display: none; }
+.structureCanvasLiveChip.is-live {
+  border-color: #6C5DF5;
+  background: rgba(108, 93, 245, 0.16);
+  color: #9D93EE;
+}
+/* Live mode's label names the repo being shown rather than a capture time; hard
+   truncate it so a long repo name can't push the chip's controls off the row. */
+.structureCanvasSnapLabel--live {
+  max-width: 60%;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* Capture status line (and, for a never-captured guest with no chip, the compact
@@ -6397,6 +6417,164 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   right: 6px;
   bottom: 50%;
   transform: translateY(50%);
+}
+
+/* ── STRUCTURE LIVE VIEW (UI lens, deployed page) ─────────────────────────────
+   The UI lens's second rendering of the same region model: the repo's deployed
+   page in a same-origin iframe with the tappable region overlay drawn over it.
+   The wrapper fills the host width and takes a viewport-proportional height in
+   the inline (mobile) placement; at desktop widths it absorbs the detail column
+   instead (see the ≥1024px rule). `overscroll-behavior: contain` keeps the guest
+   page's internal scrolling from chaining into the shell's scroll-slack probe on
+   iOS standalone. */
+.structureLiveViewport {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 65dvh;
+  min-height: 260px;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  overscroll-behavior: contain;
+}
+.structureLiveViewport[hidden] { display: none; }
+
+.structureLiveFrame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: var(--bg-base);
+}
+.structureLiveFrame[hidden] { display: none; }
+
+/* The overlay sits over the iframe and is hit-testable in inspect mode; interact
+   mode hides it outright, which drops its pointer-events with it so every tap
+   reaches the guest page. */
+.structureLiveOverlay {
+  position: absolute;
+  display: block;
+  inset: 0;
+  overflow: hidden;
+}
+.structureLiveOverlay[hidden] { display: none; }
+
+/* Outline boxes are positioned in guest-DOCUMENT coordinates; this layer's
+   transform (−scrollX / −scrollY, driven by the guest window's scroll) is what
+   pins them to their elements as the page scrolls inside the iframe. */
+.structureLiveOverlayLayer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* The canvas's outline vocabulary, drawn over real pixels. */
+.structureLiveRegion {
+  position: absolute;
+  box-sizing: border-box;
+  border: 1px solid rgba(157, 147, 238, 0.55);
+  border-radius: 2px;
+  cursor: pointer;
+}
+.structureLiveRegion.is-selected {
+  border: 1.5px solid #6C5DF5;
+  background: rgba(108, 93, 245, 0.10);
+}
+.structureLiveRegionLabel {
+  display: none;
+  position: absolute;
+  left: 0;
+  top: 0;
+  max-width: 100%;
+  padding: 1px 5px;
+  border-radius: 0 0 6px 0;
+  background: #6C5DF5;
+  color: #fff;
+  font-family: 'SpaceMono', monospace;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.structureLiveRegion.is-selected .structureLiveRegionLabel { display: block; }
+.structureLiveRegionLabel[hidden] { display: none; }
+
+/* The two floating icon pills, over the glass so they stay reachable while the
+   guest page scrolls beneath them. */
+.structureLivePills {
+  position: absolute;
+  display: flex;
+  top: 8px;
+  right: 8px;
+  gap: 6px;
+  z-index: 2;
+}
+.structureLivePills[hidden] { display: none; }
+.structureLivePill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: #9D93EE;
+  font-size: 15px;
+  cursor: pointer;
+}
+.structureLivePill[hidden] { display: none; }
+.structureLivePill.is-active {
+  border-color: #6C5DF5;
+  background: rgba(108, 93, 245, 0.16);
+}
+.structureLivePill.is-disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Muted line inside the viewport, used for the interact-only fallback when the
+   guest document can't be walked. */
+.structureLiveNotice {
+  position: absolute;
+  display: block;
+  left: 8px;
+  bottom: 8px;
+  z-index: 2;
+  max-width: calc(100% - 16px);
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.structureLiveNotice[hidden] { display: none; }
+
+/* The amber reload chip below the viewport: remounts the iframe on a fresh
+   cache-busting query so a just-deployed change can be pulled in. */
+.structureLiveReload {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  min-height: 24px;
+  padding: 2px 8px;
+  border: 0.5px solid rgba(217, 184, 106, 0.5);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: #d9b86a;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+.structureLiveReload[hidden] { display: none; }
+.structureLiveReload:hover {
+  background: rgba(217, 184, 106, 0.12);
 }
 
 /* Locate pulse: a purple outline that expands and fades three times, box-shadow
@@ -13906,6 +14084,13 @@ body.row-dragging * { cursor: grabbing !important; }
   #structureView > .structureCanvasHost > .codeViewerPane {
     flex: 1 1 auto;
     min-height: 0;
+  }
+  /* Live mode's viewport absorbs the detail column the same way, so the deployed
+     page renders at real column height instead of the mobile dvh proportion. */
+  #structureView > .structureCanvasHost .structureLiveViewport {
+    flex: 1 1 auto;
+    height: auto;
+    min-height: 420px;
   }
 
   /* Drop the manual status text from desktop rows, mirroring the ≤1023px mobile

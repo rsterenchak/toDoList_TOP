@@ -12,6 +12,7 @@ import {
     isGhostSelector,
     renderStructureCanvas,
     resetCanvasState,
+    exitLiveView,
     revealSelector,
     applyCanvasFilter,
     markGhostRows,
@@ -1134,5 +1135,353 @@ describe('structureCanvas — display:contents pass-through hoisting', () => {
         expect(host.querySelector('.structureCanvasGhostChip[data-selector="#mainSplit"]')).toBeTruthy();
         expect(host.querySelector('.structureCanvasBlock[data-selector="#sibling"]')).toBeTruthy();
         expect(host.querySelector('.structureCanvasBlock[data-selector="#mainSec"]')).toBe(null);
+    });
+});
+
+// ── LIVE VIEW MODE ───────────────────────────────────────────────────────────
+// The UI lens's second rendering of the same region model: the repo's deployed
+// page in a same-origin iframe with the region overlay painted over it. jsdom
+// never navigates the iframe, so these tests stand in for the guest by defining
+// `contentDocument` / `contentWindow` on the mounted frame and firing `load` —
+// which is exactly the seam the module's own load handler uses.
+
+// A standalone document playing the deployed page, with real rects stubbed on
+// the two regions the walk will keep.
+function makeGuestDoc() {
+    const doc = document.implementation.createHTMLDocument('guest');
+    doc.body.innerHTML =
+        '<div id="app"><div id="hud"></div></div>';
+    stubRect(doc.getElementById('app'), 400, 900, 0, 0);
+    stubRect(doc.getElementById('hud'), 400, 80, 0, 0);
+    return doc;
+}
+
+// A minimal same-origin window stub: scroll offsets the overlay translates by,
+// plus the scroll listener registry teardown must unwind.
+function makeGuestWin(doc) {
+    const listeners = [];
+    return {
+        document: doc,
+        scrollX: 0,
+        scrollY: 0,
+        listeners: listeners,
+        addEventListener: function (type, fn) { listeners.push([type, fn]); },
+        removeEventListener: function (type, fn) {
+            for (let i = listeners.length - 1; i >= 0; i--) {
+                if (listeners[i][0] === type && listeners[i][1] === fn) listeners.splice(i, 1);
+            }
+        },
+    };
+}
+
+// Hand the mounted frame a guest document/window and fire its load event.
+function loadGuest(host, doc, win, throwOnDoc) {
+    const frame = host.querySelector('.structureLiveFrame');
+    Object.defineProperty(frame, 'contentDocument', {
+        configurable: true,
+        get: function () {
+            if (throwOnDoc) throw new Error('cross-origin');
+            return doc;
+        },
+    });
+    Object.defineProperty(frame, 'contentWindow', { configurable: true, get: function () { return win; } });
+    frame.dispatchEvent(new Event('load'));
+    return frame;
+}
+
+function enterLive(host) {
+    host.querySelector('.structureCanvasLiveChip').click();
+}
+
+describe('structureCanvas — live view mode', () => {
+    it('offers the Live chip beside the canvas controls and starts in canvas mode', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        const chip = host.querySelector('.structureCanvasSnapChip');
+        expect(chip.querySelector('.structureCanvasLiveChip')).toBeTruthy();
+        // Canvas mode: the full chip, and no iframe mounted without an explicit tap.
+        expect(chip.querySelector('.structureCanvasSnapRefresh')).toBeTruthy();
+        expect(chip.querySelector('.structureCanvasRecapture')).toBeTruthy();
+        expect(chip.querySelector('.structureCanvasViewToggle')).toBeTruthy();
+        expect(host.querySelector('.structureLiveFrame')).toBe(null);
+    });
+
+    it('the chip swaps the pane to the deployed page and narrows the chip row', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        enterLive(host);
+
+        const frame = host.querySelector('.structureLiveFrame');
+        expect(frame).toBeTruthy();
+        expect(frame.getAttribute('src')).toMatch(
+            /^https:\/\/rsterenchak\.github\.io\/toDoList_TOP\/\?v=\d+$/
+        );
+        // The block canvas is gone; the live viewport and reload chip replace it.
+        expect(host.querySelector('.structureCanvasBlocks')).toBe(null);
+        expect(host.querySelector('.structureCanvasBreadcrumb')).toBe(null);
+        expect(host.querySelector('.structureLiveViewport')).toBeTruthy();
+        expect(host.querySelector('.structureLiveReload')).toBeTruthy();
+
+        // Chip: repo-named label, engaged Live chip, and the three capture-geometry
+        // controls dropped (they're inert against a real pane-width render).
+        const chip = host.querySelector('.structureCanvasSnapChip');
+        expect(chip.querySelector('.structureCanvasSnapLabel').textContent).toBe('live · toDoList_TOP');
+        expect(chip.querySelector('.structureCanvasLiveChip').classList.contains('is-live')).toBe(true);
+        expect(chip.querySelector('.structureCanvasSnapRefresh')).toBe(null);
+        expect(chip.querySelector('.structureCanvasRecapture')).toBe(null);
+        expect(chip.querySelector('.structureCanvasViewToggle')).toBe(null);
+    });
+
+    it('toggling the chip back restores the block canvas and the full chip', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        enterLive(host);
+        enterLive(host);
+
+        expect(host.querySelector('.structureLiveViewport')).toBe(null);
+        expect(host.querySelector('.structureCanvasBlocks')).toBeTruthy();
+        const chip = host.querySelector('.structureCanvasSnapChip');
+        expect(chip.querySelector('.structureCanvasSnapRefresh')).toBeTruthy();
+        expect(chip.querySelector('.structureCanvasViewToggle')).toBeTruthy();
+        expect(chip.querySelector('.structureCanvasLiveChip').classList.contains('is-live')).toBe(false);
+    });
+
+    it('never persists the mode: nothing is written and a re-mount starts on the canvas', () => {
+        const host = mountHost();
+        render(host, { onRecapture: vi.fn() });
+        const before = Object.keys(localStorage).sort();
+        enterLive(host);
+        expect(Object.keys(localStorage).sort()).toEqual(before);
+
+        // A fresh mount (what every Structure open does) is back on the canvas.
+        const host2 = mountHost();
+        render(host2, { onRecapture: vi.fn() });
+        expect(host2.querySelector('.structureLiveFrame')).toBe(null);
+        expect(host2.querySelector('.structureCanvasBlocks')).toBeTruthy();
+    });
+
+    it('paints one outline box per walked region once the guest loads', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        const boxes = Array.from(host.querySelectorAll('.structureLiveRegion'));
+        expect(boxes.map((b) => b.dataset.selector)).toEqual(['#app', '#hud']);
+        const app = boxes[0];
+        // Guest-document coordinates, taken straight off the guest's own rects.
+        expect(app.style.width).toBe('400px');
+        expect(app.style.height).toBe('900px');
+        expect(app.style.top).toBe('0px');
+    });
+
+    it('a tap on an outline box selects it and drives the shared toolbar', () => {
+        const onSelect = vi.fn();
+        const host = mountHost();
+        render(host, { onSelect });
+        enterLive(host);
+        const doc = makeGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        host.querySelector('.structureLiveRegion[data-selector="#hud"]').click();
+
+        expect(onSelect).toHaveBeenCalledTimes(1);
+        expect(onSelect.mock.calls[0][0]).toMatchObject({
+            kind: 'live',
+            label: 'Hud',
+            value: '#hud',
+            copyLabel: 'Copy selector',
+            repo: SELF_REPO,
+            visible: true,
+        });
+        expect(
+            host.querySelector('.structureLiveRegion[data-selector="#hud"]').classList.contains('is-selected')
+        ).toBe(true);
+    });
+
+    it('mirroring a tree selection re-marks the overlay without reloading the iframe', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+        const src = host.querySelector('.structureLiveFrame').getAttribute('src');
+
+        revealSelector('#hud');
+
+        expect(host.querySelector('.structureLiveFrame').getAttribute('src')).toBe(src);
+        expect(
+            host.querySelector('.structureLiveRegion[data-selector="#hud"]').classList.contains('is-selected')
+        ).toBe(true);
+    });
+
+    it('translates the overlay layer by the guest’s own scroll offsets', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeGuestDoc();
+        const win = makeGuestWin(doc);
+        loadGuest(host, doc, win);
+
+        const layer = host.querySelector('.structureLiveOverlayLayer');
+        expect(layer.style.transform).toBe('translate(0px, 0px)');
+
+        win.scrollY = 240;
+        win.listeners.filter((l) => l[0] === 'scroll').forEach((l) => l[1]());
+        expect(layer.style.transform).toBe('translate(0px, -240px)');
+    });
+
+    it('inspect is active by default; interact hides the overlay and flipping back re-walks', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        const overlay = host.querySelector('.structureLiveOverlay');
+        const inspect = host.querySelector('.structureLivePill[data-live-mode="inspect"]');
+        const interact = host.querySelector('.structureLivePill[data-live-mode="interact"]');
+        expect(inspect.classList.contains('is-active')).toBe(true);
+        expect(overlay.hidden).toBe(false);
+
+        interact.click();
+        expect(interact.classList.contains('is-active')).toBe(true);
+        expect(inspect.classList.contains('is-active')).toBe(false);
+        expect(overlay.hidden).toBe(true);
+
+        // Flipping back to inspect re-walks the guest, so a region added while the
+        // page was being interacted with shows up.
+        doc.getElementById('app').insertAdjacentHTML('beforeend', '<div id="late"></div>');
+        stubRect(doc.getElementById('late'), 400, 40, 0, 100);
+        inspect.click();
+        expect(overlay.hidden).toBe(false);
+        expect(host.querySelector('.structureLiveRegion[data-selector="#late"]')).toBeTruthy();
+    });
+
+    it('falls back to interact-only with a muted notice when the guest document throws', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        loadGuest(host, null, null, true);
+
+        const inspect = host.querySelector('.structureLivePill[data-live-mode="inspect"]');
+        const interact = host.querySelector('.structureLivePill[data-live-mode="interact"]');
+        expect(inspect.disabled).toBe(true);
+        expect(inspect.classList.contains('is-disabled')).toBe(true);
+        expect(interact.classList.contains('is-active')).toBe(true);
+        expect(host.querySelector('.structureLiveOverlay').hidden).toBe(true);
+        const notice = host.querySelector('.structureLiveNotice');
+        expect(notice.hidden).toBe(false);
+        expect(notice.textContent).toMatch(/can’t inspect this page/i);
+        // The disabled inspect pill can't claw the mode back.
+        inspect.click();
+        expect(interact.classList.contains('is-active')).toBe(true);
+    });
+
+    it('the reload chip remounts the iframe on a fresh cache-busting query', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const first = host.querySelector('.structureLiveFrame');
+        const firstSrc = first.getAttribute('src');
+
+        host.querySelector('.structureLiveReload').click();
+
+        const second = host.querySelector('.structureLiveFrame');
+        expect(second).not.toBe(first);
+        expect(first.parentNode).toBe(null);          // the old frame is unmounted
+        expect(second.getAttribute('src')).toMatch(/\?v=\d+$/);
+        expect(host.querySelector('.structureCanvasSnapLabel').textContent).toBe('live · toDoList_TOP');
+        expect(firstSrc).toBeTruthy();
+    });
+
+    it('exitLiveView unmounts the frame and unwinds the guest scroll listener', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        const doc = makeGuestDoc();
+        const win = makeGuestWin(doc);
+        const frame = loadGuest(host, doc, win);
+        expect(win.listeners.length).toBe(1);
+
+        exitLiveView();
+
+        expect(frame.parentNode).toBe(null);
+        expect(win.listeners.length).toBe(0);
+    });
+
+    it('reverts to the canvas with the capture flow’s copy when the page can’t be reached', () => {
+        const host = mountHost();
+        render(host);
+        enterLive(host);
+        host.querySelector('.structureLiveFrame').dispatchEvent(new Event('error'));
+
+        expect(host.querySelector('.structureLiveViewport')).toBe(null);
+        expect(host.querySelector('.structureCanvasBlocks')).toBeTruthy();
+        const status = host.querySelector('.structureCaptureStatus--error');
+        expect(status).toBeTruthy();
+        expect(status.textContent).toBe('Couldn’t reach a deployed site for this repo.');
+    });
+
+    it('a guest repo with stored geometry gets the same Live chip', () => {
+        const GUEST = 'rsterenchak/matchingGame-test';
+        captureSnapshot(sampleTree(), GUEST);
+        const host = mountHost();
+        renderStructureCanvas(host, { repo: GUEST, tree: sampleTree(), onSelect: vi.fn() });
+        enterLive(host);
+        expect(host.querySelector('.structureCanvasSnapLabel').textContent).toBe('live · matchingGame-test');
+        expect(host.querySelector('.structureLiveFrame').getAttribute('src')).toMatch(
+            /^https:\/\/rsterenchak\.github\.io\/matchingGame-test\/\?v=\d+$/
+        );
+    });
+});
+
+// The live view's own CSS contract. An author-level `display` declaration
+// outranks the UA stylesheet's `[hidden] { display: none }`, so every live-view
+// family that declares `display` AND is toggled through the `hidden` attribute
+// needs an explicit re-assertion or the toggle is a silent no-op. Source
+// inspection only — jsdom doesn't model the UA-vs-author cascade for `hidden`.
+describe('structureCanvas — live view CSS contract', () => {
+    const css = readFileSync(resolve(here, '../src/style.css'), 'utf8');
+
+    // The overlay is hidden in interact mode; the notice is hidden until the
+    // interact-only fallback fires.
+    ['.structureLiveOverlay', '.structureLiveNotice'].forEach((selector) => {
+        it(`${selector} declares display and re-asserts it under [hidden]`, () => {
+            const base = css.indexOf(selector + ' {');
+            expect(base).toBeGreaterThan(-1);
+            const body = css.slice(css.indexOf('{', base), css.indexOf('}', base));
+            expect(body).toMatch(/display:\s*(?:block|flex|inline-flex)/);
+            const guard = css.indexOf(selector + '[hidden]');
+            expect(guard).toBeGreaterThan(base);
+            expect(css.slice(guard, guard + 60)).toMatch(/\[hidden\]\s*\{\s*display:\s*none/);
+        });
+    });
+
+    it('contains the guest’s internal scrolling so iOS standalone can’t chain it into the shell', () => {
+        const start = css.indexOf('.structureLiveViewport {');
+        expect(start).toBeGreaterThan(-1);
+        const body = css.slice(start, css.indexOf('}', start));
+        expect(body).toMatch(/overscroll-behavior:\s*contain/);
+        // Viewport-proportional height in the inline (mobile) placement.
+        expect(body).toMatch(/height:\s*65dvh/);
+    });
+
+    it('absorbs the detail column instead of the dvh proportion at desktop widths', () => {
+        const rule = css.indexOf('#structureView > .structureCanvasHost .structureLiveViewport');
+        expect(rule).toBeGreaterThan(-1);
+        const body = css.slice(css.indexOf('{', rule), css.indexOf('}', rule));
+        expect(body).toMatch(/height:\s*auto/);
+        expect(body).toMatch(/flex:\s*1 1 auto/);
+    });
+
+    it('sizes the floating pills at 36×36 with a 10px radius', () => {
+        const start = css.indexOf('.structureLivePill {');
+        expect(start).toBeGreaterThan(-1);
+        const body = css.slice(start, css.indexOf('}', start));
+        expect(body).toMatch(/width:\s*36px/);
+        expect(body).toMatch(/height:\s*36px/);
+        expect(body).toMatch(/border-radius:\s*10px/);
     });
 });

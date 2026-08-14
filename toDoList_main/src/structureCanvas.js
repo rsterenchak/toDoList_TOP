@@ -11,11 +11,25 @@
 // walked from the DOM plus a select callback so the two panes stay in sync
 // without this module reaching back into the view or the data model.
 //
+// The pane has a second rendering of the same region model: a LIVE view that
+// swaps the block canvas for the repo's deployed page in a same-origin iframe
+// with the tappable region overlay drawn over it. The `Live` chip in the snapshot
+// chip row toggles between the two; see the LIVE VIEW MODE section below.
+//
 // Repo gating: the self repo (`rsterenchak/toDoList_TOP`) always renders — it's the
 // one repo whose live DOM is available to measure. A linked repo renders too, but
 // only once it has captured geometry stored (buckets + a handle tree); until then
 // it keeps the UI lens's existing tree-only rendering. Snapshots are keyed per repo
 // so one repo's capture never bleeds into another's.
+
+// The UI lens also offers a LIVE rendering of the same region model — the repo's
+// deployed page in a visible same-origin iframe with the region overlay painted
+// over it — so `pagesUrlFor` (the deployed-Pages URL convention) and `buildUiTree`
+// (the region-discovery walk) are reused here rather than re-derived. Both are
+// only ever called at render time, so the import cycles they close with those
+// modules resolve through hoisted function declarations.
+import { pagesUrlFor } from './structureRemoteCapture.js';
+import { buildUiTree } from './structureView.js';
 
 // The one repo whose own DOM this canvas can measure and drill.
 export const SELF_REPO = 'rsterenchak/toDoList_TOP';
@@ -403,10 +417,430 @@ let paneEl = null;
 
 // Reset drill + selection (a repo switch drops the prior repo's state).
 export function resetCanvasState() {
+    exitLiveView();
+    liveError = '';
     drillPath = [];
     selectedSelector = null;
     selectedBucketKey = null;
     activeRepo = SELF_REPO;
+}
+
+// ── LIVE VIEW MODE ────────────────────────────────────────────────────────────
+// A second rendering of the SAME region model the block canvas draws: instead of
+// abstracted proportions, the repo's deployed page is loaded into a visible
+// same-origin iframe and the tappable region overlay is painted on top of it. The
+// `Live` chip in the snapshot chip row swaps the pane between the two, and two
+// floating pills decide whether taps select regions (inspect) or reach the guest
+// page (interact). Selection routes through the same `onSelect` callback a block
+// tap uses, so the shared action toolbar's Reference / Copy selector work
+// identically in both renderings.
+//
+// The mode is SESSION-ONLY — never written to prefs — and every Structure open
+// starts on the canvas, so no iframe ever loads without an explicit tap. Every
+// exit path (the chip, a lens switch, a repo switch, leaving the tab) runs the
+// full teardown below, so a guest page's timers and service worker can't idle in
+// a hidden iframe.
+
+// Hard ceiling on the live page's first load: a page that never fires `load`
+// reverts to canvas mode rather than leaving an empty frame on screen.
+const LIVE_LOAD_TIMEOUT_MS = 10000;
+// The unreachable copy, matching the deployed-capture flow's own status line.
+const LIVE_UNREACHABLE = 'Couldn’t reach a deployed site for this repo.';
+
+// Whether the pane is currently rendering the live view.
+let liveMode = false;
+// false = inspect (the default: taps select regions), true = interact (taps reach
+// the guest page and the overlay is hidden).
+let liveInteract = false;
+// Set when the guest document can't be reached (a page that isn't truly
+// same-origin throws on `contentDocument`): inspect is disabled and the view
+// falls back to interact-only.
+let liveInspectBlocked = false;
+// Failure copy shown in CANVAS mode after a live load couldn't be reached.
+let liveError = '';
+// Live DOM handles held for teardown.
+let liveFrame = null;
+let liveLayer = null;
+let liveWin = null;
+let liveScrollHandler = null;
+let liveResizeHandler = null;
+let liveLoadTimer = null;
+
+// The deployed URL the live iframe loads, cache-busted so a fresh deploy is what
+// mounts rather than a cached revision. Null when the repo has no Pages URL.
+function liveUrl(repo) {
+    const base = pagesUrlFor(repo);
+    return base ? base + '?v=' + Date.now() : null;
+}
+
+// A repo's bare name for the live label (`owner/name` → `name`).
+function shortRepoName(repo) {
+    const parts = String(repo || '').split('/');
+    return parts[parts.length - 1] || String(repo || '');
+}
+
+// Drop every live-view resource: the guest scroll listener, the host resize
+// listener, the pending load timer, and the iframe itself. Idempotent, so a
+// rebuild can call it unconditionally before emptying the pane.
+function teardownLive() {
+    if (liveLoadTimer) { clearTimeout(liveLoadTimer); liveLoadTimer = null; }
+    if (liveWin && liveScrollHandler) {
+        try { liveWin.removeEventListener('scroll', liveScrollHandler); } catch (e) { /* already gone */ }
+    }
+    if (liveResizeHandler && typeof window !== 'undefined') {
+        window.removeEventListener('resize', liveResizeHandler);
+    }
+    if (liveFrame && liveFrame.parentNode) liveFrame.parentNode.removeChild(liveFrame);
+    liveFrame = null;
+    liveLayer = null;
+    liveWin = null;
+    liveScrollHandler = null;
+    liveResizeHandler = null;
+}
+
+// Leave live mode entirely — full teardown plus a reset of the per-session mode
+// flags. Does NOT repaint: every caller either rebuilds the pane itself (the chip)
+// or is about to throw the whole host away (a lens/repo switch, leaving the tab).
+export function exitLiveView() {
+    teardownLive();
+    liveMode = false;
+    liveInteract = false;
+    liveInspectBlocked = false;
+}
+
+// The live page couldn't be reached (load error, or no load within the ceiling):
+// surface the capture flow's own copy and drop back to the block canvas.
+function failLive() {
+    liveError = LIVE_UNREACHABLE;
+    exitLiveView();
+    rebuild();
+}
+
+// The live view's failure line, rendered in canvas mode after a failed load.
+// Reuses the deployed-capture status classes so copy and tone match that flow.
+function buildLiveErrorLine() {
+    if (!liveError) return null;
+    const line = document.createElement('div');
+    line.className = 'structureCaptureStatus structureCaptureStatus--error';
+    line.textContent = liveError;
+    return line;
+}
+
+// The `Live` chip: swaps the pane between the block canvas and the deployed page.
+// Present for BOTH repos whenever the active repo resolves to a deployed Pages URL
+// (the self repo shows its own deployed build, which is allowed). Null otherwise,
+// so a repo with no Pages convention simply never offers the mode.
+function buildLiveChip() {
+    if (!pagesUrlFor(activeRepo)) return null;
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    // Its own class, not the Capture button's: the two share a look (one CSS rule
+    // lists both) but are distinct affordances, so neither can be found by the
+    // other's selector.
+    btn.className = 'structureCanvasLiveChip';
+    if (liveMode) btn.classList.add('is-live');
+    btn.textContent = 'Live';
+    btn.title = liveMode ? 'Back to the block canvas' : 'Show the deployed page';
+    btn.setAttribute('aria-pressed', liveMode ? 'true' : 'false');
+    btn.setAttribute('aria-label', liveMode
+        ? 'Show the block canvas'
+        : 'Show the live deployed page');
+    btn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        if (liveMode) {
+            exitLiveView();
+        } else {
+            teardownLive();
+            liveMode = true;
+            liveInteract = false;
+            liveInspectBlocked = false;
+            liveError = '';
+        }
+        rebuild();
+    });
+    return btn;
+}
+
+// The live viewport: the deployed page in a same-origin iframe, the region overlay
+// over it, the inspect / interact pills floating top-right inside the wrapper, and
+// a muted notice line for the interact-only fallback. Sizing is CSS's job — the
+// wrapper fills the host width, takes a viewport-proportional height inline, and
+// absorbs the detail column at desktop widths — with the guest page scrolling
+// INSIDE the iframe.
+function buildLiveViewport() {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureLiveViewport';
+
+    const frame = document.createElement('iframe');
+    frame.className = 'structureLiveFrame';
+    frame.setAttribute('title', 'Deployed page for ' + activeRepo);
+    liveFrame = frame;
+
+    const overlay = document.createElement('div');
+    overlay.className = 'structureLiveOverlay';
+    const layer = document.createElement('div');
+    layer.className = 'structureLiveOverlayLayer';
+    overlay.appendChild(layer);
+    liveLayer = layer;
+
+    const notice = document.createElement('div');
+    notice.className = 'structureLiveNotice';
+    notice.hidden = true;
+
+    wrap.appendChild(frame);
+    wrap.appendChild(overlay);
+    wrap.appendChild(notice);
+    wrap.appendChild(buildLivePills(notice));
+    applyLiveInteraction(wrap);
+
+    frame.addEventListener('load', function () {
+        // A stale frame's late load (the pane rebuilt under it) must not repaint.
+        if (liveFrame !== frame) return;
+        if (liveLoadTimer) { clearTimeout(liveLoadTimer); liveLoadTimer = null; }
+        attachLiveScroll();
+        paintLiveOverlay(notice);
+    });
+    frame.addEventListener('error', function () {
+        if (liveFrame === frame) failLive();
+    });
+    liveLoadTimer = setTimeout(function () {
+        liveLoadTimer = null;
+        if (liveFrame === frame) failLive();
+    }, LIVE_LOAD_TIMEOUT_MS);
+
+    // The overlay's boxes are measured against the guest's own layout, so a host
+    // resize (which re-widths the iframe and reflows the guest) needs a re-walk.
+    liveResizeHandler = function () { paintLiveOverlay(notice); };
+    if (typeof window !== 'undefined') window.addEventListener('resize', liveResizeHandler);
+
+    const url = liveUrl(activeRepo);
+    if (url) {
+        frame.src = url;
+    } else {
+        // No deployed URL to load. Fail on the next tick rather than re-entering
+        // the rebuild that is still assembling this pane.
+        if (liveLoadTimer) clearTimeout(liveLoadTimer);
+        liveLoadTimer = setTimeout(function () {
+            liveLoadTimer = null;
+            if (liveFrame === frame) failLive();
+        }, 0);
+    }
+    return wrap;
+}
+
+// The two floating icon pills, absolutely positioned top-right INSIDE the wrapper
+// — over the glass, so they stay reachable while the guest page scrolls beneath
+// them. Inspect is active by default.
+function buildLivePills(notice) {
+    const pills = document.createElement('div');
+    pills.className = 'structureLivePills';
+    [
+        { mode: 'inspect', glyph: '⌖', label: 'Inspect regions' },
+        { mode: 'interact', glyph: '☞', label: 'Interact with the page' },
+    ].forEach(function (spec) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'structureLivePill';
+        btn.dataset.liveMode = spec.mode;
+        btn.textContent = spec.glyph;
+        btn.title = spec.label;
+        btn.setAttribute('aria-label', spec.label);
+        btn.addEventListener('click', function (event) {
+            event.stopPropagation();
+            const wantInteract = spec.mode === 'interact';
+            if (!wantInteract && liveInspectBlocked) return;
+            liveInteract = wantInteract;
+            applyLiveInteraction(pills.parentNode);
+            // Flipping back to inspect re-walks the guest, so the overlay matches
+            // whatever the page became while it was being interacted with.
+            if (!wantInteract) paintLiveOverlay(notice);
+        });
+        pills.appendChild(btn);
+    });
+    return pills;
+}
+
+// Apply the current inspect / interact choice: inspect leaves the overlay painted
+// and hit-testable so taps select regions; interact hides it (and with it its
+// pointer-events) so the guest page is fully usable.
+function applyLiveInteraction(wrap) {
+    if (!wrap) return;
+    wrap.classList.toggle('is-interact', liveInteract);
+    const overlay = wrap.querySelector('.structureLiveOverlay');
+    if (overlay) overlay.hidden = liveInteract;
+    Array.prototype.forEach.call(wrap.querySelectorAll('.structureLivePill'), function (pill) {
+        const isInteract = pill.dataset.liveMode === 'interact';
+        const on = isInteract === liveInteract;
+        pill.classList.toggle('is-active', on);
+        pill.setAttribute('aria-pressed', on ? 'true' : 'false');
+        if (isInteract) return;
+        pill.disabled = liveInspectBlocked;
+        pill.classList.toggle('is-disabled', liveInspectBlocked);
+    });
+}
+
+// Set (or clear) the muted notice line inside the viewport.
+function setLiveNotice(el, text) {
+    if (!el) return;
+    el.textContent = text || '';
+    el.hidden = !text;
+}
+
+// Re-walk the guest document with the SAME region-discovery rules the canvas uses
+// (`buildUiTree`) and repaint the overlay's outline boxes. Runs on iframe load, on
+// every flip back to inspect, and on host resize. A `contentDocument` that throws
+// or comes back empty means the page isn't reachable for inspection, so the view
+// falls back to interact-only with a muted line rather than a dead inspect mode.
+function paintLiveOverlay(notice) {
+    if (!liveLayer || !liveFrame) return;
+    let doc = null;
+    try { doc = liveFrame.contentDocument; } catch (e) { doc = null; }
+    if (!doc || !doc.body) {
+        liveInspectBlocked = true;
+        liveInteract = true;
+        clear(liveLayer);
+        applyLiveInteraction(liveFrame.parentNode);
+        setLiveNotice(notice, 'Can’t inspect this page — showing it interactively.');
+        return;
+    }
+    liveInspectBlocked = false;
+    setLiveNotice(notice, '');
+    applyLiveInteraction(liveFrame.parentNode);
+    clear(liveLayer);
+    let win = null;
+    try { win = liveFrame.contentWindow; } catch (e) { win = null; }
+    paintLiveRegions(buildUiTree(doc), doc, win);
+    syncLiveScroll();
+}
+
+// One outline box per region the walk kept, in the canvas's outline vocabulary.
+// Parents are visited before their children, so a nested region paints last and
+// wins the tap — the innermost region under the finger is what gets selected.
+function paintLiveRegions(nodes, doc, win) {
+    const scrollX = (win && win.scrollX) || 0;
+    const scrollY = (win && win.scrollY) || 0;
+    const visit = function (list) {
+        (list || []).forEach(function (node) {
+            if (!node || node.type !== 'region' || !node.selector) return;
+            const box = liveRectFor(node.selector, doc, scrollX, scrollY);
+            if (box) liveLayer.appendChild(buildLiveRegionBox(node, box));
+            visit(regionChildren(node));
+        });
+    };
+    visit(nodes);
+}
+
+// A region's rect in guest-DOCUMENT coordinates (its viewport rect plus the
+// guest's own scroll offset), or null when it has no on-screen box to outline.
+function liveRectFor(selector, doc, scrollX, scrollY) {
+    let el = null;
+    try { el = doc.querySelector(selector); } catch (e) { el = null; }
+    if (!el) return null;
+    let r = null;
+    try { r = el.getBoundingClientRect(); } catch (e) { return null; }
+    if (!r || !(r.width > 0 && r.height > 0)) return null;
+    return {
+        x: (r.left || 0) + scrollX,
+        y: (r.top || 0) + scrollY,
+        width: r.width,
+        height: r.height,
+    };
+}
+
+function buildLiveRegionBox(node, box) {
+    const el = document.createElement('div');
+    el.className = 'structureLiveRegion';
+    el.dataset.selector = node.selector;
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', '0');
+    el.setAttribute('aria-label', node.label + ' ' + node.selector);
+    el.style.left = box.x + 'px';
+    el.style.top = box.y + 'px';
+    el.style.width = box.width + 'px';
+    el.style.height = box.height + 'px';
+    if (selectedSelector === node.selector) el.classList.add('is-selected');
+
+    const label = document.createElement('span');
+    label.className = 'structureLiveRegionLabel';
+    label.textContent = node.label;
+    el.appendChild(label);
+
+    el.addEventListener('click', function (event) {
+        event.stopPropagation();
+        selectLiveRegion(node);
+    });
+    el.addEventListener('keydown', function (event) {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            selectLiveRegion(node);
+        }
+    });
+    return el;
+}
+
+// A live-overlay tap selects exactly as a canvas block tap does: mark the
+// selection, re-mark the outlines, and mirror it onto the tree row + shared action
+// toolbar through the view's onSelect callback. The descriptor is forced visible —
+// only regions with a real on-screen box are outlined at all, so the snapshot
+// bucket's ghost verdict (which may predate this render) doesn't apply.
+function selectLiveRegion(node) {
+    selectedSelector = node.selector;
+    paintLiveSelection();
+    if (ctx && typeof ctx.onSelect === 'function') ctx.onSelect(describe(node, true));
+}
+
+// Re-mark the overlay's outline boxes for the current selection. A selection
+// change never moves geometry, so this never re-walks the guest.
+function paintLiveSelection() {
+    if (!liveLayer) return;
+    Array.prototype.forEach.call(liveLayer.querySelectorAll('.structureLiveRegion'), function (el) {
+        el.classList.toggle('is-selected', el.dataset.selector === selectedSelector);
+    });
+}
+
+// Track the guest's internal scrolling. The overlay's boxes live in guest-document
+// coordinates, so translating the layer by −scrollX/−scrollY keeps every outline
+// pinned to its element as the page scrolls inside the iframe (same-origin, so the
+// guest window's scroll events are readable).
+function attachLiveScroll() {
+    if (liveWin && liveScrollHandler) {
+        try { liveWin.removeEventListener('scroll', liveScrollHandler); } catch (e) { /* already gone */ }
+    }
+    liveWin = null;
+    liveScrollHandler = null;
+    let win = null;
+    try { win = liveFrame && liveFrame.contentWindow; } catch (e) { win = null; }
+    if (!win || typeof win.addEventListener !== 'function') return;
+    liveWin = win;
+    liveScrollHandler = function () { syncLiveScroll(); };
+    try { win.addEventListener('scroll', liveScrollHandler, { passive: true }); } catch (e) { liveScrollHandler = null; }
+}
+
+function syncLiveScroll() {
+    if (!liveLayer) return;
+    let x = 0;
+    let y = 0;
+    try {
+        if (liveWin) { x = liveWin.scrollX || 0; y = liveWin.scrollY || 0; }
+    } catch (e) { x = 0; y = 0; }
+    liveLayer.style.transform = 'translate(' + (-x) + 'px, ' + (-y) + 'px)';
+}
+
+// The amber reload chip below the viewport: tears the iframe down and remounts it
+// on a fresh cache-busting `?v=`, so a just-deployed change can be pulled in
+// without leaving live mode.
+function buildLiveReload() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'structureLiveReload';
+    btn.textContent = 'reload';
+    btn.title = 'Reload the deployed page';
+    btn.setAttribute('aria-label', 'Reload the deployed page');
+    btn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        rebuild();
+    });
+    return btn;
 }
 
 // Resolve the current drill container from a tree + path, clamping a stale path
@@ -512,6 +946,9 @@ function clear(el) {
 //     the live ↻ so a clean deployed measure is always reachable). Re-runs the
 //     deployed-site iframe capture.
 export function renderStructureCanvas(host, opts) {
+    // Live mode is session-only and never survives a mount: every Structure open
+    // starts on the block canvas, so no iframe can load without an explicit tap.
+    exitLiveView();
     if (!host || !opts || !opts.repo) return null;
     const repo = opts.repo;
     const isSelf = repo === SELF_REPO;
@@ -539,7 +976,20 @@ export function renderStructureCanvas(host, opts) {
 // Rebuild the pane's contents in place for the current drill path + selection.
 function rebuild() {
     if (!paneEl || !ctx) return;
+    // Every rebuild throws away the DOM the live iframe lives in, so drop its
+    // listeners and unmount the frame before the pane is emptied. This is also
+    // what makes the reload chip a plain rebuild: teardown then a fresh mount.
+    teardownLive();
     clear(paneEl);
+
+    // Live mode renders the same chip row over the deployed page + region overlay
+    // instead of the breadcrumb / block canvas / ghost tray.
+    if (liveMode) {
+        paneEl.appendChild(buildSnapshotChip());
+        paneEl.appendChild(buildLiveViewport());
+        paneEl.appendChild(buildLiveReload());
+        return;
+    }
 
     const tree = ctx.tree || [];
     // Clamp a stale drill path before rendering off it.
@@ -571,6 +1021,9 @@ function rebuild() {
     if (tray) paneEl.appendChild(tray);
     const hint = buildEmptyBucketHint();
     if (hint) paneEl.appendChild(hint);
+    // A live load that couldn't be reached reverted to this canvas — say why.
+    const liveFailure = buildLiveErrorLine();
+    if (liveFailure) paneEl.appendChild(liveFailure);
 }
 
 // The ghost tray, docked below the canvas: every ghost child at the current drill
@@ -677,13 +1130,30 @@ function buildEmptyBucketHint() {
 // from whether the active bucket already holds geometry. The self repo therefore
 // shows both the live ↻ (re-measures the on-screen DOM) and the deployed
 // Capture/Re-capture button; a guest shows just the latter (it has no live DOM).
+//
+// The `Live` chip rides along at the end of the row whenever the active repo
+// resolves to a deployed Pages URL. In live mode the row narrows to just the label
+// (now naming the repo being shown) and that chip: the ↻, the Capture/Re-capture
+// button, and the Mobile/Desktop bucket toggle all act on captured geometry, which
+// a real pane-width render makes inert, so all three drop out.
 function buildSnapshotChip() {
     const chip = document.createElement('div');
     chip.className = 'structureCanvasSnapChip';
 
-    const at = activeAt();
     const label = document.createElement('span');
     label.className = 'structureCanvasSnapLabel';
+    if (liveMode) {
+        // Hard-truncated in CSS so a long repo name can't push the chip's own
+        // controls off the row.
+        label.classList.add('structureCanvasSnapLabel--live');
+        label.textContent = 'live · ' + shortRepoName(activeRepo);
+        chip.appendChild(label);
+        const liveChip = buildLiveChip();
+        if (liveChip) chip.appendChild(liveChip);
+        return chip;
+    }
+
+    const at = activeAt();
     label.textContent = at
         ? 'captured ' + formatTime(at) + ' · '
         : 'not captured · ';
@@ -730,6 +1200,9 @@ function buildSnapshotChip() {
         });
         chip.appendChild(recapture);
     }
+
+    const liveChip = buildLiveChip();
+    if (liveChip) chip.appendChild(liveChip);
 
     chip.appendChild(buildViewToggle());
     return chip;
@@ -1113,9 +1586,16 @@ function notifySelect(selector) {
 // initiated this, so echoing back would loop.
 export function revealSelector(selector) {
     if (!ctx) return;
+    selectedSelector = selector;
+    // Live mode has no drill levels and its geometry comes from the guest page, so
+    // mirroring a tree selection is just a re-mark — never a rebuild, which would
+    // reload the iframe on every tree-row tap.
+    if (liveMode) {
+        paintLiveSelection();
+        return;
+    }
     const parentPath = findParentPath(ctx.tree || [], selector);
     if (parentPath) drillPath = parentPath;
-    selectedSelector = selector;
     rebuild();
 }
 
@@ -1133,8 +1613,11 @@ function nodeBySelector(tree, selector) {
 }
 
 // A selection descriptor the view can drive its toolbar / reference flow with —
-// the same shape structureView's live rows produce.
-function describe(node) {
+// the same shape structureView's live rows produce. `visibleOverride` is set by
+// the live view, whose outlines are painted only for regions with a real
+// on-screen box in the deployed page (so the snapshot bucket's ghost verdict,
+// which may predate that render, doesn't decide the flag).
+function describe(node, visibleOverride) {
     return {
         kind: 'live',
         label: node.label,
@@ -1145,7 +1628,7 @@ function describe(node) {
         repo: activeRepo,
         file: null,
         line: null,
-        visible: !isGhostSelector(node.selector),
+        visible: (visibleOverride === undefined) ? !isGhostSelector(node.selector) : !!visibleOverride,
     };
 }
 

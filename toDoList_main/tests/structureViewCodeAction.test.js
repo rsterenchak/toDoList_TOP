@@ -56,8 +56,15 @@ vi.mock('../src/inject.js', () => ({
     mintEntryId: vi.fn(function () { return 'corr-test'; }),
 }));
 
+// `pagesUrlFor` keeps its real behavior — the canvas's Live chip is gated on it
+// resolving, so stubbing it away would silently drop the chip from these renders.
 vi.mock('../src/structureRemoteCapture.js', () => ({
     captureRemote: vi.fn(function () { return Promise.resolve({ ok: true, passes: 2 }); }),
+    pagesUrlFor: vi.fn(function (repo) {
+        const parts = String(repo || '').split('/');
+        if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+        return 'https://' + parts[0] + '.github.io/' + parts[1] + '/';
+    }),
 }));
 
 import { renderStructureView, resetStructureCodeMemory } from '../src/structureView.js';

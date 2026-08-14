@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-14',
+        added: [
+            'A Live chip in the Structure tab’s UI lens swaps the block canvas for the deployed page itself, with tappable region outlines over it and an interact mode for using the page directly.',
+        ],
         fixed: [
             'The description editor in the desktop task detail pane now fills the height down to the docked controls instead of stopping after about ten lines and leaving a gap beneath it.',
             'A long entry no longer pushes the desktop detail pane’s controls below the fold: the editor scrolls in place while the filter, file, discuss and status controls stay docked at the bottom of the pane.',
@@ -15,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-13',
         fixed: [
-            'The Structure tab header no longer sits underneath the status bar on phones.',
             'Applying an update in one browser tab no longer reloads every other open tab; the others keep running and offer their own reload from Settings when you are ready.',
             'A long shipped entry now scrolls inside its own box in the desktop review pane, so the file, discuss and status controls stay in view instead of being pushed below the fold.',
         ],

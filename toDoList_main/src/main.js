@@ -118,7 +118,7 @@ import {
 // module-load side effect of the (now-severed) Agent board; importing it here is
 // what keeps those subsystems configured in the running app (see agentWiring.js).
 import './agentWiring.js';
-import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport } from './structureView.js';
+import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport, exitStructureLiveView } from './structureView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { setAppReloader } from './aboutVersionCue.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -3968,6 +3968,12 @@ function applyActiveView(view) {
         // The Structure view maps the selected project's linked repo, so it
         // renders fresh on each switch (resolving the repo from the selection).
         renderStructureView();
+    } else {
+        // Leaving Structure: the tab is only hidden, never unmounted, so tear down
+        // the UI lens's live view rather than leave a deployed page (and its timers
+        // / service worker) running in an off-screen iframe. A no-op when the live
+        // view isn't mounted, which is the common case.
+        exitStructureLiveView();
     }
 
 }
