@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-14T13:22:38.559Z",
-  "sha": "59812a0b096a23823f47a7a3a3fa69d5140d669f",
+  "generatedAt": "2026-08-14T13:57:50.832Z",
+  "sha": "e1ad3698d094c829fe8e96870407f2c7bb9be803",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -5731,11 +5731,11 @@
       "selector": "#structureCodeSheet",
       "label": "Structure Code Sheet",
       "file": "structureView.js",
-      "line": 180,
+      "line": 182,
       "files": [
         {
           "file": "structureView.js",
-          "line": 180
+          "line": 182
         }
       ]
     },
@@ -6407,11 +6407,11 @@
       "selector": "[data-region=\"…\"]",
       "label": "…",
       "file": "structureView.js",
-      "line": 1161,
+      "line": 1163,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1161
+          "line": 1163
         }
       ]
     }
