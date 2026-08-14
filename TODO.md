@@ -1267,7 +1267,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-14
   <!-- id: 30b67e50-8553-4eec-9e88-7179ddec0e5f -->
 
-- [ ] **[MEDIUM]** Add live view mode to the Structure tab's UI lens
+- [x] **[MEDIUM]** Add live view mode to the Structure tab's UI lens
   - Type: feature
   - Description: Give the UI lens a second rendering of the same region model: the actual deployed page, loaded into a visible same-origin iframe in the canvas host, with the tappable region overlay drawn on top of it. A `Live` chip in the snapshot chip row toggles between the existing block canvas and live mode; floating inspect/interact pills over the viewport control whether taps select regions or pass through to the running app. Selection feeds the existing shared toolbar (Reference in chat / Copy selector), so the live view keeps the canvas's selection vocabulary while showing real pixels.
   - Behavior:
@@ -1283,5 +1283,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The wrapper needs `overscroll-behavior` containment so internal iframe scrolling on iOS standalone doesn't chain into the shell's scroll-slack probe.
   - Out of scope: run-merge freshness signaling on the reload chip (wiring `subscribeRunOutputs` to a "deployed updated" state is a follow-up entry); persisting live mode in prefs; any PR-branch or source-assembled preview (live view targets deployed main only); feeding canvas snapshot buckets from the live walk; changes to `structureRemoteCapture.js`'s capture flow.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/style.css`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-14
   <!-- id: b86e5b98-4e06-4c76-a006-16ea10cbb7f2 -->
