@@ -99,8 +99,13 @@ describe('detail pane footer — the pane reflow', () => {
         expect(declares(css, '#descDetailPane #descSibling', /flex-direction:\s*column\s*;/)).toBe(true);
     });
 
-    it('never lets the panel shrink below its content, so a tall panel still scrolls', () => {
-        expect(declares(css, '#descDetailPane #descSibling', /flex:\s*1\s+0\s+auto\s*;/)).toBe(true);
+    it('spans the pane and can hand height back to it, so the footer pins to the PANE floor', () => {
+        // Superseded contract: this shipped as `flex: 1 0 auto`, on the reasoning that a
+        // shrink-0 panel grows to its content and lets a tall panel scroll the pane. That
+        // is precisely what pushed the docked footer below the fold — a shrink-0 panel can
+        // never give height back. See descPaneStackBasis.test.js for the full chain.
+        expect(declares(css, '#descDetailPane #descSibling', /flex:\s*1\s+1\s+auto\s*;/)).toBe(true);
+        expect(declares(css, '#descDetailPane #descSibling', /min-height:\s*0\s*;/)).toBe(true);
     });
 
     it('overrides the base rule\'s align-items: center, which centres horizontally under flex', () => {
@@ -108,8 +113,10 @@ describe('detail pane footer — the pane reflow', () => {
     });
 
     it('makes the entry textarea the flex-fill middle with a floor, not a sliver', () => {
+        // Basis 0, not auto: it fills from the slack the panel distributes and never
+        // from its own content, which would inflate the stack past the pane.
         const sel = '#descDetailPane #descSibling > #descInput';
-        expect(declares(css, sel, /flex:\s*1\s+1\s+auto\s*;/)).toBe(true);
+        expect(declares(css, sel, /flex:\s*1\s+1\s+0\s*;/)).toBe(true);
         expect(declares(css, sel, /min-height:\s*96px\s*;/)).toBe(true);
         // The base rule's width: 100% plus the 14px margins below would overflow.
         expect(declares(css, sel, /width:\s*auto\s*;/)).toBe(true);

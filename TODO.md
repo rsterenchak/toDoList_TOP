@@ -1255,7 +1255,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-14
   <!-- id: 0b98e0d8-0fbb-4238-bafe-7c45f77eb63d -->
 
-- [ ] **[HIGH]** Fix long entries pushing the docked footer out of the detail pane
+- [x] **[HIGH]** Fix long entries pushing the docked footer out of the detail pane
   - Type: bug
   - Description: In the desktop detail pane, a long entry still pushes the docked footer (filter through MANUAL STATUS) below the fold and turns the whole pane into a scroller, despite the editor fill shipping. Root cause is the flex basis, not another missing clamp: the editor block (and the review entry view) carry `flex: 1 1 auto`, and with basis `auto` a flex child's hypothetical main size is its CONTENT — so once the textarea's content exceeds the pane's slack, the stack inflates past the pane, the pane's legacy `overflow-y: auto` (the ≥1024px `#descDetailPane` block, ~style.css 13661, written when the pane WAS the scroll container) engages, and the footer sinks with the overflow. The docked-footer contract and pane-as-scroller contract are mutually exclusive; prior fixes bounded descendants while the basis kept feeding content height upward. Fix in `style.css`: (1) switch the write-stage editor block AND the review-stage `descReviewEntryView` to `flex: 1 1 0` — zero basis, so they size purely from distributed slack and can never inflate the stack — keeping their existing ~96px `min-height` floors and their internal scrollers (`min-height: 0; overflow-y: auto` on the textarea / `.descReviewEntryViewText`) unchanged. (2) Assert the stack itself: inside `#descDetailPane` at ≥1024px, `#descSibling` must be `display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0` so it spans the pane's full height and the footer's `margin-top: auto` pins to the PANE bottom, not the content bottom — add whichever of these it currently lacks. (3) The pane keeps `overflow-y: auto` solely as the degenerate-window safety net (strip + floors + footer taller than the viewport); in any normal window it must never engage.
   - Behavior:
@@ -1264,5 +1264,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Implementation notes: expected `style.css`-only; touch `toDoRow.js` solely if `#descSibling`'s flex-column shape genuinely requires a structural wrapper it lacks. Desktop selectors only; mobile sheets untouched; textarea keeps 16px.
   - Out of scope: removing the pane's overflow safety net entirely; footer composition or ordering; PASTE/GENERATE panes beyond inheriting the block's sizing if they already share it; mobile; the auto-grow gating shipped in PR #1051 (correct, stays).
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-14
   <!-- id: 30b67e50-8553-4eec-9e88-7179ddec0e5f -->
