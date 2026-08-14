@@ -439,7 +439,8 @@ export function resetCanvasState() {
 // starts on the canvas, so no iframe ever loads without an explicit tap. Every
 // exit path (the chip, a lens switch, a repo switch, leaving the tab) runs the
 // full teardown below, so a guest page's timers and service worker can't idle in
-// a hidden iframe.
+// a hidden iframe. A same-repo, same-lens REPAINT is not an exit: it suspends the
+// mode (teardown without the flag reset) so the rebuilt pane remounts the frame.
 
 // Hard ceiling on the live page's first load: a page that never fires `load`
 // reverts to canvas mode rather than leaving an empty frame on screen.
@@ -498,6 +499,17 @@ function teardownLive() {
     liveResizeHandler = null;
 }
 
+// Drop the live view's DOM and resources WITHOUT leaving live mode: the iframe,
+// its listeners, and the pending load timer go, but `liveMode` / `liveInteract` /
+// `liveInspectBlocked` survive, so the next `rebuild()` re-enters the live branch
+// and remounts the frame. This is what a repaint of the SAME repo's UI lens uses —
+// most often a late async continuation (the published-map fetch resolving after
+// the user tapped Live) that re-mounts the pane and would otherwise silently drop
+// the user back to the block canvas seconds after they entered live view.
+export function suspendLiveView() {
+    teardownLive();
+}
+
 // Leave live mode entirely — full teardown plus a reset of the per-session mode
 // flags. Does NOT repaint: every caller either rebuilds the pane itself (the chip)
 // or is about to throw the whole host away (a lens/repo switch, leaving the tab).
@@ -506,6 +518,13 @@ export function exitLiveView() {
     liveMode = false;
     liveInteract = false;
     liveInspectBlocked = false;
+}
+
+// The repo whose live view is currently mounted, or null in canvas mode. Lets the
+// view layer tell a same-repo repaint (suspend) from a real exit (lens switch,
+// repo switch, leaving the tab) without reaching into the mode flags.
+export function liveViewRepo() {
+    return liveMode ? activeRepo : null;
 }
 
 // The live page couldn't be reached (load error, or no load within the ceiling):
@@ -946,9 +965,15 @@ function clear(el) {
 //     the live ↻ so a clean deployed measure is always reachable). Re-runs the
 //     deployed-site iframe capture.
 export function renderStructureCanvas(host, opts) {
-    // Live mode is session-only and never survives a mount: every Structure open
-    // starts on the block canvas, so no iframe can load without an explicit tap.
-    exitLiveView();
+    // Live mode is session-only: a repo switch (resetCanvasState) and leaving the
+    // Structure tab (exitStructureLiveView) both run the full exit, so every
+    // Structure open starts on the block canvas and no iframe loads without an
+    // explicit tap. A re-mount for the SAME repo, though, is just this pane being
+    // repainted — usually by a late async continuation — so it only suspends the
+    // mode and lets rebuild() remount the frame, rather than reverting to canvas
+    // under the user seconds after they tapped Live.
+    if (liveMode && opts && opts.repo === activeRepo) suspendLiveView();
+    else exitLiveView();
     if (!host || !opts || !opts.repo) return null;
     const repo = opts.repo;
     const isSelf = repo === SELF_REPO;

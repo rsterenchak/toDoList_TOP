@@ -20,6 +20,8 @@ import {
     renderStructureCanvas,
     resetCanvasState,
     exitLiveView,
+    suspendLiveView,
+    liveViewRepo,
     revealSelector,
     applyCanvasFilter,
     markGhostRows,
@@ -2670,15 +2672,32 @@ function startGuestCapture(repo, treeEl) {
     });
 }
 
+// True when a repaint lands back on the very repo whose live view is mounted, on
+// the UI lens — the one case where live mode survives instead of exiting. False in
+// canvas mode, for any other repo, and for a switch into Code (or a guest repo
+// whose second slot resolved to Types/SQL rather than UI).
+function liveRepaintKeepsMode(repo) {
+    if (!repo || liveViewRepo() !== repo) return false;
+    if (lens === 'code') return false;
+    // The running app's second slot is always the UI lens; every other repo keeps
+    // live mode only while its resolved second lens is still UI.
+    return repo === getRunningAppRepo() || currentLens === 'ui';
+}
+
 // Dispatch the active lens into the shared tree container. The second slot is
 // adaptive: the running app is always the live UI map; any other repo resolves
 // its second lens (UI or Types) from the manifest via renderSecondLens.
 function renderLens(repo, treeEl) {
     // The UI lens's live view holds a mounted iframe of a deployed page; this
-    // repaint is about to throw away the host it lives in, so tear it down first.
-    // This is what makes every Structure open (and every lens switch, repo switch,
-    // or breakpoint re-home) start back on the block canvas with no iframe loaded.
-    exitLiveView();
+    // repaint is about to throw away the host it lives in, so drop the frame and
+    // its listeners first. A repaint that lands back on the SAME repo's UI lens
+    // only SUSPENDS the mode — the canvas remounts the frame — so a late async
+    // continuation (the published-map fetch, a capture merge) can't knock the user
+    // out of live view seconds after they entered it. Everything else fully exits:
+    // a switch to Code/Types/SQL, a repo switch (resetCanvasState), and leaving the
+    // Structure tab (exitStructureLiveView), so no guest iframe idles off-screen.
+    if (liveRepaintKeepsMode(repo)) suspendLiveView();
+    else exitLiveView();
     // Each repaint re-mounts the canvas via resolveCanvasHost(); clear the detail-
     // column host first so a prior canvas can't linger there (the tree host is
     // cleared by each lens's own render). Record the breakpoint this paint targets
