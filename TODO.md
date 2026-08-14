@@ -1242,7 +1242,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-13
   <!-- id: d69e98eb-ea94-40ad-97a8-5db23680b30e -->
 
-- [ ] **[MEDIUM]** Fix write-stage description editor capping at 200px instead of filling the pane
+- [x] **[MEDIUM]** Fix write-stage description editor capping at 200px instead of filling the pane
   - Type: bug
   - Description: In the desktop detail pane, the WRITE-stage description textarea stops growing at ~10 lines and scrolls internally while a large void sits between it and the docked footer. The footer reflow gave the editor block its flex contract (`flex: 1 1 auto; min-height: 96px`, style.css ~12006), but the textarea inside still runs the legacy sizing model: an input-event auto-grow writes `descInput.style.height` from `scrollHeight` (toDoRow.js ~4173, per the comment at style.css ~15879), and a `max-height: 200px; overflow-y: auto` rule (~15884) clamps the result. Inline height wins over any CSS fill, so the flex slack goes unused. Fix, scoped to the desktop detail pane's editor block only: (1) style.css — make the textarea a true fill child of the editor block (block becomes a flex column; textarea `flex: 1; min-height: 0; height: auto; overflow-y: auto`), and neutralize the 200px clamp in this context (`max-height: none` under the pane's selector if the clamp rule is shared with other surfaces — check the selector at ~15884 before editing it in place). (2) toDoRow.js — the auto-grow handler must not fight the fill: gate the `style.height` write off in the flex-fill context (e.g. skip when the input carries a `descEditorFill` class the pane sets) and clear any stale inline height when the pane (re)mounts the editor, so a value written in another context can't leak in.
   - Behavior:
@@ -1252,5 +1252,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Implementation notes: textarea keeps its 16px font-size (Vitest-enforced iOS rule); `min-height: 0` chain per the house pattern; all styling via `style.css` classes.
   - Out of scope: GENERATE tab layout; footer composition; review stage; mobile sheets; the add-task input; any behavior change to typing, saving, or the authoring strip.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/toDoRow.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-14
   <!-- id: 0b98e0d8-0fbb-4238-bafe-7c45f77eb63d -->

@@ -12005,6 +12005,28 @@ body.row-dragging * { cursor: grabbing !important; }
   width: auto;
   flex: 1 1 auto;
   min-height: 96px;
+  /* THE FILL ONLY LANDS IF THE LEGACY SIZING MODEL IS TAKEN OUT OF THE WAY.
+     Two leftovers from the inline row still sized this textarea and between
+     them capped it at ~10 lines with a void below it:
+       • `height` — the auto-grow handler writes scrollHeight into
+         `descInput.style.height` on every input. An inline height wins over
+         any CSS, and with `flex-basis: auto` it IS the hypothetical main
+         size, so the fill grew from a content-shaped basis instead of the
+         pane's slack. The declaration below only states the intent; the
+         inline value is actually cleared in JS (see the `descEditorFill`
+         marker placeDescPanel sets — CSS cannot override an inline style).
+       • `max-height` — the plain `#descInput` rule in the desktop-width
+         media block clamps to 200px so a long entry can't push the inline row
+         into the todos below it. That rule is shared with the inline host, so it
+         is neutralized HERE by specificity rather than edited in place: in
+         the pane nothing sits below the panel to be pushed, and the docked
+         footer already bounds the textarea.
+     With both gone the textarea takes all the height between the authoring
+     strip and the footer, and `overflow-y: auto` starts its INTERNAL scroll
+     only once the content outgrows that — the footer never moves. */
+  height: auto;
+  max-height: none;
+  overflow-y: auto;
 }
 /* The read-only entry view takes the SAME flex contract as the textarea it stands in
    for: in `accept` the authoring group (textarea included) is hidden, so this is what

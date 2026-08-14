@@ -391,6 +391,29 @@ export function syncDetailPaneHeader() {
     }
 }
 
+// Mark the panel's entry textarea as sized BY ITS HOST rather than by its own
+// content, and keep the two sizing models from fighting over the same element.
+// In the detail pane CSS makes the textarea a flex-fill child (it takes the
+// height between the authoring strip and the docked footer, then scrolls
+// internally); inline it auto-grows to its content instead. The auto-grow writes
+// `style.height`, and an inline height beats any CSS fill — so entering the pane
+// clears whatever height the inline host left behind and gates further writes off
+// (autoGrowDescInput reads this class), while leaving the pane hands sizing back
+// by re-measuring against the current value. Called from the single host-resolving
+// funnel below, so both the open path and the resize path stay in step.
+function setDescEditorFill(descSibling, fill) {
+    const descInput = descSibling ? descSibling.querySelector('#descInput') : null;
+    if (!descInput) return;
+    const wasFill = descInput.classList.contains('descEditorFill');
+    descInput.classList.toggle('descEditorFill', fill);
+    if (fill) {
+        descInput.style.height = '';
+    } else if (wasFill) {
+        // Auto-grow reads scrollHeight off the synthetic input event.
+        descInput.dispatchEvent(new Event('input'));
+    }
+}
+
 // Mount an OPEN row's description panel into the host matching the current
 // breakpoint. Desktop → the detail pane (moved with appendChild so handlers,
 // scroll position, and in-flight state survive); mobile (or no pane host) →
@@ -401,8 +424,10 @@ export function placeDescPanel(descSibling, toDoChild) {
     if (isDetailPaneMode()) {
         const pane = getDescDetailPane();
         if (descSibling.parentNode !== pane) pane.appendChild(descSibling);
+        setDescEditorFill(descSibling, true);
         return;
     }
+    setDescEditorFill(descSibling, false);
     const mainList = toDoChild.parentElement;
     if (!mainList) return;
     let descAnchor = toDoChild.nextSibling;
@@ -4218,7 +4243,19 @@ export function buildToDoRow(item, toDoName) {
     // expands the panel to show every line. `scrollHeight` requires the
     // element to be in the DOM, so wireDescToggle fires a synthetic `input`
     // event after the panel is first attached and the value is assigned.
+    // In the desktop detail pane the textarea is a flex-fill child instead
+    // (the `descEditorFill` marker placeDescPanel sets): CSS gives it the
+    // height between the authoring strip and the docked footer and scrolls it
+    // internally past that. An inline height would win over that fill and cap
+    // the editor at its content, so there the handler writes nothing and
+    // clears any height a previous host left behind. The gate is keyed to this
+    // one textarea in this one context — every other auto-grow input (the
+    // add-task composer, the mobile desc-editor sheet) is untouched.
     function autoGrowDescInput() {
+        if (descInput.classList.contains("descEditorFill")) {
+            descInput.style.height = "";
+            return;
+        }
         descInput.style.height = "auto";
         descInput.style.height = descInput.scrollHeight + "px";
     }
