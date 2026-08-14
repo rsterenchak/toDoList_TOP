@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-14',
+        fixed: [
+            'The description editor in the desktop task detail pane now fills the height down to the docked controls instead of stopping after about ten lines and leaving a gap beneath it.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-13',
         changed: [
-            'The desktop task detail pane now stretches the entry editor to fill the space, with the file filter, action buttons, file readout and status control docked along the bottom of the pane.',
             'In the Structure tab’s Types outline, Find in code now jumps straight to the selected type or member’s declaration, and the copy action reads Copy name.',
         ],
         fixed: [
