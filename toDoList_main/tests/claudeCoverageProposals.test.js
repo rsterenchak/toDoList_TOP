@@ -137,6 +137,23 @@ function proposedRow(id, aspect, title) {
     };
 }
 
+// A derive row parked on a mockup decision: no `todo_id` (so the row layer's
+// per-todo mockup pane has nowhere to mount it) and no `draft` (triage stopped
+// before authoring the entry). `todoId` opts into the "belongs to a real task
+// row" variant, which must NOT surface in the review sheet.
+function mockupRow(id, aspect, title, todoId) {
+    return {
+        id: id,
+        state: 'needs_mockup',
+        aspect: aspect,
+        todo_id: todoId === undefined ? null : todoId,
+        entry_id: null,
+        draft: '',
+        question: 'Which card styling?',
+        context: { title: title, description: title + ' description' },
+    };
+}
+
 beforeEach(() => {
     localStorage.clear();
     document.body.innerHTML = '';
@@ -156,6 +173,8 @@ afterEach(() => {
     stopDeriveTracking(true);
     const backdrop = document.getElementById('proposalReviewModalBackdrop');
     if (backdrop && backdrop.parentNode) backdrop.parentNode.removeChild(backdrop);
+    const detail = document.getElementById('coverageDetailModalBackdrop');
+    if (detail && detail.parentNode) detail.parentNode.removeChild(detail);
 });
 
 describe('COVERAGE tab — Derive action', () => {
@@ -495,5 +514,165 @@ describe('COVERAGE tab — proposal review modal', () => {
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
         expect(renderedTitles()).toEqual(['no timestamp', 'garbage timestamp', 'real timestamp']);
+    });
+});
+
+// A derive row that routes to a mockup parks in `needs_mockup` with `todo_id:
+// null`. The coverage module used to have no handling for that state at all, so
+// such a row rendered NOWHERE: its aspect read as not-started rather than blocked
+// (aspectStatus only flagged needs_words), and the review sheet's `state ===
+// 'proposed'` filter never reached it — and with no todo_id there was no task row
+// to fall back on either. These pin both halves of the fix.
+describe('COVERAGE tab — needs_mockup rows', () => {
+    function detailModal() { return document.getElementById('coverageDetailModalBackdrop'); }
+
+    async function openDetail(name, rows) {
+        setQueueRows(rows, name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageBreakdown').click();
+    }
+
+    it('reads a needs_mockup-only aspect as blocked, in the modal\'s waiting group', async () => {
+        const name = freshProject();
+        await openDetail(name, [mockupRow(20, 'A2', 'Style the card')]);
+        const group = document.querySelector('.coverageDetailGroup--blocked');
+        expect(group).toBeTruthy();
+        const blockedRow = group.querySelector('.coverageDetailRow--blocked');
+        expect(blockedRow).toBeTruthy();
+        expect(blockedRow.querySelector('.coverageDetailId').textContent).toBe('A2');
+        // Same amber "Blocked" wording a needs_words aspect carries — never the
+        // "Not started" it used to fall through to.
+        expect(blockedRow.querySelector('.coverageDetailStatus').textContent).toBe('Blocked');
+        expect(document.querySelector('.coverageDetailRow--not-started .coverageDetailId'))
+            .not.toBe(blockedRow.querySelector('.coverageDetailId'));
+    });
+
+    it('resolves the needs_mockup row behind the flag so its lane is answerable', async () => {
+        const name = freshProject();
+        await openDetail(name, [mockupRow(21, 'A2', 'Style the card')]);
+        const btn = document.querySelector('.coverageDetailRow--blocked');
+        expect(btn.tagName).toBe('BUTTON');
+        btn.click();
+        const lane = document.querySelector('.coverageAnswerLane');
+        expect(lane).toBeTruthy();
+        expect(lane.querySelector('.coverageAnswerQuestion').textContent)
+            .toBe('Which card styling?');
+    });
+
+    it('counts a homeless needs_mockup row in the badge and review action', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(10, 'A1', 'Add a menu'),
+            mockupRow(22, 'A2', 'Style the card'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        expect(coverageBadge().hidden).toBe(false);
+        expect(coverageBadge().textContent).toBe('2');
+        expect(coverageView().querySelector('.claudeCoverageProposals').textContent)
+            .toBe('Review 2 proposals');
+    });
+
+    it('leaves a needs_mockup row that belongs to a task row out of the sheet', async () => {
+        const name = freshProject();
+        // todo_id set → the row layer's per-todo mockup pane already renders it.
+        setQueueRows([mockupRow(23, 'A2', 'Style the card', 'todo-1')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        expect(coverageBadge().hidden).toBe(true);
+        expect(coverageView().querySelector('.claudeCoverageProposals')).toBeFalsy();
+    });
+
+    it('gives the mockup card a mockup primary rather than Accept, and never dispatches', async () => {
+        const name = freshProject();
+        setQueueRows([mockupRow(24, 'A2', 'Style the card')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        const card = document.querySelector('.proposalCard');
+        expect(card.querySelector('.proposalAcceptBtn')).toBeFalsy();
+        const primary = card.querySelector('.proposalMockupBtn');
+        expect(primary).toBeTruthy();
+        expect(primary.textContent).toBe('Choose mockup');
+        // The flow is disclosed on tap, not mounted eagerly.
+        expect(card.querySelector('.proposalMockupFlow').childNodes.length).toBe(0);
+        primary.click();
+        await flush();
+        expect(card.querySelector('.proposalMockupFlow .agentMockup')).toBeTruthy();
+        expect(card.querySelector('.proposalMockupFlow .agentMockupGenerate')).toBeTruthy();
+        expect(primary.getAttribute('aria-expanded')).toBe('true');
+        // A mockup row carries no draft — the Accept path would have had nothing to
+        // ship, so it must not run at all.
+        expect(injectCalls.length).toBe(0);
+        expect(dispatchRunCalls.length).toBe(0);
+    });
+
+    it('keeps a disclosed mockup flow open across a queue-change repaint', async () => {
+        const name = freshProject();
+        setQueueRows([mockupRow(25, 'A2', 'Style the card')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        document.querySelector('.proposalMockupBtn').click();
+        await flush();
+        // Another device changes the queue → the modal body is rebuilt wholesale.
+        setQueueRows([
+            mockupRow(25, 'A2', 'Style the card'),
+            proposedRow(26, 'A1', 'Add a menu'),
+        ], name);
+        notifyQueueChange();
+        const mockupCard = Array.from(document.querySelectorAll('.proposalCard'))
+            .find(function (c) { return c.querySelector('.proposalMockupBtn'); });
+        expect(mockupCard.querySelector('.proposalMockupFlow .agentMockup')).toBeTruthy();
+    });
+
+    it('Dismiss on a mockup card removes the queue row', async () => {
+        const name = freshProject();
+        const spy = vi.spyOn(listLogic, 'unflagAgentTask');
+        setQueueRows([mockupRow(27, 'A2', 'Style the card')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        document.querySelector('.proposalCard .proposalDismissBtn').click();
+        await flush();
+        expect(spy).toHaveBeenCalledWith(27);
+        spy.mockRestore();
+    });
+
+    it('sorts mockup cards into aspect order alongside the proposals', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(31, 'C1', 'c1'),
+            mockupRow(32, 'A2', 'a2 mockup'),
+            proposedRow(33, 'A1', 'a1'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(Array.from(document.querySelectorAll('.proposalCardTitle'))
+            .map(function (t) { return t.textContent; }))
+            .toEqual(['a1', 'a2 mockup', 'c1']);
+    });
+
+    it('drops the card once the row leaves needs_mockup', async () => {
+        const name = freshProject();
+        setQueueRows([
+            mockupRow(40, 'A2', 'Style the card'),
+            proposedRow(41, 'A1', 'Add a menu'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(document.querySelectorAll('.proposalCard').length).toBe(2);
+        // A mockup was chosen → the row moves to `drafted` exactly as an accepted
+        // proposal leaves `proposed`.
+        setQueueRows([
+            { ...mockupRow(40, 'A2', 'Style the card'), state: 'drafted', draft: '- [ ] x' },
+            proposedRow(41, 'A1', 'Add a menu'),
+        ], name);
+        notifyQueueChange();
+        expect(document.querySelectorAll('.proposalCard').length).toBe(1);
+        expect(document.querySelector('.proposalMockupBtn')).toBeFalsy();
     });
 });
