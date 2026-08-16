@@ -6,18 +6,14 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-16',
+        added: [
+            'Aspects waiting on a question or on a failed run can now be removed from the assignment coverage list, freeing them to be proposed again from scratch.',
+        ],
         fixed: [
             'Rubric aspects written as a bare letter (A, E, I) or with a lettered suffix (B2a, B2b) now show up in the assignment coverage list and count toward its totals instead of being skipped.',
             'Assignment coverage no longer invents rubric aspects out of commented-out template hints, and requirement labels read as plain text instead of trailing stray asterisks.',
             'A task parked on a mockup decision now shows in the assignment coverage waiting list and in the review sheet, where a mockup can be chosen, instead of disappearing from the app entirely.',
             'Assignment coverage now reads a drafted task as drafted and a broken run as failed instead of untouched — the failed run can be retried from the coverage list, and the drafted task dispatched from the review sheet.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-14',
-        fixed: [
-            'The Structure tab’s live view now shrinks the deployed page to fit a phone screen instead of clipping its right edge.',
         ],
     },
 ];

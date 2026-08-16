@@ -357,6 +357,186 @@ describe('Coverage answer lane — Discuss in chat', () => {
     });
 });
 
+// Until Remove existed, unflagAgentTask was reachable from exactly one place —
+// the proposal sheet's Dismiss — so a row pinned in "Waiting on you" instead of
+// listed in that sheet could not be deleted from anywhere in the app now that the
+// Agent board is retired. A question raised on a wrong premise, and a run broken
+// beyond a retry, both deadlocked: answerable or retryable, never discardable, so
+// the aspect could never be re-derived against a corrected spec.
+describe('Coverage answer lane — Remove', () => {
+    it('renders a Remove control beside the answer affordances', async () => {
+        await openDetail();
+        blockedRow().click();
+        const l = lane();
+        const remove = l.querySelector('.coverageAnswerRemove');
+        expect(remove).toBeTruthy();
+        expect(remove.tagName).toBe('BUTTON');
+        expect(remove.type).toBe('button');
+        expect(remove.textContent).toBe('Remove');
+        // Leftmost of the three, away from Send.
+        const actions = l.querySelector('.coverageAnswerActions');
+        expect(actions.firstChild).toBe(remove);
+    });
+
+    it('deletes through listLogic.unflagAgentTask with no confirm step', async () => {
+        const spy = vi.spyOn(listLogic, 'unflagAgentTask').mockResolvedValue({ ok: true });
+        const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true);
+        await openDetail();
+        blockedRow().click();
+        lane().querySelector('.coverageAnswerRemove').click();
+        // One write, through the single sanctioned path, fired immediately.
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledWith('4');
+        expect(confirmSpy).not.toHaveBeenCalled();
+        await flush();
+    });
+
+    it('never answers the row it removes', async () => {
+        vi.spyOn(listLogic, 'unflagAgentTask').mockResolvedValue({ ok: true });
+        const answer = vi.spyOn(listLogic, 'answerAgentTask');
+        await openDetail();
+        blockedRow().click();
+        lane().querySelector('.coverageAnswerRemove').click();
+        await flush();
+        expect(answer).not.toHaveBeenCalled();
+    });
+
+    it('quiets the answer affordances while the delete is in flight', async () => {
+        let resolve;
+        vi.spyOn(listLogic, 'unflagAgentTask')
+            .mockReturnValue(new Promise((r) => { resolve = r; }));
+        await openDetail();
+        blockedRow().click();
+        const l = lane();
+        const remove = l.querySelector('.coverageAnswerRemove');
+        const send = l.querySelector('.coverageAnswerSend');
+        const input = l.querySelector('.coverageAnswerInput');
+        remove.click();
+        expect(remove.disabled).toBe(true);
+        expect(remove.classList.contains('is-pending')).toBe(true);
+        expect(remove.textContent).toBe('Removing…');
+        expect(send.disabled).toBe(true);
+        expect(input.disabled).toBe(true);
+        resolve({ ok: true });
+        await flush();
+    });
+
+    it('drops the aspect back to not-started once the row is gone', async () => {
+        await openDetail();
+        expect(blockedRow()).toBeTruthy();
+        // The stubbed delete doesn't mutate the fixture, so drop the row here —
+        // the reload that follows a successful remove is what must pick it up.
+        vi.spyOn(listLogic, 'unflagAgentTask').mockImplementation(function () {
+            queueRows = queueRows.filter(function (r) { return r.id !== '4'; });
+            return Promise.resolve({ ok: true });
+        });
+        blockedRow().click();
+        const input = lane().querySelector('.coverageAnswerInput');
+        input.value = 'Half a thought';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        lane().querySelector('.coverageAnswerRemove').click();
+        await flush();
+        // No blocked group left, and D1 now reads as untouched.
+        expect(blockedRow()).toBeNull();
+        expect(lane()).toBeNull();
+        const rows = Array.from(document.querySelectorAll('.coverageDetailRow'));
+        const d1 = rows.find(function (r) {
+            const id = r.querySelector('.coverageDetailId');
+            return id && id.textContent === 'D1';
+        });
+        expect(d1).toBeTruthy();
+        expect(d1.classList.contains('coverageDetailRow--not-started')).toBe(true);
+        // The unsent answer belonged to a row that no longer exists.
+        expect(pendingAnswers.has('4')).toBe(false);
+    });
+
+    it('re-enables the lane and shows the error inline when the delete fails', async () => {
+        vi.spyOn(listLogic, 'unflagAgentTask')
+            .mockResolvedValue({ ok: false, error: 'delete blocked' });
+        await openDetail();
+        blockedRow().click();
+        const l = lane();
+        const remove = l.querySelector('.coverageAnswerRemove');
+        remove.click();
+        await flush();
+        expect(remove.disabled).toBe(false);
+        expect(remove.classList.contains('is-pending')).toBe(false);
+        expect(remove.textContent).toBe('Remove');
+        expect(l.querySelector('.coverageAnswerSend').disabled).toBe(false);
+        expect(l.querySelector('.coverageAnswerInput').disabled).toBe(false);
+        const err = l.querySelector('.coverageAnswerError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('delete blocked');
+        // Inline, not a dialog and not a toast — matching Send.
+        expect(toasts.length).toBe(0);
+    });
+
+    it('falls back to a generic error when the delete rejects', async () => {
+        vi.spyOn(listLogic, 'unflagAgentTask').mockRejectedValue(new Error('boom'));
+        await openDetail();
+        blockedRow().click();
+        lane().querySelector('.coverageAnswerRemove').click();
+        await flush();
+        const err = lane().querySelector('.coverageAnswerError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('Could not remove. Try again.');
+    });
+});
+
+// A failed aspect is pinned in the same "Waiting on you" group but never becomes
+// answerable, so it has no lane to host a Remove — its control sits on the row
+// beside Retry instead. Without it a broken run would still be undiscardable.
+describe('Coverage detail — Remove on a failed aspect', () => {
+    function failedQueue() {
+        return [{
+            id: '7', state: 'failed', aspect: 'D1', todo_id: null,
+            entry_id: 'e-7', draft: 'Add an undo stack.',
+            context: { title: 'Undo' },
+        }];
+    }
+    function failedRow() {
+        return document.querySelector('.coverageDetailGroup--blocked .coverageDetailRow--failed');
+    }
+
+    it('renders Remove alongside Retry on the row', async () => {
+        queueRows = failedQueue();
+        await openDetail();
+        const row = failedRow();
+        expect(row).toBeTruthy();
+        expect(row.querySelector('.coverageRetryBtn')).toBeTruthy();
+        const remove = row.querySelector('.coverageRemoveBtn');
+        expect(remove).toBeTruthy();
+        expect(remove.textContent).toBe('Remove');
+        // A failed aspect is never answerable, so there is no lane here.
+        expect(document.querySelector('.coverageAnswerLane')).toBeNull();
+    });
+
+    it('deletes the failed row through the same unflagAgentTask path', async () => {
+        queueRows = failedQueue();
+        const spy = vi.spyOn(listLogic, 'unflagAgentTask').mockResolvedValue({ ok: true });
+        await openDetail();
+        failedRow().querySelector('.coverageRemoveBtn').click();
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledWith('7');
+        await flush();
+    });
+
+    it('re-enables and toasts when the delete fails', async () => {
+        queueRows = failedQueue();
+        vi.spyOn(listLogic, 'unflagAgentTask').mockResolvedValue({ ok: false, error: 'nope' });
+        await openDetail();
+        const remove = failedRow().querySelector('.coverageRemoveBtn');
+        remove.click();
+        expect(remove.textContent).toBe('Removing…');
+        await flush();
+        expect(remove.disabled).toBe(false);
+        expect(remove.textContent).toBe('Remove');
+        expect(toasts.length).toBe(1);
+        expect(toasts[0].msg).toBe('nope');
+        expect(toasts[0].kind).toBe('error');
+    });
+});
+
 describe('Coverage answer lane — surviving the modal\'s live rebuild', () => {
     it('re-expands the lane and restores the unsent draft after a queue repaint', async () => {
         await openDetail();

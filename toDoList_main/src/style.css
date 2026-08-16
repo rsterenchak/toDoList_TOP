@@ -8196,15 +8196,20 @@ button.complexityNestChip:disabled {
   color: var(--text-primary);
 }
 
-/* Line three of a failed row: Retry on the left, the confirmation tick on the
-   right. The tick's own placement rule spans columns 2–5, so it is re-scoped
-   here (declared after it, same specificity) to leave the Retry its column. */
+/* Line three of a failed row: Retry on the left, then Remove, then the
+   confirmation tick on the right. The tick's own placement rule spans columns
+   2–5, so it is re-scoped here (declared after it, same specificity) to leave
+   Retry and Remove their columns. */
 .coverageDetailRow--failed > .coverageRetryBtn {
   grid-area: 3 / 2;
   justify-self: start;
 }
+.coverageDetailRow--failed > .coverageRemoveBtn {
+  grid-area: 3 / 3;
+  justify-self: end;
+}
 .coverageDetailRow--failed > .coverageCommitTick {
-  grid-area: 3 / 3 / 4 / 5;
+  grid-area: 3 / 4 / 4 / 5;
   justify-self: end;
 }
 .coverageRetryBtn {
@@ -8227,6 +8232,33 @@ button.complexityNestChip:disabled {
 }
 .coverageRetryBtn:disabled,
 .coverageRetryBtn.is-pending {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* Remove discards the queue row behind a failed aspect. It shares Retry's chip
+   shape so line three reads as one control strip, but takes the danger colour —
+   it deletes, where Retry re-runs. */
+.coverageRemoveBtn {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: transparent;
+  border: 0.5px solid var(--text-danger);
+  color: var(--text-danger);
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease;
+}
+.coverageRemoveBtn:hover:not(:disabled) { background: var(--bg-hover); }
+.coverageRemoveBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.coverageRemoveBtn:disabled,
+.coverageRemoveBtn.is-pending {
   opacity: 0.55;
   cursor: default;
 }
@@ -8535,6 +8567,43 @@ button.complexityNestChip:disabled {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* Remove discards the row instead of answering it, so it is pushed to the far
+   left — the auto margin keeps a whole row's width between a destructive tap and
+   Send. Link-styled like Discuss (never a third button competing with Send) but
+   in the danger colour. */
+.coverageAnswerRemove {
+  flex: 0 0 auto;
+  margin-right: auto;
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 4px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-danger);
+  background: none;
+  border: 0;
+  white-space: nowrap;
+}
+
+.coverageAnswerRemove:hover:not(:disabled) { text-decoration: underline; }
+
+.coverageAnswerRemove:focus-visible {
+  outline: none;
+  border-radius: 6px;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+.coverageAnswerRemove:disabled,
+.coverageAnswerRemove.is-pending {
+  opacity: 0.6;
+  cursor: default;
+  text-decoration: none;
 }
 
 /* "Discuss in chat" reads as a link, not a second button competing with Send. */
