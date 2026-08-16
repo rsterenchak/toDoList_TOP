@@ -335,6 +335,95 @@ describe('AGENT assignment card — rubric coverage summary', () => {
     });
 });
 
+// The rubric-ID grammar accepts bare letters, so ordinary capitalized prose can
+// look like an aspect when punctuation follows it: `It's` used to parse as an
+// aspect named `It`. The assignment template seeds a trailing HTML-comment hint
+// containing exactly that sentence, so the phantom rode into every derived
+// spec's aspect list and inflated the coverage denominator with an aspect no
+// queue row can ever cover — leaving the bar permanently short of complete.
+// Two independent guards, pinned separately below: comments contribute nothing,
+// and a lowercase suffix is only reachable through a digit.
+describe('AGENT assignment card — phantom aspects from prose and comments', () => {
+    it('parses no aspects out of an HTML comment in the rubric section', async () => {
+        mountRoutedProject();
+        assignmentResult = {
+            ok: true,
+            content: [
+                '# Assignment',
+                '',
+                '## Requirements',
+                '- **A1** — Task creation works',
+                '',
+                '## Rubric',
+                '- A1: Task creation works',
+                '- A2: Task deletion works',
+                '<!-- Optional — paste only if your PA ships a common-reasons doc.',
+                "     It's a pre-written list of the graders' rejections. -->",
+            ].join('\n'),
+        };
+        await loadBoard();
+        // Two real aspects — the commented-out `It` is not one of them.
+        expect(document.querySelector('.agentCoverageHeadline').textContent)
+            .toBe('2 outstanding · 0 of 2 covered');
+    });
+
+    it('parses no aspects out of a capitalized word followed by an apostrophe', async () => {
+        mountRoutedProject();
+        assignmentResult = {
+            ok: true,
+            content: [
+                '## Requirements',
+                '- **A1** — Task creation works',
+                '',
+                '## Rubric',
+                '- A1: Task creation works',
+                "- It's expected that the app never crashes on bad input.",
+            ].join('\n'),
+        };
+        await loadBoard();
+        expect(document.querySelector('.agentCoverageHeadline').textContent)
+            .toBe('1 outstanding · 0 of 1 covered');
+    });
+
+    it('keeps the real ID shapes matchable while the suffix stays digit-gated', async () => {
+        mountRoutedProject();
+        assignmentResult = {
+            ok: true,
+            content: [
+                '## Requirements',
+                '- **A** — Overall summary',
+                '',
+                '## Rubric',
+                '- **A — Competent:** The summary describes the solution.',
+                '- **B2a — Competent:** Data is written to storage.',
+                '- **B2b — Competent:** Data is read back on launch.',
+            ].join('\n'),
+        };
+        await loadBoard();
+        expect(document.querySelector('.agentCoverageHeadline').textContent)
+            .toBe('3 outstanding · 0 of 3 covered');
+    });
+
+    it('falls back to the words/sections line when only a comment carries IDs', async () => {
+        mountRoutedProject();
+        assignmentResult = {
+            ok: true,
+            content: [
+                '## Requirements',
+                '- Users can add tasks',
+                '',
+                '## Rubric',
+                '<!-- Example section — delete and paste the real rubric:',
+                'A1: Task creation works -->',
+                '- Overall quality of the submission',
+            ].join('\n'),
+        };
+        await loadBoard();
+        expect(document.querySelector('.agentCoverage')).toBeNull();
+        expect(document.querySelector('.agentAssignmentMeta')).toBeTruthy();
+    });
+});
+
 describe('AGENT assignment card — Draft tasks from this (derive dispatch)', () => {
     const FILLED = { ok: true, content: '## Requirements\n- Users can add tasks\n' };
 
