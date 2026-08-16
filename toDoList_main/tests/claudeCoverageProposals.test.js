@@ -386,6 +386,21 @@ describe('COVERAGE tab — proposal review modal', () => {
         expect(renderedAspects()).toEqual(['B2', 'B10']);
     });
 
+    it('sorts a bare letter ahead of its numbered and suffixed siblings', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(45, 'B2b', 'b2b'),
+            proposedRow(46, 'B3', 'b3'),
+            proposedRow(47, 'B', 'b'),
+            proposedRow(48, 'B2a', 'b2a'),
+            proposedRow(49, 'B1', 'b1'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(renderedAspects()).toEqual(['B', 'B1', 'B2a', 'B2b', 'B3']);
+    });
+
     it('renders untagged proposals last, after all tagged ones', async () => {
         const name = freshProject();
         setQueueRows([

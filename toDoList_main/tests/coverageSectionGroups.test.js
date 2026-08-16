@@ -311,6 +311,114 @@ describe('Coverage detail modal — two-line aspect rows', () => {
     });
 });
 
+// A WGU-shaped rubric: bare-letter aspects (`A`, `E`, `H`, `I`) sit alongside
+// lettered-suffix siblings (`B2a`, `B2b`) and an ordinary `F`/`F1` pair. The
+// leading-ID parse used to require a digit, so every bare letter vanished and
+// `B2a`/`B2b` collapsed into one `B2` — this fixture pins all three shapes.
+const MIXED_RUBRIC = {
+    ok: true,
+    content: [
+        '# Assignment',
+        '',
+        '## Requirements',
+        '- **A** — Overall solution summary',
+        '- **B2a** — Data written to storage',
+        '- **B2b** — Data read back on launch',
+        '- **E** — Error handling for bad input',
+        '- **F** — Test plan for the feature',
+        '- **F1** — Test results recorded',
+        '- **H** — Sources cited',
+        '- **I** — Professional communication',
+        '',
+        '## Rubric',
+        '- **A — Competent:** The summary describes the whole solution.',
+        '- **B2a — Competent:** Data is written to storage.',
+        '- **B2b — Competent:** Data is read back on launch.',
+        '- **E — Competent:** Bad input is handled without a crash.',
+        '- **F — Competent:** A test plan is present.',
+        '- **F1 — Competent:** Results are recorded for each test.',
+        '- **H — Competent:** Sources are cited correctly.',
+        '- **I — Competent:** The submission communicates professionally.',
+    ].join('\n'),
+};
+
+describe('Coverage detail modal — bare-letter and suffixed aspect IDs', () => {
+    it('keeps every ID shape, one row per aspect under its section letter', async () => {
+        mountRoutedProject();
+        assignmentResult = MIXED_RUBRIC;
+        await loadBoard();
+        openDetail();
+        await flush();
+        const letters = Array.from(document.querySelectorAll('.coverageSectionLetter'))
+            .map((el) => el.textContent);
+        expect(letters).toEqual(['A', 'B', 'E', 'F', 'H', 'I']);
+        // Bare letters survive the parse instead of being dropped for want of
+        // a digit …
+        expect(Array.from(sectionFor('A').querySelectorAll('.coverageDetailId'))
+            .map((el) => el.textContent)).toEqual(['A']);
+        // … and suffixed siblings stay distinct instead of collapsing to `B2`.
+        expect(Array.from(sectionFor('B').querySelectorAll('.coverageDetailId'))
+            .map((el) => el.textContent)).toEqual(['B2a', 'B2b']);
+        // A bare letter and its numbered sibling share one section.
+        expect(Array.from(sectionFor('F').querySelectorAll('.coverageDetailId'))
+            .map((el) => el.textContent)).toEqual(['F', 'F1']);
+    });
+
+    it('labels bare-letter and suffixed rows from their requirements text', async () => {
+        mountRoutedProject();
+        assignmentResult = MIXED_RUBRIC;
+        await loadBoard();
+        openDetail();
+        await flush();
+        expect(sectionFor('A').querySelector('.coverageDetailLabel').textContent)
+            .toBe('Overall solution summary');
+        expect(Array.from(sectionFor('B').querySelectorAll('.coverageDetailLabel'))
+            .map((el) => el.textContent))
+            .toEqual(['Data written to storage', 'Data read back on launch']);
+    });
+
+    it('tallies sections that mix the shapes', async () => {
+        mountRoutedProject();
+        assignmentResult = MIXED_RUBRIC;
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'B2a', context: { title: 'Write' } },
+            { id: '2', state: 'shipped', aspect: 'A', context: { title: 'Summary' } },
+            { id: '3', state: 'running', aspect: 'F1', context: { title: 'Results' } },
+        ];
+        await loadBoard();
+        openDetail();
+        await flush();
+        expect(sectionFor('A').querySelector('.coverageSectionCount').textContent)
+            .toBe('1 / 1');
+        expect(sectionFor('B').querySelector('.coverageSectionCount').textContent)
+            .toBe('1 / 2');
+        expect(segCounts(sectionFor('F')))
+            .toEqual({ shipped: 0, 'in-flight': 1, outstanding: 1 });
+    });
+
+    it('expands a blocked bare-letter aspect into its answer lane', async () => {
+        mountRoutedProject();
+        assignmentResult = MIXED_RUBRIC;
+        queueRows = [
+            {
+                id: '9', state: 'needs_words', aspect: 'E',
+                question: 'Which inputs?', context: { title: 'Errors' },
+            },
+        ];
+        await loadBoard();
+        openDetail();
+        await flush();
+        const pinned = document.querySelector(
+            '.coverageDetailGroup--blocked .coverageDetailRow--blocked');
+        expect(pinned).toBeTruthy();
+        expect(pinned.querySelector('.coverageDetailId').textContent).toBe('E');
+        pinned.click();
+        expect(document.querySelector('.coverageAnswerLane')).toBeTruthy();
+        // The echo lands in section E, so the section still shows its one row.
+        expect(sectionFor('E').querySelector('.coverageDetailRow--echo')).toBeTruthy();
+    });
+});
+
 describe('groupAspectsBySection', () => {
     it('groups by ID letter in first-appearance order, preserving item order', () => {
         const out = groupAspectsBySection([
@@ -325,6 +433,16 @@ describe('groupAspectsBySection', () => {
     it('sorts nothing — B10 keeps its rubric position within its section', () => {
         const out = groupAspectsBySection([{ id: 'B10' }, { id: 'B2' }]);
         expect(out.sections[0].items.map((i) => i.id)).toEqual(['B10', 'B2']);
+    });
+
+    it('gives bare-letter IDs their own section and keeps suffixed siblings together', () => {
+        const out = groupAspectsBySection([
+            { id: 'A' }, { id: 'B2a' }, { id: 'B2b' }, { id: 'F' }, { id: 'F1' },
+        ]);
+        expect(out.sections.map((s) => s.letter)).toEqual(['A', 'B', 'F']);
+        expect(out.sections[1].items.map((i) => i.id)).toEqual(['B2a', 'B2b']);
+        expect(out.sections[2].items.map((i) => i.id)).toEqual(['F', 'F1']);
+        expect(out.other).toEqual([]);
     });
 
     it('collects IDs with no letter/number split into the trailing group', () => {
