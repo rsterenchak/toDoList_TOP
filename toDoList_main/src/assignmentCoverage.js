@@ -17,6 +17,7 @@ import {
     stopDeriveTracking,
     setDeriveCorrelationId,
     loadQueueRows,
+    notifyQueueChange,
     fireTriageSweep,
     pendingAnswers,
 } from './agentQueueStore.js';
@@ -998,6 +999,62 @@ function buildAspectRetry(queueRow) {
     return btn;
 }
 
+// The Remove control mounted on both attention surfaces of the detail modal — a
+// blocked aspect's answer lane and a failed aspect's row. Until this existed, a
+// row pinned in "Waiting on you" rather than listed in the proposal review sheet
+// could not be deleted from anywhere in the app now that the Agent board is
+// retired: the lane could answer its question, but a question raised on a wrong
+// premise (or a run broken beyond a retry) had no discard path, so the aspect
+// could never be re-derived against a corrected spec.
+//
+// Deletes through listLogic.unflagAgentTask — the SAME single write path the
+// proposal card's Dismiss uses, never a second one. No confirm step, for Dismiss's
+// reason: a derived row is cheap to regenerate, and the next derive pass proposes
+// the aspect fresh. `onStart` lets the caller quiet its neighbouring controls
+// while the delete is in flight; `onFail` decides how a failure surfaces (inline
+// in the lane, a toast on the row, whose two-line grid has no space for an error
+// line) and is paired with restoring whatever `onStart` disabled.
+function buildAspectRemove(queueRow, className, onStart, onFail) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = className;
+    btn.textContent = 'Remove';
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.classList.add('is-pending');
+        btn.textContent = 'Removing…';
+        if (onStart) onStart();
+        const fail = function (message) {
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+            btn.textContent = 'Remove';
+            if (onFail) onFail(message || 'Could not remove. Try again.');
+        };
+        Promise.resolve(listLogic.unflagAgentTask(queueRow.id)).then(function (res) {
+            if (!res || !res.ok) {
+                fail(res && res.error);
+                return;
+            }
+            // The unsent answer belonged to a row that no longer exists.
+            pendingAnswers.delete(queueRow.id);
+            // Reload so the aspect falls back to not-started even where the
+            // realtime push isn't observed, then repaint off that fresh read.
+            // The removed row is the ONLY thing holding the aspect out of
+            // not-started, so unlike the answer lane's Send — where the row lives
+            // on in triaging and the push can catch up — waiting on the push here
+            // would leave the modal showing a row that no longer exists. The
+            // repaint rebuilds the modal body, so nothing is restored on this
+            // button afterwards.
+            Promise.resolve(loadQueueRows(getSelectedProjectName()))
+                .then(function () { notifyQueueChange(); }, function () {});
+        }, function () { fail(); });
+    });
+    return btn;
+}
+
 // Which blocked aspect's answer lane is currently open, or null. Module-level
 // because the coverage modal's body is rebuilt wholesale on every onQueueChange —
 // element state would be lost — so the open lane is re-expanded from this after
@@ -1118,8 +1175,19 @@ function buildCoverageDetailRow(item, ctx) {
         }
         // A failed aspect carries a Retry beside its tick. It is never answerable
         // (a failed status and a blocked one are mutually exclusive), so it always
-        // lands here rather than in the disclosure branch above.
-        if (failedRow) row.appendChild(buildAspectRetry(failedRow));
+        // lands here rather than in the disclosure branch above — which is why its
+        // Remove sits on the row too rather than in an answer lane it never gets.
+        // A broken run is as undiscardable-by-any-other-route as a wrong question:
+        // both are pinned in "Waiting on you" and neither reaches the proposals
+        // sheet's Dismiss. Failures toast rather than showing inline, matching
+        // Retry — the row's two-line grid has no space for an error line.
+        if (failedRow) {
+            row.appendChild(buildAspectRetry(failedRow));
+            row.appendChild(buildAspectRemove(
+                failedRow, 'coverageRemoveBtn', null,
+                function (msg) { showInjectToast(msg, 'error'); }
+            ));
+        }
         if (confirmTick) row.appendChild(confirmTick);
         return row;
     }
@@ -1424,6 +1492,31 @@ function buildAnswerLane(queueRow) {
     send.className = 'coverageAnswerSend';
     send.textContent = 'Send';
     actions.appendChild(send);
+
+    // Discard the row outright — for a question raised on a premise that turned
+    // out to be wrong, where answering it is the wrong move and re-deriving
+    // against a corrected spec is the right one. Anchored to the left edge (CSS
+    // margin-right: auto) so the destructive control never sits shoulder-to-
+    // shoulder with Send, hence the insert at the front rather than an append.
+    // While the delete is in flight the answer affordances are disabled; a
+    // failure re-enables them and shows the inline error, exactly as Send does.
+    actions.insertBefore(buildAspectRemove(
+        queueRow,
+        'coverageAnswerRemove',
+        function () {
+            errorEl.hidden = true;
+            errorEl.textContent = '';
+            send.disabled = true;
+            input.disabled = true;
+        },
+        function (msg) {
+            send.disabled = false;
+            input.disabled = false;
+            errorEl.textContent = msg;
+            errorEl.hidden = false;
+        }
+    ), actions.firstChild);
+
     lane.appendChild(actions);
 
     // Submit the trimmed answer. Empty/whitespace-only input is ignored (no
