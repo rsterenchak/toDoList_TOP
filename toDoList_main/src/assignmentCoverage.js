@@ -1572,6 +1572,90 @@ function buildAnswerLane(queueRow) {
     return lane;
 }
 
+// The confirmation gate in front of the detail modal's Clear all. The per-row
+// Dismiss and Remove deliberately have no confirm — one derived row costs a
+// single derive pass to regenerate — but a bulk clear can retire a whole
+// backlog at once, so this names the count it will remove and states that
+// shipped rows are kept. Built on the shared wireModalDismiss contract (close
+// control, backdrop, Escape) like the other modals in this subsystem, rather
+// than a native confirm(), which can't carry the theme. Layers over the still-
+// open detail modal and restores focus to whatever opened it.
+function showClearAllConfirmModal(count, onConfirm) {
+    const prior = document.getElementById('coverageClearConfirmBackdrop');
+    if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    const backdrop = document.createElement('div');
+    backdrop.id = 'coverageClearConfirmBackdrop';
+
+    const dialog = document.createElement('div');
+    dialog.id = 'coverageClearConfirmModal';
+    dialog.setAttribute('role', 'dialog');
+    dialog.setAttribute('aria-modal', 'true');
+    dialog.setAttribute('aria-labelledby', 'coverageClearConfirmMessage');
+
+    const msg = document.createElement('p');
+    msg.id = 'coverageClearConfirmMessage';
+    msg.textContent = 'Remove ' + count + ' queue row' + (count === 1 ? '' : 's') +
+        '? Shipped rows are kept. The cleared aspects drop back to not-started, ' +
+        'ready for the next derive pass.';
+
+    const actions = document.createElement('div');
+    actions.id = 'coverageClearConfirmActions';
+
+    const cancel = document.createElement('button');
+    cancel.id = 'coverageClearConfirmCancel';
+    cancel.type = 'button';
+    cancel.textContent = 'Cancel';
+
+    const confirm = document.createElement('button');
+    confirm.id = 'coverageClearConfirmOk';
+    confirm.type = 'button';
+    confirm.textContent = 'Clear all';
+
+    actions.appendChild(cancel);
+    actions.appendChild(confirm);
+    dialog.appendChild(msg);
+    dialog.appendChild(actions);
+    backdrop.appendChild(dialog);
+    document.body.appendChild(backdrop);
+
+    const previouslyFocused = document.activeElement;
+    // Cancel takes focus, as showConfirmModal does — the safer landing for a
+    // destructive prompt, so a stray Enter on open backs out instead of clearing.
+    cancel.focus();
+
+    // Escape has to cancel THIS prompt without also dismissing the detail modal
+    // underneath it. wireModalDismiss listens on `document` in the capture phase,
+    // and the detail modal registered first, so its handler would run first and
+    // take the list down along with the prompt. Intercepting one step earlier —
+    // on `window`, which capture visits before `document` — keeps the key with
+    // the topmost dialog. Torn down in onClose alongside the rest of the modal.
+    function onEscape(event) {
+        if (event.key !== 'Escape') return;
+        event.stopPropagation();
+        close();
+    }
+
+    const close = wireModalDismiss({
+        backdrop: backdrop,
+        closeButtons: [cancel],
+        onClose: function () {
+            window.removeEventListener('keydown', onEscape, true);
+            if (previouslyFocused &&
+                typeof previouslyFocused.focus === 'function' &&
+                document.contains(previouslyFocused)) {
+                try { previouslyFocused.focus(); } catch (e) { /* defensive */ }
+            }
+        },
+    });
+    window.addEventListener('keydown', onEscape, true);
+
+    confirm.addEventListener('click', function () {
+        close();
+        if (typeof onConfirm === 'function') onConfirm();
+    });
+}
+
 // The coverage detail modal: the drillable view behind the assignment card's
 // coverage summary. Lists every rubric aspect with its live lifecycle status
 // (shipped / in-flight / proposed / blocked / not-started), color-coded, reading
@@ -1665,6 +1749,107 @@ function showCoverageDetailModal(preloadedCommitted) {
 
     const body = document.createElement('div');
     body.id = 'coverageDetailModalBody';
+
+    // ── Clear all ──
+    // The bulk counterpart to the per-row Dismiss and Remove, mounted in this
+    // modal's action row because the whole aspect list it acts on is already
+    // visible here. It removes every non-shipped queue row for the loaded
+    // project in one confirmed action, so a spec revision that invalidates most
+    // of a backlog no longer means walking every row by hand. Living in the
+    // action row rather than the body also means the queue-change repaint (which
+    // rebuilds `body` wholesale) can't tear the control out mid-walk.
+    const clearError = document.createElement('p');
+    clearError.id = 'coverageDetailModalClearError';
+    clearError.setAttribute('role', 'alert');
+    clearError.hidden = true;
+
+    const clearBtn = document.createElement('button');
+    clearBtn.id = 'coverageDetailModalClearBtn';
+    clearBtn.type = 'button';
+    clearBtn.textContent = 'Clear all';
+    clearBtn.hidden = true;
+
+    // Set while the walk is in flight so a repaint landing mid-clear can't
+    // re-label or re-hide the button out from under it.
+    let clearing = false;
+
+    // The rows Clear all walks. getQueueRows() is already scoped to the loaded
+    // project; getProposedRows() is NOT the right source — it is scoped to the
+    // review sheet's states and would silently skip blocked and failed rows.
+    // Shipped rows are filtered out here as the intent; unflagAgentTask refuses
+    // them independently as the backstop, and both stay.
+    function clearableRows() {
+        return getQueueRows().filter(function (r) {
+            return r && r.id && r.state !== 'shipped';
+        });
+    }
+
+    // Hidden outright when there is nothing to clear, so the control never
+    // offers a no-op. Re-evaluated on every repaint (renderBody calls this).
+    function refreshClearAll() {
+        if (clearing) return;
+        clearBtn.hidden = clearableRows().length === 0;
+    }
+
+    // Delete the rows one at a time through listLogic.unflagAgentTask — the SAME
+    // single write path Dismiss and Remove call. Sequential rather than
+    // Promise.all so a mid-walk failure leaves an unambiguous prefix removed and
+    // the tally can name exactly how many did not go. Nothing is rolled back:
+    // the rows that went are cheap to re-derive, and clearing again retries the
+    // rest.
+    function runClearAll(targets) {
+        clearing = true;
+        clearError.hidden = true;
+        clearError.textContent = '';
+        clearBtn.hidden = false;
+        clearBtn.disabled = true;
+        clearBtn.classList.add('is-pending');
+        let failed = 0;
+
+        // Each step resolves whatever the outcome, so one refusal never strands
+        // the rows behind it.
+        function step(i) {
+            if (i >= targets.length) return Promise.resolve();
+            const row = targets[i];
+            clearBtn.textContent = 'Clearing ' + (i + 1) + '/' + targets.length + '…';
+            return Promise.resolve(listLogic.unflagAgentTask(row.id))
+                .then(function (res) {
+                    if (res && res.ok) {
+                        // The unsent answer belonged to a row that no longer exists.
+                        pendingAnswers.delete(row.id);
+                    } else {
+                        failed++;
+                    }
+                }, function () { failed++; })
+                .then(function () { return step(i + 1); });
+        }
+
+        step(0).then(function () {
+            clearing = false;
+            clearBtn.disabled = false;
+            clearBtn.classList.remove('is-pending');
+            clearBtn.textContent = 'Clear all';
+            if (failed) {
+                clearError.textContent = failed + ' of ' + targets.length +
+                    ' could not be removed. Try again.';
+                clearError.hidden = false;
+            }
+            // Reload before repainting so the cleared aspects fall back to
+            // not-started even where the realtime push isn't observed — the same
+            // reason the per-row Remove reloads rather than waiting on the push.
+            // notifyQueueChange re-runs renderBody, which refreshes this control.
+            return Promise.resolve(loadQueueRows(getSelectedProjectName()))
+                .then(function () { notifyQueueChange(); }, function () { refreshClearAll(); });
+        });
+    }
+
+    clearBtn.addEventListener('click', function () {
+        if (clearBtn.disabled) return;
+        const targets = clearableRows();
+        // Nothing left to clear (a repaint raced the tap) — re-hide, don't prompt.
+        if (!targets.length) { refreshClearAll(); return; }
+        showClearAllConfirmModal(targets.length, function () { runClearAll(targets); });
+    });
 
     function appendGroup(labelText, list, modifier) {
         if (!list.length) return;
@@ -1807,6 +1992,7 @@ function showCoverageDetailModal(preloadedCommitted) {
 
         body.scrollTop = scroll;
         updateCommittedCount();
+        refreshClearAll();
     }
 
     renderBody();
@@ -1818,6 +2004,8 @@ function showCoverageDetailModal(preloadedCommitted) {
     closeBtn.id = 'coverageDetailModalCloseBtn';
     closeBtn.type = 'button';
     closeBtn.textContent = 'Close';
+    actions.appendChild(clearError);
+    actions.appendChild(clearBtn);
     actions.appendChild(closeBtn);
 
     dialog.appendChild(header);

@@ -8673,9 +8673,51 @@ button.complexityNestChip:disabled {
 
 #coverageDetailModalActions {
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
   justify-content: flex-end;
   padding: 10px 14px 14px;
   border-top: 0.5px solid var(--border-dim);
+}
+
+/* Clear all removes every non-shipped queue row at once. Pushed to the left
+   edge of the action row so it reads as the destructive outlier rather than a
+   second Close, and takes the danger colour the per-row Remove does. Hidden
+   outright when there is nothing to clear. */
+#coverageDetailModalClearBtn {
+  font-family: inherit;
+  font-size: 13px;
+  margin-right: auto;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--text-danger);
+  background: transparent;
+  color: var(--text-danger);
+  cursor: pointer;
+  min-height: 36px;
+  transition: background 0.12s ease, opacity 0.12s ease, box-shadow 0.12s ease;
+}
+#coverageDetailModalClearBtn:hover:not(:disabled) { background: var(--bg-hover); }
+#coverageDetailModalClearBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+#coverageDetailModalClearBtn:disabled,
+#coverageDetailModalClearBtn.is-pending {
+  opacity: 0.55;
+  cursor: default;
+}
+
+/* The partial-failure tally. `order: -1` + a full-width basis floats it onto its
+   own line above the buttons so a long message never squeezes them. */
+#coverageDetailModalClearError {
+  order: -1;
+  flex-basis: 100%;
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-danger);
 }
 
 #coverageDetailModalCloseBtn {
@@ -8700,6 +8742,94 @@ button.complexityNestChip:disabled {
 @media (max-width: 480px) {
   #coverageDetailModal { max-height: 92vh; }
   #coverageDetailModalCloseBtn { font-size: 14px; padding: 10px 16px; }
+  #coverageDetailModalClearBtn { font-size: 14px; padding: 10px 14px; }
+}
+
+/* ── CLEAR ALL CONFIRMATION ──
+   Layered above the coverage detail modal (z-index one step over its backdrop's
+   100), so the list it is about to clear stays visible behind it. Borrows the
+   shared confirm modal's proportions and its fade/slide keyframes so the two
+   destructive prompts in the app read as one. */
+#coverageClearConfirmBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 101;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#coverageClearConfirmModal {
+  min-width: 280px;
+  max-width: 420px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6);
+  padding: 18px 20px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1.45;
+  animation: confirmSlideIn 0.14s ease-out;
+}
+
+#coverageClearConfirmMessage {
+  margin: 0 0 18px;
+  word-break: break-word;
+}
+
+#coverageClearConfirmActions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
+
+#coverageClearConfirmCancel,
+#coverageClearConfirmOk {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 7px 14px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+#coverageClearConfirmCancel:hover { background: var(--bg-hover); }
+#coverageClearConfirmCancel:focus,
+#coverageClearConfirmCancel:focus-visible {
+  outline: none;
+  border-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--text-primary);
+}
+
+#coverageClearConfirmOk {
+  background: var(--text-danger);
+  border-color: var(--text-danger);
+  color: #fff;
+}
+#coverageClearConfirmOk:hover { background: #c74747; border-color: #c74747; }
+#coverageClearConfirmOk:focus,
+#coverageClearConfirmOk:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--text-primary);
+}
+
+@media (max-width: 480px) {
+  #coverageClearConfirmModal {
+    width: 100%;
+    min-width: 0;
+    font-size: 15px;
+  }
+  #coverageClearConfirmCancel,
+  #coverageClearConfirmOk { font-size: 14px; padding: 9px 16px; }
 }
 
 /* ── PROPOSAL REVIEW MODAL ──

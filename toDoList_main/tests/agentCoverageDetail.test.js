@@ -14,6 +14,10 @@ import { vi } from 'vitest';
 // ── Supabase stub ────────────────────────────────────────────────────
 let queueRows = [];
 let queueError = null;
+// Every row id a delete was issued against, in call order, plus the ids whose
+// delete should come back as an error — the Clear all tests drive both.
+let deletedIds = [];
+let deleteFailIds = new Set();
 
 vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
@@ -25,7 +29,14 @@ vi.mock('../src/supabaseClient.js', () => ({
             update: (patch) => ({
                 eq: () => Promise.resolve({ data: [patch], error: null }),
             }),
-            delete: () => ({ eq: () => Promise.resolve({ data: [], error: null }) }),
+            delete: () => ({
+                eq: (col, val) => {
+                    deletedIds.push(val);
+                    return Promise.resolve(deleteFailIds.has(val)
+                        ? { data: null, error: { message: 'Delete failed.' } }
+                        : { data: [], error: null });
+                },
+            }),
         }),
         channel: () => ({
             on() { return this; },
@@ -118,6 +129,8 @@ beforeEach(() => {
     listLogic._reset();
     queueRows = [];
     queueError = null;
+    deletedIds = [];
+    deleteFailIds = new Set();
     assignmentResult = RUBRIC;
     try { localStorage.removeItem('todoapp_agentBucketCollapsed'); } catch (e) { /* noop */ }
     document.body.classList.remove('agentUnavailable');
@@ -128,6 +141,8 @@ afterEach(() => {
     unsubscribeAgentView();
     const b = document.getElementById('coverageDetailModalBackdrop');
     if (b && b.parentNode) b.parentNode.removeChild(b);
+    const c = document.getElementById('coverageClearConfirmBackdrop');
+    if (c && c.parentNode) c.parentNode.removeChild(c);
 });
 
 describe('AGENT coverage summary — tappable affordance', () => {
@@ -372,6 +387,143 @@ describe('AGENT coverage detail modal — shipped commit helper', () => {
         document.querySelector('.coverageDetailRow--shipped').click();
         expect(document.querySelector('.coverageCommitManifest')).toBeNull();
         expect(document.querySelector('.coverageCommitManifestEmpty')).toBeTruthy();
+    });
+});
+
+describe('AGENT coverage detail modal — Clear all', () => {
+    const clearBtn = () => document.getElementById('coverageDetailModalClearBtn');
+    const confirmBackdrop = () => document.getElementById('coverageClearConfirmBackdrop');
+
+    it('hides the control when every row has shipped', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } }];
+        await loadBoard();
+        openDetail();
+        expect(clearBtn()).toBeTruthy();
+        expect(clearBtn().hidden).toBe(true);
+    });
+
+    it('hides the control when there are no queue rows at all', async () => {
+        mountRoutedProject();
+        await loadBoard();
+        openDetail();
+        expect(clearBtn().hidden).toBe(true);
+    });
+
+    it('shows the control once a non-shipped row exists', async () => {
+        mountRoutedProject();
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } },
+        ];
+        await loadBoard();
+        openDetail();
+        expect(clearBtn().hidden).toBe(false);
+        expect(clearBtn().textContent).toBe('Clear all');
+    });
+
+    it('asks for confirmation naming the count and keeping shipped rows, before deleting anything', async () => {
+        mountRoutedProject();
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } },
+            { id: '3', state: 'needs_words', aspect: 'B1', question: 'Which?', context: { title: 'Persist' } },
+        ];
+        await loadBoard();
+        openDetail();
+        clearBtn().click();
+        await flush();
+        const msg = document.getElementById('coverageClearConfirmMessage');
+        expect(msg).toBeTruthy();
+        // The count is the non-shipped tally (2), not the row total (3).
+        expect(msg.textContent).toContain('Remove 2 queue rows');
+        expect(msg.textContent).toContain('Shipped rows are kept');
+        // Nothing goes until the prompt is answered.
+        expect(deletedIds).toEqual([]);
+    });
+
+    it('deletes nothing and leaves the detail modal open on Cancel', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } }];
+        await loadBoard();
+        openDetail();
+        clearBtn().click();
+        document.getElementById('coverageClearConfirmCancel').click();
+        await flush();
+        expect(confirmBackdrop()).toBeNull();
+        expect(document.getElementById('coverageDetailModalBackdrop')).toBeTruthy();
+        expect(deletedIds).toEqual([]);
+    });
+
+    it('deletes nothing when the confirmation is dismissed with Escape', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } }];
+        await loadBoard();
+        openDetail();
+        clearBtn().click();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        await flush();
+        expect(confirmBackdrop()).toBeNull();
+        expect(deletedIds).toEqual([]);
+        // Escape cancels the prompt only — the list it was about to clear stays up.
+        expect(document.getElementById('coverageDetailModalBackdrop')).toBeTruthy();
+    });
+
+    it('removes every non-shipped row on confirm and leaves shipped rows untouched', async () => {
+        mountRoutedProject();
+        queueRows = [
+            { id: '1', state: 'shipped', aspect: 'A1', context: { title: 'Add' } },
+            { id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } },
+            { id: '3', state: 'needs_words', aspect: 'B1', question: 'Which?', context: { title: 'Persist' } },
+            { id: '4', state: 'failed', aspect: 'A2', context: { title: 'Retry me' } },
+        ];
+        await loadBoard();
+        openDetail();
+        clearBtn().click();
+        document.getElementById('coverageClearConfirmOk').click();
+        await flush(20);
+        // Blocked and failed rows go too — getProposedRows would have skipped them.
+        expect(deletedIds).toEqual(['2', '3', '4']);
+        expect(deletedIds).not.toContain('1');
+        expect(document.getElementById('coverageDetailModalClearError').hidden).toBe(true);
+    });
+
+    it('re-hides the control once the cleared rows are gone', async () => {
+        mountRoutedProject();
+        queueRows = [{ id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } }];
+        await loadBoard();
+        openDetail();
+        expect(clearBtn().hidden).toBe(false);
+        clearBtn().click();
+        document.getElementById('coverageClearConfirmOk').click();
+        // The reload after the walk sees the emptied queue.
+        queueRows = [];
+        await flush(20);
+        expect(clearBtn().hidden).toBe(true);
+        // The aspect falls back to not-started, ready for the next derive pass.
+        expect(document.querySelector('.coverageDetailRow--not-started')).toBeTruthy();
+    });
+
+    it('reports the failed count inline and does not roll back the rows that went', async () => {
+        mountRoutedProject();
+        queueRows = [
+            { id: '2', state: 'proposed', aspect: 'A2', context: { title: 'Delete' } },
+            { id: '3', state: 'needs_words', aspect: 'B1', question: 'Which?', context: { title: 'Persist' } },
+        ];
+        deleteFailIds = new Set(['3']);
+        await loadBoard();
+        openDetail();
+        clearBtn().click();
+        document.getElementById('coverageClearConfirmOk').click();
+        await flush(20);
+        // The walk continues past the refusal — both rows were attempted.
+        expect(deletedIds).toEqual(['2', '3']);
+        const err = document.getElementById('coverageDetailModalClearError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('1 of 2 could not be removed. Try again.');
+        // The control comes back out of its pending state, ready for a retry.
+        expect(clearBtn().disabled).toBe(false);
+        expect(clearBtn().textContent).toBe('Clear all');
     });
 });
 
