@@ -8123,7 +8123,9 @@ button.complexityNestChip:disabled {
 .coverageDetailRow--shipped .coverageDetailDot { background: var(--accent); }
 .coverageDetailRow--in-flight .coverageDetailDot { background: var(--text-warning); }
 .coverageDetailRow--proposed .coverageDetailDot { background: var(--accent-dim); }
-.coverageDetailRow--blocked .coverageDetailDot { background: var(--text-warning); }
+.coverageDetailRow--drafted .coverageDetailDot { background: var(--accent-dim); }
+.coverageDetailRow--blocked .coverageDetailDot,
+.coverageDetailRow--failed .coverageDetailDot { background: var(--text-warning); }
 .coverageDetailRow--not-started .coverageDetailDot { background: var(--border-mid); }
 .coverageDetailRow--manual .coverageDetailDot {
   background: transparent;
@@ -8168,6 +8170,7 @@ button.complexityNestChip:disabled {
   border-color: var(--accent-dim);
 }
 .coverageDetailRow--in-flight .coverageDetailStatus,
+.coverageDetailRow--failed .coverageDetailStatus,
 .coverageDetailRow--blocked .coverageDetailStatus { color: var(--text-warning); }
 
 /* A tick appended directly to the row drops to its own line, so the label keeps
@@ -8183,6 +8186,49 @@ button.complexityNestChip:disabled {
   border-color: var(--text-warning);
   color: var(--text-primary);
   transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+/* A failed aspect shares the blocked row's amber attention treatment — it is
+   pinned in the same "Waiting on you" group — but discloses nothing: its Retry
+   sits on the row itself, so it stays a plain div with the default cursor. */
+.coverageDetailRow--failed {
+  border-color: var(--text-warning);
+  color: var(--text-primary);
+}
+
+/* Line three of a failed row: Retry on the left, the confirmation tick on the
+   right. The tick's own placement rule spans columns 2–5, so it is re-scoped
+   here (declared after it, same specificity) to leave the Retry its column. */
+.coverageDetailRow--failed > .coverageRetryBtn {
+  grid-area: 3 / 2;
+  justify-self: start;
+}
+.coverageDetailRow--failed > .coverageCommitTick {
+  grid-area: 3 / 3 / 4 / 5;
+  justify-self: end;
+}
+.coverageRetryBtn {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 5px;
+  background: transparent;
+  border: 0.5px solid var(--text-warning);
+  color: var(--text-warning);
+  cursor: pointer;
+  transition: background 0.12s ease, opacity 0.12s ease;
+}
+.coverageRetryBtn:hover:not(:disabled) { background: var(--bg-hover); }
+.coverageRetryBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.coverageRetryBtn:disabled,
+.coverageRetryBtn.is-pending {
+  opacity: 0.55;
+  cursor: default;
 }
 
 /* A blocked aspect's echo inside its home rubric section: dimmed and inert, so
