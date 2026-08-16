@@ -1380,7 +1380,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-16
   <!-- id: ceeefde9-0ebd-4ae1-95b3-4e50e5750c41 -->
 
-- [ ] **[MEDIUM]** Add a confirmed Clear all control to the coverage detail modal
+- [x] **[MEDIUM]** Add a confirmed Clear all control to the coverage detail modal
   - Type: feature
   - Description: Rows can only be removed one at a time — Dismiss on a proposal card and the per-aspect Remove in the blocked lane. When a spec revision invalidates most of a backlog at once, as the FE-WebDev rubric did when it grew from 19 aspects to 22, clearing and re-deriving means walking every row individually. The coverage detail modal opened by "View full breakdown" (`showCoverageDetailModal`, reached from the button built at line ~1929) is where the whole aspect list is already visible, so it is the right home for a bulk clear.
   - Behavior: the modal gains a Clear all control that removes every non-shipped queue row for the loaded project in one action, leaving shipped rows untouched. It asks for confirmation first, naming the count it will remove and stating that shipped rows are kept — unlike the per-row controls, which have no confirm because one derived row is cheap to regenerate and twenty are not. On confirm, each row is deleted through `listLogic.unflagAgentTask` and the queue-change repaint drops the cleared aspects back to not-started, ready for the next derive pass. Partial failures leave the successfully removed rows gone, report the count that failed inline, and do not roll back. The control is hidden when no non-shipped rows exist, so it never offers a no-op.
@@ -1388,4 +1388,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Implementation notes: build the control inside `showCoverageDetailModal` (modal assembled around line 1383) rather than on the pane, so it sits with the aspect list it acts on. Source the rows from `getQueueRows()`, which is already scoped to the loaded project, and filter to `r.state !== 'shipped'` — do not reuse `getProposedRows`, which is scoped to the review sheet's states and would miss blocked and failed rows. Delete sequentially rather than with `Promise.all` so a mid-walk failure doesn't leave an ambiguous partial state, and tally successes and failures as you go. Use `wireModalDismiss` for the confirm step to match the existing modal dismissal behavior rather than a native `confirm()`. Reuse the in-flight pattern the Send and Remove controls already use — disable, `classList.add('is-pending')`, restore label and show an inline error on failure.
   - Out of scope: any undo, and the per-row Dismiss and Remove controls, which stay as they are.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/tests/agentCoverageDetail.test.js`
+  - Completed: 2026-08-16
   <!-- id: e3174574-b94f-4ed0-a554-3cb406da3430 -->
