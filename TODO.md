@@ -1369,3 +1369,12 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/tests/coverageAnswerLane.test.js`
   - Completed: 2026-08-16
   <!-- id: 59994dab-d7e2-4e55-bb9f-81e5bd11b81d -->
+
+- [ ] **[MEDIUM]** Guard unflagAgentTask against deleting shipped queue rows
+  - Type: bug
+  - Description: `unflagAgentTask` in `listLogic.js` (line 1298) deletes an `agent_queue` row by id with no state check, so any surface wired to it can remove a `shipped` row — the proposals sheet's Dismiss, and now the coverage detail modal's Remove control. That is the one deletion that isn't cheap to redo: derive's Step 2 treats a missing row as an uncovered aspect, so removing a shipped row makes the next derive pass re-propose work that is already built and merged, and accepting that proposal dispatches a run against code that already exists. Every other state is safe to remove — a proposal, question, mockup, or draft costs one derive re-run to regenerate, which is the point of both controls. This matters more now that clearing all non-shipped rows and re-deriving is a normal way to refresh a backlog against an updated spec.
+  - Behavior: deleting a row in any non-shipped state works exactly as it does today. A delete against a `shipped` row is refused and returns `{ ok: false, error: … }` naming the reason, which both calling surfaces render through their existing inline error paths — the same treatment a failed delete already gets, so no new UI and no caller changes.
+  - Implementation notes: the guard has to read the row's state before deleting, so `unflagAgentTask` needs a `select('state').eq('id', rowId).single()` ahead of the existing delete, returning early with an error when the state is `shipped`. Keep it inside `unflagAgentTask` rather than in `buildProposalCard` or the coverage lane — it is the single chokepoint every deletion path funnels through, and a caller-level check would have to be repeated on each new surface. The extra read is one round trip on a control that already awaits a network delete. Do not add a confirm dialog: refusing outright is correct, since there is no legitimate reason to remove a shipped row from the coverage record.
+  - Out of scope: the Dismiss and Remove controls themselves, and any bulk-delete affordance — this only hardens the shared mutation they both call.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/agentStuckActions.test.js`
+  <!-- id: ceeefde9-0ebd-4ae1-95b3-4e50e5750c41 -->
