@@ -1294,9 +1294,37 @@ export const listLogic = (function () {
     // the "all data-model mutations live in listLogic" convention (mirrors
     // flagTaskForAgent / setAgentRunState). Returns a { ok, error? } result so
     // the caller can surface a non-blocking failure and re-enable its control.
+    //
+    // A `shipped` row is the one deletion that isn't cheap to redo, so it is
+    // refused here rather than at each call site — this is the single chokepoint
+    // every removal control funnels through (the proposals sheet's Dismiss, the
+    // coverage lane's Remove), and a caller-level check would have to be
+    // repeated on every new surface. Derive treats a missing row as an uncovered
+    // aspect, so dropping a shipped row makes the next pass re-propose work that
+    // is already built and merged. Every other state costs one derive re-run to
+    // regenerate, which is the point of those controls, so they stay untouched.
+    // The pre-read is fail-open: only a confirmed `shipped` state blocks the
+    // delete, so a lookup that errors or finds nothing behaves exactly as before.
     // @category: user-mutation-only
     async function unflagAgentTask(rowId) {
         if (!rowId) return { ok: false, error: 'Missing row id.' };
+        try {
+            const lookup = await Promise.resolve(
+                supabase
+                    .from('agent_queue')
+                    .select('state')
+                    .eq('id', rowId)
+                    .single()
+            );
+            if (lookup && lookup.data && lookup.data.state === 'shipped') {
+                return {
+                    ok: false,
+                    error: 'This task already shipped — its queue row is the coverage record and cannot be removed.',
+                };
+            }
+        } catch (e) {
+            // Unreadable state is not a reason to block an ordinary delete.
+        }
         try {
             const result = await Promise.resolve(
                 supabase

@@ -21,7 +21,25 @@ vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
         from: () => ({
             select: () => ({
-                eq: () => Promise.resolve({ data: queueRows, error: queueError }),
+                // `.eq()` is awaited directly by the board's list read and
+                // chained into `.single()` by unflagAgentTask's state pre-read,
+                // so the returned handle has to serve both. `single` resolves
+                // the one row matching the filtered id — matching PostgREST,
+                // which errors rather than returning a row when nothing matches.
+                eq: (col, val) => {
+                    const rows = queueRows;
+                    const p = Promise.resolve({ data: rows, error: queueError });
+                    p.single = () => {
+                        if (queueError) return Promise.resolve({ data: null, error: queueError });
+                        const hit = rows.find((r) => String(r.id) === String(val));
+                        return Promise.resolve(
+                            hit
+                                ? { data: hit, error: null }
+                                : { data: null, error: { message: 'No rows found' } }
+                        );
+                    };
+                    return p;
+                },
             }),
             insert: (row) => Promise.resolve({ data: [row], error: null }),
             update: (patch) => ({
@@ -154,6 +172,56 @@ describe('listLogic.unflagAgentTask', () => {
         const res = await listLogic.unflagAgentTask('row-3');
         expect(res.ok).toBe(false);
         expect(res.error).toMatch(/boom/);
+    });
+
+    // Every other state costs one derive re-run to regenerate, which is why both
+    // removal controls skip a confirm. A shipped row is the exception: derive
+    // reads a missing row as an uncovered aspect, so deleting one re-proposes
+    // work that is already built and merged, and accepting that proposal
+    // dispatches a run against code that already exists.
+    it('refuses to delete a shipped row and writes nothing', async () => {
+        queueRows = [{ id: 'row-shipped', state: 'shipped' }];
+        const res = await listLogic.unflagAgentTask('row-shipped');
+        expect(res.ok).toBe(false);
+        expect(res.error).toMatch(/shipped/i);
+        expect(deleteCalls.length).toBe(0);
+    });
+
+    it('deletes every non-shipped state exactly as before', async () => {
+        const states = ['proposed', 'needs_words', 'needs_mockup', 'drafted', 'dispatched', 'running', 'failed', 'no_change'];
+        for (const state of states) {
+            deleteCalls = [];
+            queueRows = [{ id: 'row-' + state, state: state }];
+            const res = await listLogic.unflagAgentTask('row-' + state);
+            expect(res.ok).toBe(true);
+            expect(deleteCalls.length).toBe(1);
+            expect(deleteCalls[0].id).toBe('row-' + state);
+        }
+    });
+
+    // The guard reads state before deleting, so a read that fails or finds
+    // nothing must not strand an ordinary removal — it falls through to the
+    // delete and behaves exactly as it did before the guard existed.
+    it('still deletes when the state read fails', async () => {
+        queueError = { message: 'select boom' };
+        const res = await listLogic.unflagAgentTask('row-5');
+        expect(res.ok).toBe(true);
+        expect(deleteCalls.length).toBe(1);
+        expect(deleteCalls[0].id).toBe('row-5');
+    });
+
+    // A shipped row belonging to some OTHER aspect must not block this delete —
+    // the guard has to read the row it is about to remove, not the first row in
+    // the table.
+    it('scopes the state read to the row being deleted', async () => {
+        queueRows = [
+            { id: 'row-other', state: 'shipped' },
+            { id: 'row-mine', state: 'proposed' },
+        ];
+        const res = await listLogic.unflagAgentTask('row-mine');
+        expect(res.ok).toBe(true);
+        expect(deleteCalls.length).toBe(1);
+        expect(deleteCalls[0].id).toBe('row-mine');
     });
 });
 
