@@ -1360,11 +1360,12 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-16
   <!-- id: 72f440f2-ebc3-43fa-9443-5e88b700ad70 -->
 
-- [ ] **[MEDIUM]** Add a Remove control to the coverage detail modal's blocked-aspect lane
+- [x] **[MEDIUM]** Add a Remove control to the coverage detail modal's blocked-aspect lane
   - Type: feature
   - Description: `unflagAgentTask` is called from exactly one place in `assignmentCoverage.js` — the Dismiss button in `buildProposalCard`. The coverage detail modal has no removal control, so a row that renders in its blocked group rather than in the proposals sheet cannot be deleted from anywhere in the app now that the Agent board is retired. That covers every blocked aspect: a `needs_words` question whose premise turned out to be wrong, and the `needs_mockup` and `failed` rows the preceding entries surfaced. The lane can answer a question and hand off to chat, but there is no way to discard a row and re-derive against a corrected spec.
   - Behavior: each blocked aspect's expanded lane gains a Remove control beside the existing answer affordances. Activating it deletes the queue row through the same `listLogic.unflagAgentTask` path Dismiss uses, the queue-change repaint drops the aspect back to not-started, and the next derive pass proposes it fresh. Failures surface inline in the lane rather than as a dialog, matching the answer Send button. No confirm step — a derived row is cheap to regenerate, which is the same reasoning behind Dismiss having none.
   - Implementation notes: the lane is built in the blocked-aspect branch around lines 1290–1345, which already carries the pending/error pattern to copy from the Send button (disable while in flight, `classList.add('is-pending')`, restore label and show the inline error on failure). The row to delete is the one the lane already looks up to render the question — confirm that lookup now matches `failed` as well as `needs_words` and `needs_mockup`, since the preceding entry widened the blocked *grouping* for `failed` but the row lookup may still be narrower. Reuse `listLogic.unflagAgentTask` directly; do not add a second deletion path.
   - Out of scope: the shipped-row deletion guard, which belongs inside `unflagAgentTask` in `listLogic.js`; and the proposals sheet's Dismiss, which already works.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/tests/coverageAnswerLane.test.js`
+  - Completed: 2026-08-16
   <!-- id: 59994dab-d7e2-4e55-bb9f-81e5bd11b81d -->
