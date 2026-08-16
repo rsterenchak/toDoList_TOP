@@ -419,6 +419,57 @@ describe('Coverage detail modal — bare-letter and suffixed aspect IDs', () => 
     });
 });
 
+// Requirements rows arrive fully emphasised (`**A. Solution overview**`), and
+// the label cleanup only stripped the leading run — so the closing `**` rode
+// into the label and rendered as literal markdown in the coverage row. The same
+// section's commented-out template rows must contribute no label at all: the
+// comment opens on its own line here, so only stripping the span (not skipping
+// `<!--`-prefixed lines) keeps the example row out of the label map.
+const LABEL_RUBRIC = {
+    ok: true,
+    content: [
+        '# Assignment',
+        '',
+        '## Requirements',
+        '- **A. Solution overview**',
+        '- _B1 — Menu-driven interface_',
+        '<!-- Example rows — delete before submitting:',
+        '- **C1** — delete this example row -->',
+        '',
+        '## Rubric',
+        '- **A — Competent:** The repository is shared correctly.',
+        '- **B1 — Competent:** The menu drives every operation.',
+        '- **C1 — Competent:** Example criterion.',
+    ].join('\n'),
+};
+
+describe('Coverage detail modal — label cleanup', () => {
+    it('trims trailing emphasis so a label renders as plain text', async () => {
+        mountRoutedProject();
+        assignmentResult = LABEL_RUBRIC;
+        await loadBoard();
+        openDetail();
+        await flush();
+        expect(sectionFor('A').querySelector('.coverageDetailLabel').textContent)
+            .toBe('Solution overview');
+        expect(sectionFor('B').querySelector('.coverageDetailLabel').textContent)
+            .toBe('Menu-driven interface');
+    });
+
+    it('takes no label from a commented-out requirements row', async () => {
+        mountRoutedProject();
+        assignmentResult = LABEL_RUBRIC;
+        await loadBoard();
+        openDetail();
+        await flush();
+        // C1 is a real rubric aspect, but its only requirements row is inside an
+        // HTML comment — so the row falls back to the no-label placeholder.
+        expect(sectionFor('C').querySelector('.coverageDetailId').textContent).toBe('C1');
+        expect(sectionFor('C').querySelector('.coverageDetailLabel').textContent)
+            .toBe('(no label)');
+    });
+});
+
 describe('groupAspectsBySection', () => {
     it('groups by ID letter in first-appearance order, preserving item order', () => {
         const out = groupAspectsBySection([

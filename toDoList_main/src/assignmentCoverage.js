@@ -302,12 +302,24 @@ function compareProposalsByAspect(a, b) {
     return compareProposalIds(a, b);
 }
 
+// Every `<!-- … -->` span removed. The template seeds assignment.md with
+// commented-out example rows and hint prose, and a comment is not content: the
+// derive agent already ignores it (`.claude/derive.md`), so the parse must too
+// or a hint sentence becomes a rubric aspect no queue row can ever cover. Spans
+// are stripped rather than whole lines dropped, since a comment can open and
+// close mid-line.
+function stripHtmlComments(text) {
+    return text.replace(/<!--[\s\S]*?-->/g, '');
+}
+
 // Return the raw text under the first top-level `## Requirements` header, up to
 // the next `## ` header or EOF, or null when there's no such header. Level-3+
 // sub-headers (`### …`) inside the section are kept (the `^## ` boundary only
-// matches level-2 headers). Used to classify assignment.md content.
+// matches level-2 headers). Comments are stripped before the scan, so a hint
+// spanning several lines can contribute neither an aspect ID nor a label. Used
+// to classify assignment.md content.
 function extractRequirementsSection(content) {
-    const lines = content.split('\n');
+    const lines = stripHtmlComments(content).split('\n');
     let start = -1;
     for (let i = 0; i < lines.length; i++) {
         if (/^##\s+requirements\s*$/i.test(lines[i].trim())) { start = i + 1; break; }
@@ -324,10 +336,10 @@ function extractRequirementsSection(content) {
 // Return the raw text under the first top-level `## Rubric` header, up to the
 // next `## ` header or EOF, or null when there's no such header. Mirrors
 // extractRequirementsSection's boundary handling (level-3+ sub-headers are
-// kept, only `^## ` closes the section). Feeds the aspect-ID parse that drives
-// the filled card's coverage summary.
+// kept, only `^## ` closes the section, comments are stripped first). Feeds the
+// aspect-ID parse that drives the filled card's coverage summary.
 function extractRubricSection(content) {
-    const lines = content.split('\n');
+    const lines = stripHtmlComments(content).split('\n');
     let start = -1;
     for (let i = 0; i < lines.length; i++) {
         if (/^##\s+rubric\s*$/i.test(lines[i].trim())) { start = i + 1; break; }
@@ -352,8 +364,14 @@ function extractRubricSection(content) {
 // parseAspects and parseAspectLabels so the two can't drift; `m[0]` spans the
 // prefix as well as the ID, so slice past it (not past `m[1]`) to reach a row's
 // trailing label text.
+//
+// The lowercase suffix is gated behind a required digit, and that gate is what
+// keeps ordinary prose out: an apostrophe counts as a word boundary, so an
+// ungated `[a-z]?` reads "It's a pre-written list…" as an aspect named `It`.
+// With the digit required, the `t` is only reachable through the digit branch —
+// `B2a` still matches, `It` cannot.
 const ASPECT_ID_RE =
-    /^\s*(?:#{1,6}\s+)?(?:[-*+]\s+|\d+[.)]\s+)?(?:[*_`]+\s*)?([A-Z]{1,2}\d*[a-z]?)\b/;
+    /^\s*(?:#{1,6}\s+)?(?:[-*+]\s+|\d+[.)]\s+)?(?:[*_`]+\s*)?([A-Z]{1,2}(?:\d+[a-z]?)?)\b/;
 
 // Parse the ordered, de-duplicated list of rubric aspect IDs from an
 // assignment.md — the leading `A1`/`B2`-style tag of each row under the
@@ -375,7 +393,10 @@ function parseAspects(content) {
 
 // Parse a `{ id: label }` map of each rubric aspect's human-readable label — the
 // `## Requirements` row text after its `A1`/`B2` tag, with any leading separator
-// (`:`, `-`, `—`, `.`, `)`, `]`) and markdown emphasis (`*`, backtick) stripped.
+// (`:`, `-`, `—`, `.`, `)`, `]`) and markdown emphasis (`*`, `_`, backtick)
+// stripped from BOTH ends: a row written `**A. GitLab repository**` opens its
+// emphasis before the ID (so ASPECT_ID_RE's prefix eats it) and closes it after
+// the label, leaving a trailing `**` that renders as literal markdown.
 // The requirement rows (`**A1** — <what to build>`) carry the short task phrase,
 // whereas the rubric rows (`**A1 — Competent:** <bar>`) hold grading criteria — so
 // the label sources from requirements while parseAspects keeps the canonical
@@ -392,6 +413,7 @@ function parseAspectLabels(content) {
         if (!m || labels[m[1]]) return;
         const after = line.slice(m.index + m[0].length)
             .replace(/^[\s:.)\]\-–—*`]+/, '')
+            .replace(/[\s*_`]+$/, '')
             .trim();
         if (after) labels[m[1]] = after;
     });
