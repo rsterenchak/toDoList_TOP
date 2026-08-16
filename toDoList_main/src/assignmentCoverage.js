@@ -225,18 +225,26 @@ export function buildAspectBadge(row) {
 }
 
 // Sort key for a proposal's rubric aspect, read from the same `row.aspect` the
-// badge renders so the ordering and the badge can never disagree. Labels are
-// letter-then-number (`A1`, `B10`); we split them so the letter sorts
-// lexically and the number sorts NUMERICALLY (a plain string sort would put
-// `B10` before `B2`). Case and stray whitespace are normalised for comparison
-// only. Returns null when the row carries no parseable aspect tag, so untagged
-// proposals can be grouped last.
+// badge renders so the ordering and the badge can never disagree. IDs come in
+// three shapes — bare letter (`A`), letter+number (`B10`), and a lettered
+// suffix (`B2a`) — so we split all three: the letter sorts lexically, the
+// number NUMERICALLY (a plain string sort would put `B10` before `B2`), and the
+// suffix lexically after it. A missing number reads as 0 so a bare `B` sorts
+// ahead of `B1`, and a missing suffix as '' so `B2` sorts ahead of `B2a`. The
+// letter run is capped at two to match the ID grammar parseAspects accepts;
+// anything longer is prose, not a tag. Case and stray whitespace are normalised
+// for comparison only. Returns null when the row carries no parseable aspect
+// tag, so untagged proposals can be grouped last.
 function aspectSortKey(row) {
     const raw = (row && typeof row.aspect === 'string') ? row.aspect.trim() : '';
     if (!raw) return null;
-    const m = /^([A-Za-z]+)\s*(\d+)/.exec(raw);
+    const m = /^([A-Za-z]{1,2})\s*(\d*)([a-z]?)\b/.exec(raw);
     if (!m) return null;
-    return { letter: m[1].toUpperCase(), num: parseInt(m[2], 10) };
+    return {
+        letter: m[1].toUpperCase(),
+        num: m[2] ? parseInt(m[2], 10) : 0,
+        suffix: m[3] || '',
+    };
 }
 
 // A proposal's insertion time in ms, read from the `created_at` the store's
@@ -279,7 +287,11 @@ function compareProposalsByAspect(a, b) {
     const kb = aspectSortKey(b);
     if (ka && kb) {
         if (ka.letter !== kb.letter) return ka.letter < kb.letter ? -1 : 1;
-        return ka.num - kb.num;
+        if (ka.num !== kb.num) return ka.num - kb.num;
+        // Suffixed siblings (`B2a`, `B2b`) share a number, so the suffix breaks
+        // the tie and keeps both between `B1` and `B3`.
+        if (ka.suffix !== kb.suffix) return ka.suffix < kb.suffix ? -1 : 1;
+        return 0;
     }
     if (ka) return -1;
     if (kb) return 1;
@@ -329,9 +341,23 @@ function extractRubricSection(content) {
     return out.join('\n');
 }
 
+// The leading rubric-ID tag of a single row, matched against the three shapes
+// real rubrics use: bare letter (`A`, `I`), letter+number (`B1`, `C10`) and a
+// lettered suffix splitting one criterion in two (`B2a`, `B2b`). The optional
+// prefix skips whatever leads the row into its ID — a markdown heading, a list
+// bullet (`- `, `* `, `1. `) and/or emphasis (`**A1**`, `` `A1` ``) — and the
+// anchor to line start is load-bearing rather than cosmetic: with the digit no
+// longer required, an unanchored match would read the article "A" or the
+// pronoun "I" out of the middle of any wrapped rubric paragraph. Shared by
+// parseAspects and parseAspectLabels so the two can't drift; `m[0]` spans the
+// prefix as well as the ID, so slice past it (not past `m[1]`) to reach a row's
+// trailing label text.
+const ASPECT_ID_RE =
+    /^\s*(?:#{1,6}\s+)?(?:[-*+]\s+|\d+[.)]\s+)?(?:[*_`]+\s*)?([A-Z]{1,2}\d*[a-z]?)\b/;
+
 // Parse the ordered, de-duplicated list of rubric aspect IDs from an
 // assignment.md — the leading `A1`/`B2`-style tag of each row under the
-// `## Rubric` section (first `\b[A-Z]{1,2}\d+\b` match per line). Returns [] when
+// `## Rubric` section (the ASPECT_ID_RE match per line). Returns [] when
 // there's no rubric section or no IDs, so a requirements-only spec still
 // classifies as filled and the card degrades to its words/sections line. These
 // IDs cross-reference the agent_queue rows' `aspect` field to compute coverage.
@@ -341,7 +367,7 @@ function parseAspects(content) {
     const seen = Object.create(null);
     const aspects = [];
     rubric.split('\n').forEach(function (line) {
-        const m = line.match(/\b([A-Z]{1,2}\d+)\b/);
+        const m = line.match(ASPECT_ID_RE);
         if (m && !seen[m[1]]) { seen[m[1]] = true; aspects.push(m[1]); }
     });
     return aspects;
@@ -362,9 +388,9 @@ function parseAspectLabels(content) {
     const requirements = extractRequirementsSection(content);
     if (requirements === null) return labels;
     requirements.split('\n').forEach(function (line) {
-        const m = line.match(/\b([A-Z]{1,2}\d+)\b/);
+        const m = line.match(ASPECT_ID_RE);
         if (!m || labels[m[1]]) return;
-        const after = line.slice(m.index + m[1].length)
+        const after = line.slice(m.index + m[0].length)
             .replace(/^[\s:.)\]\-–—*`]+/, '')
             .trim();
         if (after) labels[m[1]] = after;
@@ -644,7 +670,7 @@ function sectionTally(list) {
 // preserving the order letters first appear (the list arrives in rubric-file
 // order from parseAspects) and item order within each bucket. Reuses
 // aspectSortKey, which accepts any object carrying `.aspect`, so there's no
-// second regex to drift. Items whose ID doesn't split into a letter/number pair
+// second regex to drift. Items whose ID doesn't split into a leading letter
 // collect into `other`, which the modal renders as one trailing group — every ID
 // parseAspects yields does split, so that bucket guards against a future ID
 // shape rather than a state today's parse can reach. Exported because that guard

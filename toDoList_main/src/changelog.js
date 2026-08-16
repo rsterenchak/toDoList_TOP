@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-14',
-        added: [
-            'Region outlines in the Structure tab’s live view now drill: tapping an already-selected region again shows its children, and a breadcrumb above the page steps back out.',
+        date: '2026-08-16',
+        fixed: [
+            'Rubric aspects written as a bare letter (A, E, I) or with a lettered suffix (B2a, B2b) now show up in the assignment coverage list and count toward its totals instead of being skipped.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-14',
         fixed: [
             'The description editor in the desktop task detail pane now fills the height down to the docked controls instead of stopping after about ten lines and leaving a gap beneath it.',
             'A long entry no longer pushes the desktop detail pane’s controls below the fold: the editor scrolls in place while the filter, file, discuss and status controls stay docked at the bottom of the pane.',
