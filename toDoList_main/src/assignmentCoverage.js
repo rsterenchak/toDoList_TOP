@@ -21,6 +21,10 @@ import {
     pendingAnswers,
 } from './agentQueueStore.js';
 import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
+// The shared A/B/C mockup flow, mounted on a homeless `needs_mockup` row's card in
+// the proposal review modal. mockupFlow.js imports only listLogic / inject /
+// modalDismiss — never this module — so the edge is acyclic.
+import { buildMockupSecondary } from './mockupFlow.js';
 
 // The assignment / rubric-coverage subsystem, extracted verbatim from
 // agentView.js so it can be re-homed as a chat-pane tab later. It owns reading
@@ -625,15 +629,19 @@ function openAssignmentEditor() {
 // The coverage status of one rubric aspect, derived from the states of the
 // agent_queue rows carrying its tag. Priority (highest first): a shipped row
 // means covered; else an in-flight (dispatched/running) row; else a blocked
-// (needs_words) row; else a proposed row; else nothing has started. "Covered"
-// (the summary's numerator) is exactly the shipped case.
+// (needs_words or needs_mockup) row; else a proposed row; else nothing has
+// started. "Covered" (the summary's numerator) is exactly the shipped case.
+// Both waiting-on-you states count as blocked: a row parked in needs_mockup is
+// as stalled as one parked in needs_words — it is waiting on a visual direction
+// instead of on words — and without this it would read as not-started, hiding
+// the aspect from the modal's "Waiting on you" group entirely.
 function aspectStatus(rows) {
     let inFlight = false, blocked = false, proposed = false;
     for (let i = 0; i < rows.length; i++) {
         const s = rows[i] && rows[i].state;
         if (s === 'shipped') return 'shipped';
         if (s === 'dispatched' || s === 'running') inFlight = true;
-        else if (s === 'needs_words') blocked = true;
+        else if (s === 'needs_words' || s === 'needs_mockup') blocked = true;
         else if (s === 'proposed') proposed = true;
     }
     if (inFlight) return 'in-flight';
@@ -941,12 +949,18 @@ let _expandedBlockedAspect = null;
 // status. `ctx` carries the shared committed-tick state (see buildCommitTick);
 // absent for callers that don't wire ticks.
 function buildCoverageDetailRow(item, ctx) {
-    // The waiting needs_words row behind a blocked aspect — the question the
-    // answer lane replies to. A blocked status always derives from one (see
-    // aspectStatus), but resolve it rather than assume it: with no row there is
-    // nothing to answer, so the aspect falls back to a static row.
+    // The waiting row behind a blocked aspect — the question the answer lane
+    // replies to. A blocked status always derives from one (see aspectStatus),
+    // but resolve it rather than assume it: with no row there is nothing to
+    // answer, so the aspect falls back to a static row. Matches BOTH blocked
+    // states aspectStatus recognises, so a needs_mockup aspect still finds the
+    // row behind its amber flag — answering in words re-triages it exactly as it
+    // does a needs_words row (the mockup itself is chosen from the proposal
+    // review sheet's card).
     const blockedRow = (item.status === 'blocked' && Array.isArray(item.rows))
-        ? item.rows.find(function (r) { return r && r.state === 'needs_words'; })
+        ? item.rows.find(function (r) {
+            return r && (r.state === 'needs_words' || r.state === 'needs_mockup');
+        })
         : null;
     const isAnswerable = !!blockedRow;
     // Shipped, non-process aspects expand to a commit helper derived from their
@@ -1828,13 +1842,22 @@ function paintDeriveAction(btn, pending) {
     ));
 }
 
-// The active project's `proposed` queue rows — derive output waiting on Accept /
-// Dismiss. `getQueueRows()` is already scoped to the loaded project, so this needs
+// The active project's queue rows waiting on a review decision — derive output in
+// `proposed` (Accept / Dismiss), plus HOMELESS `needs_mockup` rows: a derive row
+// parked on a mockup decision carries `todo_id: null`, so the row layer's mockup
+// pane (which mounts per todo) has nowhere to render it and the sheet is its only
+// surface. The `todo_id` guard is what keeps that scoped — a needs_mockup row that
+// belongs to a real task row already renders there and must not be pulled in here
+// as well. `getQueueRows()` is already scoped to the loaded project, so this needs
 // no further project filter. This is the SINGLE source the pane's count badge, the
 // "Review N proposals" action, and the review modal all derive from, so they can
 // never disagree about how many proposals are outstanding.
 export function getProposedRows() {
-    return getQueueRows().filter(function (r) { return r && r.state === 'proposed'; });
+    return getQueueRows().filter(function (r) {
+        if (!r) return false;
+        if (r.state === 'proposed') return true;
+        return r.state === 'needs_mockup' && !r.todo_id;
+    });
 }
 
 // Dispatch a derive run for the active project from the coverage pane. Mirrors the
@@ -2005,6 +2028,13 @@ export function buildCoveragePane() {
 let _proposalModal = null;
 let _coverageModal = null;
 let _queueRepaintWired = false;
+// Queue-row ids whose mockup flow the user has disclosed on their proposal card.
+// Module-level for the same reason _expandedBlockedAspect is: the review modal's
+// body is rebuilt wholesale on every onQueueChange, so an open flow would be torn
+// down mid-generation — the rebuilt card re-opens from this instead (the shared
+// _mockupVariants cache repaints the already-generated previews alongside it).
+// Session-scoped only; never pruned, since a resolved row simply stops rendering.
+const _expandedMockupRows = new Set();
 function ensureQueueRepaintListener() {
     if (_queueRepaintWired) return;
     _queueRepaintWired = true;
@@ -2015,14 +2045,27 @@ function ensureQueueRepaintListener() {
 }
 
 // One proposal card in the review modal: the aspect badge (when tagged), the
-// proposal title, a description preview, and Accept / Dismiss controls. Accept
-// ships the proposal's draft through the SAME dispatchDraft path Dispatch / Retry /
-// the board's Accept use (mint an id, inject the entry, dispatch a run); the row
-// transitions proposed → dispatched and the queue-change repaint drops it from the
-// list. Dismiss removes the queue row via listLogic.unflagAgentTask (the board's ×
-// remove control) — cheap to redo by deriving again, so no confirm. Both disable
-// while their action is in flight and re-enable with an inline error on failure.
+// proposal title, a description preview, and a primary action + Dismiss.
+//
+// For a `proposed` row the primary is Accept, which ships the proposal's draft
+// through the SAME dispatchDraft path Dispatch / Retry / the board's Accept use
+// (mint an id, inject the entry, dispatch a run); the row transitions proposed →
+// dispatched and the queue-change repaint drops it from the list.
+//
+// For a homeless `needs_mockup` row the primary is "Choose mockup" instead. Such a
+// row has no `draft` — triage parked it waiting on a visual direction — so the
+// Accept path's empty-draft guard would be all it could ever do. The button
+// discloses the shared A/B/C flow (the SAME buildMockupSecondary the Agent board
+// and the desktop detail pane mount, wired via configureMockupFlow) right on the
+// card; choosing a variant writes the finished entry and moves the row to
+// `drafted`, and the queue-change repaint drops the card exactly as an Accept does.
+//
+// Dismiss is identical for both: it removes the queue row via
+// listLogic.unflagAgentTask (the board's × remove control) — cheap to redo by
+// deriving again, so no confirm. Both controls disable while their action is in
+// flight and re-enable with an inline error on failure.
 function buildProposalCard(row) {
+    const isMockup = row.state === 'needs_mockup';
     const card = document.createElement('div');
     card.className = 'proposalCard';
 
@@ -2062,8 +2105,8 @@ function buildProposalCard(row) {
 
     const accept = document.createElement('button');
     accept.type = 'button';
-    accept.className = 'proposalAcceptBtn';
-    accept.textContent = 'Accept';
+    accept.className = isMockup ? 'proposalMockupBtn' : 'proposalAcceptBtn';
+    accept.textContent = isMockup ? 'Choose mockup' : 'Accept';
 
     const draftText = (row.draft || '').trim();
 
@@ -2076,24 +2119,47 @@ function buildProposalCard(row) {
         errorEl.hidden = false;
     }
 
-    accept.addEventListener('click', function () {
-        if (accept.disabled) return;
-        if (!draftText) { fail(accept, 'Accept', 'No proposal to accept.'); return; }
-        errorEl.hidden = true;
-        errorEl.textContent = '';
-        accept.disabled = true;
-        dismiss.disabled = true;
-        accept.classList.add('is-pending');
-        accept.textContent = 'Accepting…';
-        Promise.resolve(dispatchDraft(row, draftText, row.entry_id)).then(function (res) {
-            // On success the row leaves `proposed`; the queue-change repaint drops
-            // it from the list, so there's nothing to do here.
-            if (res && res.ok) return;
-            fail(accept, 'Accept', (res && res.error) || 'Could not accept. Try again.');
-        }).catch(function () {
-            fail(accept, 'Accept', 'Could not accept. Try again.');
+    // The disclosed mockup flow, mounted lazily below the actions row so an
+    // un-opened card stays as compact as a proposal's. Empty (and unappended) for
+    // a `proposed` row.
+    const flow = document.createElement('div');
+    flow.className = 'proposalMockupFlow';
+    function openMockupFlow() {
+        if (flow.childNodes.length) return;
+        // `tabbed`: the review modal is as narrow as the mobile description editor,
+        // so the variants render as an OPTION A/B/C radiogroup above one scaled
+        // preview rather than three frames stacked down the card.
+        flow.appendChild(buildMockupSecondary(row, { tabbed: true }));
+        accept.setAttribute('aria-expanded', 'true');
+    }
+
+    if (isMockup) {
+        accept.setAttribute('aria-expanded', 'false');
+        accept.addEventListener('click', function () {
+            if (accept.disabled) return;
+            _expandedMockupRows.add(row.id);
+            openMockupFlow();
         });
-    });
+    } else {
+        accept.addEventListener('click', function () {
+            if (accept.disabled) return;
+            if (!draftText) { fail(accept, 'Accept', 'No proposal to accept.'); return; }
+            errorEl.hidden = true;
+            errorEl.textContent = '';
+            accept.disabled = true;
+            dismiss.disabled = true;
+            accept.classList.add('is-pending');
+            accept.textContent = 'Accepting…';
+            Promise.resolve(dispatchDraft(row, draftText, row.entry_id)).then(function (res) {
+                // On success the row leaves `proposed`; the queue-change repaint
+                // drops it from the list, so there's nothing to do here.
+                if (res && res.ok) return;
+                fail(accept, 'Accept', (res && res.error) || 'Could not accept. Try again.');
+            }).catch(function () {
+                fail(accept, 'Accept', 'Could not accept. Try again.');
+            });
+        });
+    }
 
     dismiss.addEventListener('click', function () {
         if (dismiss.disabled) return;
@@ -2115,6 +2181,14 @@ function buildProposalCard(row) {
     actions.appendChild(dismiss);
     actions.appendChild(accept);
     card.appendChild(actions);
+    if (isMockup) {
+        card.appendChild(flow);
+        // The modal body is rebuilt on every onQueueChange, so a flow the user had
+        // open would silently collapse mid-generation. Re-disclose the one they
+        // left open; buildMockupSecondary restores its cached previews (and any
+        // in-flight "Generating…" state) from the shared module-level caches.
+        if (_expandedMockupRows.has(row.id)) openMockupFlow();
+    }
     return card;
 }
 

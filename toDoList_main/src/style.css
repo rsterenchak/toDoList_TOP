@@ -8729,6 +8729,7 @@ button.complexityNestChip:disabled {
   min-width: 0;
 }
 .proposalAcceptBtn,
+.proposalMockupBtn,
 .proposalDismissBtn {
   flex: 0 0 auto;
   padding: 6px 14px;
@@ -8738,6 +8739,19 @@ button.complexityNestChip:disabled {
   font-weight: 600;
   cursor: pointer;
 }
+/* A `needs_mockup` card's primary discloses the A/B/C flow rather than shipping a
+   draft, so it carries the same amber "waiting on you" tone the coverage modal's
+   blocked rows use instead of Accept's accent. */
+.proposalMockupBtn {
+  background: transparent;
+  color: var(--text-warning);
+  border: 1px solid var(--text-warning);
+}
+.proposalMockupBtn:hover:not(:disabled) {
+  background: var(--text-warning);
+  color: var(--bg-base);
+}
+.proposalMockupFlow:empty { display: none; }
 .proposalAcceptBtn {
   background: var(--accent-dim);
   color: var(--accent-text);
@@ -8751,6 +8765,7 @@ button.complexityNestChip:disabled {
 }
 .proposalDismissBtn:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
 .proposalAcceptBtn:disabled,
+.proposalMockupBtn:disabled,
 .proposalDismissBtn:disabled,
 .proposalAcceptBtn.is-pending,
 .proposalDismissBtn.is-pending {
