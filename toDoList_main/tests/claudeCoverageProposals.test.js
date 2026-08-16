@@ -15,6 +15,10 @@ let deriveCalls = [];
 let deriveResult = { ok: true };
 let injectCalls = [];
 let dispatchRunCalls = [];
+// What the on-main TODO.md read returns for shipEntryForTodo's marker-visibility
+// poll. Mutable so a Retry test can make the row's REUSED entry id the visible
+// one — an id the poll can't find costs the suite 7×1s of real backoff.
+let todoMdContent = '<!-- id: mint-0 -->';
 
 vi.mock('../src/inject.js', () => ({
     // claudeSheet
@@ -29,7 +33,7 @@ vi.mock('../src/inject.js', () => ({
     fetchRunResult: () => Promise.resolve({ ok: true, result: '' }),
     // shipEntryForTodo's marker-visibility poll: return the marker immediately so
     // the loop breaks on the first attempt (no 8×1s setTimeout in tests).
-    readTodoMdFromWorker: () => Promise.resolve({ ok: true, content: '<!-- id: mint-0 -->' }),
+    readTodoMdFromWorker: () => Promise.resolve({ ok: true, content: todoMdContent }),
     markEntryPresentLocally: () => {},
     refreshShippedMarkers: () => {},
     getCachedTargets: () => [],
@@ -164,6 +168,7 @@ beforeEach(() => {
     deriveResult = { ok: true };
     injectCalls = [];
     dispatchRunCalls = [];
+    todoMdContent = '<!-- id: mint-0 -->';
     setQueueRows([], null);
     stopDeriveTracking(true);
     mountClaudeSheet(document.body);
@@ -655,7 +660,7 @@ describe('COVERAGE tab — needs_mockup rows', () => {
             .toEqual(['a1', 'a2 mockup', 'c1']);
     });
 
-    it('drops the card once the row leaves needs_mockup', async () => {
+    it('turns the mockup card into a Dispatch card once the row is drafted', async () => {
         const name = freshProject();
         setQueueRows([
             mockupRow(40, 'A2', 'Style the card'),
@@ -665,14 +670,245 @@ describe('COVERAGE tab — needs_mockup rows', () => {
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
         expect(document.querySelectorAll('.proposalCard').length).toBe(2);
-        // A mockup was chosen → the row moves to `drafted` exactly as an accepted
-        // proposal leaves `proposed`.
+        // A mockup was chosen → the row moves to `drafted`, still homeless, so the
+        // sheet keeps it and swaps the mockup primary for Dispatch (the entry is
+        // written; shipping it is the only step left).
         setQueueRows([
             { ...mockupRow(40, 'A2', 'Style the card'), state: 'drafted', draft: '- [ ] x' },
             proposedRow(41, 'A1', 'Add a menu'),
         ], name);
         notifyQueueChange();
-        expect(document.querySelectorAll('.proposalCard').length).toBe(1);
+        expect(document.querySelectorAll('.proposalCard').length).toBe(2);
         expect(document.querySelector('.proposalMockupBtn')).toBeFalsy();
+        const labels = Array.from(document.querySelectorAll('.proposalAcceptBtn'))
+            .map(function (b) { return b.textContent; });
+        expect(labels).toEqual(['Accept', 'Dispatch']);
+    });
+});
+
+// `drafted` and `failed` used to match nothing in aspectStatus, so a row in
+// either state read as 'not-started' — the coverage tab called the aspect
+// untouched while the derive routine counted it as covered and skipped it, and a
+// derive row (todo_id: null) had no task row to fall back on. These pin the two
+// states into the status scan, the modal's "Waiting on you" group, and the review
+// sheet.
+describe('COVERAGE tab — drafted and failed queue states', () => {
+    // A derive row holding a finished entry, waiting on a Dispatch. `todoId` opts
+    // into the "belongs to a real task row" variant, which the row layer's own
+    // Dispatch action already renders and the sheet must therefore leave alone.
+    function draftedRow(id, aspect, title, todoId) {
+        return {
+            id: id,
+            state: 'drafted',
+            aspect: aspect,
+            todo_id: todoId === undefined ? null : todoId,
+            entry_id: null,
+            draft: '- [ ] ' + title,
+            context: { title: title, description: title + ' description' },
+        };
+    }
+
+    // A derive row whose run broke. It keeps the entry id the failed run shipped
+    // under, which is exactly what Retry re-uses so TODO.md gains no second copy.
+    function failedRow(id, aspect, title, entryId) {
+        return {
+            id: id,
+            state: 'failed',
+            aspect: aspect,
+            todo_id: null,
+            entry_id: entryId === undefined ? 'mint-0' : entryId,
+            draft: '- [ ] ' + title,
+            context: { title: title, description: title + ' description' },
+        };
+    }
+
+    async function openDetail(name, rows) {
+        setQueueRows(rows, name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageBreakdown').click();
+    }
+
+    function rowFor(id) {
+        return Array.from(document.querySelectorAll('.coverageDetailRow'))
+            .find(function (r) {
+                const el = r.querySelector('.coverageDetailId');
+                return el && el.textContent === id;
+            });
+    }
+
+    it('reads a drafted-only aspect as drafted, not as not-started', async () => {
+        const name = freshProject();
+        await openDetail(name, [draftedRow(50, 'A2', 'Persist to disk')]);
+        const row = rowFor('A2');
+        expect(row.querySelector('.coverageDetailStatus').textContent).toBe('Drafted');
+        expect(row.classList.contains('coverageDetailRow--drafted')).toBe(true);
+        // A draft is progress, not a stall — it stays in its own rubric section.
+        expect(document.querySelector('.coverageDetailGroup--blocked')).toBeFalsy();
+    });
+
+    it('reads a failed-only aspect as failed, pinned in the waiting group', async () => {
+        const name = freshProject();
+        await openDetail(name, [failedRow(51, 'A2', 'Persist to disk')]);
+        const group = document.querySelector('.coverageDetailGroup--blocked');
+        expect(group).toBeTruthy();
+        const pinned = group.querySelector('.coverageDetailRow--failed');
+        expect(pinned).toBeTruthy();
+        expect(pinned.querySelector('.coverageDetailId').textContent).toBe('A2');
+        expect(pinned.querySelector('.coverageDetailStatus').textContent).toBe('Failed');
+        // …and an echo in its home section, so the section's row count still
+        // matches its tally.
+        const echo = document.querySelector('.coverageDetailRow--echo');
+        expect(echo).toBeTruthy();
+        expect(echo.classList.contains('coverageDetailRow--failed')).toBe(true);
+    });
+
+    it('ranks failed above blocked and drafted, and shipped above failed', async () => {
+        const name = freshProject();
+        await openDetail(name, [
+            // A1: a broken run alongside an unanswered question → failed wins.
+            failedRow(52, 'A1', 'Menu'),
+            { id: 53, state: 'needs_words', aspect: 'A1', todo_id: null, question: 'Which?' },
+            { id: 54, state: 'drafted', aspect: 'A1', todo_id: null, draft: '- [ ] x' },
+            // A2: a broken run alongside a shipped one → covered still wins.
+            failedRow(55, 'A2', 'Persist'),
+            { id: 56, state: 'shipped', aspect: 'A2', todo_id: null },
+        ]);
+        expect(rowFor('A1').querySelector('.coverageDetailStatus').textContent).toBe('Failed');
+        expect(rowFor('A2').querySelector('.coverageDetailStatus').textContent).toBe('Shipped');
+    });
+
+    it('keeps the covered numerator at shipped only', async () => {
+        const name = freshProject();
+        await openDetail(name, [
+            draftedRow(57, 'A1', 'Menu'),
+            failedRow(58, 'A2', 'Persist'),
+        ]);
+        expect(document.getElementById('coverageDetailModalTitleText').textContent)
+            .toBe('2 outstanding · 0 of 2 covered');
+    });
+
+    it('counts a failed aspect in the pane\'s blocked total', async () => {
+        const name = freshProject();
+        setQueueRows([
+            failedRow(59, 'A1', 'Menu'),
+            { id: 60, state: 'needs_words', aspect: 'A2', todo_id: null, question: 'Which?' },
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        // Both are pinned in the modal's "Waiting on you" group, so the pane's
+        // count has to agree with it.
+        expect(coverageView().querySelector('.claudeCoverageCounts').textContent)
+            .toContain('2 blocked');
+    });
+
+    it('offers a Retry on the failed row that re-ships the stored entry id', async () => {
+        const name = freshProject();
+        await openDetail(name, [failedRow(61, 'A2', 'Persist to disk')]);
+        const retry = document.querySelector('.coverageDetailRow--failed .coverageRetryBtn');
+        expect(retry).toBeTruthy();
+        expect(retry.disabled).toBe(false);
+        retry.click();
+        expect(retry.textContent).toBe('Retrying…');
+        await flush(12);
+        // Re-shipped through the same dispatchDraft path, reusing the row's entry
+        // id so injectEntry dedup-skips rather than appending a second entry.
+        expect(injectCalls.length).toBe(1);
+        expect(injectCalls[0].id).toBe('mint-0');
+        expect(dispatchRunCalls.length).toBe(1);
+        expect(dispatchRunCalls[0].mode).toBe('entry');
+        expect(dispatchRunCalls[0].entryId).toBe('mint-0');
+    });
+
+    it('re-uses a non-minted entry id verbatim on Retry', async () => {
+        const name = freshProject();
+        todoMdContent = '<!-- id: prior-77 -->';
+        await openDetail(name, [failedRow(62, 'A2', 'Persist to disk', 'prior-77')]);
+        document.querySelector('.coverageDetailRow--failed .coverageRetryBtn').click();
+        await flush(12);
+        expect(injectCalls[0].id).toBe('prior-77');
+        expect(dispatchRunCalls[0].entryId).toBe('prior-77');
+    });
+
+    it('disables Retry when the failed row has neither an entry id nor a draft', async () => {
+        const name = freshProject();
+        await openDetail(name, [{
+            id: 63, state: 'failed', aspect: 'A2', todo_id: null,
+            entry_id: null, draft: '', context: { title: 'Persist' },
+        }]);
+        const retry = document.querySelector('.coverageDetailRow--failed .coverageRetryBtn');
+        expect(retry).toBeTruthy();
+        expect(retry.disabled).toBe(true);
+    });
+
+    it('surfaces a homeless drafted row in the sheet with a Dispatch primary', async () => {
+        const name = freshProject();
+        setQueueRows([draftedRow(64, 'A2', 'Persist to disk')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        expect(coverageBadge().hidden).toBe(false);
+        expect(coverageBadge().textContent).toBe('1');
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        const primary = document.querySelector('.proposalCard .proposalAcceptBtn');
+        expect(primary.textContent).toBe('Dispatch');
+        primary.click();
+        expect(primary.textContent).toBe('Dispatching…');
+        await flush(12);
+        expect(injectCalls.length).toBe(1);
+        expect(dispatchRunCalls.length).toBe(1);
+        expect(dispatchRunCalls[0].mode).toBe('entry');
+    });
+
+    it('leaves a drafted row that belongs to a task row out of the sheet', async () => {
+        const name = freshProject();
+        setQueueRows([draftedRow(65, 'A2', 'Persist to disk', 'todo-1')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        expect(coverageBadge().hidden).toBe(true);
+        expect(coverageView().querySelector('.claudeCoverageProposals')).toBeFalsy();
+    });
+
+    it('keeps failed rows out of the review sheet', async () => {
+        const name = freshProject();
+        setQueueRows([failedRow(66, 'A2', 'Persist to disk')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        // A failed run is retried from the coverage modal's own row, not reviewed
+        // as a proposal.
+        expect(coverageBadge().hidden).toBe(true);
+        expect(coverageView().querySelector('.claudeCoverageProposals')).toBeFalsy();
+    });
+
+    it('sorts a drafted card into aspect order alongside the proposals', async () => {
+        const name = freshProject();
+        setQueueRows([
+            proposedRow(67, 'C1', 'c1'),
+            draftedRow(68, 'A2', 'a2 draft'),
+            proposedRow(69, 'A1', 'a1'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(Array.from(document.querySelectorAll('.proposalCardTitle'))
+            .map(function (t) { return t.textContent; }))
+            .toEqual(['a1', 'a2 draft', 'c1']);
+    });
+
+    it('drops the drafted card once the row is dispatched', async () => {
+        const name = freshProject();
+        setQueueRows([
+            draftedRow(70, 'A2', 'Persist to disk'),
+            proposedRow(71, 'A1', 'Add a menu'),
+        ], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(document.querySelectorAll('.proposalCard').length).toBe(2);
+        setQueueRows([
+            { ...draftedRow(70, 'A2', 'Persist to disk'), state: 'dispatched' },
+            proposedRow(71, 'A1', 'Add a menu'),
+        ], name);
+        notifyQueueChange();
+        expect(document.querySelectorAll('.proposalCard').length).toBe(1);
     });
 });

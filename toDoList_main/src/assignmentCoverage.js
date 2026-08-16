@@ -628,26 +628,50 @@ function openAssignmentEditor() {
 
 // The coverage status of one rubric aspect, derived from the states of the
 // agent_queue rows carrying its tag. Priority (highest first): a shipped row
-// means covered; else an in-flight (dispatched/running) row; else a blocked
-// (needs_words or needs_mockup) row; else a proposed row; else nothing has
-// started. "Covered" (the summary's numerator) is exactly the shipped case.
+// means covered; else an in-flight (dispatched/running) row; else a failed row;
+// else a blocked (needs_words or needs_mockup) row; else a drafted row; else a
+// proposed row; else nothing has started. "Covered" (the summary's numerator) is
+// exactly the shipped case.
+//
 // Both waiting-on-you states count as blocked: a row parked in needs_mockup is
 // as stalled as one parked in needs_words — it is waiting on a visual direction
 // instead of on words — and without this it would read as not-started, hiding
 // the aspect from the modal's "Waiting on you" group entirely.
+//
+// `failed` and `drafted` are recognised for the same reason: without them a row
+// in either state matched nothing and fell through to 'not-started', so the tab
+// read the aspect as untouched while the derive routine counted it as covered
+// and skipped it — an aspect that deadlocks in silence. `failed` sorts ABOVE
+// `blocked` because a broken run needs attention before an unanswered question
+// does; `drafted` sorts below both, since a draft waiting on a Dispatch is
+// progress rather than a stall. Neither counts toward the covered numerator.
 function aspectStatus(rows) {
-    let inFlight = false, blocked = false, proposed = false;
+    let inFlight = false, failed = false, blocked = false;
+    let drafted = false, proposed = false;
     for (let i = 0; i < rows.length; i++) {
         const s = rows[i] && rows[i].state;
         if (s === 'shipped') return 'shipped';
         if (s === 'dispatched' || s === 'running') inFlight = true;
+        else if (s === 'failed') failed = true;
         else if (s === 'needs_words' || s === 'needs_mockup') blocked = true;
+        else if (s === 'drafted') drafted = true;
         else if (s === 'proposed') proposed = true;
     }
     if (inFlight) return 'in-flight';
+    if (failed) return 'failed';
     if (blocked) return 'blocked';
+    if (drafted) return 'drafted';
     if (proposed) return 'proposed';
     return 'not-started';
+}
+
+// The two statuses pinned in the detail modal's "Waiting on you" group: a
+// blocked aspect (a question waiting on an answer) and a failed one (a run
+// waiting on a retry). Shared by the modal's grouping, its section echoes and
+// the pane's breakdown count so the pinned group, the section rows and the
+// pane's "N blocked" can never disagree about what needs attention.
+function isAttentionStatus(status) {
+    return status === 'blocked' || status === 'failed';
 }
 
 // Tally the coverage of the rubric `aspects` against the live agent_queue
@@ -838,7 +862,9 @@ function buildCheckIcon() {
 const COVERAGE_STATUS_LABEL = {
     shipped: 'Shipped',
     'in-flight': 'In progress',
+    failed: 'Failed',
     blocked: 'Blocked',
+    drafted: 'Drafted',
     proposed: 'Proposed',
     'not-started': 'Not started',
 };
@@ -930,6 +956,48 @@ function buildCommitTick(item, ctx, labelText, iconOnly) {
     return btn;
 }
 
+// The Retry control mounted on a failed aspect's row in the detail modal. A
+// derive row carries `todo_id: null`, so a failed derive run has no task row to
+// retry from — this is its only surface. Runs the SAME shared dispatch the task
+// row's Retry does (dispatchDraft with the row's stored `entry_id`), so the
+// marker already in TODO.md is reused and injectEntry dedup-skips rather than
+// appending a second copy of the entry. On success the row leaves `failed` and
+// the queue-change repaint restyles the aspect; a failure re-enables the button
+// and surfaces a toast, since a two-line grid row has no space for an inline
+// error lane.
+function buildAspectRetry(queueRow) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'coverageRetryBtn';
+    btn.textContent = 'Retry';
+    // Retry proceeds on the stored entry_id alone (the marker is already in
+    // TODO.md); with neither an id nor a draft there is nothing to re-ship.
+    const draftText = (queueRow.draft || '').trim();
+    btn.disabled = !(queueRow.entry_id || draftText);
+
+    btn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (btn.disabled) return;
+        btn.disabled = true;
+        btn.classList.add('is-pending');
+        btn.textContent = 'Retrying…';
+        const fail = function (message) {
+            btn.disabled = false;
+            btn.classList.remove('is-pending');
+            btn.textContent = 'Retry';
+            showInjectToast(message || 'Could not retry. Try again.', 'error');
+        };
+        Promise.resolve(dispatchDraft(queueRow, draftText, queueRow.entry_id))
+            .then(function (res) {
+                // On success the row leaves `failed`; the queue-change repaint
+                // rebuilds the modal body, so there is nothing to restore here.
+                if (res && res.ok) return;
+                fail(res && res.error);
+            }, function () { fail(); });
+    });
+    return btn;
+}
+
 // Which blocked aspect's answer lane is currently open, or null. Module-level
 // because the coverage modal's body is rebuilt wholesale on every onQueueChange —
 // element state would be lost — so the open lane is re-expanded from this after
@@ -943,6 +1011,8 @@ let _expandedBlockedAspect = null;
 // answered without leaving the modal. Shipped aspects render as a tap-to-expand
 // toggle that reveals a commit-helper lane (copy-ready commit message + file
 // manifest for the GitHub → GitLab transfer, plus a "Committed to GitLab" tick).
+// Failed aspects render a static row carrying a Retry that re-dispatches the
+// broken run — their derive row has no task row to retry from.
 // Manual Git/process aspects render a static row with a "mark done" tick. Every
 // other status (in progress, proposed, blocked, not started) renders with a
 // "Confirmed" tick so any aspect can be signed off by hand alongside its derived
@@ -963,6 +1033,12 @@ function buildCoverageDetailRow(item, ctx) {
         })
         : null;
     const isAnswerable = !!blockedRow;
+    // The broken run behind a failed aspect — what Retry re-dispatches. Resolved
+    // rather than assumed for the same reason blockedRow is: with no row there is
+    // nothing to retry, so the aspect renders without the control.
+    const failedRow = (item.status === 'failed' && Array.isArray(item.rows))
+        ? item.rows.find(function (r) { return r && r.state === 'failed'; })
+        : null;
     // Shipped, non-process aspects expand to a commit helper derived from their
     // shipped rows; nothing to commit for any other status, so they stay static.
     const shippedRows = (!item.process && item.status === 'shipped' &&
@@ -1040,6 +1116,10 @@ function buildCoverageDetailRow(item, ctx) {
             if (_expandedBlockedAspect === item.id) setDisclosureOpen(row, wrap, true);
             return wrap;
         }
+        // A failed aspect carries a Retry beside its tick. It is never answerable
+        // (a failed status and a blocked one are mutually exclusive), so it always
+        // lands here rather than in the disclosure branch above.
+        if (failedRow) row.appendChild(buildAspectRetry(failedRow));
         if (confirmTick) row.appendChild(confirmTick);
         return row;
     }
@@ -1058,16 +1138,17 @@ function buildCoverageDetailRow(item, ctx) {
     return wrap;
 }
 
-// A blocked aspect's echo inside its home rubric section. The live, actionable
-// row for a blocked aspect is pinned in the "Waiting on you" group at the top of
-// the modal, but its section still counts it — so without an echo a section
-// reading "1 / 3" would show only two rows. Renders as a dimmed div, never a
-// button: there is nothing to disclose here, no tick and no chevron, and the
-// whole row is aria-hidden so the pinned row stays the single announced one.
+// An attention aspect's echo inside its home rubric section — blocked (a waiting
+// question) or failed (a broken run). The live, actionable row is pinned in the
+// "Waiting on you" group at the top of the modal, but its section still counts
+// it — so without an echo a section reading "1 / 3" would show only two rows.
+// Renders as a dimmed div, never a button: there is nothing to disclose here, no
+// tick, no Retry and no chevron, and the whole row is aria-hidden so the pinned
+// row stays the single announced one.
 function buildSectionEchoRow(item) {
     const row = document.createElement('div');
-    row.className =
-        'coverageDetailRow coverageDetailRow--blocked coverageDetailRow--echo';
+    row.className = 'coverageDetailRow coverageDetailRow--' + item.status +
+        ' coverageDetailRow--echo';
     row.setAttribute('aria-hidden', 'true');
 
     const dot = document.createElement('span');
@@ -1514,8 +1595,8 @@ function showCoverageDetailModal(preloadedCommitted) {
     // that section's own aspects. `letter` is null for the trailing catch-all
     // group of IDs that don't split into a section (see groupAspectsBySection):
     // it renders a plain "Other aspects" heading with no tally and no bar, since
-    // there is no letter to head it with. A blocked aspect renders as an echo —
-    // its live row is pinned in the "Waiting on you" group above.
+    // there is no letter to head it with. A blocked or failed aspect renders as
+    // an echo — its live row is pinned in the "Waiting on you" group above.
     function appendSection(letter, sectionItems) {
         if (!sectionItems.length) return;
         const group = document.createElement('div');
@@ -1561,7 +1642,7 @@ function showCoverageDetailModal(preloadedCommitted) {
             group.appendChild(heading);
         }
         sectionItems.forEach(function (it) {
-            group.appendChild(it.status === 'blocked'
+            group.appendChild(isAttentionStatus(it.status)
                 ? buildSectionEchoRow(it)
                 : buildCoverageDetailRow(it, ctx));
         });
@@ -1598,12 +1679,15 @@ function showCoverageDetailModal(preloadedCommitted) {
                 status: process ? 'manual' : aspectStatus(byAspect[id] || []),
             };
         });
-        const blocked = items.filter(function (it) { return it.status === 'blocked'; });
+        // "Waiting on you" pins both attention statuses: a blocked aspect (a
+        // question waiting on an answer) and a failed one (a run waiting on a
+        // retry). Kept in rubric-aspect order, as the section lists are.
+        const blocked = items.filter(function (it) { return isAttentionStatus(it.status); });
         const manual = items.filter(function (it) { return it.process; });
-        // Only the manual lane is partitioned off — blocked aspects stay in the
-        // section list so each one renders an echo in its home section, keeping a
-        // section's row count in step with its tally. Their live, actionable row
-        // is the pinned one in the "Waiting on you" group.
+        // Only the manual lane is partitioned off — blocked and failed aspects
+        // stay in the section list so each one renders an echo in its home
+        // section, keeping a section's row count in step with its tally. Their
+        // live, actionable row is the pinned one in the "Waiting on you" group.
         const grouped = groupAspectsBySection(items.filter(function (it) {
             return !it.process;
         }));
@@ -1790,12 +1874,15 @@ export function buildAssignmentCard() {
 }
 
 // Tally the pane's secondary counts line — how many rubric aspects are blocked
-// (a needs_words question waiting), in progress (dispatched/running), and manual
-// (Git/process aspects the agent can't ship). Mirrors showCoverageDetailModal's
-// classification (process aspects short-circuit to the manual lane; everything
-// else derives its lifecycle from its tagged rows via aspectStatus) so the pane's
-// summary and the drill-in modal never disagree. `manual` is simply the count of
-// process aspects, matching the modal's "manual · outstanding" lane.
+// (a question waiting or a failed run needing a retry), in progress
+// (dispatched/running), and manual (Git/process aspects the agent can't ship).
+// Mirrors showCoverageDetailModal's classification (process aspects short-circuit
+// to the manual lane; everything else derives its lifecycle from its tagged rows
+// via aspectStatus) so the pane's summary and the drill-in modal never disagree —
+// `blocked` counts exactly the aspects the modal pins in "Waiting on you", which
+// is why it spans both attention statuses rather than the blocked one alone.
+// `manual` is simply the count of process aspects, matching the modal's
+// "manual · outstanding" lane.
 function computePaneBreakdown(aspects, labels, rows) {
     const byAspect = Object.create(null);
     (Array.isArray(rows) ? rows : []).forEach(function (r) {
@@ -1808,7 +1895,7 @@ function computePaneBreakdown(aspects, labels, rows) {
         const label = (labels && labels[id]) || '';
         if (isProcessAspect(label)) { manual++; return; }
         const st = aspectStatus(byAspect[id] || []);
-        if (st === 'blocked') blocked++;
+        if (isAttentionStatus(st)) blocked++;
         else if (st === 'in-flight') inProgress++;
     });
     return { blocked: blocked, inProgress: inProgress, manual: manual };
@@ -1843,20 +1930,23 @@ function paintDeriveAction(btn, pending) {
 }
 
 // The active project's queue rows waiting on a review decision — derive output in
-// `proposed` (Accept / Dismiss), plus HOMELESS `needs_mockup` rows: a derive row
-// parked on a mockup decision carries `todo_id: null`, so the row layer's mockup
-// pane (which mounts per todo) has nowhere to render it and the sheet is its only
-// surface. The `todo_id` guard is what keeps that scoped — a needs_mockup row that
-// belongs to a real task row already renders there and must not be pulled in here
-// as well. `getQueueRows()` is already scoped to the loaded project, so this needs
-// no further project filter. This is the SINGLE source the pane's count badge, the
-// "Review N proposals" action, and the review modal all derive from, so they can
-// never disagree about how many proposals are outstanding.
+// `proposed` (Accept / Dismiss), plus HOMELESS `needs_mockup` and `drafted` rows:
+// a derive row parked on a mockup decision or holding a finished draft carries
+// `todo_id: null`, so the row layer's per-todo panes (the mockup pane, the
+// description panel's Dispatch action) have nowhere to render it and the sheet is
+// its only surface. The `todo_id` guard is what keeps that scoped — a row in
+// either state that belongs to a real task row already renders there and must not
+// be pulled in here as well. `getQueueRows()` is already scoped to the loaded
+// project, so this needs no further project filter. This is the SINGLE source the
+// pane's count badge, the "Review N proposals" action, and the review modal all
+// derive from, so they can never disagree about how many proposals are
+// outstanding.
 export function getProposedRows() {
     return getQueueRows().filter(function (r) {
         if (!r) return false;
         if (r.state === 'proposed') return true;
-        return r.state === 'needs_mockup' && !r.todo_id;
+        if (r.state === 'needs_mockup' && !r.todo_id) return true;
+        return r.state === 'drafted' && !r.todo_id;
     });
 }
 
@@ -2058,14 +2148,25 @@ function ensureQueueRepaintListener() {
 // discloses the shared A/B/C flow (the SAME buildMockupSecondary the Agent board
 // and the desktop detail pane mount, wired via configureMockupFlow) right on the
 // card; choosing a variant writes the finished entry and moves the row to
-// `drafted`, and the queue-change repaint drops the card exactly as an Accept does.
+// `drafted`, where the card re-renders with the Dispatch primary below.
 //
-// Dismiss is identical for both: it removes the queue row via
+// For a homeless `drafted` row the primary is Dispatch — the entry is already
+// written (by derive, or by the mockup flow above), so the only step left is to
+// ship it. It runs the very same Accept path: `dispatchDraft` with the row's
+// stored entry id, which is what keeps a re-ship from appending a duplicate entry
+// to TODO.md. Only the wording differs, because "Accept" reads as a decision the
+// user already made when the draft was written.
+//
+// Dismiss is identical for all three: it removes the queue row via
 // listLogic.unflagAgentTask (the board's × remove control) — cheap to redo by
 // deriving again, so no confirm. Both controls disable while their action is in
 // flight and re-enable with an inline error on failure.
 function buildProposalCard(row) {
     const isMockup = row.state === 'needs_mockup';
+    const isDrafted = row.state === 'drafted';
+    // The primary's wording, shared by its idle label, its pending label and both
+    // failure messages so a Dispatch card can never revert to reading "Accept".
+    const primaryLabel = isDrafted ? 'Dispatch' : 'Accept';
     const card = document.createElement('div');
     card.className = 'proposalCard';
 
@@ -2106,7 +2207,7 @@ function buildProposalCard(row) {
     const accept = document.createElement('button');
     accept.type = 'button';
     accept.className = isMockup ? 'proposalMockupBtn' : 'proposalAcceptBtn';
-    accept.textContent = isMockup ? 'Choose mockup' : 'Accept';
+    accept.textContent = isMockup ? 'Choose mockup' : primaryLabel;
 
     const draftText = (row.draft || '').trim();
 
@@ -2141,22 +2242,29 @@ function buildProposalCard(row) {
             openMockupFlow();
         });
     } else {
+        const failMessage = isDrafted
+            ? 'Could not dispatch. Try again.' : 'Could not accept. Try again.';
         accept.addEventListener('click', function () {
             if (accept.disabled) return;
-            if (!draftText) { fail(accept, 'Accept', 'No proposal to accept.'); return; }
+            if (!draftText) {
+                fail(accept, primaryLabel, isDrafted
+                    ? 'No draft to dispatch.' : 'No proposal to accept.');
+                return;
+            }
             errorEl.hidden = true;
             errorEl.textContent = '';
             accept.disabled = true;
             dismiss.disabled = true;
             accept.classList.add('is-pending');
-            accept.textContent = 'Accepting…';
+            accept.textContent = isDrafted ? 'Dispatching…' : 'Accepting…';
             Promise.resolve(dispatchDraft(row, draftText, row.entry_id)).then(function (res) {
-                // On success the row leaves `proposed`; the queue-change repaint
-                // drops it from the list, so there's nothing to do here.
+                // On success the row leaves `proposed` / `drafted`; the
+                // queue-change repaint drops it from the list, so there's nothing
+                // to do here.
                 if (res && res.ok) return;
-                fail(accept, 'Accept', (res && res.error) || 'Could not accept. Try again.');
+                fail(accept, primaryLabel, (res && res.error) || failMessage);
             }).catch(function () {
-                fail(accept, 'Accept', 'Could not accept. Try again.');
+                fail(accept, primaryLabel, failMessage);
             });
         });
     }
@@ -2192,8 +2300,9 @@ function buildProposalCard(row) {
     return card;
 }
 
-// The batch proposal review modal — lists every waiting `proposed` row with its
-// aspect tag, title, description preview, and Accept / Dismiss controls. Built with
+// The batch proposal review modal — lists every row waiting on a review decision
+// (see getProposedRows) with its aspect tag, title, description preview, and a
+// state-appropriate primary (Accept / Choose mockup / Dispatch) + Dismiss. Built with
 // the shared three-way dismiss (close X, backdrop, Escape) and focus restore,
 // matching showCoverageDetailModal so the two modals in this subsystem read alike.
 // The list updates live on onQueueChange (a proposal accepted or dismissed here or
