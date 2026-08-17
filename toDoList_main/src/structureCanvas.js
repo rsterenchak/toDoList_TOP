@@ -825,7 +825,12 @@ function paintLiveOverlay() {
     // interact session, a reload, a breakpoint re-home), so clamp the path to the
     // deepest level that still resolves — the same contract `resolveDrill` gives
     // the canvas.
-    const drill = resolveLiveDrill(buildUiTree(doc), liveDrillPath, doc);
+    // The guest's manifest class hints ride on `ctx`, so a class-keyed guest DOM
+    // (no ids on its layout divs) drills below its lone landmark instead of
+    // collapsing to it. Absent on the self repo, whose id/role walk is unchanged.
+    const drill = resolveLiveDrill(
+        buildUiTree(doc, ctx && ctx.knownClasses, ctx && ctx.classLabels), liveDrillPath, doc
+    );
     if (drill.chain.length < liveDrillPath.length) {
         liveDrillPath = drill.chain.map(function (n) { return n.selector; });
     }
@@ -1837,7 +1842,13 @@ export function revealSelector(selector) {
     // reload the iframe on every tree-row tap.
     if (liveMode) {
         const doc = liveDoc();
-        const livePath = doc ? findLiveParentPath(buildUiTree(doc), selector, doc) : null;
+        // Same class hints the overlay paint walks with, so a class-kept row the
+        // tree published is findable in the live tree rather than missing from it.
+        const livePath = doc
+            ? findLiveParentPath(
+                buildUiTree(doc, ctx && ctx.knownClasses, ctx && ctx.classLabels), selector, doc
+            )
+            : null;
         if (livePath) {
             liveDrillPath = livePath;
             paintLiveOverlay();
