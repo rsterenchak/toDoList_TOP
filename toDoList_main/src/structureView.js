@@ -2562,6 +2562,13 @@ function renderGuestUiLens(repo, result, treeEl) {
         onReference: selectFromCanvas,
         onViewCode: viewCodeFromCanvas,
         onRecapture: function () { startGuestCapture(repo, treeEl); },
+        // Live mode re-walks the guest's own document, so it needs the same
+        // manifest-derived class hints the capture walk already gets — otherwise a
+        // guest whose layout divs carry classes but no ids drills no deeper than its
+        // first landmark. Only the guest path passes these; the self repo's call site
+        // deliberately passes none, keeping its id/role walk as documented on isKept.
+        knownClasses: knownClassSet(result && result.regions),
+        classLabels: classLabelMap(result && result.regions),
     });
     if (canvas) canvasActive = true;
 

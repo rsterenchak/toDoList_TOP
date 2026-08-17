@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-16',
-        added: [
-            'The assignment coverage breakdown can now clear every unshipped task at once, after a confirmation that names the count and keeps the ones already shipped.',
+        date: '2026-08-17',
+        fixed: [
+            'Live view of a repo that identifies its layout by class name rather than id now drills past the first landmark into the inner sections its published map already lists.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-16',
         fixed: [
             'Assignment coverage no longer invents rubric aspects out of commented-out template hints, and requirement labels read as plain text instead of trailing stray asterisks.',
             'A task parked on a mockup decision now shows in the assignment coverage waiting list and in the review sheet, where a mockup can be chosen, instead of disappearing from the app entirely.',

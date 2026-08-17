@@ -1904,6 +1904,117 @@ describe('structureCanvas — live overlay drill', () => {
     });
 });
 
+// ── LIVE OVERLAY DRILL ON A CLASS-KEYED GUEST ────────────────────────────────
+// REGRESSION: the live overlay used to call `buildUiTree(doc)` with no second
+// argument, so a guest whose layout carries classes but no ids kept only its
+// implicit landmark and the overlay could not drill below it — even though the
+// capture path (which does forward the manifest's class hints) mapped the same
+// page fine. The hints now ride on the canvas ctx from the guest render.
+
+const CLASS_GUEST_REPO = 'rsterenchak/Angular-map';
+
+// An Angular-scaffold-shaped guest: `<main>` is the ONLY element the id/role walk
+// keeps on its own — every layout div below it is class-identified.
+function makeClassKeyedGuestDoc() {
+    const doc = document.implementation.createHTMLDocument('guest');
+    doc.body.innerHTML =
+        '<main class="main">' +
+        '  <div class="content">' +
+        '    <div class="left-side"><div class="pill-group"></div></div>' +
+        '    <div class="right-side"></div>' +
+        '  </div>' +
+        '</main>';
+    stubRect(doc.querySelector('main.main'), 400, 900, 0, 0);
+    stubRect(doc.querySelector('.content'), 400, 900, 0, 0);
+    stubRect(doc.querySelector('.left-side'), 200, 900, 0, 0);
+    stubRect(doc.querySelector('.pill-group'), 180, 120, 10, 10);
+    stubRect(doc.querySelector('.right-side'), 200, 900, 200, 0);
+    return doc;
+}
+
+// The manifest-derived hints the guest render passes through: bare class tokens
+// for the walk to keep on, and the published section names to label them with.
+function classHints() {
+    return {
+        knownClasses: new Set(['content', 'left-side', 'right-side', 'pill-group']),
+        classLabels: new Map([['content', 'Content'], ['left-side', 'Left Side']]),
+    };
+}
+
+// A guest canvas mounts only with stored geometry, so seed a bucket first.
+function renderClassGuest(host, overrides) {
+    captureSnapshot(sampleTree(), CLASS_GUEST_REPO);
+    return renderStructureCanvas(host, Object.assign({
+        repo: CLASS_GUEST_REPO,
+        tree: sampleTree(),
+        onSelect: vi.fn(),
+        onReference: vi.fn(),
+        onViewCode: vi.fn(),
+    }, overrides));
+}
+
+describe('structureCanvas — live overlay drill on a class-keyed guest', () => {
+    it('drills level by level when the guest render supplies class hints', () => {
+        const host = mountHost();
+        renderClassGuest(host, classHints());
+        enterLive(host);
+        const doc = makeClassKeyedGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        expect(liveSelectors(host)).toEqual(['main.main']);
+        tapLive(host, 'main.main');
+        tapLive(host, 'main.main');
+        expect(liveSelectors(host)).toEqual(['div.content']);
+
+        tapLive(host, 'div.content');
+        tapLive(host, 'div.content');
+        expect(liveSelectors(host)).toEqual(['div.left-side', 'div.right-side']);
+
+        // ...and a fourth level is still reachable, so the chain is genuinely deep
+        // rather than one lucky extra step.
+        tapLive(host, 'div.left-side');
+        tapLive(host, 'div.left-side');
+        expect(liveSelectors(host)).toEqual(['div.pill-group']);
+        // Class-kept levels read their published section names in the breadcrumb,
+        // after the fixed root crumb.
+        expect(liveCrumbs(host)).toEqual(['App', 'Main', 'Content', 'Left Side']);
+    });
+
+    it('collapses to the landmark alone when no class hints are supplied', () => {
+        const host = mountHost();
+        renderClassGuest(host);          // the pre-fix call shape: no hints on ctx
+        enterLive(host);
+        const doc = makeClassKeyedGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        // `<main>` survives on its implicit landmark role; nothing below it is kept,
+        // so a drill has nowhere to go.
+        expect(liveSelectors(host)).toEqual(['main.main']);
+        tapLive(host, 'main.main');
+        tapLive(host, 'main.main');
+        expect(liveSelectors(host)).toEqual(['main.main']);
+        expect(host.querySelector('.structureLiveBreadcrumb').hidden).toBe(true);
+    });
+
+    it('mirrors a class-kept tree row into the overlay at that row’s level', () => {
+        const host = mountHost();
+        renderClassGuest(host, classHints());
+        enterLive(host);
+        const doc = makeClassKeyedGuestDoc();
+        loadGuest(host, doc, makeGuestWin(doc));
+
+        // revealSelector walks the guest tree on its own, so it needs the hints too
+        // — without them the row isn't in the live tree and the overlay stays put.
+        revealSelector('div.pill-group');
+
+        expect(liveSelectors(host)).toEqual(['div.pill-group']);
+        expect(
+            host.querySelector('.structureLiveRegion[data-selector="div.pill-group"]')
+                .classList.contains('is-selected')
+        ).toBe(true);
+    });
+});
+
 // The live view's own CSS contract. An author-level `display` declaration
 // outranks the UA stylesheet's `[hidden] { display: none }`, so every live-view
 // family that declares `display` AND is toggled through the `hidden` attribute
