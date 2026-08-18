@@ -1423,7 +1423,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-18
   <!-- id: a139c589-5f29-4a7f-825e-c2510b0cf9f8 -->
 
-- [ ] **[MEDIUM]** Gate the mobile welcome carousel on the sample project having just been seeded
+- [x] **[MEDIUM]** Gate the mobile welcome carousel on the sample project having just been seeded
   - Type: bug
   - Description: On mobile, `maybeStartFirstRunCarousel()` gates only on `isOnboardingComplete()`, `isMobileCarouselViewport()`, and the absence of a `#coachmarkOverlay` — unlike the desktop coachmark tour, which `restoreFromStorage()` starts only when its local `sampleJustSeeded` is true. `seedSampleProject()` bails when `allProjects` is non-empty, so on a device with a populated local cache and an unset `todoapp_onboardingComplete` flag — which is exactly what the new boot gate leaves behind when its cloud probe times out or errors and returns `null` — the carousel still plays over the user's real projects, and its second card claims "We've dropped you into a sample 'Getting started' project," which is false in that state. Bring mobile to parity with desktop: the carousel runs only when the sample was actually seeded on this load.
   - Implementation notes:
@@ -1434,5 +1434,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Add a regression test in `tests/welcomeCarousel.test.js` covering populated cache + unset flag + coarse pointer (carousel must not start), alongside the existing "skips when the completion flag is set" test.
   - Out of scope: the carousel's copy, card order, and styling; the desktop coachmark path; the boot-time cloud probe and its timeout.
   - File: `toDoList_main/src/welcomeCarousel.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/welcomeCarousel.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-18
   <!-- id: 8bcb054e-044b-405d-a3aa-87b1e70f980b -->
