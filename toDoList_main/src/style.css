@@ -18053,10 +18053,17 @@ body.row-dragging * { cursor: grabbing !important; }
   position: relative;
   width: 144px;
   height: 168px;
-  background-image: url('./ghost_purple.svg');
+  /* The auth gate is the first ghost anyone meets, so it wears the same
+     committed sprite as the desktop companion and the possession chip
+     (--ghost-sprite) instead of forking its own cartoony mascot. The box
+     already holds the sprite's native 48x56 aspect, so only the body and
+     the pixel-art rendering hint change. */
+  background-image: var(--ghost-sprite);
   background-repeat: no-repeat;
   background-position: center;
   background-size: contain;
+  /* Scaled pixel art blurs without this. */
+  image-rendering: pixelated;
   filter: drop-shadow(0 0 18px var(--accent-glow));
   margin: 0 auto;
 }
