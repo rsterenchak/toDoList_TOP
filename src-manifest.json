@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-18T11:55:46.396Z",
-  "sha": "a04e47924c42fa047497be8c8904a141d61296e6",
+  "generatedAt": "2026-08-18T13:07:07.659Z",
+  "sha": "53e37d5e0bafcfb47c79b52467829197afc55d0e",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -95,11 +95,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 4052,
+      "line": 4069,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4052
+          "line": 4069
         },
         {
           "file": "style.css",
@@ -139,11 +139,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 4078,
+      "line": 4095,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4078
+          "line": 4095
         }
       ]
     },
@@ -915,11 +915,11 @@
       "selector": "#checkToDo",
       "label": "Check To Do",
       "file": "toDoRow.js",
-      "line": 2952,
+      "line": 2969,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2952
+          "line": 2969
         },
         {
           "file": "style.css",
@@ -931,11 +931,11 @@
       "selector": "#claudeAttachChips",
       "label": "Claude Attach Chips",
       "file": "claudeSheet.js",
-      "line": 2486,
+      "line": 2491,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2486
+          "line": 2491
         }
       ]
     },
@@ -943,11 +943,11 @@
       "selector": "#claudeAttachIntro",
       "label": "Claude Attach Intro",
       "file": "claudeSheet.js",
-      "line": 3045,
+      "line": 3050,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3045
+          "line": 3050
         }
       ]
     },
@@ -955,11 +955,11 @@
       "selector": "#claudeAttachList",
       "label": "Claude Attach List",
       "file": "claudeSheet.js",
-      "line": 2127,
+      "line": 2132,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2127
+          "line": 2132
         }
       ]
     },
@@ -967,11 +967,11 @@
       "selector": "#claudeAttachNotice",
       "label": "Claude Attach Notice",
       "file": "claudeSheet.js",
-      "line": 2162,
+      "line": 2167,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2162
+          "line": 2167
         }
       ]
     },
@@ -979,17 +979,29 @@
       "selector": "#claudeAttachPanel",
       "label": "Claude Attach Panel",
       "file": "claudeSheet.js",
-      "line": 2109,
+      "line": 2114,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2109
+          "line": 2114
         }
       ]
     },
     {
       "selector": "#claudeAttachPathAdd",
       "label": "Claude Attach Path Add",
+      "file": "claudeSheet.js",
+      "line": 2150,
+      "files": [
+        {
+          "file": "claudeSheet.js",
+          "line": 2150
+        }
+      ]
+    },
+    {
+      "selector": "#claudeAttachPathInput",
+      "label": "Claude Attach Path Input",
       "file": "claudeSheet.js",
       "line": 2145,
       "files": [
@@ -1000,26 +1012,14 @@
       ]
     },
     {
-      "selector": "#claudeAttachPathInput",
-      "label": "Claude Attach Path Input",
-      "file": "claudeSheet.js",
-      "line": 2140,
-      "files": [
-        {
-          "file": "claudeSheet.js",
-          "line": 2140
-        }
-      ]
-    },
-    {
       "selector": "#claudeAttachPathRow",
       "label": "Claude Attach Path Row",
       "file": "claudeSheet.js",
-      "line": 2136,
+      "line": 2141,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2136
+          "line": 2141
         }
       ]
     },
@@ -1027,11 +1027,11 @@
       "selector": "#claudeAttachSearch",
       "label": "Claude Attach Search",
       "file": "claudeSheet.js",
-      "line": 2122,
+      "line": 2127,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2122
+          "line": 2127
         }
       ]
     },
@@ -1039,11 +1039,11 @@
       "selector": "#claudeChatHeader",
       "label": "Claude Chat Header",
       "file": "claudeSheet.js",
-      "line": 2448,
+      "line": 2453,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2448
+          "line": 2453
         }
       ]
     },
@@ -1051,11 +1051,11 @@
       "selector": "#claudeChatIntro",
       "label": "Claude Chat Intro",
       "file": "claudeSheet.js",
-      "line": 1312,
+      "line": 1317,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1312
+          "line": 1317
         }
       ]
     },
@@ -1063,11 +1063,11 @@
       "selector": "#claudeChatSurface",
       "label": "Claude Chat Surface",
       "file": "claudeSheet.js",
-      "line": 2458,
+      "line": 2463,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2458
+          "line": 2463
         },
         {
           "file": "style.css",
@@ -1079,11 +1079,11 @@
       "selector": "#claudeChatView",
       "label": "Claude Chat View",
       "file": "claudeSheet.js",
-      "line": 2437,
+      "line": 2442,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2437
+          "line": 2442
         },
         {
           "file": "style.css",
@@ -1095,11 +1095,11 @@
       "selector": "#claudeClearChat",
       "label": "Claude Clear Chat",
       "file": "claudeSheet.js",
-      "line": 1444,
+      "line": 1449,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1444
+          "line": 1449
         }
       ]
     },
@@ -1107,11 +1107,11 @@
       "selector": "#claudeComposer",
       "label": "Claude Composer",
       "file": "claudeSheet.js",
-      "line": 2499,
+      "line": 2504,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2499
+          "line": 2504
         }
       ]
     },
@@ -1119,11 +1119,11 @@
       "selector": "#claudeComposerAttach",
       "label": "Claude Composer Attach",
       "file": "claudeSheet.js",
-      "line": 2094,
+      "line": 2099,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2094
+          "line": 2099
         }
       ]
     },
@@ -1131,11 +1131,11 @@
       "selector": "#claudeComposerImage",
       "label": "Claude Composer Image",
       "file": "claudeSheet.js",
-      "line": 2200,
+      "line": 2205,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2200
+          "line": 2205
         }
       ]
     },
@@ -1143,11 +1143,11 @@
       "selector": "#claudeComposerInput",
       "label": "Claude Composer Input",
       "file": "claudeSheet.js",
-      "line": 2502,
+      "line": 2507,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2502
+          "line": 2507
         },
         {
           "file": "style.css",
@@ -1159,11 +1159,11 @@
       "selector": "#claudeComposerMic",
       "label": "Claude Composer Mic",
       "file": "claudeSheet.js",
-      "line": 2687,
+      "line": 2692,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2687
+          "line": 2692
         },
         {
           "file": "style.css",
@@ -1175,11 +1175,11 @@
       "selector": "#claudeComposerModeMenu",
       "label": "Claude Composer Mode Menu",
       "file": "claudeSheet.js",
-      "line": 2538,
+      "line": 2543,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2538
+          "line": 2543
         },
         {
           "file": "style.css",
@@ -1191,11 +1191,11 @@
       "selector": "#claudeComposerSend",
       "label": "Claude Composer Send",
       "file": "claudeSheet.js",
-      "line": 2513,
+      "line": 2518,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2513
+          "line": 2518
         },
         {
           "file": "style.css",
@@ -1207,11 +1207,11 @@
       "selector": "#claudeComposerSendCaret",
       "label": "Claude Composer Send Caret",
       "file": "claudeSheet.js",
-      "line": 2526,
+      "line": 2531,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2526
+          "line": 2531
         },
         {
           "file": "style.css",
@@ -1223,11 +1223,11 @@
       "selector": "#claudeComposerSendSplit",
       "label": "Claude Composer Send Split",
       "file": "claudeSheet.js",
-      "line": 2572,
+      "line": 2577,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2572
+          "line": 2577
         }
       ]
     },
@@ -1235,11 +1235,11 @@
       "selector": "#claudeCoverageView",
       "label": "Claude Coverage View",
       "file": "claudeSheet.js",
-      "line": 4217,
+      "line": 4222,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4217
+          "line": 4222
         }
       ]
     },
@@ -1247,11 +1247,11 @@
       "selector": "#claudeGhostChip",
       "label": "Claude Ghost Chip",
       "file": "claudeSheet.js",
-      "line": 3323,
+      "line": 3328,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3323
+          "line": 3328
         }
       ]
     },
@@ -1259,11 +1259,11 @@
       "selector": "#claudeGhostListening",
       "label": "Claude Ghost Listening",
       "file": "claudeSheet.js",
-      "line": 3335,
+      "line": 3340,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3335
+          "line": 3340
         }
       ]
     },
@@ -1271,11 +1271,11 @@
       "selector": "#claudeGhostThread",
       "label": "Claude Ghost Thread",
       "file": "claudeSheet.js",
-      "line": 2466,
+      "line": 2471,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2466
+          "line": 2471
         }
       ]
     },
@@ -1283,11 +1283,11 @@
       "selector": "#claudeImageInput",
       "label": "Claude Image Input",
       "file": "claudeSheet.js",
-      "line": 2207,
+      "line": 2212,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2207
+          "line": 2212
         }
       ]
     },
@@ -1295,11 +1295,11 @@
       "selector": "#claudeImageRail",
       "label": "Claude Image Rail",
       "file": "claudeSheet.js",
-      "line": 2495,
+      "line": 2500,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2495
+          "line": 2500
         },
         {
           "file": "style.css",
@@ -1311,11 +1311,11 @@
       "selector": "#claudeLauncher",
       "label": "Claude Launcher",
       "file": "claudeSheet.js",
-      "line": 1377,
+      "line": 1382,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1377
+          "line": 1382
         },
         {
           "file": "style.css",
@@ -1327,11 +1327,11 @@
       "selector": "#claudeRunsClear",
       "label": "Claude Runs Clear",
       "file": "claudeSheet.js",
-      "line": 4610,
+      "line": 4615,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4610
+          "line": 4615
         }
       ]
     },
@@ -1339,11 +1339,11 @@
       "selector": "#claudeRunsEmpty",
       "label": "Claude Runs Empty",
       "file": "claudeSheet.js",
-      "line": 4584,
+      "line": 4589,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4584
+          "line": 4589
         }
       ]
     },
@@ -1351,11 +1351,11 @@
       "selector": "#claudeRunsList",
       "label": "Claude Runs List",
       "file": "claudeSheet.js",
-      "line": 4257,
+      "line": 4262,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4257
+          "line": 4262
         }
       ]
     },
@@ -1363,11 +1363,11 @@
       "selector": "#claudeRunsNew",
       "label": "Claude Runs New",
       "file": "claudeSheet.js",
-      "line": 4261,
+      "line": 4266,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4261
+          "line": 4266
         }
       ]
     },
@@ -1375,11 +1375,11 @@
       "selector": "#claudeRunsView",
       "label": "Claude Runs View",
       "file": "claudeSheet.js",
-      "line": 4226,
+      "line": 4231,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4226
+          "line": 4231
         }
       ]
     },
@@ -1387,11 +1387,11 @@
       "selector": "#claudeScopeChip",
       "label": "Claude Scope Chip",
       "file": "claudeSheet.js",
-      "line": 2477,
+      "line": 2482,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2477
+          "line": 2482
         },
         {
           "file": "style.css",
@@ -1403,11 +1403,11 @@
       "selector": "#claudeScrollDown",
       "label": "Claude Scroll Down",
       "file": "claudeSheet.js",
-      "line": 2641,
+      "line": 2646,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2641
+          "line": 2646
         }
       ]
     },
@@ -1415,11 +1415,11 @@
       "selector": "#claudeSheet",
       "label": "Claude Sheet",
       "file": "claudeSheet.js",
-      "line": 5532,
+      "line": 5546,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5532
+          "line": 5546
         },
         {
           "file": "style.css",
@@ -1431,11 +1431,11 @@
       "selector": "#claudeSheetBackdrop",
       "label": "Claude Sheet Backdrop",
       "file": "claudeSheet.js",
-      "line": 5703,
+      "line": 5717,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5703
+          "line": 5717
         },
         {
           "file": "style.css",
@@ -1447,11 +1447,11 @@
       "selector": "#claudeSheetBody",
       "label": "Claude Sheet Body",
       "file": "claudeSheet.js",
-      "line": 5607,
+      "line": 5621,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5607
+          "line": 5621
         },
         {
           "file": "style.css",
@@ -1463,11 +1463,11 @@
       "selector": "#claudeSheetClose",
       "label": "Claude Sheet Close",
       "file": "claudeSheet.js",
-      "line": 5551,
+      "line": 5565,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5551
+          "line": 5565
         },
         {
           "file": "style.css",
@@ -1479,11 +1479,11 @@
       "selector": "#claudeSheetCloseRow",
       "label": "Claude Sheet Close Row",
       "file": "claudeSheet.js",
-      "line": 5560,
+      "line": 5574,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5560
+          "line": 5574
         }
       ]
     },
@@ -1491,11 +1491,11 @@
       "selector": "#claudeSheetHandle",
       "label": "Claude Sheet Handle",
       "file": "claudeSheet.js",
-      "line": 5542,
+      "line": 5556,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5542
+          "line": 5556
         },
         {
           "file": "style.css",
@@ -1507,11 +1507,11 @@
       "selector": "#claudeSheetTabs",
       "label": "Claude Sheet Tabs",
       "file": "claudeSheet.js",
-      "line": 5565,
+      "line": 5579,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5565
+          "line": 5579
         },
         {
           "file": "style.css",
@@ -1523,11 +1523,11 @@
       "selector": "#claudeSpendControl",
       "label": "Claude Spend Control",
       "file": "claudeSheet.js",
-      "line": 1515,
+      "line": 1520,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1515
+          "line": 1520
         }
       ]
     },
@@ -1535,11 +1535,11 @@
       "selector": "#claudeTabCoverageBadge",
       "label": "Claude Tab Coverage Badge",
       "file": "claudeSheet.js",
-      "line": 5582,
+      "line": 5596,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5582
+          "line": 5596
         }
       ]
     },
@@ -1547,11 +1547,11 @@
       "selector": "#claudeUpdateNudge",
       "label": "Claude Update Nudge",
       "file": "claudeSheet.js",
-      "line": 4234,
+      "line": 4239,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4234
+          "line": 4239
         }
       ]
     },
@@ -1559,11 +1559,11 @@
       "selector": "#claudeUpdateReload",
       "label": "Claude Update Reload",
       "file": "claudeSheet.js",
-      "line": 4241,
+      "line": 4246,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4241
+          "line": 4246
         }
       ]
     },
@@ -1571,11 +1571,11 @@
       "selector": "#claudeWorkspacePill",
       "label": "Claude Workspace Pill",
       "file": "claudeSheet.js",
-      "line": 1421,
+      "line": 1426,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1421
+          "line": 1426
         }
       ]
     },
@@ -1583,11 +1583,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 4099,
+      "line": 4116,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4099
+          "line": 4116
         },
         {
           "file": "style.css",
@@ -1803,11 +1803,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 4124,
+      "line": 4141,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4124
+          "line": 4141
         }
       ]
     },
@@ -2547,11 +2547,11 @@
       "selector": "#descIndicator",
       "label": "Desc Indicator",
       "file": "toDoRow.js",
-      "line": 4279,
+      "line": 4296,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4279
+          "line": 4296
         },
         {
           "file": "style.css",
@@ -2563,11 +2563,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 4159,
+      "line": 4176,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4159
+          "line": 4176
         },
         {
           "file": "style.css",
@@ -2579,11 +2579,11 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 4158,
+      "line": 4175,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4158
+          "line": 4175
         },
         {
           "file": "style.css",
@@ -2603,7 +2603,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4133
+          "line": 4150
         },
         {
           "file": "style.css",
@@ -2747,7 +2747,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4002
+          "line": 4019
         },
         {
           "file": "style.css",
@@ -3167,11 +3167,11 @@
       "selector": "#injectAddTargetBtn",
       "label": "Inject Add Target Btn",
       "file": "inject.js",
-      "line": 3224,
+      "line": 3258,
       "files": [
         {
           "file": "inject.js",
-          "line": 3224
+          "line": 3258
         },
         {
           "file": "style.css",
@@ -3183,11 +3183,11 @@
       "selector": "#injectConnectionEditBtn",
       "label": "Inject Connection Edit Btn",
       "file": "inject.js",
-      "line": 2920,
+      "line": 2954,
       "files": [
         {
           "file": "inject.js",
-          "line": 2920
+          "line": 2954
         }
       ]
     },
@@ -3195,11 +3195,11 @@
       "selector": "#injectConnectionSection",
       "label": "Inject Connection Section",
       "file": "inject.js",
-      "line": 2906,
+      "line": 2940,
       "files": [
         {
           "file": "inject.js",
-          "line": 2906
+          "line": 2940
         }
       ]
     },
@@ -3207,11 +3207,11 @@
       "selector": "#injectOnboardActions",
       "label": "Inject Onboard Actions",
       "file": "inject.js",
-      "line": 2522,
+      "line": 2556,
       "files": [
         {
           "file": "inject.js",
-          "line": 2522
+          "line": 2556
         },
         {
           "file": "style.css",
@@ -3223,11 +3223,11 @@
       "selector": "#injectOnboardBackdrop",
       "label": "Inject Onboard Backdrop",
       "file": "inject.js",
-      "line": 2384,
+      "line": 2418,
       "files": [
         {
           "file": "inject.js",
-          "line": 2384
+          "line": 2418
         },
         {
           "file": "style.css",
@@ -3239,11 +3239,11 @@
       "selector": "#injectOnboardBackfill",
       "label": "Inject Onboard Backfill",
       "file": "inject.js",
-      "line": 2497,
+      "line": 2531,
       "files": [
         {
           "file": "inject.js",
-          "line": 2497
+          "line": 2531
         }
       ]
     },
@@ -3251,11 +3251,11 @@
       "selector": "#injectOnboardBody",
       "label": "Inject Onboard Body",
       "file": "inject.js",
-      "line": 2406,
+      "line": 2440,
       "files": [
         {
           "file": "inject.js",
-          "line": 2406
+          "line": 2440
         },
         {
           "file": "style.css",
@@ -3267,11 +3267,11 @@
       "selector": "#injectOnboardCancel",
       "label": "Inject Onboard Cancel",
       "file": "inject.js",
-      "line": 2525,
+      "line": 2559,
       "files": [
         {
           "file": "inject.js",
-          "line": 2525
+          "line": 2559
         }
       ]
     },
@@ -3279,11 +3279,11 @@
       "selector": "#injectOnboardCard",
       "label": "Inject Onboard Card",
       "file": "inject.js",
-      "line": 3240,
+      "line": 3274,
       "files": [
         {
           "file": "inject.js",
-          "line": 3240
+          "line": 3274
         }
       ]
     },
@@ -3291,11 +3291,11 @@
       "selector": "#injectOnboardCheck",
       "label": "Inject Onboard Check",
       "file": "inject.js",
-      "line": 2534,
+      "line": 2568,
       "files": [
         {
           "file": "inject.js",
-          "line": 2534
+          "line": 2568
         }
       ]
     },
@@ -3303,11 +3303,11 @@
       "selector": "#injectOnboardClose",
       "label": "Inject Onboard Close",
       "file": "inject.js",
-      "line": 2398,
+      "line": 2432,
       "files": [
         {
           "file": "inject.js",
-          "line": 2398
+          "line": 2432
         },
         {
           "file": "style.css",
@@ -3319,11 +3319,11 @@
       "selector": "#injectOnboardHeader",
       "label": "Inject Onboard Header",
       "file": "inject.js",
-      "line": 2393,
+      "line": 2427,
       "files": [
         {
           "file": "inject.js",
-          "line": 2393
+          "line": 2427
         },
         {
           "file": "style.css",
@@ -3335,11 +3335,11 @@
       "selector": "#injectOnboardModal",
       "label": "Inject Onboard Modal",
       "file": "inject.js",
-      "line": 2387,
+      "line": 2421,
       "files": [
         {
           "file": "inject.js",
-          "line": 2387
+          "line": 2421
         },
         {
           "file": "style.css",
@@ -3351,11 +3351,11 @@
       "selector": "#injectOnboardPurposeControl",
       "label": "Inject Onboard Purpose Control",
       "file": "inject.js",
-      "line": 2437,
+      "line": 2471,
       "files": [
         {
           "file": "inject.js",
-          "line": 2437
+          "line": 2471
         },
         {
           "file": "style.css",
@@ -3367,11 +3367,11 @@
       "selector": "#injectOnboardPurposeLabel",
       "label": "Inject Onboard Purpose Label",
       "file": "inject.js",
-      "line": 2434,
+      "line": 2468,
       "files": [
         {
           "file": "inject.js",
-          "line": 2434
+          "line": 2468
         }
       ]
     },
@@ -3379,11 +3379,11 @@
       "selector": "#injectOnboardRepoError",
       "label": "Inject Onboard Repo Error",
       "file": "inject.js",
-      "line": 2421,
+      "line": 2455,
       "files": [
         {
           "file": "inject.js",
-          "line": 2421
+          "line": 2455
         }
       ]
     },
@@ -3391,11 +3391,11 @@
       "selector": "#injectOnboardRepoInput",
       "label": "Inject Onboard Repo Input",
       "file": "inject.js",
-      "line": 2413,
+      "line": 2447,
       "files": [
         {
           "file": "inject.js",
-          "line": 2413
+          "line": 2447
         }
       ]
     },
@@ -3403,11 +3403,11 @@
       "selector": "#injectOnboardShapeSelect",
       "label": "Inject Onboard Shape Select",
       "file": "inject.js",
-      "line": 2476,
+      "line": 2510,
       "files": [
         {
           "file": "inject.js",
-          "line": 2476
+          "line": 2510
         }
       ]
     },
@@ -3415,11 +3415,11 @@
       "selector": "#injectOnboardSubmit",
       "label": "Inject Onboard Submit",
       "file": "inject.js",
-      "line": 2540,
+      "line": 2574,
       "files": [
         {
           "file": "inject.js",
-          "line": 2540
+          "line": 2574
         },
         {
           "file": "style.css",
@@ -3431,11 +3431,11 @@
       "selector": "#injectOnboardTitle",
       "label": "Inject Onboard Title",
       "file": "inject.js",
-      "line": 2395,
+      "line": 2429,
       "files": [
         {
           "file": "inject.js",
-          "line": 2395
+          "line": 2429
         },
         {
           "file": "style.css",
@@ -3447,11 +3447,11 @@
       "selector": "#injectOnboardVerdict",
       "label": "Inject Onboard Verdict",
       "file": "inject.js",
-      "line": 2513,
+      "line": 2547,
       "files": [
         {
           "file": "inject.js",
-          "line": 2513
+          "line": 2547
         },
         {
           "file": "style.css",
@@ -3463,11 +3463,11 @@
       "selector": "#injectProjectRoutingBody",
       "label": "Inject Project Routing Body",
       "file": "inject.js",
-      "line": 3605,
+      "line": 3639,
       "files": [
         {
           "file": "inject.js",
-          "line": 3605
+          "line": 3639
         },
         {
           "file": "style.css",
@@ -3479,11 +3479,11 @@
       "selector": "#injectProjectRoutingEmpty",
       "label": "Inject Project Routing Empty",
       "file": "inject.js",
-      "line": 3615,
+      "line": 3649,
       "files": [
         {
           "file": "inject.js",
-          "line": 3615
+          "line": 3649
         }
       ]
     },
@@ -3491,11 +3491,11 @@
       "selector": "#injectProjectRoutingSection",
       "label": "Inject Project Routing Section",
       "file": "inject.js",
-      "line": 3593,
+      "line": 3627,
       "files": [
         {
           "file": "inject.js",
-          "line": 3593
+          "line": 3627
         }
       ]
     },
@@ -3503,11 +3503,11 @@
       "selector": "#injectProjectRoutingTable",
       "label": "Inject Project Routing Table",
       "file": "inject.js",
-      "line": 3631,
+      "line": 3665,
       "files": [
         {
           "file": "inject.js",
-          "line": 3631
+          "line": 3665
         }
       ]
     },
@@ -3515,11 +3515,11 @@
       "selector": "#injectProjectRoutingTitle",
       "label": "Inject Project Routing Title",
       "file": "inject.js",
-      "line": 3599,
+      "line": 3633,
       "files": [
         {
           "file": "inject.js",
-          "line": 3599
+          "line": 3633
         }
       ]
     },
@@ -3527,11 +3527,11 @@
       "selector": "#injectSettingsActions",
       "label": "Inject Settings Actions",
       "file": "inject.js",
-      "line": 3010,
+      "line": 3044,
       "files": [
         {
           "file": "inject.js",
-          "line": 3010
+          "line": 3044
         },
         {
           "file": "style.css",
@@ -3543,11 +3543,11 @@
       "selector": "#injectSettingsBackdrop",
       "label": "Inject Settings Backdrop",
       "file": "inject.js",
-      "line": 2876,
+      "line": 2910,
       "files": [
         {
           "file": "inject.js",
-          "line": 2876
+          "line": 2910
         },
         {
           "file": "style.css",
@@ -3559,11 +3559,11 @@
       "selector": "#injectSettingsBody",
       "label": "Inject Settings Body",
       "file": "inject.js",
-      "line": 2959,
+      "line": 2993,
       "files": [
         {
           "file": "inject.js",
-          "line": 2959
+          "line": 2993
         },
         {
           "file": "style.css",
@@ -3575,11 +3575,11 @@
       "selector": "#injectSettingsClear",
       "label": "Inject Settings Clear",
       "file": "inject.js",
-      "line": 3028,
+      "line": 3062,
       "files": [
         {
           "file": "inject.js",
-          "line": 3028
+          "line": 3062
         }
       ]
     },
@@ -3587,11 +3587,11 @@
       "selector": "#injectSettingsClose",
       "label": "Inject Settings Close",
       "file": "inject.js",
-      "line": 2891,
+      "line": 2925,
       "files": [
         {
           "file": "inject.js",
-          "line": 2891
+          "line": 2925
         },
         {
           "file": "style.css",
@@ -3603,11 +3603,11 @@
       "selector": "#injectSettingsHeader",
       "label": "Inject Settings Header",
       "file": "inject.js",
-      "line": 2886,
+      "line": 2920,
       "files": [
         {
           "file": "inject.js",
-          "line": 2886
+          "line": 2920
         },
         {
           "file": "style.css",
@@ -3619,11 +3619,11 @@
       "selector": "#injectSettingsModal",
       "label": "Inject Settings Modal",
       "file": "inject.js",
-      "line": 2879,
+      "line": 2913,
       "files": [
         {
           "file": "inject.js",
-          "line": 2879
+          "line": 2913
         },
         {
           "file": "style.css",
@@ -3635,11 +3635,11 @@
       "selector": "#injectSettingsSave",
       "label": "Inject Settings Save",
       "file": "inject.js",
-      "line": 3013,
+      "line": 3047,
       "files": [
         {
           "file": "inject.js",
-          "line": 3013
+          "line": 3047
         }
       ]
     },
@@ -3647,11 +3647,11 @@
       "selector": "#injectSettingsScroll",
       "label": "Inject Settings Scroll",
       "file": "inject.js",
-      "line": 3702,
+      "line": 3736,
       "files": [
         {
           "file": "inject.js",
-          "line": 3702
+          "line": 3736
         },
         {
           "file": "style.css",
@@ -3663,11 +3663,11 @@
       "selector": "#injectSettingsStatusRow",
       "label": "Inject Settings Status Row",
       "file": "inject.js",
-      "line": 2917,
+      "line": 2951,
       "files": [
         {
           "file": "inject.js",
-          "line": 2917
+          "line": 2951
         },
         {
           "file": "style.css",
@@ -3679,11 +3679,11 @@
       "selector": "#injectSettingsTest",
       "label": "Inject Settings Test",
       "file": "inject.js",
-      "line": 3019,
+      "line": 3053,
       "files": [
         {
           "file": "inject.js",
-          "line": 3019
+          "line": 3053
         }
       ]
     },
@@ -3691,11 +3691,11 @@
       "selector": "#injectSettingsTitle",
       "label": "Inject Settings Title",
       "file": "inject.js",
-      "line": 2888,
+      "line": 2922,
       "files": [
         {
           "file": "inject.js",
-          "line": 2888
+          "line": 2922
         },
         {
           "file": "style.css",
@@ -3707,11 +3707,11 @@
       "selector": "#injectSharedSecretInput",
       "label": "Inject Shared Secret Input",
       "file": "inject.js",
-      "line": 2979,
+      "line": 3013,
       "files": [
         {
           "file": "inject.js",
-          "line": 2979
+          "line": 3013
         },
         {
           "file": "style.css",
@@ -3723,11 +3723,11 @@
       "selector": "#injectTargetSubActions",
       "label": "Inject Target Sub Actions",
       "file": "inject.js",
-      "line": 1824,
+      "line": 1858,
       "files": [
         {
           "file": "inject.js",
-          "line": 1824
+          "line": 1858
         },
         {
           "file": "style.css",
@@ -3739,11 +3739,11 @@
       "selector": "#injectTargetSubBackdrop",
       "label": "Inject Target Sub Backdrop",
       "file": "inject.js",
-      "line": 1758,
+      "line": 1792,
       "files": [
         {
           "file": "inject.js",
-          "line": 1758
+          "line": 1792
         },
         {
           "file": "style.css",
@@ -3755,11 +3755,11 @@
       "selector": "#injectTargetSubBody",
       "label": "Inject Target Sub Body",
       "file": "inject.js",
-      "line": 1780,
+      "line": 1814,
       "files": [
         {
           "file": "inject.js",
-          "line": 1780
+          "line": 1814
         },
         {
           "file": "style.css",
@@ -3771,11 +3771,11 @@
       "selector": "#injectTargetSubCancel",
       "label": "Inject Target Sub Cancel",
       "file": "inject.js",
-      "line": 1827,
+      "line": 1861,
       "files": [
         {
           "file": "inject.js",
-          "line": 1827
+          "line": 1861
         }
       ]
     },
@@ -3783,11 +3783,11 @@
       "selector": "#injectTargetSubClose",
       "label": "Inject Target Sub Close",
       "file": "inject.js",
-      "line": 1772,
+      "line": 1806,
       "files": [
         {
           "file": "inject.js",
-          "line": 1772
+          "line": 1806
         },
         {
           "file": "style.css",
@@ -3799,11 +3799,11 @@
       "selector": "#injectTargetSubHeader",
       "label": "Inject Target Sub Header",
       "file": "inject.js",
-      "line": 1767,
+      "line": 1801,
       "files": [
         {
           "file": "inject.js",
-          "line": 1767
+          "line": 1801
         },
         {
           "file": "style.css",
@@ -3815,11 +3815,11 @@
       "selector": "#injectTargetSubModal",
       "label": "Inject Target Sub Modal",
       "file": "inject.js",
-      "line": 1761,
+      "line": 1795,
       "files": [
         {
           "file": "inject.js",
-          "line": 1761
+          "line": 1795
         },
         {
           "file": "style.css",
@@ -3831,11 +3831,11 @@
       "selector": "#injectTargetSubSave",
       "label": "Inject Target Sub Save",
       "file": "inject.js",
-      "line": 1833,
+      "line": 1867,
       "files": [
         {
           "file": "inject.js",
-          "line": 1833
+          "line": 1867
         }
       ]
     },
@@ -3843,11 +3843,11 @@
       "selector": "#injectTargetSubTitle",
       "label": "Inject Target Sub Title",
       "file": "inject.js",
-      "line": 1769,
+      "line": 1803,
       "files": [
         {
           "file": "inject.js",
-          "line": 1769
+          "line": 1803
         },
         {
           "file": "style.css",
@@ -3859,11 +3859,11 @@
       "selector": "#injectTargetsBody",
       "label": "Inject Targets Body",
       "file": "inject.js",
-      "line": 3083,
+      "line": 3117,
       "files": [
         {
           "file": "inject.js",
-          "line": 3083
+          "line": 3117
         },
         {
           "file": "style.css",
@@ -3875,11 +3875,11 @@
       "selector": "#injectTargetsEmpty",
       "label": "Inject Targets Empty",
       "file": "inject.js",
-      "line": 3199,
+      "line": 3233,
       "files": [
         {
           "file": "inject.js",
-          "line": 3199
+          "line": 3233
         }
       ]
     },
@@ -3887,11 +3887,11 @@
       "selector": "#injectTargetsList",
       "label": "Inject Targets List",
       "file": "inject.js",
-      "line": 3205,
+      "line": 3239,
       "files": [
         {
           "file": "inject.js",
-          "line": 3205
+          "line": 3239
         }
       ]
     },
@@ -3899,11 +3899,11 @@
       "selector": "#injectTargetsSection",
       "label": "Inject Targets Section",
       "file": "inject.js",
-      "line": 3072,
+      "line": 3106,
       "files": [
         {
           "file": "inject.js",
-          "line": 3072
+          "line": 3106
         }
       ]
     },
@@ -3927,11 +3927,11 @@
       "selector": "#injectWorkerUrlInput",
       "label": "Inject Worker Url Input",
       "file": "inject.js",
-      "line": 2965,
+      "line": 2999,
       "files": [
         {
           "file": "inject.js",
-          "line": 2965
+          "line": 2999
         },
         {
           "file": "style.css",
@@ -5683,11 +5683,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 4007,
+      "line": 4024,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4007
+          "line": 4024
         },
         {
           "file": "style.css",
@@ -5855,11 +5855,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 4149,
+      "line": 4166,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4149
+          "line": 4166
         },
         {
           "file": "style.css",
@@ -6051,11 +6051,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 3986,
+      "line": 4003,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 3986
+          "line": 4003
         },
         {
           "file": "style.css",
@@ -6067,11 +6067,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 4022,
+      "line": 4039,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4022
+          "line": 4039
         },
         {
           "file": "style.css",
@@ -6083,11 +6083,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 4015,
+      "line": 4032,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4015
+          "line": 4032
         }
       ]
     },
@@ -6095,11 +6095,11 @@
       "selector": "#todoMdViewerCard",
       "label": "Todo Md Viewer Card",
       "file": "todoMdViewer.js",
-      "line": 1066,
+      "line": 1071,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1066
+          "line": 1071
         },
         {
           "file": "style.css",
@@ -6199,11 +6199,11 @@
       "selector": "#todoMdViewerStrip",
       "label": "Todo Md Viewer Strip",
       "file": "todoMdViewer.js",
-      "line": 487,
+      "line": 492,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 487
+          "line": 492
         },
         {
           "file": "style.css",
@@ -6215,11 +6215,11 @@
       "selector": "#todoRowToast",
       "label": "Todo Row Toast",
       "file": "toDoRow.js",
-      "line": 281,
+      "line": 287,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 281
+          "line": 287
         }
       ]
     },
@@ -6251,11 +6251,11 @@
       "selector": "#usageSpendBackdrop",
       "label": "Usage Spend Backdrop",
       "file": "claudeSheet.js",
-      "line": 1919,
+      "line": 1924,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1919
+          "line": 1924
         },
         {
           "file": "style.css",
@@ -6267,11 +6267,11 @@
       "selector": "#usageSpendBody",
       "label": "Usage Spend Body",
       "file": "claudeSheet.js",
-      "line": 1985,
+      "line": 1990,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1985
+          "line": 1990
         },
         {
           "file": "style.css",
@@ -6283,11 +6283,11 @@
       "selector": "#usageSpendBudgetInput",
       "label": "Usage Spend Budget Input",
       "file": "claudeSheet.js",
-      "line": 1970,
+      "line": 1975,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1970
+          "line": 1975
         },
         {
           "file": "style.css",
@@ -6299,11 +6299,11 @@
       "selector": "#usageSpendBudgetLabel",
       "label": "Usage Spend Budget Label",
       "file": "claudeSheet.js",
-      "line": 1966,
+      "line": 1971,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1966
+          "line": 1971
         },
         {
           "file": "style.css",
@@ -6315,11 +6315,11 @@
       "selector": "#usageSpendBudgetRow",
       "label": "Usage Spend Budget Row",
       "file": "claudeSheet.js",
-      "line": 1964,
+      "line": 1969,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1964
+          "line": 1969
         },
         {
           "file": "style.css",
@@ -6331,11 +6331,11 @@
       "selector": "#usageSpendChart",
       "label": "Usage Spend Chart",
       "file": "claudeSheet.js",
-      "line": 1957,
+      "line": 1962,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1957
+          "line": 1962
         },
         {
           "file": "style.css",
@@ -6347,11 +6347,11 @@
       "selector": "#usageSpendClose",
       "label": "Usage Spend Close",
       "file": "claudeSheet.js",
-      "line": 1942,
+      "line": 1947,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1942
+          "line": 1947
         },
         {
           "file": "style.css",
@@ -6363,11 +6363,11 @@
       "selector": "#usageSpendEyebrow",
       "label": "Usage Spend Eyebrow",
       "file": "claudeSheet.js",
-      "line": 1933,
+      "line": 1938,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1933
+          "line": 1938
         },
         {
           "file": "style.css",
@@ -6379,11 +6379,11 @@
       "selector": "#usageSpendHeader",
       "label": "Usage Spend Header",
       "file": "claudeSheet.js",
-      "line": 1928,
+      "line": 1933,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1928
+          "line": 1933
         },
         {
           "file": "style.css",
@@ -6395,11 +6395,11 @@
       "selector": "#usageSpendModal",
       "label": "Usage Spend Modal",
       "file": "claudeSheet.js",
-      "line": 1922,
+      "line": 1927,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1922
+          "line": 1927
         },
         {
           "file": "style.css",
@@ -6411,11 +6411,11 @@
       "selector": "#usageSpendReadout",
       "label": "Usage Spend Readout",
       "file": "claudeSheet.js",
-      "line": 1951,
+      "line": 1956,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1951
+          "line": 1956
         },
         {
           "file": "style.css",
@@ -6427,11 +6427,11 @@
       "selector": "#usageSpendTitle",
       "label": "Usage Spend Title",
       "file": "claudeSheet.js",
-      "line": 1931,
+      "line": 1936,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1931
+          "line": 1936
         },
         {
           "file": "style.css",
@@ -6443,11 +6443,11 @@
       "selector": "#usageSpendTitleText",
       "label": "Usage Spend Title Text",
       "file": "claudeSheet.js",
-      "line": 1936,
+      "line": 1941,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 1936
+          "line": 1941
         },
         {
           "file": "style.css",
