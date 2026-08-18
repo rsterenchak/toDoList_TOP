@@ -196,7 +196,7 @@ describe('onboard sub-modal — Check action', () => {
         expect(ids.indexOf('injectOnboardCheck')).toBeLessThan(ids.indexOf('injectOnboardSubmit'));
     });
 
-    it('mounts an empty, hidden verdict block below the shape field', () => {
+    it('mounts an empty, hidden verdict block last, below the shape and refresh fields', () => {
         openOnboardModal();
         const verdict = document.getElementById('injectOnboardVerdict');
         expect(verdict).toBeTruthy();
@@ -205,7 +205,11 @@ describe('onboard sub-modal — Check action', () => {
         expect(verdict.textContent).toBe('');
         const kids = Array.from(document.getElementById('injectOnboardBody').children);
         expect(kids.indexOf(verdict)).toBe(kids.length - 1);
-        expect(kids[kids.length - 2].contains(document.getElementById('injectOnboardShapeSelect'))).toBe(true);
+        const shapeIdx = kids.findIndex((el) => el.contains(document.getElementById('injectOnboardShapeSelect')));
+        const backfillIdx = kids.findIndex((el) => el.contains(document.getElementById('injectOnboardBackfill')));
+        expect(shapeIdx).toBeGreaterThan(-1);
+        expect(shapeIdx).toBeLessThan(backfillIdx);
+        expect(backfillIdx).toBeLessThan(kids.indexOf(verdict));
     });
 
     it('validates the repo field with the same rules as Onboard and does not dispatch', async () => {
@@ -459,6 +463,184 @@ describe('onboard sub-modal — expanded verdict layout', () => {
     });
 });
 
+describe('onboard sub-modal — refresh stale routine files opt-in', () => {
+    function lastOnboardBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).onboard; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    async function submitOnboard(repo) {
+        document.getElementById('injectOnboardRepoInput').value = repo;
+        document.getElementById('injectOnboardSubmit').click();
+        await flush();
+        return lastOnboardBody();
+    }
+
+    it('renders a native checkbox with a wired label, unchecked by default', () => {
+        openOnboardModal();
+        const box = document.getElementById('injectOnboardBackfill');
+        expect(box).toBeTruthy();
+        expect(box.type).toBe('checkbox');
+        expect(box.checked).toBe(false);
+        const label = document.querySelector('label[for="injectOnboardBackfill"]');
+        expect(label).toBeTruthy();
+        expect(label.textContent).toBe('Refresh stale routine files');
+        // It hides with the rest of the form on a mobile takeover.
+        expect(box.closest('.injectFieldLabel')).toBeTruthy();
+    });
+
+    it('never persists — reopening the sub-modal brings it back unchecked', () => {
+        openOnboardModal();
+        const box = document.getElementById('injectOnboardBackfill');
+        box.checked = true;
+        box.dispatchEvent(new Event('change'));
+        document.getElementById('injectOnboardCancel').click();
+
+        openOnboardModal();
+        expect(document.getElementById('injectOnboardBackfill').checked).toBe(false);
+        expect(localStorage.getItem('todoapp_injectBackfillStale')).toBeNull();
+    });
+
+    it('sends backfill_stale: true as a literal boolean when checked', async () => {
+        openOnboardModal();
+        document.getElementById('injectOnboardBackfill').checked = true;
+        const body = await submitOnboard('rsterenchak/new-repo');
+        expect(body).toBeTruthy();
+        expect(body.backfill_stale).toBe(true);
+        expect(typeof body.backfill_stale).toBe('boolean');
+    });
+
+    it('sends backfill_stale false — never a string — when left unchecked', async () => {
+        openOnboardModal();
+        const body = await submitOnboard('rsterenchak/new-repo');
+        expect(body).toBeTruthy();
+        expect(body.backfill_stale === false || !('backfill_stale' in body)).toBe(true);
+        expect(typeof body.backfill_stale).not.toBe('string');
+    });
+
+    it('has no effect on Check — preflight never backfills', async () => {
+        openOnboardModal();
+        document.getElementById('injectOnboardBackfill').checked = true;
+        document.getElementById('injectOnboardRepoInput').value = 'rsterenchak/new-repo';
+        document.getElementById('injectOnboardCheck').click();
+        await flush();
+        expect('backfill_stale' in lastPreflightBody()).toBe(false);
+    });
+});
+
+describe('preflight verdict — per-file local-edits phrase', () => {
+    async function staleRows(stale) {
+        await runCheck('rsterenchak/new-repo');
+        await settleWith({
+            repo: 'rsterenchak/new-repo', shape: 'repo', purpose: 'personal',
+            warnings: [], create: [], stale: stale,
+        });
+        return Array.from(document.querySelectorAll('.injectOnboardVerdictStale'));
+    }
+
+    it('renders "no local edits — will refresh" for local_edits: "no"', async () => {
+        const rows = await staleRows([{ file: '.claude/derive.md', lines: 12, local_edits: 'no' }]);
+        const edits = rows[0].querySelector('.injectOnboardVerdictStaleEdits');
+        expect(edits.textContent).toBe('no local edits — will refresh');
+        expect(edits.dataset.edits).toBe('no');
+        // Trailing — it comes after the path and the inferred dirs.
+        expect(rows[0].lastElementChild).toBe(edits);
+    });
+
+    it('renders "has local edits — hand merge" for local_edits: "yes"', async () => {
+        const rows = await staleRows([{ file: '.claude/routine.md', lines: 4, local_edits: 'yes' }]);
+        const edits = rows[0].querySelector('.injectOnboardVerdictStaleEdits');
+        expect(edits.textContent).toBe('has local edits — hand merge');
+        expect(edits.dataset.edits).toBe('yes');
+    });
+
+    it('renders "local edits unknown" for "unknown" and for a missing field', async () => {
+        const rows = await staleRows([
+            { file: '.claude/a.md', lines: 3, local_edits: 'unknown' },
+            { file: '.claude/b.md', lines: null },
+        ]);
+        rows.forEach((row) => {
+            const edits = row.querySelector('.injectOnboardVerdictStaleEdits');
+            expect(edits.textContent).toBe('local edits unknown');
+            expect(edits.dataset.edits).toBe('unknown');
+        });
+    });
+});
+
+describe('onboard sub-modal — Onboard button refresh count', () => {
+    function label() {
+        return document.getElementById('injectOnboardSubmit').querySelector('span').textContent;
+    }
+
+    async function checkWith(stale) {
+        await runCheck('rsterenchak/new-repo');
+        await settleWith({
+            repo: 'rsterenchak/new-repo', shape: 'repo', purpose: 'personal',
+            warnings: [], create: [], stale: stale,
+        });
+    }
+
+    function toggleBackfill(on) {
+        const box = document.getElementById('injectOnboardBackfill');
+        box.checked = on;
+        box.dispatchEvent(new Event('change'));
+    }
+
+    it('reads "Onboard" before any Check, checked or not', () => {
+        openOnboardModal();
+        expect(label()).toBe('Onboard');
+        toggleBackfill(true);
+        expect(label()).toBe('Onboard');
+    });
+
+    it('counts only the "no" rows once the opt-in is checked', async () => {
+        await checkWith([
+            { file: '.claude/a.md', lines: 3, local_edits: 'no' },
+            { file: '.claude/b.md', lines: 9, local_edits: 'yes' },
+            { file: '.claude/c.md', lines: 1 },
+        ]);
+        expect(label()).toBe('Onboard');
+        toggleBackfill(true);
+        expect(label()).toBe('Onboard + refresh 1');
+        toggleBackfill(false);
+        expect(label()).toBe('Onboard');
+    });
+
+    it('stays "Onboard" when checked but no row is refreshable', async () => {
+        await checkWith([{ file: '.claude/b.md', lines: 9, local_edits: 'yes' }]);
+        toggleBackfill(true);
+        expect(label()).toBe('Onboard');
+    });
+
+    it('recomputes when a later Check settles, and clears while one is in flight', async () => {
+        await checkWith([
+            { file: '.claude/a.md', lines: 3, local_edits: 'no' },
+            { file: '.claude/b.md', lines: 5, local_edits: 'no' },
+        ]);
+        toggleBackfill(true);
+        expect(label()).toBe('Onboard + refresh 2');
+
+        document.getElementById('injectOnboardCheck').click();
+        await flush();
+        expect(label()).toBe('Onboard');
+
+        await settleWith({
+            repo: 'rsterenchak/new-repo', shape: 'repo', purpose: 'personal',
+            warnings: [], create: [],
+            stale: [{ file: '.claude/a.md', lines: 3, local_edits: 'no' }],
+        });
+        expect(label()).toBe('Onboard + refresh 1');
+    });
+
+    it('keeps the rocket glyph across a relabel', async () => {
+        await checkWith([{ file: '.claude/a.md', lines: 3, local_edits: 'no' }]);
+        toggleBackfill(true);
+        expect(document.querySelector('#injectOnboardSubmit svg')).toBeTruthy();
+    });
+});
+
 describe('onboard preflight — style.css hidden guards', () => {
     it('guards the verdict block, its expanded section, the back control, and the field wrappers', () => {
         expect(css).toMatch(/#injectOnboardVerdict\[hidden\]\s*\{\s*display:\s*none\s*!important/);
@@ -474,5 +656,12 @@ describe('onboard preflight — style.css hidden guards', () => {
         expect(css).toMatch(/\.injectOnboardVerdictStrip\s*\{/);
         expect(css).toMatch(/\.injectOnboardVerdictWarning\s*\{/);
         expect(css).toMatch(/\.injectOnboardVerdictChip\s*\{/);
+    });
+
+    it('colours the local-edits phrase by state and styles the refresh row', () => {
+        expect(css).toMatch(/\.injectOnboardVerdictStaleEdits\[data-edits="no"\]/);
+        expect(css).toMatch(/\.injectOnboardVerdictStaleEdits\[data-edits="yes"\]/);
+        expect(css).toMatch(/\.injectOnboardVerdictStaleEdits\[data-edits="unknown"\]/);
+        expect(css).toMatch(/\.injectOnboardBackfillWrap\s*\{/);
     });
 });

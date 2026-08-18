@@ -1470,7 +1470,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/injectTargetDriftCheck.test.js`
   <!-- id: 97b44b98-8fc2-4f16-990b-1b950b2cb0b0 -->
 
-- [ ] **[MEDIUM]** Onboard sub-modal gains a "refresh stale routine files" opt-in, and Check shows whether each stale file can be refreshed
+- [x] **[MEDIUM]** Onboard sub-modal gains a "refresh stale routine files" opt-in, and Check shows whether each stale file can be refreshed — Completed: 2026-08-18
   - Type: feature
   - Description: The onboard sub-modal in `inject.js` sends `{ onboard: true, target_repo, shape, purpose, nickname }` and nothing more, and the Check verdict's stale rows show a line count and inferred dirs but not whether an overwrite would be safe. The Worker's `handleOnboard` now forwards a strict-boolean `backfill_stale`, and the report's `stale[]` entries carry `local_edits: "no" | "yes" | "unknown"` from `onboard.sh`'s template-history walk. Surface both. Add a checkbox below the Shape field, label "Refresh stale routine files", off by default, unchecked on every open (never persisted — the never-overwrite contract stays the default and each opt-in is deliberate); when checked, `onboardRepo` sends `backfill_stale: true` (the literal boolean — the Worker ignores a string). On each stale row, render the verdict as a short trailing phrase: `no local edits — will refresh` for "no", `has local edits — hand merge` for "yes", `local edits unknown` for "unknown" or a missing field. When the checkbox is checked and the current verdict has at least one "no" row, the Onboard button's label becomes `Onboard + refresh N`; otherwise it stays `Onboard`.
   - Behavior:

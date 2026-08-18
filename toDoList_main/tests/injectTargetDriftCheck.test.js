@@ -349,9 +349,33 @@ describe('inject target rows — Check control', () => {
             ],
         });
         const staleRows = rows()[0].querySelectorAll('.injectOnboardVerdictStale');
-        expect(staleRows[0].textContent).toBe('.claude/style.md — predates the id marker');
+        expect(staleRows[0].firstElementChild.textContent).toBe('.claude/style.md — predates the id marker');
         // No reason and no count — the file simply predates the template.
-        expect(staleRows[1].textContent).toBe('.claude/routine.md — predates the current template');
+        expect(staleRows[1].firstElementChild.textContent).toBe('.claude/routine.md — predates the current template');
+    });
+
+    it('trails each stale row with the shared local-edits phrase', async () => {
+        await openSettings();
+        checkButtons()[0].click();
+        await flush();
+        await settleWith({
+            repo: 'rsterenchak/wgu-dsa-prep', shape: 'console', purpose: 'personal',
+            warnings: [], create: [],
+            stale: [
+                { file: '.claude/style.md', lines: 4, local_edits: 'no' },
+                { file: '.claude/routine.md', lines: 9, local_edits: 'yes' },
+                { file: '.claude/derive.md', lines: 2 },
+            ],
+        });
+        const edits = Array.from(rows()[0].querySelectorAll('.injectOnboardVerdictStaleEdits'));
+        expect(edits.map((el) => el.textContent)).toEqual([
+            'no local edits — will refresh',
+            'has local edits — hand merge',
+            'local edits unknown',
+        ]);
+        expect(edits.map((el) => el.dataset.edits)).toEqual(['no', 'yes', 'unknown']);
+        // The row Check reports only — it gains no refresh control of its own.
+        expect(rows()[0].querySelector('#injectOnboardBackfill')).toBeNull();
     });
 
     it('is not clean when the report carries only stale entries', async () => {
