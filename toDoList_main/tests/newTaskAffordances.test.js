@@ -22,6 +22,19 @@ describe('new-task input affordances — `+` glyph and placeholder', () => {
     const toDoRow = read('toDoRow.js');
     const css = read('style.css');
 
+    // The Enter-to-commit handler's full body, bounded by the comment banners
+    // that open it and open the keyup handler after it. Slicing to the real
+    // handler boundary — the same technique toDoRow.test.js uses — rather than
+    // a fixed character count keeps the "stripped on commit" assertions scoped
+    // to the handler while staying immune to the handler growing.
+    function enterCommitHandler() {
+        const startIdx = toDoRow.indexOf('toDoInput keydown — Enter to commit title');
+        expect(startIdx).toBeGreaterThan(-1);
+        const endIdx = toDoRow.indexOf('// toDoInput keyup', startIdx);
+        expect(endIdx).toBeGreaterThan(-1);
+        return toDoRow.slice(startIdx, endIdx);
+    }
+
     it('updates the placeholder to invite a task and surface the Enter shortcut', () => {
         expect(toDoRow).toMatch(/toDoInput\.placeholder\s*=\s*['"]Add a task — press Enter['"]/);
         // The legacy "New Item" copy must be retired so it can't shadow the new one.
@@ -55,9 +68,7 @@ describe('new-task input affordances — `+` glyph and placeholder', () => {
         // After the user presses Enter, the row becomes a real todo and the
         // glyph would mislead — it gets removed alongside the existing
         // close-button / due-pill reveal logic.
-        const enterIdx = toDoRow.indexOf('toDoInput keydown — Enter to commit title');
-        expect(enterIdx).toBeGreaterThan(-1);
-        const handler = toDoRow.slice(enterIdx, enterIdx + 3000);
+        const handler = enterCommitHandler();
         expect(handler).toMatch(/addGlyph\b[\s\S]*?\.remove\(\)/);
         expect(handler).not.toMatch(/keyHintBadge/);
     });
@@ -67,9 +78,7 @@ describe('new-task input affordances — `+` glyph and placeholder', () => {
         // `!item.tit`), but committing reuses the same row DOM in place, so
         // without an explicit removal it lingers on the now-committed todo.
         // It must be stripped alongside the `+` glyph in the Enter handler.
-        const enterIdx = toDoRow.indexOf('toDoInput keydown — Enter to commit title');
-        expect(enterIdx).toBeGreaterThan(-1);
-        const handler = toDoRow.slice(enterIdx, enterIdx + 3500);
+        const handler = enterCommitHandler();
         expect(handler).toMatch(/micBtn\b[\s\S]*?\.remove\(\)/);
     });
 

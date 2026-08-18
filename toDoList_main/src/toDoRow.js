@@ -18,7 +18,7 @@
 // `ensureCompanion()` from companion.js (no deps bag involved).
 
 import { listLogic, sortItemsByDueForRender, sortItemsByStatusForRender } from './listLogic.js';
-import { getTaskSort } from './prefs.js';
+import { getTaskSort, getPhaseFilter } from './prefs.js';
 import { setupRowDrag, isCoarsePointer, prefersReducedMotion } from './dragDrop.js';
 import {
     applyDueUrgency,
@@ -4476,6 +4476,19 @@ export function buildToDoRow(item, toDoName) {
         if (!parseItemDue(item)) {
             const fallback = defaultDueParts();
             item.due = fallback.m + "-" + fallback.d + "-" + fallback.y;
+        }
+
+        // A task typed while the IN PROGRESS filter is active must land as
+        // `in_progress`, not the toDo() factory's `active` default — otherwise
+        // it fails taskFilter's inprogress matcher and vanishes from the list
+        // the instant the user commits it. Gated to the first-commit branch so
+        // re-editing an already-committed row's title never silently rewrites
+        // the status the user chose. Set before saveToStorage AND before
+        // commitBlankPlaceholder so the localStorage write and the Supabase
+        // INSERT payload both carry it, and before the status badge is built
+        // further down this handler.
+        if (isFirstCommit && getPhaseFilter() === 'inprogress') {
+            item.status = 'in_progress';
         }
 
         listLogic.saveToStorage();

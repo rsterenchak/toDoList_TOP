@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-18',
+        changed: [
+            'A task added while the IN PROGRESS filter is selected now starts as in progress, so it stays on screen instead of vanishing the moment you press Enter.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-17',
         fixed: [
             'Live view of a repo that identifies its layout by class name rather than id now drills past the first landmark into the inner sections its published map already lists.',
@@ -16,7 +23,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-16',
         fixed: [
-            'Assignment coverage now reads a drafted task as drafted and a broken run as failed instead of untouched — the failed run can be retried from the coverage list, and the drafted task dispatched from the review sheet.',
             'Removing a task that already shipped is now refused with an explanation, so a finished aspect can no longer be dropped from the coverage record and proposed all over again.',
         ],
     },
