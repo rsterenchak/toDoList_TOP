@@ -577,6 +577,40 @@ function assignmentDocPath(target) {
     return dir + assignmentDocName(target);
 }
 
+// Write the routed repo's TODO.md back through the Worker's `write` branch —
+// the same `{ write: true, repo, filePath, content, sha }` shape
+// writeAssignmentToWorker uses, differing only in the path (the target's own
+// `file_path` rather than its sibling context document), which is why that
+// function can't be reused. The `rewrite` branch can only DELETE entries
+// (delete_entry / clear_completed / clear_all), so an edit that rewrites an
+// entry in place — reopening a `[x]` entry after a merged revert — goes through
+// read-modify-write instead, passing readTodoMdFromWorker's `sha` as the
+// optimistic-concurrency token so a change landed since the read is rejected by
+// the Worker rather than silently overwritten. Returns `{ ok: true, sha }` with
+// the new blob sha, `{ ok: false, conflict: true, reason }` on the Worker's HTTP
+// 409, and `{ ok: false, reason }` via describeError otherwise.
+export async function writeTodoMdToWorker(target, content, sha) {
+    if (!target || !target.repo || !target.file_path) {
+        return { ok: false, reason: 'No target' };
+    }
+    try {
+        const res = await postToWorker({
+            write: true,
+            repo: target.repo,
+            filePath: target.file_path,
+            content: content,
+            sha: sha,
+        });
+        return { ok: true, sha: res && res.sha };
+    } catch (e) {
+        if (e && e.status === 409) {
+            return { ok: false, conflict: true, reason: describeError(e) };
+        }
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Read the context-document sibling of the routed repo's TODO.md through the
 // Worker. Mirrors readTodoMdFromWorker's wiring exactly (same `{ read: true,
 // repo, filePath }` shape, same `{ ok, content, sha }` return), differing only

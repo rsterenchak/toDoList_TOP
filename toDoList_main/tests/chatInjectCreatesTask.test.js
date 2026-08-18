@@ -148,7 +148,10 @@ describe('chat Inject & run wires into the shared funnel (no divergent copy)', (
     const claudeSheet = readFileSync(resolve(srcDir, 'claudeSheet.js'), 'utf8');
 
     it('imports materializeEntryTodo from dispatchDraft.js rather than reimplementing it', () => {
-        expect(claudeSheet).toMatch(/import \{ materializeEntryTodo \} from '\.\/dispatchDraft\.js'/);
+        // The import grew a second and third name (the shared revert step and its
+        // copy helpers), so match the shared module + the name rather than the
+        // exact single-name form it used to have.
+        expect(claudeSheet).toMatch(/import \{[^}]*materializeEntryTodo[^}]*\} from '\.\/dispatchDraft\.js'/s);
         // No second creation loop copied into the chat file — neither the plain
         // add path nor the single-insert entry path.
         expect(claudeSheet).not.toMatch(/listLogic\.addToDo\(/);

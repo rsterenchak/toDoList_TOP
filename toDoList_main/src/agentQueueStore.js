@@ -162,6 +162,42 @@ export function getQueueRowForTodo(todoId) {
     return best;
 }
 
+// Synchronous lookup of the agent_queue row that shipped a given TODO.md entry
+// (agent_queue.entry_id === entryId). The revert path resolves its row this way
+// because a Revert control has only the entry's marker id in hand — the Runs tab
+// and the TODO.md viewer never see a todo id. Searches BOTH caches (the
+// all-projects cache first, then the selected project's), because a revert can
+// be fired from the Runs tab for a run that shipped out of a project other than
+// the one currently loaded. Ties break on recency exactly as getQueueRowForTodo
+// does — a retried entry can leave more than one row carrying the same id, and
+// the current one is the one to move. Returns null when nothing matches, so a
+// hand-injected entry (which never had a queue row) reads as "no row" rather
+// than raising.
+export function getQueueRowForEntry(entryId) {
+    if (!entryId) return null;
+    const seen = new Set();
+    const pools = [getAllQueueRows(), getQueueRows()];
+    let best = null;
+    let bestTs = -Infinity;
+    for (let p = 0; p < pools.length; p++) {
+        const rows = pools[p];
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row || row.entry_id !== entryId) continue;
+            if (row.id != null) {
+                if (seen.has(row.id)) continue;
+                seen.add(row.id);
+            }
+            const ts = queueRowRecency(row);
+            if (best === null || ts > bestTs) {
+                best = row;
+                bestTs = ts;
+            }
+        }
+    }
+    return best;
+}
+
 export function isTriageInFlight() { return _triageInFlight; }
 export function setTriageInFlight(v) { _triageInFlight = !!v; }
 

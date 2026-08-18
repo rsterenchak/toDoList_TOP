@@ -58,7 +58,13 @@ import {
     onQueueChange,
 } from './agentQueueStore.js';
 import { applyTaskFilter, setBlockedItemResolver, setItemPhaseResolver } from './taskFilter.js';
-import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
+import {
+    dispatchDraft,
+    resolveDispatchTarget,
+    unshipEntry,
+    revertConfirmMessage,
+    revertToastMessage,
+} from './dispatchDraft.js';
 import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { dismissDesktopTodoViewer } from './todoMdViewer.js';
 import { promptRunInjectedEntry } from './todoMdViewer.js';
@@ -1305,9 +1311,17 @@ function performReviewRevert(item, btn, errorEl) {
         if (res && res.ok && res.merged === true) {
             // Rollback merged — a new build is deploying. Leave the control
             // disabled so it can't be triggered a second time (a second merged
-            // revert re-applies the original change).
-            showRowToast('Reverted — new build shipping');
-            return;
+            // revert re-applies the original change). The bookkeeping moves ONLY
+            // here, through the one shared post-merge step every Revert surface
+            // calls: the entry, the todo, and the queue row all stop claiming a
+            // ship that has been rolled back.
+            return Promise.resolve(unshipEntry(item.entryId, {
+                target: resolveDispatchTarget(),
+                mergedPrNumber: null,
+            })).then(function (unship) {
+                showRowToast(revertToastMessage(unship));
+                document.dispatchEvent(new CustomEvent(TODO_RUN_STATUS_EVENT));
+            });
         }
         if (res && res.ok && res.merged === false) {
             // The revert PR opened but didn't auto-merge — open it so the user can
@@ -1388,9 +1402,12 @@ export function buildReviewActions(item, projectName, options) {
             errorEl.hidden = false;
             return;
         }
-        const named = item.tit ? ' “' + item.tit + '”' : '';
         showConfirmModal({
-            message: 'Revert this change' + named + '? This ships a rollback — a new build will deploy.',
+            // The confirm states what the rollback does to the BOOKKEEPING, not
+            // just to the code — returning the work to proposals and reopening
+            // an entry are materially different outcomes, and this is where the
+            // user picks. Shared with the other two Revert surfaces.
+            message: revertConfirmMessage(item.entryId),
             confirmLabel: 'Revert',
             onConfirm: function () { performReviewRevert(item, revert, errorEl); },
         });

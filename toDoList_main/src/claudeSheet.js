@@ -78,7 +78,12 @@ import { setChatPaneCollapsed, getUsageBudget, setUsageBudget } from './prefs.js
 import { wireModalDismiss } from './modalDismiss.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
-import { materializeEntryTodo } from './dispatchDraft.js';
+import {
+    materializeEntryTodo,
+    unshipEntry,
+    revertConfirmMessage,
+    revertToastMessage,
+} from './dispatchDraft.js';
 import DOMPurify from 'dompurify';
 
 const MOBILE_MAX_WIDTH = 1023;
@@ -4699,7 +4704,10 @@ function buildRevertControl(rec) {
 // build will deploy; Cancel does nothing.
 function confirmAndRevertRun(rec, btn) {
     showConfirmModal({
-        message: 'Revert “' + (rec.title || 'this run') + '”? This ships a rollback — a new build will deploy.',
+        // What the rollback does to the BOOKKEEPING, by source — the same copy
+        // the TODO.md viewer's and the task row's Revert controls show, from the
+        // one shared resolver, so a single action is never described two ways.
+        message: revertConfirmMessage(rec.entryId),
         confirmLabel: 'Revert',
         onConfirm: function() { performRevertRun(rec, btn); },
     });
@@ -4734,9 +4742,15 @@ async function performRevertRun(rec, btn) {
     const target = rec.repo ? { repo: rec.repo, file_path: 'TODO.md' } : null;
     const res = await revertEntry(rec.entryId, target);
     if (res && res.ok && res.merged === true) {
-        // Rollback merged — a new build is deploying. Mark the record reverted so
-        // the control can no longer be triggered (double-revert guard).
-        showInjectToast('Reverted — new build shipping');
+        // Rollback merged — a new build is deploying. Roll the bookkeeping back
+        // through the ONE shared post-merge step every Revert surface calls, so
+        // the entry, its todo, and its queue row stop claiming a ship that no
+        // longer exists; then mark the record reverted (double-revert guard).
+        const unship = await unshipEntry(rec.entryId, {
+            target: target,
+            mergedPrNumber: rec.pr_number,
+        });
+        showInjectToast(revertToastMessage(unship));
         rec.reverted = true;
         persistRunRevertGuard(rec);
         renderRunsList();
