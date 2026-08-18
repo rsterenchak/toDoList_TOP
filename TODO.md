@@ -1422,3 +1422,17 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/toDoRow.js`
   - Completed: 2026-08-18
   <!-- id: a139c589-5f29-4a7f-825e-c2510b0cf9f8 -->
+
+- [ ] **[MEDIUM]** Gate the mobile welcome carousel on the sample project having just been seeded
+  - Type: bug
+  - Description: On mobile, `maybeStartFirstRunCarousel()` gates only on `isOnboardingComplete()`, `isMobileCarouselViewport()`, and the absence of a `#coachmarkOverlay` — unlike the desktop coachmark tour, which `restoreFromStorage()` starts only when its local `sampleJustSeeded` is true. `seedSampleProject()` bails when `allProjects` is non-empty, so on a device with a populated local cache and an unset `todoapp_onboardingComplete` flag — which is exactly what the new boot gate leaves behind when its cloud probe times out or errors and returns `null` — the carousel still plays over the user's real projects, and its second card claims "We've dropped you into a sample 'Getting started' project," which is false in that state. Bring mobile to parity with desktop: the carousel runs only when the sample was actually seeded on this load.
+  - Implementation notes:
+    - Have `restoreFromStorage()` return its local `sampleJustSeeded` boolean. It currently returns undefined and the two `{ fromSync: true }` callers in `main.js` (lines ~2861 and ~2933) ignore the return, so this is purely additive.
+    - In `bootApp` (`index.js`), capture it — `const sampleJustSeeded = restoreFromStorage();` — and pass it: `maybeStartFirstRunCarousel(sampleJustSeeded)`.
+    - `maybeStartFirstRunCarousel(sampleJustSeeded)` bails when the argument isn't strictly `true`, with the existing flag / viewport / overlay checks kept ahead of it so the cheap bails still short-circuit first.
+    - `main.js` is over 25k tokens — grep for `sampleJustSeeded` with offset/limit rather than reading the file.
+    - Add a regression test in `tests/welcomeCarousel.test.js` covering populated cache + unset flag + coarse pointer (carousel must not start), alongside the existing "skips when the completion flag is set" test.
+  - Out of scope: the carousel's copy, card order, and styling; the desktop coachmark path; the boot-time cloud probe and its timeout.
+  - File: `toDoList_main/src/welcomeCarousel.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/welcomeCarousel.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 8bcb054e-044b-405d-a3aa-87b1e70f980b -->
