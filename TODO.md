@@ -1399,3 +1399,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/structureCanvas.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/structureCanvas.test.js`
   - Completed: 2026-08-17
   <!-- id: 8eac9abc-3a46-4ee3-9d7f-2df40e235685 -->
+
+- [ ] **[LOW]** Replace cartoony auth modal ghost mascot with the shared 8-bit pixel ghost sprite
+  - Type: bug
+  - Description: The auth modal's `.authModalMascot` (used on both the sign-in screen and the code-entry screen in auth.js) currently renders `ghost_purple.svg`, a smooth cartoony ghost with a blush/smile, which forks from the app's established pixel-art ghost identity. Update the `.authModalMascot` rule in style.css to set `background-image: var(--ghost-sprite)` instead of `url('./ghost_purple.svg')`, and add `image-rendering: pixelated` per the `--ghost-sprite` usage contract documented alongside the token. The existing box (144x168) keeps the same 0.857 aspect ratio as the pixel sprite so no resizing is needed; leave `ghost_purple.svg`, `ghost_gray.svg`, and `ghost_green.svg` in place even though they become unused by this change.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/auth.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: b8b25318-e4c3-4bc5-89ef-5d6c542a4f4d -->
