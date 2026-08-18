@@ -1452,7 +1452,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-18
   <!-- id: 078c4e15-bb40-4426-b69e-3df7c40ad53e -->
 
-- [ ] **[MEDIUM]** Row Check renders the report's stale routine files beside its missing ones
+- [x] **[MEDIUM]** Row Check renders the report's stale routine files beside its missing ones — Completed: 2026-08-18
   - Type: feature
   - Description: `renderPreflightVerdictReport` in `inject.js` reads `report.warnings` and `report.create` and nothing else, so a report carrying the new `stale[]` — `[{file, lines, src, test, reason?}]`, now emitted by the template's `onboard.sh` preflight for the four checked `.claude/` routine files — renders as "Up to date — nothing missing." even when three routine files are revisions behind. Read `stale[]` alongside the other two and render it as its own section between the warning rows and the missing chips: one row per entry reading `` `.claude/derive.md` — 87 lines behind `` (or `— predates the current template` when `lines` is null), with the inferred `src`/`test` in a dimmer trailing span so a wrong inference is visible. `preflightVerdictGlyph` and the collapsible strip's clean test become `warnings.length === 0 && stale.length === 0`, and the strip gains a third count chip, `N stale`, beside `N warn` and `N missing`. The row-Check host's `cleanText` becomes `'Up to date — nothing missing, nothing behind.'` and the shared default `'Nothing missing, nothing behind, and no warnings.'`.
   - Behavior:
