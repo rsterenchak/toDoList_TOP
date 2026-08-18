@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-08-18',
         added: [
             'The repo check now lists the routine files that have fallen behind the current template, and how far behind each one is, beside the files that are missing outright.',
+            'The repo check now says whether each out-of-date routine file can be safely refreshed or needs a hand merge, and onboarding offers an opt-in to refresh the ones with no local edits.',
         ],
         changed: [
             'A task added while the IN PROGRESS filter is selected now starts as in progress, so it stays on screen instead of vanishing the moment you press Enter.',
@@ -15,13 +16,6 @@ export const changelog = [
         fixed: [
             'The mobile welcome carousel now runs only when the sample project was actually created for you, so it no longer plays over your real projects on a fresh browser or after a slow sign-in.',
             'A load that breaks partway through now hands off to the automatic recovery screen instead of leaving you staring at an empty app.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-17',
-        fixed: [
-            'Signing in on a new device or after clearing your browser cache no longer adds a stray "Getting started" project or replays the welcome tour when your account already has projects saved.',
         ],
     },
 ];

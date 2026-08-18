@@ -1969,13 +1969,17 @@ function normalizeOnboardRepo(repo) {
 // error vocabulary. `shape` defaults to 'auto' (Worker auto-detects the repo
 // shape) when omitted. `purpose` is a declared choice (not auto-detectable) —
 // normalized to 'personal' | 'assignment', defaulting to 'personal'.
-export async function onboardRepo(targetRepo, shape, purpose) {
+// `backfillStale` is the sub-modal's refresh opt-in, coerced to a strict
+// boolean — the Worker ignores a string, so a truthy '' or 'false' slipping
+// through would silently mean "don't refresh" while the UI said otherwise.
+export async function onboardRepo(targetRepo, shape, purpose, backfillStale) {
     try {
         const res = await postToWorker({
             onboard: true,
             target_repo: targetRepo,
             shape: shape || 'auto',
             purpose: purpose === 'assignment' ? 'assignment' : 'personal',
+            backfill_stale: !!backfillStale,
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {
@@ -2185,6 +2189,24 @@ function preflightStaleDirs(entry) {
     return parts.join(' · ');
 }
 
+// How onboard.sh's template-history walk judged the file's local state, as the
+// phrase that trails the row. `local_edits` is 'no' | 'yes' | 'unknown'; an
+// older onboard.sh omits the key entirely, which reads the same as 'unknown' —
+// a refresh is never advertised as safe on a report that didn't measure it.
+function preflightStaleEdits(entry) {
+    const raw = entry && entry.local_edits;
+    if (raw === 'no') return { state: 'no', text: 'no local edits — will refresh' };
+    if (raw === 'yes') return { state: 'yes', text: 'has local edits — hand merge' };
+    return { state: 'unknown', text: 'local edits unknown' };
+}
+
+// How many of a report's stale files a `backfill_stale` run could provably
+// overwrite — the ones the preflight measured as carrying no local edits.
+function preflightRefreshableCount(report) {
+    const stale = report && Array.isArray(report.stale) ? report.stale : [];
+    return stale.filter(function(s) { return s && s.local_edits === 'no'; }).length;
+}
+
 // The terminal render: the report's warnings, the routine files that have
 // fallen behind the template, and its missing-scaffold paths, behind a summary
 // strip when `collapsible` is left on. Options:
@@ -2300,6 +2322,15 @@ function renderPreflightVerdictReport(host, report, options) {
             dirsEl.textContent = dirs;
             row.appendChild(dirsEl);
         }
+        // Trailing verdict on whether an overwrite would be safe. Both hosts
+        // render it — the onboard sub-modal, where the refresh opt-in acts on
+        // it, and the target row's Check, which reports without acting.
+        const edits = preflightStaleEdits(entry);
+        const editsEl = document.createElement('span');
+        editsEl.className = 'injectOnboardVerdictStaleEdits';
+        editsEl.dataset.edits = edits.state;
+        editsEl.textContent = edits.text;
+        row.appendChild(editsEl);
         expanded.appendChild(row);
     });
     if (create.length) {
@@ -2455,6 +2486,25 @@ function showOnboardModal(options) {
     shapeWrap.appendChild(shapeSelect);
     body.appendChild(shapeWrap);
 
+    // Refresh opt-in for the stale routine files the verdict lists. Off on
+    // every open and never persisted: the Worker's never-overwrite default is
+    // the safe one, so each backfill is a deliberate choice made against the
+    // report currently on screen rather than a setting left switched on.
+    const backfillWrap = document.createElement('div');
+    backfillWrap.className = 'injectFieldLabel injectOnboardBackfillWrap';
+    const backfillInput = document.createElement('input');
+    backfillInput.type = 'checkbox';
+    backfillInput.id = 'injectOnboardBackfill';
+    backfillInput.className = 'injectOnboardBackfillCheckbox';
+    backfillInput.checked = false;
+    const backfillLabel = document.createElement('label');
+    backfillLabel.className = 'injectOnboardBackfillText';
+    backfillLabel.setAttribute('for', 'injectOnboardBackfill');
+    backfillLabel.textContent = 'Refresh stale routine files';
+    backfillWrap.appendChild(backfillInput);
+    backfillWrap.appendChild(backfillLabel);
+    body.appendChild(backfillWrap);
+
     // Preflight verdict block — empty and hidden until Check runs. Sits below
     // the shape field so the report reads underneath the inputs that produced
     // it. Collapsed it's one strip; expanding reveals the warnings and the
@@ -2464,9 +2514,9 @@ function showOnboardModal(options) {
     verdict.hidden = true;
     body.appendChild(verdict);
 
-    // The three field wrappers, hidden together when an expanded verdict takes
+    // The four field wrappers, hidden together when an expanded verdict takes
     // the sub-modal over on a phone (see setMobileTakeover).
-    const fieldWraps = [repoWrap, purposeWrap, shapeWrap];
+    const fieldWraps = [repoWrap, purposeWrap, shapeWrap, backfillWrap];
 
     const actions = document.createElement('div');
     actions.id = 'injectOnboardActions';
@@ -2491,6 +2541,8 @@ function showOnboardModal(options) {
     onboardBtn.type = 'button';
     onboardBtn.className = 'injectSettingsBtn injectSettingsBtn--primary';
     onboardBtn.innerHTML = onboardRocketSvg() + '<span>Onboard</span>';
+    // Only this span's text changes on relabel — the rocket stays put.
+    const onboardBtnText = onboardBtn.querySelector('span');
 
     actions.appendChild(cancelBtn);
     actions.appendChild(checkBtn);
@@ -2616,22 +2668,45 @@ function showOnboardModal(options) {
         };
     }
 
+    // The report currently on screen, or null whenever there isn't one — never
+    // checked, a Check mid-flight, or a Check that errored. The Onboard button
+    // only ever counts refreshable files from a report the user can see.
+    let lastVerdictReport = null;
+
+    // `Onboard + refresh N` only when the opt-in is on AND the visible verdict
+    // has at least one provably-safe stale file; otherwise plain `Onboard`.
+    function syncOnboardLabel() {
+        const refreshable = backfillInput.checked
+            ? preflightRefreshableCount(lastVerdictReport)
+            : 0;
+        onboardBtnText.textContent = refreshable
+            ? 'Onboard + refresh ' + refreshable
+            : 'Onboard';
+    }
+    backfillInput.addEventListener('change', syncOnboardLabel);
+
     function renderVerdictRunning() {
         const spinner = document.createElement('span');
         spinner.className = 'injectOnboardSpinner';
         spinner.setAttribute('aria-hidden', 'true');
         renderPreflightVerdictStatic(
             verdict, spinner, 'Checking ' + lastCheckedRepo + '…', verdictOptions());
+        lastVerdictReport = null;
+        syncOnboardLabel();
     }
 
     function renderVerdictError(reason, onRetry) {
         const opts = verdictOptions();
         opts.onRetry = onRetry;
         renderPreflightVerdictError(verdict, reason, opts);
+        lastVerdictReport = null;
+        syncOnboardLabel();
     }
 
     function renderVerdictReport(report) {
         renderPreflightVerdictReport(verdict, report, verdictOptions());
+        lastVerdictReport = report;
+        syncOnboardLabel();
     }
 
     // Render whatever a terminal row carries. Shared by every path that can
@@ -2760,7 +2835,8 @@ function showOnboardModal(options) {
         const repo = readValidRepo();
         if (!repo) return;
         onboardBtn.disabled = true;
-        const res = await onboardRepo(repo, shapeSelect.value, selectedPurpose);
+        const res = await onboardRepo(
+            repo, shapeSelect.value, selectedPurpose, backfillInput.checked);
         if (res && res.ok && res.dispatched) {
             close();
             showInjectToast("Onboarding started — it'll appear here when ready (~30s).");

@@ -22747,6 +22747,27 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 #injectOnboardVerdict[hidden] { display: none !important; }
 #injectOnboardBody .injectFieldLabel[hidden] { display: none !important; }
 
+/* Refresh opt-in. A native checkbox beside its label, so it lays out as a row
+   rather than the stacked label/control every other field uses. */
+.injectOnboardBackfillWrap {
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.injectOnboardBackfillCheckbox {
+  flex-shrink: 0;
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.injectOnboardBackfillText {
+  min-width: 0;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+
 /* Collapsed strip. A button when there's a report to expand, a plain div for
    the running and failed states — both share the layout. */
 .injectOnboardVerdictStrip {
@@ -22875,6 +22896,19 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   overflow-wrap: anywhere;
 }
 .injectOnboardVerdictStaleDirs[hidden] { display: none !important; }
+/* Trailing per-file verdict on whether a refresh would clobber local work.
+   Coloured by state so the safe rows read at a glance: the secondary purple
+   for a clean overwrite, the shared amber (#ffbd5e) for a hand merge, muted
+   when the preflight couldn't tell. */
+.injectOnboardVerdictStaleEdits {
+  display: inline-block;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.injectOnboardVerdictStaleEdits[data-edits="no"] { color: #9D93EE; }
+.injectOnboardVerdictStaleEdits[data-edits="yes"] { color: #ffbd5e; }
+.injectOnboardVerdictStaleEdits[data-edits="unknown"] { color: var(--text-muted); }
+.injectOnboardVerdictStaleEdits[hidden] { display: none !important; }
 .injectOnboardVerdictChips {
   display: flex;
   flex-wrap: wrap;
