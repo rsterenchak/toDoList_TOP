@@ -1415,3 +1415,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: the `listLogicHydrated` re-render merge logic itself, and the "replay welcome tour" settings entry.
   - Completed: 2026-08-17
   <!-- id: d89e1310-6940-4ab1-bae1-0f26a8236865 -->
+
+- [ ] **[MEDIUM]** Default new tasks to in_progress status when the IN PROGRESS filter is active
+  - Type: feature
+  - Description: When the user has the IN PROGRESS filter pill selected (`getPhaseFilter()` in `prefs.js` returns `'inprogress'`, persisted under the `todoapp_phaseFilter` key) and commits a new task through the blank placeholder row, the new item should default to workflow status `in_progress` instead of the `toDo()` factory's `'active'` default. Currently the Enter-key commit handler in `buildToDoRow` (`toDoList_main/src/toDoRow.js`, the `toDoInput` keydown listener around the `isFirstCommit` branch) never reads the active filter, so a task added while filtered to IN PROGRESS still lands `active` and immediately disappears from the filtered view (since `taskFilter.js`'s `inprogress` matcher requires `status === 'in_progress'` or a derived `draft`/`running` phase). Fix by importing `getPhaseFilter` from `./prefs.js` into `toDoRow.js` (it already imports `getTaskSort` from the same module) and, inside the `isFirstCommit` branch, setting `item.status = 'in_progress'` when `getPhaseFilter() === 'inprogress'`, before `listLogic.commitBlankPlaceholder` is called and the status badge is built later in the same handler.
+  - File: `toDoList_main/src/toDoRow.js`
+  <!-- id: a139c589-5f29-4a7f-825e-c2510b0cf9f8 -->
