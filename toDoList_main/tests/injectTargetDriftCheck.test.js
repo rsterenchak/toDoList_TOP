@@ -303,6 +303,87 @@ describe('inject target rows — Check control', () => {
         expect(host.querySelectorAll('.injectOnboardVerdictChip').length).toBe(1);
     });
 
+    it('renders one stale row per entry, between the warnings and the missing chips', async () => {
+        await openSettings();
+        checkButtons()[0].click();
+        await flush();
+        await settleWith({
+            repo: 'rsterenchak/wgu-dsa-prep', shape: 'console', purpose: 'personal',
+            warnings: ['No test script defined'],
+            create: ['TODO.md'],
+            stale: [
+                { file: '.claude/derive.md', lines: 87, src: 'src', test: 'tests' },
+                { file: '.claude/routine.md', lines: 12, src: 'src', test: 'tests' },
+            ],
+        });
+        const host = rows()[0].querySelector('.injectTargetVerdict');
+        const staleRows = Array.from(host.querySelectorAll('.injectOnboardVerdictStale'));
+        expect(staleRows.length).toBe(2);
+        expect(staleRows[0].textContent).toContain('.claude/derive.md — 87 lines behind');
+        expect(staleRows[1].textContent).toContain('.claude/routine.md — 12 lines behind');
+        // The inferred directories ride along in their own dimmer span.
+        const dirs = staleRows[0].querySelector('.injectOnboardVerdictStaleDirs');
+        expect(dirs.textContent).toBe('src src · test tests');
+        // Rows, not chips — the missing-file chips still list only TODO.md.
+        expect(Array.from(host.querySelectorAll('.injectOnboardVerdictChip')).map((c) => c.textContent))
+            .toEqual(['TODO.md']);
+        // Ordered warnings → stale → missing chips inside the expanded section.
+        const expanded = host.querySelector('.injectOnboardVerdictExpanded');
+        const kids = Array.from(expanded.children);
+        expect(kids.indexOf(expanded.querySelector('.injectOnboardVerdictWarning')))
+            .toBeLessThan(kids.indexOf(staleRows[0]));
+        expect(kids.indexOf(staleRows[1]))
+            .toBeLessThan(kids.indexOf(expanded.querySelector('.injectOnboardVerdictChips')));
+    });
+
+    it('shows a stale entry\'s reason in place of the line count', async () => {
+        await openSettings();
+        checkButtons()[0].click();
+        await flush();
+        await settleWith({
+            repo: 'rsterenchak/wgu-dsa-prep', shape: 'console', purpose: 'personal',
+            warnings: [], create: [],
+            stale: [
+                { file: '.claude/style.md', lines: null, reason: 'predates the id marker' },
+                { file: '.claude/routine.md', lines: null },
+            ],
+        });
+        const staleRows = rows()[0].querySelectorAll('.injectOnboardVerdictStale');
+        expect(staleRows[0].textContent).toBe('.claude/style.md — predates the id marker');
+        // No reason and no count — the file simply predates the template.
+        expect(staleRows[1].textContent).toBe('.claude/routine.md — predates the current template');
+    });
+
+    it('is not clean when the report carries only stale entries', async () => {
+        await openSettings();
+        checkButtons()[0].click();
+        await flush();
+        await settleWith({
+            repo: 'rsterenchak/wgu-dsa-prep', shape: 'console', purpose: 'personal',
+            warnings: [], create: [],
+            stale: [{ file: '.claude/derive.md', lines: 87 }],
+        });
+        const host = rows()[0].querySelector('.injectTargetVerdict');
+        expect(host.querySelector('.injectOnboardVerdictClean')).toBeNull();
+        expect(host.querySelectorAll('.injectOnboardVerdictStale').length).toBe(1);
+    });
+
+    // An older onboard.sh sends no `stale` key at all.
+    it('renders a report without a stale key exactly as before', async () => {
+        await openSettings();
+        checkButtons()[1].click();
+        await flush();
+        await settleWith({
+            repo: 'rsterenchak/test-repo-only', shape: 'repo', purpose: 'personal',
+            warnings: [], create: [],
+        });
+        const host = rows()[1].querySelector('.injectTargetVerdict');
+        expect(host.querySelectorAll('.injectOnboardVerdictStale').length).toBe(0);
+        const clean = host.querySelectorAll('.injectOnboardVerdictClean');
+        expect(clean.length).toBe(1);
+        expect(clean[0].textContent).toBe('Up to date — nothing missing, nothing behind.');
+    });
+
     it('persists the verdict until dismissed', async () => {
         await openSettings();
         checkButtons()[0].click();
@@ -415,5 +496,14 @@ describe('inject target drift check — style.css', () => {
         expect(css).toMatch(/\.injectTargetVerdict\s*\{/);
         expect(css).toMatch(/\.injectTargetVerdictDismiss\s*\{/);
         expect(css).toMatch(/\.injectOnboardVerdictNote\s*\{/);
+    });
+
+    it('styles the stale rows, their directory span, and the stale count', () => {
+        expect(css).toMatch(/\.injectOnboardVerdictStale\s*\{/);
+        expect(css).toMatch(/\.injectOnboardVerdictStaleDirs\s*\{/);
+        expect(css).toMatch(/\.injectOnboardVerdictCount--stale\s*\{/);
+        expect(css).toMatch(/\.injectOnboardVerdictStale\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+        expect(css).toMatch(/\.injectOnboardVerdictStaleDirs\[hidden\]\s*\{\s*display:\s*none\s*!important/);
+        expect(css).toMatch(/\.injectOnboardVerdictCount--stale\[hidden\]\s*\{\s*display:\s*none\s*!important/);
     });
 });

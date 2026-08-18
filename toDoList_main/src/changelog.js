@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-18',
+        added: [
+            'The repo check now lists the routine files that have fallen behind the current template, and how far behind each one is, beside the files that are missing outright.',
+        ],
         changed: [
             'A task added while the IN PROGRESS filter is selected now starts as in progress, so it stays on screen instead of vanishing the moment you press Enter.',
         ],
@@ -18,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-17',
         fixed: [
-            'The sign-in and code-entry screens now show the app\'s own pixel-art ghost instead of a separate cartoon mascot.',
             'Signing in on a new device or after clearing your browser cache no longer adds a stray "Getting started" project or replays the welcome tour when your account already has projects saved.',
         ],
     },
