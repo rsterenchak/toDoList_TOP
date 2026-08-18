@@ -1436,3 +1436,18 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/welcomeCarousel.js`, `toDoList_main/src/index.js`, `toDoList_main/src/main.js`, `toDoList_main/tests/welcomeCarousel.test.js`
   - Completed: 2026-08-18
   <!-- id: 8bcb054e-044b-405d-a3aa-87b1e70f980b -->
+
+- [ ] **[MEDIUM]** Report boot-render failures to the watchdog instead of swallowing them in a console warning
+  - Type: bug
+  - Description: `bootApp()` calls `markAppBooted()` before awaiting `maybeSkipFirstRunForCloudUser()`, then runs `restoreFromStorage()` and `maybeStartFirstRunCarousel()` inside a `.then()` whose only failure handler is `console.warn('[bootApp] boot sequence failed:', e)`. If the render step throws, the watchdog in `template.html` has already been stood down, `bootSyncPipeline()` never runs (no migrate, no hydrate, no realtime), and the user is left with a signed-in but empty shell and no recovery path. Before PR #1066 the same throw propagated to the `getSession().then(...).catch(...)` handler, which called `showAuthModal()` — a wrong remedy, but at least a visible one. Route render failures back into the watchdog's existing escalate ladder rather than losing them to the console.
+  - Implementation notes:
+    - Expose a `window.__reportBootFailure()` hook from the watchdog IIFE in `template.html` that cancels the pending timer and invokes the existing `escalate()` path directly, so the `todoapp_bootRecoveryAttempt` counter still caps at two silent reloads before the manual "Reload" prompt.
+    - Gotcha: `escalate()` opens with `if (hasBooted()) { removeOverlay(); return; }`, and `hasBooted()` is true whenever `#outerContainer` exists — which `component()` creates at module scope. Clearing `window.__appBooted` is not enough; the hook needs to bypass that guard (e.g. an internal `escalate(force)` parameter) or it will no-op.
+    - In `index.js`, wrap `restoreFromStorage()` + `maybeStartFirstRunCarousel()` in their own try/catch and call the hook on a throw, guarded by `typeof window.__reportBootFailure === 'function'` so a stale cached `template.html` can't turn a render failure into a second throw.
+    - Leave `bootSyncPipeline()`'s `.catch()` quiet — a failed migrate/hydrate/subscribe is a degraded-but-usable app, not a failed render, and must not trigger a reload.
+    - Keep `markAppBooted()` where PR #1066 put it; the fix is an explicit failure report, not delaying the boot signal behind the 4s probe.
+    - Extend `tests/bootWatchdog.test.js` with the hook's presence and force-past-`hasBooted()` behaviour, plus a case asserting a background sync failure does *not* report a boot failure.
+  - Out of scope: any new overlay, copy, or visual treatment — this reuses the shipped spinner and prompt verbatim; changing the 10s watchdog timeout or the 4s probe timeout; the spurious `showAuthModal()` on a `getSession()` network rejection.
+  - File: `toDoList_main/src/index.js`, `toDoList_main/src/template.html`, `toDoList_main/tests/bootWatchdog.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 078c4e15-bb40-4426-b69e-3df7c40ad53e -->
