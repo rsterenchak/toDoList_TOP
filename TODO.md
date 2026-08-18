@@ -1437,7 +1437,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-18
   <!-- id: 8bcb054e-044b-405d-a3aa-87b1e70f980b -->
 
-- [ ] **[MEDIUM]** Report boot-render failures to the watchdog instead of swallowing them in a console warning
+- [x] **[MEDIUM]** Report boot-render failures to the watchdog instead of swallowing them in a console warning
   - Type: bug
   - Description: `bootApp()` calls `markAppBooted()` before awaiting `maybeSkipFirstRunForCloudUser()`, then runs `restoreFromStorage()` and `maybeStartFirstRunCarousel()` inside a `.then()` whose only failure handler is `console.warn('[bootApp] boot sequence failed:', e)`. If the render step throws, the watchdog in `template.html` has already been stood down, `bootSyncPipeline()` never runs (no migrate, no hydrate, no realtime), and the user is left with a signed-in but empty shell and no recovery path. Before PR #1066 the same throw propagated to the `getSession().then(...).catch(...)` handler, which called `showAuthModal()` — a wrong remedy, but at least a visible one. Route render failures back into the watchdog's existing escalate ladder rather than losing them to the console.
   - Implementation notes:
@@ -1449,5 +1449,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Extend `tests/bootWatchdog.test.js` with the hook's presence and force-past-`hasBooted()` behaviour, plus a case asserting a background sync failure does *not* report a boot failure.
   - Out of scope: any new overlay, copy, or visual treatment — this reuses the shipped spinner and prompt verbatim; changing the 10s watchdog timeout or the 4s probe timeout; the spurious `showAuthModal()` on a `getSession()` network rejection.
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/template.html`, `toDoList_main/tests/bootWatchdog.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-18
   <!-- id: 078c4e15-bb40-4426-b69e-3df7c40ad53e -->
