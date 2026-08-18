@@ -382,6 +382,26 @@ describe('Auth modal — CSS', () => {
         expect(block).toMatch(/font-size:\s*16px/);
     });
 
+    // The auth gate is the first ghost a new user meets, so it wears the
+    // same committed pixel sprite as the desktop companion and the
+    // possession chip rather than a cartoony fork of the mascot. Reading
+    // the body through --ghost-sprite is what keeps those three surfaces
+    // from drifting apart; the property's usage contract (declared beside
+    // it on :root) requires image-rendering: pixelated and the sprite's
+    // native 48x56 aspect on any box that paints it.
+    it('paints the mascot with the shared --ghost-sprite pixel ghost', () => {
+        const idx = css.indexOf('.authModalMascot {');
+        expect(idx).toBeGreaterThan(-1);
+        const block = css.slice(idx, css.indexOf('}', idx));
+        expect(block).toMatch(/background-image:\s*var\(\s*--ghost-sprite\s*\)/);
+        expect(block).toMatch(/image-rendering:\s*pixelated/);
+        expect(block).not.toMatch(/ghost_purple\.svg/);
+
+        const width = Number(block.match(/width:\s*(\d+)px/)[1]);
+        const height = Number(block.match(/height:\s*(\d+)px/)[1]);
+        expect(width / height).toBeCloseTo(48 / 56, 3);
+    });
+
     it('paints the primary Continue button in accent purple #6C5DF5', () => {
         const idx = css.indexOf('.authModalSubmit {');
         expect(idx).toBeGreaterThan(-1);
