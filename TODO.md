@@ -1451,3 +1451,21 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/index.js`, `toDoList_main/src/template.html`, `toDoList_main/tests/bootWatchdog.test.js`
   - Completed: 2026-08-18
   <!-- id: 078c4e15-bb40-4426-b69e-3df7c40ad53e -->
+
+- [ ] **[MEDIUM]** Row Check renders the report's stale routine files beside its missing ones
+  - Type: feature
+  - Description: `renderPreflightVerdictReport` in `inject.js` reads `report.warnings` and `report.create` and nothing else, so a report carrying the new `stale[]` — `[{file, lines, src, test, reason?}]`, now emitted by the template's `onboard.sh` preflight for the four checked `.claude/` routine files — renders as "Up to date — nothing missing." even when three routine files are revisions behind. Read `stale[]` alongside the other two and render it as its own section between the warning rows and the missing chips: one row per entry reading `` `.claude/derive.md` — 87 lines behind `` (or `— predates the current template` when `lines` is null), with the inferred `src`/`test` in a dimmer trailing span so a wrong inference is visible. `preflightVerdictGlyph` and the collapsible strip's clean test become `warnings.length === 0 && stale.length === 0`, and the strip gains a third count chip, `N stale`, beside `N warn` and `N missing`. The row-Check host's `cleanText` becomes `'Up to date — nothing missing, nothing behind.'` and the shared default `'Nothing missing, nothing behind, and no warnings.'`.
+  - Behavior:
+    - Both hosts render the section from the one shared function; neither gets a second copy.
+    - `stale[]` absent from the report (an older `onboard.sh`) is treated as empty — no change to today's rendering.
+    - A stale entry with a `reason` shows the reason in place of the line count.
+    - The section is a list of rows, not chips: each carries three pieces of information, and the missing-file chips are single paths.
+  - Implementation notes:
+    - `renderPreflightVerdictReport` at ~line 2175; the `warnings`/`create` reads at ~lines 2178–2179 are the pattern — add `const stale = Array.isArray(report.stale) ? report.stale.filter(function (s) { return s && s.file; }) : [];`.
+    - New CSS: `.injectOnboardVerdictStale` (row, mirrors `.injectOnboardVerdictWarning`), `.injectOnboardVerdictStaleDirs` (the dim `src`/`test` span), and `.injectOnboardVerdictCount--stale`. Colour: `#ffbd5e` is taken by `--warn` (~line 22827) and `var(--accent)` by `--missing`; use `#9D93EE`, the secondary purple already in the palette. Every new toggled element gets an explicit `[hidden] { display: none !important }` guard (the `style.css:1916` pattern).
+    - The row-Check `cleanText` is at ~line 3275; the shared default at ~line 2265.
+    - Extend `tests/injectTargetDriftCheck.test.js` — its harness already feeds `run_outputs` rows through the captured `subscribeRunOutputs` callback — with: a report carrying `stale[]` renders one row per entry with the line count; a `reason` entry shows the reason; a report with only `stale[]` (no `create`, no `warnings`) is *not* clean; a report without a `stale` key still renders exactly as today.
+    - `inject.js` is large — grep with offset/limit rather than reading whole.
+  - Out of scope: any Backfill control or dispatch (a later entry, once the report half has been watched against the live fleet); a per-file diff view; changing what the row Check dispatches; the onboard sub-modal's mobile takeover behaviour.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/injectTargetDriftCheck.test.js`
+  <!-- id: 97b44b98-8fc2-4f16-990b-1b950b2cb0b0 -->
