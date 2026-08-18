@@ -234,8 +234,12 @@
           return function () { if (!done) { done = true; location.reload(); } };
         }
 
-        function escalate() {
-          if (hasBooted()) { removeOverlay(); return; }
+        // `force` is set only by the __reportBootFailure hook below: the app
+        // itself has told us the render failed, so the hasBooted() heuristic
+        // (true as soon as #outerContainer exists, which component() creates at
+        // module scope) would wrongly wave the failure through.
+        function escalate(force) {
+          if (!force && hasBooted()) { removeOverlay(); return; }
           var n = readAttempt();
           if (n <= 0) {
             // Attempt 0 — silent: nudge the SW to update, then reload.
@@ -270,6 +274,19 @@
         window.__clearBootWatchdog = function () {
           try { clearTimeout(timer); } catch (_) { /* noop */ }
           removeOverlay();
+        };
+
+        // The app calls this when its render step throws (see src/index.js):
+        // the shell is dead even though #outerContainer exists, so escalate
+        // straight away instead of waiting out the timer that would then
+        // no-op on hasBooted(). Latched so a double report can't burn two
+        // rungs of the recovery ladder in one page load.
+        var reported = false;
+        window.__reportBootFailure = function () {
+          if (reported) return;
+          reported = true;
+          try { clearTimeout(timer); } catch (_) { /* noop */ }
+          escalate(true);
         };
 
         // If we're already mid-recovery on this load, paint the spinner
