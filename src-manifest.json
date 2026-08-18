@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-18T07:37:25.389Z",
-  "sha": "332396f089168cfad8d2036dfbf66b1108f1dad6",
+  "generatedAt": "2026-08-18T07:57:05.717Z",
+  "sha": "69cb03fd18f66a1b25403af6a42b2f5ee0d41b3a",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -5915,11 +5915,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3804,
+      "line": 3811,
       "files": [
         {
           "file": "main.js",
-          "line": 3804
+          "line": 3811
         },
         {
           "file": "style.css",
