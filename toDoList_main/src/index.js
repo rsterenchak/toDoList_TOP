@@ -73,14 +73,18 @@ function bootApp(userId) {
     // together; it self-bounds on a timeout so the render can't hang on it.
     // Its verdict is threaded into the migration below so both share one probe.
     maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {
-        restoreFromStorage();          // now that DOM is live, restore saved projects
+        // now that DOM is live, restore saved projects; the return value says
+        // whether this load actually seeded the "Getting started" sample.
+        const sampleJustSeeded = restoreFromStorage();
         // First-run welcome carousel for mobile new users. The flag check and
         // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
         // so callers don't need to know the gating rules; runs after restoreFromStorage
         // so the seeded sample project is already on screen when the closer card lands.
-        // Desktop falls through to the existing coachmark tour started inside
-        // restoreFromStorage.
-        maybeStartFirstRunCarousel();
+        // The seeded verdict is passed through so a returning user with a populated
+        // local cache but an unset onboarding flag never gets the carousel — same
+        // gate the desktop coachmark tour uses inside restoreFromStorage, which is
+        // where desktop falls through to instead.
+        maybeStartFirstRunCarousel(sampleJustSeeded);
 
         return bootSyncPipeline(userId, cloudHasData);
     }).catch(function(e) {

@@ -3281,6 +3281,12 @@ function updateAllProjectQuestionCounts() {
 // work and skips its Supabase mirror writes. The user-triggered re-render
 // paths reached later (project click, rename commit) keep their existing
 // behaviour because they don't read opts.
+//
+// Returns whether THIS call seeded the sample project, which is the same
+// signal the desktop coachmark gates on below. index.js threads it into
+// maybeStartFirstRunCarousel so mobile can't play the first-run carousel
+// over a returning user's real projects. The { fromSync: true } callers
+// ignore the return value.
 function restoreFromStorage(opts) {
 
     // First-run seeding: both the desktop spotlight tour and the mobile
@@ -3301,7 +3307,7 @@ function restoreFromStorage(opts) {
         // (mobile, already-seeded, or onboarding done); the function
         // itself gates on the persisted onboarding flag.
         maybeStartFirstRunTour();
-        return;
+        return sampleJustSeeded;
     }
 
     savedProjects.forEach(function(projectName) {
@@ -3632,6 +3638,7 @@ function restoreFromStorage(opts) {
         maybeStartFirstRunTour();
     }
 
+    return sampleJustSeeded;
 }
 
 // Resolves the first focusable element of whichever main-pane view is

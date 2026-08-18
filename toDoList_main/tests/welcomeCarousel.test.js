@@ -27,6 +27,7 @@ import {
     setOnboardingComplete,
     ONBOARDING_COMPLETE_KEY,
 } from '../src/prefs.js';
+import { listLogic } from '../src/listLogic.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -224,9 +225,11 @@ describe('welcome carousel — module', () => {
         expect(document.querySelectorAll('#' + CAROUSEL_BACKDROP_ID).length).toBe(1);
     });
 
+    // Each of these passes sampleJustSeeded: true so the gate under test is
+    // the one named in the title, not the seeded check added alongside it.
     it('maybeStartFirstRunCarousel skips when the completion flag is set', () => {
         setOnboardingComplete(true);
-        const started = maybeStartFirstRunCarousel();
+        const started = maybeStartFirstRunCarousel(true);
         expect(started).toBe(false);
         expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
     });
@@ -234,7 +237,7 @@ describe('welcome carousel — module', () => {
     it('maybeStartFirstRunCarousel skips on desktop-width viewports', () => {
         setDesktopViewport();
         stubMatchMedia(true);
-        const started = maybeStartFirstRunCarousel();
+        const started = maybeStartFirstRunCarousel(true);
         expect(started).toBe(false);
         expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
     });
@@ -242,7 +245,7 @@ describe('welcome carousel — module', () => {
     it('maybeStartFirstRunCarousel skips when the pointer is fine (desktop mouse)', () => {
         setMobileViewport();
         stubMatchMedia(false);
-        const started = maybeStartFirstRunCarousel();
+        const started = maybeStartFirstRunCarousel(true);
         expect(started).toBe(false);
         expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
     });
@@ -250,7 +253,7 @@ describe('welcome carousel — module', () => {
     it('maybeStartFirstRunCarousel runs on coarse-pointer mobile viewports with no saved flag', () => {
         setMobileViewport();
         stubMatchMedia(true);
-        const started = maybeStartFirstRunCarousel();
+        const started = maybeStartFirstRunCarousel(true);
         expect(started).toBe(true);
         expect(document.getElementById(CAROUSEL_BACKDROP_ID)).not.toBeNull();
     });
@@ -261,8 +264,44 @@ describe('welcome carousel — module', () => {
         const sentinel = document.createElement('div');
         sentinel.id = 'coachmarkOverlay';
         document.body.appendChild(sentinel);
-        const started = maybeStartFirstRunCarousel();
+        const started = maybeStartFirstRunCarousel(true);
         expect(started).toBe(false);
+        expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
+    });
+
+    // Regression: a device with a populated local cache and an unset
+    // onboarding flag — exactly what the boot gate leaves behind when its
+    // cloud probe times out and returns null — used to play the carousel
+    // over the user's real projects, with the closer card claiming a sample
+    // project had been seeded. seedSampleProject() bails on a non-empty
+    // cache, so restoreFromStorage reports sampleJustSeeded: false and the
+    // carousel must stay down even though every other gate says "go".
+    it('maybeStartFirstRunCarousel skips when the sample was not seeded this load', () => {
+        setMobileViewport();
+        stubMatchMedia(true);
+        // Populated cache: the user's own project is already loaded, so the
+        // seed bails and hands restoreFromStorage a false verdict.
+        listLogic._reset();
+        listLogic.addProject('Real work');
+        const sampleJustSeeded = listLogic.seedSampleProject();
+        expect(sampleJustSeeded).toBe(false);
+        // Unset onboarding flag — the state the boot gate leaves behind when
+        // its cloud probe can't answer.
+        expect(isOnboardingComplete()).toBe(false);
+
+        const started = maybeStartFirstRunCarousel(sampleJustSeeded);
+        expect(started).toBe(false);
+        expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
+    });
+
+    // Only a strict `true` opens the gate — an omitted argument from a
+    // caller that hasn't been updated must not read as "seeded".
+    it('maybeStartFirstRunCarousel skips when the seeded verdict is missing or truthy-but-not-true', () => {
+        setMobileViewport();
+        stubMatchMedia(true);
+        expect(maybeStartFirstRunCarousel()).toBe(false);
+        expect(maybeStartFirstRunCarousel(1)).toBe(false);
+        expect(maybeStartFirstRunCarousel('yes')).toBe(false);
         expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
     });
 
@@ -301,7 +340,27 @@ describe('welcome carousel — wired into the app', () => {
 
     it('index.js imports and triggers the welcome carousel on mount', () => {
         expect(index).toMatch(/from\s+['"]\.\/welcomeCarousel\.js['"]/);
-        expect(index).toMatch(/maybeStartFirstRunCarousel\s*\(\s*\)/);
+        expect(index).toMatch(/maybeStartFirstRunCarousel\s*\(\s*sampleJustSeeded\s*\)/);
+    });
+
+    // The seeded verdict has to survive the whole chain or the mobile gate
+    // silently reverts to "any load with an unset flag" — the bug this
+    // replaced. Pin both halves: restoreFromStorage returning it, and
+    // bootApp capturing it before the carousel call.
+    it('restoreFromStorage returns its sampleJustSeeded verdict on both exits', () => {
+        const fnIdx = main.indexOf('function restoreFromStorage');
+        expect(fnIdx).toBeGreaterThan(-1);
+        // The next top-level function declaration ends the body.
+        const after = main.slice(fnIdx + 1);
+        const endIdx = after.indexOf('\nexport function ');
+        const body = endIdx === -1 ? after : after.slice(0, endIdx);
+        // Both the empty-project early exit and the tail return the verdict.
+        const returns = body.match(/return\s+sampleJustSeeded\s*;/g) || [];
+        expect(returns.length).toBeGreaterThanOrEqual(2);
+    });
+
+    it('bootApp captures the seeded verdict from restoreFromStorage', () => {
+        expect(index).toMatch(/sampleJustSeeded\s*=\s*restoreFromStorage\s*\(\s*\)/);
     });
 
     it('settingsModal.js exposes the carousel module for the Replay entry', () => {

@@ -90,10 +90,22 @@ export function isMobileCarouselViewport() {
 // mobile detection so the carousel only runs on its intended path.
 // Yields to the desktop coachmark when both would race in the narrow
 // coarse-pointer tablet window — whoever mounted first wins.
-export function maybeStartFirstRunCarousel() {
+//
+// `sampleJustSeeded` is restoreFromStorage's verdict on whether THIS load
+// actually seeded the "Getting started" project, and it must be strictly
+// true for the carousel to run — parity with the desktop coachmark, which
+// has always gated on the same signal. The onboarding flag alone isn't
+// enough: a device with a populated local cache and an unset flag (what
+// the boot gate leaves behind when its cloud probe times out) would
+// otherwise play the carousel over the user's real projects, where the
+// closer card's "we've dropped you into a sample project" copy is a lie.
+// Checked last so the cheaper flag / viewport / overlay bails still
+// short-circuit first.
+export function maybeStartFirstRunCarousel(sampleJustSeeded) {
     if (isOnboardingComplete()) return false;
     if (!isMobileCarouselViewport()) return false;
     if (document.getElementById('coachmarkOverlay')) return false;
+    if (sampleJustSeeded !== true) return false;
     startWelcomeCarousel();
     return true;
 }
