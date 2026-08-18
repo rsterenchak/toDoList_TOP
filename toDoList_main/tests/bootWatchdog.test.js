@@ -69,6 +69,38 @@ describe('boot-signal contract — src/index.js', () => {
         expect(index).toMatch(/showAuthModal\(\s*\)\s*;[\s\S]{0,120}?markAppBooted\(\s*\)/);
     });
 
+    it('reports a failed render to the watchdog instead of only console.warn-ing', () => {
+        // The render step (restoreFromStorage + maybeStartFirstRunCarousel) is
+        // wrapped in its own try/catch whose handler routes the throw back into
+        // the watchdog's escalate ladder. Without this the watchdog has already
+        // stood down (markAppBooted runs first) and the user is stranded on an
+        // empty shell with only a console warning.
+        const body = liftFunctionBody(index, 'function bootApp(');
+        expect(body).not.toBeNull();
+        const render = body.slice(body.indexOf('try {'));
+        expect(render).toMatch(
+            /restoreFromStorage\(\)[\s\S]*maybeStartFirstRunCarousel\([\s\S]*?\}\s*catch\s*\([\s\S]{0,200}?reportBootFailure\(\s*\)/
+        );
+    });
+
+    it('guards the report on the hook existing so a stale template cannot throw', () => {
+        const body = liftFunctionBody(index, 'function reportBootFailure(');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(
+            /typeof\s+window\.__reportBootFailure\s*===\s*['"]function['"]/
+        );
+        expect(body).toMatch(/window\.__reportBootFailure\(\s*\)/);
+    });
+
+    it('leaves a background sync failure quiet — it is not a boot failure', () => {
+        // migrate/hydrate/subscribe failing is a degraded-but-usable app, so
+        // bootSyncPipeline's catch must never escalate into a reload loop.
+        const body = liftFunctionBody(index, 'function bootSyncPipeline(');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/console\.warn\(/);
+        expect(body).not.toMatch(/reportBootFailure/);
+    });
+
     it('markAppBooted also nudges the inline watchdog to clear its overlay', () => {
         const body = liftFunctionBody(index, 'function markAppBooted(');
         expect(body).not.toBeNull();
@@ -128,6 +160,35 @@ describe('inline boot watchdog — src/template.html', () => {
 
     it('exposes a window.__clearBootWatchdog hook for the app to call on boot', () => {
         expect(html).toMatch(/window\.__clearBootWatchdog\s*=/);
+    });
+
+    it('exposes a window.__reportBootFailure hook for a failed render', () => {
+        expect(html).toMatch(/window\.__reportBootFailure\s*=/);
+    });
+
+    it('the failure hook cancels the pending timer and escalates immediately', () => {
+        const hook = html.slice(html.indexOf('window.__reportBootFailure'));
+        expect(hook).toMatch(/clearTimeout\(\s*timer\s*\)/);
+        expect(hook).toMatch(/escalate\(\s*true\s*\)/);
+    });
+
+    it('a forced escalation bypasses the hasBooted() short-circuit', () => {
+        // hasBooted() is true the moment #outerContainer exists, and component()
+        // creates it at module scope — so an unforced escalate() would no-op on
+        // exactly the failure the app is reporting.
+        expect(html).toMatch(/function escalate\(\s*force\s*\)/);
+        expect(html).toMatch(/if\s*\(\s*!force\s*&&\s*hasBooted\(\s*\)\s*\)/);
+    });
+
+    it('the failure hook still walks the capped recovery ladder', () => {
+        // Forcing past hasBooted() must not bypass writeAttempt/readAttempt —
+        // two silent reloads, then the manual prompt.
+        const body = liftFunctionBody(html, 'function escalate(');
+        expect(body).not.toBeNull();
+        expect(body).toMatch(/readAttempt\(\s*\)/);
+        expect(body).toMatch(/writeAttempt\(\s*1\s*\)/);
+        expect(body).toMatch(/writeAttempt\(\s*2\s*\)/);
+        expect(body).toMatch(/showPrompt\(\s*\)/);
     });
 
     it('renders the Stage 2 recovery prompt with a Reload affordance', () => {

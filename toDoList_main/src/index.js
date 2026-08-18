@@ -51,6 +51,19 @@ function markAppBooted() {
     } catch (_) { /* noop */ }
 }
 
+// Failed-render escape hatch. The inline watchdog in template.html stands down
+// the moment markAppBooted() runs, which happens before the render step below —
+// so a throw in restoreFromStorage()/maybeStartFirstRunCarousel() would leave a
+// signed-in but empty shell with no recovery path. This hands the failure back
+// to the watchdog's existing escalate ladder (silent reload, deeper cache bust,
+// then the manual "Reload" prompt). Guarded on the hook's presence so a stale
+// cached template.html can't turn a render failure into a second throw.
+function reportBootFailure() {
+    try {
+        if (typeof window.__reportBootFailure === 'function') window.__reportBootFailure();
+    } catch (_) { /* noop */ }
+}
+
 let booted = false;
 function bootApp(userId) {
     if (booted) return;
@@ -73,18 +86,27 @@ function bootApp(userId) {
     // together; it self-bounds on a timeout so the render can't hang on it.
     // Its verdict is threaded into the migration below so both share one probe.
     maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {
-        // now that DOM is live, restore saved projects; the return value says
-        // whether this load actually seeded the "Getting started" sample.
-        const sampleJustSeeded = restoreFromStorage();
-        // First-run welcome carousel for mobile new users. The flag check and
-        // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
-        // so callers don't need to know the gating rules; runs after restoreFromStorage
-        // so the seeded sample project is already on screen when the closer card lands.
-        // The seeded verdict is passed through so a returning user with a populated
-        // local cache but an unset onboarding flag never gets the carousel — same
-        // gate the desktop coachmark tour uses inside restoreFromStorage, which is
-        // where desktop falls through to instead.
-        maybeStartFirstRunCarousel(sampleJustSeeded);
+        // The render step gets its own try/catch: a throw here means the user is
+        // looking at an empty shell, which is a boot failure the watchdog has to
+        // hear about — not a line in the console. Rethrown so the sync pipeline
+        // below never runs against a shell that failed to render.
+        try {
+            // now that DOM is live, restore saved projects; the return value says
+            // whether this load actually seeded the "Getting started" sample.
+            const sampleJustSeeded = restoreFromStorage();
+            // First-run welcome carousel for mobile new users. The flag check and
+            // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
+            // so callers don't need to know the gating rules; runs after restoreFromStorage
+            // so the seeded sample project is already on screen when the closer card lands.
+            // The seeded verdict is passed through so a returning user with a populated
+            // local cache but an unset onboarding flag never gets the carousel — same
+            // gate the desktop coachmark tour uses inside restoreFromStorage, which is
+            // where desktop falls through to instead.
+            maybeStartFirstRunCarousel(sampleJustSeeded);
+        } catch (e) {
+            reportBootFailure();
+            throw e;
+        }
 
         return bootSyncPipeline(userId, cloudHasData);
     }).catch(function(e) {
