@@ -11,6 +11,15 @@ import { listLogic } from './listLogic.js';
 import { activeProjectNameForViewer } from './runState.js';
 
 
+// The ` — Completed: 2026-08-18 (PR #12)` note the routine appends to a task
+// line when it checks the entry off. Declared once because BOTH readers of it —
+// taskLineTitle (which drops it to get a display title) and reopenTaskLine
+// (which drops it to un-ship the entry) — must agree on exactly what the suffix
+// is; two copies that drifted would leave a reopened entry still claiming a
+// completion date.
+const COMPLETED_SUFFIX_RE = /\s*[—-]\s*Completed:.*$/i;
+
+
 // Reduce a TODO.md task line to its display title: strip the `- [ ]` / `- [x]`
 // checkbox, a leading `**[PRIORITY]**` marker, and a trailing `— Completed: …`
 // note. Returns '' for a line that isn't a task line, so callers can use it as a
@@ -24,8 +33,60 @@ export function taskLineTitle(line) {
     return text
         .replace(/^\s*- \[[ xX]\]\s*/, '')
         .replace(/^\*\*\[[^\]]*\]\*\*\s*/, '')
-        .replace(/\s*[—-]\s*Completed:.*$/i, '')
+        .replace(COMPLETED_SUFFIX_RE, '')
         .trim();
+}
+
+
+// Invert the routine's completion edit on a single TODO.md task line: flip
+// `- [x]` back to `- [ ]` and strip the trailing `— Completed: …` note, keeping
+// the leading indentation and the `**[PRIORITY]**` marker exactly as they were.
+// This is the line-level half of a hard rollback — a merged revert undoes the
+// code, and the entry has to go back to being open work. Returns null for a line
+// that is not a CHECKED task line (an already-open entry, or not a task line at
+// all), so a caller can tell "nothing to reopen" from "reopened".
+export function reopenTaskLine(line) {
+    const text = String(line == null ? '' : line);
+    const m = text.match(/^(\s*)- \[[xX]\]\s?(.*)$/);
+    if (!m) return null;
+    return (m[1] + '- [ ] ' + m[2].replace(COMPLETED_SUFFIX_RE, '')).replace(/\s+$/, '');
+}
+
+
+// Reopen the ONE top-level entry in `markdown` whose block ends with the
+// `<!-- id: <entryId> -->` marker: its headline is rewritten by reopenTaskLine
+// and every other line — the Type/Description/File sub-bullets and the marker
+// line itself — is preserved byte-for-byte, so the entry stays traceable to the
+// PR that shipped (and then reverted) it and stays runnable again.
+//
+// The marker sits at the END of an entry's block, several lines below the
+// headline, so the scan tracks the most recent TOP-LEVEL task line (indent 0,
+// matching the viewer's `tok.indent === 0` notion of an entry) and rewrites that
+// one when the marker turns up. Returns `{ changed, content }`; `changed` is
+// false — with `content` returned untouched — when the id is empty, its marker
+// is absent, it has no headline above it, or that headline is already unchecked,
+// so a caller can skip a pointless write.
+export function reopenEntryInMarkdown(markdown, entryId) {
+    const text = String(markdown == null ? '' : markdown);
+    const id = String(entryId == null ? '' : entryId).trim();
+    const unchanged = { changed: false, content: text };
+    if (!id) return unchanged;
+
+    const markerRe = new RegExp(
+        '<!--\\s*id:\\s*' + id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\s*-->'
+    );
+    const lines = text.split('\n');
+    let headline = -1;
+    for (let i = 0; i < lines.length; i++) {
+        if (/^- \[[ xX]\]/.test(lines[i])) headline = i;
+        if (!markerRe.test(lines[i])) continue;
+        if (headline === -1) return unchanged;
+        const reopened = reopenTaskLine(lines[headline]);
+        if (reopened === null) return unchanged;
+        lines[headline] = reopened;
+        return { changed: true, content: lines.join('\n') };
+    }
+    return unchanged;
 }
 
 

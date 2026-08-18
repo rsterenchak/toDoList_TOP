@@ -1337,14 +1337,17 @@ describe('todo.md viewer — per-entry Revert control on completed rows', () => 
         expect(block).toMatch(/onRevertEntry\(\s*tok\.entryId/);
     });
 
-    it('revertCompletedEntry confirms (naming the entry) then reverts by id, with no active-run guard', () => {
+    it('revertCompletedEntry confirms through the shared copy then reverts by id, with no active-run guard', () => {
         const start = main.indexOf('function revertCompletedEntry');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 800);
+        const block = main.slice(start, start + 900);
         // Not gated by readActiveRun — a revert is a PR op, not a dispatch.
         expect(block).not.toMatch(/readActiveRun/);
         expect(block).toMatch(/showConfirmModal/);
-        expect(block).toMatch(/ships a rollback/);
+        // The confirm now states what the rollback does to the BOOKKEEPING, and
+        // that differs by source, so the copy comes from the one shared resolver
+        // all three Revert surfaces use rather than being written here.
+        expect(block).toMatch(/message: revertConfirmMessage\(entryId\)/);
         expect(block).toMatch(/performRevert\(\s*entryId\s*,\s*btn\s*\)/);
     });
 
@@ -1358,12 +1361,16 @@ describe('todo.md viewer — per-entry Revert control on completed rows', () => 
     it('performRevert handles the three Worker outcomes (merged / pending PR / error)', () => {
         const start = main.indexOf('async function performRevert');
         expect(start).toBeGreaterThan(-1);
-        const block = main.slice(start, start + 1600);
+        // Widened: the merged:true branch grew the shared post-merge step.
+        const block = main.slice(start, start + 2300);
         expect(block).toMatch(/revertEntry\(\s*entryId\s*,\s*target\s*\)/);
-        // merged:true → success toast + record reverted this session (double-revert guard).
+        // merged:true → roll the bookkeeping back through the ONE shared
+        // post-merge step, toast its outcome, and record the entry reverted this
+        // session (double-revert guard).
         expect(block).toMatch(/res\.merged\s*===\s*true/);
+        expect(block).toMatch(/unshipEntry\(entryId, \{ target: target \}\)/);
+        expect(block).toMatch(/showInjectToast\(revertToastMessage\(unship\)\)/);
         expect(block).toMatch(/revertedThisSession\.add\(\s*entryId\s*\)/);
-        expect(block).toMatch(/Reverted — new build shipping/);
         // merged:false → persist the PR url so the control links to it next render.
         expect(block).toMatch(/res\.merged\s*===\s*false/);
         expect(block).toMatch(/pendingRevertPrUrls\.set\(\s*entryId\s*,\s*res\.revert_pr_url\s*\)/);

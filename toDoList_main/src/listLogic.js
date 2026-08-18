@@ -96,6 +96,13 @@ function toTodoRowPayload(item, projectId) {
     };
 }
 
+// Todo columns a mutation may explicitly NULL out via a payload's
+// `clear_columns` list (see persistMutation's todos update branch). Only the
+// nullable lifecycle stamps are listed: a clear exists to undo a stamp, never to
+// blank a column the row's identity or routing depends on.
+const CLEARABLE_TODO_COLUMNS = ['shipped_at', 'entry_reviewed_at', 'draft_seen_at'];
+
+
 // Allowed values for a todo's workflow `status`, mirroring the CHECK
 // constraint on the Supabase `todos.status` column. 'active' is the
 // default for new todos and the fallback for any legacy/corrupt value.
@@ -1351,7 +1358,8 @@ export const listLogic = (function () {
     // Supabase directly, matching the "all data-model mutations live in
     // listLogic" convention (mirrors flagTaskForAgent / answerAgentTask).
     // `patch` may carry any of { state, draft, run_id, pr_url, pr_number,
-    // failure_reason, entry_id, correlation_id }; only those keys are written,
+    // failure_reason, entry_id, correlation_id, todo_id, thread }; only those
+    // keys are written,
     // and only when present, so a mid-pipeline tick can update just `state`
     // without clobbering the ids stored at kickoff. `draft` lets the
     // needs_mockup launcher stash the pasted-back entry as it flips the row to
@@ -1361,7 +1369,7 @@ export const listLogic = (function () {
     async function setAgentRunState(rowId, patch) {
         if (!rowId) return { ok: false, error: 'Missing row id.' };
         const src = (patch && typeof patch === 'object') ? patch : {};
-        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id', 'todo_id'];
+        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id', 'todo_id', 'thread'];
         const update = {};
         allowed.forEach(function (key) {
             if (src[key] !== undefined) update[key] = src[key];
@@ -2074,6 +2082,76 @@ export const listLogic = (function () {
             });
         }
         return { ok: true };
+    }
+
+
+    // The inverse of stampEntryShipped: clear a todo's `shipped_at` because the
+    // change it shipped has been rolled back by a merged revert PR. Without this
+    // a reverted todo keeps claiming a ship it no longer has — the derived phase
+    // stays REVIEW/DONE and the row never returns to open work. Same single-field
+    // shape as the stamp (scan every project for the id, write, save locally,
+    // mirror to Supabase so the clear reaches other devices), and idempotent in
+    // the same spirit: a todo with no `shippedAt` is reported as such and not
+    // rewritten. `entryReviewedAt` is cleared alongside it, because an
+    // acknowledgement of a ship that no longer exists would otherwise suppress
+    // the REVIEW badge if the entry is re-shipped later. Returns { ok:true }
+    // (with `alreadyClear: true` on the no-op) or { ok:false, error }.
+    // @category: user-mutation-only
+    function clearEntryShipped(todoId) {
+        if (!todoId) return { ok: false, error: 'Missing id.' };
+        let found = null;
+        let foundProject = null;
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) { return it && it.id === todoId; });
+            if (hit) { found = hit; foundProject = names[i]; break; }
+        }
+        if (!found) return { ok: false, error: 'Todo not found.' };
+        if (!found.shippedAt && !found.entryReviewedAt) return { ok: true, alreadyClear: true };
+
+        found.shippedAt = null;
+        found.entryReviewedAt = null;
+        saveToStorage();
+
+        if (found.id && found.tit && found.tit !== '') {
+            // Built by toTodoRowPayload like every other todo write (never
+            // assembled from the in-memory shape), then annotated with the
+            // columns this write CLEARS — see persistMutation's todos update
+            // branch for why a null needs an explicit channel.
+            const payload = toTodoRowPayload(
+                found,
+                allProjects[foundProject].id || null
+            );
+            payload.clear_columns = ['shipped_at', 'entry_reviewed_at'];
+            persistMutation({ op: 'update', table: 'todos', payload: payload });
+        }
+        return { ok: true };
+    }
+
+
+    // Remove a todo by id, wherever it lives. removeToDo / removeToDoByItem both
+    // need the project in hand; the revert path has only the id it resolved from
+    // a TODO.md entry marker, so this scans every project for the item and then
+    // delegates to removeToDoByItem — the deletion itself (splice, placeholder
+    // re-pin, local save, Supabase delete) stays in ONE place rather than being
+    // reimplemented here. Returns { ok:true } on removal and { ok:false, error }
+    // when the id is missing or matches nothing.
+    // @category: user-mutation-only
+    function removeToDoById(todoId) {
+        if (!todoId) return { ok: false, error: 'Missing id.' };
+        const names = Object.keys(allProjects);
+        for (let i = 0; i < names.length; i++) {
+            const entry = allProjects[names[i]];
+            if (!entry || !entry.items) continue;
+            const hit = entry.items.find(function (it) { return it && it.id === todoId; });
+            if (hit) {
+                removeToDoByItem(names[i], hit);
+                return { ok: true, project: names[i] };
+            }
+        }
+        return { ok: false, error: 'Todo not found.' };
     }
 
 
@@ -3693,6 +3771,21 @@ export const listLogic = (function () {
                     if (payload.entry_reviewed_at) row.entry_reviewed_at = payload.entry_reviewed_at;
                     if (payload.draft_seen_at) row.draft_seen_at = payload.draft_seen_at;
                     if (payload.shipped_at) row.shipped_at = payload.shipped_at;
+                    // The forward-only-when-set guards above make a CLEAR
+                    // unrepresentable: a payload whose `shipped_at` is null is
+                    // indistinguishable from one whose column was never set, so
+                    // the null is dropped and the write silently no-ops — the
+                    // server keeps the old timestamp and re-stamps the todo on
+                    // the next hydrate. `clear_columns` is the explicit channel
+                    // for that case (clearEntryShipped, after a merged revert):
+                    // each named column is written as a real null. Whitelisted so
+                    // a stray value can never null a load-bearing column, and
+                    // update-only — an insert has nothing to clear.
+                    const clears = Array.isArray(payload.clear_columns)
+                        ? payload.clear_columns : [];
+                    clears.forEach(function (col) {
+                        if (CLEARABLE_TODO_COLUMNS.indexOf(col) !== -1) row[col] = null;
+                    });
                 } else {
                     return;
                 }
@@ -4289,6 +4382,7 @@ export const listLogic = (function () {
         addEntryTodo,
         removeToDo,
         removeToDoByItem,
+        removeToDoById,
         insertToDoAt,
         commitBlankPlaceholder,
         editToDoItem,
@@ -4323,6 +4417,7 @@ export const listLogic = (function () {
         markDraftSeen,
         stampEntryShipped,
         stampEntryShippedByEntryId,
+        clearEntryShipped,
         getEntryReviewInfo,
         getTodoById,
         hasHydratedTodos,

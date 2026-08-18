@@ -6,6 +6,11 @@ import { derivePhase, PHASE } from './phase.js';
 import { onQueueChange } from './agentQueueStore.js';
 import { trackDispatchedRun } from './claudeSheet.js';
 import {
+    unshipEntry,
+    revertConfirmMessage,
+    revertToastMessage,
+} from './dispatchDraft.js';
+import {
     readActiveRun,
     writeActiveRun,
     clearActiveRun,
@@ -1498,10 +1503,13 @@ function buildTodoMdViewerCard(projectName, target) {
         }
     }
 
-    // Re-render the rendered body from the already-loaded content (no re-fetch:
-    // a revert is a PR operation that leaves TODO.md unchanged) so the session
+    // Re-render the rendered body from the already-loaded content so the session
     // reverted/pending sets are re-read and the Revert pill reflects the new
-    // state. Scroll position is preserved so the list doesn't jump.
+    // state. Scroll position is preserved so the list doesn't jump. No re-fetch,
+    // which is why this is only for the outcomes that genuinely leave TODO.md
+    // alone — a revert PR that opened without merging. A MERGED revert now
+    // rewrites the file (the entry is removed or reopened by unshipEntry), so
+    // that path re-syncs from the Worker instead.
     function rerenderViewerBody() {
         if (card.dataset.state !== 'ready') return;
         const prevScroll = body.scrollTop;
@@ -1522,9 +1530,11 @@ function buildTodoMdViewerCard(projectName, target) {
             try { window.open(pendingUrl, '_blank', 'noopener'); } catch (e) { /* popup blocked */ }
             return;
         }
-        const named = entryLabel ? ' “' + entryLabel + '”' : '';
         showConfirmModal({
-            message: 'Revert this entry' + named + '? This ships a rollback — a new build will deploy.',
+            // The confirm names what the rollback does to the BOOKKEEPING, by
+            // source — shared with the Runs tab's and the task row's Revert
+            // controls so one action is never described two ways.
+            message: revertConfirmMessage(entryId),
             confirmLabel: 'Revert',
             onConfirm: function() { performRevert(entryId, btn); },
         });
@@ -1538,11 +1548,16 @@ function buildTodoMdViewerCard(projectName, target) {
         try {
             const res = await revertEntry(entryId, target);
             if (res && res.ok && res.merged === true) {
-                // Rollback merged — a new build is deploying. Mark the entry
-                // reverted so the pill disappears and can't be triggered again.
-                showInjectToast('Reverted — new build shipping');
+                // Rollback merged — a new build is deploying. Roll the
+                // bookkeeping back through the ONE shared post-merge step (the
+                // entry leaves TODO.md and its proposal returns to the Proposed
+                // list, or the entry reopens unchecked), then mark it reverted so
+                // the pill can't be triggered again and re-read the file so the
+                // body shows its new state.
+                const unship = await unshipEntry(entryId, { target: target });
+                showInjectToast(revertToastMessage(unship));
                 revertedThisSession.add(entryId);
-                rerenderViewerBody();
+                await runSync();
                 return;
             }
             if (res && res.ok && res.merged === false) {

@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-18',
         added: [
-            'The repo check now lists the routine files that have fallen behind the current template, and how far behind each one is, beside the files that are missing outright.',
             'The repo check now says whether each out-of-date routine file can be safely refreshed or needs a hand merge, and onboarding offers an opt-in to refresh the ones with no local edits.',
         ],
         changed: [
             'A task added while the IN PROGRESS filter is selected now starts as in progress, so it stays on screen instead of vanishing the moment you press Enter.',
+            'Reverting a shipped change now rolls its paperwork back too: a derived proposal returns to the Proposed list, and a hand-written entry reopens unchecked in TODO.md.',
         ],
         fixed: [
             'The mobile welcome carousel now runs only when the sample project was actually created for you, so it no longer plays over your real projects on a fresh browser or after a slow sign-in.',
