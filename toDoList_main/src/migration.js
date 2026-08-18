@@ -26,9 +26,16 @@
 
 import { supabase } from './supabaseClient.js';
 import { listLogic } from './listLogic.js';
+import { isOnboardingComplete, setOnboardingComplete } from './prefs.js';
 
 const MIGRATION_MARKER_PREFIX = 'migrated_user_';
 const ALL_PROJECTS_KEY = 'allProjects';
+
+// Ceiling on how long the boot-time first-run gate waits for the cloud
+// probe. bootApp() awaits that gate before rendering the local cache, so
+// an unanswered probe must degrade to "unknown" rather than hold the
+// render open on a flaky network.
+export const FIRST_RUN_PROBE_TIMEOUT_MS = 4000;
 
 function markerKey(userId) {
     return MIGRATION_MARKER_PREFIX + userId;
@@ -99,6 +106,75 @@ function readLocalProjects() {
 }
 
 
+// Ask Supabase whether this user owns any project at all — one indexed
+// row lookup, no payload. Resolves `true` when the account already holds
+// data, `false` when it is empty, and `null` when the probe couldn't
+// answer (network failure, RLS error). `null` is deliberately distinct
+// from `false`: callers must never treat "couldn't ask" as "brand-new
+// account".
+export async function probeCloudProjects(userId) {
+    if (!userId) return null;
+    let probe;
+    try {
+        probe = await supabase
+            .from('projects')
+            .select('id')
+            .eq('user_id', userId)
+            .limit(1);
+    } catch (e) {
+        console.warn('[migration] cloud probe threw:', e);
+        return null;
+    }
+    if (probe && probe.error) {
+        console.warn('[migration] cloud probe error:', probe.error);
+        return null;
+    }
+    return !!(probe && Array.isArray(probe.data) && probe.data.length > 0);
+}
+
+
+// Boot gate for the first-run flow — called from bootApp() BEFORE
+// restoreFromStorage().
+//
+// The "Getting started" sample seed, the desktop coachmark tour, and the
+// mobile welcome carousel all hang off the device-scoped
+// todoapp_onboardingComplete flag. That flag is absent on any device the
+// user hasn't onboarded on — a new browser, a cleared cache, a
+// reinstalled PWA — including for a user whose real projects are sitting
+// in Supabase. Left alone, restoreFromStorage() sees the empty local
+// cache, seeds the sample project (persisting it to Supabase), and starts
+// the tour, all before hydration can reveal the real data; the seed is
+// already on the server by then, so hydration's merge keeps it.
+//
+// Reusing the same cheap probe the migration path runs, this marks
+// onboarding complete when the account already holds projects, which
+// suppresses the seed, the tour, and the carousel in one move. A brand-new
+// account (probe says empty) keeps the first-run flow untouched, and an
+// unanswerable probe — error, or slower than FIRST_RUN_PROBE_TIMEOUT_MS —
+// also leaves it untouched rather than guessing.
+//
+// Returns the probe verdict (`true` / `false` / `null` when it didn't run
+// or couldn't answer) so the caller can hand it to
+// maybeMigrateLocalToSupabase and spend a single round-trip on both.
+export async function maybeSkipFirstRunForCloudUser(userId) {
+    if (!userId) return null;
+    // Nothing to suppress — the seed and both tour surfaces already
+    // self-gate on this flag, so skip the probe entirely.
+    if (isOnboardingComplete()) return null;
+
+    const cloudHasData = await Promise.race([
+        probeCloudProjects(userId),
+        new Promise(function(resolve) {
+            setTimeout(function() { resolve(null); }, FIRST_RUN_PROBE_TIMEOUT_MS);
+        }),
+    ]);
+    if (cloudHasData !== true) return cloudHasData;
+
+    setOnboardingComplete(true);
+    return true;
+}
+
+
 // Run the one-shot per-user migration. Safe to call on every sign-in:
 // the marker check short-circuits when the migration has already run
 // for this user on this device.
@@ -114,7 +190,12 @@ function readLocalProjects() {
 //      either succeeded or hit a duplicate-key conflict (23505). Any
 //      other insert failure leaves the marker unset so the next sign-
 //      in retries the upload.
-export async function maybeMigrateLocalToSupabase(userId) {
+//
+// `opts.cloudHasData` (boolean) supplies step 2's answer from a probe the
+// caller already ran — bootApp passes maybeSkipFirstRunForCloudUser's
+// verdict — so the two share one round-trip. Omit it and the probe runs
+// here as before.
+export async function maybeMigrateLocalToSupabase(userId, opts) {
     if (!userId) return;
 
     let markerSet = false;
@@ -123,22 +204,12 @@ export async function maybeMigrateLocalToSupabase(userId) {
     } catch (_) { /* ignore */ }
     if (markerSet) return;
 
-    let probe;
-    try {
-        probe = await supabase
-            .from('projects')
-            .select('id')
-            .eq('user_id', userId)
-            .limit(1);
-    } catch (e) {
-        console.warn('[migration] cloud probe threw:', e);
-        return;
-    }
-    if (probe && probe.error) {
-        console.warn('[migration] cloud probe error:', probe.error);
-        return;
-    }
-    const cloudHasData = !!(probe && Array.isArray(probe.data) && probe.data.length > 0);
+    let cloudHasData = (opts && typeof opts.cloudHasData === 'boolean')
+        ? opts.cloudHasData
+        : await probeCloudProjects(userId);
+    // Probe couldn't answer — leave the marker unset so the next sign-in
+    // retries rather than migrating (or skipping) on a guess.
+    if (cloudHasData === null) return;
 
     const localProjects = readLocalProjects();
     const localNames = localProjects ? Object.keys(localProjects) : [];
