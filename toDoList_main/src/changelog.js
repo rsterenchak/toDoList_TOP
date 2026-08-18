@@ -9,6 +9,9 @@ export const changelog = [
         changed: [
             'A task added while the IN PROGRESS filter is selected now starts as in progress, so it stays on screen instead of vanishing the moment you press Enter.',
         ],
+        fixed: [
+            'The mobile welcome carousel now runs only when the sample project was actually created for you, so it no longer plays over your real projects on a fresh browser or after a slow sign-in.',
+        ],
     },
     {
         version: '1.1',
@@ -17,13 +20,6 @@ export const changelog = [
             'Live view of a repo that identifies its layout by class name rather than id now drills past the first landmark into the inner sections its published map already lists.',
             'The sign-in and code-entry screens now show the app\'s own pixel-art ghost instead of a separate cartoon mascot.',
             'Signing in on a new device or after clearing your browser cache no longer adds a stray "Getting started" project or replays the welcome tour when your account already has projects saved.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-16',
-        fixed: [
-            'Removing a task that already shipped is now refused with an explanation, so a finished aspect can no longer be dropped from the coverage record and proposed all over again.',
         ],
     },
 ];
