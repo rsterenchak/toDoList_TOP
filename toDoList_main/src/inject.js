@@ -2163,8 +2163,31 @@ function renderPreflightVerdictError(host, reason, options) {
     return strip;
 }
 
-// The terminal render: the report's warnings and its missing-scaffold paths,
-// behind a summary strip when `collapsible` is left on. Options:
+// One stale entry's detail text: the reason the preflight gave when it has
+// one, else how far behind the file is. `lines` is null for a file that
+// predates the current template outright, so there is no count to quote.
+function preflightStaleDetail(entry) {
+    if (entry.reason) return String(entry.reason);
+    const lines = Number(entry.lines);
+    if (entry.lines === null || entry.lines === undefined || !Number.isFinite(lines)) {
+        return 'predates the current template';
+    }
+    return lines + ' lines behind';
+}
+
+// The src/test directories the preflight INFERRED for the repo while measuring
+// the file. Rendered dimmer beside the row so a wrong inference — the usual
+// reason a count looks nonsensical — is visible rather than silent.
+function preflightStaleDirs(entry) {
+    const parts = [];
+    if (entry.src) parts.push('src ' + String(entry.src));
+    if (entry.test) parts.push('test ' + String(entry.test));
+    return parts.join(' · ');
+}
+
+// The terminal render: the report's warnings, the routine files that have
+// fallen behind the template, and its missing-scaffold paths, behind a summary
+// strip when `collapsible` is left on. Options:
 //   onReset            — host-owned reset (see resetPreflightVerdict)
 //   collapsible        — false renders the expanded section only, always open
 //   fallbackRepo/Shape/Purpose — used when the report omits the field
@@ -2177,6 +2200,13 @@ function renderPreflightVerdictReport(host, report, options) {
     const collapsible = opts.collapsible !== false;
     const warnings = Array.isArray(report.warnings) ? report.warnings.filter(Boolean) : [];
     const create = Array.isArray(report.create) ? report.create.filter(Boolean) : [];
+    // Emitted by the template's preflight for the four checked `.claude/`
+    // routine files. An older onboard.sh sends no `stale` key at all, which
+    // reads here as an empty list — the report renders exactly as it used to.
+    const stale = Array.isArray(report.stale)
+        ? report.stale.filter(function(s) { return s && s.file; })
+        : [];
+    const isClean = warnings.length === 0 && stale.length === 0;
     resetPreflightVerdict(host, opts);
 
     let strip = null;
@@ -2185,7 +2215,7 @@ function renderPreflightVerdictReport(host, report, options) {
         strip.type = 'button';
         strip.className = 'injectOnboardVerdictStrip';
         strip.setAttribute('aria-expanded', 'false');
-        strip.appendChild(preflightVerdictGlyph(warnings.length === 0));
+        strip.appendChild(preflightVerdictGlyph(isClean));
 
         const repoName = document.createElement('span');
         repoName.className = 'injectOnboardVerdictRepo';
@@ -2209,6 +2239,12 @@ function renderPreflightVerdictReport(host, report, options) {
             warnCount.className = 'injectOnboardVerdictCount injectOnboardVerdictCount--warn';
             warnCount.textContent = warnings.length + ' warn';
             strip.appendChild(warnCount);
+        }
+        if (stale.length) {
+            const staleCount = document.createElement('span');
+            staleCount.className = 'injectOnboardVerdictCount injectOnboardVerdictCount--stale';
+            staleCount.textContent = stale.length + ' stale';
+            strip.appendChild(staleCount);
         }
         if (create.length) {
             const missingCount = document.createElement('span');
@@ -2248,6 +2284,24 @@ function renderPreflightVerdictReport(host, report, options) {
         row.textContent = String(text);
         expanded.appendChild(row);
     });
+    // Its own section between the warnings and the missing chips: each entry
+    // carries a path, how far behind it is, and the inferred directories, so
+    // these are rows rather than the single-path chips below.
+    stale.forEach(function(entry) {
+        const row = document.createElement('div');
+        row.className = 'injectOnboardVerdictStale';
+        const label = document.createElement('span');
+        label.textContent = String(entry.file) + ' — ' + preflightStaleDetail(entry);
+        row.appendChild(label);
+        const dirs = preflightStaleDirs(entry);
+        if (dirs) {
+            const dirsEl = document.createElement('span');
+            dirsEl.className = 'injectOnboardVerdictStaleDirs';
+            dirsEl.textContent = dirs;
+            row.appendChild(dirsEl);
+        }
+        expanded.appendChild(row);
+    });
     if (create.length) {
         const chips = document.createElement('div');
         chips.className = 'injectOnboardVerdictChips';
@@ -2259,10 +2313,10 @@ function renderPreflightVerdictReport(host, report, options) {
         });
         expanded.appendChild(chips);
     }
-    if (!warnings.length && !create.length) {
+    if (!warnings.length && !create.length && !stale.length) {
         const clean = document.createElement('div');
         clean.className = 'injectOnboardVerdictClean';
-        clean.textContent = opts.cleanText || 'Nothing missing and no warnings.';
+        clean.textContent = opts.cleanText || 'Nothing missing, nothing behind, and no warnings.';
         expanded.appendChild(clean);
     }
     host.appendChild(expanded);
@@ -3272,7 +3326,7 @@ export function showInjectSettingsModal(options) {
             renderPreflightVerdictReport(verdictHost, report, {
                 collapsible: false,
                 fallbackRepo: target.repo,
-                cleanText: 'Up to date — nothing missing.',
+                cleanText: 'Up to date — nothing missing, nothing behind.',
             });
             appendVerdictDismiss();
         }

@@ -279,6 +279,27 @@ describe('onboard sub-modal — Check action', () => {
         expect(verdict.querySelector('.injectOnboardVerdictCount--missing')).toBeNull();
     });
 
+    it('counts stale routine files on the strip and drops the clean glyph for them', async () => {
+        await runCheck('rsterenchak/new-repo');
+        await settleWith({
+            repo: 'rsterenchak/new-repo', shape: 'repo', purpose: 'personal',
+            warnings: [], create: [],
+            stale: [
+                { file: '.claude/derive.md', lines: 87, src: 'src', test: 'tests' },
+                { file: '.claude/routine.md', lines: null },
+            ],
+        });
+        const verdict = document.getElementById('injectOnboardVerdict');
+        expect(verdict.querySelector('.injectOnboardVerdictCount--stale').textContent).toBe('2 stale');
+        expect(verdict.querySelector('.injectOnboardVerdictCount--warn')).toBeNull();
+        expect(verdict.querySelector('.injectOnboardVerdictCount--missing')).toBeNull();
+        // Files behind the template are not a clean report.
+        expect(verdict.querySelector('.injectOnboardVerdictGlyph--ok')).toBeNull();
+        expect(verdict.querySelector('.injectOnboardVerdictGlyph--warn')).toBeTruthy();
+        expect(verdict.querySelectorAll('.injectOnboardVerdictStale').length).toBe(2);
+        expect(verdict.querySelector('.injectOnboardVerdictClean')).toBeNull();
+    });
+
     it('falls back to the resolved shape when the report echoes auto back as a real shape', async () => {
         await runCheck('rsterenchak/new-repo', { shape: 'auto' });
         await settleWith({ repo: 'rsterenchak/new-repo', shape: 'console', purpose: 'personal', warnings: [], create: [] });

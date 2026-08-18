@@ -22825,9 +22825,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   font-weight: 600;
 }
 .injectOnboardVerdictCount--warn { color: #ffbd5e; }
+/* Purple rather than the warn amber or the missing accent — the three counts
+   read apart at a glance. */
+.injectOnboardVerdictCount--stale { color: #9D93EE; }
 .injectOnboardVerdictCount--missing { color: var(--accent); }
+.injectOnboardVerdictCount--stale[hidden] { display: none !important; }
 
-/* Expanded section — one amber left-bordered row per warning, then the missing
+/* Expanded section — one amber left-bordered row per warning, then one purple
+   row per routine file that has fallen behind the template, then the missing
    scaffold paths as accent chips. */
 .injectOnboardVerdictExpanded {
   display: flex;
@@ -22845,6 +22850,31 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
+/* Mirrors the warning row, in the secondary purple. Each row carries the path
+   and how far behind it is, then the inferred directories dimmer behind them. */
+.injectOnboardVerdictStale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 6px 8px;
+  border-left: 2px solid #9D93EE;
+  background: rgba(157, 147, 238, 0.07);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+.injectOnboardVerdictStale[hidden] { display: none !important; }
+.injectOnboardVerdictStaleDirs {
+  display: inline-block;
+  color: var(--text-muted);
+  font-family: "SpaceMono", monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.injectOnboardVerdictStaleDirs[hidden] { display: none !important; }
 .injectOnboardVerdictChips {
   display: flex;
   flex-wrap: wrap;
