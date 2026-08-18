@@ -156,7 +156,7 @@ Robert's automation parses these, so the format is exact, not stylistic:
 - [ ] **[PRIORITY]** <Imperative verb + specific change>
   - Type: <bug|feature>
   - Description: 2-4 concrete sentences — what's wrong or what to build, the expected behavior, and the likely code locations (name real functions/files you found).
-  - File: `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
+  - File: `toDoList_main/src/<file>`, `toDoList_main/src/<file>`
   - Completed: YYYY-MM-DD (PR #<number>)
 ```
 
@@ -166,12 +166,12 @@ Rules:
   broken functionality, MEDIUM = noticeable UX or moderate feature (the common
   case), LOW = cosmetic.
 - Title imperative and specific ("Fix …", "Add …"), never a noun phrase.
-- File paths full and repo-relative — `toDoList_main/src/main.js`, never bare
-  `main.js`. Source under `toDoList_main/src/`, tests under `toDoList_main/tests/`.
+- File paths full and repo-relative — `toDoList_main/src/<file>`, never a bare filename.
+  Source under `toDoList_main/src/`, tests under `toDoList_main/tests/`.
 - Do NOT invent an `<!-- id -->` marker — the app assigns it at inject time.
-- Follow `CLAUDE.md` (no new deps without cause, iOS input font-size ≥16px, modals
-  close 3 ways, don't touch build config, `main.js` is huge — grep it, don't read
-  whole). Only mention a constraint that's actually relevant.
+- Follow this repo's `CLAUDE.md` conventions (dependencies, styling, architecture
+  rules — read it before drafting). Only mention a constraint that's actually
+  relevant.
 - Expand with `- Behavior:` / `- Implementation notes:` / `- Out of scope:`
   sub-bullets only when the task genuinely warrants it; most drafts stay short.
 
