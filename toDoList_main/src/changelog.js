@@ -9,13 +9,13 @@ export const changelog = [
         fixed: [
             'Live view of a repo that identifies its layout by class name rather than id now drills past the first landmark into the inner sections its published map already lists.',
             'The sign-in and code-entry screens now show the app\'s own pixel-art ghost instead of a separate cartoon mascot.',
+            'Signing in on a new device or after clearing your browser cache no longer adds a stray "Getting started" project or replays the welcome tour when your account already has projects saved.',
         ],
     },
     {
         version: '1.1',
         date: '2026-08-16',
         fixed: [
-            'A task parked on a mockup decision now shows in the assignment coverage waiting list and in the review sheet, where a mockup can be chosen, instead of disappearing from the app entirely.',
             'Assignment coverage now reads a drafted task as drafted and a broken run as failed instead of untouched — the failed run can be retried from the coverage list, and the drafted task dispatched from the review sheet.',
             'Removing a task that already shipped is now refused with an explanation, so a finished aspect can no longer be dropped from the coverage record and proposed all over again.',
         ],

@@ -10,7 +10,7 @@ import { listLogic } from './listLogic.js';
 import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { showAuthModal, hideAuthModal } from './auth.js';
-import { maybeMigrateLocalToSupabase } from './migration.js';
+import { maybeMigrateLocalToSupabase, maybeSkipFirstRunForCloudUser } from './migration.js';
 import { initViewportHeal } from './viewportHeal.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
@@ -55,16 +55,44 @@ let booted = false;
 function bootApp(userId) {
     if (booted) return;
     booted = true;
-    restoreFromStorage();              // now that DOM is live, restore saved projects
-    markAppBooted();                   // signed-in shell is up — stand the watchdog down
-    // First-run welcome carousel for mobile new users. The flag check and
-    // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
-    // so callers don't need to know the gating rules; runs after restoreFromStorage
-    // so the seeded sample project is already on screen when the closer card lands.
-    // Desktop falls through to the existing coachmark tour started inside
-    // restoreFromStorage.
-    maybeStartFirstRunCarousel();
+    // Signed-in shell is up — stand the watchdog down. Signalled BEFORE the
+    // first-run gate below, which is awaited: the interactive chrome is
+    // already in the DOM (component() ran at module scope), so a slow or
+    // hanging cloud probe must never delay the boot signal.
+    markAppBooted();
 
+    // Returning-user guard for the first-run flow. restoreFromStorage() decides
+    // whether to seed the "Getting started" sample project and start the tour
+    // purely from the device-scoped onboarding flag, which is absent on any
+    // device this user hasn't onboarded on — a new browser, a cleared cache, a
+    // reinstalled PWA. Without this gate an existing user gets a phantom
+    // project persisted to Supabase plus an unwanted tour, both before
+    // hydration has revealed their real projects. maybeSkipFirstRunForCloudUser
+    // probes for cloud projects and marks onboarding complete when any exist,
+    // suppressing the seed, the desktop coachmark tour, and the mobile carousel
+    // together; it self-bounds on a timeout so the render can't hang on it.
+    // Its verdict is threaded into the migration below so both share one probe.
+    maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {
+        restoreFromStorage();          // now that DOM is live, restore saved projects
+        // First-run welcome carousel for mobile new users. The flag check and
+        // (pointer: coarse) / viewport detection live inside maybeStartFirstRunCarousel
+        // so callers don't need to know the gating rules; runs after restoreFromStorage
+        // so the seeded sample project is already on screen when the closer card lands.
+        // Desktop falls through to the existing coachmark tour started inside
+        // restoreFromStorage.
+        maybeStartFirstRunCarousel();
+
+        return bootSyncPipeline(userId, cloudHasData);
+    }).catch(function(e) {
+        console.warn('[bootApp] boot sequence failed:', e);
+    });
+}
+
+// Post-render half of the boot sequence: migrate → hydrate → subscribe.
+// `cloudHasData` is maybeSkipFirstRunForCloudUser's probe verdict, or null
+// when it didn't run or couldn't answer — in which case the migration runs
+// its own probe as before.
+function bootSyncPipeline(userId, cloudHasData) {
     // Phase 6: one-shot per-user migration of pre-auth localStorage data
     // up to Supabase. Marker-gated so subsequent sign-ins on the same
     // device are a no-op. Sequence is migrate → hydrate → render so the
@@ -82,9 +110,12 @@ function bootApp(userId) {
     // console.warn'd; the .catch() here is belt-and-suspenders so
     // an unexpected rejection can't take down the page load.
     const migratePromise = userId
-        ? maybeMigrateLocalToSupabase(userId)
+        ? maybeMigrateLocalToSupabase(
+            userId,
+            typeof cloudHasData === 'boolean' ? { cloudHasData: cloudHasData } : undefined
+        )
         : Promise.resolve();
-    migratePromise
+    return migratePromise
         .then(function() { return listLogic.hydrateFromSupabase(); })
         .then(function() { listLogic.subscribeToRealtime(); })
         .catch(function(e) {
