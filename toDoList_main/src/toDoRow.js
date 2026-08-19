@@ -1363,17 +1363,42 @@ function performReviewRevert(item, btn, errorEl) {
 // callback so it can dismiss ITSELF first (an open modal over the viewer would land
 // the anchored scroll behind a scrim) before opening the anchored viewer a tick
 // later — the exact close-then-defer the modal's old REVIEW button did.
+//
+// The five controls are NOT one undifferentiated row: they are two clusters with a
+// rule between them. ACCEPT & CLOSE and REVERT form the primary/danger DECISION
+// pair (`.descReviewActionsPrimary`) — the two answers to "is this shipped change
+// good?" — and OPEN IN TODO.MD, COPY CONTEXT and ITERATE form the read-only
+// tertiary cluster (`.descReviewActionsTertiary`), routes that inspect or continue
+// the change without deciding on it. The `.descReviewActionsDivider` span between
+// them is decoration only (aria-hidden), so the reading order and every existing
+// handler are untouched by the grouping. Both clusters wrap internally, so the
+// grouping survives the narrow mobile modal as well as the desktop pane.
 export function buildReviewActions(item, projectName, options) {
     const opts2 = options || {};
     const actions = document.createElement('div');
     actions.className = 'descReviewActions';
     actions.setAttribute('data-review-entry', String((item && (item.entryId || item.id)) || ''));
 
+    // Stays a DIRECT child of the row (not of either cluster) so it keeps its own
+    // full-width line above them when a Revert fails.
     const errorEl = document.createElement('p');
     errorEl.className = 'descReviewError';
     errorEl.setAttribute('role', 'alert');
     errorEl.hidden = true;
     actions.appendChild(errorEl);
+
+    const primary = document.createElement('div');
+    primary.className = 'descReviewActionsPrimary';
+    actions.appendChild(primary);
+
+    const divider = document.createElement('span');
+    divider.className = 'descReviewActionsDivider';
+    divider.setAttribute('aria-hidden', 'true');
+    actions.appendChild(divider);
+
+    const tertiary = document.createElement('div');
+    tertiary.className = 'descReviewActionsTertiary';
+    actions.appendChild(tertiary);
 
     const accept = document.createElement('button');
     accept.type = 'button';
@@ -1388,7 +1413,7 @@ export function buildReviewActions(item, projectName, options) {
         listLogic.markEntryReviewed(item.id);
         document.dispatchEvent(new CustomEvent(TODO_RUN_STATUS_EVENT));
     });
-    actions.appendChild(accept);
+    primary.appendChild(accept);
 
     const revert = document.createElement('button');
     revert.type = 'button';
@@ -1412,7 +1437,7 @@ export function buildReviewActions(item, projectName, options) {
             onConfirm: function () { performReviewRevert(item, revert, errorEl); },
         });
     });
-    actions.appendChild(revert);
+    primary.appendChild(revert);
 
     const open = document.createElement('button');
     open.type = 'button';
@@ -1430,7 +1455,7 @@ export function buildReviewActions(item, projectName, options) {
         }
         invokeReviewBadgeTap(item && item.entryId, projectName);
     });
-    actions.appendChild(open);
+    tertiary.appendChild(open);
 
     // COPY CONTEXT — a ghost secondary path beside OPEN IN TODO.MD (not competing
     // with ACCEPT & CLOSE). Copies a plain-text block for iterating on this shipped
@@ -1456,7 +1481,7 @@ export function buildReviewActions(item, projectName, options) {
         copyIterateContext(buildIterateContextBlock(
             item, queueRow, target && target.repo, cachedRunSummary(item, queueRow)));
     });
-    actions.appendChild(copyCtx);
+    tertiary.appendChild(copyCtx);
 
     // ITERATE — a THIRD ghost route beside OPEN IN TODO.MD and COPY CONTEXT (never
     // competing with ACCEPT & CLOSE, the primary decision). Opens the Claude chat
@@ -1484,7 +1509,7 @@ export function buildReviewActions(item, projectName, options) {
         }
         invokeIterateTask(item.entryId, repo);
     });
-    actions.appendChild(iterate);
+    tertiary.appendChild(iterate);
 
     return actions;
 }

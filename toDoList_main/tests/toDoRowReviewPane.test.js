@@ -57,8 +57,9 @@ describe('toDoRow REVIEW decision surface wiring', () => {
         expect(toDoRow).toMatch(/import \{[^}]*invokeReviewBadgeTap[^}]*\} from '\.\/todoStatus\.js'/s);
         const start = toDoRow.indexOf('function buildReviewActions(');
         // Widened window: buildReviewActions grew an optional modal-host
-        // onOpenInViewer branch above the default direct call.
-        const body = toDoRow.slice(start, start + 3400);
+        // onOpenInViewer branch above the default direct call, then the
+        // primary/tertiary cluster containers above the buttons themselves.
+        const body = toDoRow.slice(start, start + 4200);
         // The desktop detail pane passes no options, so the OPEN button falls
         // through to the shared entry point directly.
         expect(body).toMatch(/invokeReviewBadgeTap\(item && item\.entryId, projectName\)/);
@@ -66,7 +67,9 @@ describe('toDoRow REVIEW decision surface wiring', () => {
 
     it('lets a modal host supply its own close-then-open route via options.onOpenInViewer', () => {
         const start = toDoRow.indexOf('function buildReviewActions(');
-        const body = toDoRow.slice(start, start + 3400);
+        // Same widened window as above — the cluster containers sit between the
+        // signature and the OPEN handler.
+        const body = toDoRow.slice(start, start + 4200);
         // Signature carries the optional options bag …
         expect(body).toMatch(/function buildReviewActions\(item, projectName, options\)/);
         // … and the OPEN handler prefers the host's callback when present, so the
