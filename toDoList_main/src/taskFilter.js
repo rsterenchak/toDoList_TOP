@@ -8,7 +8,8 @@
 // so a filtered session is restored on reload.
 //
 //   • ALL         — every task that is NOT checked off (open work of any status).
-//   • IN PROGRESS — manual status `in_progress`, OR derived phase `draft`/`running`.
+//   • IN PROGRESS — manual status `in_progress`, OR derived phase `draft`/`running`;
+//                   never a task whose phase is `done`.
 //   • DONE        — derived phase `done` AND not checked off.
 //
 // This ONE vocabulary now drives BOTH breakpoints: the desktop three-pill control
@@ -112,7 +113,9 @@ function normalizeStatus(status) {
 //   • ALL         — every task that is NOT checked off (open work of any status).
 //   • IN PROGRESS — manual status `in_progress`, OR derived phase `draft`
 //                   (an entry injected and awaiting its run) or `running` (a run
-//                   in flight); checked-off rows are excluded.
+//                   in flight); checked-off rows are excluded, and so is any task
+//                   whose phase already derives to `done` — a leftover manual
+//                   status must not keep shipped work here alongside DONE.
 //   • DONE        — shipped-and-acknowledged (phase `done`) AND NOT checked off:
 //                   exactly the rows carrying the shipped glyph that you have not
 //                   yet filed away. DONE is a strict SUBSET of ALL (both exclude
@@ -127,6 +130,13 @@ const PHASE_FILTERS = [
     { key: 'inprogress', label: 'IN PROGRESS', seg: 'In progress', match: function (item) {
         if (!item || item.completed) return false;
         const phase = phaseOf(item);
+        // Phase `done` wins over the manual status. Accepting a shipped task
+        // ("Accept & close" → markEntryReviewed) stamps the review time and by
+        // design never clears `status`, so a task that was set to in_progress
+        // before it shipped keeps that value forever. Without this guard the
+        // leftover status keeps matching here and the row shows under IN
+        // PROGRESS and DONE at once instead of moving cleanly into DONE.
+        if (phase === 'done') return false;
         return normalizeStatus(item.status) === 'in_progress' || phase === 'draft' || phase === 'running';
     } },
     { key: 'done',       label: 'DONE',        seg: 'Done',        match: function (item) {

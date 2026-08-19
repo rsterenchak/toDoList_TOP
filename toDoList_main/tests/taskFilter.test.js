@@ -322,6 +322,30 @@ describe('applyTaskFilter — visible subset', () => {
         expect(isHidden(idea)).toBe(true);
     });
 
+    // Regression: "Accept & close" stamps `entryReviewedAt` and deliberately
+    // never clears the manual `status`, so a task set to in_progress before it
+    // shipped keeps that leftover status once its phase derives to `done`. The
+    // derived phase has to win, or the row matches IN PROGRESS and DONE at once
+    // instead of moving cleanly into DONE.
+    it('excludes a phase-done row from IN PROGRESS despite a leftover in_progress status', () => {
+        const ml = makeMainList();
+        const shipped = makeRow('Shipped', { status: 'in_progress', ph: 'done' });
+        const wip = makeRow('WIP', { status: 'in_progress' });
+        ml.append(shipped, wip);
+        const bar = buildTaskFilterBar();
+        document.body.appendChild(bar);
+
+        cyclePill(bar).click(); // all → inprogress
+        expect(isHidden(shipped)).toBe(true);
+        expect(isHidden(wip)).toBe(false);
+        expect(pillCount(bar)).toBe('1');
+
+        cyclePill(bar).click(); // inprogress → done
+        expect(isHidden(shipped)).toBe(false);
+        expect(isHidden(wip)).toBe(true);
+        expect(pillCount(bar)).toBe('1');
+    });
+
     it('never hides the blank placeholder row (empty title), under any filter', () => {
         const ml = makeMainList();
         const blank = makeRow('', { status: 'active' });
