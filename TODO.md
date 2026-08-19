@@ -1541,3 +1541,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 51a4272f-e932-4c22-993b-4155ed12047a -->
+
+- [ ] **[MEDIUM]** Enlarge PIN digit boxes on mobile lock overlay only
+  - Type: feature
+  - Description: On mobile (max-width: 480px), enlarge `.pinDigitInput` from 44x52px/20px font to 64x72px/30px font with 14px gap and 14px radius, matching the chosen mockup variant C, so digits are easier to see and tap on the lock overlay. Scope the change to `#appLockOverlay .pinDigitRow .pinDigitInput` (or an equivalent mobile-only selector) so the shared `createPinDigitInputs()` usage inside `#pinLockModal` (desktop setup form) is not resized. Add the sizing to the existing `@media (max-width: 480px)` block in style.css alongside the other mobile overrides for this feature, keeping font-size above the 16px iOS zoom floor.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/appLock.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 2e8bc1c4-a4b2-45bb-93b1-bd71e5e564e4 -->
