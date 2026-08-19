@@ -34,6 +34,8 @@ import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { showInjectSettingsModal } from './inject.js';
 import { showRepoSetupModal } from './repoSetup.js';
 import { isFocusInTextInput } from './popoverNav.js';
+import { isAppLockArmed } from './appLock.js';
+import { showPinLockModal } from './pinLockModal.js';
 
 export function createSettingsMenu(deps) {
     const {
@@ -210,6 +212,22 @@ export function createSettingsMenu(deps) {
             'settingsMenuItem--ghost'
         );
         menu.appendChild(ghostItem);
+
+        // App lock (PIN) — same ON/OFF row chrome as the ghost toggle above,
+        // but tapping opens the setup modal rather than flipping the pref in
+        // place: the setting needs a PIN and an idle span, neither of which
+        // fits a one-tap row. The state pill reads ON only when the lock is
+        // fully armed (enabled AND a PIN stored), so a half-finished setup
+        // can never advertise itself as protecting anything. The menu hides
+        // before the modal opens (buildSettingsMenuItem closes first), so the
+        // pill re-reads current state on the next gear open with no explicit
+        // refresh wire.
+        const appLockItem = buildSettingsMenuItem(
+            'App lock (PIN)',
+            isAppLockArmed() ? 'ON' : 'OFF',
+            function() { showPinLockModal(); }
+        );
+        menu.appendChild(appLockItem);
 
         // HELP section — groups the replay-tour entry alongside the
         // existing Help modal entry so the global utilities sit under a

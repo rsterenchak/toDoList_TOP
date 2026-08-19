@@ -13,6 +13,7 @@ import {
     createDrawerActionRow,
     buildShowCompletedToggle,
     buildDarkThemeToggle,
+    buildAppLockToggle,
 } from './drawerRows.js';
 import { paintAboutVersionUpdateCue } from './aboutVersionCue.js';
 import { openChangelogMobileSheet } from './mobileSheets.js';
@@ -90,6 +91,12 @@ export function createSettingsModal({
         appearanceSection.appendChild(appearanceHeading);
         appearanceSection.appendChild(buildDarkThemeToggle().row);
         appearanceSection.appendChild(buildCompanionToggle().row);
+        // App lock (PIN) — mobile counterpart to the settings-menu row. The
+        // row reports ON/OFF but opens the PIN setup dialog on tap, which
+        // stacks above this modal rather than replacing it; buildAppLockToggle
+        // wires its own refresh as the dialog's onChange so the pill repaints
+        // in place once a save or turn-off lands.
+        appearanceSection.appendChild(buildAppLockToggle().row);
 
         // About section — surfaces the version label + live project count
         // that used to live in #footBar / #drawerFooter on mobile. Two

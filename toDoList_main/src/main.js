@@ -57,6 +57,7 @@ import {
     createDrawerToggleRow,
     buildCompanionToggle as buildCompanionToggleRow,
 } from './drawerRows.js';
+import { startAppLockWatch } from './appLock.js';
 import { mountClaudeSheet } from './claudeSheet.js';
 import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry } from './claudeSheet.js';
 import { openSpendPanel } from './claudeSheet.js';
@@ -2816,6 +2817,15 @@ function component() {
     // channel/poller. Deferred a tick so document.body exists, matching the
     // ensureCompanion / applyCompanionGhostPreference calls above.
     setTimeout(startAgentWorkingWatch, 0);
+
+    // Start the app-lock idle watch. It installs the document-level activity
+    // listeners that stamp last-activity and re-arm the single idle timer, and
+    // on boot mounts the lock overlay straight away when the app already sat
+    // idle past the configured span (a reload after the tab was closed). A
+    // no-op when the user never turned the lock on, and guarded against
+    // double-init internally. Deferred a tick so document.body exists, like
+    // the companion / agent-watch starts above.
+    setTimeout(startAppLockWatch, 0);
 
     // Window-level drag-and-drop import. Dropping a .json file anywhere on
     // the page routes through the same parse → validate → confirm → replace
