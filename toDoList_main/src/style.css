@@ -24254,4 +24254,29 @@ body.appLocked { overflow: hidden; }
   #pinLockBackdrop { padding: 16px; }
   #pinLockModal { max-height: 90vh; }
   .pinLockBtn { font-size: 14px; padding: 10px 14px; }
+
+  /* Bigger boxes on the lock overlay only. Unlocking is a one-handed, glance-
+     and-tap job on a phone, so the digits go 44x52/20px -> 64x72/30px with a
+     14px gap and matching 14px radius. The scope is deliberate: the setup form
+     in #pinLockModal builds its row from the same createPinDigitInputs(), but
+     it sits in a dialog beside a label, a hint and two buttons, and keeps the
+     compact boxes. 30px clears the 16px iOS auto-zoom floor by a wide margin. */
+  #appLockOverlay .pinDigitRow { gap: 14px; }
+  #appLockOverlay .pinDigitInput {
+    width: 64px;
+    height: 72px;
+    font-size: 30px;
+    border-radius: 14px;
+  }
+  /* The enlarged row is 4x64 + 3x14 = 298px wide, which the 320px card (40px
+     of its own padding) could not hold — the boxes are flex items, so they
+     would silently shrink back toward their old size instead of overflowing.
+     Trimming the overlay and card padding and widening the card hands the row
+     its full 298px from ~358px of viewport up; below that the same flex-shrink
+     keeps the row inside the card rather than spilling past it. */
+  #appLockOverlay { padding: 16px; }
+  #appLockOverlay .appLockCard {
+    max-width: 340px;
+    padding: 24px 14px;
+  }
 }
