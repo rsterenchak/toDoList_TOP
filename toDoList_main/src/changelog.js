@@ -14,13 +14,13 @@ export const changelog = [
         ],
         changed: [
             'The review buttons on a shipped change now sit in two groups split by a divider — accept and revert on one side, the open, copy and iterate shortcuts on the other.',
+            'The PIN boxes on the lock screen are much larger on phones, so the digits are easier to read and tap one-handed.',
         ],
     },
     {
         version: '1.1',
         date: '2026-08-18',
         fixed: [
-            'A load that breaks partway through now hands off to the automatic recovery screen instead of leaving you staring at an empty app.',
             'A shipped task you accept now moves cleanly into the DONE filter instead of also staying listed under IN PROGRESS.',
         ],
     },
