@@ -1,11 +1,12 @@
 {
-  "generatedAt": "2026-08-19T07:10:17.642Z",
-  "sha": "a199c8d03f4c0e342a86f14e7cb8b804580c5c0e",
+  "generatedAt": "2026-08-19T07:56:14.461Z",
+  "sha": "0b0eebb40b45c89c68abad6952493a38d7c18c19",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
     "agentView.js",
     "agentWiring.js",
+    "appLock.js",
     "assignmentCoverage.js",
     "auth.js",
     "authoringModeStrip.js",
@@ -48,6 +49,7 @@
     "musicVisualizer.js",
     "phase.js",
     "phaseRail.js",
+    "pinLockModal.js",
     "pomodoro.js",
     "popoverNav.js",
     "prefs.js",
@@ -111,11 +113,11 @@
       "selector": "#addProj",
       "label": "Add Proj",
       "file": "main.js",
-      "line": 234,
+      "line": 235,
       "files": [
         {
           "file": "main.js",
-          "line": 234
+          "line": 235
         },
         {
           "file": "style.css",
@@ -168,6 +170,30 @@
         {
           "file": "agentView.js",
           "line": 227
+        }
+      ]
+    },
+    {
+      "selector": "#appLockError",
+      "label": "App Lock Error",
+      "file": "appLock.js",
+      "line": 341,
+      "files": [
+        {
+          "file": "appLock.js",
+          "line": 341
+        }
+      ]
+    },
+    {
+      "selector": "#appLockTitle",
+      "label": "App Lock Title",
+      "file": "appLock.js",
+      "line": 332,
+      "files": [
+        {
+          "file": "appLock.js",
+          "line": 332
         }
       ]
     },
@@ -663,11 +689,11 @@
       "selector": "#bulkDescActions",
       "label": "Bulk Desc Actions",
       "file": "main.js",
-      "line": 1182,
+      "line": 1183,
       "files": [
         {
           "file": "main.js",
-          "line": 1182
+          "line": 1183
         },
         {
           "file": "style.css",
@@ -679,11 +705,11 @@
       "selector": "#changelogDot",
       "label": "Changelog Dot",
       "file": "main.js",
-      "line": 626,
+      "line": 627,
       "files": [
         {
           "file": "main.js",
-          "line": 626
+          "line": 627
         },
         {
           "file": "style.css",
@@ -883,11 +909,11 @@
       "selector": "#chatCollapseButton",
       "label": "Chat Collapse Button",
       "file": "main.js",
-      "line": 542,
+      "line": 543,
       "files": [
         {
           "file": "main.js",
-          "line": 542
+          "line": 543
         },
         {
           "file": "style.css",
@@ -899,11 +925,11 @@
       "selector": "#chatExpandButton",
       "label": "Chat Expand Button",
       "file": "main.js",
-      "line": 547,
+      "line": 548,
       "files": [
         {
           "file": "main.js",
-          "line": 547
+          "line": 548
         },
         {
           "file": "style.css",
@@ -2159,11 +2185,11 @@
       "selector": "#descDetailPane",
       "label": "Desc Detail Pane",
       "file": "main.js",
-      "line": 671,
+      "line": 672,
       "files": [
         {
           "file": "main.js",
-          "line": 671
+          "line": 672
         },
         {
           "file": "style.css",
@@ -2615,11 +2641,11 @@
       "selector": "#desktopChatPane",
       "label": "Desktop Chat Pane",
       "file": "main.js",
-      "line": 531,
+      "line": 532,
       "files": [
         {
           "file": "main.js",
-          "line": 531
+          "line": 532
         },
         {
           "file": "style.css",
@@ -2631,11 +2657,11 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 1578,
+      "line": 1579,
       "files": [
         {
           "file": "main.js",
-          "line": 1578
+          "line": 1579
         },
         {
           "file": "style.css",
@@ -2647,11 +2673,11 @@
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
       "file": "main.js",
-      "line": 1583,
+      "line": 1584,
       "files": [
         {
           "file": "main.js",
-          "line": 1583
+          "line": 1584
         },
         {
           "file": "style.css",
@@ -2663,11 +2689,11 @@
       "selector": "#drawerFooterVersion",
       "label": "Drawer Footer Version",
       "file": "main.js",
-      "line": 1580,
+      "line": 1581,
       "files": [
         {
           "file": "main.js",
-          "line": 1580
+          "line": 1581
         },
         {
           "file": "style.css",
@@ -2679,11 +2705,11 @@
       "selector": "#drawerSettingsBtn",
       "label": "Drawer Settings Btn",
       "file": "main.js",
-      "line": 1517,
+      "line": 1518,
       "files": [
         {
           "file": "main.js",
-          "line": 1517
+          "line": 1518
         },
         {
           "file": "style.css",
@@ -2695,11 +2721,11 @@
       "selector": "#drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 1535,
+      "line": 1536,
       "files": [
         {
           "file": "main.js",
-          "line": 1535
+          "line": 1536
         }
       ]
     },
@@ -2707,11 +2733,11 @@
       "selector": "#drawerSettingsBtnWrap",
       "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
-      "line": 1574,
+      "line": 1575,
       "files": [
         {
           "file": "main.js",
-          "line": 1574
+          "line": 1575
         },
         {
           "file": "style.css",
@@ -2819,11 +2845,11 @@
       "selector": "#focusModeToggle",
       "label": "Focus Mode Toggle",
       "file": "main.js",
-      "line": 372,
+      "line": 373,
       "files": [
         {
           "file": "main.js",
-          "line": 372
+          "line": 373
         },
         {
           "file": "style.css",
@@ -2835,11 +2861,11 @@
       "selector": "#footBar",
       "label": "Foot Bar",
       "file": "main.js",
-      "line": 212,
+      "line": 213,
       "files": [
         {
           "file": "main.js",
-          "line": 212
+          "line": 213
         },
         {
           "file": "style.css",
@@ -2851,11 +2877,11 @@
       "selector": "#footCounts",
       "label": "Foot Counts",
       "file": "main.js",
-      "line": 644,
+      "line": 645,
       "files": [
         {
           "file": "main.js",
-          "line": 644
+          "line": 645
         },
         {
           "file": "style.css",
@@ -2867,11 +2893,11 @@
       "selector": "#footDone",
       "label": "Foot Done",
       "file": "main.js",
-      "line": 646,
+      "line": 647,
       "files": [
         {
           "file": "main.js",
-          "line": 646
+          "line": 647
         },
         {
           "file": "style.css",
@@ -2883,11 +2909,11 @@
       "selector": "#footOpen",
       "label": "Foot Open",
       "file": "main.js",
-      "line": 645,
+      "line": 646,
       "files": [
         {
           "file": "main.js",
-          "line": 645
+          "line": 646
         },
         {
           "file": "style.css",
@@ -2899,11 +2925,11 @@
       "selector": "#footVersion",
       "label": "Foot Version",
       "file": "main.js",
-      "line": 615,
+      "line": 616,
       "files": [
         {
           "file": "main.js",
-          "line": 615
+          "line": 616
         },
         {
           "file": "style.css",
@@ -2915,11 +2941,11 @@
       "selector": "#footVersionLabel",
       "label": "Foot Version Label",
       "file": "main.js",
-      "line": 622,
+      "line": 623,
       "files": [
         {
           "file": "main.js",
-          "line": 622
+          "line": 623
         },
         {
           "file": "style.css",
@@ -3959,11 +3985,11 @@
       "selector": "#mainBar",
       "label": "Main Bar",
       "file": "main.js",
-      "line": 215,
+      "line": 216,
       "files": [
         {
           "file": "main.js",
-          "line": 215
+          "line": 216
         },
         {
           "file": "style.css",
@@ -3975,11 +4001,11 @@
       "selector": "#mainList",
       "label": "Main List",
       "file": "main.js",
-      "line": 243,
+      "line": 244,
       "files": [
         {
           "file": "main.js",
-          "line": 243
+          "line": 244
         },
         {
           "file": "style.css",
@@ -3991,11 +4017,11 @@
       "selector": "#mainSec",
       "label": "Main Sec",
       "file": "main.js",
-      "line": 211,
+      "line": 212,
       "files": [
         {
           "file": "main.js",
-          "line": 211
+          "line": 212
         },
         {
           "file": "style.css",
@@ -4007,11 +4033,11 @@
       "selector": "#mainSplit",
       "label": "Main Split",
       "file": "main.js",
-      "line": 528,
+      "line": 529,
       "files": [
         {
           "file": "main.js",
-          "line": 528
+          "line": 529
         },
         {
           "file": "style.css",
@@ -4163,11 +4189,11 @@
       "selector": "#mobileProjChevCol",
       "label": "Mobile Proj Chev Col",
       "file": "main.js",
-      "line": 769,
+      "line": 770,
       "files": [
         {
           "file": "main.js",
-          "line": 769
+          "line": 770
         },
         {
           "file": "style.css",
@@ -4179,11 +4205,11 @@
       "selector": "#mobileProjChevron",
       "label": "Mobile Proj Chevron",
       "file": "main.js",
-      "line": 794,
+      "line": 795,
       "files": [
         {
           "file": "main.js",
-          "line": 794
+          "line": 795
         }
       ]
     },
@@ -4191,11 +4217,11 @@
       "selector": "#mobileProjCountBadge",
       "label": "Mobile Proj Count Badge",
       "file": "main.js",
-      "line": 815,
+      "line": 816,
       "files": [
         {
           "file": "main.js",
-          "line": 815
+          "line": 816
         }
       ]
     },
@@ -4203,11 +4229,11 @@
       "selector": "#mobileProjCounts",
       "label": "Mobile Proj Counts",
       "file": "main.js",
-      "line": 767,
+      "line": 768,
       "files": [
         {
           "file": "main.js",
-          "line": 767
+          "line": 768
         },
         {
           "file": "style.css",
@@ -4219,11 +4245,11 @@
       "selector": "#mobileProjHeader",
       "label": "Mobile Proj Header",
       "file": "main.js",
-      "line": 760,
+      "line": 761,
       "files": [
         {
           "file": "main.js",
-          "line": 760
+          "line": 761
         },
         {
           "file": "style.css",
@@ -4235,11 +4261,11 @@
       "selector": "#mobileProjLabel",
       "label": "Mobile Proj Label",
       "file": "main.js",
-      "line": 761,
+      "line": 762,
       "files": [
         {
           "file": "main.js",
-          "line": 761
+          "line": 762
         },
         {
           "file": "style.css",
@@ -4251,11 +4277,11 @@
       "selector": "#mobileProjMain",
       "label": "Mobile Proj Main",
       "file": "main.js",
-      "line": 768,
+      "line": 769,
       "files": [
         {
           "file": "main.js",
-          "line": 768
+          "line": 769
         },
         {
           "file": "style.css",
@@ -4267,11 +4293,11 @@
       "selector": "#mobileProjName",
       "label": "Mobile Proj Name",
       "file": "main.js",
-      "line": 764,
+      "line": 765,
       "files": [
         {
           "file": "main.js",
-          "line": 764
+          "line": 765
         },
         {
           "file": "style.css",
@@ -4283,11 +4309,11 @@
       "selector": "#mobileProjNext",
       "label": "Mobile Proj Next",
       "file": "main.js",
-      "line": 765,
+      "line": 766,
       "files": [
         {
           "file": "main.js",
-          "line": 765
+          "line": 766
         }
       ]
     },
@@ -4295,11 +4321,11 @@
       "selector": "#mobileProjPill",
       "label": "Mobile Proj Pill",
       "file": "main.js",
-      "line": 820,
+      "line": 821,
       "files": [
         {
           "file": "main.js",
-          "line": 820
+          "line": 821
         },
         {
           "file": "style.css",
@@ -4311,11 +4337,11 @@
       "selector": "#mobileProjPrev",
       "label": "Mobile Proj Prev",
       "file": "main.js",
-      "line": 763,
+      "line": 764,
       "files": [
         {
           "file": "main.js",
-          "line": 763
+          "line": 764
         }
       ]
     },
@@ -4323,11 +4349,11 @@
       "selector": "#mobileProjRunSpinner",
       "label": "Mobile Proj Run Spinner",
       "file": "main.js",
-      "line": 833,
+      "line": 834,
       "files": [
         {
           "file": "main.js",
-          "line": 833
+          "line": 834
         }
       ]
     },
@@ -4335,11 +4361,11 @@
       "selector": "#mobileProjStats",
       "label": "Mobile Proj Stats",
       "file": "main.js",
-      "line": 766,
+      "line": 767,
       "files": [
         {
           "file": "main.js",
-          "line": 766
+          "line": 767
         },
         {
           "file": "style.css",
@@ -4351,11 +4377,11 @@
       "selector": "#mobileProjTitleRow",
       "label": "Mobile Proj Title Row",
       "file": "main.js",
-      "line": 762,
+      "line": 763,
       "files": [
         {
           "file": "main.js",
-          "line": 762
+          "line": 763
         },
         {
           "file": "style.css",
@@ -4367,11 +4393,11 @@
       "selector": "#mobileSidebarClose",
       "label": "Mobile Sidebar Close",
       "file": "main.js",
-      "line": 1163,
+      "line": 1164,
       "files": [
         {
           "file": "main.js",
-          "line": 1163
+          "line": 1164
         },
         {
           "file": "style.css",
@@ -4503,11 +4529,11 @@
       "selector": "#musicToggle",
       "label": "Music Toggle",
       "file": "main.js",
-      "line": 322,
+      "line": 323,
       "files": [
         {
           "file": "main.js",
-          "line": 322
+          "line": 323
         },
         {
           "file": "style.css",
@@ -4519,11 +4545,11 @@
       "selector": "#navBar",
       "label": "Nav Bar",
       "file": "main.js",
-      "line": 210,
+      "line": 211,
       "files": [
         {
           "file": "main.js",
-          "line": 210
+          "line": 211
         },
         {
           "file": "style.css",
@@ -4551,11 +4577,11 @@
       "selector": "#outerContainer",
       "label": "Outer Container",
       "file": "main.js",
-      "line": 209,
+      "line": 210,
       "files": [
         {
           "file": "main.js",
-          "line": 209
+          "line": 210
         },
         {
           "file": "style.css",
@@ -4576,6 +4602,178 @@
         {
           "file": "style.css",
           "line": 12587
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockActions",
+      "label": "Pin Lock Actions",
+      "file": "pinLockModal.js",
+      "line": 115,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 115
+        },
+        {
+          "file": "style.css",
+          "line": 24098
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockBackdrop",
+      "label": "Pin Lock Backdrop",
+      "file": "pinLockModal.js",
+      "line": 46,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 46
+        },
+        {
+          "file": "style.css",
+          "line": 24001
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockBody",
+      "label": "Pin Lock Body",
+      "file": "pinLockModal.js",
+      "line": 68,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 68
+        },
+        {
+          "file": "style.css",
+          "line": 24052
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockCancel",
+      "label": "Pin Lock Cancel",
+      "file": "pinLockModal.js",
+      "line": 124,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 124
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockClose",
+      "label": "Pin Lock Close",
+      "file": "pinLockModal.js",
+      "line": 60,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 60
+        },
+        {
+          "file": "style.css",
+          "line": 24038
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockError",
+      "label": "Pin Lock Error",
+      "file": "pinLockModal.js",
+      "line": 82,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 82
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockHeader",
+      "label": "Pin Lock Header",
+      "file": "pinLockModal.js",
+      "line": 55,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 55
+        },
+        {
+          "file": "style.css",
+          "line": 24026
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockModal",
+      "label": "Pin Lock Modal",
+      "file": "pinLockModal.js",
+      "line": 49,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 49
+        },
+        {
+          "file": "style.css",
+          "line": 23960
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockSave",
+      "label": "Pin Lock Save",
+      "file": "pinLockModal.js",
+      "line": 118,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 118
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockTimeoutSelect",
+      "label": "Pin Lock Timeout Select",
+      "file": "pinLockModal.js",
+      "line": 96,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 96
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockTitle",
+      "label": "Pin Lock Title",
+      "file": "pinLockModal.js",
+      "line": 57,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 57
+        },
+        {
+          "file": "style.css",
+          "line": 24034
+        }
+      ]
+    },
+    {
+      "selector": "#pinLockTurnOff",
+      "label": "Pin Lock Turn Off",
+      "file": "pinLockModal.js",
+      "line": 141,
+      "files": [
+        {
+          "file": "pinLockModal.js",
+          "line": 141
         }
       ]
     },
@@ -4611,11 +4809,11 @@
       "selector": "#pomodoroToggle",
       "label": "Pomodoro Toggle",
       "file": "main.js",
-      "line": 286,
+      "line": 287,
       "files": [
         {
           "file": "main.js",
-          "line": 286
+          "line": 287
         },
         {
           "file": "style.css",
@@ -4627,11 +4825,11 @@
       "selector": "#projButton",
       "label": "Proj Button",
       "file": "main.js",
-      "line": 235,
+      "line": 236,
       "files": [
         {
           "file": "main.js",
-          "line": 235
+          "line": 236
         },
         {
           "file": "style.css",
@@ -4643,11 +4841,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 2160,
+      "line": 2161,
       "files": [
         {
           "file": "main.js",
-          "line": 2160
+          "line": 2161
         },
         {
           "file": "style.css",
@@ -4675,11 +4873,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 2168,
+      "line": 2169,
       "files": [
         {
           "file": "main.js",
-          "line": 2168
+          "line": 2169
         },
         {
           "file": "style.css",
@@ -4707,11 +4905,11 @@
       "selector": "#projectPickerDropdown",
       "label": "Project Picker Dropdown",
       "file": "main.js",
-      "line": 873,
+      "line": 874,
       "files": [
         {
           "file": "main.js",
-          "line": 873
+          "line": 874
         },
         {
           "file": "style.css",
@@ -4911,11 +5109,11 @@
       "selector": "#queueResizeHandle",
       "label": "Queue Resize Handle",
       "file": "main.js",
-      "line": 684,
+      "line": 685,
       "files": [
         {
           "file": "main.js",
-          "line": 684
+          "line": 685
         },
         {
           "file": "style.css",
@@ -5335,11 +5533,11 @@
       "selector": "#settingsAboutSection",
       "label": "Settings About Section",
       "file": "settingsModal.js",
-      "line": 102,
+      "line": 109,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 102
+          "line": 109
         }
       ]
     },
@@ -5347,11 +5545,11 @@
       "selector": "#settingsAccountSection",
       "label": "Settings Account Section",
       "file": "settingsModal.js",
-      "line": 252,
+      "line": 259,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 252
+          "line": 259
         }
       ]
     },
@@ -5359,11 +5557,11 @@
       "selector": "#settingsAppearanceSection",
       "label": "Settings Appearance Section",
       "file": "settingsModal.js",
-      "line": 85,
+      "line": 86,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 85
+          "line": 86
         }
       ]
     },
@@ -5371,11 +5569,11 @@
       "selector": "#settingsDataSection",
       "label": "Settings Data Section",
       "file": "settingsModal.js",
-      "line": 194,
+      "line": 201,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 194
+          "line": 201
         }
       ]
     },
@@ -5407,11 +5605,11 @@
       "selector": "#settingsHelpSection",
       "label": "Settings Help Section",
       "file": "settingsModal.js",
-      "line": 160,
+      "line": 167,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 160
+          "line": 167
         }
       ]
     },
@@ -5419,11 +5617,11 @@
       "selector": "#settingsMenu",
       "label": "Settings Menu",
       "file": "settingsMenu.js",
-      "line": 173,
+      "line": 175,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 173
+          "line": 175
         },
         {
           "file": "style.css",
@@ -5435,11 +5633,11 @@
       "selector": "#settingsModal",
       "label": "Settings Modal",
       "file": "settingsModal.js",
-      "line": 50,
+      "line": 51,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 50
+          "line": 51
         },
         {
           "file": "style.css",
@@ -5451,11 +5649,11 @@
       "selector": "#settingsModalBackdrop",
       "label": "Settings Modal Backdrop",
       "file": "settingsModal.js",
-      "line": 47,
+      "line": 48,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 47
+          "line": 48
         },
         {
           "file": "style.css",
@@ -5467,11 +5665,11 @@
       "selector": "#settingsModalBody",
       "label": "Settings Modal Body",
       "file": "settingsModal.js",
-      "line": 72,
+      "line": 73,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 72
+          "line": 73
         },
         {
           "file": "style.css",
@@ -5483,11 +5681,11 @@
       "selector": "#settingsModalClose",
       "label": "Settings Modal Close",
       "file": "settingsModal.js",
-      "line": 63,
+      "line": 64,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 63
+          "line": 64
         },
         {
           "file": "style.css",
@@ -5499,11 +5697,11 @@
       "selector": "#settingsModalHeader",
       "label": "Settings Modal Header",
       "file": "settingsModal.js",
-      "line": 56,
+      "line": 57,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 56
+          "line": 57
         },
         {
           "file": "style.css",
@@ -5515,11 +5713,11 @@
       "selector": "#settingsModalTitle",
       "label": "Settings Modal Title",
       "file": "settingsModal.js",
-      "line": 59,
+      "line": 60,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 59
+          "line": 60
         },
         {
           "file": "style.css",
@@ -5531,11 +5729,11 @@
       "selector": "#settingsRepoSetupSection",
       "label": "Settings Repo Setup Section",
       "file": "settingsModal.js",
-      "line": 220,
+      "line": 227,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 220
+          "line": 227
         }
       ]
     },
@@ -5543,11 +5741,11 @@
       "selector": "#settingsToggle",
       "label": "Settings Toggle",
       "file": "main.js",
-      "line": 423,
+      "line": 424,
       "files": [
         {
           "file": "main.js",
-          "line": 423
+          "line": 424
         },
         {
           "file": "style.css",
@@ -5559,11 +5757,11 @@
       "selector": "#settingsViewSection",
       "label": "Settings View Section",
       "file": "settingsModal.js",
-      "line": 75,
+      "line": 76,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 75
+          "line": 76
         }
       ]
     },
@@ -5571,11 +5769,11 @@
       "selector": "#sideBar",
       "label": "Side Bar",
       "file": "main.js",
-      "line": 214,
+      "line": 215,
       "files": [
         {
           "file": "main.js",
-          "line": 214
+          "line": 215
         },
         {
           "file": "style.css",
@@ -5587,11 +5785,11 @@
       "selector": "#sideMa",
       "label": "Side Ma",
       "file": "main.js",
-      "line": 232,
+      "line": 233,
       "files": [
         {
           "file": "main.js",
-          "line": 232
+          "line": 233
         },
         {
           "file": "style.css",
@@ -5603,11 +5801,11 @@
       "selector": "#sideTit",
       "label": "Side Tit",
       "file": "main.js",
-      "line": 231,
+      "line": 232,
       "files": [
         {
           "file": "main.js",
-          "line": 231
+          "line": 232
         },
         {
           "file": "style.css",
@@ -5619,11 +5817,11 @@
       "selector": "#sidebarBottom",
       "label": "Sidebar Bottom",
       "file": "main.js",
-      "line": 725,
+      "line": 726,
       "files": [
         {
           "file": "main.js",
-          "line": 725
+          "line": 726
         },
         {
           "file": "style.css",
@@ -5635,11 +5833,11 @@
       "selector": "#sidebarOverlay",
       "label": "Sidebar Overlay",
       "file": "main.js",
-      "line": 259,
+      "line": 260,
       "files": [
         {
           "file": "main.js",
-          "line": 259
+          "line": 260
         },
         {
           "file": "style.css",
@@ -5651,11 +5849,11 @@
       "selector": "#sidebarToggle",
       "label": "Sidebar Toggle",
       "file": "main.js",
-      "line": 254,
+      "line": 255,
       "files": [
         {
           "file": "main.js",
-          "line": 254
+          "line": 255
         },
         {
           "file": "style.css",
@@ -5667,11 +5865,11 @@
       "selector": "#sidebarTop",
       "label": "Sidebar Top",
       "file": "main.js",
-      "line": 724,
+      "line": 725,
       "files": [
         {
           "file": "main.js",
-          "line": 724
+          "line": 725
         },
         {
           "file": "style.css",
@@ -5883,11 +6081,11 @@
       "selector": "#structureView",
       "label": "Structure View",
       "file": "main.js",
-      "line": 1077,
+      "line": 1078,
       "files": [
         {
           "file": "main.js",
-          "line": 1077
+          "line": 1078
         },
         {
           "file": "style.css",
@@ -5927,11 +6125,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3811,
+      "line": 3821,
       "files": [
         {
           "file": "main.js",
-          "line": 3811
+          "line": 3821
         },
         {
           "file": "style.css",
@@ -5943,11 +6141,11 @@
       "selector": "#taskSortBtn",
       "label": "Task Sort Btn",
       "file": "main.js",
-      "line": 1200,
+      "line": 1201,
       "files": [
         {
           "file": "main.js",
-          "line": 1200
+          "line": 1201
         },
         {
           "file": "style.css",
@@ -5959,11 +6157,11 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 1237,
+      "line": 1238,
       "files": [
         {
           "file": "main.js",
-          "line": 1237
+          "line": 1238
         },
         {
           "file": "style.css",
@@ -6459,11 +6657,11 @@
       "selector": "#usageSpendToggle",
       "label": "Usage Spend Toggle",
       "file": "main.js",
-      "line": 403,
+      "line": 404,
       "files": [
         {
           "file": "main.js",
-          "line": 403
+          "line": 404
         },
         {
           "file": "style.css",
@@ -6475,11 +6673,11 @@
       "selector": "#viewPillProjects",
       "label": "View Pill Projects",
       "file": "main.js",
-      "line": 993,
+      "line": 994,
       "files": [
         {
           "file": "main.js",
-          "line": 993
+          "line": 994
         },
         {
           "file": "style.css",
@@ -6491,11 +6689,11 @@
       "selector": "#viewPillStructure",
       "label": "View Pill Structure",
       "file": "main.js",
-      "line": 1019,
+      "line": 1020,
       "files": [
         {
           "file": "main.js",
-          "line": 1019
+          "line": 1020
         },
         {
           "file": "style.css",
@@ -6507,11 +6705,11 @@
       "selector": "#viewSwitcher",
       "label": "View Switcher",
       "file": "main.js",
-      "line": 988,
+      "line": 989,
       "files": [
         {
           "file": "main.js",
-          "line": 988
+          "line": 989
         },
         {
           "file": "style.css",
