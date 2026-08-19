@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-18T13:07:07.659Z",
-  "sha": "53e37d5e0bafcfb47c79b52467829197afc55d0e",
+  "generatedAt": "2026-08-19T06:10:10.872Z",
+  "sha": "08a49a8acfce253ad1f6cff2d09de15a2af7092b",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -5899,11 +5899,11 @@
       "selector": "#taskFilterBar",
       "label": "Task Filter Bar",
       "file": "taskFilter.js",
-      "line": 182,
+      "line": 192,
       "files": [
         {
           "file": "taskFilter.js",
-          "line": 182
+          "line": 192
         },
         {
           "file": "style.css",
@@ -5915,11 +5915,11 @@
       "selector": "#taskFilterEmpty",
       "label": "Task Filter Empty",
       "file": "taskFilter.js",
-      "line": 762,
+      "line": 772,
       "files": [
         {
           "file": "taskFilter.js",
-          "line": 762
+          "line": 772
         }
       ]
     },
