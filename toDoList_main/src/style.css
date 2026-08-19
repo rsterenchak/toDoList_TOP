@@ -21281,6 +21281,54 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   line-height: 1.5;
   color: var(--text-danger);
 }
+/* ── REVIEW ACTION CLUSTERS ──
+   The row is two clusters, not five loose buttons: the ACCEPT & CLOSE / REVERT
+   decision pair, a hairline rule, then the read-only OPEN IN TODO.MD / COPY
+   CONTEXT / ITERATE routes. Both clusters carry the row's own 8px gap and wrap
+   internally, so the pair never splits and the tertiary routes take a second line
+   before the decision pair does. The tertiary cluster is the flexible one
+   (`flex: 1 1 auto`) — it absorbs the remaining width and re-flows inside itself,
+   which keeps it beside the rule instead of dragging the rule onto a dangling
+   line of its own. */
+.descReviewActionsPrimary,
+.descReviewActionsTertiary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.descReviewActionsPrimary {
+  flex: 0 0 auto;
+}
+.descReviewActionsTertiary {
+  flex: 1 1 auto;
+}
+/* The 1px rule between the clusters. Decoration only (aria-hidden in the markup);
+   `align-self: stretch` lets it span a multi-line tertiary cluster, with the
+   button height as its floor when the row is a single line. */
+.descReviewActionsDivider {
+  flex: 0 0 1px;
+  align-self: stretch;
+  min-height: 36px;
+  background: var(--border-bright);
+}
+/* Below the detail pane's 1024px floor the ACCEPT face renders inside the mobile
+   description-editor modal, whose body is far too narrow to hold both clusters on
+   one line. There the rule turns horizontal and full-width: it forces the tertiary
+   routes onto their own line and reads as the separator between the two clusters
+   rather than as a hairline stranded at the end of the first line. */
+@media (max-width: 1023px) {
+  .descReviewActionsDivider {
+    flex: 0 0 100%;
+    align-self: auto;
+    width: 100%;
+    height: 1px;
+    min-height: 0;
+  }
+  .descReviewActionsTertiary {
+    flex: 1 1 100%;
+  }
+}
 /* SpaceMono uppercase treatment matching the panel's other pipeline actions. */
 .descReviewBtn {
   flex: 0 0 auto;

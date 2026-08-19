@@ -12,12 +12,14 @@ export const changelog = [
         fixed: [
             'Choosing a mockup now shows the drafted entry right away instead of leaving it hidden until you switch projects and back.',
         ],
+        changed: [
+            'The review buttons on a shipped change now sit in two groups split by a divider — accept and revert on one side, the open, copy and iterate shortcuts on the other.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-08-18',
         fixed: [
-            'The mobile welcome carousel now runs only when the sample project was actually created for you, so it no longer plays over your real projects on a fresh browser or after a slow sign-in.',
             'A load that breaks partway through now hands off to the automatic recovery screen instead of leaving you staring at an empty app.',
             'A shipped task you accept now moves cleanly into the DONE filter instead of also staying listed under IN PROGRESS.',
         ],
