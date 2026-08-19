@@ -11,17 +11,11 @@ export const changelog = [
         ],
         fixed: [
             'Choosing a mockup now shows the drafted entry right away instead of leaving it hidden until you switch projects and back.',
+            'Unlocking the app with your PIN now pulls in the latest changes made on your other devices instead of showing stale tasks until you refresh.',
         ],
         changed: [
             'The review buttons on a shipped change now sit in two groups split by a divider — accept and revert on one side, the open, copy and iterate shortcuts on the other.',
             'The PIN boxes on the lock screen are much larger on phones, so the digits are easier to read and tap one-handed.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-18',
-        fixed: [
-            'A shipped task you accept now moves cleanly into the DONE filter instead of also staying listed under IN PROGRESS.',
         ],
     },
 ];

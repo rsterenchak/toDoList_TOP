@@ -416,6 +416,14 @@ export function unlockApp() {
     }
     markAppLockActivity();
     rearmAppLockTimer();
+    // Announce the unlock so the rest of the app can treat it as a wake.
+    // The overlay is an in-page takeover, not a backgrounded tab, so an idle
+    // span long enough to lock (5 minutes by default) is long enough for the
+    // realtime socket to drop with no visibilitychange, `online`, or focus
+    // event to trigger index.js's recovery pair. This event is that signal;
+    // it follows the `appUpdateApplied` document-event pattern so appLock
+    // stays free of any import back into the entry module.
+    document.dispatchEvent(new CustomEvent('appLockUnlocked'));
 }
 
 // ── idle watch ──
