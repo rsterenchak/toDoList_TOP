@@ -397,6 +397,17 @@ window.addEventListener('focus', function () {
     wakeRecoverRealtime();
 });
 
+// Dismissing the PIN lock is the one wake seam none of the above catches. The
+// overlay is an in-page DOM takeover, so the tab never went hidden, the
+// network never dropped, and the window never lost focus — yet the idle span
+// that armed the lock is exactly long enough for the realtime socket to die,
+// leaving a just-unlocked device showing what it had cached before it locked.
+// appLock.js announces the unlock; run the same pair here.
+document.addEventListener('appLockUnlocked', function () {
+    rehydrateUnlessEditing();
+    wakeRecoverRealtime();
+});
+
 setInterval(rehydrateUnlessEditing, 5 * 60 * 1000);
 
 
