@@ -13,6 +13,8 @@ import {
     ensureCompanion,
     destroyCompanion,
 } from './companion.js';
+import { isAppLockArmed } from './appLock.js';
+import { showPinLockModal } from './pinLockModal.js';
 
 export function createDrawerToggleRow(labelText, getState, onToggle) {
     const row = document.createElement('button');
@@ -145,4 +147,25 @@ export function buildCompanionToggle(applyCompanionGhostPreference) {
             applyCompanionGhostPreference();
         }
     );
+}
+
+// App lock (PIN) — the mobile counterpart to the settings-menu row of the
+// same name. Same toggle-row chrome as the rows above, but activating it
+// opens the PIN setup modal instead of flipping a pref in place: the setting
+// carries a PIN and an idle span, neither of which fits a one-tap row. The
+// pill therefore reports state rather than being the control, so the row also
+// advertises aria-haspopup="dialog" — "tap me to open something", not "tap me
+// to flip". The settings modal stays open behind the dialog, so the returned
+// refresh() is handed to the modal as its onChange hook to repaint the pill
+// once a save or turn-off lands.
+export function buildAppLockToggle() {
+    const toggle = createDrawerToggleRow(
+        'App lock (PIN)',
+        // ON only when the lock is fully armed (enabled AND a PIN stored), so
+        // a half-finished setup can't advertise itself as protecting anything.
+        function() { return isAppLockArmed(); },
+        function() { showPinLockModal({ onChange: function() { toggle.refresh(); } }); }
+    );
+    toggle.row.setAttribute('aria-haspopup', 'dialog');
+    return toggle;
 }

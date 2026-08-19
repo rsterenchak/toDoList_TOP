@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-18',
+        date: '2026-08-19',
         added: [
-            'A link icon in the Structure tab header opens the selected repo\'s deployed site in a new tab.',
+            'App lock: set a 4-digit PIN in settings and the app locks itself after the idle time you pick, asking for the PIN before letting anyone back in.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-18',
         changed: [
             'Reverting a shipped change now rolls its paperwork back too: a derived proposal returns to the Proposed list, and a hand-written entry reopens unchecked in TODO.md.',
         ],

@@ -23952,3 +23952,258 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
    suppressing here under `body.vhDeficit` — viewportHeal.test.js pins the
    no-shadow premise so that day is a failing test rather than a field report.
 ══════════════════════════════════════════ */
+
+/* ══════════════════════════════════════════
+   APP LOCK (PIN)
+
+   Two surfaces built from the same boxed-digit input: the setup modal
+   (#pinLockModal, opened from the "App lock (PIN)" row in the desktop
+   settings menu and the mobile settings modal) and the lock overlay
+   (#appLockOverlay) that takes the screen once the app has been idle past
+   the configured span.
+
+   The overlay sits at z-index 100000 — above the focus-mode takeover
+   (10002), the desktop ghost sprite (10001), and every modal backdrop — so
+   nothing can paint over a locked app, including a modal that was already
+   open when the timer fired. It is opaque and covers the viewport, so it
+   also swallows every pointer event aimed at the app behind it.
+   ══════════════════════════════════════════ */
+
+/* ── boxed digit inputs (shared by both surfaces) ── */
+.pinDigitRow {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.pinDigitInput {
+  font-family: inherit;
+  /* 20px keeps the digits legible in the boxes and clears the 16px floor
+     that stops iOS Safari auto-zooming on focus (CLAUDE.md mobile rule). */
+  font-size: 20px;
+  font-weight: 600;
+  text-align: center;
+  width: 44px;
+  height: 52px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border-mid);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  caret-color: var(--accent);
+}
+.pinDigitInput:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+
+/* ── setup modal ── */
+#pinLockBackdrop {
+  position: fixed;
+  inset: 0;
+  /* Above the inject-settings modal (220) and the mobile settings modal
+     (100), which stays open behind this dialog when the row is tapped. */
+  z-index: 240;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+#pinLockModal {
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-radius: var(--radius-md);
+  width: 100%;
+  max-width: 380px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+}
+#pinLockHeader {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px 8px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#pinLockTitle {
+  font-size: 14px;
+  font-weight: 600;
+}
+#pinLockClose {
+  font-family: inherit;
+  font-size: 22px;
+  line-height: 1;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+}
+#pinLockClose:hover { background: var(--bg-hover); color: var(--text-primary); }
+#pinLockClose:focus { outline: none; box-shadow: 0 0 0 2px var(--accent-dim); }
+
+#pinLockBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.pinLockBlurb {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.pinLockFieldLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.pinLockFieldLabel--select {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pinLockSelect {
+  font-family: inherit;
+  font-size: 16px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-mid);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  width: 100%;
+}
+.pinLockSelect:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.pinLockError {
+  min-height: 15px;
+  font-size: 12px;
+  color: var(--text-danger);
+}
+.pinLockError:empty { display: none; }
+
+#pinLockActions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+.pinLockActionsSpacer { flex: 1; }
+.pinLockBtn {
+  font-family: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  min-height: 36px;
+  border-radius: var(--radius-sm);
+  border: 0.5px solid var(--border-mid);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.pinLockBtn:hover { background: var(--bg-hover); }
+.pinLockBtn:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.pinLockBtn--primary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.pinLockBtn--primary:hover { background: var(--accent); filter: brightness(1.08); }
+.pinLockBtn--danger {
+  color: var(--text-danger);
+  border-color: var(--text-danger);
+  background: transparent;
+}
+.pinLockBtn--danger:hover {
+  background: var(--text-danger);
+  color: #fff;
+}
+
+/* ── lock overlay ── */
+body.appLocked { overflow: hidden; }
+
+#appLockOverlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  /* Opaque, not translucent: the point is that the list underneath cannot
+     be read over someone's shoulder while the app is locked. */
+  background: var(--bg-base);
+}
+.appLockCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  max-width: 320px;
+  padding: 24px 20px;
+  border-radius: var(--radius-md);
+  border: 0.5px solid var(--border-mid);
+  background: var(--bg-surface);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+  color: var(--text-primary);
+}
+.appLockIcon {
+  color: var(--accent);
+  line-height: 0;
+}
+.appLockTitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+.appLockHint {
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+.appLockError {
+  min-height: 15px;
+  font-size: 12px;
+  color: var(--text-danger);
+}
+.appLockError:empty { display: none; }
+
+/* Wrong-PIN nudge. Re-applied after a reflow in appLock.js so a second bad
+   entry replays it. Suppressed under reduced-motion, where the error line
+   alone carries the feedback. */
+.appLockCard--shake { animation: appLockShake 0.28s ease-in-out; }
+@keyframes appLockShake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .appLockCard--shake { animation: none; }
+}
+
+@media (max-width: 480px) {
+  #pinLockBackdrop { padding: 16px; }
+  #pinLockModal { max-height: 90vh; }
+  .pinLockBtn { font-size: 14px; padding: 10px 14px; }
+}
