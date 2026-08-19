@@ -5100,13 +5100,48 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* Read-only repo label — the resolved repo string with the selected project's
-   name as a quiet hint. A label, not a control, so it carries no focus/hover. */
+   name as a quiet hint. The text itself is a label, not a control, so it carries
+   no focus/hover; the row holds it beside the one control here, the deployed-site
+   icon link. */
 .structureRepoLabel {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.structureRepoNameCol {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
-  max-width: 100%;
+}
+
+/* The deployed-site link beside the repo name. Glyph-only, so it keeps a 22px
+   square box for the hit target; `flex: 0 0 auto` stops it absorbing width the
+   name column should get. */
+.structurePagesIconLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  color: var(--text-muted);
+  text-decoration: none;
+}
+
+.structurePagesIconLink:hover {
+  color: var(--accent);
+  background: var(--bg-surface);
+}
+
+.structurePagesIconLink:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 .structureRepoName {
