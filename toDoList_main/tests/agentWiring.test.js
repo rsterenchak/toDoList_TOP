@@ -36,6 +36,10 @@ const fetchActiveRuns = vi.fn(() => Promise.resolve({ ok: true, active: true }))
 const pollRunStatus = vi.fn(() => Promise.resolve({ ok: true, found: false }));
 const dispatchDerive = vi.fn(() => Promise.resolve({ ok: true }));
 const dispatchTriage = vi.fn(() => Promise.resolve({ ok: true, dispatched: true }));
+// The mockup flow's "use this" path round-trips through chatWithWorker to turn a
+// variant into a finished TODO.md entry; a non-empty reply is what carries it
+// through to the save + queue-refresh the wiring test below asserts on.
+const chatWithWorker = vi.fn(() => Promise.resolve({ reply: '- [ ] **[LOW]** Mockup entry' }));
 vi.mock('../src/inject.js', () => ({
     fetchActiveRuns: (...a) => fetchActiveRuns(...a),
     pollRunStatus: (...a) => pollRunStatus(...a),
@@ -46,14 +50,17 @@ vi.mock('../src/inject.js', () => ({
     findTargetById: () => null,
     readAssignmentFromWorker: () => Promise.resolve({ ok: false }),
     readRepoFile: () => Promise.resolve({ ok: false }),
-    chatWithWorker: () => Promise.resolve({ reply: '' }),
+    chatWithWorker: (...a) => chatWithWorker(...a),
 }));
 
 import { listLogic } from '../src/listLogic.js';
 // Importing agentWiring.js runs the three configure* calls as a load side effect —
 // the same thing that must happen on app boot.
 import '../src/agentWiring.js';
+import { renderMockupPreviews } from '../src/mockupFlow.js';
 import {
+    onQueueChange,
+    getLoadedProjectName,
     seedSweepState,
     isSweepActive,
     stopSweepTracking,
@@ -80,6 +87,7 @@ beforeEach(() => {
     pollRunStatus.mockClear();
     dispatchDerive.mockClear();
     dispatchTriage.mockClear();
+    chatWithWorker.mockClear();
     setTriageInFlight(false);
     document.body.innerHTML = '';
 });
@@ -186,5 +194,54 @@ describe('agentWiring — boardless triage dispatcher registered through the boo
 
         expect(res).toBe(null);
         expect(dispatchTriage).not.toHaveBeenCalled();
+    });
+});
+
+describe('agentWiring — mockup flow queue refresh wired through the boot path', () => {
+    // Regression: the wiring used to omit refreshAgentQueue from
+    // configureMockupFlow on the assumption it was board-only "dead" code, leaving
+    // mockupFlow's module-level binding as its inert no-op stub. Choosing a mockup
+    // variant still drafted the row in Supabase, but nothing fired the store's
+    // onQueueChange notification, so every live mockup host (detail pane, mobile
+    // description-editor modal, assignment/coverage modal) kept showing the
+    // pre-draft state until an unrelated reload — switching projects and back —
+    // repainted it. The board is never imported here, exactly as in the app.
+    async function clickUseThis() {
+        const container = document.createElement('div');
+        document.body.appendChild(container);
+        renderMockupPreviews(container, { A: '<p>Alpha</p>' }, { id: 'row-1', context: {} });
+        const useBtn = container.querySelector('.agentMockupUse');
+        expect(useBtn).toBeTruthy();
+        useBtn.click();
+        await flush(20);
+    }
+
+    it('notifies queue listeners after a chosen mockup drafts its entry', async () => {
+        listLogic.addProject('Alpha');
+        setSelected('Alpha');
+
+        let notified = 0;
+        const off = onQueueChange(() => { notified += 1; });
+        try {
+            await clickUseThis();
+        } finally {
+            off();
+        }
+
+        // The entry was created (the Worker round-trip ran) AND the wiring's
+        // refreshAgentQueue reloaded + notified. Unwired, notified stays 0.
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(notified).toBeGreaterThan(0);
+    });
+
+    it('leaves the selected project loaded in the store after the refresh', async () => {
+        listLogic.addProject('Alpha');
+        setSelected('Alpha');
+
+        await clickUseThis();
+
+        // refreshAgentQueue re-scopes the cache to the selected project; the
+        // no-op stub never touched it.
+        expect(getLoadedProjectName()).toBe('Alpha');
     });
 });

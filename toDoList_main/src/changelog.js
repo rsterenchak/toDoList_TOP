@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             'App lock: set a 4-digit PIN in settings and the app locks itself after the idle time you pick, asking for the PIN before letting anyone back in.',
         ],
+        fixed: [
+            'Choosing a mockup now shows the drafted entry right away instead of leaving it hidden until you switch projects and back.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-08-18',
-        changed: [
-            'Reverting a shipped change now rolls its paperwork back too: a derived proposal returns to the Proposed list, and a hand-written entry reopens unchecked in TODO.md.',
-        ],
         fixed: [
             'The mobile welcome carousel now runs only when the sample project was actually created for you, so it no longer plays over your real projects on a fresh browser or after a slow sign-in.',
             'A load that breaks partway through now hands off to the automatic recovery screen instead of leaving you staring at an empty app.',

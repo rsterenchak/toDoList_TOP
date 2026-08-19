@@ -174,12 +174,16 @@ function fireTriageSweep(projectName) {
 // module, not the board, so this registration is the one the running app uses.
 setTriageDispatcher(fireTriageSweep);
 
-// Wire the mockup flow. Only the live callback (the selected-project reader, used
-// to resolve the routed repo for mockup prompts) is supplied; the board repaint
-// callbacks it also accepts (paint / refreshAgentQueue) are omitted — dead with no
-// board — and configureMockupFlow merges per key, so the omitted ones keep their
-// no-op defaults.
-configureMockupFlow({ getSelectedProjectName });
+// Wire the mockup flow. Two live callbacks: the selected-project reader (used to
+// resolve the routed repo for mockup prompts) and refreshAgentQueue, which the
+// flow calls right after saving a chosen variant's drafted entry so the row lands
+// promptly instead of waiting on realtime. refreshAgentQueue is NOT board-only —
+// every live mockup host (the detail pane, the mobile description-editor modal,
+// the assignment/coverage modal) repaints off the store's onQueueChange
+// notification that it fires, so omitting it left the drafted row invisible until
+// something else reloaded the queue. Only `paint` is genuinely dead with no board;
+// configureMockupFlow merges per key, so it keeps its no-op default.
+configureMockupFlow({ getSelectedProjectName, refreshAgentQueue });
 
 // Wire the assignment / coverage subsystem. Supplies the live callbacks it needs
 // (selected project, read-target resolver, derive dispatch, and the chat hand-off
