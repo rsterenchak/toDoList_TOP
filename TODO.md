@@ -1514,7 +1514,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/taskFilter.js`
   <!-- id: 2dd46f12-bc71-4e5f-965d-df547df24063 -->
 
-- [ ] **[LOW]** Add a GitHub Pages link icon to the Structure tab header
+- [x] **[LOW]** Add a GitHub Pages link icon to the Structure tab header — Completed: 2026-08-18
   - Type: feature
   - Description: In the Structure tab header, add a small external-link icon next to the repo name (inside `.structureRepoLabel`, beside the new `.structureRepoNameCol` wrapper containing `.structureRepoName` and `.structureRepoProjectHint`) that links to the deployed GitHub Pages URL for the selected repo. Compute the URL via the existing `pagesUrlFor(repo)` helper exported from `structureRemoteCapture.js`; if it returns null, render nothing. The icon is a 14px monochrome `stroke="currentColor"` external-link SVG inside a 22×22 `.structurePagesIconLink` anchor (`target="_blank" rel="noopener noreferrer"`), colored `var(--text-muted)` at rest and `var(--accent)` with a `var(--bg-surface)` background on hover, matching the mockup. Restructure the existing flat `.structureRepoLabel` column into a row containing a `.structureRepoNameCol` (holding the existing name/hint column) plus the new icon link, per the chosen mockup.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/structureRemoteCapture.js`, `toDoList_main/src/style.css`
