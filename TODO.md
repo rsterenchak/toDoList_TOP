@@ -1508,7 +1508,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/claudeSheet.js`
   <!-- id: d7b1abaf-9093-4a82-b1f0-b1d9030af081 -->
 
-- [ ] **[MEDIUM]** Exclude DONE-phase tasks from the IN PROGRESS filter
+- [x] **[MEDIUM]** Exclude DONE-phase tasks from the IN PROGRESS filter — Completed: 2026-08-18
   - Type: bug
   - Description: Clicking "Accept & close" on a shipped task's review actions (`buildReviewActions` in `toDoList_main/src/toDoRow.js`) calls `listLogic.markEntryReviewed(item.id)`, which stamps `entryReviewedAt` and, by design, never touches the item's manual `status` field (see the comment above `markEntryReviewed` in `toDoList_main/src/listLogic.js`: "The manual `status` field is never touched here"). If that task's manual status was previously set to `in_progress` (via the status popover in `toDoList_main/src/todoStatus.js`), it keeps matching the `inprogress` entry in `PHASE_FILTERS` inside `toDoList_main/src/taskFilter.js` — whose `match` is `normalizeStatus(item.status) === 'in_progress' || phase === 'draft' || phase === 'running'` — even after `derivePhase` (in `toDoList_main/src/phase.js`) resolves the item's phase to `done`. The task then wrongly shows under both the IN PROGRESS and DONE filters at once instead of moving cleanly into DONE only. Fix by having the `inprogress` filter's `match` function in `taskFilter.js` return `false` whenever `phaseOf(item) === 'done'`, before falling back to the manual-status check, so a reviewed/shipped task always lives solely in the DONE filter regardless of its leftover manual status.
   - File: `toDoList_main/src/taskFilter.js`
