@@ -29,7 +29,7 @@ import {
     canLocate,
     locateHandle,
 } from './structureCanvas.js';
-import { captureRemote } from './structureRemoteCapture.js';
+import { captureRemote, pagesUrlFor } from './structureRemoteCapture.js';
 import {
     renderCodeViewer,
     clearCodeViewer,
@@ -406,6 +406,28 @@ function buildGithubLink(repo, file, line, glyphOnly) {
     a.textContent = glyphOnly ? '↗' : 'View on GitHub ↗';
     if (glyphOnly) a.setAttribute('aria-label', 'View ' + file + ' on GitHub');
     a.addEventListener('click', function (event) { event.stopPropagation(); });
+    return a;
+}
+
+// The header's deployed-site link: a glyph-only anchor beside the repo name that
+// opens that repo's GitHub Pages build. Gated on `pagesUrlFor` resolving, so a
+// repo that doesn't follow the Pages convention simply renders no icon (null)
+// rather than a dead link.
+function buildPagesIconLink(repo) {
+    const url = pagesUrlFor(repo);
+    if (!url) return null;
+    const a = document.createElement('a');
+    a.className = 'structurePagesIconLink';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.title = 'Open the deployed site';
+    a.setAttribute('aria-label', 'Open the deployed site for ' + repo);
+    a.innerHTML =
+        '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" ' +
+        'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>' +
+        '<path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>';
     return a;
 }
 
@@ -3386,18 +3408,27 @@ export function renderStructureView() {
     eyebrow.textContent = 'Repository';
     labelGroup.appendChild(eyebrow);
 
+    // A row: the name/hint column, then the deployed-site icon link beside it.
     const repoLabel = document.createElement('div');
     repoLabel.className = 'structureRepoLabel';
+
+    const nameCol = document.createElement('div');
+    nameCol.className = 'structureRepoNameCol';
 
     const repoName = document.createElement('span');
     repoName.className = 'structureRepoName';
     repoName.textContent = repo;
-    repoLabel.appendChild(repoName);
+    nameCol.appendChild(repoName);
 
     const projectHint = document.createElement('span');
     projectHint.className = 'structureRepoProjectHint';
     projectHint.textContent = projectName;
-    repoLabel.appendChild(projectHint);
+    nameCol.appendChild(projectHint);
+
+    repoLabel.appendChild(nameCol);
+
+    const pagesLink = buildPagesIconLink(repo);
+    if (pagesLink) repoLabel.appendChild(pagesLink);
 
     labelGroup.appendChild(repoLabel);
     header.appendChild(labelGroup);

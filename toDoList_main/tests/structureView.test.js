@@ -92,7 +92,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
 import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport, exitStructureLiveView } from '../src/structureView.js';
 import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
-import { captureRemote } from '../src/structureRemoteCapture.js';
+import { captureRemote, pagesUrlFor } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
 import {
     setStructureLens,
@@ -237,6 +237,45 @@ describe('renderStructureView — project-derived repo', () => {
         // The project name rides along as a quiet hint.
         const hint = document.querySelector('.structureRepoProjectHint');
         expect(hint.textContent).toBe('Game');
+        // Name and hint live in their own column so the icon link can sit beside
+        // them in the label row.
+        const col = document.querySelector('.structureRepoNameCol');
+        expect(col).toBeTruthy();
+        expect(col.contains(repoName)).toBe(true);
+        expect(col.contains(hint)).toBe(true);
+    });
+
+    it('links the repo name to its deployed GitHub Pages build', async () => {
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        const link = document.querySelector('.structurePagesIconLink');
+        expect(link).toBeTruthy();
+        expect(link.tagName).toBe('A');
+        expect(link.href).toBe('https://rsterenchak.github.io/matchingGame-test/');
+        expect(link.target).toBe('_blank');
+        expect(link.rel).toBe('noopener noreferrer');
+        // Glyph-only, so the accessible name has to come from the aria-label.
+        expect(link.getAttribute('aria-label')).toContain('rsterenchak/matchingGame-test');
+        expect(link.querySelector('svg')).toBeTruthy();
+        // It sits in the label row beside the name column, not inside it.
+        const label = document.querySelector('.structureRepoLabel');
+        expect(link.parentElement).toBe(label);
+        expect(document.querySelector('.structureRepoNameCol').contains(link)).toBe(false);
+    });
+
+    it('renders no Pages link when the repo resolves to no deployed URL', async () => {
+        const realImpl = pagesUrlFor.getMockImplementation();
+        pagesUrlFor.mockImplementation(function () { return null; });
+        try {
+            mountDom('Game');
+            renderStructureView();
+            await flush();
+            expect(document.querySelector('.structureRepoName')).toBeTruthy();
+            expect(document.querySelector('.structurePagesIconLink')).toBeFalsy();
+        } finally {
+            pagesUrlFor.mockImplementation(realImpl);
+        }
     });
 
     it('short-circuits cleanly when the container is absent', () => {

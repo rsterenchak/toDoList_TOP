@@ -6,8 +6,10 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-18',
+        added: [
+            'A link icon in the Structure tab header opens the selected repo\'s deployed site in a new tab.',
+        ],
         changed: [
-            'A task added while the IN PROGRESS filter is selected now starts as in progress, so it stays on screen instead of vanishing the moment you press Enter.',
             'Reverting a shipped change now rolls its paperwork back too: a derived proposal returns to the Proposed list, and a hand-written entry reopens unchecked in TODO.md.',
         ],
         fixed: [
