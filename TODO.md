@@ -1534,3 +1534,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/agentWiring.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: c9e42705-d301-40da-88cd-9f59bedaf5c9 -->
+
+- [ ] **[MEDIUM]** Group descReviewActions buttons into primary/danger and tertiary clusters with a divider
+  - Type: feature
+  - Description: The .descReviewActions row in buildReviewActions (toDoList_main/src/toDoRow.js, ~lines 1356-1490) currently renders all 5 buttons (Accept & close, Revert, Open in TODO.md, Copy context, Iterate) as an unstructured flex-wrap row with no visual grouping. Restructure the markup so Accept & close and Revert render first as a primary/danger pair, followed by a 1px vertical divider (var(--border-bright)), followed by a wrapped tertiary group containing Open in TODO.md, Copy context, and Iterate. Preserve existing button classes, styling tokens (--accent amber fill, --text-danger outline, --text-secondary/--border-bright ghost tertiary, 36px min-height, 10px radius, 8px gap, SpaceMono 12px uppercase 0.12em tracking), and all existing event wiring/options (options.onOpenInViewer, options.onIterate) exactly as-is — only the DOM structure and CSS layout change. This component is host-neutral and renders in both the desktop detail pane and the mobile description-editor modal, so the divider and tertiary group must wrap sensibly at both widths without breaking the mobile modal's narrower layout.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 51a4272f-e932-4c22-993b-4155ed12047a -->
