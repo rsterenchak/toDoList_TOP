@@ -1649,3 +1649,15 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: capturing third-party run-lane usage (gateway attribution is Worker work), provider filtering of the daily chart, and any per-provider budget.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   <!-- id: 09c25faa-ccef-480c-a09a-35ee993e3af4 -->
+
+- [ ] **[LOW]** Escalate pre-render boot rejections to the watchdog instead of console.warn
+  - Type: bug
+  - Description: `bootApp` in `index.js` routes a render-step throw to `reportBootFailure()` (the watchdog escalate ladder), but the promise chain's terminal `.catch` only does `console.warn('[bootApp] boot sequence failed:', e)`. If the chain rejects BEFORE the render step ran — e.g. `maybeSkipFirstRunForCloudUser` rejecting — the `.then` holding `restoreFromStorage()` never executes: the user faces an empty shell, the watchdog has already stood down (`markAppBooted()` runs first by design), and the only trace is a console line. Route that case to the ladder while leaving post-render sync failures as warnings, since a rendered-from-cache shell with a failed background hydrate is degraded, not dead, and escalating it could reload-loop through a Supabase outage.
+  - Behavior:
+    - Track whether the render step completed: a `rendered` flag set immediately after the existing try block succeeds (inside the `.then`, after `maybeStartFirstRunCarousel` returns).
+    - Change the inner catch from report-and-rethrow to report-and-return: call `reportBootFailure()` as today, then return early from the `.then` (skipping `bootSyncPipeline`) instead of rethrowing — same "sync never runs against a failed shell" guarantee, but the terminal `.catch` no longer receives an already-reported error, so no double report and no flag gymnastics to distinguish it.
+    - Terminal `.catch`: when `rendered` is false, call `reportBootFailure()` before the warn; when true, keep the warn exactly as-is. Update the inline comments to state the split (pre-render → ladder, post-render → warn) and why.
+    - `reportBootFailure` itself is unchanged (already guards on the hook's presence).
+    - Vitest: cover the three paths against a stubbed `window.__reportBootFailure` — render throw reports once and skips the sync pipeline, a pre-render rejection reports from the terminal catch, a `bootSyncPipeline` rejection warns without reporting.
+  - File: `toDoList_main/src/index.js`
+  <!-- id: 72eb553a-e79c-49bb-ad8a-eecf28359ce8 -->
