@@ -22,7 +22,7 @@ import {
     loadManifest,
     manifestUrlForRepo,
 } from '../src/claudeSheet.js';
-import { initInjectConfig } from '../src/inject.js';
+import { initInjectConfig, refreshShippedMarkers } from '../src/inject.js';
 import { listLogic } from '../src/listLogic.js';
 import { notifyUpdateAvailable } from '../src/modals.js';
 
@@ -577,6 +577,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     let resolveJson;
     let readJson;
     let resultJson;
+    let dispatchJson;
 
     function makeFetch() {
         // Track ids of entries injected this test so the `read` route can reflect
@@ -589,7 +590,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
             if (body.chat) {
                 json = { reply: 'Sure:\n```md\n- [ ] **[LOW]** Add a sparkle\n  - Type: feature\n```' };
             } else if (body.dispatch) {
-                json = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
+                json = dispatchJson;
             } else if (body.status) {
                 json = statusJson;
             } else if (body.run_result) {
@@ -628,6 +629,7 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         resolveJson = { found: false };
         readJson = null;
         resultJson = { result: 'The entry’s premise was already handled by later code, so nothing changed.' };
+        dispatchJson = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1' };
         realFetch = globalThis.fetch;
         fetchSpy = makeFetch();
         globalThis.fetch = fetchSpy;
@@ -1448,6 +1450,205 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
         const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
         expect(stored[0].status).toBe('SHIPPED');
+    });
+
+    it('stamps the run record as gated when the dispatch reports auto-merge off', async () => {
+        // The gate is only knowable at dispatch, so the record carries it forward
+        // for the reconcile that runs minutes later.
+        dispatchJson = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1', auto_merge: false };
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].autoMerge).toBe(false);
+    });
+
+    it('reads a string "false" auto_merge as gated too', async () => {
+        // The workflow input arrives as a string on some Worker versions, so both
+        // forms have to mean the same thing.
+        dispatchJson = { dispatched: true, runUrl: 'https://github.com/x/y/actions/runs/1', auto_merge: 'false' };
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].autoMerge).toBe(false);
+    });
+
+    it('treats a dispatch that reports no gate as auto-merging (historical behavior)', async () => {
+        // An older Worker says nothing about the gate; that must keep meaning
+        // "auto-merge is on", so unchecked still reads as "No change".
+        await sendMessage('draft me an entry');
+        const card = document.querySelector('.claudeDraftCard');
+        card.querySelector('.claudeDraftInject').click();
+        card.querySelector('.claudeDraftShip').click();
+        await flush();
+
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].autoMerge).toBe(true);
+    });
+    // ── "Awaiting merge": a green run whose PR is gated behind a manual merge ──
+    // A run dispatched on a third-party model with auto-merge off finishes green
+    // while its PR sits open, so the entry is still unchecked when the reconcile
+    // reads main. Read as a no-op that would settle terminally at "No change" and
+    // never correct itself after the user merges. The gate is stamped on the
+    // record at dispatch so the reconcile can tell the two unchecked cases apart,
+    // and the waiting state promotes off the shipped-marker cache — no new polling.
+
+    it('holds an unchecked entry at "Awaiting merge" when the run dispatched with auto-merge off', async () => {
+        statusJson = { found: true, status: 'completed', conclusion: 'success', runUrl: 'https://github.com/x/y/actions/runs/9', runId: 9 };
+        readJson = { content: '# TODO\n\n- [ ] **[MEDIUM]** Gated ship\n  - Type: feature\n  <!-- id: e1 -->', sha: 's' };
+        resolveJson = { found: true, pr_number: 12, pr_url: 'https://github.com/x/y/pull/12' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Gated ship', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', autoMerge: false, dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Awaiting merge');
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('AWAITING');
+        // The log URL and run id are persisted exactly as the no-change path does.
+        expect(stored[0].runUrl).toBe('https://github.com/x/y/actions/runs/9');
+        expect(stored[0].runId).toBe(9);
+        // The resolve supplied a PR url, so the row offers the door to the merge.
+        expect(stored[0].awaitingPrUrl).toBe('https://github.com/x/y/pull/12');
+        const prLink = document.querySelector('.claudeRunAwaitingPrLink');
+        expect(prLink).toBeTruthy();
+        expect(prLink.getAttribute('href')).toBe('https://github.com/x/y/pull/12');
+        expect(prLink.textContent).toBe('Open PR ↗');
+    });
+
+    it('renders "Awaiting merge" with no PR link when the resolve carries no url', async () => {
+        // The badge and the promotion are the core of the state; a missing url
+        // just means no link — never a Worker change to manufacture one.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = { content: '# TODO\n\n- [ ] **[MEDIUM]** Gated ship\n  - Type: feature\n  <!-- id: e1 -->', sha: 's' };
+        resolveJson = { found: true, pr_number: 12 };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Gated ship', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', autoMerge: false, dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Awaiting merge');
+        expect(document.querySelector('.claudeRunAwaitingPrLink')).toBeNull();
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored[0].status).toBe('AWAITING');
+        expect(stored[0].awaitingPrUrl).toBeUndefined();
+    });
+
+    it('still commits "No change" for an unchecked entry when auto-merge was on', async () => {
+        // The other half of the decision matrix: with the gate open, unchecked is
+        // still the positive signature of a skipped entry, exactly as before.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = { content: '# TODO\n\n- [ ] **[MEDIUM]** Skipped\n  - Type: feature\n  <!-- id: e1 -->', sha: 's' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Skipped', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', autoMerge: true, dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('No change');
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('NOCHANGE');
+    });
+
+    it('ships a gated run outright when the entry reads back checked-off on main', async () => {
+        // The gate only reinterprets UNCHECKED. A checked `- [x]` entry is still
+        // positive proof the change merged, gate or no gate.
+        statusJson = { found: true, status: 'completed', conclusion: 'success' };
+        readJson = { content: '# TODO\n\n- [x] **[MEDIUM]** Merged fast\n  - Type: feature\n  <!-- id: e1 -->', sha: 's' };
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Merged fast', status: 'RUNNING', repo: 'rsterenchak/toDoList_TOP', autoMerge: false, dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('SHIPPED');
+    });
+
+    it('starts no poller for an AWAITING record — the workflow already completed', async () => {
+        // Re-polling a finished run would re-read the same green conclusion
+        // forever, so AWAITING is non-terminal but never watched.
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Waiting', status: 'AWAITING', repo: 'me/AwaitNoPoll', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Awaiting merge');
+        const statusCalls = fetchSpy.mock.calls.filter((c) => JSON.parse(c[1].body).status);
+        expect(statusCalls.length).toBe(0);
+    });
+
+    it('promotes an AWAITING record to SHIPPED when the marker cache sees the entry checked', async () => {
+        // The merge lands, the routine's `- [x]` is on main, and the next
+        // marker-cache read picks it up — the record flips on that signal alone,
+        // with no extra network call of its own.
+        const repo = 'me/AwaitPromote';
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Waiting', status: 'AWAITING', repo: repo, dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+        // Nothing in the cache yet, so the record holds its ground.
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('AWAITING');
+
+        readJson = { content: '# TODO\n\n- [x] **[MEDIUM]** Waiting\n  - Type: feature\n  <!-- id: e1 -->', sha: 's' };
+        await refreshShippedMarkers({ repo: repo, file_path: 'TODO.md' }, true);
+        await flush();
+
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('SHIPPED');
+        expect(document.querySelector('.claudeRunBadge').textContent).toBe('Shipped');
+    });
+
+    it('leaves an AWAITING record alone when the marker cache holds a different entry', async () => {
+        // Only THIS entry's marker is proof of THIS merge — a cache carrying
+        // someone else's shipped id must never promote the waiting row.
+        const repo = 'me/AwaitOtherEntry';
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Waiting', status: 'AWAITING', repo: repo, dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        readJson = { content: '# TODO\n\n- [x] **[LOW]** Someone else\n  - Type: feature\n  <!-- id: other -->', sha: 's' };
+        await refreshShippedMarkers({ repo: repo, file_path: 'TODO.md' }, true);
+        await flush();
+
+        expect(JSON.parse(localStorage.getItem('todoapp_claudeRuns'))[0].status).toBe('AWAITING');
+    });
+
+    it('never clears an AWAITING run with Clear completed — it has no outcome yet', async () => {
+        // Clearing is for runs that are done. An AWAITING row is still going
+        // somewhere, so it must survive the sweep that takes the shipped one.
+        localStorage.setItem('todoapp_claudeRuns', JSON.stringify([
+            { entryId: 'e1', correlationId: 'c1', title: 'Waiting', status: 'AWAITING', repo: 'me/AwaitClear', dispatchedAt: Date.now() },
+            { entryId: 'e2', correlationId: 'c2', title: 'Landed', status: 'SHIPPED', repo: 'me/AwaitClear', dispatchedAt: Date.now() },
+        ]));
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        await flush();
+
+        // Only the shipped record counts toward the clearable total.
+        expect(document.querySelector('.claudeRunsClearConfirmWarn').textContent)
+            .toContain('Clear 1 completed run?');
+        document.getElementById('claudeRunsClear').click();
+        document.querySelector('.claudeRunsClearYes').click();
+
+        const stored = JSON.parse(localStorage.getItem('todoapp_claudeRuns'));
+        expect(stored.length).toBe(1);
+        expect(stored[0].status).toBe('AWAITING');
     });
 
     // ── Backlog runs recover the real entry title on the way to SHIPPED ──
