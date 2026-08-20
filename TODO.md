@@ -1650,7 +1650,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   <!-- id: 09c25faa-ccef-480c-a09a-35ee993e3af4 -->
 
-- [ ] **[LOW]** Escalate pre-render boot rejections to the watchdog instead of console.warn
+- [x] **[LOW]** Escalate pre-render boot rejections to the watchdog instead of console.warn — Completed: 2026-08-20
   - Type: bug
   - Description: `bootApp` in `index.js` routes a render-step throw to `reportBootFailure()` (the watchdog escalate ladder), but the promise chain's terminal `.catch` only does `console.warn('[bootApp] boot sequence failed:', e)`. If the chain rejects BEFORE the render step ran — e.g. `maybeSkipFirstRunForCloudUser` rejecting — the `.then` holding `restoreFromStorage()` never executes: the user faces an empty shell, the watchdog has already stood down (`markAppBooted()` runs first by design), and the only trace is a console line. Route that case to the ladder while leaving post-render sync failures as warnings, since a rendered-from-cache shell with a failed background hydrate is degraded, not dead, and escalating it could reload-loop through a Supabase outage.
   - Behavior:
