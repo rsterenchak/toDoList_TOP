@@ -1555,12 +1555,15 @@ export const USAGE_RATES = {
     opus:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
     sonnet: { input: 3,   output: 15, cacheWrite: 3.75,  cacheRead: 0.3 },
     haiku:  { input: 0.8, output: 4,  cacheWrite: 1,     cacheRead: 0.08 },
-    // Third-party families a run can now be pinned to, seeded at the opus rate
-    // so an API-billed run reports SOMETHING rather than vanishing into the
-    // unknown-model fallback — the same errs-high philosophy, made explicit for
-    // families we know are reachable. // verify against provider pricing
-    kimi:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
-    grok:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
+    // Third-party families a run can be pinned to, at the providers' published
+    // per-million rates. Neither charges a cache-write premium — their caching is
+    // automatic, so a cache-writing token bills at the plain input rate and
+    // cacheWrite equals input rather than carrying opus's 1.25x.
+    kimi:   { input: 3,   output: 15, cacheWrite: 3,     cacheRead: 0.3 },
+    // xAI bills 2x on requests whose prompt reaches 200K tokens; this flat table
+    // deliberately does not model that tier, so a long-context grok run
+    // under-reports.
+    grok:   { input: 2,   output: 6,  cacheWrite: 2,     cacheRead: 0.3 },
 };
 
 // The most expensive known family. An unrecognised model falls back to this so a
