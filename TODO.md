@@ -1635,3 +1635,17 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: per-model (vs per-family) rate granularity, the 200K long-context tier, and any Worker-side pricing.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: cc1b8644-41da-47a6-8d23-91eda06d4a1c -->
+
+- [ ] **[MEDIUM]** Add per-provider spend split to the API spend panel
+  - Type: feature
+  - Description: The spend panel shows one blended monthly total, but spend now flows to three providers (Anthropic, Moonshot/kimi, xAI/grok). Add a segmented provider bar with a legend directly beneath the total readout, and make the panel's note honest about coverage: only Worker-proxied API calls — chat, scans, and ghost — are tracked for now.
+  - Behavior:
+    - Add a pure exported helper `providerSpendBreakdown(rows)` in `claudeSheet.js` that buckets `usage_events` rows by model-id substring — `opus`/`sonnet`/`haiku`/`claude` → `anthropic`, `kimi` → `kimi`, `grok` → `grok`, anything else → `other` — summing each bucket with the existing `priceForUsageEvent`. Returns the buckets in that fixed order with their dollar totals; zero-cost buckets are included in the return but skipped at render.
+    - Render a new `#usageSpendProviders` block between the readout and the daily chart (a sibling div inside `#usageSpendBody`, filled where `renderSpendChart` is called since that's where the resolved rows are in scope — budget edits re-render the readout only and must not touch this). Contents: one horizontal segmented bar (8px tall, 4px radius, full width) whose segments are proportional to each nonzero bucket's cost, followed by a wrapping legend row of SpaceMono ~11px items reading "<name> $X.XX" with a 7px color dot each.
+    - Colors via `style.css` classes per bucket (widths stay inline since they're computed): anthropic purple `#9D93EE`, kimi amber `#d9b86a`, grok muted teal `#5dcaa5`, other gray. `other` renders only when an unrecognized model has nonzero spend; ghost/haiku spend lands under anthropic by the substring rules above.
+    - A month with zero total cost renders no provider block at all, mirroring how the ratios section guards.
+    - Update the note copy in `renderSpendReadout` to state coverage plainly, e.g.: "Tracks Worker API calls — chat, scans, and the ghost — only for now. Pipeline runs aren't measured here yet: plan-lane runs bill the Max plan, and third-party runs aren't captured." Keep it to two sentences.
+    - Unit-test `providerSpendBreakdown` in Vitest: bucket assignment for each family substring, the `other` fallback, cost summing against `priceForUsageEvent`, and stable ordering.
+  - Out of scope: capturing third-party run-lane usage (gateway attribution is Worker work), provider filtering of the daily chart, and any per-provider budget.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
+  <!-- id: 09c25faa-ccef-480c-a09a-35ee993e3af4 -->
