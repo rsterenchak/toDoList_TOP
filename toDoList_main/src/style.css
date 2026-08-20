@@ -1,5 +1,6 @@
 /* Global stylesheet: fonts, theme variables, and all app styling. */
 /* Redeploy trigger: 2026-08-03 — no functional or visual change. */
+/* pipeline test marker — verifies the inject/build/deploy pipeline end-to-end; no visual or functional change. */
 @font-face {
   font-family: 'MyFont';
   src: url('./Zector.otf');
