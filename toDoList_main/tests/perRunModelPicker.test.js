@@ -1,0 +1,403 @@
+// Tests for the per-run model picker on the drafted-entry ship flow — the layer
+// above the Models panel's per-repo/global defaults, where one drafted entry
+// ships once on a model chosen for that ship alone.
+//
+// The pure pieces are pinned directly because none of them is recoverable from
+// the DOM after render, and each is a place a silent wrong answer would look
+// perfectly fine on screen:
+//   • resolveRunModel — override vs. resolved default vs. nothing set at all;
+//   • shipCopyForModel — the one combination (third-party model, auto-merge off)
+//     where "Ship it" and "this deploys to your live app" are both false;
+//   • runModelTagText — which run rows wear an amber model tag;
+//   • rateForModel via priceForUsageEvent — the two new third-party families,
+//     which would otherwise fall through to the unknown-model fallback;
+//   • buildPickerList — the list builder the panel and the popover now SHARE, so
+//     the two can't drift on lane filtering or grouping.
+// Alongside them: the wire contract for the per-run pick (sent only when set)
+// and the two stamp paths a model has to survive — setAgentRunState's silent
+// whitelist and the queue-sourced Runs row.
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Captures the last agent_queue update payload so the setAgentRunState
+// whitelist can be checked for what it actually forwards. Everything else on
+// the client is the minimum listLogic/claudeSheet need at import time.
+let lastQueueUpdate = null;
+
+vi.mock('../src/supabaseClient.js', () => {
+    function makeQuery(table) {
+        const q = {
+            select: function() { return q; },
+            order: function() { return Promise.resolve({ data: [], error: null }); },
+            insert: function() { return Promise.resolve({ data: null, error: null }); },
+            update: function(payload) {
+                if (table === 'agent_queue') lastQueueUpdate = payload;
+                return q;
+            },
+            delete: function() { return q; },
+            eq: function() { return Promise.resolve({ data: null, error: null }); },
+        };
+        return q;
+    }
+    return {
+        supabase: {
+            auth: {
+                getSession: function() { return Promise.resolve({ data: { session: null }, error: null }); },
+                onAuthStateChange: function() { return { data: { subscription: { unsubscribe: function() {} } } }; },
+                signInWithOtp: function() { return Promise.resolve({ data: null, error: { message: 'x' } }); },
+                signOut: function() { return Promise.resolve({ error: null }); },
+            },
+            from: function(table) { return makeQuery(table); },
+            channel: function() { return { on: function() { return this; }, subscribe: function() { return this; }, unsubscribe: function() { return this; } }; },
+            removeChannel: function() {},
+        },
+    };
+});
+
+import {
+    mountClaudeSheet,
+    resolveRunModel,
+    shipCopyForModel,
+    runModelTagText,
+    priceForUsageEvent,
+    USAGE_RATES,
+} from '../src/claudeSheet.js';
+import { buildPickerList } from '../src/modelsPanel.js';
+import { dispatchRun, initInjectConfig } from '../src/inject.js';
+import { listLogic } from '../src/listLogic.js';
+import { setQueueRows } from '../src/agentQueueStore.js';
+
+const CATALOG = {
+    models: [
+        { id: 'claude-opus-4-8', provider: 'anthropic', lanes: ['run', 'triage'], quota: '5×/day' },
+        { id: 'claude-sonnet-5', provider: 'anthropic', lanes: ['run', 'chat'], quota: '40×/day' },
+        { id: 'kimi-k3', provider: 'moonshot', lanes: ['run'] },
+        { id: 'grok-4-fast', provider: 'xai', lanes: ['run'] },
+        { id: 'chat-only', provider: 'openai', lanes: ['chat'] },
+    ],
+    plan_lanes: ['run', 'triage', 'derive'],
+};
+
+function settings(runValue, source) {
+    return { surfaces: { run: { value: runValue, source: source || 'repo' } } };
+}
+
+
+describe('resolveRunModel — which model a drafted card actually ships on', () => {
+    it('falls through to the RUN surface default when nothing is picked', () => {
+        const r = resolveRunModel('', settings('claude-opus-4-8'));
+        expect(r.model).toBe('claude-opus-4-8');
+        expect(r.overridden).toBe(false);
+        expect(r.chipText).toBe('claude-opus-4-8');
+        // The dim chip needs a tag naming WHERE the value came from, or an
+        // inherited pick and a deliberate one look identical.
+        expect(r.sourceTag).toBe('default');
+    });
+
+    it('a per-run pick outranks the repo default', () => {
+        const r = resolveRunModel('kimi-k3', settings('claude-opus-4-8'));
+        expect(r.model).toBe('kimi-k3');
+        expect(r.overridden).toBe(true);
+        expect(r.chipText).toBe('kimi-k3');
+        expect(r.sourceTag).toBe('');
+        // Inherit still names what it WOULD fall back to, so the picker's
+        // Inherit row stays a real preview while an override is active.
+        expect(r.inherited).toBe('claude-opus-4-8');
+    });
+
+    it('picking the model that was already the default still counts as a deliberate override', () => {
+        // Keyed on the pick, not on whether the resolved value changed — the
+        // bright chip means "I chose this for this run", which stays true even
+        // when the choice matches what would have happened anyway.
+        const r = resolveRunModel('claude-opus-4-8', settings('claude-opus-4-8'));
+        expect(r.overridden).toBe(true);
+        expect(r.sourceTag).toBe('');
+    });
+
+    it('reads as "default" rather than inventing an id when nothing resolves at all', () => {
+        const r = resolveRunModel('', { surfaces: { run: { value: '', source: 'default' } } });
+        expect(r.model).toBe('');
+        expect(r.chipText).toBe('default');
+        expect(r.inherited).toBe('');
+    });
+
+    it('survives settings that never loaded', () => {
+        const r = resolveRunModel('', null);
+        expect(r.model).toBe('');
+        expect(r.chipText).toBe('default');
+        expect(r.overridden).toBe(false);
+    });
+});
+
+
+describe('shipCopyForModel — the confirm step tells the truth about what a pick does', () => {
+    it('a third-party pick with auto-merge OFF opens a PR, and says so everywhere', () => {
+        const copy = shipCopyForModel({ catalog: CATALOG, model: 'kimi-k3', autoMerge3p: false });
+        expect(copy.opensPr).toBe(true);
+        expect(copy.shipLabel).toBe('Ship → PR');
+        expect(copy.warnText).toBe('This opens a PR — merge it yourself to deploy.');
+        expect(copy.subline).toBe('api · waits for merge');
+    });
+
+    it('a third-party pick with auto-merge ON keeps the deploy copy verbatim', () => {
+        const copy = shipCopyForModel({ catalog: CATALOG, model: 'grok-4-fast', autoMerge3p: true });
+        expect(copy.thirdParty).toBe(true);
+        expect(copy.opensPr).toBe(false);
+        expect(copy.shipLabel).toBe('Ship it');
+        expect(copy.warnText).toBe('This ships to main and deploys to your live app.');
+        expect(copy.subline).toBe('');
+    });
+
+    it('an Anthropic pick keeps the existing copy exactly, auto-merge flag or not', () => {
+        const off = shipCopyForModel({ catalog: CATALOG, model: 'claude-opus-4-8', autoMerge3p: false });
+        expect(off.thirdParty).toBe(false);
+        expect(off.shipLabel).toBe('Ship it');
+        expect(off.warnText).toBe('This ships to main and deploys to your live app.');
+        expect(off.subline).toBe('');
+    });
+
+    it('an inheriting card with no catalog yet keeps the plan-lane copy', () => {
+        // Telling someone their ordinary Anthropic run merely opens a PR is the
+        // more damaging of the two possible lies, so an unknown model does NOT
+        // fall to the cautious side.
+        const copy = shipCopyForModel({ catalog: null, model: '', autoMerge3p: false });
+        expect(copy.opensPr).toBe(false);
+        expect(copy.shipLabel).toBe('Ship it');
+    });
+
+    it('a model the catalog does not carry is not treated as third-party', () => {
+        const copy = shipCopyForModel({ catalog: CATALOG, model: 'something-new', autoMerge3p: false });
+        expect(copy.thirdParty).toBe(false);
+        expect(copy.shipLabel).toBe('Ship it');
+    });
+});
+
+
+describe('runModelTagText — which runs wear a model tag', () => {
+    it('tags a third-party model with its bare id', () => {
+        expect(runModelTagText('kimi-k3')).toBe('kimi-k3');
+        expect(runModelTagText('grok-4-fast')).toBe('grok-4-fast');
+    });
+
+    it('adds nothing for Anthropic models or an unstamped record', () => {
+        expect(runModelTagText('claude-opus-4-8')).toBe('');
+        expect(runModelTagText('claude-sonnet-5')).toBe('');
+        expect(runModelTagText('claude-haiku-4-5')).toBe('');
+        expect(runModelTagText('')).toBe('');
+        expect(runModelTagText(undefined)).toBe('');
+        expect(runModelTagText(null)).toBe('');
+    });
+});
+
+
+describe('USAGE_RATES — the third-party families a run can now be pinned to', () => {
+    it('prices kimi and grok rather than dropping them into the unknown fallback', () => {
+        // Both are seeded at the opus rate on purpose (errs high), so the
+        // assertion is that they RESOLVE to their own family entry — the value
+        // is a one-line edit once real pricing is confirmed.
+        expect(USAGE_RATES.kimi).toBeTruthy();
+        expect(USAGE_RATES.grok).toBeTruthy();
+        expect(priceForUsageEvent({ model: 'kimi-k3', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.kimi.input, 6);
+        expect(priceForUsageEvent({ model: 'grok-4-fast', output_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.grok.output, 6);
+    });
+
+    it('still prices the Anthropic families by substring, so a generation bump needs no edit', () => {
+        expect(priceForUsageEvent({ model: 'claude-sonnet-9', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.sonnet.input, 6);
+    });
+});
+
+
+describe('buildPickerList — one list builder, two surfaces', () => {
+    function labels(list) {
+        return Array.from(list.querySelectorAll('.modelsPickerLabel'))
+            .map(function(el) { return el.textContent; });
+    }
+
+    it('offers only the models allowlisted for the run lane, Inherit first', () => {
+        const list = buildPickerList({ catalog: CATALOG, surface: 'run', current: '' });
+        expect(labels(list)).toEqual([
+            'Inherit', 'claude-opus-4-8', 'claude-sonnet-5', 'kimi-k3', 'grok-4-fast',
+        ]);
+        // 'chat-only' is allowlisted for chat, never for run.
+        expect(labels(list)).not.toContain('chat-only');
+    });
+
+    it('splits the two billing lanes under their own headings', () => {
+        const list = buildPickerList({ catalog: CATALOG, surface: 'run', current: '' });
+        const headings = Array.from(list.querySelectorAll('.modelsPickerHeading'))
+            .map(function(el) { return el.textContent; });
+        expect(headings[0]).toBe('PLAN QUOTA');
+        expect(headings[1]).toMatch(/API BILLED/);
+        expect(list.querySelectorAll('.modelsPickerHeading--api').length).toBe(1);
+    });
+
+    it('checks Inherit when nothing is pinned, and the pinned row when something is', () => {
+        const inheriting = buildPickerList({ catalog: CATALOG, surface: 'run', current: '' });
+        expect(inheriting.querySelectorAll('.modelsPickerRow')[0].getAttribute('aria-pressed')).toBe('true');
+
+        const pinned = buildPickerList({ catalog: CATALOG, surface: 'run', current: 'kimi-k3' });
+        const rows = Array.from(pinned.querySelectorAll('.modelsPickerRow'));
+        expect(rows[0].getAttribute('aria-pressed')).toBe('false');
+        const kimi = rows.find(function(r) {
+            return r.querySelector('.modelsPickerLabel').textContent === 'kimi-k3';
+        });
+        expect(kimi.getAttribute('aria-pressed')).toBe('true');
+    });
+
+    it('reports a pick by id and Inherit as null', () => {
+        const picks = [];
+        const list = buildPickerList({
+            catalog: CATALOG,
+            surface: 'run',
+            current: 'kimi-k3',
+            inheritHint: 'claude-opus-4-8',
+            onPick: function(m) { picks.push(m); },
+        });
+        const rows = Array.from(list.querySelectorAll('.modelsPickerRow'));
+        rows[0].click();
+        rows.find(function(r) {
+            return r.querySelector('.modelsPickerLabel').textContent === 'grok-4-fast';
+        }).click();
+        expect(picks).toEqual([null, 'grok-4-fast']);
+    });
+
+    it('names what Inherit would resolve to', () => {
+        const list = buildPickerList({
+            catalog: CATALOG, surface: 'run', current: 'kimi-k3', inheritHint: 'claude-opus-4-8',
+        });
+        expect(list.querySelector('.modelsPickerHint').textContent).toBe('claude-opus-4-8');
+    });
+});
+
+
+describe('dispatchRun — the per-run pick on the wire', () => {
+    let fetchSpy;
+    let realFetch;
+
+    function lastBody() {
+        const call = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1];
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    beforeEach(() => {
+        localStorage.setItem('todoapp_injectWorkerUrl', 'https://worker.example/');
+        localStorage.setItem('todoapp_injectSharedSecret', 'secret');
+        initInjectConfig();
+        realFetch = globalThis.fetch;
+        fetchSpy = vi.fn(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ dispatched: true, model: 'kimi-k3', billing: 'api' }),
+        }));
+        globalThis.fetch = fetchSpy;
+    });
+
+    afterEach(() => {
+        globalThis.fetch = realFetch;
+        localStorage.clear();
+        initInjectConfig();
+    });
+
+    it('sends the model when a per-run pick is set', async () => {
+        await dispatchRun({ mode: 'entry', entryId: 'e1', correlationId: 'c1', model: 'kimi-k3' });
+        expect(lastBody().model).toBe('kimi-k3');
+    });
+
+    it('OMITS the key entirely when the card inherits', async () => {
+        // Omission is what "inherit" means to the Worker's precedence chain
+        // (per-run → repo row → global row → workflow default); an empty string
+        // would be a pick of nothing.
+        await dispatchRun({ mode: 'entry', entryId: 'e1', correlationId: 'c1', model: '' });
+        expect('model' in lastBody()).toBe(false);
+
+        await dispatchRun({ mode: 'entry', entryId: 'e1', correlationId: 'c1' });
+        expect('model' in lastBody()).toBe(false);
+    });
+
+    it('spreads the Worker echo back so a caller can stamp the resolved model', async () => {
+        const res = await dispatchRun({ mode: 'entry', entryId: 'e1', correlationId: 'c1' });
+        expect(res.ok).toBe(true);
+        expect(res.model).toBe('kimi-k3');
+        expect(res.billing).toBe('api');
+    });
+});
+
+
+describe('setAgentRunState — the model survives the silent whitelist', () => {
+    beforeEach(() => { lastQueueUpdate = null; });
+
+    it('forwards a model key to the agent_queue update', async () => {
+        // The whitelist drops unknown keys with NO error at the call site, so a
+        // missing entry loses the stamp invisibly. That is exactly what this
+        // pins.
+        const res = await listLogic.setAgentRunState('row-1', {
+            state: 'dispatched', model: 'kimi-k3',
+        });
+        expect(res.ok).toBe(true);
+        expect(lastQueueUpdate).toEqual({ state: 'dispatched', model: 'kimi-k3' });
+    });
+
+    it('a model-only patch is a real update rather than "nothing to update"', async () => {
+        const res = await listLogic.setAgentRunState('row-1', { model: 'grok-4-fast' });
+        expect(res.ok).toBe(true);
+        expect(lastQueueUpdate).toEqual({ model: 'grok-4-fast' });
+    });
+});
+
+
+describe('Runs tab — an API-billed run is legible in the list', () => {
+    function draftFor(title) {
+        return '- [ ] **[MEDIUM]** ' + title + '\n  - Type: feature\n  <!-- id: x -->';
+    }
+
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        setQueueRows([], null);
+    });
+
+    afterEach(() => {
+        localStorage.clear();
+        setQueueRows([], null);
+        mountClaudeSheet(document.createElement('div'));
+    });
+
+    it('tags a queue row that ran on a third-party model', () => {
+        setQueueRows([
+            {
+                id: 'row-1', project_id: 1, state: 'shipped', entry_id: 'e-3p',
+                correlation_id: 'corr-1', model: 'kimi-k3',
+                draft: draftFor('Third-party ship'), created_at: '2026-08-01T10:00:00Z',
+            },
+        ], 'ProjA');
+        mountClaudeSheet(document.body);
+
+        const row = document.querySelector('.claudeRunRow');
+        const tag = row.querySelector('.claudeRunModelTag');
+        expect(tag).toBeTruthy();
+        expect(tag.textContent).toBe('kimi-k3');
+        // The tag sits between the title and the status pill.
+        expect(tag.previousElementSibling.className).toBe('claudeRunTitle');
+        expect(tag.nextElementSibling.classList.contains('claudeRunBadge')).toBe(true);
+    });
+
+    it('adds no tag for a plan-lane run or an unstamped row', () => {
+        setQueueRows([
+            {
+                id: 'row-1', project_id: 1, state: 'shipped', entry_id: 'e-plan',
+                correlation_id: 'corr-1', model: 'claude-opus-4-8',
+                draft: draftFor('Plan ship'), created_at: '2026-08-01T10:00:00Z',
+            },
+            {
+                id: 'row-2', project_id: 1, state: 'shipped', entry_id: 'e-none',
+                correlation_id: 'corr-2',
+                draft: draftFor('Unstamped ship'), created_at: '2026-08-01T09:00:00Z',
+            },
+        ], 'ProjA');
+        mountClaudeSheet(document.body);
+
+        expect(document.querySelectorAll('.claudeRunRow').length).toBe(2);
+        expect(document.querySelectorAll('.claudeRunModelTag').length).toBe(0);
+    });
+});

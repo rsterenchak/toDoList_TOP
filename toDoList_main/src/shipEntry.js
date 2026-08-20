@@ -32,8 +32,9 @@ const ENTRY_VISIBLE_DELAY_MS = 1000;
 
 // Ship a todo's entry through the run pipeline: mint an id, embed the marker,
 // inject the entry into TODO.md, then dispatch claude-run.yml in entry mode
-// against that id. On success returns { ok:true, entryId, correlationId, runId }
-// (runId omitted when the dispatch didn't return one); on failure returns
+// against that id. On success returns
+// { ok:true, entryId, correlationId, runId, model, billing } (runId / model /
+// billing each omitted when the dispatch didn't return one); on failure returns
 // { ok:false, error } so the caller can surface a non-blocking failure.
 //
 // `existingEntryId` powers the Stuck-card Retry: passing the row's stored
@@ -131,5 +132,12 @@ export async function shipEntryForTodo(options) {
 
     const result = { ok: true, entryId: entryId, correlationId: correlationId };
     if (dispatchResult.runId != null) result.runId = dispatchResult.runId;
+    // Carry the model the Worker actually resolved for this run (and who pays
+    // for it) back to the caller, so the agent_queue row and the Runs tab can
+    // both say which model shipped the change rather than assuming the default.
+    // Absent keys stay absent — an older Worker that echoes neither leaves the
+    // record unstamped rather than stamped with a guess.
+    if (dispatchResult.model) result.model = dispatchResult.model;
+    if (dispatchResult.billing) result.billing = dispatchResult.billing;
     return result;
 }
