@@ -33,6 +33,7 @@ import { supabase } from './supabaseClient.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { showInjectSettingsModal } from './inject.js';
 import { showRepoSetupModal } from './repoSetup.js';
+import { openModelsPanel } from './modelsPanel.js';
 import { isFocusInTextInput } from './popoverNav.js';
 import { isAppLockArmed } from './appLock.js';
 import { showPinLockModal } from './pinLockModal.js';
@@ -345,6 +346,25 @@ export function createSettingsMenu(deps) {
             function() { showInjectSettingsModal(); }
         );
         menu.appendChild(injectConfigItem);
+
+        // MODELS section — which model each pipeline workflow runs on, per repo
+        // or globally. The row opens the shared Models panel; the mobile
+        // settings modal opens the very same panel from its own Models section,
+        // so the two surfaces can't drift into two different editors.
+        menu.appendChild(buildSettingsMenuDivider());
+        const modelsHeading = document.createElement('div');
+        modelsHeading.className = 'settingsMenuSectionHeading';
+        modelsHeading.textContent = 'Models';
+        modelsHeading.setAttribute('role', 'presentation');
+        menu.appendChild(modelsHeading);
+
+        const modelsItem = buildSettingsMenuItem(
+            'Per-workflow models',
+            '›',
+            function() { openModelsPanel(settingsToggle); },
+            'settingsMenuItem--chevron'
+        );
+        menu.appendChild(modelsItem);
 
         // ACCOUNT section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP section pattern: a divider + small heading followed by

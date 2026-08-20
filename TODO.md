@@ -1556,7 +1556,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/appLock.js`, `toDoList_main/src/index.js`
   <!-- id: bff9937f-861c-40df-9f99-506206e416a8 -->
 
-- [ ] **[MEDIUM]** Add Models settings panel with per-workflow model pickers
+- [x] **[MEDIUM]** Add Models settings panel with per-workflow model pickers — Completed: 2026-08-20
   - Type: feature
   - Description: Add a "Models" panel — one shared surface opened from both the desktop gear dropdown and the mobile settings modal (the same one-panel-two-openers pattern `openSpendPanel` uses) — that lets the user set which AI model each pipeline workflow runs on, per repo or globally. The Worker already resolves per-surface model config from the `inject_targets` registry (`models` jsonb + `auto_merge_3p`, with a `repo='*'` sentinel row as the per-user global default); this panel is its read/write UI. All Worker calls go through `postToWorker` in `inject.js` — this feature touches Supabase only through the Worker, never directly.
   - Behavior:

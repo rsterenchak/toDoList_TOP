@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-19',
+        date: '2026-08-20',
         added: [
-            'App lock: set a 4-digit PIN in settings and the app locks itself after the idle time you pick, asking for the PIN before letting anyone back in.',
+            'New Models panel in settings lets you pick which AI model each pipeline workflow runs on, for one repo or for everything.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-19',
         fixed: [
             'Choosing a mockup now shows the drafted entry right away instead of leaving it hidden until you switch projects and back.',
             'Unlocking the app with your PIN now pulls in the latest changes made on your other devices instead of showing stale tasks until you refresh.',

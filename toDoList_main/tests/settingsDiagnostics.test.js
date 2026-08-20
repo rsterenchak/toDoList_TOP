@@ -373,7 +373,7 @@ describe('Settings → Diagnostics — mounted in the settings modal', () => {
         const headings = [...document.querySelectorAll('#settingsModalBody .settingsSectionHeading')]
             .map((el) => el.textContent);
         expect(headings).toEqual([
-            'View', 'Appearance', 'About', 'Help', 'Data', 'Repo setup', 'Diagnostics', 'Account',
+            'View', 'Appearance', 'About', 'Help', 'Data', 'Repo setup', 'Models', 'Diagnostics', 'Account',
         ]);
     });
 

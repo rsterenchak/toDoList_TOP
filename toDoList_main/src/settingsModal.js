@@ -22,6 +22,7 @@ import { startCoachmarkTour } from './coachmark.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { showInjectSettingsModal } from './inject.js';
 import { showRepoSetupModal } from './repoSetup.js';
+import { openModelsPanel } from './modelsPanel.js';
 import { buildSettingsDiagnosticsSection } from './settingsDiagnostics.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { supabase } from './supabaseClient.js';
@@ -244,6 +245,24 @@ export function createSettingsModal({
         });
         repoSetupSection.appendChild(injectRow);
 
+        // Models section — which model each pipeline workflow runs on, per repo
+        // or globally. Sits right after Repo setup because it is the third half
+        // of pointing the app at a repo: where entries land, how the app reaches
+        // it, and what runs the work. The row opens the very same panel the
+        // desktop gear dropdown's Models row does — one panel, two openers.
+        const modelsSection = document.createElement('section');
+        modelsSection.id = 'settingsModelsSection';
+        modelsSection.className = 'settingsSection';
+        const modelsHeading = document.createElement('div');
+        modelsHeading.className = 'settingsSectionHeading';
+        modelsHeading.textContent = 'Models';
+        modelsSection.appendChild(modelsHeading);
+        const modelsRow = createDrawerActionRow('Per-workflow models', function() {
+            close();
+            openModelsPanel(drawerSettingsBtn);
+        });
+        modelsSection.appendChild(modelsRow);
+
         // Diagnostics section — read-only runtime state for the viewport work,
         // which has no other observable surface on the device that has the bug.
         // Built fresh here rather than mounted once, so every modal open
@@ -274,6 +293,7 @@ export function createSettingsModal({
         body.appendChild(helpSection);
         body.appendChild(dataSection);
         body.appendChild(repoSetupSection);
+        body.appendChild(modelsSection);
         body.appendChild(diagnosticsSection);
         body.appendChild(accountSection);
 
