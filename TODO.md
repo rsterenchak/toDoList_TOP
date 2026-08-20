@@ -1590,3 +1590,15 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: model picks for backlog runs, the TODO.md viewer's per-entry Run pill, triage/derive dispatches, and possession (the ghost chip already stands in for the model picker while possessed — leave that untouched). No Worker or schema changes (`agent_queue.model` already exists).
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/shipEntry.js`, `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   <!-- id: ff70fea6-316d-401e-9add-a8f65a5edd1c -->
+
+- [ ] **[MEDIUM]** Fix Models panel GLOBAL scope failing with "Target not in allowlist"
+  - Type: bug
+  - Description: Switching the Models panel to GLOBAL scope shows "Couldn't load model settings — Target not in allowlist (400)". The fetch sends `repo: '*'` for global scope, but the Worker deliberately excludes the `*` sentinel row from its dispatch allowlist — identity is resolved from a real registry row, so `models_get` must ALWAYS carry the active workspace repo, and scope is purely a client-side view over the one response. The Worker now returns the raw per-scope layers alongside the resolved view to make that possible: `global: { models: { <surface>: <id>, … only explicitly-set keys }, autoMerge3p }` and `repo_overrides` with the same shape.
+  - Behavior:
+    - `fetchModelSettings` (inject.js) and every `models_get` call site send the active workspace repo unconditionally — never `'*'`, at either scope. One fetch serves both tabs.
+    - The GLOBAL tab renders from `response.global`: a surface whose key is present in `global.models` shows that model id as a bright set-at-this-scope chip; an absent key renders the dim chip with the `default` source tag (inheriting the workflow hardcode). The global auto-merge toggle binds to `global.autoMerge3p` (accept `auto_merge_3p` as an alternate key defensively). The GHOST row stays locked as-is.
+    - The REPO tab keeps its current rendering from the resolved `surfaces` map (source tags already distinguish repo/global/default); `repo_overrides` is available if reading presence there is cleaner, but no visual change is expected.
+    - Audit the write paths the same way: `saveModelSetting` and `saveAutoMerge3p` must send the real active repo in the body at BOTH scopes — the `scope` field alone selects which row the Worker writes. If either currently sends `'*'` at global scope, global writes would 400 identically to the read.
+    - The drafted-entry card's model chip already calls `fetchModelSettings` with a real repo — leave that path untouched; just confirm it still resolves after the shared fetch change.
+  - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/inject.js`
+  <!-- id: 244d2bba-ef12-4cc0-9a4f-49d906c2f2f6 -->
