@@ -191,15 +191,34 @@ describe('runModelTagText — which runs wear a model tag', () => {
 
 describe('USAGE_RATES — the third-party families a run can now be pinned to', () => {
     it('prices kimi and grok rather than dropping them into the unknown fallback', () => {
-        // Both are seeded at the opus rate on purpose (errs high), so the
-        // assertion is that they RESOLVE to their own family entry — the value
-        // is a one-line edit once real pricing is confirmed.
+        // Each carries its provider's published rate, so the assertions are both
+        // that they RESOLVE to their own family entry and that the entry is no
+        // longer the opus placeholder they were seeded with.
         expect(USAGE_RATES.kimi).toBeTruthy();
         expect(USAGE_RATES.grok).toBeTruthy();
         expect(priceForUsageEvent({ model: 'kimi-k3', input_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.kimi.input, 6);
         expect(priceForUsageEvent({ model: 'grok-4-fast', output_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.grok.output, 6);
+        expect(USAGE_RATES.kimi).toEqual(
+            { input: 3, output: 15, cacheWrite: 3, cacheRead: 0.3 });
+        expect(USAGE_RATES.grok).toEqual(
+            { input: 2, output: 6, cacheWrite: 2, cacheRead: 0.3 });
+    });
+
+    it('prices neither family at a cache-write premium, unlike the Anthropic rows', () => {
+        // Moonshot and xAI cache automatically with no write premium, so a
+        // cache-writing token bills as plain input on both rows.
+        expect(USAGE_RATES.kimi.cacheWrite).toBe(USAGE_RATES.kimi.input);
+        expect(USAGE_RATES.grok.cacheWrite).toBe(USAGE_RATES.grok.input);
+        expect(USAGE_RATES.opus.cacheWrite).toBeGreaterThan(USAGE_RATES.opus.input);
+    });
+
+    it('leaves opus the most expensive family, so the unknown-model fallback still errs high', () => {
+        expect(USAGE_RATES.opus.input).toBeGreaterThan(USAGE_RATES.kimi.input);
+        expect(USAGE_RATES.opus.input).toBeGreaterThan(USAGE_RATES.grok.input);
+        expect(priceForUsageEvent({ model: 'some-unknown-model', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.opus.input, 6);
     });
 
     it('still prices the Anthropic families by substring, so a generation bump needs no edit', () => {
