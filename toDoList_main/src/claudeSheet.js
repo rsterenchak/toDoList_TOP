@@ -1617,6 +1617,97 @@ export function sumUsageCost(rows) {
     return total;
 }
 
+// The provider buckets the month's spend is split across, in the fixed order
+// they render. Matched as SUBSTRINGS of the stored model id, the same rule
+// rateForModel prices by, so a generation bump lands in its provider without a
+// table edit. `claude` is listed alongside the three Anthropic families so a
+// bare `claude-…` id (or the ghost's) still reads as Anthropic rather than
+// falling to `other`.
+const USAGE_PROVIDERS = [
+    { key: 'anthropic', label: 'Anthropic', match: ['opus', 'sonnet', 'haiku', 'claude'] },
+    { key: 'kimi', label: 'Kimi', match: ['kimi'] },
+    { key: 'grok', label: 'Grok', match: ['grok'] },
+    // Terminal catch-all: an unrecognised model prices at the opus fallback, so
+    // its spend is real and must land somewhere visible rather than vanish.
+    { key: 'other', label: 'Other', match: [] },
+];
+
+function providerKeyForModel(model) {
+    const m = (typeof model === 'string' ? model : '').toLowerCase();
+    for (let i = 0; i < USAGE_PROVIDERS.length; i++) {
+        const p = USAGE_PROVIDERS[i];
+        for (let j = 0; j < p.match.length; j++) {
+            if (m.indexOf(p.match[j]) !== -1) return p.key;
+        }
+    }
+    return 'other';
+}
+
+// Split a set of usage_events rows into per-provider dollar totals, priced with
+// the same priceForUsageEvent the blended figure uses — so the buckets always
+// sum to the headline total rather than to a separately-derived number. Returns
+// every bucket in the fixed USAGE_PROVIDERS order, zero-cost ones included: the
+// order is stable for the caller to render against, and the render (not this
+// helper) is what drops empty buckets.
+export function providerSpendBreakdown(rows) {
+    const totals = {};
+    for (let i = 0; i < USAGE_PROVIDERS.length; i++) totals[USAGE_PROVIDERS[i].key] = 0;
+    if (Array.isArray(rows)) {
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row) continue;
+            totals[providerKeyForModel(row.model)] += priceForUsageEvent(row);
+        }
+    }
+    return USAGE_PROVIDERS.map(function(p) {
+        return { key: p.key, label: p.label, cost: totals[p.key] };
+    });
+}
+
+// Render the provider split — a segmented bar over a legend — into `container`,
+// replacing its contents. Sits between the readout and the daily chart, and is
+// filled from the same place the chart is (where the resolved rows are in
+// scope), so a budget edit re-rendering the readout leaves it untouched. A month
+// with no cost renders nothing at all, mirroring how the ratios section stays
+// away rather than drawing an empty bar.
+function renderProviderSplit(container, rows) {
+    if (!container) return;
+    container.innerHTML = '';
+    const buckets = providerSpendBreakdown(rows).filter(function(b) { return b.cost > 0; });
+    let total = 0;
+    for (let i = 0; i < buckets.length; i++) total += buckets[i].cost;
+    if (total <= 0) return;
+
+    const bar = document.createElement('div');
+    bar.className = 'usageSpendProviderBar';
+    const legend = document.createElement('div');
+    legend.className = 'usageSpendProviderLegend';
+
+    for (let i = 0; i < buckets.length; i++) {
+        const b = buckets[i];
+        // Widths are computed from the split, so they stay inline; the colour is
+        // the bucket's own class so both themes resolve it from one place.
+        const seg = document.createElement('div');
+        seg.className = 'usageSpendProviderSeg usageSpendProviderSeg--' + b.key;
+        seg.style.width = ((b.cost / total) * 100).toFixed(2) + '%';
+        bar.appendChild(seg);
+
+        const item = document.createElement('div');
+        item.className = 'usageSpendProviderLegendItem';
+        const dot = document.createElement('span');
+        dot.className = 'usageSpendProviderDot usageSpendProviderDot--' + b.key;
+        const text = document.createElement('span');
+        text.className = 'usageSpendProviderLegendText';
+        text.textContent = b.label + ' $' + b.cost.toFixed(2);
+        item.appendChild(dot);
+        item.appendChild(text);
+        legend.appendChild(item);
+    }
+
+    container.appendChild(bar);
+    container.appendChild(legend);
+}
+
 const USAGE_MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
     'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -1897,9 +1988,9 @@ export function renderSpendReadout(container, totalCost, budget) {
 
     const note = document.createElement('p');
     note.className = 'usageSpendNote';
-    note.textContent = 'Covers Worker-proxied API calls — chat, refactor scans, and '
-        + 'runs pinned to a third-party model. Plan-lane CI runs bill to the Max plan '
-        + 'and can’t be measured here.';
+    note.textContent = 'Tracks Worker API calls — chat, scans, and the ghost — only for '
+        + 'now. Pipeline runs aren’t measured here yet: plan-lane runs bill the Max plan, '
+        + 'and third-party runs aren’t captured.';
     container.appendChild(note);
 }
 
@@ -1982,6 +2073,12 @@ export function openSpendPanel(anchorEl) {
     const readout = document.createElement('div');
     readout.id = 'usageSpendReadout';
 
+    // The per-provider split, filled once the usage read resolves. Its own
+    // container between the readout and the chart for the same reason the chart
+    // has one: a budget edit re-renders only the readout, so the split survives.
+    const providersContainer = document.createElement('div');
+    providersContainer.id = 'usageSpendProviders';
+
     // The daily chart + derived ratios, filled once the usage read resolves. Kept
     // separate from the readout so a budget edit re-renders the readout without
     // wiping the chart, and so it can scroll with the readout inside the body.
@@ -2016,6 +2113,7 @@ export function openSpendPanel(anchorEl) {
     const body = document.createElement('div');
     body.id = 'usageSpendBody';
     body.appendChild(readout);
+    body.appendChild(providersContainer);
     body.appendChild(chartContainer);
 
     dialog.appendChild(header);
@@ -2051,6 +2149,7 @@ export function openSpendPanel(anchorEl) {
             if (res && res.ok && Array.isArray(res.rows) && res.rows.length > 0) {
                 lastTotal = sumUsageCost(res.rows);
                 renderSpendReadout(readout, lastTotal, getUsageBudget());
+                renderProviderSplit(providersContainer, res.rows);
                 renderSpendChart(chartContainer, res.rows, new Date());
             } else {
                 renderSpendError(readout);

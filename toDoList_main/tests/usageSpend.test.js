@@ -10,6 +10,7 @@ import {
     computeDeepShare,
     computeCacheHitRate,
     renderSpendChart,
+    providerSpendBreakdown,
 } from '../src/claudeSheet.js';
 import { listLogic } from '../src/listLogic.js';
 import { getUsageBudget, setUsageBudget } from '../src/prefs.js';
@@ -445,5 +446,153 @@ describe('API spend — daily chart + ratios', () => {
         renderSpendChart(c, rows, now);
         // Days 1, 8, 15, 22, 29 → five weekly gridlines across a 31-day month.
         expect(c.querySelectorAll('.usageSpendChartWeek').length).toBe(5);
+    });
+});
+
+describe('API spend — provider split', () => {
+    function costOf(rows) {
+        return rows.reduce(function(acc, r) { return acc + priceForUsageEvent(r); }, 0);
+    }
+
+    it('buckets each family substring to its provider', () => {
+        const rows = [
+            { model: 'claude-opus-5', input_tokens: 1e6 },
+            { model: 'claude-sonnet-4-5-20260101', input_tokens: 1e6 },
+            { model: 'claude-haiku-4-5', input_tokens: 1e6 },
+            { model: 'kimi-k2-0905', input_tokens: 1e6 },
+            { model: 'grok-4-fast', input_tokens: 1e6 },
+        ];
+        const buckets = providerSpendBreakdown(rows);
+        const by = {};
+        buckets.forEach(function(b) { by[b.key] = b.cost; });
+        // The three Anthropic families collapse into one bucket.
+        expect(by.anthropic).toBeCloseTo(
+            USAGE_RATES.opus.input + USAGE_RATES.sonnet.input + USAGE_RATES.haiku.input, 6);
+        expect(by.kimi).toBeCloseTo(USAGE_RATES.kimi.input, 6);
+        expect(by.grok).toBeCloseTo(USAGE_RATES.grok.input, 6);
+        expect(by.other).toBe(0);
+    });
+
+    it('reads a bare claude id as Anthropic, not as other', () => {
+        const buckets = providerSpendBreakdown([{ model: 'claude-3-legacy', input_tokens: 1e6 }]);
+        const by = {};
+        buckets.forEach(function(b) { by[b.key] = b.cost; });
+        expect(by.anthropic).toBeGreaterThan(0);
+        expect(by.other).toBe(0);
+    });
+
+    it('falls back to other for an unrecognised model, at its fallback price', () => {
+        const row = { model: 'some-future-model-v9', input_tokens: 1e6 };
+        const buckets = providerSpendBreakdown([row]);
+        const other = buckets.filter(function(b) { return b.key === 'other'; })[0];
+        // Unknown models price at the opus fallback; that spend must surface, not vanish.
+        expect(other.cost).toBeCloseTo(priceForUsageEvent(row), 6);
+        expect(other.cost).toBeCloseTo(USAGE_RATES.opus.input, 6);
+    });
+
+    it('sums each bucket with priceForUsageEvent so the split equals the month total', () => {
+        const rows = [
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6, output_tokens: 2e5, cache_read_input_tokens: 5e5 },
+            { model: 'claude-sonnet-4-5', input_tokens: 3e5 },
+            { model: 'kimi-k2', input_tokens: 1e6, output_tokens: 1e5, cache_creation_input_tokens: 4e5 },
+            { model: 'grok-4', output_tokens: 7e5 },
+            { model: 'mystery-1', input_tokens: 2e5 },
+            null,
+        ];
+        const buckets = providerSpendBreakdown(rows);
+        const split = buckets.reduce(function(acc, b) { return acc + b.cost; }, 0);
+        expect(split).toBeCloseTo(sumUsageCost(rows), 6);
+        const anthropic = buckets.filter(function(b) { return b.key === 'anthropic'; })[0];
+        expect(anthropic.cost).toBeCloseTo(costOf([rows[0], rows[1]]), 6);
+    });
+
+    it('returns every bucket in a fixed order, zero-cost ones included', () => {
+        const order = ['anthropic', 'kimi', 'grok', 'other'];
+        expect(providerSpendBreakdown([]).map(function(b) { return b.key; })).toEqual(order);
+        expect(providerSpendBreakdown(null).map(function(b) { return b.key; })).toEqual(order);
+        // A kimi-only month still returns all four, so the order never depends on data.
+        const oneProvider = providerSpendBreakdown([{ model: 'kimi-k2', input_tokens: 1e6 }]);
+        expect(oneProvider.map(function(b) { return b.key; })).toEqual(order);
+        expect(oneProvider.every(function(b) { return typeof b.cost === 'number'; })).toBe(true);
+        expect(providerSpendBreakdown([]).every(function(b) { return b.cost === 0; })).toBe(true);
+    });
+});
+
+describe('API spend — provider split render', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        globalThis.__hasSession = true;
+        globalThis.__usageRows = [];
+        globalThis.__usageError = null;
+    });
+
+    afterEach(() => {
+        const b = document.getElementById('usageSpendBackdrop');
+        if (b && b.parentNode) b.parentNode.removeChild(b);
+        localStorage.clear();
+    });
+
+    it('renders the split between the readout and the chart, one segment per nonzero bucket', async () => {
+        globalThis.__usageRows = [
+            { model: 'claude-sonnet-4-5', input_tokens: 1e6 },  // $3.00 anthropic
+            { model: 'kimi-k2', input_tokens: 1e6 },            // $3.00 kimi
+        ];
+        openSpendPanel(document.createElement('button'));
+        await flush();
+        const body = document.getElementById('usageSpendBody');
+        const providers = document.getElementById('usageSpendProviders');
+        expect(providers).not.toBeNull();
+        // Position: readout, then the split, then the chart.
+        const kids = Array.from(body.children).map(function(el) { return el.id; });
+        expect(kids).toEqual(['usageSpendReadout', 'usageSpendProviders', 'usageSpendChart']);
+        // Two nonzero buckets → two segments and two legend items; grok/other stay away.
+        const segs = providers.querySelectorAll('.usageSpendProviderSeg');
+        expect(segs.length).toBe(2);
+        expect(segs[0].classList.contains('usageSpendProviderSeg--anthropic')).toBe(true);
+        expect(segs[1].classList.contains('usageSpendProviderSeg--kimi')).toBe(true);
+        // Equal spend → equal widths.
+        expect(parseFloat(segs[0].style.width)).toBeCloseTo(50, 2);
+        expect(parseFloat(segs[1].style.width)).toBeCloseTo(50, 2);
+        const legend = providers.querySelectorAll('.usageSpendProviderLegendItem');
+        expect(legend.length).toBe(2);
+        expect(legend[0].querySelector('.usageSpendProviderLegendText').textContent)
+            .toBe('Anthropic $3.00');
+        expect(legend[1].querySelector('.usageSpendProviderDot')
+            .classList.contains('usageSpendProviderDot--kimi')).toBe(true);
+    });
+
+    it('renders no provider block at all for a month with zero cost', async () => {
+        // Rows exist (so the read succeeds) but carry no billable tokens.
+        globalThis.__usageRows = [{ model: 'claude-sonnet-4-5' }];
+        openSpendPanel(document.createElement('button'));
+        await flush();
+        const providers = document.getElementById('usageSpendProviders');
+        expect(providers.children.length).toBe(0);
+        expect(providers.querySelector('.usageSpendProviderBar')).toBeNull();
+    });
+
+    it('leaves the split intact when a budget edit re-renders the readout', async () => {
+        globalThis.__usageRows = [{ model: 'grok-4', input_tokens: 1e6 }];
+        openSpendPanel(document.createElement('button'));
+        await flush();
+        const providers = document.getElementById('usageSpendProviders');
+        expect(providers.querySelectorAll('.usageSpendProviderSeg').length).toBe(1);
+        const input = document.getElementById('usageSpendBudgetInput');
+        input.value = '25';
+        input.dispatchEvent(new Event('change'));
+        // The budget edit re-renders the readout only — the split must survive it.
+        expect(providers.querySelectorAll('.usageSpendProviderSeg').length).toBe(1);
+        expect(providers.querySelector('.usageSpendProviderLegendText').textContent)
+            .toBe('Grok $' + USAGE_RATES.grok.input.toFixed(2));
+    });
+
+    it('states the coverage caveat plainly in the readout note', () => {
+        const c = document.createElement('div');
+        renderSpendReadout(c, 4.19, 0);
+        const note = c.querySelector('.usageSpendNote').textContent;
+        expect(note).toContain('chat, scans, and the ghost');
+        expect(note).toContain('Max plan');
+        expect(note).toContain('third-party runs');
     });
 });

@@ -7,9 +7,9 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-20',
         added: [
-            'New Models panel in settings lets you pick which AI model each pipeline workflow runs on, for one repo or for everything.',
             'A drafted entry can now be shipped on a model chosen for that one run, and says up front when the pick opens a pull request instead of deploying.',
             'A run that opens a pull request instead of deploying now waits at “Awaiting merge” with a link to that pull request, and turns to Shipped once you merge it.',
+            'The API spend panel now splits the month’s total by provider — Anthropic, Kimi, and Grok — in a segmented bar with a legend.',
         ],
         changed: [
             'Spend totals for runs on Kimi or Grok models now use those providers’ real published prices instead of the high placeholder estimate.',
