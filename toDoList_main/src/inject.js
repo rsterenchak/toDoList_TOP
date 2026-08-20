@@ -1266,6 +1266,84 @@ export async function fetchRunResult(runId, target) {
 }
 
 
+// ── MODEL SETTINGS ──
+// The four thin calls behind the Models panel. Each one funnels through the same
+// postToWorker the rest of this file uses (same URL + Bearer secret) and returns
+// the `{ ok: true, ... }` / `{ ok: false, reason }` envelope every other Worker
+// call here speaks, so the panel never has to catch. The registry these read and
+// write — `inject_targets`' `models` jsonb plus `auto_merge_3p`, with a
+// `repo: '*'` sentinel row standing in for the per-user global default — lives
+// behind the Worker; nothing here touches Supabase directly.
+
+// The catalog of pickable models: `{ models: [{ id, provider, lanes, quota }],
+// plan_lanes, ghost_model }`. `lanes` is the set of surfaces a model is
+// allowlisted for, `plan_lanes` names the surfaces that bill to plan quota, and
+// `ghost_model` is the server-pinned model the ghost always runs on. Catalog
+// shape is the Worker's to define — the panel reads it defensively rather than
+// hardcoding a model list that would drift the moment the Worker's changed.
+export async function fetchModelCatalog() {
+    try {
+        const res = await postToWorker({ models: true });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+// The current per-surface settings for one scope: `{ surfaces: { run|triage|
+// derive|scan|chat|ghost: { value, source } }, autoMerge3p }`. `repo` selects
+// the scope — the active workspace repo for repo scope, the `'*'` sentinel for
+// the global row — and `source` reports where each resolved value came from
+// (`repo` / `global` / `default`), which is what the panel's set-vs-inherited
+// styling keys off.
+export async function fetchModelSettings(repo) {
+    try {
+        const res = await postToWorker({ models_get: true, repo: repo || undefined });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+// Pin one surface to one model at `scope` ('repo' or 'global'), or clear it back
+// to inherited by passing `model: null`. `repo` is ALWAYS the active workspace
+// repo, even for a global-scope write — the Worker resolves the auth context
+// from it and reads `scope` to decide which row it lands on.
+export async function saveModelSetting(options) {
+    const o = options || {};
+    try {
+        const res = await postToWorker({
+            models_set: true,
+            scope: o.scope,
+            surface: o.surface,
+            model: o.model === undefined ? null : o.model,
+            repo: o.repo || undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+// Flip the auto-merge-3p flag at `scope`. Same route and same always-send-the-
+// active-repo rule as saveModelSetting; only the payload key differs, since the
+// flag is a peer of the per-surface picks rather than one of them.
+export async function saveAutoMerge3p(options) {
+    const o = options || {};
+    try {
+        const res = await postToWorker({
+            models_set: true,
+            scope: o.scope,
+            auto_merge_3p: !!o.value,
+            repo: o.repo || undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Cross-check whether an entry's marker is present in a merged PR through the
 // same Worker the dispatch and status flows already use (same URL, same Bearer
 // secret). Sends `{ resolve: true, entry_id }` so the Worker searches merged PR

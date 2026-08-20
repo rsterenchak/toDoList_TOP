@@ -126,6 +126,7 @@ The in-app assistant and its supporting pipeline are concentrated in a handful o
 - `toDoList_main/src/ghostTalk.js` — the ghost's shared talk plumbing (the Worker ask/history calls through `postToWorker`, the recency-gated greeting, the in-voice error lines, the pending render) plus the DESKTOP skin: the speech bubble and ask input docked to the frozen sprite. Each surface names itself (`desktop` / `mobile`) on the payload.
 - `toDoList_main/src/runState.js` — per-project active-run state shared by the TODO.md viewer's header pill and the chat ship path, so a run shipped from either surface drives the same pill and a project only runs one at a time.
 - `toDoList_main/src/layoutInspect.js` — serializes an element's live computed layout for the inspector.
+- `toDoList_main/src/modelsPanel.js` — the Models panel: which model each pipeline workflow (run, triage, derive, scan, chat) runs on, per repo or globally, over the Worker's `models` / `models_get` / `models_set` routes. One panel, two openers — the desktop gear dropdown and the mobile settings modal.
 - `toDoList_main/src/main.js` — DOM, UI, and event wiring; very large, so grep with `offset`/`limit` rather than reading it in full.
 - `toDoList_main/src/listLogic.js` — the data model; ALL mutations to projects and todo items route through here.
 - `toDoList_main/src/style.css` — all styling and responsive breakpoints.

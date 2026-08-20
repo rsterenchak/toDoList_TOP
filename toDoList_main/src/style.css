@@ -7971,6 +7971,414 @@ button.complexityNestChip:disabled {
   color: var(--text-secondary);
 }
 
+/* ── MODELS PANEL ── which model each pipeline workflow runs on, opened from
+   both the desktop gear dropdown and the mobile settings modal. Shell mirrors
+   the API-spend panel above so the two read as one family; the body is a dense
+   one-row-per-surface matrix that drills in place into a per-surface picker
+   (no stacked modals). */
+#modelsPanelBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+  animation: confirmFadeIn 0.12s ease-out;
+}
+
+#modelsPanelModal {
+  width: 100%;
+  max-width: 400px;
+  max-height: 86vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--accent);
+  border-radius: var(--radius-md);
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.6),
+              0 0 0 1px rgba(108, 93, 245, 0.18);
+  color: var(--text-primary);
+  font-size: 13px;
+  line-height: 1.5;
+  animation: confirmSlideIn 0.14s ease-out;
+  overflow: hidden;
+}
+
+#modelsPanelHeader {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px 10px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+
+#modelsPanelBack {
+  flex: 0 0 auto;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 22px;
+  line-height: 1;
+  padding: 0 4px;
+  min-width: 28px;
+  min-height: 32px;
+  cursor: pointer;
+}
+#modelsPanelBack:hover { color: var(--text-primary); }
+#modelsPanelBack:focus { outline: none; color: var(--accent-text); }
+/* The back chevron and the scope toggle are toggled via the `hidden` attribute,
+   and their display rules here outrank the UA's `[hidden] { display: none }` —
+   so re-assert the hidden state explicitly. */
+#modelsPanelBack[hidden] { display: none !important; }
+
+#modelsPanelTitle {
+  min-width: 0;
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+#modelsPanelEyebrow {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+#modelsPanelTitleText {
+  font-family: 'Trebuchet MS', 'Trebuchet', Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.3;
+  color: var(--text-primary);
+}
+
+#modelsPanelScope {
+  flex: 0 0 auto;
+  display: flex;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 8px;
+  overflow: hidden;
+}
+#modelsPanelScope[hidden] { display: none !important; }
+
+.modelsScopeSeg {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 7px 9px;
+  min-height: 30px;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: var(--bg-elevated);
+  border: none;
+  border-left: 0.5px solid var(--border-bright);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.modelsScopeSeg:first-child { border-left: none; }
+.modelsScopeSeg--on {
+  background: var(--bg-hover);
+  color: var(--accent-text);
+}
+.modelsScopeSeg:focus { outline: none; color: var(--accent-text); }
+
+#modelsPanelClose {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  padding: 0 6px;
+  cursor: pointer;
+  transition: color 0.12s ease;
+  flex: 0 0 auto;
+  min-width: 32px;
+  min-height: 32px;
+}
+#modelsPanelClose:hover { color: var(--text-primary); }
+#modelsPanelClose:focus { outline: none; color: var(--accent-text); }
+
+#modelsPanelBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 0 12px;
+}
+
+/* In-flight and error states. The spinner reuses the shared .projRunSpinner
+   glyph and `spin` keyframes, sized up and revealed here (the base class is
+   display:none and only 12px, tuned for the sidebar rows). */
+.modelsPanelLoading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 22px 0;
+}
+.modelsPanelSpinner {
+  display: inline-block;
+  width: 22px;
+  height: 22px;
+  animation: spin 0.7s linear infinite;
+}
+.modelsPanelLoadingLabel {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.modelsPanelError {
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  padding: 22px 14px;
+  text-align: center;
+}
+
+.modelsMatrix {
+  display: flex;
+  flex-direction: column;
+}
+
+.modelsRow {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  min-height: 36px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.modelsRow:hover { background: var(--bg-hover); }
+.modelsRow:focus { outline: none; background: var(--bg-hover); }
+.modelsRow--locked { cursor: default; }
+.modelsRow--locked:hover { background: none; }
+
+.modelsRowDot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.modelsRowDot--plan  { background: #6C5DF5; }
+.modelsRowDot--other { background: #d9b86a; }
+
+.modelsRowLabel {
+  flex: 0 0 auto;
+  width: 62px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+
+.modelsRowChipWrap {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modelsRowChip {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 3px 8px;
+  border-radius: 8px;
+  border: 0.5px solid #9D93EE;
+  background: var(--bg-elevated);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+}
+/* An inherited value is legible but visibly not set here — dimmed rather than
+   hidden, so falling through reads differently from a deliberate pick. */
+.modelsRowChip--inherited {
+  opacity: 0.55;
+  border-color: var(--border-dim);
+}
+
+.modelsRowSource {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+
+.modelsRowBadge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 0.5px solid var(--text-warning);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-warning);
+  white-space: nowrap;
+}
+
+.modelsRowLock {
+  flex: 0 0 auto;
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.modelsRowSubline {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.modelsDivider {
+  height: 0;
+  margin: 8px 14px;
+  border-top: 0.5px solid var(--border-dim);
+}
+
+.modelsAutoRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 14px 8px;
+}
+
+.modelsAutoText {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.modelsAutoLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-primary);
+}
+
+.modelsAutoSub {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.modelsAutoToggle {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 0 0 auto;
+  min-width: 48px;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  border: 0.5px solid var(--border-bright);
+  background: var(--bg-elevated);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.modelsAutoToggle--on {
+  border-color: #6C5DF5;
+  color: var(--accent-text);
+}
+.modelsAutoToggle:focus { outline: none; border-color: var(--accent); }
+
+.modelsLegend {
+  padding: 4px 14px 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+/* ── per-surface picker (drilled into the panel body) ── */
+.modelsPicker {
+  display: flex;
+  flex-direction: column;
+}
+
+.modelsPickerHeading {
+  padding: 10px 14px 4px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.modelsPickerHeading--api { color: var(--text-warning); }
+
+.modelsPickerRow {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* 44px keeps every option a comfortable touch target on the phone, which is
+     where the picker is most likely to be used. */
+  min-height: 44px;
+  padding: 6px 14px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+.modelsPickerRow:hover { background: var(--bg-hover); }
+.modelsPickerRow:focus { outline: none; background: var(--bg-hover); }
+
+.modelsPickerCheck {
+  flex: 0 0 auto;
+  width: 12px;
+  font-size: 11px;
+  color: var(--accent-text);
+}
+
+.modelsPickerLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+}
+
+.modelsPickerHint {
+  flex: 0 0 auto;
+  font-size: 10px;
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.modelsPickerNote {
+  padding: 10px 14px 0;
+  font-size: 10px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+
+
 #coverageDetailModalBackdrop {
   position: fixed;
   inset: 0;
