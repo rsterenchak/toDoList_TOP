@@ -8012,6 +8012,61 @@ button.complexityNestChip:disabled {
   overflow-y: auto;
 }
 
+/* Per-provider split of the month's spend — a segmented bar over a legend,
+   sitting between the readout and the daily chart. A month with no cost renders
+   nothing into it, so :empty collapses the padding away. */
+#usageSpendProviders {
+  padding: 0 14px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+#usageSpendProviders:empty { display: none; }
+
+.usageSpendProviderBar {
+  display: flex;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--bg-hover);
+}
+.usageSpendProviderSeg { height: 100%; }
+
+.usageSpendProviderLegend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+.usageSpendProviderLegendItem {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.usageSpendProviderLegendText {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+}
+.usageSpendProviderDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex: 0 0 auto;
+}
+
+/* One colour per provider, shared by the bar segment and its legend dot. The
+   three named providers carry their own hue in both themes; `other` stays a
+   neutral gray that follows the theme, since it names no brand. */
+.usageSpendProviderSeg--anthropic,
+.usageSpendProviderDot--anthropic { background: #9d93ee; }
+.usageSpendProviderSeg--kimi,
+.usageSpendProviderDot--kimi { background: #d9b86a; }
+.usageSpendProviderSeg--grok,
+.usageSpendProviderDot--grok { background: #5dcaa5; }
+.usageSpendProviderSeg--other,
+.usageSpendProviderDot--other { background: var(--text-secondary); }
+
 #usageSpendChart {
   padding: 0 14px 14px;
   display: flex;
