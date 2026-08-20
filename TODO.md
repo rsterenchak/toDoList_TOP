@@ -1636,7 +1636,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: cc1b8644-41da-47a6-8d23-91eda06d4a1c -->
 
-- [ ] **[MEDIUM]** Add per-provider spend split to the API spend panel
+- [x] **[MEDIUM]** Add per-provider spend split to the API spend panel — Completed: 2026-08-20
   - Type: feature
   - Description: The spend panel shows one blended monthly total, but spend now flows to three providers (Anthropic, Moonshot/kimi, xAI/grok). Add a segmented provider bar with a legend directly beneath the total readout, and make the panel's note honest about coverage: only Worker-proxied API calls — chat, scans, and ghost — are tracked for now.
   - Behavior:
