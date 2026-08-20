@@ -1574,7 +1574,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/settingsModal.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`
   <!-- id: a7277b45-70de-4164-bebe-04d3a99af1d9 -->
 
-- [ ] **[MEDIUM]** Add per-run model picker to the drafted-entry ship flow
+- [x] **[MEDIUM]** Add per-run model picker to the drafted-entry ship flow — Completed: 2026-08-20
   - Type: feature
   - Description: Let a chat-drafted entry ship on a specific model for that one run. The Models panel (previous entry) sets per-repo/global defaults; this adds the per-run override layer: a model chip fused to the drafted-entry card's action row in the Claude sheet, a picker to change it for this ship only, honest button copy when the pick routes off plan (a third-party model with auto-merge off opens a PR instead of deploying), and the dispatched model stamped onto the run's records. The Worker already accepts a per-run `model` in the dispatch body (precedence: per-run pick → repo row → global row → workflow default) and echoes `model`, `model_source`, `billing`, and `auto_merge` in the dispatch response — this entry is the PWA side only.
   - Behavior:
