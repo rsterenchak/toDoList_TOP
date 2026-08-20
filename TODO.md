@@ -1610,7 +1610,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: beec0b82-9e68-4433-9b2b-fecc2d2bfa9b -->
 
-- [ ] **[MEDIUM]** Add Awaiting-merge run state for manual-merge gated ships
+- [x] **[MEDIUM]** Add Awaiting-merge run state for manual-merge gated ships — Completed: 2026-08-20
   - Type: feature
   - Description: A run shipped on a third-party model with auto-merge off finishes green while its PR sits open, so the reconcile reads the still-unchecked entry and settles the Runs row at "No change" — terminally, so it never corrects after the user merges. Teach the reconcile to tell "skipped" apart from "waiting on a merge the user owes", and give the waiting state a path to SHIPPED that costs no extra polling. Chat-shipped (localStorage) run records only — queue-derived rows have their own state machine and backlog runs can't carry a model pick yet; both stay as they are.
   - Behavior:
