@@ -1625,7 +1625,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   <!-- id: fc8d6ab3-24d3-45f9-809e-0363a91c5a9d -->
 
-- [ ] **[LOW]** Set real kimi and grok families in USAGE_RATES
+- [x] **[LOW]** Set real kimi and grok families in USAGE_RATES — Completed: 2026-08-20
   - Type: feature
   - Description: The `kimi` and `grok` rows in `USAGE_RATES` (claudeSheet.js) were seeded at opus-level rates as a deliberate errs-high placeholder. Replace them with the providers' published per-million rates so the spend panel reports third-party runs accurately, and remove the `// verify against provider pricing` placeholder comments.
   - Behavior:
