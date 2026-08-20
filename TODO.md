@@ -1602,3 +1602,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The drafted-entry card's model chip already calls `fetchModelSettings` with a real repo — leave that path untouched; just confirm it still resolves after the shared fetch change.
   - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/inject.js`
   <!-- id: 244d2bba-ef12-4cc0-9a4f-49d906c2f2f6 -->
+
+- [ ] **[LOW]** Add a placeholder comment to style.css for pipeline testing
+  - Type: feature
+  - Description: Add a single harmless CSS comment (e.g. `/* pipeline test marker */`) near the top of the stylesheet to verify the inject/build/deploy pipeline end-to-end. No visual or functional change is expected. This entry exists purely to exercise the automation, not to modify app behavior.
+  - File: `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: beec0b82-9e68-4433-9b2b-fecc2d2bfa9b -->
