@@ -1358,8 +1358,8 @@ export const listLogic = (function () {
     // Supabase directly, matching the "all data-model mutations live in
     // listLogic" convention (mirrors flagTaskForAgent / answerAgentTask).
     // `patch` may carry any of { state, draft, run_id, pr_url, pr_number,
-    // failure_reason, entry_id, correlation_id, todo_id, thread }; only those
-    // keys are written,
+    // failure_reason, entry_id, correlation_id, todo_id, thread, model }; only
+    // those keys are written,
     // and only when present, so a mid-pipeline tick can update just `state`
     // without clobbering the ids stored at kickoff. `draft` lets the
     // needs_mockup launcher stash the pasted-back entry as it flips the row to
@@ -1369,7 +1369,10 @@ export const listLogic = (function () {
     async function setAgentRunState(rowId, patch) {
         if (!rowId) return { ok: false, error: 'Missing row id.' };
         const src = (patch && typeof patch === 'object') ? patch : {};
-        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id', 'todo_id', 'thread'];
+        // Whitelist — an unlisted key is dropped SILENTLY, with no error at the
+        // call site, so a new column has to be added here as well as at the
+        // caller or the stamp is simply lost.
+        const allowed = ['state', 'draft', 'run_id', 'pr_url', 'pr_number', 'failure_reason', 'entry_id', 'correlation_id', 'todo_id', 'thread', 'model'];
         const update = {};
         allowed.forEach(function (key) {
             if (src[key] !== undefined) update[key] = src[key];

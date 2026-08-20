@@ -126,8 +126,11 @@ describe('listLogic.setAgentRunState', () => {
     it('accepts the thread key, so the rollback note can ride the same patch', () => {
         // The queue-row patch a returned-to-proposals revert writes carries a
         // thread line; an allow-list that omitted `thread` would drop it silently.
+        // Anchored on the 'todo_id', 'thread' pair rather than on the end of the
+        // array, so a later key (the per-run model stamp) can join the list
+        // without this pin reading as a regression.
         expect(SRC).toMatch(
-            /const allowed = \[[^\]]*'todo_id', 'thread'\]/
+            /const allowed = \[[^\]]*'todo_id', 'thread'[^\]]*\]/
         );
     });
 });

@@ -135,6 +135,10 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
         correlation_id: res.correlationId,
     };
     if (res.runId != null) patch.run_id = res.runId;
+    // Stamp the model this run dispatched on so the Runs tab can tag an
+    // API-billed run wherever it reads the row from — the queue row is the only
+    // cross-device record of that fact for a board/task ship.
+    if (res.model) patch.model = res.model;
     // Persist a newly-minted todo id onto the queue row so later reconciliation
     // (stampEntryShipped, keyed by todo_id) can find and stamp it when the PR
     // merges. Only when this run created the todo — rows that already had a

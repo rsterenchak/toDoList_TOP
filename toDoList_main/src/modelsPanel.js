@@ -53,6 +53,18 @@ function modelById(catalog, id) {
     return null;
 }
 
+// Who bills for a model, straight off the catalog. Exported because the
+// drafted-entry card's per-run picker has to answer the same question the
+// matrix's `→ api` badge answers — "does this pick leave plan quota?" — and a
+// second copy of the id → provider lookup would drift from the catalog the
+// moment the Worker adds a model. An id the catalog doesn't know returns '',
+// which every caller reads as "not demonstrably third-party" rather than
+// guessing.
+export function providerForModel(catalog, id) {
+    const m = modelById(catalog, id);
+    return (m && typeof m.provider === 'string') ? m.provider : '';
+}
+
 function planLanesOf(catalog) {
     const lanes = catalog && Array.isArray(catalog.plan_lanes) ? catalog.plan_lanes : null;
     return (lanes && lanes.length) ? lanes : FALLBACK_PLAN_LANES;
@@ -145,6 +157,101 @@ export function buildPickerGroups(catalog, surface) {
         }
     }
     return { plan: plan, api: api };
+}
+
+function buildPickerGroupHeading(text, isApi) {
+    const heading = document.createElement('div');
+    heading.className = 'modelsPickerHeading' + (isApi ? ' modelsPickerHeading--api' : '');
+    heading.textContent = text;
+    return heading;
+}
+
+function buildPickerOption(opt) {
+    const el = document.createElement('button');
+    el.type = 'button';
+    el.className = 'modelsPickerRow';
+    el.setAttribute('aria-pressed', opt.checked ? 'true' : 'false');
+
+    const check = document.createElement('span');
+    check.className = 'modelsPickerCheck';
+    check.setAttribute('aria-hidden', 'true');
+    check.textContent = opt.checked ? '✓' : '';
+    el.appendChild(check);
+
+    const label = document.createElement('span');
+    label.className = 'modelsPickerLabel';
+    label.textContent = opt.label;
+    el.appendChild(label);
+
+    const hint = document.createElement('span');
+    hint.className = 'modelsPickerHint';
+    hint.textContent = opt.hint || '';
+    el.appendChild(hint);
+
+    el.addEventListener('click', opt.onPick);
+    return el;
+}
+
+// The rendered picker list for one surface — an Inherit row, then the two
+// lane groups from buildPickerGroups. Two surfaces render it: this panel's
+// drill-in (scope-wide defaults) and the drafted-entry card's per-run popover
+// in claudeSheet.js. It lives here once rather than twice because the two would
+// otherwise drift on exactly the details that matter — which models are
+// allowlisted for the lane, which group they land in, and how the amber
+// "leaves plan" heading is worded.
+//
+// Pure in the sense that matters: it reads only its arguments and returns a
+// detached element. `current` is the id currently pinned by whatever is calling
+// (a scope's setting, or a card's override) — pass '' to mean "inheriting",
+// which is what puts the ✓ on the Inherit row. `onPick` receives the picked
+// model id, or null for Inherit.
+export function buildPickerList(options) {
+    const o = options || {};
+    const surface = o.surface;
+    const current = typeof o.current === 'string' ? o.current : '';
+    const onPick = typeof o.onPick === 'function' ? o.onPick : function() {};
+    const groups = buildPickerGroups(o.catalog, surface);
+
+    const list = document.createElement('div');
+    list.className = 'modelsPicker';
+
+    // Inherit sits first and carries the ✓ when nothing is pinned, so "not set
+    // here" is a state you can see and select rather than the absence of a
+    // selection.
+    list.appendChild(buildPickerOption({
+        label: 'Inherit',
+        hint: o.inheritHint || '',
+        checked: !current,
+        onPick: function() { onPick(null); },
+    }));
+
+    if (groups.plan.length) {
+        list.appendChild(buildPickerGroupHeading('PLAN QUOTA', false));
+        for (let i = 0; i < groups.plan.length; i++) {
+            const m = groups.plan[i];
+            list.appendChild(buildPickerOption({
+                label: m.id,
+                hint: m.hint,
+                checked: current === m.id,
+                onPick: function() { onPick(m.id); },
+            }));
+        }
+    }
+
+    if (groups.api.length) {
+        list.appendChild(buildPickerGroupHeading('API BILLED · leaves plan, pays per token', true));
+        for (let j = 0; j < groups.api.length; j++) {
+            const m = groups.api[j];
+            list.appendChild(buildPickerOption({
+                label: m.id,
+                hint: m.hint,
+                checked: current === m.id,
+                onPick: function() { onPick(m.id); },
+            }));
+        }
+    }
+
+    return list;
 }
 
 // What tapping "Inherit" would resolve to, spelled out so the row is a real
@@ -453,48 +560,19 @@ export function openModelsPanel(anchorEl) {
         const entry = ((settings && settings.surfaces) || {})[surface] || {};
         const resolved = typeof entry.value === 'string' ? entry.value : '';
         const setAtScope = entry.source === scope;
-        const groups = buildPickerGroups(catalog, surface);
 
-        const list = document.createElement('div');
-        list.className = 'modelsPicker';
-
-        // Inherit sits first and carries the ✓ when nothing is pinned at this
-        // scope, so "not set here" is a state you can see and select rather than
-        // the absence of a selection.
-        list.appendChild(buildPickerOption({
-            label: 'Inherit',
-            hint: describeInherit(settings, surface, scope),
-            checked: !setAtScope,
-            onPick: function() { commitModel(surface, null); },
+        // Same list the drafted-entry card's per-run popover renders, built by
+        // the shared builder rather than a second copy of the grouping rules —
+        // "pinned at this scope" is exactly the panel's notion of a current
+        // value, so an inherited row passes '' and the Inherit option carries
+        // the ✓.
+        body.appendChild(buildPickerList({
+            catalog: catalog,
+            surface: surface,
+            current: setAtScope ? resolved : '',
+            inheritHint: describeInherit(settings, surface, scope),
+            onPick: function(model) { commitModel(surface, model); },
         }));
-
-        if (groups.plan.length) {
-            list.appendChild(buildPickerGroupHeading('PLAN QUOTA', false));
-            for (let i = 0; i < groups.plan.length; i++) {
-                const m = groups.plan[i];
-                list.appendChild(buildPickerOption({
-                    label: m.id,
-                    hint: m.hint,
-                    checked: setAtScope && resolved === m.id,
-                    onPick: function() { commitModel(surface, m.id); },
-                }));
-            }
-        }
-
-        if (groups.api.length) {
-            list.appendChild(buildPickerGroupHeading('API BILLED · leaves plan, pays per token', true));
-            for (let j = 0; j < groups.api.length; j++) {
-                const m = groups.api[j];
-                list.appendChild(buildPickerOption({
-                    label: m.id,
-                    hint: m.hint,
-                    checked: setAtScope && resolved === m.id,
-                    onPick: function() { commitModel(surface, m.id); },
-                }));
-            }
-        }
-
-        body.appendChild(list);
 
         // While third-party ships don't auto-merge, say so at the point of
         // choosing one — after the pick it's a surprise, before it it's a
@@ -506,39 +584,6 @@ export function openModelsPanel(anchorEl) {
             note.textContent = 'third-party picks open a PR and wait for manual merge';
             body.appendChild(note);
         }
-    }
-
-    function buildPickerGroupHeading(text, isApi) {
-        const heading = document.createElement('div');
-        heading.className = 'modelsPickerHeading' + (isApi ? ' modelsPickerHeading--api' : '');
-        heading.textContent = text;
-        return heading;
-    }
-
-    function buildPickerOption(opt) {
-        const el = document.createElement('button');
-        el.type = 'button';
-        el.className = 'modelsPickerRow';
-        el.setAttribute('aria-pressed', opt.checked ? 'true' : 'false');
-
-        const check = document.createElement('span');
-        check.className = 'modelsPickerCheck';
-        check.setAttribute('aria-hidden', 'true');
-        check.textContent = opt.checked ? '✓' : '';
-        el.appendChild(check);
-
-        const label = document.createElement('span');
-        label.className = 'modelsPickerLabel';
-        label.textContent = opt.label;
-        el.appendChild(label);
-
-        const hint = document.createElement('span');
-        hint.className = 'modelsPickerHint';
-        hint.textContent = opt.hint || '';
-        el.appendChild(hint);
-
-        el.addEventListener('click', opt.onPick);
-        return el;
     }
 
     // ── WRITES ──

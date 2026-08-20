@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-08-20',
         added: [
             'New Models panel in settings lets you pick which AI model each pipeline workflow runs on, for one repo or for everything.',
+            'A drafted entry can now be shipped on a model chosen for that one run, and says up front when the pick opens a pull request instead of deploying.',
         ],
     },
     {
@@ -18,7 +19,6 @@ export const changelog = [
             'Unlocking the app with your PIN now pulls in the latest changes made on your other devices instead of showing stale tasks until you refresh.',
         ],
         changed: [
-            'The review buttons on a shipped change now sit in two groups split by a divider — accept and revert on one side, the open, copy and iterate shortcuts on the other.',
             'The PIN boxes on the lock screen are much larger on phones, so the digits are easier to read and tap one-handed.',
         ],
     },

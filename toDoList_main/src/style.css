@@ -3865,6 +3865,114 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: #5dcaa5;
 }
 
+/* The chip + "Inject & run" share one line; the confirm block sits beneath them
+   in the column, so revealing it never displaces the chip. */
+.claudeDraftActionRow {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── per-run model pick (drafted-entry card) ──
+   The chip leads the card's action row and anchors its picker popover, so the
+   wrap is the positioning context AND the "inside" region the outside-click
+   close tests against. */
+.claudeDraftModel {
+  position: relative;
+  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.claudeDraftModelRow {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.claudeDraftModelChip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  min-height: 26px;
+  padding: 3px 8px;
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-dim);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-primary);
+  /* Dim at rest: an inherited model is legible but visibly not a choice made
+     here, exactly as the Models panel's inherited chips read. */
+  opacity: 0.6;
+  cursor: pointer;
+}
+.claudeDraftModelChip:hover { opacity: 0.85; }
+/* A per-run pick is the deliberate state, so it comes up to full strength and
+   takes the plan-lane accent border. */
+.claudeDraftModelChip--set {
+  opacity: 1;
+  border-color: #9D93EE;
+}
+.claudeDraftModelName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.claudeDraftModelTag {
+  flex: 0 0 auto;
+  font-size: 9px;
+  letter-spacing: 0.06em;
+  color: var(--text-secondary);
+}
+/* Toggled through the hidden attribute, and .claudeDraftModelTag's own
+   `display` would otherwise outrank the UA's `[hidden] { display: none }`. */
+.claudeDraftModelTag[hidden] { display: none; }
+.claudeDraftModelClear {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border-radius: 6px;
+  background: none;
+  border: none;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.claudeDraftModelClear:hover { color: var(--text-primary); }
+.claudeDraftModelClear[hidden] { display: none; }
+/* The honest subline under the chip when this pick opens a PR instead of
+   deploying. Amber, matching the confirm step's warn copy. */
+.claudeDraftModelSub {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-warning);
+}
+.claudeDraftModelSub[hidden] { display: none; }
+/* Picker popover — opens ABOVE the chip (drafted cards sit low in the
+   transcript), same drop-shadowed elevated surface as the send-mode menu. */
+.claudeDraftModelMenu {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 6px);
+  z-index: 5;
+  min-width: 240px;
+  max-width: 300px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px 0;
+  background: var(--bg-elevated);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+}
+.claudeDraftModelMenu[hidden] { display: none; }
+
 .claudeInspectAttach {
   margin: -2px 0 12px;
 }
@@ -4011,6 +4119,23 @@ button.claudeAttachChipLabel { cursor: pointer; }
   white-space: nowrap;
   font-size: 13px;
   color: var(--text-primary);
+}
+/* An API-billed run's model, between the title and the status pill. Amber, the
+   same colour the Models panel badges an off-plan pick with, so the two surfaces
+   say "this one leaves plan quota" the same way. */
+.claudeRunModelTag {
+  flex: none;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: 6px;
+  border: 0.5px solid var(--text-warning);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-warning);
 }
 .claudeRunBadge {
   flex: none;

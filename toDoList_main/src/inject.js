@@ -899,12 +899,21 @@ export async function rewriteTodoMd(target, op, id) {
 // routine pick the next eligible task; `entry` mode targets a specific TODO.md
 // entry by id. The Worker's dispatch branch returns `{ ok: true, dispatched:
 // true, ... }` on success — that whole payload is spread onto the result so
-// callers can surface an Actions-run link when the Worker provides one.
+// callers can surface an Actions-run link when the Worker provides one, and so
+// the `model` / `model_source` / `billing` / `auto_merge` facts it echoes reach
+// the caller that stamps them onto a run record.
 // Returns `{ ok: false, reason }` via describeError on any failure, matching
 // the inject button's error vocabulary.
+//
+// `model` is the OPTIONAL per-run override — one ship on one model, distinct
+// from the per-repo/global defaults the Models panel writes. It is sent only
+// when set: the Worker's precedence is per-run pick → repo row → global row →
+// workflow default, so omitting the key is what "inherit" means, exactly as
+// the Worker omits a default input rather than sending a placeholder for it.
 export async function dispatchRun(options) {
     const opts = options || {};
     const target = opts.target || null;
+    const model = typeof opts.model === 'string' ? opts.model.trim() : '';
     try {
         const res = await postToWorker({
             dispatch: true,
@@ -913,6 +922,7 @@ export async function dispatchRun(options) {
             correlation_id: opts.correlationId,
             repo: target ? target.repo : undefined,
             filePath: target ? target.file_path : undefined,
+            model: model || undefined,
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {

@@ -46,8 +46,16 @@ import {
     emitTodoRunStatusChange,
     refreshShippedMarkersForProject,
     getShippedMarkersForRepo,
+    fetchModelCatalog,
+    fetchModelSettings,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
+// The per-run model picker renders the SAME list the Models panel drills into,
+// so it imports that list builder rather than growing a second copy of the
+// lane-grouping rules. modelsPanel.js imports getActiveChatRepo back out of this
+// module — a cycle ESM resolves fine here, because every one of these bindings
+// is a hoisted function declaration read at call time, never at module-eval time.
+import { buildPickerList, providerForModel, readAutoMerge3p } from './modelsPanel.js';
 import {
     readActiveRun,
     writeActiveRun,
@@ -1542,6 +1550,12 @@ export const USAGE_RATES = {
     opus:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
     sonnet: { input: 3,   output: 15, cacheWrite: 3.75,  cacheRead: 0.3 },
     haiku:  { input: 0.8, output: 4,  cacheWrite: 1,     cacheRead: 0.08 },
+    // Third-party families a run can now be pinned to, seeded at the opus rate
+    // so an API-billed run reports SOMETHING rather than vanishing into the
+    // unknown-model fallback — the same errs-high philosophy, made explicit for
+    // families we know are reachable. // verify against provider pricing
+    kimi:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
+    grok:   { input: 15,  output: 75, cacheWrite: 18.75, cacheRead: 1.5 },
 };
 
 // The most expensive known family. An unrecognised model falls back to this so a
@@ -1556,6 +1570,10 @@ function rateForModel(model) {
     if (m.indexOf('opus') !== -1) return USAGE_RATES.opus;
     if (m.indexOf('sonnet') !== -1) return USAGE_RATES.sonnet;
     if (m.indexOf('haiku') !== -1) return USAGE_RATES.haiku;
+    // Third-party families, matched the same way — `kimi-k3`, `grok-4-fast`, and
+    // whatever generation follows each keep resolving without a table edit.
+    if (m.indexOf('kimi') !== -1) return USAGE_RATES.kimi;
+    if (m.indexOf('grok') !== -1) return USAGE_RATES.grok;
     return HIGHEST_USAGE_RATE;
 }
 
@@ -1871,8 +1889,9 @@ export function renderSpendReadout(container, totalCost, budget) {
 
     const note = document.createElement('p');
     note.className = 'usageSpendNote';
-    note.textContent = 'Covers Anthropic API calls (chat and refactor scans) only. '
-        + 'The pipeline’s CI runs bill to the Max plan and can’t be measured here.';
+    note.textContent = 'Covers Worker-proxied API calls — chat, refactor scans, and '
+        + 'runs pinned to a third-party model. Plan-lane CI runs bill to the Max plan '
+        + 'and can’t be measured here.';
     container.appendChild(note);
 }
 
@@ -3996,6 +4015,119 @@ export function openIterateForEntry(entryId, repo) {
     return p;
 }
 
+// ── PER-RUN MODEL PICK ──
+// The Models panel sets which model each workflow runs on for a repo (or
+// globally); this is the layer above it — one drafted entry, shipped once, on a
+// model chosen for that ship alone. The override is deliberately NOT persisted:
+// it belongs to the card in front of you, so a one-off experiment can never
+// quietly become the standing setting, and the next draft starts back at the
+// repo's default.
+//
+// Catalog and settings are read lazily — the first drafted card to render pays
+// for them — then cached for the session: the catalog once (it is scope-free),
+// the settings per repo (they are not). Both reads are best-effort. A failure
+// leaves the chip on its inherit face and the ship path unchanged, because a run
+// with no override dispatches exactly as it always did; a failed read clears its
+// cached promise so the next card retries rather than inheriting the failure.
+const RUN_MODEL_SURFACE = 'run';
+let runModelCatalog = null;
+let runModelCatalogPromise = null;
+const runModelSettingsByRepo = new Map();
+const runModelSettingsPromises = new Map();
+
+function ensureRunModelContext(repo) {
+    const key = repo || '';
+    if (!runModelCatalogPromise) {
+        runModelCatalogPromise = Promise.resolve(fetchModelCatalog()).then(function(res) {
+            if (res && res.ok) runModelCatalog = res;
+            else runModelCatalogPromise = null;
+            return runModelCatalog;
+        }, function() {
+            runModelCatalogPromise = null;
+            return null;
+        });
+    }
+    if (!runModelSettingsPromises.has(key)) {
+        runModelSettingsPromises.set(key, Promise.resolve(fetchModelSettings(repo)).then(function(res) {
+            if (res && res.ok) runModelSettingsByRepo.set(key, res);
+            else runModelSettingsPromises.delete(key);
+            return runModelSettingsByRepo.get(key) || null;
+        }, function() {
+            runModelSettingsPromises.delete(key);
+            return null;
+        }));
+    }
+    return Promise.all([runModelCatalogPromise, runModelSettingsPromises.get(key)])
+        .then(function(pair) {
+            return { catalog: pair[0] || runModelCatalog, settings: pair[1] || null };
+        });
+}
+
+// What a drafted card will actually ship on. The card's own override wins; with
+// none, the RUN surface's resolved value for the workspace repo does; and when
+// that is empty too the run inherits the workflow's own default, which has no id
+// to name — hence a chip that reads 'default' rather than an invented id.
+// `overridden` is what separates a bright chip from a dim one, and it is keyed
+// on the pick rather than on the resolved value, so picking the model that was
+// already the default still reads as a deliberate per-run choice.
+export function resolveRunModel(override, settings) {
+    const picked = typeof override === 'string' ? override.trim() : '';
+    const entry = ((settings && settings.surfaces) || {})[RUN_MODEL_SURFACE] || {};
+    const inherited = typeof entry.value === 'string' ? entry.value.trim() : '';
+    return {
+        model: picked || inherited,
+        inherited: inherited,
+        overridden: !!picked,
+        chipText: picked || inherited || 'default',
+        sourceTag: picked ? '' : 'default',
+    };
+}
+
+// The confirm step's copy for one effective pick. A third-party model on a repo
+// that does not auto-merge third-party ships does NOT deploy — it opens a PR and
+// waits for a human — so "Ship it" and "this deploys to your live app" would both
+// be false. Everything else keeps the existing wording verbatim.
+//
+// A model id the catalog doesn't carry keeps the plan-lane copy rather than
+// defaulting to the cautious side: the catalog is the only authority on who
+// bills, and telling someone their ordinary Anthropic run merely opens a PR is
+// the more damaging of the two possible lies.
+export function shipCopyForModel(options) {
+    const o = options || {};
+    const provider = providerForModel(o.catalog, o.model);
+    const thirdParty = !!provider && provider !== 'anthropic';
+    const opensPr = thirdParty && !o.autoMerge3p;
+    return {
+        thirdParty: thirdParty,
+        opensPr: opensPr,
+        shipLabel: opensPr ? 'Ship → PR' : 'Ship it',
+        warnText: opensPr
+            ? 'This opens a PR — merge it yourself to deploy.'
+            : 'This ships to main and deploys to your live app.',
+        subline: opensPr ? 'api · waits for merge' : '',
+    };
+}
+
+// Every Anthropic model id the pipeline dispatches names its own family, so a
+// run's billing lane is readable off the id alone.
+const ANTHROPIC_MODEL_HINTS = ['claude', 'opus', 'sonnet', 'haiku'];
+
+// The Runs-tab tag for a record's model: the bare id for an API-billed run,
+// nothing at all otherwise. Deliberately id-matched rather than catalog-looked-up
+// — a run row renders on load, long before (and often entirely without) a
+// catalog fetch, and a tag that appeared a second late would read as a state
+// change rather than a fact. Anthropic and absent models add nothing, so the
+// list stays quiet except where the billing actually differs.
+export function runModelTagText(model) {
+    const m = typeof model === 'string' ? model.trim() : '';
+    if (!m) return '';
+    const lower = m.toLowerCase();
+    for (let i = 0; i < ANTHROPIC_MODEL_HINTS.length; i++) {
+        if (lower.indexOf(ANTHROPIC_MODEL_HINTS[i]) !== -1) return '';
+    }
+    return m;
+}
+
 // ── DRAFTED ENTRY CARD ──
 // A green card below the assistant message holding the drafted entry text and
 // a single "Inject & run" action. The action first swaps to an inline confirm
@@ -4015,6 +4147,61 @@ function renderDraftedEntryCard(entryText) {
 
     const actions = document.createElement('div');
     actions.className = 'claudeDraftActions';
+
+    // The per-run pick, held on this card and nowhere else — '' means inherit.
+    // The workspace repo is read once, at render, so a workspace swap behind an
+    // already-drawn card can never retarget the pick the card is showing.
+    const modelRepo = activeChatRepo;
+    let modelOverride = '';
+    let modelCatalog = null;
+    let modelSettings = null;
+
+    const modelWrap = document.createElement('div');
+    modelWrap.className = 'claudeDraftModel';
+
+    const modelRow = document.createElement('div');
+    modelRow.className = 'claudeDraftModelRow';
+
+    const modelChip = document.createElement('button');
+    modelChip.type = 'button';
+    modelChip.className = 'claudeDraftModelChip';
+    modelChip.setAttribute('aria-haspopup', 'menu');
+    modelChip.setAttribute('aria-expanded', 'false');
+    const modelName = document.createElement('span');
+    modelName.className = 'claudeDraftModelName';
+    const modelSourceTag = document.createElement('span');
+    modelSourceTag.className = 'claudeDraftModelTag';
+    modelChip.appendChild(modelName);
+    modelChip.appendChild(modelSourceTag);
+
+    // Revert-to-inherit, a SIBLING of the chip rather than a child: a button
+    // nested inside a button is invalid markup and the inner one's clicks are
+    // unreliable across engines.
+    const modelClear = document.createElement('button');
+    modelClear.type = 'button';
+    modelClear.className = 'claudeDraftModelClear';
+    modelClear.textContent = '✕';
+    modelClear.setAttribute('aria-label', 'Use the default model for this repo');
+    modelClear.hidden = true;
+
+    modelRow.appendChild(modelChip);
+    modelRow.appendChild(modelClear);
+
+    const modelSub = document.createElement('div');
+    modelSub.className = 'claudeDraftModelSub';
+    modelSub.hidden = true;
+
+    const modelMenu = document.createElement('div');
+    modelMenu.className = 'claudeDraftModelMenu';
+    modelMenu.setAttribute('role', 'menu');
+    modelMenu.hidden = true;
+    // Clicks inside the popover belong to the picker; never let them reach the
+    // document-level outside-click close (the send-mode menu's guard).
+    modelMenu.addEventListener('click', function(event) { event.stopPropagation(); });
+
+    modelWrap.appendChild(modelRow);
+    modelWrap.appendChild(modelSub);
+    modelWrap.appendChild(modelMenu);
 
     const injectBtn = document.createElement('button');
     injectBtn.type = 'button';
@@ -4042,7 +4229,102 @@ function renderDraftedEntryCard(entryText) {
     confirm.appendChild(warn);
     confirm.appendChild(confirmRow);
 
+    // The chip's face AND the confirm step's copy are one decision, repainted
+    // together: the button that says "Ship it" and the chip that says which
+    // model it ships on must never disagree about whether this run deploys.
+    function paintModel() {
+        const resolved = resolveRunModel(modelOverride, modelSettings);
+        modelName.textContent = resolved.chipText;
+        modelSourceTag.textContent = resolved.sourceTag;
+        modelSourceTag.hidden = !resolved.sourceTag;
+        modelChip.classList.toggle('claudeDraftModelChip--set', resolved.overridden);
+        modelClear.hidden = !resolved.overridden;
+        modelChip.title = resolved.overridden
+            ? 'This ship runs on ' + resolved.model
+            : 'Default model for this repo — tap to pick one for this ship';
+
+        const copy = shipCopyForModel({
+            catalog: modelCatalog,
+            model: resolved.model,
+            autoMerge3p: readAutoMerge3p(modelSettings),
+        });
+        modelSub.textContent = copy.subline;
+        modelSub.hidden = !copy.subline;
+        shipBtn.textContent = copy.shipLabel;
+        warn.textContent = copy.warnText;
+    }
+
+    // ── PICKER POPOVER ──
+    // Same three-way dismissal the send-mode menu uses (pick / outside click /
+    // Escape), with both document listeners torn down on close so a card that
+    // scrolls out of the transcript leaves nothing behind.
+    let outsideHandler = null;
+    let escapeHandler = null;
+
+    function closeModelMenu() {
+        if (modelMenu.hidden) return;
+        modelMenu.hidden = true;
+        modelChip.setAttribute('aria-expanded', 'false');
+        if (outsideHandler) document.removeEventListener('click', outsideHandler);
+        if (escapeHandler) document.removeEventListener('keydown', escapeHandler, true);
+        outsideHandler = null;
+        escapeHandler = null;
+    }
+
+    function openModelMenu() {
+        // No catalog means nothing to offer. Opening an empty popover would read
+        // as "there are no other models", which is a different claim from "we
+        // haven't been able to ask yet".
+        if (!modelCatalog) return;
+        modelMenu.innerHTML = '';
+        const resolved = resolveRunModel(modelOverride, modelSettings);
+        modelMenu.appendChild(buildPickerList({
+            catalog: modelCatalog,
+            surface: RUN_MODEL_SURFACE,
+            current: modelOverride,
+            // Inherit names what it falls back to, so the row is a real preview
+            // rather than a blank promise.
+            inheritHint: resolved.inherited || 'workflow default',
+            onPick: function(model) {
+                modelOverride = model || '';
+                closeModelMenu();
+                paintModel();
+            },
+        }));
+        modelMenu.hidden = false;
+        modelChip.setAttribute('aria-expanded', 'true');
+
+        // The click that opened this is still bubbling; the wrap test below is
+        // what keeps it from closing the popover on the way up.
+        outsideHandler = function(event) {
+            if (modelWrap.contains(event.target)) return;
+            closeModelMenu();
+        };
+        document.addEventListener('click', outsideHandler);
+        // Capture phase so Escape peels back the popover and stops there — the
+        // sheet's own document-level Escape would otherwise also close the sheet
+        // underneath it.
+        escapeHandler = function(event) {
+            if (event.key !== 'Escape') return;
+            event.stopPropagation();
+            closeModelMenu();
+            try { modelChip.focus(); } catch (e) { /* defensive */ }
+        };
+        document.addEventListener('keydown', escapeHandler, true);
+    }
+
+    modelChip.addEventListener('click', function() {
+        if (modelMenu.hidden) openModelMenu();
+        else closeModelMenu();
+    });
+    modelClear.addEventListener('click', function() {
+        modelOverride = '';
+        closeModelMenu();
+        paintModel();
+    });
+
     injectBtn.addEventListener('click', function() {
+        closeModelMenu();
         injectBtn.hidden = true;
         confirm.hidden = false;
     });
@@ -4051,18 +4333,42 @@ function renderDraftedEntryCard(entryText) {
         injectBtn.hidden = false;
     });
     shipBtn.addEventListener('click', function() {
-        shipDraftedEntry(entryText, card);
+        closeModelMenu();
+        shipDraftedEntry(entryText, card, modelOverride);
     });
 
-    actions.appendChild(injectBtn);
+    // The chip is FUSED to the action row rather than stacked above it: chip
+    // then "Inject & run", on one line. It stays put when the row flips to the
+    // confirm step, so the model can still be read (and changed) at the moment
+    // the copy under it is describing what that model will do.
+    const actionRow = document.createElement('div');
+    actionRow.className = 'claudeDraftActionRow';
+    actionRow.appendChild(modelWrap);
+    actionRow.appendChild(injectBtn);
+    actions.appendChild(actionRow);
     actions.appendChild(confirm);
     card.appendChild(actions);
     surface.appendChild(card);
     surface.scrollTop = surface.scrollHeight;
+
+    // Paint the inherit face immediately so the row never renders chipless, then
+    // repaint once the (lazy, session-cached) catalog + settings land. A card
+    // dismissed before the read resolves is left alone.
+    paintModel();
+    ensureRunModelContext(modelRepo).then(function(ctx) {
+        if (!document.contains(card)) return;
+        modelCatalog = (ctx && ctx.catalog) || null;
+        modelSettings = (ctx && ctx.settings) || null;
+        paintModel();
+    });
+
     return card;
 }
 
-async function shipDraftedEntry(entryText, card) {
+// `modelOverride` is the card's per-run pick ('' when it inherits). It rides the
+// dispatch only when set, so an inheriting ship sends exactly the payload it
+// always did and the Worker's own precedence chain decides the model.
+async function shipDraftedEntry(entryText, card, modelOverride) {
     const shipBtn = card && card.querySelector('.claudeDraftShip');
     const cancelBtn = card && card.querySelector('.claudeDraftCancel');
 
@@ -4148,6 +4454,7 @@ async function shipDraftedEntry(entryText, card) {
         entryId: entryId,
         correlationId: correlationId,
         target: target,
+        model: modelOverride || undefined,
     });
     if (!dispatchResult.ok) {
         markDraftCardError(card, 'Run failed — ' + (dispatchResult.reason || 'error'));
@@ -4174,6 +4481,14 @@ async function shipDraftedEntry(entryText, card) {
         // after a reload, when the resumed poller drives the reconcile.
         agentRowId: activeHandoffRow,
     };
+    // The model this run ACTUALLY dispatched on, as the Worker resolved it —
+    // not the override we asked for, which is empty whenever the run inherits.
+    // A chat ship creates no agent_queue row, so this local record is the only
+    // place that fact is written down; without it the Runs tab can't tell an
+    // API-billed run from a plan one. Absent keys stay absent rather than
+    // guessing, so an older Worker leaves the record unstamped.
+    if (dispatchResult.model) record.model = dispatchResult.model;
+    if (dispatchResult.billing) record.billing = dispatchResult.billing;
     runRecords.unshift(record);
     saveRunRecords();
     // Drive the viewer's per-project "Running" pill for this same run: write
@@ -4494,6 +4809,10 @@ function buildQueueRunRecords() {
         };
         if (row.pr_number != null) rec.pr_number = row.pr_number;
         if (row.pr_url) rec.pr_url = row.pr_url;
+        // The model the run dispatched on, stamped at kickoff. Queue rows are the
+        // cross-device record, so this is what makes an API-billed run legible on
+        // a device that never saw the ship.
+        if (row.model) rec.model = row.model;
         // A no-change row already carries the agent's closing summary in
         // failure_reason — surface it without a second fetch.
         if (status === 'NOCHANGE' && typeof row.failure_reason === 'string') {
@@ -4799,6 +5118,19 @@ function buildRunRow(rec) {
     }
 
     row.appendChild(title);
+
+    // An API-billed run wears its model between the title and the status pill,
+    // so a list of runs makes plain which ones left plan quota. Plan-lane runs
+    // add nothing — the tag is a difference marker, not a label.
+    const modelTag = runModelTagText(rec.model);
+    if (modelTag) {
+        const tag = document.createElement('span');
+        tag.className = 'claudeRunModelTag';
+        tag.textContent = modelTag;
+        tag.title = 'Ran on ' + modelTag + ' — API billed';
+        row.appendChild(tag);
+    }
+
     row.appendChild(badge);
 
     // A SHIPPED run has a merged change behind it, so its row becomes the
