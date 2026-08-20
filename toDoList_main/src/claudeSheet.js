@@ -1333,6 +1333,11 @@ function removeChatIntro() {
     if (intro && intro.parentNode) intro.parentNode.removeChild(intro);
 }
 
+// AWAITING is deliberately absent: a run parked behind a manual merge has not
+// reached its outcome yet, so it must stay clearable-proof and promotable. It is
+// still never polled — the workflow already completed, so a poller would only
+// re-read the same green conclusion forever (resumeRunPollers skips it
+// explicitly, and its promotion rides the shipped-marker cache instead).
 function isTerminalStatus(status) {
     return status === 'SHIPPED' || status === 'FAILED' || status === 'NOCHANGE';
 }
@@ -4489,6 +4494,15 @@ async function shipDraftedEntry(entryText, card, modelOverride) {
     // guessing, so an older Worker leaves the record unstamped.
     if (dispatchResult.model) record.model = dispatchResult.model;
     if (dispatchResult.billing) record.billing = dispatchResult.billing;
+    // The merge gate this run dispatched under. A run with auto-merge off
+    // finishes green while its PR sits open, so the entry stays unchecked —
+    // which the reconcile would otherwise read as "the routine skipped this".
+    // Stamping the gate here is what lets it tell that apart from "waiting on a
+    // merge the user owes" (see reconcileSuccessConclusion). The workflow input
+    // arrives as a string on some Worker versions, so accept both forms; an
+    // older Worker that reports nothing leaves the run gated-open (true), which
+    // is the historical behavior.
+    record.autoMerge = !(dispatchResult.auto_merge === false || dispatchResult.auto_merge === 'false');
     runRecords.unshift(record);
     saveRunRecords();
     // Drive the viewer's per-project "Running" pill for this same run: write
@@ -4616,6 +4630,10 @@ const RUN_STATUS_LABEL = {
     SHIPPED: 'Shipped',
     FAILED: 'Failed',
     NOCHANGE: 'No change',
+    // The run finished green but its PR is still open behind a manual merge:
+    // not shipped, not skipped, and not terminal — it promotes to SHIPPED off
+    // the shipped-marker cache once the user merges.
+    AWAITING: 'Awaiting merge',
 };
 
 // The only GitHub workflow conclusions that are positive proof of failure.
@@ -5115,6 +5133,9 @@ function buildRunRow(rec) {
     } else {
         badge.className = 'claudeRunBadge claudeRunBadge--' + status.toLowerCase();
         badge.textContent = RUN_STATUS_LABEL[status] || status;
+        if (status === 'AWAITING') {
+            badge.title = 'The run finished and opened a pull request — it ships once you merge it.';
+        }
     }
 
     row.appendChild(title);
@@ -5154,6 +5175,24 @@ function buildRunRow(rec) {
         // (rec.reverted) shows no fresh trigger — re-reverting a revert PR would
         // re-apply the original change.
         if (!rec.reverted) row.appendChild(buildRevertControl(rec));
+    } else if (status === 'AWAITING' && rec.awaitingPrUrl) {
+        // The work is done but the merge is the user's to make, so the row's one
+        // affordance is the door to that PR. The row itself stays inert — there
+        // is nothing merged to iterate on or revert until it lands. Propagation
+        // is stopped on both click and keydown exactly as the revert control
+        // does, so the link never doubles as a row action.
+        const prLink = document.createElement('a');
+        prLink.className = 'claudeRunAwaitingPrLink';
+        prLink.href = rec.awaitingPrUrl;
+        prLink.target = '_blank';
+        prLink.rel = 'noopener';
+        prLink.textContent = 'Open PR ↗';
+        prLink.title = 'Open the pull request waiting to be merged';
+        prLink.addEventListener('click', function(event) { event.stopPropagation(); });
+        prLink.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+        });
+        row.appendChild(prLink);
     } else if (status === 'NOCHANGE') {
         // A "No change" run merged nothing, so it's not iterable. Its row is an
         // inline accordion: tapping the header toggles a panel showing the
@@ -5806,14 +5845,29 @@ async function reconcileSuccessConclusion(correlationId, project, runUrl, target
     }
     const state = entryCheckboxState(read.content, rec.entryId);
     if (state === 'unchecked') {
-        // Entry still present and unchecked → the routine skipped it (no-op).
-        // Persist the Actions log URL (the "Open full log ↗" link) and the run id
-        // (so the verdict panel can fetch the run's summary by run id; older
-        // records without it fall back to the correlation id).
+        // Entry still present and unchecked. Persist the Actions log URL (the
+        // "Open full log ↗" link) and the run id (so the verdict panel can fetch
+        // the run's summary by run id; older records without it fall back to the
+        // correlation id) before deciding which unchecked this is.
         if (runUrl) rec.runUrl = runUrl;
         if (runId != null) rec.runId = runId;
-        setRunRecordStatus(correlationId, 'NOCHANGE');
-        logConceiveRun(project, rec, 'nochange', runId, target);
+        if (rec.autoMerge === false) {
+            // Auto-merge was off for this run, so unchecked is NOT the no-op
+            // signature: the routine did the work and opened a PR, then stopped
+            // short of merging it, which is exactly why the entry is still open.
+            // Settling that at NOCHANGE would be terminal and would never
+            // correct itself after the user merges, so hold it at AWAITING and
+            // let the shipped-marker cache promote it.
+            setRunRecordStatus(correlationId, 'AWAITING');
+            // Fire-and-forget: the row's badge and its marker-driven promotion
+            // don't depend on the PR link landing, so never delay settling on it.
+            attachAwaitingPrUrl(correlationId, rec.entryId);
+        } else {
+            // Auto-merge was on, so an unchecked entry means the routine skipped
+            // it (no-op) — the historical verdict, unchanged.
+            setRunRecordStatus(correlationId, 'NOCHANGE');
+            logConceiveRun(project, rec, 'nochange', runId, target);
+        }
     } else {
         // 'checked' → shipped; null (marker absent) → fail safe to SHIPPED.
         setRunRecordStatus(correlationId, 'SHIPPED');
@@ -5841,6 +5895,54 @@ async function promoteFailedRecordIfShipped(rec) {
     }
 }
 
+// The Worker target a run record polls/reads against — its persisted repo, or
+// null when it has none (the Worker then falls back to its default repo).
+function targetForRunRecord(rec) {
+    return (rec && rec.repo) ? { repo: rec.repo, file_path: 'TODO.md' } : null;
+}
+
+// Best-effort door to the PR an AWAITING run is parked behind, fetched once when
+// the run enters that state. The Worker's `resolve` route answers by marker; when
+// its response carries no url the row simply shows no link — the amber badge and
+// the marker-driven promotion are the core of this state, and no Worker change is
+// made to manufacture a url. Re-finds the record after the await (which may have
+// spanned a records reload) and skips a record that already promoted, so a link
+// is never stamped onto a run that has since shipped.
+async function attachAwaitingPrUrl(correlationId, entryId) {
+    if (!entryId) return;
+    const res = await resolveEntryByMarker(entryId);
+    const url = (res && typeof res.pr_url === 'string') ? res.pr_url.trim() : '';
+    if (!url) return;
+    const live = findRunRecord(correlationId);
+    if (!live || live.status !== 'AWAITING') return;
+    live.awaitingPrUrl = url;
+    saveRunRecords();
+    renderRunsList();
+}
+
+// Promote a single AWAITING record once its entry turns up in the repo's shipped
+// marker set — the user merged the PR and the routine's `- [x]` landed on main.
+// That cache is already refreshed on the Runs tab's own cycle, so this costs no
+// extra network call: it reads what's there and flips the row when the proof
+// arrives. Mirrors the normal shipped branch (setRunRecordStatus fires the SW
+// update check and forces a marker refresh; logConceiveRun records the verdict).
+// Returns true when it promoted, so callers can tell a live change from a no-op.
+function promoteAwaitingRecordIfMerged(rec) {
+    if (!rec || rec.status !== 'AWAITING' || !rec.entryId) return false;
+    if (getShippedMarkersForRepo(rec.repo).indexOf(rec.entryId) === -1) return false;
+    setRunRecordStatus(rec.correlationId, 'SHIPPED');
+    logConceiveRun(rec.project, rec, 'shipped', rec.runId, targetForRunRecord(rec));
+    return true;
+}
+
+// Sweep every AWAITING record against the shipped-marker cache. Called from the
+// two places the cache can newly contain a merged entry: the resumeRunPollers
+// pass (a Runs-tab open, which also kicks refreshShippedMarkersForProject) and
+// the TODO_RUN_STATUS_EVENT the cache fires when it reconciles.
+function promoteAwaitingRecords() {
+    runRecords.slice().forEach(promoteAwaitingRecordIfMerged);
+}
+
 function resumeRunPollers() {
     let changed = false;
     runRecords.forEach(function(rec) {
@@ -5850,6 +5952,15 @@ function resumeRunPollers() {
         // session and promote to SHIPPED on a positive marker match.
         if (rec.status === 'FAILED' && rec.entryId && !rec.resolveAttempted) {
             promoteFailedRecordIfShipped(rec);
+            return;
+        }
+        // AWAITING is non-terminal but must never get a poller: its workflow has
+        // already completed, so polling would re-read the same green conclusion
+        // forever. Its only path forward is the shipped-marker cache, so check
+        // that instead and leave the record where it is when the merge hasn't
+        // landed yet.
+        if (rec.status === 'AWAITING') {
+            promoteAwaitingRecordIfMerged(rec);
             return;
         }
         if (isTerminalStatus(rec.status)) return;
@@ -6236,6 +6347,11 @@ export function mountClaudeSheet(parent) {
         // so a just-shipped entry appears the moment the cache reconciles.
         if (typeof document !== 'undefined') {
             document.addEventListener(TODO_RUN_STATUS_EVENT, function() {
+                // The same cache reconcile is what proves a manually-merged PR
+                // landed, so settle any AWAITING record against it BEFORE the
+                // repaint — otherwise the row would paint amber one more time
+                // and only flip on the following refresh.
+                promoteAwaitingRecords();
                 if (sheetEl && sheetEl.getAttribute('data-tab') === 'runs') {
                     renderRunsList();
                 }

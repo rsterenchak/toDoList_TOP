@@ -4179,6 +4179,26 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border: 0.5px solid #6e5a2a;
   color: #cbb079;
 }
+/* "Awaiting merge" — the run finished green but its PR is still open behind a
+   manual merge. Amber like the caution family (revert, no-change) rather than
+   shipped-green, since nothing has landed yet, but brighter than "No change":
+   this state is live and will resolve, not a settled verdict. */
+.claudeRunBadge--awaiting {
+  background: #2a2113;
+  border: 0.5px solid #8a6f2e;
+  color: #d9b86a;
+}
+/* The door to the PR an "Awaiting merge" row is parked behind. Sits in the row
+   beside the badge; absent entirely when the resolve turned up no url. */
+.claudeRunAwaitingPrLink {
+  flex: none;
+  font-size: 12px;
+  color: #d9b86a;
+  text-decoration: none;
+}
+.claudeRunAwaitingPrLink:hover {
+  text-decoration: underline;
+}
 /* A "No change" run row is an inline accordion: its header (title + badge +
    chevron) toggles a panel holding the agent's verdict summary. The header sits
    on the first flex line; the panel wraps to its own full-width line below. */
