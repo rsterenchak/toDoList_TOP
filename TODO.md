@@ -1624,3 +1624,14 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: queue-derived and marker-derived run records, backlog runs, any Worker or schema change, and any change to the NOCHANGE panel/follow-up flow.
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`
   <!-- id: fc8d6ab3-24d3-45f9-809e-0363a91c5a9d -->
+
+- [ ] **[LOW]** Set real kimi and grok families in USAGE_RATES
+  - Type: feature
+  - Description: The `kimi` and `grok` rows in `USAGE_RATES` (claudeSheet.js) were seeded at opus-level rates as a deliberate errs-high placeholder. Replace them with the providers' published per-million rates so the spend panel reports third-party runs accurately, and remove the `// verify against provider pricing` placeholder comments.
+  - Behavior:
+    - `kimi` family: `{ input: 3, output: 15, cacheWrite: 3, cacheRead: 0.3 }`. Moonshot's automatic caching has no write premium, so a cache-writing token bills at the plain input rate — hence cacheWrite equals input.
+    - `grok` family: `{ input: 2, output: 6, cacheWrite: 2, cacheRead: 0.3 }`. Same no-write-premium logic. Add a short comment on this row noting xAI bills 2x on requests whose prompts reach 200K tokens, which this flat table deliberately does not model.
+    - Keep the existing family-substring matching in `rateForModel` and the opus fallback for unknown models exactly as they are; no test changes should be needed since the Vitest coverage asserts family resolution, not rate values — but if any assertion pinned the seeded opus-parity numbers, update it to the new values.
+  - Out of scope: per-model (vs per-family) rate granularity, the 200K long-context tier, and any Worker-side pricing.
+  - File: `toDoList_main/src/claudeSheet.js`
+  <!-- id: cc1b8644-41da-47a6-8d23-91eda06d4a1c -->
