@@ -1591,7 +1591,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/shipEntry.js`, `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/style.css`
   <!-- id: ff70fea6-316d-401e-9add-a8f65a5edd1c -->
 
-- [ ] **[MEDIUM]** Fix Models panel GLOBAL scope failing with "Target not in allowlist"
+- [x] **[MEDIUM]** Fix Models panel GLOBAL scope failing with "Target not in allowlist" — Completed: 2026-08-20
   - Type: bug
   - Description: Switching the Models panel to GLOBAL scope shows "Couldn't load model settings — Target not in allowlist (400)". The fetch sends `repo: '*'` for global scope, but the Worker deliberately excludes the `*` sentinel row from its dispatch allowlist — identity is resolved from a real registry row, so `models_get` must ALWAYS carry the active workspace repo, and scope is purely a client-side view over the one response. The Worker now returns the raw per-scope layers alongside the resolved view to make that possible: `global: { models: { <surface>: <id>, … only explicitly-set keys }, autoMerge3p }` and `repo_overrides` with the same shape.
   - Behavior:

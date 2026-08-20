@@ -11,6 +11,12 @@
 // the per-user global default); this panel is nothing more than that registry's
 // read/write UI. Every call goes through the thin wrappers in inject.js, so the
 // panel touches Supabase only through the Worker, never directly.
+//
+// Every request names the ACTIVE workspace repo — the sentinel row is a registry
+// key, not an addressable target, and the Worker refuses a request that names
+// it. One read on open returns the resolved view plus the raw per-scope layers,
+// and the scope toggle is a view over that one response; writes name the same
+// repo at both scopes and let `scope` choose the row.
 import {
     fetchModelCatalog,
     fetchModelSettings,
@@ -32,8 +38,6 @@ const MODEL_SURFACES = ['run', 'triage', 'derive', 'scan', 'chat'];
 // here.
 const FALLBACK_PLAN_LANES = ['run', 'triage', 'derive'];
 
-const GLOBAL_SCOPE_REPO = '*';
-
 // Read the auto-merge flag out of a settings payload. The Worker's own key is
 // `autoMerge3p`, but the registry column it comes from is `auto_merge_3p` and a
 // route that forwards the row verbatim would spell it that way — so accept both
@@ -43,6 +47,30 @@ export function readAutoMerge3p(settings) {
     if (typeof settings.autoMerge3p === 'boolean') return settings.autoMerge3p;
     if (typeof settings.auto_merge_3p === 'boolean') return settings.auto_merge_3p;
     return false;
+}
+
+// The raw layer one scope owns, out of the single models_get response:
+// `{ models: { <surface>: <id> } }` carrying ONLY the keys explicitly set at
+// that layer. Absence is the whole signal — it is what separates "pinned here"
+// from "falling through from below", and the resolved `surfaces` map can't say
+// it, because by then every layer has been flattened into one value per surface.
+//
+// The panel reads it for GLOBAL, where the alternative was a second request
+// naming the registry's `'*'` sentinel — a row the Worker deliberately keeps out
+// of its allowlist, so that request could only ever 400.
+export function readScopeLayer(settings, scope) {
+    const s = settings || {};
+    const layer = (scope === 'global' ? s.global : s.repo_overrides) || {};
+    const models = (layer.models && typeof layer.models === 'object') ? layer.models : {};
+    return { models: models, autoMerge3p: readAutoMerge3p(layer) };
+}
+
+// The auto-merge flag as the showing scope owns it. REPO renders the resolved
+// flag it always did; GLOBAL has to read its own layer, or a repo-level ON would
+// show up as the global default.
+export function readAutoMerge3pAtScope(settings, scope) {
+    if (scope === 'global') return readScopeLayer(settings, 'global').autoMerge3p;
+    return readAutoMerge3p(settings);
 }
 
 function modelById(catalog, id) {
@@ -72,33 +100,43 @@ function planLanesOf(catalog) {
 
 // The panel's whole presentation decision, kept pure so the set-vs-inherited
 // styling, the lane dot, and the "this pick leaves plan quota" badge can be
-// asserted without mounting anything. Given the catalog, one scope's settings,
-// and which scope is showing, produce one descriptor per matrix row.
+// asserted without mounting anything. Given the catalog, the one settings
+// payload, and which scope is showing, produce one descriptor per matrix row.
 //
-// The two rules worth stating outright, because both are easy to get subtly
-// wrong and neither is visible in the DOM once rendered:
-//   • A value counts as SET only when its `source` matches the scope on screen.
-//     At repo scope a `source: 'global'` value is inherited, not set — it renders
-//     dim with a `global` tag, so "I changed this here" never reads the same as
-//     "this is falling through from somewhere else".
-//   • The `→ api` badge fires only on a PLAN-lane row that resolved to a
-//     non-Anthropic model. That is exactly the case where the pick moves the run
-//     off plan quota and onto per-token API billing; a third-party model on a
-//     surface that never billed to plan quota costs the user nothing new, so
-//     badging it would be noise.
+// Each scope reads a different part of that one payload, because they are
+// asking different questions:
+//   • REPO asks "what does this workspace actually run on?" — the resolved
+//     `surfaces` map, where a value counts as SET only when its `source` matches
+//     the scope on screen. A `source: 'global'` value is inherited, not set: it
+//     renders dim with a `global` tag, so "I changed this here" never reads the
+//     same as "this is falling through from somewhere else".
+//   • GLOBAL asks "what has been pinned as the default for every repo?" — the
+//     raw `global.models` layer, where a surface is set iff its key is present.
+//     Reading the resolved map at global scope would be wrong twice over: a
+//     repo-level pick would show as the global default, and a surface set
+//     globally to the same id a repo overrode would vanish.
+//
+// The `→ api` badge fires only on a PLAN-lane row showing a non-Anthropic model.
+// That is exactly the case where the pick moves the run off plan quota and onto
+// per-token API billing; a third-party model on a surface that never billed to
+// plan quota costs the user nothing new, so badging it would be noise.
 export function buildModelRows(catalog, settings, scope) {
     const cat = catalog || {};
     const surfaces = (settings && settings.surfaces) || {};
+    const globalModels = readScopeLayer(settings, 'global').models;
     const planLanes = planLanesOf(cat);
+    const isGlobal = scope === 'global';
     const rows = [];
 
     for (let i = 0; i < MODEL_SURFACES.length; i++) {
         const surface = MODEL_SURFACES[i];
         const entry = surfaces[surface] || {};
-        const value = typeof entry.value === 'string' ? entry.value : '';
+        const resolved = typeof entry.value === 'string' ? entry.value : '';
         const source = typeof entry.source === 'string' ? entry.source : '';
+        const pinned = typeof globalModels[surface] === 'string' ? globalModels[surface] : '';
         const isPlanLane = planLanes.indexOf(surface) !== -1;
-        const setAtScope = source === scope;
+        const setAtScope = isGlobal ? !!pinned : source === scope;
+        const value = isGlobal ? pinned : resolved;
         const model = value ? modelById(cat, value) : null;
         const provider = model && model.provider ? model.provider : '';
         rows.push({
@@ -110,8 +148,10 @@ export function buildModelRows(catalog, settings, scope) {
             // A dim chip is only half the story — the tag names WHERE the
             // inherited value came from, so global-set and never-set don't look
             // identical. A `source` the Worker doesn't recognise degrades to
-            // 'default', which is what an unset surface resolves to anyway.
-            sourceTag: setAtScope ? '' : (source === 'global' ? 'global' : 'default'),
+            // 'default', which is what an unset surface resolves to anyway. At
+            // global scope there is nothing below to fall through from but the
+            // workflow's own hardcode, so unset always reads 'default'.
+            sourceTag: setAtScope ? '' : ((!isGlobal && source === 'global') ? 'global' : 'default'),
             apiBadge: isPlanLane && !!provider && provider !== 'anthropic',
             locked: false,
             subline: '',
@@ -260,12 +300,30 @@ export function buildPickerList(options) {
 // this scope the underlying value isn't in the payload, so name the layer
 // instead of guessing a model id — unless the Worker volunteered one on the
 // entry's `inherited` field, which is read defensively for exactly that case.
+//
+// Global scope has only one layer beneath it — the workflow's own hardcode,
+// which has no id to name — so it says so and never reaches for the resolved
+// map, whose value at that point is whatever the REPO layer won with.
 export function describeInherit(settings, surface, scope) {
+    if (scope === 'global') return 'workflow default';
     const entry = ((settings && settings.surfaces) || {})[surface] || {};
     const source = typeof entry.source === 'string' ? entry.source : '';
     if (typeof entry.inherited === 'string' && entry.inherited) return entry.inherited;
     if (source !== scope && typeof entry.value === 'string' && entry.value) return entry.value;
-    return scope === 'repo' ? 'global setting' : 'workflow default';
+    return 'global setting';
+}
+
+// The id pinned AT the showing scope, or '' when the surface inherits there —
+// the picker's notion of a current selection, and the same set-vs-inherited
+// split buildModelRows draws the matrix chip from.
+export function pinnedAtScope(settings, surface, scope) {
+    if (scope === 'global') {
+        const pinned = readScopeLayer(settings, 'global').models[surface];
+        return typeof pinned === 'string' ? pinned : '';
+    }
+    const entry = ((settings && settings.surfaces) || {})[surface] || {};
+    if (entry.source !== scope) return '';
+    return typeof entry.value === 'string' ? entry.value : '';
 }
 
 // The short name the scope toggle labels its REPO half with — `owner/name` is
@@ -352,9 +410,10 @@ export function openModelsPanel(anchorEl) {
     title.appendChild(titleText);
 
     // Scope toggle — REPO shows fully resolved values for the active workspace,
-    // GLOBAL shows the `*` sentinel row where "inherited" means the workflow's
-    // own hardcoded default. Hidden inside a picker, where the scope is fixed by
-    // whatever the matrix was showing when the row was tapped.
+    // GLOBAL shows the every-repo defaults layer, where "inherited" means the
+    // workflow's own hardcoded default. Both come out of the one read, so
+    // flipping is a repaint, not a refetch. Hidden inside a picker, where the
+    // scope is fixed by whatever the matrix was showing when the row was tapped.
     const scopeToggle = document.createElement('div');
     scopeToggle.id = 'modelsPanelScope';
     scopeToggle.setAttribute('role', 'group');
@@ -516,7 +575,7 @@ export function openModelsPanel(anchorEl) {
     }
 
     function buildAutoMergeRow() {
-        const on = readAutoMerge3p(settings);
+        const on = readAutoMerge3pAtScope(settings, scope);
         const row = document.createElement('div');
         row.className = 'modelsAutoRow';
 
@@ -557,9 +616,6 @@ export function openModelsPanel(anchorEl) {
     function renderPicker() {
         body.innerHTML = '';
         const surface = pickerSurface;
-        const entry = ((settings && settings.surfaces) || {})[surface] || {};
-        const resolved = typeof entry.value === 'string' ? entry.value : '';
-        const setAtScope = entry.source === scope;
 
         // Same list the drafted-entry card's per-run popover renders, built by
         // the shared builder rather than a second copy of the grouping rules —
@@ -569,7 +625,7 @@ export function openModelsPanel(anchorEl) {
         body.appendChild(buildPickerList({
             catalog: catalog,
             surface: surface,
-            current: setAtScope ? resolved : '',
+            current: pinnedAtScope(settings, surface, scope),
             inheritHint: describeInherit(settings, surface, scope),
             onPick: function(model) { commitModel(surface, model); },
         }));
@@ -578,7 +634,7 @@ export function openModelsPanel(anchorEl) {
         // choosing one — after the pick it's a surprise, before it it's a
         // known trade.
         const planLanes = planLanesOf(catalog);
-        if (planLanes.indexOf(surface) !== -1 && !readAutoMerge3p(settings)) {
+        if (planLanes.indexOf(surface) !== -1 && !readAutoMerge3pAtScope(settings, scope)) {
             const note = document.createElement('div');
             note.className = 'modelsPickerNote';
             note.textContent = 'third-party picks open a PR and wait for manual merge';
@@ -590,12 +646,60 @@ export function openModelsPanel(anchorEl) {
     // Both writes repaint optimistically and put the old value back if the
     // Worker refuses. The panel reads on open only, so a failed write left
     // unreverted would keep lying until the next open.
-    function commitModel(surface, model) {
+    //
+    // Which part of the payload a write touches follows what its scope renders
+    // from: REPO edits the resolved `surfaces` map, GLOBAL edits the raw
+    // `global` layer. The repo is the ACTIVE workspace repo either way — `scope`
+    // alone tells the Worker which registry row to land on, and naming the `'*'`
+    // sentinel instead would be refused as off-allowlist.
+    function applyPick(surface, model) {
+        if (scope === 'global') {
+            const models = globalLayer().models;
+            const had = Object.prototype.hasOwnProperty.call(models, surface);
+            const before = models[surface];
+            // Absence IS inherit in the raw layer, so clearing deletes the key
+            // rather than blanking it — a '' left behind would render as a set
+            // pick with an empty id.
+            if (model === null) delete models[surface];
+            else models[surface] = model;
+            return function() {
+                if (had) models[surface] = before;
+                else delete models[surface];
+            };
+        }
         const surfaces = settings.surfaces || (settings.surfaces = {});
         const before = surfaces[surface] ? Object.assign({}, surfaces[surface]) : undefined;
         surfaces[surface] = model === null
             ? { value: '', source: '' }
             : { value: model, source: scope };
+        return function() {
+            if (before === undefined) delete surfaces[surface];
+            else surfaces[surface] = before;
+        };
+    }
+
+    function applyAutoMerge(next) {
+        const target = scope === 'global' ? globalLayer() : settings;
+        const before = readAutoMerge3p(target);
+        writeAutoMerge3p(target, next);
+        return function() { writeAutoMerge3p(target, before); };
+    }
+
+    // The mutable `global` layer, created on demand so a Worker response that
+    // predates the layered shape still edits somewhere the matrix reads back.
+    function globalLayer() {
+        const layer = settings.global || (settings.global = {});
+        if (!layer.models || typeof layer.models !== 'object') layer.models = {};
+        return layer;
+    }
+
+    function writeAutoMerge3p(target, value) {
+        target.autoMerge3p = value;
+        if ('auto_merge_3p' in target) target.auto_merge_3p = value;
+    }
+
+    function commitModel(surface, model) {
+        const revert = applyPick(surface, model);
         closePicker();
 
         saveModelSetting({
@@ -605,23 +709,19 @@ export function openModelsPanel(anchorEl) {
             repo: activeRepo,
         }).then(function(res) {
             if (res && res.ok) return;
-            if (before === undefined) delete surfaces[surface];
-            else surfaces[surface] = before;
+            revert();
             if (isOpen()) render();
             showInjectToast('Model not saved — ' + ((res && res.reason) || 'unknown error'), 'error');
         });
     }
 
     function commitAutoMerge(next) {
-        const before = readAutoMerge3p(settings);
-        settings.autoMerge3p = next;
-        if ('auto_merge_3p' in settings) settings.auto_merge_3p = next;
+        const revert = applyAutoMerge(next);
         if (isOpen()) render();
 
         saveAutoMerge3p({ scope: scope, value: next, repo: activeRepo }).then(function(res) {
             if (res && res.ok) return;
-            settings.autoMerge3p = before;
-            if ('auto_merge_3p' in settings) settings.auto_merge_3p = before;
+            revert();
             if (isOpen()) render();
             showInjectToast('Auto-merge not saved — ' + ((res && res.reason) || 'unknown error'), 'error');
         });
@@ -631,11 +731,18 @@ export function openModelsPanel(anchorEl) {
     // Catalog and settings are fetched in parallel; the body stays on the
     // spinner until BOTH land, since a matrix drawn from one without the other
     // would have either no model ids or no lane/provider facts to style them by.
-    function loadScope(repoForScope) {
+    //
+    // ONE read, on open, naming the active workspace repo — it carries the
+    // resolved view and both raw layers, so scope is a client-side view over the
+    // one response rather than a second request. It used to re-read per scope
+    // and name the registry's `'*'` sentinel for GLOBAL, which the Worker keeps
+    // off its allowlist on purpose: the tab could only ever fail with "Target
+    // not in allowlist".
+    function load() {
         spinnerInto(body, 'Loading models…');
         return Promise.all([
             catalog ? Promise.resolve({ ok: true }) : fetchModelCatalog(),
-            fetchModelSettings(repoForScope),
+            fetchModelSettings(activeRepo),
         ]).then(function(results) {
             if (!isOpen()) return; // dismissed before the reads landed
             const cat = results[0];
@@ -661,10 +768,7 @@ export function openModelsPanel(anchorEl) {
         if (scope === next) return;
         scope = next;
         pickerSurface = null;
-        settings = null;
-        paintScopeToggle();
-        paintHeader();
-        loadScope(next === 'global' ? GLOBAL_SCOPE_REPO : activeRepo);
+        render();
     }
 
     backBtn.addEventListener('click', closePicker);
@@ -673,5 +777,5 @@ export function openModelsPanel(anchorEl) {
 
     paintScopeToggle();
     paintHeader();
-    loadScope(activeRepo);
+    load();
 }
