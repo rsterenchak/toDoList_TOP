@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-20',
         added: [
-            'A drafted entry can now be shipped on a model chosen for that one run, and says up front when the pick opens a pull request instead of deploying.',
             'A run that opens a pull request instead of deploying now waits at “Awaiting merge” with a link to that pull request, and turns to Shipped once you merge it.',
             'The API spend panel now splits the month’s total by provider — Anthropic, Kimi, and Grok — in a segmented bar with a legend.',
         ],
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             'The Models panel’s GLOBAL tab now loads instead of failing with an allowlist error, and shows only the models pinned as defaults for every repo.',
+            'A load that fails before the app draws now falls back to the automatic recovery reload instead of leaving you on an empty screen.',
         ],
     },
 ];

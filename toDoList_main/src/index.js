@@ -85,11 +85,21 @@ function bootApp(userId) {
     // suppressing the seed, the desktop coachmark tour, and the mobile carousel
     // together; it self-bounds on a timeout so the render can't hang on it.
     // Its verdict is threaded into the migration below so both share one probe.
+    // Whether the render step below actually completed. The terminal .catch
+    // reads it to tell the two failure shapes apart: a rejection that arrives
+    // with this still false never reached the render at all (the cloud gate
+    // above rejecting, say), so restoreFromStorage() never ran and the user is
+    // left on an empty shell — a boot failure, not a console line.
+    let rendered = false;
+
     maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {
         // The render step gets its own try/catch: a throw here means the user is
         // looking at an empty shell, which is a boot failure the watchdog has to
-        // hear about — not a line in the console. Rethrown so the sync pipeline
-        // below never runs against a shell that failed to render.
+        // hear about — not a line in the console. Reported and then returned
+        // rather than rethrown, so the sync pipeline below still never runs
+        // against a shell that failed to render while the terminal .catch never
+        // sees an already-reported error — no double report, and no flag needed
+        // to tell the two apart.
         try {
             // now that DOM is live, restore saved projects; the return value says
             // whether this load actually seeded the "Getting started" sample.
@@ -105,11 +115,20 @@ function bootApp(userId) {
             maybeStartFirstRunCarousel(sampleJustSeeded);
         } catch (e) {
             reportBootFailure();
-            throw e;
+            console.warn('[bootApp] render step failed:', e);
+            return;
         }
+        rendered = true;
 
         return bootSyncPipeline(userId, cloudHasData);
     }).catch(function(e) {
+        // Split by how far the boot got. Pre-render (rendered === false) means
+        // the shell is empty and nothing recovers it from in here, so hand the
+        // failure to the watchdog's escalate ladder the same way a render throw
+        // does. Post-render it stays a warning: a shell rendered from the local
+        // cache with a failed background sync is degraded, not dead, and
+        // escalating it would reload-loop the user through a Supabase outage.
+        if (!rendered) reportBootFailure();
         console.warn('[bootApp] boot sequence failed:', e);
     });
 }
