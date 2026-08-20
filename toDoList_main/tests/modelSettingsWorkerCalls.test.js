@@ -50,12 +50,24 @@ describe('model settings — worker payloads', () => {
         expect(res.plan_lanes).toEqual([]);
     });
 
-    it('reads one scope by repo, and the global row by its sentinel', async () => {
+    // The read used to name the registry's `'*'` sentinel row for global scope,
+    // which the Worker keeps out of its dispatch allowlist on purpose — the
+    // GLOBAL tab could only ever come back "Target not in allowlist (400)". One
+    // read, always by real repo, now serves both scopes.
+    it('reads by the active repo and never forwards the sentinel row key', async () => {
         await fetchModelSettings('rsterenchak/toDoList_TOP');
         expect(lastBody()).toEqual({ models_get: true, repo: 'rsterenchak/toDoList_TOP' });
 
         await fetchModelSettings('*');
-        expect(lastBody()).toEqual({ models_get: true, repo: '*' });
+        expect(lastBody()).toEqual({ models_get: true });
+    });
+
+    it('strips the sentinel out of writes too, at either scope', async () => {
+        await saveModelSetting({ scope: 'global', surface: 'run', model: 'x', repo: '*' });
+        expect('repo' in lastBody()).toBe(false);
+
+        await saveAutoMerge3p({ scope: 'global', value: true, repo: '*' });
+        expect('repo' in lastBody()).toBe(false);
     });
 
     it('sends an explicit null when a pick is cleared back to inherited', async () => {

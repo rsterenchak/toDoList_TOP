@@ -1285,6 +1285,15 @@ export async function fetchRunResult(runId, target) {
 // `repo: '*'` sentinel row standing in for the per-user global default — lives
 // behind the Worker; nothing here touches Supabase directly.
 
+// The registry's `repo: '*'` sentinel is a Worker-internal row key, never a
+// request value — every models route resolves identity from a real allowlisted
+// row and rejects the sentinel with "Target not in allowlist". Scope is chosen
+// by the `scope` field (writes) or by reading the right layer out of the
+// response (reads), never by swapping the repo out for `'*'`.
+function realRepoOnly(repo) {
+    return (repo && repo !== '*') ? repo : undefined;
+}
+
 // The catalog of pickable models: `{ models: [{ id, provider, lanes, quota }],
 // plan_lanes, ghost_model }`. `lanes` is the set of surfaces a model is
 // allowlisted for, `plan_lanes` names the surfaces that bill to plan quota, and
@@ -1300,15 +1309,25 @@ export async function fetchModelCatalog() {
     }
 }
 
-// The current per-surface settings for one scope: `{ surfaces: { run|triage|
-// derive|scan|chat|ghost: { value, source } }, autoMerge3p }`. `repo` selects
-// the scope — the active workspace repo for repo scope, the `'*'` sentinel for
-// the global row — and `source` reports where each resolved value came from
-// (`repo` / `global` / `default`), which is what the panel's set-vs-inherited
-// styling keys off.
+// Everything the Models panel renders, for the ACTIVE workspace repo — one read
+// serving both scopes:
+//   • `surfaces: { run|triage|derive|scan|chat|ghost: { value, source } }` — the
+//     resolved view, where `source` (`repo` / `global` / `default`) names the
+//     layer each value fell out of.
+//   • `global: { models: { <surface>: <id> }, autoMerge3p }` and `repo_overrides`
+//     in the same shape — the RAW per-scope layers, carrying only the keys
+//     explicitly set at that layer, which is what lets the panel show a scope's
+//     own settings without a second request.
+//
+// `repo` is ALWAYS a real repo, at either scope. The registry's `repo: '*'`
+// sentinel row is a Worker-internal key, never a request value: the Worker
+// resolves identity from a real allowlisted row, so a request naming `'*'` is
+// refused with "Target not in allowlist" — which reads like a broken allowlist
+// rather than the caller's mistake it actually is. Strip it here so no caller
+// can resurrect that, and pick the global layer out of the response instead.
 export async function fetchModelSettings(repo) {
     try {
-        const res = await postToWorker({ models_get: true, repo: repo || undefined });
+        const res = await postToWorker({ models_get: true, repo: realRepoOnly(repo) });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {
         return { ok: false, reason: describeError(e) };
@@ -1327,7 +1346,7 @@ export async function saveModelSetting(options) {
             scope: o.scope,
             surface: o.surface,
             model: o.model === undefined ? null : o.model,
-            repo: o.repo || undefined,
+            repo: realRepoOnly(o.repo),
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {
@@ -1345,7 +1364,7 @@ export async function saveAutoMerge3p(options) {
             models_set: true,
             scope: o.scope,
             auto_merge_3p: !!o.value,
-            repo: o.repo || undefined,
+            repo: realRepoOnly(o.repo),
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {

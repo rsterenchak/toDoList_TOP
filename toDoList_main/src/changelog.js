@@ -10,6 +10,9 @@ export const changelog = [
             'New Models panel in settings lets you pick which AI model each pipeline workflow runs on, for one repo or for everything.',
             'A drafted entry can now be shipped on a model chosen for that one run, and says up front when the pick opens a pull request instead of deploying.',
         ],
+        fixed: [
+            'The Models panel’s GLOBAL tab now loads instead of failing with an allowlist error, and shows only the models pinned as defaults for every repo.',
+        ],
     },
     {
         version: '1.1',
@@ -17,9 +20,6 @@ export const changelog = [
         fixed: [
             'Choosing a mockup now shows the drafted entry right away instead of leaving it hidden until you switch projects and back.',
             'Unlocking the app with your PIN now pulls in the latest changes made on your other devices instead of showing stale tasks until you refresh.',
-        ],
-        changed: [
-            'The PIN boxes on the lock screen are much larger on phones, so the digits are easier to read and tap one-handed.',
         ],
     },
 ];
