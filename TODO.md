@@ -1662,7 +1662,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/index.js`
   <!-- id: 72eb553a-e79c-49bb-ad8a-eecf28359ce8 -->
 
-- [ ] **[LOW]** Show the actual resolved model id on inherited "default" chips
+- [x] **[LOW]** Show the actual resolved model id on inherited "default" chips — Completed: 2026-08-20
   - Type: feature
   - Description: Everywhere the model UI currently renders the literal word `default` for an unconfigured surface, show the model id that default actually resolves to. The Worker's catalog response (`postToWorker({ models: true })`) now carries a `defaults` map — `{ run, triage, derive, scan, chat }` → model id — mirroring the workflow hardcodes and route constants, so this is display-layer only.
   - Behavior:
