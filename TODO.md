@@ -1715,3 +1715,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: per-turn deep-model overrides in the composer (surface-level setting only for now), the drafted-entry card's RUN chip, possession, and any Worker changes (all deployed).
   - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
   <!-- id: dab60303-097b-4ddc-be64-eeb417e6ee92 -->
+
+- [ ] **[MEDIUM]** Restructure chat composer to a two-row layout with an acronym model toggle and 'Ask Agent' placeholder
+  - Type: feature
+  - Description: In the Claude sheet's Chat tab composer (`toDoList_main/src/claudeSheet.js`), move the model toggle, attach button, and send pill off the input row: the text input gets the full top row with placeholder "Ask Agent" (was "Ask Claude…"), and a second control row below holds the model toggle (acronym chip SON/OPU), the attach picker, and the send pill. This new two-row layout applies at BOTH breakpoints — mobile and desktop — and must eliminate the input/button collision at all widths. The toggle must still open its model-selection menu anchored to the new location and must keep writing the same persisted chat-model setting the Models panel reads/writes, so the two surfaces don't drift; the toggle must still be hidden in ghost mode; the input must still auto-grow and Enter-to-send must still work. Update any JS logic and tests in `toDoList_main/tests/claudeSheet.test.js` that match the old 'Fast'/'Deep' or 'Ask Claude…' labels. Do not change the ghost composer's input. CSS for the two-row layout goes in `toDoList_main/src/style.css`.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
+  - Completed:
+  <!-- id: d94ac704-7e03-49d8-ac0b-ac1899a22d93 -->
