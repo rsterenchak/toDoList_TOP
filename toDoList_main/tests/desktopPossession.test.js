@@ -178,7 +178,7 @@ describe('desktop possession — the companion is the door', () => {
 
         expect(isSheetPossessed()).toBe(false);
         expect(body().classList.contains('is-possessed')).toBe(false);
-        expect(composer().placeholder).toBe('Ask Claude…');
+        expect(composer().placeholder).toBe('Ask Agent');
     });
 
     it('uncollapses a collapsed pane on the way in, so possession is never hidden', () => {

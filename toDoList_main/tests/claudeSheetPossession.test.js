@@ -124,7 +124,7 @@ describe('possession — the chip flips the sheet\'s identity', () => {
         expect(chip().getAttribute('aria-pressed')).toBe('false');
         expect(chip().classList.contains('is-active')).toBe(false);
         expect(listening()).not.toBeNull();
-        expect(composer().placeholder).toBe('Ask Claude…');
+        expect(composer().placeholder).toBe('Ask Agent');
     });
 
     it('the chip toggles possession both ways, swapping thread and composer', () => {
@@ -142,7 +142,7 @@ describe('possession — the chip flips the sheet\'s identity', () => {
         expect(isSheetPossessed()).toBe(false);
         expect(body().classList.contains('is-possessed')).toBe(false);
         expect(chip().getAttribute('aria-pressed')).toBe('false');
-        expect(composer().placeholder).toBe('Ask Claude…');
+        expect(composer().placeholder).toBe('Ask Agent');
     });
 
     it('hides the work thread rather than tearing it down', async () => {
@@ -220,7 +220,7 @@ describe('possession — lifecycle', () => {
 
         document.getElementById('claudeTabChat').click();
         expect(isSheetPossessed()).toBe(false);
-        expect(composer().placeholder).toBe('Ask Claude…');
+        expect(composer().placeholder).toBe('Ask Agent');
         // The chip is still there to flip back with, and it remembers the
         // whisper that never went out.
         expect(chip()).not.toBeNull();
@@ -467,7 +467,7 @@ describe('possession — styling and wiring', () => {
             .toMatch(/overflow-y:\s*auto/);
     });
 
-    it('hides the model picker, scope chip, attach/image/voice circles and chip rail', () => {
+    it('hides the model toggle, scope chip, attach/image/voice circles and chip rail', () => {
         const hide = css.match(
             /#claudeSheetBody\.is-possessed \.claudeAttach,[\s\S]*?\{\s*display:\s*none;\s*\}/
         );
@@ -475,8 +475,7 @@ describe('possession — styling and wiring', () => {
         [
             '.claudeImageAttach',
             '#claudeComposerMic',
-            '#claudeComposerSendCaret',
-            '#claudeComposerModeMenu',
+            '#claudeComposerModelToggleWrap',
             '#claudeScopeChip',
             '#claudeImageRail',
             '.claudeAttachChip',

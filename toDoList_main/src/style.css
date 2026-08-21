@@ -2844,13 +2844,31 @@ body:has(#settingsMenu) #claudeLauncher {
   min-height: 0;
   overflow-y: auto;
 }
+/* The composer is two stacked rows at EVERY width: the textarea owns the top
+   row outright and the controls sit on the row beneath it. The old single row
+   put the input and the buttons on one line, where a grown textarea and the send
+   pill fought for the same pixels; splitting them removes the collision at all
+   widths rather than at one breakpoint. */
 .claudeComposer {
   position: relative;
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  align-items: center;
+  align-items: stretch;
   border-top: 0.5px solid var(--border-dim);
   padding-top: 12px;
+}
+.claudeComposerInputRow {
+  display: flex;
+  align-items: stretch;
+}
+/* The control row: the model toggle leads, the attach / image / voice circles
+   follow, and the send pill is pushed to the far end by its own auto margin.
+   Every control centres on the cross axis. */
+.claudeComposerControlRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 /* Scroll-to-bottom pill — floats centered just above the composer, anchored to
    the composer's top edge so it clears the input row without shifting it. The
@@ -2920,72 +2938,69 @@ body:has(#settingsMenu) #claudeLauncher {
 :root[data-theme="light"] #claudeComposerInput::placeholder {
   color: #8a8a99;
 }
-/* Split send — main button: a labeled pill ("Fast" / "Deep") forming the left
-   half of the split control. Filled with the same lighter accent purple the
-   mode-dropdown picker (the caret) uses, with a white label for contrast; the
-   Deep variant below keeps the matching accent fill when Deep is the default.
-   Stacks its two captions — the mode word over the model that mode runs on —
-   which is why it columns rather than rows; with the model line hidden the mode
-   word centres exactly as it did as an only child. */
+/* Send — a fully-rounded accent pill at the far end of the control row. The
+   auto left margin is what pushes it there, so the toggle and the attach circles
+   keep their natural spacing at the start of the row. Its caption is the single
+   word "Send"; what the send will run on is named by the model toggle beside it,
+   which is why nothing stacks inside the pill any more. */
 .claudeComposerSend {
   flex-shrink: 0;
+  margin-left: auto;
   display: inline-flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1px;
   height: 36px;
-  padding: 0 12px;
-  border-radius: 18px 0 0 18px;
+  padding: 0 16px;
+  border-radius: 18px;
   background: #6C5DF5;
   color: #fff;
   border: 0.5px solid var(--border-mid);
-  border-right: none;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-}
-.claudeSendModeLabel {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.2px;
-  line-height: 1.1;
+  transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
 }
-/* The model sub-caption: names what the ACTIVE mode will actually run on, so
-   "Deep" is a model rather than a mood. Capped and ellipsised because model ids
-   are unbounded and the composer row is not — a long id must never widen the
-   send control past the textarea. Hidden until the per-repo model settings
-   resolve (hence the [hidden] display guard, which an inline-flex child needs to
-   actually disappear). */
-.claudeSendModelLabel {
-  max-width: 92px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
-  font-size: 8px;
-  line-height: 1.1;
-  letter-spacing: 0.02em;
-  opacity: 0.78;
-}
-.claudeSendModelLabel[hidden] { display: none; }
-/* Split send — caret: the right half that opens the mode menu. Mirrors the main
-   button's surface and joins it into one pill (shared border, rounded only on
-   the right). */
-.claudeComposerSendCaret {
+/* Model toggle — the acronym chip that leads the control row and opens the mode
+   menu. Deliberately quiet next to the accent-filled send pill: it carries the
+   same neutral resting surface and hairline border as the attach/mic circles, in
+   the monospace face the rest of the app uses for model ids, so it reads as a
+   tag rather than a second call to action. Three letters wide by construction
+   (see modelAcronym), so it never grows with the id it stands for. */
+.claudeModelToggle {
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
+  gap: 3px;
   height: 36px;
-  border-radius: 0 18px 18px 0;
-  background: #6C5DF5;
-  color: #fff;
+  padding: 0 10px;
+  border-radius: 18px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
   border: 0.5px solid var(--border-mid);
   cursor: pointer;
-  font-size: 12px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   transition: border-color 0.15s ease, background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.claudeModelToggleTag {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+}
+.claudeModelToggleCaret {
+  font-size: 9px;
+  line-height: 1;
+  opacity: 0.7;
+}
+/* Deep default — the toggle picks up the accent fill so the heavier mode reads
+   as active from the chip itself, matching the send pill's Deep state. */
+.claudeModelToggleDeep {
+  background: #6C5DF5;
+  color: #fff;
+  border-color: #6C5DF5;
 }
 /* Attach (📎) — a round icon button. It carries the same faint resting fill and
    hairline border as the other neutral composer buttons so it reads as a button
@@ -3041,15 +3056,15 @@ body:has(#settingsMenu) #claudeLauncher {
 }
 /* The paired file input is never shown; it's triggered programmatically. */
 .claudeImageInput { display: none; }
-/* Hover feedback. The split send's main button and caret carry a neutral ring,
-   so their hover lightens the label/glyph and lays a purple halo over the
-   control; the attach/mic controls lighten the glyph. The send skips the cue
-   while disabled so the not-allowed state still reads as inert. */
+/* Hover feedback. The send pill and the model toggle carry a neutral ring, so
+   their hover lightens the label/glyph and lays a purple halo over the control;
+   the attach/mic controls lighten the glyph. Both skip the cue while disabled so
+   the not-allowed state still reads as inert. */
 /* Purple halo — a tight accent ring plus a soft outer glow — layers onto each
    composer button's hover alongside its existing glyph/ring cue. The Deep
    variant keeps its accent fill underneath; the halo layers on top. */
 .claudeComposerSend:hover:not(:disabled),
-.claudeComposerSendCaret:hover:not(:disabled) {
+.claudeModelToggle:hover:not(:disabled) {
   color: #9D93EE;
   box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
@@ -3062,12 +3077,12 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeComposerAttach:active:not(:disabled),
 .micButton:active:not(:disabled),
 .claudeComposerSend:active:not(:disabled),
-.claudeComposerSendCaret:active:not(:disabled) {
+.claudeModelToggle:active:not(:disabled) {
   box-shadow: 0 0 0 2px rgba(108, 93, 245, 0.35), 0 0 12px 2px rgba(108, 93, 245, 0.22);
 }
 .claudeComposerInput:disabled,
 .claudeComposerSend:disabled,
-.claudeComposerSendCaret:disabled {
+.claudeModelToggle:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
@@ -3085,21 +3100,22 @@ body:has(#settingsMenu) #claudeLauncher {
   border-color: #9D93EE;
   color: #fff;
 }
-/* The split send control: the labeled main button + caret as one pill, with the
-   mode menu anchored above it. */
-.claudeSendSplit {
+/* The model toggle control: the acronym chip with the mode menu anchored above
+   it, wherever the control row puts the chip. */
+.claudeModelToggleWrap {
   position: relative;
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
 }
-/* Mode menu — drops above the split control (the composer sits at the bottom of
-   the sheet). Lists Fast / Deep, each naming the model it resolves to, the active
-   default carrying a ★. Anchored right and shrink-to-fit, so a long model id
-   grows the menu leftward instead of wrapping. */
+/* Mode menu — drops above the toggle (the composer sits at the bottom of the
+   sheet). Lists Fast / Deep, each naming the model it resolves to, the active
+   default carrying a ★. Anchored left, under the chip it belongs to, and
+   shrink-to-fit so a long model id grows the menu rightward instead of
+   wrapping. */
 .claudeModeMenu {
   position: absolute;
-  right: 0;
+  left: 0;
   bottom: calc(100% + 6px);
   z-index: 5;
   min-width: 150px;
@@ -3649,25 +3665,19 @@ button.claudeAttachChipLabel { cursor: pointer; }
   box-shadow: inset 0 0 12px rgba(122, 108, 240, 0.28);
 }
 
-/* Everything that belongs to the work chat steps aside: the model picker (the
-   send caret, its menu, and the send button's model sub-caption), the task-scope
-   chip, the attach / image / voice circles, the image rail, and the attachment
-   chips. */
+/* Everything that belongs to the work chat steps aside: the model toggle and its
+   menu (hidden as one wrap, so the control row keeps no gap where they were),
+   the task-scope chip, the attach / image / voice circles, the image rail,
+   and the attachment chips. The send pill stays — the ghost is sent to the same
+   way — and needs no reshaping now that it is a whole pill on its own. */
 #claudeSheetBody.is-possessed .claudeAttach,
 #claudeSheetBody.is-possessed .claudeImageAttach,
 #claudeSheetBody.is-possessed #claudeComposerMic,
-#claudeSheetBody.is-possessed #claudeComposerSendCaret,
-#claudeSheetBody.is-possessed #claudeComposerModeMenu,
-#claudeSheetBody.is-possessed .claudeSendModelLabel,
+#claudeSheetBody.is-possessed #claudeComposerModelToggleWrap,
 #claudeSheetBody.is-possessed #claudeScopeChip,
 #claudeSheetBody.is-possessed #claudeImageRail,
 #claudeSheetBody.is-possessed .claudeAttachChip {
   display: none;
-}
-/* The split send loses its right half, so the left half closes the pill. */
-#claudeSheetBody.is-possessed .claudeComposerSend {
-  border-radius: 18px;
-  border-right: 0.5px solid var(--border-mid);
 }
 
 /* What the chip rail says instead: one line naming who is reading. */

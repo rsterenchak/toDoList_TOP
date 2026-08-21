@@ -225,7 +225,7 @@ describe('Claude sheet shell + launcher', () => {
         expect(send.disabled).toBe(false);
     });
 
-    it('mounts the file-picker button as the leading composer control', () => {
+    it('mounts the file-picker button on the composer control row', () => {
         const attach = document.getElementById('claudeComposerAttach');
         const header = document.getElementById('claudeSheetTabs');
         const composer = document.getElementById('claudeComposer');
@@ -234,12 +234,13 @@ describe('Claude sheet shell + launcher', () => {
         expect(attach).toBeTruthy();
         expect(composer.contains(attach)).toBe(true);
         expect(header.contains(attach)).toBe(false);
-        // Row order is [📎] [🎤] [input] [Send]: the attach wrapper leads the row
-        // (precedes the input) and Send is last in document order.
+        // The control row reads [SON ▾] [📎] [🖼] [🎤] … [Send] and sits BELOW the
+        // input row, so the attach wrapper follows the input and Send is last in
+        // document order.
         const attachWrap = attach.closest('.claudeAttach');
-        expect(attachWrap.compareDocumentPosition(input) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(input.compareDocumentPosition(attachWrap) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
-        expect(input.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING)
+        expect(attachWrap.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
     });
 
@@ -420,16 +421,24 @@ describe('Claude sheet — module surface and styling', () => {
         expect(close).not.toMatch(/position:\s*absolute/);
     });
 
-    it('aligns the composer controls (attach, mic, input, send) in one vertically-centered row', () => {
+    it('stacks the composer as two rows — input above, controls below — at every width', () => {
+        // The container columns, so the textarea row and the control row stack
+        // instead of competing for one line. This is the collision fix, and it
+        // is unconditional: no media query re-flattens it at any breakpoint.
         const composer = extractTopLevelRule('.claudeComposer');
         expect(composer).toMatch(/display:\s*flex/);
-        // The row centers every control on the cross axis. The old
-        // `align-items: flex-end` (container) + `align-self: center`
-        // (buttons only) mix left the textarea bottom-aligned while the
-        // buttons centered — the misalignment this fixes.
-        expect(composer).toMatch(/align-items:\s*center/);
+        expect(composer).toMatch(/flex-direction:\s*column/);
         expect(composer).not.toMatch(/align-items:\s*flex-end/);
-        // No per-control alignment override remains to fight the container's
+        expect(css).not.toMatch(/@media[^{]*\{[^}]*\.claudeComposer\s*\{[^}]*flex-direction:\s*row/);
+        // The input row stretches the textarea across the full width.
+        expect(extractTopLevelRule('.claudeComposerInputRow')).toMatch(/display:\s*flex/);
+        // The control row centers every control on the cross axis, and the send
+        // pill's auto margin is what pushes it to the far end.
+        const controls = extractTopLevelRule('.claudeComposerControlRow');
+        expect(controls).toMatch(/display:\s*flex/);
+        expect(controls).toMatch(/align-items:\s*center/);
+        expect(extractTopLevelRule('.claudeComposerSend')).toMatch(/margin-left:\s*auto/);
+        // No per-control alignment override remains to fight the row's
         // centering — every control inherits the single, uniform alignment.
         expect(extractTopLevelRule('.claudeComposerAttach')).not.toMatch(/align-self/);
         expect(extractTopLevelRule('.claudeComposerSend')).not.toMatch(/align-self/);
@@ -467,30 +476,31 @@ describe('Claude sheet — module surface and styling', () => {
         expect(mic).not.toMatch(/box-shadow:/);
     });
 
-    it('styles the split send as a labeled pill + caret (accent-filled, Deep accent-filled)', () => {
-        // Main button: a pill (left-rounded) filled with the same lighter accent
-        // purple the dropdown picker (caret) uses, with a hairline border; the
-        // caret mirrors it as the right half.
+    it('styles the send as a full accent pill and the model toggle as a neutral chip', () => {
+        // Send: a fully-rounded pill filled with the accent purple, white label
+        // for contrast, hairline border.
         const main = extractTopLevelRule('.claudeComposerSend');
-        expect(main).toMatch(/border-radius:\s*18px 0 0 18px/);
+        expect(main).toMatch(/border-radius:\s*18px/);
+        expect(main).not.toMatch(/border-radius:\s*18px 0 0 18px/);
         expect(main).toMatch(/background:\s*#6C5DF5/i);
         expect(main).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
-        const caret = extractTopLevelRule('.claudeComposerSendCaret');
-        expect(caret).toMatch(/border-radius:\s*0 18px 18px 0/);
-        // The caret button (which opens the mode menu) fills with the accent
-        // purple; its glyph stays white (#fff) for white-on-purple contrast.
-        expect(caret).toMatch(/background:\s*#6C5DF5/i);
-        // The main button's label is white for contrast against the purple fill,
-        // matching the dropdown picker it now shares a background with.
         expect(main).toMatch(/color:\s*#fff/i);
-        expect(caret).toMatch(/color:\s*#fff/i);
-        // Deep default: the main button fills with the solid purple accent.
+        // Model toggle: the quiet acronym chip that opens the mode menu — the
+        // neutral resting surface the attach/mic circles use, not a second
+        // accent-filled call to action next to the send pill.
+        const toggle = extractTopLevelRule('.claudeModelToggle');
+        expect(toggle).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(toggle).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
+        expect(toggle).not.toMatch(/background:\s*#6C5DF5/i);
+        // Deep default: both the send pill and the toggle take the accent fill.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
         expect(deep).toMatch(/background:\s*#6C5DF5/i);
-        // The mode menu anchors above the split control, carries the neutral
-        // elevated surface, and hides when [hidden].
+        expect(extractTopLevelRule('.claudeModelToggleDeep')).toMatch(/background:\s*#6C5DF5/i);
+        // The mode menu anchors above the toggle, carries the neutral elevated
+        // surface, and hides when [hidden].
         const menu = extractTopLevelRule('.claudeModeMenu');
         expect(menu).toMatch(/position:\s*absolute/);
+        expect(extractTopLevelRule('.claudeModelToggleWrap')).toMatch(/position:\s*relative/);
         expect(menu).toMatch(/background:\s*var\(--bg-elevated\)/);
         expect(css).toMatch(/\.claudeModeMenu\[hidden\]\s*\{\s*display:\s*none/);
         // Attach: round icon button with the same resting surface and border.
@@ -671,9 +681,9 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(document.querySelector('.claudeMsg--assistant').textContent).toContain('Sure');
     });
 
-    // Pick a send-mode default via the caret menu, then send with the main button.
+    // Pick a send-mode default via the model toggle's menu, then send with the pill.
     function selectMode(mode) {
-        document.getElementById('claudeComposerSendCaret').click();
+        document.getElementById('claudeComposerModelToggle').click();
         const opt = document.querySelector('.claudeModeOption[data-mode="' + mode + '"]');
         opt.click();
     }
@@ -685,30 +695,54 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         await flush();
     }
 
-    it('renders a split send button: a mode-labeled main button + a caret', () => {
-        const send = document.getElementById('claudeComposerSend');
-        const caret = document.getElementById('claudeComposerSendCaret');
+    it('lays the composer out as two rows: input above, controls below', () => {
         const composer = document.getElementById('claudeComposer');
-        expect(send).toBeTruthy();
-        expect(caret).toBeTruthy();
-        // The main button carries a label span naming the active default; the
-        // default starts Fast (no persisted choice in a fresh mount).
-        const label = send.querySelector('.claudeSendModeLabel');
-        expect(label).toBeTruthy();
-        expect(label.textContent).toBe('Fast');
-        expect(send.getAttribute('aria-label')).toBe('Send');
-        // The caret opens a popup menu and sits in the same split control as the
-        // main button, last in the composer row.
-        expect(caret.getAttribute('aria-haspopup')).toBe('menu');
-        expect(caret.getAttribute('aria-expanded')).toBe('false');
-        expect(send.closest('.claudeSendSplit')).toBe(caret.closest('.claudeSendSplit'));
-        expect(composer.contains(caret)).toBe(true);
-        expect(send.compareDocumentPosition(caret) & Node.DOCUMENT_POSITION_FOLLOWING)
+        const input = document.getElementById('claudeComposerInput');
+        const toggle = document.getElementById('claudeComposerModelToggle');
+        const send = document.getElementById('claudeComposerSend');
+        // Row 1 is the textarea alone — nothing shares it, which is what keeps a
+        // grown input from colliding with a control at any width.
+        const inputRow = input.closest('.claudeComposerInputRow');
+        expect(inputRow).toBeTruthy();
+        expect(inputRow.children.length).toBe(1);
+        expect(input.getAttribute('placeholder')).toBe('Ask Agent');
+        // Row 2 carries the model toggle, the attach picker, and the send pill.
+        const controlRow = send.closest('.claudeComposerControlRow');
+        expect(controlRow).toBeTruthy();
+        expect(controlRow.contains(toggle)).toBe(true);
+        expect(controlRow.contains(document.getElementById('claudeComposerAttach'))).toBe(true);
+        expect(controlRow.contains(input)).toBe(false);
+        // …in that order, the toggle leading and the send pill last.
+        expect(toggle.compareDocumentPosition(send) & Node.DOCUMENT_POSITION_FOLLOWING)
+            .toBeTruthy();
+        // Both rows are the composer's own children, and the input row comes first.
+        expect(inputRow.parentElement).toBe(composer);
+        expect(controlRow.parentElement).toBe(composer);
+        expect(inputRow.compareDocumentPosition(controlRow) & Node.DOCUMENT_POSITION_FOLLOWING)
             .toBeTruthy();
     });
 
-    it('the caret opens a Fast/Deep menu with a ★ on the active default', () => {
-        const caret = document.getElementById('claudeComposerSendCaret');
+    it('renders the model toggle as an acronym chip that opens the mode menu', () => {
+        const toggle = document.getElementById('claudeComposerModelToggle');
+        const send = document.getElementById('claudeComposerSend');
+        expect(toggle).toBeTruthy();
+        // The send pill is a plain "Send"; the mode + model live on the toggle.
+        expect(send.textContent).toBe('Send');
+        expect(send.getAttribute('aria-label')).toBe('Send');
+        // Nothing resolved in this mount (no model settings), so the chip wears
+        // the mode word rather than a guessed acronym — and names it accessibly.
+        expect(toggle.querySelector('.claudeModelToggleTag').textContent).toBe('FAST');
+        expect(toggle.getAttribute('aria-label')).toBe('Send mode: Fast');
+        expect(toggle.getAttribute('aria-haspopup')).toBe('menu');
+        expect(toggle.getAttribute('aria-expanded')).toBe('false');
+        // The menu is anchored to the toggle's own wrap, not to the send pill.
+        const menu = document.getElementById('claudeComposerModeMenu');
+        expect(menu.closest('.claudeModelToggleWrap')).toBe(toggle.closest('.claudeModelToggleWrap'));
+        expect(send.closest('.claudeModelToggleWrap')).toBeNull();
+    });
+
+    it('the toggle opens a Fast/Deep menu with a ★ on the active default', () => {
+        const caret = document.getElementById('claudeComposerModelToggle');
         const menu = document.getElementById('claudeComposerModeMenu');
         expect(menu.hidden).toBe(true);
         caret.click();
@@ -728,27 +762,30 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
     it('selecting a mode persists it (todoapp_chatMode), repaints the label + ★, and closes the menu', () => {
         const send = document.getElementById('claudeComposerSend');
         const menu = document.getElementById('claudeComposerModeMenu');
+        const toggle = document.getElementById('claudeComposerModelToggle');
         selectMode('deep');
         // Persisted under the documented key, survives reloads.
         expect(localStorage.getItem('todoapp_chatMode')).toBe('deep');
-        // Main button now reads Deep, carries the accent class + deep aria-label.
-        expect(send.querySelector('.claudeSendModeLabel').textContent).toBe('Deep');
+        // The toggle now reads DEEP and both it and the send pill take the accent.
+        expect(toggle.querySelector('.claudeModelToggleTag').textContent).toBe('DEEP');
+        expect(toggle.classList.contains('claudeModelToggleDeep')).toBe(true);
         expect(send.classList.contains('claudeComposerSendDeep')).toBe(true);
         expect(send.getAttribute('aria-label')).toBe('Send deep');
         // The ★ moved to Deep; the menu closed on selection.
         expect(menu.hidden).toBe(true);
-        document.getElementById('claudeComposerSendCaret').click();
+        toggle.click();
         expect(menu.querySelector('.claudeModeOption[data-mode="deep"] .claudeModeStar').textContent).toBe('★');
         expect(menu.querySelector('.claudeModeOption[data-mode="fast"] .claudeModeStar').textContent).toBe('');
         // Switching back to Fast persists + repaints too.
         selectMode('fast');
         expect(localStorage.getItem('todoapp_chatMode')).toBe('fast');
-        expect(send.querySelector('.claudeSendModeLabel').textContent).toBe('Fast');
+        expect(toggle.querySelector('.claudeModelToggleTag').textContent).toBe('FAST');
+        expect(toggle.classList.contains('claudeModelToggleDeep')).toBe(false);
         expect(send.classList.contains('claudeComposerSendDeep')).toBe(false);
     });
 
     it('closes the mode menu on outside-click and on Escape', () => {
-        const caret = document.getElementById('claudeComposerSendCaret');
+        const caret = document.getElementById('claudeComposerModelToggle');
         const menu = document.getElementById('claudeComposerModeMenu');
         // Outside-click closes.
         caret.click();
@@ -768,7 +805,8 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         document.body.innerHTML = '';
         mountClaudeSheet(document.body);
         const send = document.getElementById('claudeComposerSend');
-        expect(send.querySelector('.claudeSendModeLabel').textContent).toBe('Deep');
+        const toggle = document.getElementById('claudeComposerModelToggle');
+        expect(toggle.querySelector('.claudeModelToggleTag').textContent).toBe('DEEP');
         expect(send.classList.contains('claudeComposerSendDeep')).toBe(true);
     });
 
@@ -806,9 +844,9 @@ describe('Claude sheet — author flow (chat, draft card, inject & run)', () => 
         expect(pending.textContent).toBe('Thinking deeply…');
     });
 
-    it('disables and re-enables the main send + caret together while in flight', async () => {
+    it('disables and re-enables the send pill + model toggle together while in flight', async () => {
         const send = document.getElementById('claudeComposerSend');
-        const caret = document.getElementById('claudeComposerSendCaret');
+        const caret = document.getElementById('claudeComposerModelToggle');
         const input = document.getElementById('claudeComposerInput');
         input.value = 'in flight';
         document.getElementById('claudeComposerSend').click();
