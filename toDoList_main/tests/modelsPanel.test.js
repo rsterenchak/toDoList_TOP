@@ -64,6 +64,7 @@ const CATALOG_WITH_DEFAULTS = Object.assign({}, CATALOG, {
         derive: 'claude-sonnet-5',
         scan: 'claude-haiku-4-5',
         chat: 'claude-sonnet-5',
+        deep: 'claude-opus-5',
     },
 });
 
@@ -261,6 +262,45 @@ describe('models panel — row presentation (pure)', () => {
         expect(rows.find((r) => r.surface === 'chat').apiBadge).toBe(false);
     });
 
+    it('stacks DEEP between CHAT and GHOST, pickable and on the non-plan lane', () => {
+        const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
+        const order = rows.map((r) => r.surface);
+        expect(order).toEqual(['run', 'triage', 'derive', 'scan', 'chat', 'deep', 'ghost']);
+        const deep = rows.find((r) => r.surface === 'deep');
+        // Not in plan_lanes, so the existing dot logic amber-dots it for free —
+        // and it is a real row, not the locked display-only shape GHOST uses.
+        expect(deep.lane).toBe('other');
+        expect(deep.locked).toBe(false);
+        expect(deep.label).toBe('DEEP');
+    });
+
+    it('names which send mode each of CHAT and DEEP serves', () => {
+        const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
+        expect(rows.find((r) => r.surface === 'chat').subline).toBe('fast sends');
+        expect(rows.find((r) => r.surface === 'deep').subline).toBe('deep sends');
+        // Every other pickable row stays quiet — the note exists to separate two
+        // neighbours, not to annotate the matrix.
+        expect(rows.find((r) => r.surface === 'run').subline).toBe('');
+    });
+
+    it('names the deep default by id, the same way every other row does', () => {
+        const rows = buildModelRows(CATALOG_WITH_DEFAULTS, settingsFixture(), 'repo');
+        const deep = rows.find((r) => r.surface === 'deep');
+        expect(deep.chipText).toBe('claude-opus-5');
+        expect(deep.sourceTag).toBe('default');
+        expect(deep.inherited).toBe(true);
+    });
+
+    it('reports a deep pick set at the showing scope as set', () => {
+        const rows = buildModelRows(CATALOG_WITH_DEFAULTS, settingsFixture({
+            surfaces: { deep: { value: 'claude-sonnet-5', source: 'repo' } },
+        }), 'repo');
+        const deep = rows.find((r) => r.surface === 'deep');
+        expect(deep.chipText).toBe('claude-sonnet-5');
+        expect(deep.sourceTag).toBe('');
+        expect(deep.inherited).toBe(false);
+    });
+
     it('closes the matrix with a locked ghost row carrying the catalog model', () => {
         const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
         const ghost = rows[rows.length - 1];
@@ -292,6 +332,16 @@ describe('models panel — picker groups (pure)', () => {
         const groups = buildPickerGroups(CATALOG, 'scan');
         expect(groups.plan.map((m) => m.id)).toEqual(['claude-sonnet-5']);
         expect(groups.api).toEqual([]);
+    });
+
+    it('offers DEEP exactly the chat lane, mirroring how the Worker validates it', () => {
+        const deep = buildPickerGroups(CATALOG, 'deep');
+        const chat = buildPickerGroups(CATALOG, 'chat');
+        expect(deep.plan.map((m) => m.id)).toEqual(chat.plan.map((m) => m.id));
+        expect(deep.api.map((m) => m.id)).toEqual(chat.api.map((m) => m.id));
+        // Concretely: the chat-lane models, and nothing allowlisted only elsewhere.
+        expect(deep.plan.map((m) => m.id)).toEqual(['claude-sonnet-5']);
+        expect(deep.api.map((m) => m.id)).toEqual(['gpt-5-codex']);
     });
 
     it('treats a model with no lanes as allowlisted nowhere', () => {
@@ -412,7 +462,7 @@ describe('models panel — panel behaviour', () => {
     it('renders every surface plus ghost, reading the active repo for the scope toggle', async () => {
         await openPanel();
         const labels = [...document.querySelectorAll('.modelsRowLabel')].map((el) => el.textContent);
-        expect(labels).toEqual(['RUN', 'TRIAGE', 'DERIVE', 'SCAN', 'CHAT', 'GHOST']);
+        expect(labels).toEqual(['RUN', 'TRIAGE', 'DERIVE', 'SCAN', 'CHAT', 'DEEP', 'GHOST']);
         expect(fetchModelSettings).toHaveBeenCalledWith('rsterenchak/toDoList_TOP');
         // The REPO half is labelled with the workspace's short name, not owner/name.
         expect(document.querySelectorAll('.modelsScopeSeg')[0].textContent).toBe('toDoList_TOP');
@@ -639,6 +689,34 @@ describe('models panel — panel behaviour', () => {
         expect(chip.textContent).toBe('gpt-5-codex');
         expect(rowBySurface('run').querySelector('.modelsRowBadge')).toBeTruthy();
         expect(showInjectToast).not.toHaveBeenCalled();
+    });
+
+    it('drills into DEEP and writes the pick against the deep surface', async () => {
+        await openPanel();
+        const deepRow = rowBySurface('deep');
+        // Pickable, unlike GHOST — a button, not a plain div.
+        expect(deepRow.tagName).toBe('BUTTON');
+        deepRow.click();
+        await flush();
+        expect(document.getElementById('modelsPanelTitleText').textContent).toBe('DEEP');
+
+        // The offered list is the chat lane, so a run-only model is absent.
+        const labels = [...document.querySelectorAll('.modelsPickerRow')]
+            .map((r) => r.querySelector('.modelsPickerLabel').textContent);
+        expect(labels).toEqual(['Inherit', 'claude-sonnet-5', 'gpt-5-codex']);
+
+        [...document.querySelectorAll('.modelsPickerRow')]
+            .find((r) => r.querySelector('.modelsPickerLabel').textContent === 'claude-sonnet-5')
+            .click();
+        await flush();
+        expect(saveModelSetting).toHaveBeenCalledWith({
+            scope: 'repo',
+            surface: 'deep',
+            model: 'claude-sonnet-5',
+            repo: 'rsterenchak/toDoList_TOP',
+        });
+        expect(rowBySurface('deep').querySelector('.modelsRowChip').textContent)
+            .toBe('claude-sonnet-5');
     });
 
     it('sends model:null for Inherit, always naming the active repo', async () => {

@@ -1777,10 +1777,14 @@ export function dailyUsageSeries(rows, now) {
     return series;
 }
 
-// Fraction of this month's COST attributable to deep_think turns (Opus), not a
-// fraction of turn count — one Opus turn outweighs a dozen Sonnet ones, so a
-// turn-count share would understate it badly. Returns null when there is no cost
-// to divide, so the caller can omit the figure rather than show a misleading 0%.
+// Fraction of this month's COST attributable to deep_think turns, not a fraction
+// of turn count — one heavy turn outweighs a dozen light ones, so a turn-count
+// share would understate it badly. Returns null when there is no cost to divide,
+// so the caller can omit the figure rather than show a misleading 0%.
+//
+// Deliberately model-agnostic: the `deep_think` flag records the MODE a turn was
+// sent in, and deep-think is a pickable surface now, so the share stays right
+// whatever model the workspace points DEEP at.
 export function computeDeepShare(rows) {
     if (!Array.isArray(rows)) return null;
     let total = 0;
@@ -1846,7 +1850,7 @@ function renderSpendRatios(container, rows) {
         grid.appendChild(cell);
     }
 
-    addRatio('Deep share', deep, 'of cost on deep-think (Opus) turns');
+    addRatio('Deep share', deep, 'of cost on deep-think turns');
     addRatio('Cache hit rate', cache, 'cache reads ÷ input tokens');
     container.appendChild(grid);
 
@@ -2535,19 +2539,76 @@ function setChatMode(mode) {
     renderSendMode();
 }
 
-// Paint the main send button (label + accent + aria-label) and the menu's ★ from
-// the current chatMode. Defaults to the live contentEl scope, but accepts an
-// explicit `root` so it can paint a freshly-built view before it is mounted (at
-// which point contentEl is still null).
+// What each send mode will actually run on, in the three strings the composer
+// paints: the two menu items and the main button's sub-caption. Fast is the
+// `chat` surface and Deep is the `deep` surface — two registry surfaces now that
+// deep-think is pickable, so "Fast" and "Deep" can name real models instead of
+// standing for whatever the Worker happens to resolve.
+//
+// Kept pure, and kept as ONE decision, because the menu and the caption must
+// never disagree: a menu reading `Deep · claude-opus-5` above a button captioned
+// with something else is worse than no caption at all.
+//
+// A resolved value wins; with none, the catalog's `defaults` map names what the
+// unconfigured surface falls through to. With NEITHER — the per-repo settings
+// cache hasn't resolved yet, or the read failed — the labels degrade to the
+// plain `Fast` / `Deep` the composer has always shown and `captionModel` comes
+// back '', so the button shows a mode rather than a guess.
+export function describeSendModes(mode, resolvedChat, resolvedDeep, defaults) {
+    const map = (defaults && typeof defaults === 'object') ? defaults : {};
+    function pick(value, fallback) {
+        const v = typeof value === 'string' ? value.trim() : '';
+        if (v) return v;
+        return typeof fallback === 'string' ? fallback.trim() : '';
+    }
+    const chat = pick(resolvedChat, map.chat);
+    const deep = pick(resolvedDeep, map.deep);
+    return {
+        fastLabel: chat ? 'Fast · ' + chat : 'Fast',
+        deepLabel: deep ? 'Deep · ' + deep : 'Deep',
+        captionModel: mode === 'deep' ? deep : chat,
+    };
+}
+
+// One surface's resolved id out of a settings payload, or '' when the payload
+// doesn't carry it (an older Worker, a failed read, or a surface nobody set).
+function resolvedSurfaceValue(settings, surface) {
+    const entry = ((settings && settings.surfaces) || {})[surface] || {};
+    return typeof entry.value === 'string' ? entry.value.trim() : '';
+}
+
+// Paint the main send button (label + model sub-caption + accent + aria-label)
+// and the menu's items + ★ from the current chatMode. Defaults to the live
+// contentEl scope, but accepts an explicit `root` so it can paint a freshly-built
+// view before it is mounted (at which point contentEl is still null).
+//
+// The model names come out of the SAME per-repo settings cache the drafted-entry
+// card's chip reads, never a second fetch of their own — one cache means the card
+// and the composer can't disagree about what this workspace resolves to.
 function renderSendMode(root) {
     const scope = root || contentEl;
     if (!scope) return;
     const isDeep = chatMode === 'deep';
+    const settings = runModelSettingsByRepo.get(activeChatRepo || '') || null;
+    const modes = describeSendModes(
+        chatMode,
+        resolvedSurfaceValue(settings, CHAT_MODEL_SURFACE),
+        resolvedSurfaceValue(settings, DEEP_MODEL_SURFACE),
+        runModelCatalog && runModelCatalog.defaults,
+    );
     const send = scope.querySelector('#claudeComposerSend');
     if (send) {
         const label = send.querySelector('.claudeSendModeLabel');
         if (label) label.textContent = isDeep ? 'Deep' : 'Fast';
+        const model = send.querySelector('.claudeSendModelLabel');
+        if (model) {
+            model.textContent = modes.captionModel;
+            model.hidden = !modes.captionModel;
+        }
         send.setAttribute('aria-label', isDeep ? 'Send deep' : 'Send');
+        send.title = modes.captionModel
+            ? (isDeep ? 'Deep send · runs on ' : 'Fast send · runs on ') + modes.captionModel
+            : '';
         send.classList.toggle('claudeComposerSendDeep', isDeep);
     }
     const menu = scope.querySelector('#claudeComposerModeMenu');
@@ -2555,12 +2616,30 @@ function renderSendMode(root) {
         const options = menu.querySelectorAll('.claudeModeOption');
         for (let i = 0; i < options.length; i++) {
             const opt = options[i];
-            const on = opt.getAttribute('data-mode') === chatMode;
+            const mode = opt.getAttribute('data-mode');
+            const on = mode === chatMode;
             opt.setAttribute('aria-checked', on ? 'true' : 'false');
             const star = opt.querySelector('.claudeModeStar');
             if (star) star.textContent = on ? '★' : '';
+            const name = opt.querySelector('.claudeModeName');
+            if (name) name.textContent = mode === 'deep' ? modes.deepLabel : modes.fastLabel;
         }
     }
+}
+
+// Pull the active workspace's model settings into the shared cache, then repaint
+// the send mode so the labels stop reading plain `Fast` / `Deep`. Fire-and-forget
+// and best-effort: a failed read leaves the plain labels standing, and
+// ensureRunModelContext drops its cached promise so the next call retries.
+//
+// Routed through a promise chain rather than called bare so that NOTHING here —
+// not the read, not the repaint — can take the composer down with it. The model
+// names are a caption; a composer that fails to build because a caption couldn't
+// be resolved would be a far worse trade than a button that just says "Fast".
+function refreshSendModeModels() {
+    Promise.resolve()
+        .then(function() { return ensureRunModelContext(activeChatRepo); })
+        .then(function() { renderSendMode(); }, function() { /* labels stay plain */ });
 }
 
 function isModeMenuOpen() {
@@ -2670,12 +2749,19 @@ function buildChatView() {
     send.type = 'button';
     send.className = 'claudeComposerSend';
     send.setAttribute('aria-label', 'Send');
-    // The main button's caption names the active default ("Fast" / "Deep"); a
-    // span so renderSendMode() can repaint just the text. Initial text is filled
-    // by renderSendMode() below once the button is in the DOM.
+    // The main button's caption names the active default ("Fast" / "Deep") over
+    // the model that mode will actually run on; two spans so renderSendMode() can
+    // repaint each independently. Initial text is filled by renderSendMode() below
+    // once the button is in the DOM — the model line starts hidden and stays
+    // hidden until the per-repo settings cache resolves, so the button never
+    // flashes a model it had to guess at.
     const sendModeLabel = document.createElement('span');
     sendModeLabel.className = 'claudeSendModeLabel';
     send.appendChild(sendModeLabel);
+    const sendModelLabel = document.createElement('span');
+    sendModelLabel.className = 'claudeSendModelLabel';
+    sendModelLabel.hidden = true;
+    send.appendChild(sendModelLabel);
 
     // Caret: toggles the mode menu that opens above the split button.
     const sendCaret = document.createElement('button');
@@ -2689,7 +2775,9 @@ function buildChatView() {
 
     // Mode menu: two options (Fast / Deep), the active default carrying a ★. Opens
     // above the button (the composer sits at the bottom of the sheet). Selecting a
-    // mode persists it and closes the menu; the ★ tracks the choice.
+    // mode persists it and closes the menu; the ★ tracks the choice. Each item's
+    // text is repainted by renderSendMode() to name the model that mode resolves
+    // to; the pair below seeds the plain labels it falls back to.
     const modeMenu = document.createElement('div');
     modeMenu.id = 'claudeComposerModeMenu';
     modeMenu.className = 'claudeModeMenu';
@@ -2787,6 +2875,10 @@ function buildChatView() {
     // the split control itself because contentEl isn't assigned until the sheet
     // body is built, and the composer isn't appended to `view` yet here.
     renderSendMode(sendGroup);
+    // …then fill in the model names once the shared per-repo settings cache has
+    // them. Deliberately after the synchronous paint, so a slow or failed read
+    // costs nothing but the sub-caption.
+    refreshSendModeModels();
 
     // Scroll-to-bottom pill — a centered "↓" that floats just above the composer
     // whenever the chat log isn't pinned to the latest message. It lives inside
@@ -3360,6 +3452,11 @@ export function setChatWorkspaceRepo(repo) {
     clearAttachments();
     renderScopeChip();
     renderWorkspacePill();
+    // Model settings are per-repo, so the send-mode captions belong to the repo
+    // that just left. Repaint from the incoming repo's cache entry (plain labels
+    // until it lands) rather than leaving the old workspace's models on screen.
+    renderSendMode();
+    refreshSendModeModels();
     if (pickerWasOpen && panel) {
         setAttachPanelHidden(false);
         refreshAttachPickerMode();
@@ -4162,6 +4259,10 @@ export function openIterateForEntry(entryId, repo) {
 // with no override dispatches exactly as it always did; a failed read clears its
 // cached promise so the next card retries rather than inheriting the failure.
 const RUN_MODEL_SURFACE = 'run';
+// The two surfaces the composer's send modes resolve against — Fast sends on
+// `chat`, Deep on `deep`. Both are read out of the same cache below.
+const CHAT_MODEL_SURFACE = 'chat';
+const DEEP_MODEL_SURFACE = 'deep';
 let runModelCatalog = null;
 let runModelCatalogPromise = null;
 const runModelSettingsByRepo = new Map();

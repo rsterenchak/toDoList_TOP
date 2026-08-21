@@ -1703,7 +1703,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 308bc8d1-4524-40db-803b-abff97639912 -->
 
-- [ ] **[MEDIUM]** Add a selectable DEEP row to the Models panel and name both chat modes in the composer
+- [x] **[MEDIUM]** Add a selectable DEEP row to the Models panel and name both chat modes in the composer — Completed: 2026-08-21
   - Type: feature
   - Description: Deep-think is now a full registry surface (`deep`), no longer pinned server-side — the Worker resolves it repo → global → default (`claude-opus-5`, the old pin as fallback), validates picks against the `chat` lane, and publishes its default in the catalog's `defaults.deep`. Surface it: a DEEP row in the Models panel, and Fast/Deep controls in the composer that name what each mode will actually run.
   - Behavior:
