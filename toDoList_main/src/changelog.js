@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-08-20',
-        added: [
-            'The API spend panel now splits the month’s total by provider — Anthropic, Kimi, and Grok — in a segmented bar with a legend.',
+        date: '2026-08-21',
+        fixed: [
+            'Spend totals for runs on DeepSeek models now use DeepSeek’s published prices instead of a far higher placeholder estimate.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-08-20',
         changed: [
             'Spend totals for runs on Kimi or Grok models now use those providers’ real published prices instead of the high placeholder estimate.',
             'Model chips that used to read “default” now name the model that default actually resolves to, across the Models panel and a drafted entry’s ship chip.',
