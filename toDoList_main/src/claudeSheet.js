@@ -1598,6 +1598,18 @@ function rateForModel(model) {
     return HIGHEST_USAGE_RATE;
 }
 
+// Display precision for one dollar figure. Two decimals is right for everything
+// the panel normally shows, but a real-but-tiny spend — a deepseek-v4-flash turn
+// at $0.14/M, a kimi cache-hit one — rounds to `$0.00` there and reads as no
+// spend at all. Anything under a cent therefore falls back to four decimals, so
+// a small number looks small rather than looking like zero. A genuine zero (and
+// a non-numeric figure) still reads `$0.00`.
+export function formatUsd(cost) {
+    const n = typeof cost === 'number' && isFinite(cost) ? cost : 0;
+    if (n > 0 && n < 0.01) return '$' + n.toFixed(4);
+    return '$' + n.toFixed(2);
+}
+
 function usageTokenCount(value) {
     const n = typeof value === 'number' ? value : parseFloat(value);
     return (isFinite(n) && n > 0) ? n : 0;
@@ -1711,7 +1723,7 @@ function renderProviderSplit(container, rows) {
         dot.className = 'usageSpendProviderDot usageSpendProviderDot--' + b.key;
         const text = document.createElement('span');
         text.className = 'usageSpendProviderLegendText';
-        text.textContent = b.label + ' $' + b.cost.toFixed(2);
+        text.textContent = b.label + ' ' + formatUsd(b.cost);
         item.appendChild(dot);
         item.appendChild(text);
         legend.appendChild(item);
@@ -1914,7 +1926,7 @@ export function renderSpendChart(container, rows, now) {
     const tip = document.createElement('div');
     tip.className = 'usageSpendChartTip';
     function showTip(s) {
-        tip.textContent = s.label + ' · $' + s.cost.toFixed(2);
+        tip.textContent = s.label + ' · ' + formatUsd(s.cost);
     }
 
     for (let i = 0; i < n; i++) {
@@ -1944,7 +1956,7 @@ export function renderSpendChart(container, rows, now) {
         hit.setAttribute('data-date', s.date);
         hit.setAttribute('tabindex', '0');
         const title = document.createElementNS(NS, 'title');
-        title.textContent = s.label + ': $' + s.cost.toFixed(2);
+        title.textContent = s.label + ': ' + formatUsd(s.cost);
         hit.appendChild(title);
         hit.addEventListener('mouseenter', function() { showTip(s); });
         hit.addEventListener('click', function() { showTip(s); });

@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-08-21',
         fixed: [
             'Spend totals for runs on DeepSeek models now use DeepSeek’s published prices instead of a far higher placeholder estimate.',
+            'Spend under a cent now reads as a real figure in the provider breakdown and the daily-spend tooltip instead of showing $0.00.',
         ],
     },
     {
         version: '1.1',
         date: '2026-08-20',
         changed: [
-            'Spend totals for runs on Kimi or Grok models now use those providers’ real published prices instead of the high placeholder estimate.',
             'Model chips that used to read “default” now name the model that default actually resolves to, across the Models panel and a drafted entry’s ship chip.',
         ],
         fixed: [

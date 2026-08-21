@@ -11,6 +11,7 @@ import {
     computeCacheHitRate,
     renderSpendChart,
     providerSpendBreakdown,
+    formatUsd,
 } from '../src/claudeSheet.js';
 import { listLogic } from '../src/listLogic.js';
 import { getUsageBudget, setUsageBudget } from '../src/prefs.js';
@@ -594,5 +595,87 @@ describe('API spend — provider split render', () => {
         expect(note).toContain('chat, scans, and the ghost');
         expect(note).toContain('Max plan');
         expect(note).toContain('third-party runs');
+    });
+});
+
+describe('API spend — sub-cent formatting', () => {
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        localStorage.clear();
+        globalThis.__hasSession = true;
+        globalThis.__usageRows = [];
+        globalThis.__usageError = null;
+    });
+
+    afterEach(() => {
+        const b = document.getElementById('usageSpendBackdrop');
+        if (b && b.parentNode) b.parentNode.removeChild(b);
+        localStorage.clear();
+    });
+
+    it('formats zero, sub-cent, and ordinary figures at their own precision', () => {
+        expect(formatUsd(0)).toBe('$0.00');
+        expect(formatUsd(0.0007)).toBe('$0.0007');   // deepseek-v4-flash turn
+        expect(formatUsd(4.19)).toBe('$4.19');
+    });
+
+    it('treats exactly one cent as an ordinary figure, not a sub-cent one', () => {
+        expect(formatUsd(0.01)).toBe('$0.01');       // boundary: two decimals
+        expect(formatUsd(0.0099)).toBe('$0.0099');   // just under: four decimals
+    });
+
+    it('shows a sub-cent provider row as a real number rather than $0.00', async () => {
+        // 5000 input tokens at the deepseek flash rate = $0.0007.
+        globalThis.__usageRows = [{ model: 'deepseek-v4-flash', input_tokens: 5000 }];
+        openSpendPanel(document.createElement('button'));
+        await flush();
+        const providers = document.getElementById('usageSpendProviders');
+        const text = providers.querySelector('.usageSpendProviderLegendText').textContent;
+        expect(text).toBe('Other $0.0007');
+        expect(text).not.toContain('$0.00 ');
+    });
+
+    it('leaves an ordinary provider row at two decimals', async () => {
+        globalThis.__usageRows = [{ model: 'claude-sonnet-4-5', input_tokens: 1e6 }];
+        openSpendPanel(document.createElement('button'));
+        await flush();
+        const providers = document.getElementById('usageSpendProviders');
+        expect(providers.querySelector('.usageSpendProviderLegendText').textContent)
+            .toBe('Anthropic $3.00');
+    });
+
+    it('shows a sub-cent day in the chart tooltip rather than $0.00', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 6, 12, 0, 0);
+        const rows = [{
+            model: 'deepseek-v4-flash',
+            input_tokens: 5000,
+            created_at: new Date(2026, 7, 2, 12, 0, 0).toISOString(),
+        }];
+        renderSpendChart(c, rows, now);
+        const hit = c.querySelectorAll('.usageSpendChartHit')[1]; // Aug 2
+        expect(hit.querySelector('title').textContent).toBe('Aug 2: $0.0007');
+        hit.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(c.querySelector('.usageSpendChartTip').textContent).toBe('Aug 2 · $0.0007');
+    });
+
+    it('leaves an ordinary day in the chart tooltip at two decimals', () => {
+        const c = document.createElement('div');
+        const now = new Date(2026, 7, 6, 12, 0, 0);
+        const rows = [{
+            model: 'claude-sonnet-4-5',
+            input_tokens: 1e6,
+            created_at: new Date(2026, 7, 2, 12, 0, 0).toISOString(),
+        }];
+        renderSpendChart(c, rows, now);
+        const hit = c.querySelectorAll('.usageSpendChartHit')[1];
+        hit.dispatchEvent(new MouseEvent('mouseenter'));
+        expect(c.querySelector('.usageSpendChartTip').textContent).toBe('Aug 2 · $3.00');
+    });
+
+    it('keeps the grand total at two decimals — a tiny delta not moving it is correct', () => {
+        const c = document.createElement('div');
+        renderSpendReadout(c, 0.0007, 0);
+        expect(c.querySelector('.usageSpendAmount').textContent).toBe('$0.00');
     });
 });
