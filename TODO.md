@@ -1690,3 +1690,15 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: Worker allowlist changes (the v4 id migration ships separately), spend-panel layout or copy, and any modeling of DeepSeek's peak/off-peak tiers.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: ad0b50ac-d740-4cf9-ad49-ea343f4e845c -->
+
+- [ ] **[LOW]** Make sub-cent spend legible in the spend panel
+  - Type: bug
+  - Description: The spend panel formats every dollar figure with `toFixed(2)`, so models whose real cost per turn is under half a cent (deepseek-v4-flash at $0.14/$0.28 per million; kimi cache-hit turns at $0.30/M) render as `$0.00` in the per-model rows and tooltip, and small increments can't visibly move anything. The totals math is correct — this is purely display precision.
+  - Behavior:
+    - Add one pure helper, `formatUsd(cost)`: `0` → `$0.00`; `>= 0.01` → `'$' + cost.toFixed(2)` (unchanged for every figure the panel shows today); `> 0` and `< 0.01` → `'$' + cost.toFixed(4)` (e.g. `$0.0007`), so a real-but-tiny spend reads as a real-but-tiny number instead of zero.
+    - Use it for the per-model breakdown labels and the chart tooltip. The grand total keeps plain `toFixed(2)` — a tiny delta not moving a large total is correct accounting, not a bug.
+    - No layout, color, or copy changes.
+  - Implementation notes: Helper lives beside `rateForModel` in `claudeSheet.js`; Vitest it for the three branches (zero, sub-cent, normal) and the boundary at exactly 0.01.
+  - Out of scope: token-count sublines, changing the total's precision, panel redesign.
+  - File: `toDoList_main/src/claudeSheet.js`
+  <!-- id: 308bc8d1-4524-40db-803b-abff97639912 -->
