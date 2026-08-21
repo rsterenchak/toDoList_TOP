@@ -73,6 +73,50 @@ export function readAutoMerge3pAtScope(settings, scope) {
     return readAutoMerge3p(settings);
 }
 
+// The id an unconfigured surface actually runs on, out of the catalog's
+// `defaults` map — `{ run, triage, derive, scan, chat }` → model id, mirroring
+// the workflow hardcodes the Worker dispatches against. Read defensively: an
+// older Worker sends no map at all, and every caller below degrades to the
+// literal `default` text it used to print when this comes back ''.
+function defaultIdFor(defaults, surface) {
+    const map = (defaults && typeof defaults === 'object') ? defaults : {};
+    const id = map[surface];
+    return (typeof id === 'string') ? id.trim() : '';
+}
+
+// What one surface resolves to, as the two halves of a chip: `text` is the model
+// id it runs on, and `tag` names the layer that id fell out of — '' when it is
+// set at the scope on screen, 'global' or 'default' when it is falling through
+// from below. The single place that question is answered, because the matrix,
+// the picker's Inherit row, and the drafted card's chip all ask it and three
+// copies would disagree the first time one of them changed.
+//
+// The `default` case is the whole reason it exists. An unconfigured surface used
+// to render the word `default` twice over — once as the chip, once as the tag —
+// which named the layer but never the model, so the panel couldn't tell you what
+// RUN was about to run on. The tag still names the layer; the chip now names the
+// id from `defaults`, and falls back to the old word when the Worker sends none.
+export function resolveSurfaceChip(surface, settings, defaults, scope) {
+    const fallbackId = defaultIdFor(defaults, surface);
+
+    // GLOBAL reads its own raw layer, where presence of the key IS the pick —
+    // the same split buildModelRows draws the matrix from, since the resolved
+    // map at that scope carries whatever the repo layer won with.
+    if (scope === 'global') {
+        const pinned = readScopeLayer(settings, 'global').models[surface];
+        if (typeof pinned === 'string' && pinned) return { text: pinned, tag: '' };
+        return { text: fallbackId || 'default', tag: 'default' };
+    }
+
+    const entry = ((settings && settings.surfaces) || {})[surface] || {};
+    const value = typeof entry.value === 'string' ? entry.value : '';
+    const source = typeof entry.source === 'string' ? entry.source : '';
+    // A `source` the Worker doesn't recognise degrades to 'default', which is
+    // what an unset surface resolves to anyway.
+    const tag = source === 'repo' ? '' : (source === 'global' ? 'global' : 'default');
+    return { text: value || fallbackId || 'default', tag: tag };
+}
+
 function modelById(catalog, id) {
     const models = catalog && Array.isArray(catalog.models) ? catalog.models : [];
     for (let i = 0; i < models.length; i++) {
@@ -132,26 +176,29 @@ export function buildModelRows(catalog, settings, scope) {
         const surface = MODEL_SURFACES[i];
         const entry = surfaces[surface] || {};
         const resolved = typeof entry.value === 'string' ? entry.value : '';
-        const source = typeof entry.source === 'string' ? entry.source : '';
         const pinned = typeof globalModels[surface] === 'string' ? globalModels[surface] : '';
         const isPlanLane = planLanes.indexOf(surface) !== -1;
-        const setAtScope = isGlobal ? !!pinned : source === scope;
         const value = isGlobal ? pinned : resolved;
         const model = value ? modelById(cat, value) : null;
         const provider = model && model.provider ? model.provider : '';
+        // A dim chip is only half the story — the tag names WHERE the inherited
+        // value came from, so global-set and never-set don't look identical, and
+        // an empty tag is exactly "set at the scope on screen". At global scope
+        // there is nothing below to fall through from but the workflow's own
+        // hardcode, so unset always reads 'default' — and the chip beside it now
+        // names the id that hardcode resolves to instead of repeating the word.
+        const chip = resolveSurfaceChip(surface, settings, cat.defaults, scope);
         rows.push({
             surface: surface,
             label: surface.toUpperCase(),
             lane: isPlanLane ? 'plan' : 'other',
-            chipText: value || 'default',
-            inherited: !setAtScope,
-            // A dim chip is only half the story — the tag names WHERE the
-            // inherited value came from, so global-set and never-set don't look
-            // identical. A `source` the Worker doesn't recognise degrades to
-            // 'default', which is what an unset surface resolves to anyway. At
-            // global scope there is nothing below to fall through from but the
-            // workflow's own hardcode, so unset always reads 'default'.
-            sourceTag: setAtScope ? '' : ((!isGlobal && source === 'global') ? 'global' : 'default'),
+            chipText: chip.text,
+            inherited: !!chip.tag,
+            sourceTag: chip.tag,
+            // Keyed on the id explicitly pinned at this layer, NOT on the chip's
+            // text: a default-sourced row now names a real model, but nobody
+            // picked it, so badging it would report a billing change that isn't
+            // one.
             apiBadge: isPlanLane && !!provider && provider !== 'anthropic',
             locked: false,
             subline: '',
@@ -297,20 +344,26 @@ export function buildPickerList(options) {
 // What tapping "Inherit" would resolve to, spelled out so the row is a real
 // preview rather than a blank promise. When the surface is already inheriting,
 // its resolved value IS the inherit value and we can name it. When it is set at
-// this scope the underlying value isn't in the payload, so name the layer
-// instead of guessing a model id — unless the Worker volunteered one on the
-// entry's `inherited` field, which is read defensively for exactly that case.
+// this scope the underlying value isn't in the resolved map — but the global
+// layer is in the same payload, and beneath that sits the workflow hardcode the
+// catalog's `defaults` map names, so the row can still name a model rather than
+// a layer. `entry.inherited` still wins when the Worker volunteers it.
 //
-// Global scope has only one layer beneath it — the workflow's own hardcode,
-// which has no id to name — so it says so and never reaches for the resolved
-// map, whose value at that point is whatever the REPO layer won with.
-export function describeInherit(settings, surface, scope) {
-    if (scope === 'global') return 'workflow default';
+// Global scope has only one layer beneath it, the workflow's own hardcode: it
+// names that id straight from `defaults` and never reaches for the resolved map,
+// whose value at that point is whatever the REPO layer won with. With no
+// `defaults` from the Worker, both scopes fall back to naming the layer the way
+// they always did.
+export function describeInherit(settings, surface, scope, defaults) {
+    const fallbackId = defaultIdFor(defaults, surface);
+    if (scope === 'global') return fallbackId || 'workflow default';
     const entry = ((settings && settings.surfaces) || {})[surface] || {};
     const source = typeof entry.source === 'string' ? entry.source : '';
     if (typeof entry.inherited === 'string' && entry.inherited) return entry.inherited;
     if (source !== scope && typeof entry.value === 'string' && entry.value) return entry.value;
-    return 'global setting';
+    const pinnedGlobal = readScopeLayer(settings, 'global').models[surface];
+    if (typeof pinnedGlobal === 'string' && pinnedGlobal) return pinnedGlobal;
+    return fallbackId || 'global setting';
 }
 
 // The id pinned AT the showing scope, or '' when the surface inherits there —
@@ -626,7 +679,7 @@ export function openModelsPanel(anchorEl) {
             catalog: catalog,
             surface: surface,
             current: pinnedAtScope(settings, surface, scope),
-            inheritHint: describeInherit(settings, surface, scope),
+            inheritHint: describeInherit(settings, surface, scope, catalog && catalog.defaults),
             onPick: function(model) { commitModel(surface, model); },
         }));
 

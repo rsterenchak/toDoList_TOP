@@ -50,6 +50,27 @@ describe('model settings — worker payloads', () => {
         expect(res.plan_lanes).toEqual([]);
     });
 
+    // The chips that name what an unconfigured surface actually runs on read
+    // this map straight off the catalog, so it has to survive the call verbatim
+    // — a normalization that dropped an unrecognised field would silently put
+    // every default-sourced chip back on the literal word `default`.
+    it('passes the catalog defaults map through untouched', async () => {
+        const defaults = { run: 'claude-opus-5', chat: 'claude-sonnet-5' };
+        fetchSpy.mockResolvedValueOnce({
+            ok: true,
+            json: () => Promise.resolve({ models: [], plan_lanes: [], defaults: defaults }),
+        });
+        const res = await fetchModelCatalog();
+        expect(res.defaults).toEqual(defaults);
+    });
+
+    // An older Worker sends no map at all; absence must stay absence rather than
+    // becoming an empty object the UI would read as "no default for anything".
+    it('tolerates a catalog with no defaults map', async () => {
+        const res = await fetchModelCatalog();
+        expect(res.defaults).toBeUndefined();
+    });
+
     // The read used to name the registry's `'*'` sentinel row for global scope,
     // which the Worker keeps out of its dispatch allowlist on purpose — the
     // GLOBAL tab could only ever come back "Target not in allowlist (400)". One

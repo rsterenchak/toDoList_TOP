@@ -1295,11 +1295,15 @@ function realRepoOnly(repo) {
 }
 
 // The catalog of pickable models: `{ models: [{ id, provider, lanes, quota }],
-// plan_lanes, ghost_model }`. `lanes` is the set of surfaces a model is
-// allowlisted for, `plan_lanes` names the surfaces that bill to plan quota, and
-// `ghost_model` is the server-pinned model the ghost always runs on. Catalog
-// shape is the Worker's to define — the panel reads it defensively rather than
-// hardcoding a model list that would drift the moment the Worker's changed.
+// plan_lanes, ghost_model, defaults }`. `lanes` is the set of surfaces a model
+// is allowlisted for, `plan_lanes` names the surfaces that bill to plan quota,
+// `ghost_model` is the server-pinned model the ghost always runs on, and
+// `defaults` maps each surface to the id its workflow hardcode resolves to —
+// what an unconfigured surface is really running, which the UI used to be able
+// to call nothing but the word `default`. Catalog shape is the Worker's to
+// define, so every field rides through untouched and the panel reads them
+// defensively rather than hardcoding a model list — or a defaults map — that
+// would drift the moment the Worker's changed.
 export async function fetchModelCatalog() {
     try {
         const res = await postToWorker({ models: true });

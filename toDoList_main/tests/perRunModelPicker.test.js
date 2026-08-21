@@ -126,6 +126,30 @@ describe('resolveRunModel — which model a drafted card actually ships on', () 
         expect(r.chipText).toBe('default');
         expect(r.overridden).toBe(false);
     });
+
+    it('names the workflow default on the chip once the catalog publishes one', () => {
+        const defaults = { run: 'claude-opus-5' };
+        const r = resolveRunModel('', { surfaces: { run: { value: '', source: 'default' } } }, defaults);
+        expect(r.chipText).toBe('claude-opus-5');
+        // Dim, tagged `default` — the chip names the model, the tag still names
+        // the layer, and nothing about this reads as a per-run pick.
+        expect(r.sourceTag).toBe('default');
+        expect(r.overridden).toBe(false);
+        // `model` is what the ship path and the confirm copy reason about. The
+        // run INHERITS this id rather than selecting it, so naming it on the
+        // chip must not turn an inheriting ship into an explicit override.
+        expect(r.model).toBe('');
+        expect(r.inherited).toBe('');
+    });
+
+    it('leaves a resolved repo default and a per-run pick alone', () => {
+        const defaults = { run: 'claude-opus-5' };
+        const inheritingRepoPick = resolveRunModel('', settings('claude-opus-4-8'), defaults);
+        expect(inheritingRepoPick.chipText).toBe('claude-opus-4-8');
+        const picked = resolveRunModel('kimi-k3', settings('claude-opus-4-8'), defaults);
+        expect(picked.chipText).toBe('kimi-k3');
+        expect(picked.sourceTag).toBe('');
+    });
 });
 
 
