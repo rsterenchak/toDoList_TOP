@@ -1661,3 +1661,17 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Vitest: cover the three paths against a stubbed `window.__reportBootFailure` — render throw reports once and skips the sync pipeline, a pre-render rejection reports from the terminal catch, a `bootSyncPipeline` rejection warns without reporting.
   - File: `toDoList_main/src/index.js`
   <!-- id: 72eb553a-e79c-49bb-ad8a-eecf28359ce8 -->
+
+- [ ] **[LOW]** Show the actual resolved model id on inherited "default" chips
+  - Type: feature
+  - Description: Everywhere the model UI currently renders the literal word `default` for an unconfigured surface, show the model id that default actually resolves to. The Worker's catalog response (`postToWorker({ models: true })`) now carries a `defaults` map — `{ run, triage, derive, scan, chat }` → model id — mirroring the workflow hardcodes and route constants, so this is display-layer only.
+  - Behavior:
+    - `fetchModelCatalog` in `inject.js` passes the response's `defaults` object through untouched (add it to any normalization; tolerate its absence from an older Worker, in which case every behavior below falls back to today's literal `default` text).
+    - Models panel matrix (`modelsPanel.js`): a row whose source is `default` renders the id from `defaults[surface]` as the dim chip text, keeping the tiny `default` source tag exactly as it is — so RUN reads `claude-opus-5` dim with a `default` tag instead of the word twice. Set-at-scope and `global`-sourced chips are untouched, as is the locked GHOST row.
+    - Picker sheet inherit row: at global scope, "Inherit" names `defaults[surface]` instead of the phrase "workflow default"; at repo scope it continues to name the global row's value when one exists, falling back to `defaults[surface]` when the global row has nothing for that surface.
+    - Drafted-entry card chip (`claudeSheet.js`): when the RUN resolution is default-sourced, the chip shows `defaults.run` dim with its `default` tag, instead of the bare word. The per-run override and Ship → PR behaviors are untouched.
+    - No new styles: reuse the existing dim-chip and source-tag classes as-is.
+  - Implementation notes: Keep the "what does this surface resolve to" logic in one small pure helper (surface + settings + defaults → { text, tag }) shared by the matrix, the picker inherit row, and the card chip, and unit-test it in Vitest for the three source cases plus the missing-defaults fallback. The CHAT value names the fast-turn default; deep-think stays pinned in chat.js and is not this chip's concern.
+  - Out of scope: real per-provider `USAGE_RATES` for kimi/grok/deepseek (separate entry once current prices are sourced — the opus-seeded over-reporting stands until then); any Worker changes (the `defaults` map is already published).
+  - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
+  <!-- id: 895e48f6-b7de-4408-b177-d5a96607992c -->
