@@ -1691,7 +1691,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: ad0b50ac-d740-4cf9-ad49-ea343f4e845c -->
 
-- [ ] **[LOW]** Make sub-cent spend legible in the spend panel
+- [x] **[LOW]** Make sub-cent spend legible in the spend panel — Completed: 2026-08-21
   - Type: bug
   - Description: The spend panel formats every dollar figure with `toFixed(2)`, so models whose real cost per turn is under half a cent (deepseek-v4-flash at $0.14/$0.28 per million; kimi cache-hit turns at $0.30/M) render as `$0.00` in the per-model rows and tooltip, and small increments can't visibly move anything. The totals math is correct — this is purely display precision.
   - Behavior:
