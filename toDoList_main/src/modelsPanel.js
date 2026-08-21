@@ -30,7 +30,27 @@ import { wireModalDismiss } from './modalDismiss.js';
 // The pickable surfaces, in the order the matrix stacks them. GHOST is appended
 // separately by buildModelRows because it is display-only — the model it runs on
 // is pinned server-side and the row is not tappable.
-const MODEL_SURFACES = ['run', 'triage', 'derive', 'scan', 'chat'];
+//
+// DEEP closes the pickable set, straight after CHAT: the composer's two send
+// modes are two registry surfaces now, so the panel stacks them together rather
+// than leaving deep-think as the one model the user can't see or change.
+const MODEL_SURFACES = ['run', 'triage', 'derive', 'scan', 'chat', 'deep'];
+
+// The dim right-hand note on a row, where the label alone doesn't say which of
+// two neighbours a surface is. CHAT and DEEP are the composer's two send modes,
+// and nothing about the words "CHAT" and "DEEP" says which one a Fast send uses.
+const SURFACE_SUBLINES = { chat: 'fast sends', deep: 'deep sends' };
+
+// The catalog lane a surface's picker filters on. The Worker validates a `deep`
+// pick against the `chat` lane — deep-think is the chat route on a heavier
+// model, not a route of its own — so the picker mirrors that mapping here and
+// offers exactly the set a deep write would accept. Every other surface is its
+// own lane.
+const PICKER_LANE_ALIASES = { deep: 'chat' };
+
+function pickerLaneFor(surface) {
+    return PICKER_LANE_ALIASES[surface] || surface;
+}
 
 // The surfaces that bill to plan quota when they run on an Anthropic model.
 // Only used when the catalog doesn't name its own `plan_lanes`; the Worker's
@@ -201,7 +221,7 @@ export function buildModelRows(catalog, settings, scope) {
             // one.
             apiBadge: isPlanLane && !!provider && provider !== 'anthropic',
             locked: false,
-            subline: '',
+            subline: SURFACE_SUBLINES[surface] || '',
         });
     }
 
@@ -229,14 +249,18 @@ export function buildModelRows(catalog, settings, scope) {
 // hints the provider instead. A model with no `lanes` is treated as allowlisted
 // nowhere rather than everywhere — an unknown allowlist should narrow the menu,
 // not widen it into picks the Worker would reject.
+//
+// The lane filtered on is `pickerLaneFor(surface)`, not the surface itself, so
+// DEEP offers the `chat` lane the Worker validates a deep pick against.
 export function buildPickerGroups(catalog, surface) {
     const models = (catalog && Array.isArray(catalog.models)) ? catalog.models : [];
+    const lane = pickerLaneFor(surface);
     const plan = [];
     const api = [];
     for (let i = 0; i < models.length; i++) {
         const m = models[i];
         if (!m || !m.id) continue;
-        if (!Array.isArray(m.lanes) || m.lanes.indexOf(surface) === -1) continue;
+        if (!Array.isArray(m.lanes) || m.lanes.indexOf(lane) === -1) continue;
         if (m.provider === 'anthropic') {
             plan.push({ id: m.id, hint: m.quota ? String(m.quota) : '' });
         } else {

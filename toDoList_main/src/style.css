@@ -2923,12 +2923,17 @@ body:has(#settingsMenu) #claudeLauncher {
 /* Split send — main button: a labeled pill ("Fast" / "Deep") forming the left
    half of the split control. Filled with the same lighter accent purple the
    mode-dropdown picker (the caret) uses, with a white label for contrast; the
-   Deep variant below keeps the matching accent fill when Deep is the default. */
+   Deep variant below keeps the matching accent fill when Deep is the default.
+   Stacks its two captions — the mode word over the model that mode runs on —
+   which is why it columns rather than rows; with the model line hidden the mode
+   word centres exactly as it did as an only child. */
 .claudeComposerSend {
   flex-shrink: 0;
   display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 1px;
   height: 36px;
   padding: 0 12px;
   border-radius: 18px 0 0 18px;
@@ -2944,7 +2949,26 @@ body:has(#settingsMenu) #claudeLauncher {
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.2px;
+  line-height: 1.1;
 }
+/* The model sub-caption: names what the ACTIVE mode will actually run on, so
+   "Deep" is a model rather than a mood. Capped and ellipsised because model ids
+   are unbounded and the composer row is not — a long id must never widen the
+   send control past the textarea. Hidden until the per-repo model settings
+   resolve (hence the [hidden] display guard, which an inline-flex child needs to
+   actually disappear). */
+.claudeSendModelLabel {
+  max-width: 92px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 8px;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  opacity: 0.78;
+}
+.claudeSendModelLabel[hidden] { display: none; }
 /* Split send — caret: the right half that opens the mode menu. Mirrors the main
    button's surface and joins it into one pill (shared border, rounded only on
    the right). */
@@ -3070,7 +3094,9 @@ body:has(#settingsMenu) #claudeLauncher {
   align-items: center;
 }
 /* Mode menu — drops above the split control (the composer sits at the bottom of
-   the sheet). Lists Fast / Deep, the active default carrying a ★. */
+   the sheet). Lists Fast / Deep, each naming the model it resolves to, the active
+   default carrying a ★. Anchored right and shrink-to-fit, so a long model id
+   grows the menu leftward instead of wrapping. */
 .claudeModeMenu {
   position: absolute;
   right: 0;
@@ -3111,7 +3137,7 @@ body:has(#settingsMenu) #claudeLauncher {
   text-align: center;
   color: #9D93EE;
 }
-.claudeModeName { flex: 1; }
+.claudeModeName { flex: 1; white-space: nowrap; }
 
 /* Voice dictation button — a plain borderless round icon button in the composer
    row, matching the attach button's weight. Idle is a muted glyph; recording
@@ -3624,13 +3650,15 @@ button.claudeAttachChipLabel { cursor: pointer; }
 }
 
 /* Everything that belongs to the work chat steps aside: the model picker (the
-   send caret and its menu), the task-scope chip, the attach / image / voice
-   circles, the image rail, and the attachment chips. */
+   send caret, its menu, and the send button's model sub-caption), the task-scope
+   chip, the attach / image / voice circles, the image rail, and the attachment
+   chips. */
 #claudeSheetBody.is-possessed .claudeAttach,
 #claudeSheetBody.is-possessed .claudeImageAttach,
 #claudeSheetBody.is-possessed #claudeComposerMic,
 #claudeSheetBody.is-possessed #claudeComposerSendCaret,
 #claudeSheetBody.is-possessed #claudeComposerModeMenu,
+#claudeSheetBody.is-possessed .claudeSendModelLabel,
 #claudeSheetBody.is-possessed #claudeScopeChip,
 #claudeSheetBody.is-possessed #claudeImageRail,
 #claudeSheetBody.is-possessed .claudeAttachChip {

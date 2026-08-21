@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-21',
+        added: [
+            'The Models panel now has a DEEP row for picking the deep-think model, and the composer’s Fast and Deep send modes name the model each one will run.',
+        ],
         fixed: [
             'Spend totals for runs on DeepSeek models now use DeepSeek’s published prices instead of a far higher placeholder estimate.',
             'Spend under a cent now reads as a real figure in the provider breakdown and the daily-spend tooltip instead of showing $0.00.',
@@ -14,9 +17,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-20',
-        changed: [
-            'Model chips that used to read “default” now name the model that default actually resolves to, across the Models panel and a drafted entry’s ship chip.',
-        ],
         fixed: [
             'The Models panel’s GLOBAL tab now loads instead of failing with an allowlist error, and shows only the models pinned as defaults for every repo.',
             'A load that fails before the app draws now falls back to the automatic recovery reload instead of leaving you on an empty screen.',
