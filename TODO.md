@@ -1676,7 +1676,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
   <!-- id: 895e48f6-b7de-4408-b177-d5a96607992c -->
 
-- [ ] **[MEDIUM]** Add sourced DeepSeek rate families to USAGE_RATES
+- [x] **[MEDIUM]** Add sourced DeepSeek rate families to USAGE_RATES — Completed: 2026-08-21
   - Type: bug
   - Description: Spend math for DeepSeek models falls through `rateForModel` to the opus fallback — a ~100x over-report on input for the cheapest provider in the allowlist. Add the two DeepSeek families with sourced rates, matching the structure and comment style of the existing `kimi`/`grok` rows (both of which were verified against current provider pricing on 2026-08-21 and are correct as-is — do not change them).
   - Behavior:
