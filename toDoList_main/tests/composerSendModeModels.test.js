@@ -10,8 +10,8 @@
 //     default-source naming and the before-the-cache-resolves fallback, neither
 //     of which is recoverable from the DOM after the fact.
 //   • The composer itself: plain `Fast` / `Deep` until the shared per-repo model
-//     settings cache lands, then both modes named, and the caption tracking
-//     whichever mode is active.
+//     settings cache lands, then both modes named, and the toggle chip's acronym
+//     tracking whichever mode is active.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 vi.mock('../src/supabaseClient.js', () => {
@@ -41,7 +41,7 @@ vi.mock('../src/supabaseClient.js', () => {
     };
 });
 
-import { mountClaudeSheet, describeSendModes } from '../src/claudeSheet.js';
+import { mountClaudeSheet, describeSendModes, modelAcronym } from '../src/claudeSheet.js';
 import { initInjectConfig } from '../src/inject.js';
 
 describe('describeSendModes — what Fast and Deep will actually run', () => {
@@ -53,11 +53,13 @@ describe('describeSendModes — what Fast and Deep will actually run', () => {
         expect(m.deepLabel).toBe('Deep · claude-opus-4-8');
     });
 
-    it('captions the ACTIVE mode, so the button and the menu agree', () => {
+    it('captions the ACTIVE mode, so the toggle and the menu agree', () => {
         const fast = describeSendModes('fast', 'claude-haiku-4-5', 'claude-opus-4-8', DEFAULTS);
         expect(fast.captionModel).toBe('claude-haiku-4-5');
+        expect(fast.toggleLabel).toBe('HAI');
         const deep = describeSendModes('deep', 'claude-haiku-4-5', 'claude-opus-4-8', DEFAULTS);
         expect(deep.captionModel).toBe('claude-opus-4-8');
+        expect(deep.toggleLabel).toBe('OPU');
         // Same inputs, only the mode differs — the labels are unchanged.
         expect(deep.fastLabel).toBe(fast.fastLabel);
         expect(deep.deepLabel).toBe(fast.deepLabel);
@@ -68,6 +70,7 @@ describe('describeSendModes — what Fast and Deep will actually run', () => {
         expect(m.fastLabel).toBe('Fast · claude-sonnet-5');
         expect(m.deepLabel).toBe('Deep · claude-opus-5');
         expect(m.captionModel).toBe('claude-opus-5');
+        expect(m.toggleLabel).toBe('OPU');
         // Mixed: one surface pinned, the other falling through.
         const mixed = describeSendModes('fast', 'gpt-5-codex', '', DEFAULTS);
         expect(mixed.fastLabel).toBe('Fast · gpt-5-codex');
@@ -81,6 +84,9 @@ describe('describeSendModes — what Fast and Deep will actually run', () => {
         expect(cold.fastLabel).toBe('Fast');
         expect(cold.deepLabel).toBe('Deep');
         expect(cold.captionModel).toBe('');
+        // The chip has no acronym to wear, so it wears the mode itself.
+        expect(cold.toggleLabel).toBe('DEEP');
+        expect(describeSendModes('fast', '', '', null).toggleLabel).toBe('FAST');
         // A defaults map missing just one surface degrades only that half.
         const half = describeSendModes('deep', '', '', { chat: 'claude-sonnet-5' });
         expect(half.fastLabel).toBe('Fast · claude-sonnet-5');
@@ -92,6 +98,28 @@ describe('describeSendModes — what Fast and Deep will actually run', () => {
         const m = describeSendModes('fast', '   ', '  ', DEFAULTS);
         expect(m.fastLabel).toBe('Fast · claude-sonnet-5');
         expect(m.deepLabel).toBe('Deep · claude-opus-5');
+    });
+});
+
+describe('modelAcronym — the three letters the composer toggle wears', () => {
+    it('names the family, not the vendor prefix every id shares', () => {
+        expect(modelAcronym('claude-sonnet-5')).toBe('SON');
+        expect(modelAcronym('claude-opus-5')).toBe('OPU');
+        expect(modelAcronym('claude-haiku-4-5-20251001')).toBe('HAI');
+        expect(modelAcronym('us.anthropic.claude-opus-4-8')).toBe('OPU');
+    });
+
+    it('still yields a tag for a third-party id with no claude- prefix', () => {
+        expect(modelAcronym('gpt-5-codex')).toBe('GPT');
+        expect(modelAcronym('  Claude-Sonnet-5  ')).toBe('SON');
+    });
+
+    it('yields nothing for an absent or letterless id, so the caller can fall back', () => {
+        expect(modelAcronym('')).toBe('');
+        expect(modelAcronym('   ')).toBe('');
+        expect(modelAcronym(null)).toBe('');
+        expect(modelAcronym(undefined)).toBe('');
+        expect(modelAcronym('4-5')).toBe('');
     });
 });
 
@@ -107,6 +135,10 @@ function modeName(mode) {
 
 function sendButton() {
     return document.getElementById('claudeComposerSend');
+}
+
+function modelToggle() {
+    return document.getElementById('claudeComposerModelToggle');
 }
 
 // FIRST in the file, deliberately: the per-repo settings cache is module-level
@@ -125,13 +157,13 @@ describe('composer send mode — before any model settings resolve', () => {
         mountClaudeSheet(document.createElement('div'));
     });
 
-    it('paints plain Fast / Deep and shows no model caption at all', async () => {
+    it('paints plain Fast / Deep and names no model on the toggle at all', async () => {
         await flush();
-        expect(sendButton().querySelector('.claudeSendModeLabel').textContent).toBe('Fast');
-        const model = sendButton().querySelector('.claudeSendModelLabel');
-        expect(model).toBeTruthy();
-        expect(model.hidden).toBe(true);
-        expect(model.textContent).toBe('');
+        const toggle = modelToggle();
+        expect(toggle.querySelector('.claudeModelToggleTag').textContent).toBe('FAST');
+        // No model resolved, so nothing claims one — not the chip's tooltip, not
+        // the send pill's.
+        expect(toggle.title).toBe('Fast send');
         expect(sendButton().title).toBe('');
         expect(modeName('fast')).toBe('Fast');
         expect(modeName('deep')).toBe('Deep');
@@ -181,19 +213,22 @@ describe('composer send mode — naming the models on screen', () => {
         expect(modeName('fast')).toBe('Fast · claude-sonnet-5');
     });
 
-    it('captions the send button with the ACTIVE mode’s model, and follows a switch', async () => {
+    it('tags the toggle with the ACTIVE mode’s model, and follows a switch', async () => {
         await flush();
-        const model = () => sendButton().querySelector('.claudeSendModelLabel');
-        expect(model().hidden).toBe(false);
-        expect(model().textContent).toBe('claude-sonnet-5');
+        const tag = () => modelToggle().querySelector('.claudeModelToggleTag').textContent;
+        expect(tag()).toBe('SON');
+        // The full id the acronym stands for stays reachable from the chip.
+        expect(modelToggle().title).toContain('claude-sonnet-5');
+        expect(modelToggle().getAttribute('aria-label')).toBe('Send mode: Fast · claude-sonnet-5');
         expect(sendButton().title).toContain('claude-sonnet-5');
 
-        // Switching the persisted default repoints the caption without touching
-        // the mode word, the accent, or the ★.
-        document.getElementById('claudeComposerSendCaret').click();
+        // Switching the persisted default repoints the acronym, the accent, and
+        // the ★ together.
+        modelToggle().click();
         document.querySelector('.claudeModeOption[data-mode="deep"]').click();
-        expect(model().textContent).toBe('claude-opus-4-8');
-        expect(sendButton().querySelector('.claudeSendModeLabel').textContent).toBe('Deep');
+        expect(tag()).toBe('OPU');
+        expect(modelToggle().title).toContain('claude-opus-4-8');
+        expect(modelToggle().classList.contains('claudeModelToggleDeep')).toBe(true);
         expect(sendButton().classList.contains('claudeComposerSendDeep')).toBe(true);
         expect(sendButton().getAttribute('aria-label')).toBe('Send deep');
         expect(localStorage.getItem('todoapp_chatMode')).toBe('deep');

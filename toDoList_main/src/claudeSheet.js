@@ -123,7 +123,7 @@ export const POSSESSION_EVENT = 'claudeGhostPossession';
 const GHOST_LISTENING_COPY = 'the ghost is listening';
 // The work composer's prompt. Possession swaps it for GHOST_PLACEHOLDER and
 // swaps it back on the way out, so the placeholder always names who is reading.
-const CHAT_PLACEHOLDER = 'Ask Claude…';
+const CHAT_PLACEHOLDER = 'Ask Agent';
 
 const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
@@ -2539,21 +2539,43 @@ function setChatMode(mode) {
     renderSendMode();
 }
 
-// What each send mode will actually run on, in the three strings the composer
-// paints: the two menu items and the main button's sub-caption. Fast is the
-// `chat` surface and Deep is the `deep` surface — two registry surfaces now that
+// A model id compressed to the three-letter acronym the composer's model toggle
+// wears — `claude-sonnet-5` → SON, `claude-opus-5` → OPU. The toggle is a chip
+// on a control row shared with the attach circles and the send pill, so it has
+// room for a tag and not for an id; the full id stays one tap away in the mode
+// menu (and in the chip's title).
+//
+// The family word is whatever survives stripping a vendor prefix (`anthropic.`,
+// `us.anthropic.`) and the leading `claude-`; anything unrecognised falls back
+// to the first alphabetic run in the id, so a third-party id like `gpt-5-codex`
+// still yields GPT rather than nothing. An id with no letters at all yields ''
+// and the caller shows the mode word instead.
+export function modelAcronym(modelId) {
+    const raw = typeof modelId === 'string' ? modelId.trim().toLowerCase() : '';
+    if (!raw) return '';
+    // Drop a dotted vendor namespace, then the `claude-` family prefix, so the
+    // acronym names the model rather than the vendor every id shares.
+    const afterVendor = raw.slice(raw.lastIndexOf('.') + 1);
+    const afterFamily = afterVendor.replace(/^claude-/, '');
+    const word = (afterFamily.match(/[a-z]+/) || raw.match(/[a-z]+/) || [''])[0];
+    return word.slice(0, 3).toUpperCase();
+}
+
+// What each send mode will actually run on, in the strings the composer paints:
+// the two menu items and the model toggle's chip label. Fast is the `chat`
+// surface and Deep is the `deep` surface — two registry surfaces now that
 // deep-think is pickable, so "Fast" and "Deep" can name real models instead of
 // standing for whatever the Worker happens to resolve.
 //
-// Kept pure, and kept as ONE decision, because the menu and the caption must
-// never disagree: a menu reading `Deep · claude-opus-5` above a button captioned
-// with something else is worse than no caption at all.
+// Kept pure, and kept as ONE decision, because the menu and the toggle must
+// never disagree: a menu reading `Deep · claude-opus-5` beside a chip tagged
+// with something else is worse than no chip at all.
 //
 // A resolved value wins; with none, the catalog's `defaults` map names what the
 // unconfigured surface falls through to. With NEITHER — the per-repo settings
-// cache hasn't resolved yet, or the read failed — the labels degrade to the
-// plain `Fast` / `Deep` the composer has always shown and `captionModel` comes
-// back '', so the button shows a mode rather than a guess.
+// cache hasn't resolved yet, or the read failed — the menu labels degrade to the
+// plain `Fast` / `Deep` the composer has always shown, `captionModel` comes back
+// '', and the chip wears the uppercased mode word rather than a guessed acronym.
 export function describeSendModes(mode, resolvedChat, resolvedDeep, defaults) {
     const map = (defaults && typeof defaults === 'object') ? defaults : {};
     function pick(value, fallback) {
@@ -2563,10 +2585,13 @@ export function describeSendModes(mode, resolvedChat, resolvedDeep, defaults) {
     }
     const chat = pick(resolvedChat, map.chat);
     const deep = pick(resolvedDeep, map.deep);
+    const isDeep = mode === 'deep';
+    const active = isDeep ? deep : chat;
     return {
         fastLabel: chat ? 'Fast · ' + chat : 'Fast',
         deepLabel: deep ? 'Deep · ' + deep : 'Deep',
-        captionModel: mode === 'deep' ? deep : chat,
+        captionModel: active,
+        toggleLabel: modelAcronym(active) || (isDeep ? 'DEEP' : 'FAST'),
     };
 }
 
@@ -2577,14 +2602,16 @@ function resolvedSurfaceValue(settings, surface) {
     return typeof entry.value === 'string' ? entry.value.trim() : '';
 }
 
-// Paint the main send button (label + model sub-caption + accent + aria-label)
-// and the menu's items + ★ from the current chatMode. Defaults to the live
-// contentEl scope, but accepts an explicit `root` so it can paint a freshly-built
-// view before it is mounted (at which point contentEl is still null).
+// Paint the model toggle (acronym + accent + title), the send pill (accent +
+// aria-label), and the menu's items + ★ from the current chatMode. Defaults to
+// the live contentEl scope, but accepts an explicit `root` so it can paint a
+// freshly-built view before it is mounted (at which point contentEl is still
+// null).
 //
 // The model names come out of the SAME per-repo settings cache the drafted-entry
-// card's chip reads, never a second fetch of their own — one cache means the card
-// and the composer can't disagree about what this workspace resolves to.
+// card's chip reads, never a second fetch of their own — one cache means the card,
+// the Models panel, and the composer can't disagree about what this workspace
+// resolves to.
 function renderSendMode(root) {
     const scope = root || contentEl;
     if (!scope) return;
@@ -2596,15 +2623,24 @@ function renderSendMode(root) {
         resolvedSurfaceValue(settings, DEEP_MODEL_SURFACE),
         runModelCatalog && runModelCatalog.defaults,
     );
+    const toggle = scope.querySelector('#claudeComposerModelToggle');
+    if (toggle) {
+        const tag = toggle.querySelector('.claudeModelToggleTag');
+        if (tag) tag.textContent = modes.toggleLabel;
+        // The chip is three letters wide, so the mode it stands for and the id it
+        // abbreviates both live in the accessible name and the tooltip.
+        const mode = isDeep ? 'Deep' : 'Fast';
+        toggle.setAttribute(
+            'aria-label',
+            'Send mode: ' + mode + (modes.captionModel ? ' · ' + modes.captionModel : ''),
+        );
+        toggle.title = modes.captionModel
+            ? mode + ' send · runs on ' + modes.captionModel
+            : mode + ' send';
+        toggle.classList.toggle('claudeModelToggleDeep', isDeep);
+    }
     const send = scope.querySelector('#claudeComposerSend');
     if (send) {
-        const label = send.querySelector('.claudeSendModeLabel');
-        if (label) label.textContent = isDeep ? 'Deep' : 'Fast';
-        const model = send.querySelector('.claudeSendModelLabel');
-        if (model) {
-            model.textContent = modes.captionModel;
-            model.hidden = !modes.captionModel;
-        }
         send.setAttribute('aria-label', isDeep ? 'Send deep' : 'Send');
         send.title = modes.captionModel
             ? (isDeep ? 'Deep send · runs on ' : 'Fast send · runs on ') + modes.captionModel
@@ -2649,17 +2685,17 @@ function isModeMenuOpen() {
 
 function openModeMenu() {
     const menu = sheetQuery('#claudeComposerModeMenu');
-    const caret = sheetQuery('#claudeComposerSendCaret');
+    const toggle = sheetQuery('#claudeComposerModelToggle');
     if (!menu) return;
     menu.hidden = false;
-    if (caret) caret.setAttribute('aria-expanded', 'true');
+    if (toggle) toggle.setAttribute('aria-expanded', 'true');
 }
 
 function closeModeMenu() {
     const menu = sheetQuery('#claudeComposerModeMenu');
-    const caret = sheetQuery('#claudeComposerSendCaret');
+    const toggle = sheetQuery('#claudeComposerModelToggle');
     if (menu) menu.hidden = true;
-    if (caret) caret.setAttribute('aria-expanded', 'false');
+    if (toggle) toggle.setAttribute('aria-expanded', 'false');
 }
 
 function toggleModeMenu() {
@@ -2738,43 +2774,42 @@ function buildChatView() {
     input.className = 'claudeComposerInput';
     input.setAttribute('placeholder', CHAT_PLACEHOLDER);
     input.setAttribute('rows', '1');
-    // Split send button: one main action that sends in the persistent default
-    // mode (chatMode — 'fast' or 'deep', its label reflecting that mode) plus a
-    // caret that opens a small menu to pick and persist the default. This replaces
-    // the former side-by-side Fast/Deep send pair, so a deep send is a deliberate,
-    // remembered choice rather than a separate per-tap button — and Enter now
-    // sends in the chosen default rather than always Fast.
+    // Send pill: one action that sends in the persistent default mode (chatMode —
+    // 'fast' or 'deep'), keeping the accent fill that marks a Deep default. The
+    // mode itself is now chosen from the model toggle below rather than a caret
+    // welded to this button, so the pill is a pill again — a single word at the
+    // far end of the control row.
     const send = document.createElement('button');
     send.id = 'claudeComposerSend';
     send.type = 'button';
     send.className = 'claudeComposerSend';
+    send.textContent = 'Send';
     send.setAttribute('aria-label', 'Send');
-    // The main button's caption names the active default ("Fast" / "Deep") over
-    // the model that mode will actually run on; two spans so renderSendMode() can
-    // repaint each independently. Initial text is filled by renderSendMode() below
-    // once the button is in the DOM — the model line starts hidden and stays
-    // hidden until the per-repo settings cache resolves, so the button never
-    // flashes a model it had to guess at.
-    const sendModeLabel = document.createElement('span');
-    sendModeLabel.className = 'claudeSendModeLabel';
-    send.appendChild(sendModeLabel);
-    const sendModelLabel = document.createElement('span');
-    sendModelLabel.className = 'claudeSendModelLabel';
-    sendModelLabel.hidden = true;
-    send.appendChild(sendModelLabel);
 
-    // Caret: toggles the mode menu that opens above the split button.
-    const sendCaret = document.createElement('button');
-    sendCaret.id = 'claudeComposerSendCaret';
-    sendCaret.type = 'button';
-    sendCaret.className = 'claudeComposerSendCaret';
-    sendCaret.textContent = '▾';
-    sendCaret.setAttribute('aria-label', 'Choose send mode');
-    sendCaret.setAttribute('aria-haspopup', 'menu');
-    sendCaret.setAttribute('aria-expanded', 'false');
+    // Model toggle: the acronym chip that leads the control row (SON / OPU — see
+    // modelAcronym) and opens the mode menu. It stands where the split send's
+    // caret used to, and it is the composer's only model affordance now: the tag
+    // names what the ACTIVE mode resolves to out of the shared per-repo settings
+    // cache, which is the same setting the Models panel writes, so the two
+    // surfaces cannot drift. Text is filled by renderSendMode() below.
+    const modelToggle = document.createElement('button');
+    modelToggle.id = 'claudeComposerModelToggle';
+    modelToggle.type = 'button';
+    modelToggle.className = 'claudeModelToggle';
+    modelToggle.setAttribute('aria-label', 'Send mode');
+    modelToggle.setAttribute('aria-haspopup', 'menu');
+    modelToggle.setAttribute('aria-expanded', 'false');
+    const modelToggleTag = document.createElement('span');
+    modelToggleTag.className = 'claudeModelToggleTag';
+    modelToggle.appendChild(modelToggleTag);
+    const modelToggleCaret = document.createElement('span');
+    modelToggleCaret.className = 'claudeModelToggleCaret';
+    modelToggleCaret.textContent = '▾';
+    modelToggleCaret.setAttribute('aria-hidden', 'true');
+    modelToggle.appendChild(modelToggleCaret);
 
     // Mode menu: two options (Fast / Deep), the active default carrying a ★. Opens
-    // above the button (the composer sits at the bottom of the sheet). Selecting a
+    // above the toggle (the composer sits at the bottom of the sheet). Selecting a
     // mode persists it and closes the menu; the ★ tracks the choice. Each item's
     // text is repainted by renderSendMode() to name the model that mode resolves
     // to; the pair below seeds the plain labels it falls back to.
@@ -2809,35 +2844,44 @@ function buildChatView() {
         modeMenu.appendChild(opt);
     });
 
-    // The main button and caret sit in one split control, with the menu anchored
-    // to it; .claudeSendSplit is the relative-positioned wrapper the menu drops
-    // out of.
-    const sendGroup = document.createElement('div');
-    sendGroup.id = 'claudeComposerSendSplit';
-    sendGroup.className = 'claudeSendSplit';
-    sendGroup.appendChild(send);
-    sendGroup.appendChild(sendCaret);
-    sendGroup.appendChild(modeMenu);
+    // The toggle and its menu sit in one relative-positioned wrapper the menu
+    // drops out of, so the menu stays anchored to the chip wherever the control
+    // row puts it.
+    const toggleGroup = document.createElement('div');
+    toggleGroup.id = 'claudeComposerModelToggleWrap';
+    toggleGroup.className = 'claudeModelToggleWrap';
+    toggleGroup.appendChild(modelToggle);
+    toggleGroup.appendChild(modeMenu);
 
-    // Composer row reads [📎] [🎤] [input] [Send ▾]: the attach button + its
-    // dropdown panel lead the row, the mic button follows, then the textarea, with
-    // the split send control last. buildAttach() carries the attach button's click
-    // listener and the panel; buildMicButton() carries the mic's listener (and
-    // returns null on browsers without speech recognition, so the affordance is
-    // hidden entirely rather than shown broken).
-    composer.appendChild(buildAttach());
-    composer.appendChild(buildImageAttach());
+    // Two rows, at every width. The textarea owns the top row outright, so a long
+    // draft can never collide with the controls the way it did when input and
+    // buttons shared one line; the controls read [SON ▾] [📎] [🖼] [🎤] … [Send]
+    // on the row beneath it, send pushed to the far end. buildAttach() carries the
+    // attach button's click listener and the panel; buildMicButton() carries the
+    // mic's listener (and returns null on browsers without speech recognition, so
+    // the affordance is hidden entirely rather than shown broken).
+    const inputRow = document.createElement('div');
+    inputRow.className = 'claudeComposerInputRow';
+    inputRow.appendChild(input);
+
+    const controlRow = document.createElement('div');
+    controlRow.className = 'claudeComposerControlRow';
+    controlRow.appendChild(toggleGroup);
+    controlRow.appendChild(buildAttach());
+    controlRow.appendChild(buildImageAttach());
     const mic = buildMicButton();
-    if (mic) composer.appendChild(mic);
-    composer.appendChild(input);
-    composer.appendChild(sendGroup);
+    if (mic) controlRow.appendChild(mic);
+    controlRow.appendChild(send);
+
+    composer.appendChild(inputRow);
+    composer.appendChild(controlRow);
 
     // Main send + Enter both use the persisted default mode (deep → deep_think)
     // — unless the ghost has the sheet, in which case the same two gestures
     // whisper to it instead. One composer, two destinations, decided by the
     // identity the surface is currently wearing.
     send.addEventListener('click', function() { submitComposer(); });
-    sendCaret.addEventListener('click', function() { toggleModeMenu(); });
+    modelToggle.addEventListener('click', function() { toggleModeMenu(); });
     // Enter sends; Shift+Enter inserts a newline.
     input.addEventListener('keydown', function(event) {
         if (event.key === 'Enter' && !event.shiftKey) {
@@ -2871,10 +2915,11 @@ function buildChatView() {
         handleImagePick(files);
     });
 
-    // Paint the initial label / accent / ★ from the hydrated default. Scoped to
-    // the split control itself because contentEl isn't assigned until the sheet
-    // body is built, and the composer isn't appended to `view` yet here.
-    renderSendMode(sendGroup);
+    // Paint the initial acronym / accent / ★ from the hydrated default. Scoped to
+    // the composer itself because contentEl isn't assigned until the sheet body is
+    // built, and the composer isn't appended to `view` yet here — the toggle and
+    // the send pill now live in separate rows, so the scope has to span both.
+    renderSendMode(composer);
     // …then fill in the model names once the shared per-repo settings cache has
     // them. Deliberately after the synchronous paint, so a slow or failed read
     // costs nothing but the sub-caption.
@@ -3534,10 +3579,11 @@ export function togglePossession() {
 }
 
 // Paint everything the state flag governs that CSS can't reach on its own: the
-// class the stylesheet keys off, the chip's pressed/glow state, and the send
-// button's caption (which names the model outside possession, and the ghost has
-// no model to name). The mode menu closes on every flip so a popover can't
-// linger over the other identity.
+// class the stylesheet keys off and the chip's pressed/glow state. The send
+// pill's caption is a static "Send" in both identities now that the model lives
+// on its own toggle (which CSS hides while possessed), so only the mode-derived
+// accent needs repainting on the way back out. The mode menu closes on every
+// flip so a popover can't linger over the other identity.
 function applyPossessionState() {
     if (contentEl) contentEl.classList.toggle('is-possessed', possessed);
     closeModeMenu();
@@ -3546,12 +3592,7 @@ function applyPossessionState() {
         chip.classList.toggle('is-active', possessed);
         chip.setAttribute('aria-pressed', possessed ? 'true' : 'false');
     }
-    if (possessed) {
-        const label = sheetQuery('#claudeComposerSend .claudeSendModeLabel');
-        if (label) label.textContent = 'Send';
-    } else {
-        renderSendMode();
-    }
+    if (!possessed) renderSendMode();
 }
 
 // Announce the flip so surfaces outside the sheet can follow it. Fire-and-forget
@@ -3966,9 +4007,9 @@ async function sendChatTurn(deep) {
 async function requestAssistantReply(entryId, deep) {
     const input = sheetQuery('#claudeComposerInput');
     const send = sheetQuery('#claudeComposerSend');
-    const sendCaret = sheetQuery('#claudeComposerSendCaret');
+    const modelToggle = sheetQuery('#claudeComposerModelToggle');
     if (send) send.disabled = true;
-    if (sendCaret) sendCaret.disabled = true;
+    if (modelToggle) modelToggle.disabled = true;
     if (input) input.disabled = true;
     // A background chat-turns hydrate must not replay over a turn in progress —
     // its replay wipes the surface, pending bubble and all. Held for the whole
@@ -4035,7 +4076,7 @@ async function requestAssistantReply(entryId, deep) {
     } finally {
         chatTurnInFlight = false;
         if (send) send.disabled = false;
-        if (sendCaret) sendCaret.disabled = false;
+        if (modelToggle) modelToggle.disabled = false;
         if (input) {
             input.disabled = false;
             try { input.focus(); } catch (err) { /* defensive */ }
@@ -6444,13 +6485,13 @@ export function mountClaudeSheet(parent) {
     };
     document.addEventListener('click', attachClickHandler);
 
-    // Close the send-mode menu on any click outside the split send control. The
-    // menu stops its own clicks from bubbling here, and the caret shares the
-    // .claudeSendSplit wrap, so tapping the caret toggles rather than closes.
+    // Close the send-mode menu on any click outside the model toggle. The menu
+    // stops its own clicks from bubbling here, and the toggle shares the
+    // .claudeModelToggleWrap, so tapping the toggle toggles rather than closes.
     if (modeMenuClickHandler) document.removeEventListener('click', modeMenuClickHandler);
     modeMenuClickHandler = function(event) {
         if (!isModeMenuOpen()) return;
-        const wrap = sheetQuery('.claudeSendSplit');
+        const wrap = sheetQuery('.claudeModelToggleWrap');
         if (wrap && !wrap.contains(event.target)) closeModeMenu();
     };
     document.addEventListener('click', modeMenuClickHandler);
