@@ -1564,6 +1564,14 @@ export const USAGE_RATES = {
     // deliberately does not model that tier, so a long-context grok run
     // under-reports.
     grok:   { input: 2,   output: 6,  cacheWrite: 2,     cacheRead: 0.3 },
+    // DeepSeek moved to peak/off-peak billing on 2026-08-16, where off-peak is
+    // half of peak; this flat table holds the standard listed rates and
+    // deliberately does not model that time-of-day split. The legacy
+    // `deepseek-chat`/`deepseek-reasoner` aliases both served v4-flash, so
+    // historical usage_events rows recorded under those names price correctly
+    // at the generic (flash) rate below.
+    deepseekPro: { input: 0.435, output: 0.87, cacheWrite: 0.435, cacheRead: 0.003625 },
+    deepseek:    { input: 0.14,  output: 0.28, cacheWrite: 0.14,  cacheRead: 0.0028 },
 };
 
 // The most expensive known family. An unrecognised model falls back to this so a
@@ -1582,6 +1590,11 @@ function rateForModel(model) {
     // whatever generation follows each keep resolving without a table edit.
     if (m.indexOf('kimi') !== -1) return USAGE_RATES.kimi;
     if (m.indexOf('grok') !== -1) return USAGE_RATES.grok;
+    // ORDER MATTERS: the generic `deepseek` substring also matches the pro id,
+    // so the pro branch MUST stay above it — swapped, Pro silently prices at
+    // Flash rates.
+    if (m.indexOf('deepseek-v4-pro') !== -1) return USAGE_RATES.deepseekPro;
+    if (m.indexOf('deepseek') !== -1) return USAGE_RATES.deepseek;
     return HIGHEST_USAGE_RATE;
 }
 

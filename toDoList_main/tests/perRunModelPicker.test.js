@@ -245,6 +245,20 @@ describe('USAGE_RATES — the third-party families a run can now be pinned to', 
             .toBeCloseTo(USAGE_RATES.opus.input, 6);
     });
 
+    it('prices both DeepSeek tiers, with the pro branch ahead of the generic one', () => {
+        // The generic `deepseek` substring also matches the pro id, so the pro
+        // assertion is the ordering guard: swap the two branches in
+        // rateForModel and Pro silently prices at Flash rates and this fails.
+        expect(priceForUsageEvent({ model: 'deepseek-v4-flash', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.deepseek.input, 6);
+        expect(priceForUsageEvent({ model: 'deepseek-v4-pro', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.deepseekPro.input, 6);
+        // The legacy alias both v4-flash generations were served under, so
+        // historical rows keep pricing at the flash rate.
+        expect(priceForUsageEvent({ model: 'deepseek-chat', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.deepseek.input, 6);
+    });
+
     it('still prices the Anthropic families by substring, so a generation bump needs no edit', () => {
         expect(priceForUsageEvent({ model: 'claude-sonnet-9', input_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.sonnet.input, 6);
