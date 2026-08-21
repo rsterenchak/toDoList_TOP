@@ -1675,3 +1675,18 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: real per-provider `USAGE_RATES` for kimi/grok/deepseek (separate entry once current prices are sourced — the opus-seeded over-reporting stands until then); any Worker changes (the `defaults` map is already published).
   - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
   <!-- id: 895e48f6-b7de-4408-b177-d5a96607992c -->
+
+- [ ] **[MEDIUM]** Add sourced DeepSeek rate families to USAGE_RATES
+  - Type: bug
+  - Description: Spend math for DeepSeek models falls through `rateForModel` to the opus fallback — a ~100x over-report on input for the cheapest provider in the allowlist. Add the two DeepSeek families with sourced rates, matching the structure and comment style of the existing `kimi`/`grok` rows (both of which were verified against current provider pricing on 2026-08-21 and are correct as-is — do not change them).
+  - Behavior:
+    - `USAGE_RATES` gains two entries, placed after `grok`:
+      - `deepseekPro: { input: 0.435, output: 0.87, cacheWrite: 0.435, cacheRead: 0.003625 }` — deepseek-v4-pro, the reasoning tier.
+      - `deepseek: { input: 0.14, output: 0.28, cacheWrite: 0.14, cacheRead: 0.0028 }` — deepseek-v4-flash, per DeepSeek's official pricing page as of 2026-08-21. Like the other third-party rows, caching is automatic with no write premium, so `cacheWrite` equals `input`.
+    - A comment on the family notes two things, in the flat-table caveat style the grok 200K note established: (1) DeepSeek moved to peak/off-peak billing on 2026-08-16 (off-peak is half of peak); this table holds the standard listed rates and deliberately does not model the time-of-day split. (2) The legacy `deepseek-chat`/`deepseek-reasoner` aliases both served v4-flash, so historical `usage_events` rows recorded under those names price correctly at the generic `deepseek` (flash) rate.
+    - `rateForModel` gains the two branches with ordering that matters: `if (m.indexOf('deepseek-v4-pro') !== -1) return USAGE_RATES.deepseekPro;` MUST come before the generic `if (m.indexOf('deepseek') !== -1) return USAGE_RATES.deepseek;` — the generic substring matches the pro id too, so a swapped order silently prices Pro at Flash rates. Add a comment stating the ordering constraint. Both new branches sit with the existing kimi/grok third-party block.
+    - The opus fallback for unrecognized models stays exactly as-is.
+  - Implementation notes: Extend the existing Vitest `rateForModel` cases with three assertions: `deepseek-v4-flash` → the flash family, `deepseek-v4-pro` → the pro family (this one is the ordering guard — it fails if the branches are swapped), and `deepseek-chat` → the flash family (legacy rows). No other files, no style changes.
+  - Out of scope: Worker allowlist changes (the v4 id migration ships separately), spend-panel layout or copy, and any modeling of DeepSeek's peak/off-peak tiers.
+  - File: `toDoList_main/src/claudeSheet.js`
+  <!-- id: ad0b50ac-d740-4cf9-ad49-ea343f4e845c -->
