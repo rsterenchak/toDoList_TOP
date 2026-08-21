@@ -1702,3 +1702,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: token-count sublines, changing the total's precision, panel redesign.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 308bc8d1-4524-40db-803b-abff97639912 -->
+
+- [ ] **[MEDIUM]** Add a selectable DEEP row to the Models panel and name both chat modes in the composer
+  - Type: feature
+  - Description: Deep-think is now a full registry surface (`deep`), no longer pinned server-side — the Worker resolves it repo → global → default (`claude-opus-5`, the old pin as fallback), validates picks against the `chat` lane, and publishes its default in the catalog's `defaults.deep`. Surface it: a DEEP row in the Models panel, and Fast/Deep controls in the composer that name what each mode will actually run.
+  - Behavior:
+    - Models panel (`modelsPanel.js`): a DEEP row between CHAT and GHOST — amber lane dot (it is not in `plan_lanes`, so the existing dot logic gets this right for free), fully pickable, same chip/source-tag rendering as every other row including the landed real-id-on-default behavior via `defaults.deep`. Its picker view filters the catalog to models whose lanes include `chat` (mirror the Worker's deep→chat lane mapping inside the shared list-builder helper, with a comment saying so). CHAT's row gains a dim subline `fast sends`, DEEP's reads `deep sends`, so the split is legible at a glance. Writes go through the existing `saveModelSetting` with `surface: 'deep'` — no new plumbing.
+    - Composer send-mode menu (`claudeSheet.js`, the SEND MODE split-button section around `chatMode`): items become `Fast · <resolved chat model>` and `Deep · <resolved deep model>`, both read from the per-repo `fetchModelSettings` cache the drafted-card chip already maintains (the response's `surfaces.deep` now exists), with `defaults.chat`/`defaults.deep` as the default-source names and plain `Fast`/`Deep` labels before the cache first resolves. The ★ persisted-default marker and mode persistence are untouched.
+    - The send button's caption names the ACTIVE mode's resolved model wherever it names a model today. Possession untouched — the ghost chip keeps standing in for this area.
+    - Spend panel copy: the "Deep share" ratio's descriptor drops its "(Opus)" parenthetical — deep turns can be any allowed model now — becoming "of cost on deep-think turns". The `deep_think` flag on usage rows already records mode regardless of model, so the ratio itself needs no change.
+  - Implementation notes: One pure helper — `(mode, resolvedChat, resolvedDeep, defaults) → { fastLabel, deepLabel, captionModel }` — shared by the menu and caption, Vitest'd for both modes, default-source naming, and the unresolved-cache fallback. Verify `fetchModelSettings`/`fetchModelCatalog` pass `surfaces.deep` and `defaults.deep` through any normalization untouched. Reuse existing dim/subline classes; any new `hidden`-toggled element needs the `[hidden]` display guard (style.css:1916 note).
+  - Out of scope: per-turn deep-model overrides in the composer (surface-level setting only for now), the drafted-entry card's RUN chip, possession, and any Worker changes (all deployed).
+  - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/inject.js`
+  <!-- id: dab60303-097b-4ddc-be64-eeb417e6ee92 -->
