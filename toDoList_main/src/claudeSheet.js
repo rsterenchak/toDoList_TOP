@@ -55,7 +55,7 @@ import {
 // lane-grouping rules. modelsPanel.js imports getActiveChatRepo back out of this
 // module — a cycle ESM resolves fine here, because every one of these bindings
 // is a hoisted function declaration read at call time, never at module-eval time.
-import { buildPickerList, providerForModel, readAutoMerge3p } from './modelsPanel.js';
+import { buildPickerList, providerForModel, readAutoMerge3p, resolveSurfaceChip } from './modelsPanel.js';
 import {
     readActiveRun,
     writeActiveRun,
@@ -4172,20 +4172,27 @@ function ensureRunModelContext(repo) {
 
 // What a drafted card will actually ship on. The card's own override wins; with
 // none, the RUN surface's resolved value for the workspace repo does; and when
-// that is empty too the run inherits the workflow's own default, which has no id
-// to name — hence a chip that reads 'default' rather than an invented id.
-// `overridden` is what separates a bright chip from a dim one, and it is keyed
-// on the pick rather than on the resolved value, so picking the model that was
-// already the default still reads as a deliberate per-run choice.
-export function resolveRunModel(override, settings) {
+// that is empty too the run inherits the workflow's own default — which the
+// catalog's `defaults` map can now name, so the chip reads the real id under its
+// `default` tag instead of the bare word. `overridden` is what separates a
+// bright chip from a dim one, and it is keyed on the pick rather than on the
+// resolved value, so picking the model that was already the default still reads
+// as a deliberate per-run choice.
+//
+// `model` stays the id the ship path and the confirm copy reason about: the
+// workflow default is what the run inherits, not something this card selected,
+// so naming it on the chip must not turn an inheriting ship into an explicit
+// pick. Only `chipText` reads the defaults map.
+export function resolveRunModel(override, settings, defaults) {
     const picked = typeof override === 'string' ? override.trim() : '';
     const entry = ((settings && settings.surfaces) || {})[RUN_MODEL_SURFACE] || {};
     const inherited = typeof entry.value === 'string' ? entry.value.trim() : '';
+    const chip = resolveSurfaceChip(RUN_MODEL_SURFACE, settings, defaults, 'repo');
     return {
         model: picked || inherited,
         inherited: inherited,
         overridden: !!picked,
-        chipText: picked || inherited || 'default',
+        chipText: picked || chip.text,
         sourceTag: picked ? '' : 'default',
     };
 }
@@ -4340,7 +4347,7 @@ function renderDraftedEntryCard(entryText) {
     // together: the button that says "Ship it" and the chip that says which
     // model it ships on must never disagree about whether this run deploys.
     function paintModel() {
-        const resolved = resolveRunModel(modelOverride, modelSettings);
+        const resolved = resolveRunModel(modelOverride, modelSettings, modelCatalog && modelCatalog.defaults);
         modelName.textContent = resolved.chipText;
         modelSourceTag.textContent = resolved.sourceTag;
         modelSourceTag.hidden = !resolved.sourceTag;
@@ -4384,7 +4391,7 @@ function renderDraftedEntryCard(entryText) {
         // haven't been able to ask yet".
         if (!modelCatalog) return;
         modelMenu.innerHTML = '';
-        const resolved = resolveRunModel(modelOverride, modelSettings);
+        const resolved = resolveRunModel(modelOverride, modelSettings, modelCatalog && modelCatalog.defaults);
         modelMenu.appendChild(buildPickerList({
             catalog: modelCatalog,
             surface: RUN_MODEL_SURFACE,

@@ -38,6 +38,7 @@ const {
     readAutoMerge3p,
     readAutoMerge3pAtScope,
     pinnedAtScope,
+    resolveSurfaceChip,
 } = await import('../src/modelsPanel.js');
 
 const CATALOG = {
@@ -51,6 +52,20 @@ const CATALOG = {
     plan_lanes: ['run', 'triage', 'derive'],
     ghost_model: 'claude-haiku-4-5',
 };
+
+// The same catalog as it arrives from a Worker that publishes the `defaults`
+// map — each surface paired with the id its workflow hardcode resolves to. The
+// bare CATALOG above deliberately keeps no map, so every assertion written
+// against it also pins the older-Worker fallback to the literal `default` text.
+const CATALOG_WITH_DEFAULTS = Object.assign({}, CATALOG, {
+    defaults: {
+        run: 'claude-opus-5',
+        triage: 'claude-haiku-4-5',
+        derive: 'claude-sonnet-5',
+        scan: 'claude-haiku-4-5',
+        chat: 'claude-sonnet-5',
+    },
+});
 
 // One payload, three parts: the resolved view the REPO tab renders, plus the raw
 // per-scope layers the Worker sends alongside it — `global` carrying only what
@@ -176,6 +191,45 @@ describe('models panel — row presentation (pure)', () => {
         expect(derive.chipText).toBe('default');
     });
 
+    it('shows what default resolves to on a never-set surface, keeping the default tag', () => {
+        const rows = buildModelRows(CATALOG_WITH_DEFAULTS, settingsFixture(), 'repo');
+        const derive = rows.find((r) => r.surface === 'derive');
+        // Dim and still tagged `default` — only the chip text changes, so
+        // "inherited" never starts reading like "set here".
+        expect(derive.chipText).toBe('claude-sonnet-5');
+        expect(derive.sourceTag).toBe('default');
+        expect(derive.inherited).toBe(true);
+        // Set-at-scope and global-sourced rows are untouched by the map.
+        const run = rows.find((r) => r.surface === 'run');
+        expect(run.chipText).toBe('claude-opus-4-8');
+        expect(run.sourceTag).toBe('');
+        const triage = rows.find((r) => r.surface === 'triage');
+        expect(triage.chipText).toBe('claude-sonnet-5');
+        expect(triage.sourceTag).toBe('global');
+        // GHOST is pinned server-side and reports the catalog's own model.
+        expect(rows[rows.length - 1].chipText).toBe('claude-haiku-4-5');
+    });
+
+    it('shows what default resolves to for an unpinned surface at global scope too', () => {
+        const rows = buildModelRows(CATALOG_WITH_DEFAULTS, settingsFixture(), 'global');
+        const run = rows.find((r) => r.surface === 'run');
+        expect(run.chipText).toBe('claude-opus-5');
+        expect(run.sourceTag).toBe('default');
+        expect(run.inherited).toBe(true);
+    });
+
+    it('does not badge a plan-lane row just because its default resolves third-party', () => {
+        // Nobody picked this — reporting "→ api" would announce a billing change
+        // the user never made.
+        const thirdPartyDefault = Object.assign({}, CATALOG, {
+            defaults: { derive: 'gpt-5-codex' },
+        });
+        const rows = buildModelRows(thirdPartyDefault, settingsFixture(), 'repo');
+        const derive = rows.find((r) => r.surface === 'derive');
+        expect(derive.chipText).toBe('gpt-5-codex');
+        expect(derive.apiBadge).toBe(false);
+    });
+
     it('dots plan-lane surfaces purple and the rest amber, per the catalog', () => {
         const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
         expect(rows.find((r) => r.surface === 'run').lane).toBe('plan');
@@ -256,6 +310,70 @@ describe('models panel — picker groups (pure)', () => {
         // Global sits above only the workflow hardcode — a repo-level pick is
         // NOT what tapping Inherit there would fall back to.
         expect(describeInherit(settings, 'run', 'global')).toBe('workflow default');
+    });
+
+    it('names the workflow default by id at global scope once the Worker publishes one', () => {
+        const settings = settingsFixture();
+        const defaults = CATALOG_WITH_DEFAULTS.defaults;
+        // Global sits above nothing but the hardcode, and the hardcode now has
+        // a name — "workflow default" was a layer, this is the model.
+        expect(describeInherit(settings, 'triage', 'global', defaults)).toBe('claude-haiku-4-5');
+        expect(describeInherit(settings, 'run', 'global', defaults)).toBe('claude-opus-5');
+    });
+
+    it('names the global row at repo scope, and the workflow default when the global row is empty', () => {
+        const defaults = CATALOG_WITH_DEFAULTS.defaults;
+        // `chat` is pinned at repo scope, so its underlying value isn't in the
+        // resolved map — but the global layer in the same payload has one.
+        const withGlobalChat = settingsFixture({
+            global: { models: { chat: 'claude-sonnet-5' }, autoMerge3p: false },
+        });
+        expect(describeInherit(withGlobalChat, 'chat', 'repo', defaults)).toBe('claude-sonnet-5');
+        // `run` is pinned at repo scope and the global layer has nothing for it,
+        // so the next layer down is the workflow default.
+        expect(describeInherit(settingsFixture(), 'run', 'repo', defaults)).toBe('claude-opus-5');
+    });
+});
+
+// The single answer to "what does this surface resolve to", shared by the
+// matrix, the picker's Inherit row, and the drafted card's chip.
+describe('models panel — resolveSurfaceChip (pure)', () => {
+    const DEFAULTS = CATALOG_WITH_DEFAULTS.defaults;
+
+    it('reports a repo-set surface bright, with no tag', () => {
+        const chip = resolveSurfaceChip('run', settingsFixture(), DEFAULTS, 'repo');
+        expect(chip).toEqual({ text: 'claude-opus-4-8', tag: '' });
+    });
+
+    it('reports a global-sourced surface by its id, tagged global', () => {
+        const chip = resolveSurfaceChip('triage', settingsFixture(), DEFAULTS, 'repo');
+        expect(chip).toEqual({ text: 'claude-sonnet-5', tag: 'global' });
+    });
+
+    it('names the workflow default by id on a default-sourced surface, still tagged default', () => {
+        // The whole point: the tag keeps naming the LAYER, the chip stops
+        // repeating it and names the MODEL that layer resolves to.
+        const chip = resolveSurfaceChip('derive', settingsFixture(), DEFAULTS, 'repo');
+        expect(chip).toEqual({ text: 'claude-sonnet-5', tag: 'default' });
+    });
+
+    it('falls back to the literal word when the Worker publishes no defaults map', () => {
+        expect(resolveSurfaceChip('derive', settingsFixture(), undefined, 'repo'))
+            .toEqual({ text: 'default', tag: 'default' });
+        // A map that simply has no entry for this surface reads the same way.
+        expect(resolveSurfaceChip('derive', settingsFixture(), { run: 'claude-opus-5' }, 'repo'))
+            .toEqual({ text: 'default', tag: 'default' });
+    });
+
+    it('reads the raw global layer at global scope, not the resolved map', () => {
+        const settings = settingsFixture();
+        // Pinned globally → the id, set-at-scope.
+        expect(resolveSurfaceChip('triage', settings, DEFAULTS, 'global'))
+            .toEqual({ text: 'claude-sonnet-5', tag: '' });
+        // `run` is a REPO pick — at global scope that is not a global default,
+        // so it reads as the workflow default it would fall through to.
+        expect(resolveSurfaceChip('run', settings, DEFAULTS, 'global'))
+            .toEqual({ text: 'claude-opus-5', tag: 'default' });
     });
 });
 

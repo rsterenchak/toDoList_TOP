@@ -7,11 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-20',
         added: [
-            'A run that opens a pull request instead of deploying now waits at “Awaiting merge” with a link to that pull request, and turns to Shipped once you merge it.',
             'The API spend panel now splits the month’s total by provider — Anthropic, Kimi, and Grok — in a segmented bar with a legend.',
         ],
         changed: [
             'Spend totals for runs on Kimi or Grok models now use those providers’ real published prices instead of the high placeholder estimate.',
+            'Model chips that used to read “default” now name the model that default actually resolves to, across the Models panel and a drafted entry’s ship chip.',
         ],
         fixed: [
             'The Models panel’s GLOBAL tab now loads instead of failing with an allowlist error, and shows only the models pinned as defaults for every repo.',
