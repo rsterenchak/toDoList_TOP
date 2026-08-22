@@ -507,6 +507,24 @@ describe('API spend — provider split', () => {
         expect(anthropic.cost).toBeCloseTo(costOf([rows[0], rows[1]]), 6);
     });
 
+    it('keeps the go/ rows out of the buckets entirely', () => {
+        // Bucketed, a $0.00 Go turn would file under the underlying model's
+        // provider (`go/kimi-k3` matches `kimi`) and imply per-token spend
+        // there. It contributes nothing either way, so the split still equals
+        // the month total.
+        const rows = [
+            { model: 'go/kimi-k3', input_tokens: 1e6, output_tokens: 1e6 },
+            { model: 'kimi-k3', input_tokens: 1e6 },
+        ];
+        const buckets = providerSpendBreakdown(rows);
+        const by = {};
+        buckets.forEach(function(b) { by[b.key] = b.cost; });
+        expect(by.kimi).toBeCloseTo(USAGE_RATES.kimi.input, 6);
+        expect(by.other).toBe(0);
+        const split = buckets.reduce(function(acc, b) { return acc + b.cost; }, 0);
+        expect(split).toBeCloseTo(sumUsageCost(rows), 6);
+    });
+
     it('returns every bucket in a fixed order, zero-cost ones included', () => {
         const order = ['anthropic', 'kimi', 'grok', 'other'];
         expect(providerSpendBreakdown([]).map(function(b) { return b.key; })).toEqual(order);
@@ -607,6 +625,21 @@ describe('API spend — provider split render', () => {
         expect(note).not.toContain('Pipeline runs aren');
         expect(note).not.toContain('third-party runs aren');
         expect(note).toContain('third-party pipeline runs');
+    });
+
+    // Go turns price at zero on purpose, so without a line saying why, their
+    // absence from the figure reads as a coverage gap.
+    it('names the OpenCode Go lane under the coverage note', () => {
+        const c = document.createElement('div');
+        renderSpendReadout(c, 4.19, 0);
+        const goNote = c.querySelector('.usageSpendGoNote');
+        expect(goNote).not.toBeNull();
+        expect(goNote.textContent)
+            .toBe('OpenCode Go turns are subscription-covered and not counted here.');
+        // Under the coverage note, not above it.
+        const kids = Array.from(c.children);
+        expect(kids.indexOf(goNote))
+            .toBeGreaterThan(kids.indexOf(c.querySelector('.usageSpendNote')));
     });
 });
 

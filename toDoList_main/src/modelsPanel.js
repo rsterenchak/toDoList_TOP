@@ -243,12 +243,34 @@ export function buildModelRows(catalog, settings, scope) {
     return rows;
 }
 
-// The picker's two groups for one surface, split by who pays. PLAN QUOTA holds
+// True for the OpenCode Go allowlist ids — the ones the Worker routes to a flat
+// monthly subscription with dollar-capped quotas rather than per-token billing.
+// The `go/` prefix is the whole signal, and it is deliberately a PREFIX test
+// rather than a substring one: `algo/…` or a model whose name happens to
+// contain `go` is not a Go row.
+export function isOpencodeGoId(id) {
+    return typeof id === 'string' && id.indexOf('go/') === 0;
+}
+
+// The label a Go row wears inside its own group. The header already says
+// OPENCODE GO, so repeating the prefix on every row is noise — but only the
+// DISPLAY drops it. The id written through saveModelSetting stays fully
+// prefixed, exactly as the catalog serves it.
+export function opencodeGoLabel(id) {
+    return isOpencodeGoId(id) ? id.slice(3) : id;
+}
+
+// The picker's three groups for one surface, split by who pays. PLAN QUOTA holds
 // the Anthropic models allowlisted for the surface and hints each one's quota
-// string verbatim from the catalog; API BILLED holds the third-party ones and
-// hints the provider instead. A model with no `lanes` is treated as allowlisted
+// string verbatim from the catalog; OPENCODE GO holds the `go/`-prefixed
+// subscription rows; API BILLED holds the remaining third-party ones and hints
+// the provider instead. A model with no `lanes` is treated as allowlisted
 // nowhere rather than everywhere — an unknown allowlist should narrow the menu,
 // not widen it into picks the Worker would reject.
+//
+// The `go/` test comes before the provider test: a Go row carries an underlying
+// third-party provider, so checking provider first would file it under API
+// BILLED and claim it costs per token.
 //
 // The lane filtered on is `pickerLaneFor(surface)`, not the surface itself, so
 // DEEP offers the `chat` lane the Worker validates a deep pick against.
@@ -256,23 +278,26 @@ export function buildPickerGroups(catalog, surface) {
     const models = (catalog && Array.isArray(catalog.models)) ? catalog.models : [];
     const lane = pickerLaneFor(surface);
     const plan = [];
+    const go = [];
     const api = [];
     for (let i = 0; i < models.length; i++) {
         const m = models[i];
         if (!m || !m.id) continue;
         if (!Array.isArray(m.lanes) || m.lanes.indexOf(lane) === -1) continue;
-        if (m.provider === 'anthropic') {
+        if (isOpencodeGoId(m.id)) {
+            go.push({ id: m.id, label: opencodeGoLabel(m.id), hint: m.provider ? String(m.provider) : '' });
+        } else if (m.provider === 'anthropic') {
             plan.push({ id: m.id, hint: m.quota ? String(m.quota) : '' });
         } else {
             api.push({ id: m.id, hint: m.provider ? String(m.provider) : '' });
         }
     }
-    return { plan: plan, api: api };
+    return { plan: plan, go: go, api: api };
 }
 
-function buildPickerGroupHeading(text, isApi) {
+function buildPickerGroupHeading(text, variant) {
     const heading = document.createElement('div');
-    heading.className = 'modelsPickerHeading' + (isApi ? ' modelsPickerHeading--api' : '');
+    heading.className = 'modelsPickerHeading' + (variant ? ' modelsPickerHeading--' + variant : '');
     heading.textContent = text;
     return heading;
 }
@@ -303,8 +328,8 @@ function buildPickerOption(opt) {
     return el;
 }
 
-// The rendered picker list for one surface — an Inherit row, then the two
-// lane groups from buildPickerGroups. Two surfaces render it: this panel's
+// The rendered picker list for one surface — an Inherit row, then the lane
+// groups from buildPickerGroups. Two surfaces render it: this panel's
 // drill-in (scope-wide defaults) and the drafted-entry card's per-run popover
 // in claudeSheet.js. It lives here once rather than twice because the two would
 // otherwise drift on exactly the details that matter — which models are
@@ -337,7 +362,7 @@ export function buildPickerList(options) {
     }));
 
     if (groups.plan.length) {
-        list.appendChild(buildPickerGroupHeading('PLAN QUOTA', false));
+        list.appendChild(buildPickerGroupHeading('PLAN QUOTA', ''));
         for (let i = 0; i < groups.plan.length; i++) {
             const m = groups.plan[i];
             list.appendChild(buildPickerOption({
@@ -349,8 +374,26 @@ export function buildPickerList(options) {
         }
     }
 
+    // Between the two: subscription is neither plan quota nor per-token, so it
+    // sits between them and wears a dim heading rather than API BILLED's amber.
+    // Rows show the un-prefixed name; `m.id` — still prefixed — is what gets
+    // picked and written.
+    if (groups.go && groups.go.length) {
+        list.appendChild(buildPickerGroupHeading(
+            'OPENCODE GO · subscription · $12/5hr · $30/wk · $60/mo caps', 'go'));
+        for (let g = 0; g < groups.go.length; g++) {
+            const m = groups.go[g];
+            list.appendChild(buildPickerOption({
+                label: m.label,
+                hint: m.hint,
+                checked: current === m.id,
+                onPick: function() { onPick(m.id); },
+            }));
+        }
+    }
+
     if (groups.api.length) {
-        list.appendChild(buildPickerGroupHeading('API BILLED · leaves plan, pays per token', true));
+        list.appendChild(buildPickerGroupHeading('API BILLED · leaves plan, pays per token', 'api'));
         for (let j = 0; j < groups.api.length; j++) {
             const m = groups.api[j];
             list.appendChild(buildPickerOption({

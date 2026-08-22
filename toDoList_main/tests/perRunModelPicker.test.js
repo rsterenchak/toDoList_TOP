@@ -304,6 +304,29 @@ describe('USAGE_RATES — the third-party families a run can now be pinned to', 
         expect(priceForUsageEvent({ model: 'claude-sonnet-9', input_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.sonnet.input, 6);
     });
+
+    it('prices every OpenCode Go id at zero, with its branch ahead of every family', () => {
+        // THE ordering guard for the Go branch, and the reason it must sit first
+        // in rateForModel: `go/kimi-k3` contains `kimi`, so let any family
+        // branch run ahead of it and a subscription-covered turn bills at
+        // $3/$15. Move the branch down and this pair fails.
+        expect(priceForUsageEvent({ model: 'go/kimi-k3', input_tokens: 1e6, output_tokens: 1e6 }))
+            .toBe(0);
+        expect(priceForUsageEvent({ model: 'kimi-k3', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.kimi.input, 6);
+        // Every lane zero, so no token type leaks a charge.
+        expect(USAGE_RATES.opencodeGo)
+            .toEqual({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 });
+        expect(priceForUsageEvent({
+            model: 'go/some-future-model',
+            input_tokens: 1e6, output_tokens: 1e6,
+            cache_read_input_tokens: 1e6, cache_creation_input_tokens: 1e6,
+        })).toBe(0);
+        // A PREFIX, not a substring: an id that merely contains `go/` elsewhere
+        // is an ordinary API row and keeps its own price.
+        expect(priceForUsageEvent({ model: 'algo/kimi-k3', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.kimi.input, 6);
+    });
 });
 
 
@@ -366,6 +389,60 @@ describe('buildPickerList — one list builder, two surfaces', () => {
             catalog: CATALOG, surface: 'run', current: 'kimi-k3', inheritHint: 'claude-opus-4-8',
         });
         expect(list.querySelector('.modelsPickerHint').textContent).toBe('claude-opus-4-8');
+    });
+
+    // The same catalog plus the Worker's OpenCode Go rows — a `go/` id whose
+    // underlying model also appears un-prefixed, which is the pair the grouping
+    // has to keep apart.
+    const GO_CATALOG = {
+        models: CATALOG.models.concat([
+            { id: 'go/kimi-k3', provider: 'moonshot', lanes: ['run'] },
+            { id: 'go/glm-5.2', provider: 'zai', lanes: ['run'] },
+        ]),
+        plan_lanes: CATALOG.plan_lanes,
+    };
+
+    it('groups the Go rows between plan quota and API billed, under a dim heading', () => {
+        const list = buildPickerList({ catalog: GO_CATALOG, surface: 'run', current: '' });
+        const headings = Array.from(list.querySelectorAll('.modelsPickerHeading'))
+            .map(function(el) { return el.textContent; });
+        expect(headings).toEqual([
+            'PLAN QUOTA',
+            'OPENCODE GO · subscription · $12/5hr · $30/wk · $60/mo caps',
+            'API BILLED · leaves plan, pays per token',
+        ]);
+        // Neither plan nor per-token, so it wears its own dim class and not the
+        // API heading's amber one.
+        expect(list.querySelectorAll('.modelsPickerHeading--go').length).toBe(1);
+        expect(list.querySelectorAll('.modelsPickerHeading--api').length).toBe(1);
+        // Order on screen, with the Go rows sitting between the two lanes and
+        // showing their names without the prefix the heading already carries.
+        expect(labels(list)).toEqual([
+            'Inherit', 'claude-opus-4-8', 'claude-sonnet-5',
+            'kimi-k3', 'glm-5.2',
+            'kimi-k3', 'grok-4-fast',
+        ]);
+    });
+
+    it('picks and checks a Go row by its full prefixed id, never the stripped label', () => {
+        // The label drops `go/` for reading; the VALUE must not, or the Worker
+        // gets an id it does not serve and the pick routes to per-token billing.
+        const picks = [];
+        const list = buildPickerList({
+            catalog: GO_CATALOG,
+            surface: 'run',
+            current: 'go/kimi-k3',
+            onPick: function(m) { picks.push(m); },
+        });
+        const rows = Array.from(list.querySelectorAll('.modelsPickerRow'));
+        const checked = rows.filter(function(r) { return r.getAttribute('aria-pressed') === 'true'; });
+        // Exactly one ✓ — the un-prefixed API `kimi-k3` row must NOT also check.
+        expect(checked).toHaveLength(1);
+        expect(checked[0].querySelector('.modelsPickerLabel').textContent).toBe('kimi-k3');
+        expect(rows.indexOf(checked[0])).toBe(3);
+
+        rows[4].click();
+        expect(picks).toEqual(['go/glm-5.2']);
     });
 });
 

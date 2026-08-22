@@ -1597,7 +1597,17 @@ export const USAGE_RATES = {
     // table deliberately does not model — a long-context gemini run
     // under-reports, the same caveat the grok 200K row carries.
     gemini:  { input: 1.5, output: 7.5, cacheWrite: 1.5, cacheRead: 0.15 },
+    // OpenCode Go — a flat $10/month subscription with dollar-capped quotas, not
+    // per-token billing. Its turns cost the API account nothing, so every lane
+    // is zero and a Go row contributes zero to the month by construction.
+    opencodeGo: { input: 0, output: 0, cacheWrite: 0, cacheRead: 0 },
 };
+
+// True for the OpenCode Go allowlist ids the Worker routes to that subscription.
+// A PREFIX test, not a substring one: `algo/…` is not a Go row.
+function isOpencodeGoModel(model) {
+    return (typeof model === 'string' ? model : '').toLowerCase().indexOf('go/') === 0;
+}
 
 // The most expensive known family. An unrecognised model falls back to this so a
 // new model OVER-reports rather than silently contributing zero — a figure that
@@ -1606,6 +1616,12 @@ const HIGHEST_USAGE_RATE = USAGE_RATES.opus;
 
 function rateForModel(model) {
     const m = (typeof model === 'string' ? model : '').toLowerCase();
+    // ORDER MATTERS ABSOLUTELY — this branch MUST stay FIRST, above every
+    // substring family below it, with no exceptions. A Go id carries the
+    // underlying model's name (`go/kimi-k3` contains `kimi`), so any family
+    // branch placed above this one would bill a subscription-covered turn at
+    // that family's per-token rate — $3/$15 for the kimi example.
+    if (isOpencodeGoModel(m)) return USAGE_RATES.opencodeGo;
     // Every opus generation (`claude-opus-4-8`, `claude-opus-5`, …) prices at the
     // opus family rate — the deep_think path's model id can bump without an edit.
     if (m.indexOf('opus') !== -1) return USAGE_RATES.opus;
@@ -1705,7 +1721,12 @@ function providerKeyForModel(model) {
 
 // Split a set of usage_events rows into per-provider dollar totals, priced with
 // the same priceForUsageEvent the blended figure uses — so the buckets always
-// sum to the headline total rather than to a separately-derived number. Returns
+// sum to the headline total rather than to a separately-derived number.
+// OpenCode Go rows are dropped before bucketing: they price at zero, so keeping
+// them would only file a $0.00 subscription turn under the underlying model's
+// provider (`go/kimi-k3` matches `kimi`) and imply per-token spend there.
+// Dropping them cannot move the headline total, which already counts them as
+// zero. Returns
 // every bucket in the fixed USAGE_PROVIDERS order, zero-cost ones included: the
 // order is stable for the caller to render against, and the render (not this
 // helper) is what drops empty buckets.
@@ -1716,6 +1737,7 @@ export function providerSpendBreakdown(rows) {
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             if (!row) continue;
+            if (isOpencodeGoModel(row.model)) continue;
             totals[providerKeyForModel(row.model)] += priceForUsageEvent(row);
         }
     }
@@ -2056,6 +2078,14 @@ export function renderSpendReadout(container, totalCost, budget) {
         + 'third-party pipeline runs (run · triage · derive through the '
         + "gateway). Plan-lane runs bill the Max plan and aren't measured here.";
     container.appendChild(note);
+
+    // The third lane, dimmer than the note above it: OpenCode Go turns price at
+    // zero on purpose, so without this line their absence from the figure reads
+    // as a gap rather than as coverage.
+    const goNote = document.createElement('p');
+    goNote.className = 'usageSpendGoNote';
+    goNote.textContent = 'OpenCode Go turns are subscription-covered and not counted here.';
+    container.appendChild(goNote);
 }
 
 // The readout's in-flight state, shown from panel open until the month's usage
