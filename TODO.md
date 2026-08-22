@@ -1737,3 +1737,18 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: Terra rates (no allowlist row yet), Worker changes (the provider ships separately), spend-panel layout.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 9a8767d6-3c0b-403f-bd47-1d969565d19b -->
+
+- [ ] **[MEDIUM]** Add sourced MiniMax, GLM, and Gemini rate families to USAGE_RATES
+  - Type: bug
+  - Description: The allowlist now carries `minimax/minimax-m3`, `zai/glm-5.2`, and `google/gemini-3.7-flash` (via the vercel provider), all falling through `rateForModel` to the opus fallback — ~25x, ~10x, and ~10x input over-reports respectively. Add three families with rates sourced 2026-08-22 from Vercel's provider tables (Vercel mirrors provider list pricing). Existing families (`kimi` included — historical rows must keep pricing correctly) are untouched.
+  - Behavior:
+    - `USAGE_RATES` gains, after the gpt families:
+      - `minimax: { input: 0.6, output: 2.4, cacheWrite: 0.6, cacheRead: 0.06 }` — MiniMax M3 standard rate; comment notes a launch promo at half these numbers may still be active, and cacheRead is inferred from the input÷10 pattern pending an explicit listing.
+      - `glm: { input: 1.4, output: 4.4, cacheWrite: 1.4, cacheRead: 0.14 }` — GLM-5.2, same cacheRead inference noted.
+      - `gemini: { input: 1.5, output: 7.5, cacheWrite: 1.5, cacheRead: 0.15 }` — Gemini 3.7 Flash LIST rates; comment notes a 50% promo was active at sourcing ($0.75/$3.75, $0.07 cached) and that long-context requests price on higher tiers this flat table deliberately ignores — both in the grok-200K caveat style. No cache-write charge listed, so cacheWrite mirrors input like the other implicit-caching families.
+    - `rateForModel` gains `minimax`, `glm`, and `gemini` substring branches in the third-party block, adjacent to the deepseek branches, same comment style. No ordering hazards against existing families.
+    - The opus fallback for unrecognized models stays exactly as-is.
+  - Implementation notes: Extend the Vitest `rateForModel` cases with three assertions: `minimax/minimax-m3` → minimax, `zai/glm-5.2` → glm, `google/gemini-3.7-flash` → gemini. No other files.
+  - Out of scope: promo-rate modeling, long-context tier modeling, spend-panel changes, Worker changes.
+  - File: `toDoList_main/src/claudeSheet.js`
+  <!-- id: 1512afe6-99f2-4843-bafd-756b3d8ee9a2 -->
