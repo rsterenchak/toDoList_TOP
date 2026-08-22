@@ -1778,7 +1778,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Sequencing: touches `claudeSheet.js` alongside the pending rates entry and the coverage-note entry — run all three sequentially, never batched.
   <!-- id: 45ffe0d2-4d59-41bb-bce4-bdc0eaa51732 -->
 
-- [ ] **[MEDIUM]** Group OpenCode Go models in the picker and treat their spend as subscription-covered
+- [x] **[MEDIUM]** Group OpenCode Go models in the picker and treat their spend as subscription-covered — Completed: 2026-08-22
   - Type: feature
   - Description: The Worker now serves OpenCode Go rows — allowlist ids carrying a `go/` prefix (e.g. `go/kimi-k2.7-code`), routed to a $10/month subscription endpoint with per-model dollar caps rather than per-token billing. The picker currently shows these under API BILLED, which is wrong twice: the label misstates the billing, and the spend math prices them by substring (a `go/kimi-…` turn books at kimi's $3/$15 despite costing nothing marginal). The `go/` prefix is self-describing — use it for both fixes.
   - Behavior:
