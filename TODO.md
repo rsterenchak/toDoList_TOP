@@ -1738,7 +1738,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 9a8767d6-3c0b-403f-bd47-1d969565d19b -->
 
-- [ ] **[MEDIUM]** Add sourced MiniMax, GLM, and Gemini rate families to USAGE_RATES
+- [x] **[MEDIUM]** Add sourced MiniMax, GLM, and Gemini rate families to USAGE_RATES — Completed: 2026-08-21
   - Type: bug
   - Description: The allowlist now carries `minimax/minimax-m3`, `zai/glm-5.2`, and `google/gemini-3.7-flash` (via the vercel provider), all falling through `rateForModel` to the opus fallback — ~25x, ~10x, and ~10x input over-reports respectively. Add three families with rates sourced 2026-08-22 from Vercel's provider tables (Vercel mirrors provider list pricing). Existing families (`kimi` included — historical rows must keep pricing correctly) are untouched.
   - Behavior:
