@@ -11,9 +11,7 @@ export const changelog = [
             'Spend under a cent now reads as a real figure in the provider breakdown and the daily-spend tooltip instead of showing $0.00.',
             'Spend totals for runs on the GPT models now use their published prices instead of a far higher placeholder estimate.',
             'Spend totals for runs on the MiniMax, GLM, and Gemini models now use their published prices instead of a far higher placeholder estimate.',
-        ],
-        changed: [
-            'The chat composer now stacks in two rows — the message box gets a row of its own, with the model toggle, attach button and send pill on the row beneath it.',
+            'The API spend panel’s coverage note no longer claims third-party pipeline runs go unmeasured — they are tracked, and only plan-lane runs sit outside the total.',
         ],
     },
 ];

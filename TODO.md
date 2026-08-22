@@ -1753,7 +1753,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 1512afe6-99f2-4843-bafd-756b3d8ee9a2 -->
 
-- [ ] **[LOW]** Correct the spend panel's coverage note — pipeline runs are now measured
+- [x] **[LOW]** Correct the spend panel's coverage note — pipeline runs are now measured — Completed: 2026-08-21
   - Type: bug
   - Description: The API spend panel's coverage note (claudeSheet.js ~line 2055, the `note.textContent` beginning `'Tracks Worker API calls — chat, scans, and the ghost — only for '…`) predates the usage-attribution build and now states something false: third-party pipeline runs ARE captured — the workflows send an attribution header and the Worker records every gateway request against the user, which is where the Kimi/Grok/DeepSeek run spend already visible in the panel comes from. Only the plan lane remains unmeasured.
   - Behavior:
