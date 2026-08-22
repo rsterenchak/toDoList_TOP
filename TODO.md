@@ -1765,7 +1765,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Sequencing: touches the same file as the pending rates entry (MiniMax/GLM/Gemini families) — run them sequentially, never batched, if both are in the queue.
   <!-- id: e9c7bbee-1a3f-4fd4-80ec-5bc2a981d20d -->
 
-- [ ] **[MEDIUM]** Group OpenCode Go models in the picker and treat their spend as subscription-covered
+- [x] **[MEDIUM]** Group OpenCode Go models in the picker and treat their spend as subscription-covered — Completed: 2026-08-22
   - Type: feature
   - Description: The Worker now serves OpenCode Go rows — allowlist ids carrying a `go/` prefix (e.g. `go/kimi-k3`), routed to a $10/month subscription endpoint with dollar-capped quotas rather than per-token billing. The prefix is self-describing: use it to give these rows their own picker section and to keep them out of the API dollar totals.
   - Behavior:
