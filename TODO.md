@@ -1722,10 +1722,3 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed:
   <!-- id: cda3ea70-4098-4a6b-8b35-bc30c02be677 -->
-
-- [ ] **[LOW]** Add a CSS comment marker in style.css to test pipeline injection
-  - Type: feature
-  - Description: Add a comment line at the top of `toDoList_main/src/style.css` reading "test comment" so the injection pipeline can be verified end-to-end. No behavior change.
-  - File: `toDoList_main/src/style.css`
-  - Completed:
-  <!-- id: 1bbe07c2-b2e3-4068-9944-1a1def073d01 -->
