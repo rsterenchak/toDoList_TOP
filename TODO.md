@@ -1798,3 +1798,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modelsPanel.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: ced6bb8d-8f23-44a8-a85e-1592f2d54ac8 -->
+
+- [ ] **[HIGH]** Suppress amber API badge for Claude Code Pro-plan ("go/") models in Models panel
+  - Type: bug
+  - Description: In the per-workflow Models panel, rows using a "go/"-prefixed model (e.g. `go/deepseek-v4-flash-vision` on the RUN row) currently render the amber "→ api" badge, incorrectly implying API billing when the model is actually billed under the Claude Code Pro plan quota. Fix the badge logic so any model whose identifier is plan-quota-sourced (the "go/" prefix) never renders the amber API badge, while all other existing badges/labels (purple plan-quota dots, "default", "global", "fast sends"/"deep sends" tags, the locked GHOST row) remain unchanged. Only the erroneous amber badge should be removed for this model class — do not alter which rows are dim/purple/amber otherwise. Likely in the badge-derivation logic in `toDoList_main/src/modelsPanel.js`.
+  - File: `toDoList_main/src/modelsPanel.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 1be1a51c-8a0b-4ecf-ace2-e959d8cdec95 -->
