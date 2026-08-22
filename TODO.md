@@ -1723,7 +1723,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed:
   <!-- id: cda3ea70-4098-4a6b-8b35-bc30c02be677 -->
 
-- [ ] **[MEDIUM]** Add sourced GPT rate families to USAGE_RATES
+- [x] **[MEDIUM]** Add sourced GPT rate families to USAGE_RATES — Completed: 2026-08-21
   - Type: bug
   - Description: The allowlist now carries `openai/gpt-5.6-sol` and `openai/gpt-5.6-luna` (via the Vercel AI Gateway provider), and both fall through `rateForModel` to the opus fallback — Sol over-reports ~5x, Luna ~60x on output. Add the two families with rates sourced from Vercel's model pages on 2026-08-22 (Vercel mirrors OpenAI list pricing with no markup). The existing `kimi`/`grok`/`deepseek` families are correct as-is — do not change them.
   - Behavior:
