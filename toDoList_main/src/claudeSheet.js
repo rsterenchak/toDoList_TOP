@@ -1572,6 +1572,16 @@ export const USAGE_RATES = {
     // at the generic (flash) rate below.
     deepseekPro: { input: 0.435, output: 0.87, cacheWrite: 0.435, cacheRead: 0.003625 },
     deepseek:    { input: 0.14,  output: 0.28, cacheWrite: 0.14,  cacheRead: 0.0028 },
+    // The two GPT rows reached through the Vercel AI Gateway provider, at the
+    // rates listed on Vercel's model pages on 2026-08-22 (Vercel mirrors OpenAI
+    // list pricing with no markup). Caching is implicit here too, so cacheWrite
+    // equals input rather than carrying a write premium.
+    gptLuna: { input: 0.2, output: 1.2, cacheWrite: 0.2, cacheRead: 0.02 },
+    // gpt-5.6-sol, doubling as the errs-high default for any future gpt-family
+    // id. Sol's cached-input rate is inferred from the family's input÷10 pattern
+    // (Terra $2→$0.20, Luna $0.2→$0.02) pending an explicit listing —
+    // verify cacheRead against Vercel's Sol page.
+    gpt:     { input: 2.5, output: 15,  cacheWrite: 2.5, cacheRead: 0.25 },
 };
 
 // The most expensive known family. An unrecognised model falls back to this so a
@@ -1595,6 +1605,11 @@ function rateForModel(model) {
     // Flash rates.
     if (m.indexOf('deepseek-v4-pro') !== -1) return USAGE_RATES.deepseekPro;
     if (m.indexOf('deepseek') !== -1) return USAGE_RATES.deepseek;
+    // ORDER MATTERS here too: the generic `gpt` substring matches every gpt id,
+    // Luna's included, so the luna branch MUST stay above it — swapped, Luna
+    // silently prices at Sol rates.
+    if (m.indexOf('gpt-5.6-luna') !== -1) return USAGE_RATES.gptLuna;
+    if (m.indexOf('gpt') !== -1) return USAGE_RATES.gpt;
     return HIGHEST_USAGE_RATE;
 }
 
