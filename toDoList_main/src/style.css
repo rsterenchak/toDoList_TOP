@@ -7984,6 +7984,15 @@ button.complexityNestChip:disabled {
   color: var(--text-secondary);
 }
 
+/* The subscription lane, sitting under the coverage note and reading dimmer than
+   it — a footnote to the coverage claim, not a second claim. */
+.usageSpendGoNote {
+  margin: 4px 0 0;
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 /* In-flight and error states for the readout, shown from panel open until the
    month's usage read resolves. The spinner reuses the shared .projRunSpinner
    glyph and `spin` keyframes, sized up and revealed here (the base class is
@@ -8565,6 +8574,9 @@ button.complexityNestChip:disabled {
   color: var(--text-secondary);
 }
 .modelsPickerHeading--api { color: var(--text-warning); }
+/* Subscription is neither plan quota nor per-token, so the Go group reads dimmer
+   than both rather than borrowing API BILLED's amber. */
+.modelsPickerHeading--go { color: var(--text-muted); }
 
 .modelsPickerRow {
   appearance: none;

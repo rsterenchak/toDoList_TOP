@@ -348,6 +348,34 @@ describe('models panel — picker groups (pure)', () => {
         const groups = buildPickerGroups({ models: [{ id: 'mystery', provider: 'anthropic' }] }, 'run');
         expect(groups.plan).toEqual([]);
         expect(groups.api).toEqual([]);
+        expect(groups.go).toEqual([]);
+    });
+
+    it('files the go/ rows in their own group, ahead of the provider test', () => {
+        // A Go row carries an underlying third-party provider, so a
+        // provider-first split would file it under API BILLED and claim it
+        // costs per token. The prefix has to win.
+        const groups = buildPickerGroups({
+            models: [
+                { id: 'claude-sonnet-5', provider: 'anthropic', lanes: ['run'], quota: '40×/day' },
+                { id: 'go/kimi-k3', provider: 'moonshot', lanes: ['run'] },
+                { id: 'kimi-k3', provider: 'moonshot', lanes: ['run'] },
+            ],
+        }, 'run');
+        expect(groups.plan.map((m) => m.id)).toEqual(['claude-sonnet-5']);
+        expect(groups.go.map((m) => m.id)).toEqual(['go/kimi-k3']);
+        expect(groups.api.map((m) => m.id)).toEqual(['kimi-k3']);
+        // The id stays prefixed — only the display label drops it.
+        expect(groups.go[0].label).toBe('kimi-k3');
+        expect(groups.go[0].hint).toBe('moonshot');
+    });
+
+    it('reads go/ as a prefix, so an id merely containing it stays API billed', () => {
+        const groups = buildPickerGroups({
+            models: [{ id: 'algo/kimi-k3', provider: 'moonshot', lanes: ['run'] }],
+        }, 'run');
+        expect(groups.go).toEqual([]);
+        expect(groups.api.map((m) => m.id)).toEqual(['algo/kimi-k3']);
     });
 
     it('describes what Inherit would resolve to at each scope', () => {

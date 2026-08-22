@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-22',
+        added: [
+            'OpenCode Go models now sit in their own model-picker group, and their turns count as subscription-covered rather than adding to API spend.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-21',
         fixed: [
-            'Spend totals for runs on DeepSeek models now use DeepSeek’s published prices instead of a far higher placeholder estimate.',
             'Spend under a cent now reads as a real figure in the provider breakdown and the daily-spend tooltip instead of showing $0.00.',
             'Spend totals for runs on the GPT models now use their published prices instead of a far higher placeholder estimate.',
             'Spend totals for runs on the MiniMax, GLM, and Gemini models now use their published prices instead of a far higher placeholder estimate.',
