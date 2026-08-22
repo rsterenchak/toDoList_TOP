@@ -1722,3 +1722,18 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/claudeSheet.test.js`
   - Completed:
   <!-- id: cda3ea70-4098-4a6b-8b35-bc30c02be677 -->
+
+- [ ] **[MEDIUM]** Add sourced GPT rate families to USAGE_RATES
+  - Type: bug
+  - Description: The allowlist now carries `openai/gpt-5.6-sol` and `openai/gpt-5.6-luna` (via the Vercel AI Gateway provider), and both fall through `rateForModel` to the opus fallback — Sol over-reports ~5x, Luna ~60x on output. Add the two families with rates sourced from Vercel's model pages on 2026-08-22 (Vercel mirrors OpenAI list pricing with no markup). The existing `kimi`/`grok`/`deepseek` families are correct as-is — do not change them.
+  - Behavior:
+    - `USAGE_RATES` gains two entries after the deepseek families:
+      - `gptLuna: { input: 0.2, output: 1.2, cacheWrite: 0.2, cacheRead: 0.02 }` — gpt-5.6-luna.
+      - `gpt: { input: 2.5, output: 15, cacheWrite: 2.5, cacheRead: 0.25 }` — gpt-5.6-sol, doubling as the errs-high default for any future gpt-family id. A comment notes Sol's cached-input rate is inferred from the family's input÷10 pattern (Terra $2→$0.20, Luna $0.2→$0.02) pending an explicit listing — `// verify cacheRead against Vercel's Sol page`.
+    - Like the other third-party families, caching is implicit with no write premium, so `cacheWrite` equals `input`; note this in the comment.
+    - `rateForModel` gains two branches with the ordering constraint stated in a comment: `gpt-5.6-luna` MUST be checked before the generic `gpt` substring, which matches every gpt id including Luna's — swapped order silently prices Luna at Sol rates.
+    - The opus fallback for unrecognized models stays exactly as-is.
+  - Implementation notes: Extend the existing Vitest `rateForModel` cases with three assertions: `openai/gpt-5.6-luna` → the luna family (the ordering guard), `openai/gpt-5.6-sol` → the gpt family, and an arbitrary future id like `openai/gpt-6` → the gpt family. No other files, no style changes.
+  - Out of scope: Terra rates (no allowlist row yet), Worker changes (the provider ships separately), spend-panel layout.
+  - File: `toDoList_main/src/claudeSheet.js`
+  <!-- id: 9a8767d6-3c0b-403f-bd47-1d969565d19b -->
