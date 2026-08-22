@@ -157,54 +157,6 @@ export function providerForModel(catalog, id) {
     return (m && typeof m.provider === 'string') ? m.provider : '';
 }
 
-// The three ways a pick can be paid for, as the panel words them: metered
-// against the Claude Code plan's quota, covered by the OpenCode Go
-// subscription, or billed per token to the API account.
-const BILLING_KINDS = ['plan', 'subscription', 'api'];
-
-// Who pays for one catalog row. The panel's whole purple-vs-amber decision comes
-// out of here, so it reads the catalog's own billing signals in a fixed order
-// rather than asking who made the model:
-//
-//   1. The `go/` prefix, FIRST and unconditionally — a Go row carries a real
-//      third-party provider AND a dollar cap in `quota`, so either later test
-//      would misfile it (the same ordering constraint the spend math's zero-rate
-//      branch carries).
-//   2. An explicit `billing` on the row. Catalog shape is the Worker's to
-//      define, so when it states who pays, nothing here second-guesses it.
-//   3. A `quota` string. A model the plan meters by quota is on plan quota
-//      whoever built it — this is the case the old `provider === 'anthropic'`
-//      test got wrong, badging a Pro-plan-quota model like a per-token one and
-//      telling the user their pick had left the plan when it hadn't.
-//   4. Provider, last: Anthropic is on plan quota, anyone else bills per token.
-//
-// A row that says none of it returns '' rather than guessing, and every caller
-// reads '' as "not demonstrably API billed" — an unknown model must not raise a
-// billing alarm.
-function billingOfCatalogRow(model) {
-    if (!model || !model.id) return '';
-    if (isOpencodeGoId(model.id)) return 'subscription';
-    const stated = typeof model.billing === 'string' ? model.billing.trim().toLowerCase() : '';
-    if (BILLING_KINDS.indexOf(stated) !== -1) return stated;
-    if (model.quota) return 'plan';
-    const provider = typeof model.provider === 'string' ? model.provider : '';
-    if (provider === 'anthropic') return 'plan';
-    return provider ? 'api' : '';
-}
-
-// Who pays for one model id — `'plan'`, `'subscription'`, `'api'`, or `''` when
-// the catalog doesn't carry it. Exported because both halves of the panel ask
-// it: the matrix's `→ api` badge ("does this pick leave plan quota?") and the
-// picker's group split ("which heading does this row sit under?"). One answer
-// for both, or the badge and the heading disagree about the same model.
-//
-// The `go/` prefix answers even for an id the catalog is missing — the prefix is
-// the whole signal there, not a lookup.
-export function billingForModel(catalog, id) {
-    if (isOpencodeGoId(id)) return 'subscription';
-    return billingOfCatalogRow(modelById(catalog, id));
-}
-
 function planLanesOf(catalog) {
     const lanes = catalog && Array.isArray(catalog.plan_lanes) ? catalog.plan_lanes : null;
     return (lanes && lanes.length) ? lanes : FALLBACK_PLAN_LANES;
@@ -228,12 +180,10 @@ function planLanesOf(catalog) {
 //     repo-level pick would show as the global default, and a surface set
 //     globally to the same id a repo overrode would vanish.
 //
-// The `→ api` badge fires only on a PLAN-lane row whose model the catalog bills
-// per token (`billingForModel` → `'api'`). That is exactly the case where the
-// pick moves the run off plan quota and onto per-token API billing; a third-party
-// model on a surface that never billed to plan quota costs the user nothing new,
-// so badging it would be noise — and neither does a model the plan meters by
-// quota, whoever built it.
+// The `→ api` badge fires only on a PLAN-lane row showing a non-Anthropic model.
+// That is exactly the case where the pick moves the run off plan quota and onto
+// per-token API billing; a third-party model on a surface that never billed to
+// plan quota costs the user nothing new, so badging it would be noise.
 export function buildModelRows(catalog, settings, scope) {
     const cat = catalog || {};
     const surfaces = (settings && settings.surfaces) || {};
@@ -249,7 +199,8 @@ export function buildModelRows(catalog, settings, scope) {
         const pinned = typeof globalModels[surface] === 'string' ? globalModels[surface] : '';
         const isPlanLane = planLanes.indexOf(surface) !== -1;
         const value = isGlobal ? pinned : resolved;
-        const billing = value ? billingForModel(cat, value) : '';
+        const model = value ? modelById(cat, value) : null;
+        const provider = model && model.provider ? model.provider : '';
         // A dim chip is only half the story — the tag names WHERE the inherited
         // value came from, so global-set and never-set don't look identical, and
         // an empty tag is exactly "set at the scope on screen". At global scope
@@ -268,7 +219,7 @@ export function buildModelRows(catalog, settings, scope) {
             // text: a default-sourced row now names a real model, but nobody
             // picked it, so badging it would report a billing change that isn't
             // one.
-            apiBadge: isPlanLane && billing === 'api',
+            apiBadge: isPlanLane && !!provider && provider !== 'anthropic',
             locked: false,
             subline: SURFACE_SUBLINES[surface] || '',
         });
@@ -309,22 +260,19 @@ export function opencodeGoLabel(id) {
     return isOpencodeGoId(id) ? id.slice(3) : id;
 }
 
-// The picker's three groups for one surface, split by who pays — the split is
-// `billingOfCatalogRow`'s, the same answer the matrix's `→ api` badge reads, so a
-// model can never sit under PLAN QUOTA and wear the amber badge at once. PLAN
-// QUOTA holds the plan-metered models allowlisted for the surface — Anthropic's
-// and any third-party one the plan meters by quota — and hints each one's quota
+// The picker's three groups for one surface, split by who pays. PLAN QUOTA holds
+// the Anthropic models allowlisted for the surface and hints each one's quota
 // string verbatim from the catalog; OPENCODE GO holds the `go/`-prefixed
 // subscription rows and hints THEIR quota the same way, since a Go pick is
 // bounded by a per-model dollar cap rather than by its provider's price sheet;
-// API BILLED holds the per-token ones and hints the provider instead. A model
-// with no `lanes` is treated as allowlisted nowhere rather than everywhere — an
-// unknown allowlist should narrow the menu, not widen it into picks the Worker
-// would reject.
+// API BILLED holds the remaining third-party ones and hints the provider
+// instead. A model with no `lanes` is treated as allowlisted
+// nowhere rather than everywhere — an unknown allowlist should narrow the menu,
+// not widen it into picks the Worker would reject.
 //
-// A row the catalog says nothing billable about lands in PLAN QUOTA: it is
-// already allowlisted for the lane, so the menu has to offer it somewhere, and
-// filing an unknown under API BILLED would invent a per-token charge.
+// The `go/` test comes before the provider test: a Go row carries an underlying
+// third-party provider, so checking provider first would file it under API
+// BILLED and claim it costs per token.
 //
 // The lane filtered on is `pickerLaneFor(surface)`, not the surface itself, so
 // DEEP offers the `chat` lane the Worker validates a deep pick against.
@@ -338,13 +286,12 @@ export function buildPickerGroups(catalog, surface) {
         const m = models[i];
         if (!m || !m.id) continue;
         if (!Array.isArray(m.lanes) || m.lanes.indexOf(lane) === -1) continue;
-        const billing = billingOfCatalogRow(m);
-        if (billing === 'subscription') {
+        if (isOpencodeGoId(m.id)) {
             go.push({ id: m.id, label: opencodeGoLabel(m.id), hint: m.quota ? String(m.quota) : '' });
-        } else if (billing === 'api') {
-            api.push({ id: m.id, hint: m.provider ? String(m.provider) : '' });
-        } else {
+        } else if (m.provider === 'anthropic') {
             plan.push({ id: m.id, hint: m.quota ? String(m.quota) : '' });
+        } else {
+            api.push({ id: m.id, hint: m.provider ? String(m.provider) : '' });
         }
     }
     return { plan: plan, go: go, api: api };
