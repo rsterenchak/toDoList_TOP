@@ -592,9 +592,21 @@ describe('API spend — provider split render', () => {
         const c = document.createElement('div');
         renderSpendReadout(c, 4.19, 0);
         const note = c.querySelector('.usageSpendNote').textContent;
-        expect(note).toContain('chat, scans, and the ghost');
-        expect(note).toContain('Max plan');
-        expect(note).toContain('third-party runs');
+        expect(note).toBe('Tracks all API-billed usage \u2014 chat, scans, the ghost, and '
+            + 'third-party pipeline runs (run \u00b7 triage \u00b7 derive through the '
+            + "gateway). Plan-lane runs bill the Max plan and aren't measured here.");
+    });
+
+    // Third-party pipeline runs ARE measured now \u2014 the workflows send an attribution
+    // header and the Worker records every gateway request \u2014 so the note must not
+    // repeat the pre-attribution claim that they go uncaptured.
+    it('no longer claims pipeline runs go unmeasured', () => {
+        const c = document.createElement('div');
+        renderSpendReadout(c, 4.19, 0);
+        const note = c.querySelector('.usageSpendNote').textContent;
+        expect(note).not.toContain('Pipeline runs aren');
+        expect(note).not.toContain('third-party runs aren');
+        expect(note).toContain('third-party pipeline runs');
     });
 });
 

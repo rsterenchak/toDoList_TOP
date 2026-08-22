@@ -2052,9 +2052,9 @@ export function renderSpendReadout(container, totalCost, budget) {
 
     const note = document.createElement('p');
     note.className = 'usageSpendNote';
-    note.textContent = 'Tracks Worker API calls — chat, scans, and the ghost — only for '
-        + 'now. Pipeline runs aren’t measured here yet: plan-lane runs bill the Max plan, '
-        + 'and third-party runs aren’t captured.';
+    note.textContent = 'Tracks all API-billed usage — chat, scans, the ghost, and '
+        + 'third-party pipeline runs (run · triage · derive through the '
+        + "gateway). Plan-lane runs bill the Max plan and aren't measured here.";
     container.appendChild(note);
 }
 
