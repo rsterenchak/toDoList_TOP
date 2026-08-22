@@ -12,12 +12,14 @@ export const changelog = [
         changed: [
             'The OpenCode Go picker group now reads as included coverage with each model’s own cap shown on the row, and the picker note spells out that non-Claude models open a PR for manual review.',
         ],
+        fixed: [
+            'Models panel rows set to an OpenCode Go model no longer show the amber API-billed badge, which wrongly implied those runs bill per token.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-08-21',
         fixed: [
-            'Spend totals for runs on the GPT models now use their published prices instead of a far higher placeholder estimate.',
             'Spend totals for runs on the MiniMax, GLM, and Gemini models now use their published prices instead of a far higher placeholder estimate.',
             'The API spend panel’s coverage note no longer claims third-party pipeline runs go unmeasured — they are tracked, and only plan-lane runs sit outside the total.',
         ],

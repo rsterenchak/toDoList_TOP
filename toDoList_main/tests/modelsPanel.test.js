@@ -68,6 +68,16 @@ const CATALOG_WITH_DEFAULTS = Object.assign({}, CATALOG, {
     },
 });
 
+// The catalog once the Worker publishes OpenCode Go rows: a `go/`-prefixed
+// subscription model on the plan lanes, and an `algo/…` id beside it whose
+// name merely contains the prefix, so the badge assertions distinguish the two.
+const GO_CATALOG = Object.assign({}, CATALOG, {
+    models: CATALOG.models.concat([
+        { id: 'go/deepseek-v4-flash-vision', provider: 'deepseek', lanes: ['run', 'triage', 'derive'], quota: '$12/5hr' },
+        { id: 'algo/kimi-k3', provider: 'moonshot', lanes: ['run', 'triage', 'derive'] },
+    ]),
+});
+
 // One payload, three parts: the resolved view the REPO tab renders, plus the raw
 // per-scope layers the Worker sends alongside it — `global` carrying only what
 // is pinned for every repo, `repo_overrides` only what this workspace pinned.
@@ -260,6 +270,45 @@ describe('models panel — row presentation (pure)', () => {
         expect(rows.find((r) => r.surface === 'run').apiBadge).toBe(true);
         expect(rows.find((r) => r.surface === 'triage').apiBadge).toBe(false);
         expect(rows.find((r) => r.surface === 'chat').apiBadge).toBe(false);
+    });
+
+    it('never badges a go/ pick, whose subscription quota is not per-token API billing', () => {
+        // A Go row carries an underlying third-party provider, so the plain
+        // provider test badges it `→ api` and claims a pick that stays on a
+        // capped subscription started billing per token. The prefix has to win
+        // here exactly as it does in the picker's grouping.
+        const rows = buildModelRows(GO_CATALOG, settingsFixture({
+            surfaces: {
+                run: { value: 'go/deepseek-v4-flash-vision', source: 'repo' },
+                // Prefix, not substring: `algo/…` is an ordinary API model.
+                triage: { value: 'algo/kimi-k3', source: 'repo' },
+            },
+        }), 'repo');
+        const run = rows.find((r) => r.surface === 'run');
+        expect(run.apiBadge).toBe(false);
+        // Only the badge changes — the row keeps its purple plan dot, its
+        // set-at-scope styling, and the fully prefixed id the catalog serves.
+        expect(run.lane).toBe('plan');
+        expect(run.inherited).toBe(false);
+        expect(run.sourceTag).toBe('');
+        expect(run.chipText).toBe('go/deepseek-v4-flash-vision');
+        expect(rows.find((r) => r.surface === 'triage').apiBadge).toBe(true);
+    });
+
+    it('never badges a go/ pin at global scope either', () => {
+        const rows = buildModelRows(GO_CATALOG, settingsFixture({
+            global: { models: { run: 'go/deepseek-v4-flash-vision' } },
+        }), 'global');
+        expect(rows.find((r) => r.surface === 'run').apiBadge).toBe(false);
+    });
+
+    it('never badges a plan lane whose default resolves to a go/ model', () => {
+        const rows = buildModelRows(Object.assign({}, GO_CATALOG, {
+            defaults: { derive: 'go/deepseek-v4-flash-vision' },
+        }), settingsFixture(), 'repo');
+        const derive = rows.find((r) => r.surface === 'derive');
+        expect(derive.chipText).toBe('go/deepseek-v4-flash-vision');
+        expect(derive.apiBadge).toBe(false);
     });
 
     it('stacks DEEP between CHAT and GHOST, pickable and on the non-plan lane', () => {
