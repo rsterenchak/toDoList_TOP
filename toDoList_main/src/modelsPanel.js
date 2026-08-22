@@ -184,6 +184,13 @@ function planLanesOf(catalog) {
 // That is exactly the case where the pick moves the run off plan quota and onto
 // per-token API billing; a third-party model on a surface that never billed to
 // plan quota costs the user nothing new, so badging it would be noise.
+//
+// OpenCode Go picks are the one exception, and they are excluded by the same
+// `go/` prefix the picker groups on rather than by provider: a Go row carries an
+// underlying third-party provider, so the plain provider test would badge it and
+// announce per-token billing for a pick that is actually bounded by a flat
+// subscription cap. Only the badge is suppressed — the row stays on the plan
+// lane and keeps its dot.
 export function buildModelRows(catalog, settings, scope) {
     const cat = catalog || {};
     const surfaces = (settings && settings.surfaces) || {};
@@ -219,7 +226,7 @@ export function buildModelRows(catalog, settings, scope) {
             // text: a default-sourced row now names a real model, but nobody
             // picked it, so badging it would report a billing change that isn't
             // one.
-            apiBadge: isPlanLane && !!provider && provider !== 'anthropic',
+            apiBadge: isPlanLane && !isOpencodeGoId(value) && !!provider && provider !== 'anthropic',
             locked: false,
             subline: SURFACE_SUBLINES[surface] || '',
         });
