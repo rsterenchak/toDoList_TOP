@@ -273,6 +273,33 @@ describe('USAGE_RATES — the third-party families a run can now be pinned to', 
             .toBeCloseTo(USAGE_RATES.gpt.input, 6);
     });
 
+    it('prices the MiniMax, GLM, and Gemini rows rather than the opus fallback', () => {
+        // All three reached the allowlist pricing at the opus fallback — a ~25x,
+        // ~10x, and ~10x input over-report respectively. Each assertion is that
+        // the id resolves to its OWN family, so a missing branch reads as the
+        // fallback and fails here.
+        expect(priceForUsageEvent({ model: 'minimax/minimax-m3', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.minimax.input, 6);
+        expect(priceForUsageEvent({ model: 'zai/glm-5.2', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.glm.input, 6);
+        expect(priceForUsageEvent({ model: 'google/gemini-3.7-flash', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.gemini.input, 6);
+        expect(USAGE_RATES.minimax).toEqual(
+            { input: 0.6, output: 2.4, cacheWrite: 0.6, cacheRead: 0.06 });
+        expect(USAGE_RATES.glm).toEqual(
+            { input: 1.4, output: 4.4, cacheWrite: 1.4, cacheRead: 0.14 });
+        expect(USAGE_RATES.gemini).toEqual(
+            { input: 1.5, output: 7.5, cacheWrite: 1.5, cacheRead: 0.15 });
+        // Implicit caching on all three, so a cache-writing token bills as plain
+        // input rather than carrying opus's write premium.
+        expect(USAGE_RATES.minimax.cacheWrite).toBe(USAGE_RATES.minimax.input);
+        expect(USAGE_RATES.glm.cacheWrite).toBe(USAGE_RATES.glm.input);
+        expect(USAGE_RATES.gemini.cacheWrite).toBe(USAGE_RATES.gemini.input);
+        // Opus stays the priciest family, so the unknown-model fallback still
+        // errs high with the three new rows in the table.
+        expect(USAGE_RATES.opus.input).toBeGreaterThan(USAGE_RATES.gemini.input);
+    });
+
     it('still prices the Anthropic families by substring, so a generation bump needs no edit', () => {
         expect(priceForUsageEvent({ model: 'claude-sonnet-9', input_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.sonnet.input, 6);

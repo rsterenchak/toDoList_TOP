@@ -1582,6 +1582,21 @@ export const USAGE_RATES = {
     // (Terra $2→$0.20, Luna $0.2→$0.02) pending an explicit listing —
     // verify cacheRead against Vercel's Sol page.
     gpt:     { input: 2.5, output: 15,  cacheWrite: 2.5, cacheRead: 0.25 },
+    // Three more rows reached through the Vercel AI Gateway provider, at the
+    // rates on Vercel's provider tables on 2026-08-22 (Vercel mirrors provider
+    // list pricing). Implicit caching on all three, so cacheWrite equals input.
+    // MiniMax M3 at its standard rate — a launch promo at half these numbers may
+    // still be active, in which case this row over-reports. cacheRead is
+    // inferred from the family's input/10 pattern pending an explicit listing.
+    minimax: { input: 0.6, output: 2.4, cacheWrite: 0.6, cacheRead: 0.06 },
+    // GLM-5.2, cacheRead inferred the same way pending an explicit listing.
+    glm:     { input: 1.4, output: 4.4, cacheWrite: 1.4, cacheRead: 0.14 },
+    // Gemini 3.7 Flash at LIST rates; a 50% promo was active at sourcing
+    // ($0.75/$3.75, $0.07 cached), so this row over-reports while that holds.
+    // Google also prices long-context requests on higher tiers, which this flat
+    // table deliberately does not model — a long-context gemini run
+    // under-reports, the same caveat the grok 200K row carries.
+    gemini:  { input: 1.5, output: 7.5, cacheWrite: 1.5, cacheRead: 0.15 },
 };
 
 // The most expensive known family. An unrecognised model falls back to this so a
@@ -1605,6 +1620,11 @@ function rateForModel(model) {
     // Flash rates.
     if (m.indexOf('deepseek-v4-pro') !== -1) return USAGE_RATES.deepseekPro;
     if (m.indexOf('deepseek') !== -1) return USAGE_RATES.deepseek;
+    // No ordering hazard on these three — none of their substrings appears in
+    // another family's ids, so each stands alone wherever it sits.
+    if (m.indexOf('minimax') !== -1) return USAGE_RATES.minimax;
+    if (m.indexOf('glm') !== -1) return USAGE_RATES.glm;
+    if (m.indexOf('gemini') !== -1) return USAGE_RATES.gemini;
     // ORDER MATTERS here too: the generic `gpt` substring matches every gpt id,
     // Luna's included, so the luna branch MUST stay above it — swapped, Luna
     // silently prices at Sol rates.
