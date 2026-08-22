@@ -1764,3 +1764,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`
   - Sequencing: touches the same file as the pending rates entry (MiniMax/GLM/Gemini families) — run them sequentially, never batched, if both are in the queue.
   <!-- id: e9c7bbee-1a3f-4fd4-80ec-5bc2a981d20d -->
+
+- [ ] **[MEDIUM]** Group OpenCode Go models in the picker and treat their spend as subscription-covered
+  - Type: feature
+  - Description: The Worker now serves OpenCode Go rows — allowlist ids carrying a `go/` prefix (e.g. `go/kimi-k3`), routed to a $10/month subscription endpoint with dollar-capped quotas rather than per-token billing. The prefix is self-describing: use it to give these rows their own picker section and to keep them out of the API dollar totals.
+  - Behavior:
+    - Model picker (`modelsPanel.js` and the surface pickers in `claudeSheet.js`): rows whose id starts with `go/` render in a third group between PLAN QUOTA and API BILLED, headed `OPENCODE GO` with a dim descriptor `subscription · $12/5hr · $30/wk · $60/mo caps`, in the existing group-header style (SpaceMono, the API header's amber becomes a neutral/dim tone here — subscription is neither plan nor per-token). Display names may strip the `go/` prefix inside the group (the header carries the context); values written through `saveModelSetting` keep the full prefixed id exactly as the catalog serves it.
+    - Spend math (`claudeSheet.js`): `rateForModel` gains a `go/` prefix branch returning a zero-rate family `{ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }` — and the ordering constraint is absolute, with a comment saying so: this branch MUST be first in the function, before every substring family, because `go/kimi-k3` contains `kimi` and would otherwise bill at $3/$15 for a subscription-covered turn.
+    - Spend panel: `go/` rows are excluded from the provider legend buckets and the dollar total contributes zero by construction; add one dim line under the coverage note: `OpenCode Go turns are subscription-covered and not counted here.`
+  - Implementation notes: Vitest the ordering guard explicitly — `go/kimi-k3` → the zero family (fails if the branch order slips), `kimi-k3` → the kimi family (historical rows still price). Picker grouping is pure presentation off the id prefix; no catalog schema changes.
+  - Out of scope: cap/usage tracking against Go's quotas (their console owns that), Worker changes (deployed separately), budget logic.
+  - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`
+  - Sequencing: touches `claudeSheet.js` alongside the pending rates entry and the coverage-note entry — run all three sequentially, never batched.
+  <!-- id: 45ffe0d2-4d59-41bb-bce4-bdc0eaa51732 -->
