@@ -259,6 +259,20 @@ describe('USAGE_RATES — the third-party families a run can now be pinned to', 
             .toBeCloseTo(USAGE_RATES.deepseek.input, 6);
     });
 
+    it('prices both GPT tiers, with the luna branch ahead of the generic one', () => {
+        // The generic `gpt` substring matches every gpt id including Luna's, so the
+        // luna assertion is the ordering guard: swap the two branches in
+        // rateForModel and Luna silently prices at Sol rates and this fails.
+        expect(priceForUsageEvent({ model: 'openai/gpt-5.6-luna', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.gptLuna.input, 6);
+        expect(priceForUsageEvent({ model: 'openai/gpt-5.6-sol', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.gpt.input, 6);
+        // Sol's row doubles as the errs-high default for any future gpt id, so a
+        // generation bump prices in the family rather than at the opus fallback.
+        expect(priceForUsageEvent({ model: 'openai/gpt-6', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.gpt.input, 6);
+    });
+
     it('still prices the Anthropic families by substring, so a generation bump needs no edit', () => {
         expect(priceForUsageEvent({ model: 'claude-sonnet-9', input_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.sonnet.input, 6);

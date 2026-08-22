@@ -12,16 +12,10 @@ export const changelog = [
         fixed: [
             'Spend totals for runs on DeepSeek models now use DeepSeek’s published prices instead of a far higher placeholder estimate.',
             'Spend under a cent now reads as a real figure in the provider breakdown and the daily-spend tooltip instead of showing $0.00.',
+            'Spend totals for runs on the GPT models now use their published prices instead of a far higher placeholder estimate.',
         ],
         changed: [
             'The chat composer now stacks in two rows — the message box gets a row of its own, with the model toggle, attach button and send pill on the row beneath it.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-20',
-        fixed: [
-            'A load that fails before the app draws now falls back to the automatic recovery reload instead of leaving you on an empty screen.',
         ],
     },
 ];
