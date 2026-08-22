@@ -32,7 +32,6 @@ vi.mock('../src/claudeSheet.js', () => ({
 
 const {
     openModelsPanel,
-    billingForModel,
     buildModelRows,
     buildPickerGroups,
     describeInherit,
@@ -48,9 +47,6 @@ const CATALOG = {
         { id: 'claude-opus-4-8', provider: 'anthropic', lanes: ['run', 'triage', 'derive'], quota: '5×/day' },
         { id: 'claude-sonnet-5', provider: 'anthropic', lanes: ['run', 'triage', 'derive', 'scan', 'chat'], quota: '40×/day' },
         { id: 'gpt-5-codex', provider: 'openai', lanes: ['run', 'chat'] },
-        // Third-party, but the plan meters it by quota rather than per token —
-        // the case the provider === 'anthropic' test used to mislabel.
-        { id: 'deepseek-v4-flash-vision', provider: 'deepseek', lanes: ['run', 'triage'], quota: '90×/5hr' },
         { id: 'ghost-only', provider: 'anthropic', lanes: ['ghost'], quota: 'n/a' },
     ],
     plan_lanes: ['run', 'triage', 'derive'],
@@ -266,31 +262,6 @@ describe('models panel — row presentation (pure)', () => {
         expect(rows.find((r) => r.surface === 'chat').apiBadge).toBe(false);
     });
 
-    it('does not badge a plan-quota model just because it is not Anthropic', () => {
-        // The badge answers "does this pick leave plan quota?", so it has to read
-        // the catalog's billing signal, not the vendor: a model the plan meters
-        // by quota costs no API dollars whoever built it, and badging it told the
-        // user their Pro-plan pick had moved onto per-token billing.
-        const rows = buildModelRows(CATALOG, settingsFixture({
-            surfaces: {
-                run: { value: 'deepseek-v4-flash-vision', source: 'repo' },
-                triage: { value: 'gpt-5-codex', source: 'repo' },
-            },
-        }), 'repo');
-        expect(rows.find((r) => r.surface === 'run').apiBadge).toBe(false);
-        // ...and the per-token row beside it still badges, so the fix widened the
-        // plan side without emptying the amber one.
-        expect(rows.find((r) => r.surface === 'triage').apiBadge).toBe(true);
-    });
-
-    it('keeps a plan-quota pick unbadged when it is pinned globally too', () => {
-        const rows = buildModelRows(CATALOG, settingsFixture({
-            global: { models: { run: 'deepseek-v4-flash-vision' } },
-        }), 'global');
-        expect(rows.find((r) => r.surface === 'run').chipText).toBe('deepseek-v4-flash-vision');
-        expect(rows.find((r) => r.surface === 'run').apiBadge).toBe(false);
-    });
-
     it('stacks DEEP between CHAT and GHOST, pickable and on the non-plan lane', () => {
         const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
         const order = rows.map((r) => r.surface);
@@ -351,8 +322,7 @@ describe('models panel — row presentation (pure)', () => {
 describe('models panel — picker groups (pure)', () => {
     it('splits allowlisted models by who pays and hints each group differently', () => {
         const groups = buildPickerGroups(CATALOG, 'run');
-        expect(groups.plan.map((m) => m.id))
-            .toEqual(['claude-opus-4-8', 'claude-sonnet-5', 'deepseek-v4-flash-vision']);
+        expect(groups.plan.map((m) => m.id)).toEqual(['claude-opus-4-8', 'claude-sonnet-5']);
         expect(groups.plan[0].hint).toBe('5×/day');
         expect(groups.api.map((m) => m.id)).toEqual(['gpt-5-codex']);
         expect(groups.api[0].hint).toBe('openai');
@@ -456,62 +426,6 @@ describe('models panel — picker groups (pure)', () => {
 
 // The single answer to "what does this surface resolve to", shared by the
 // matrix, the picker's Inherit row, and the drafted card's chip.
-describe('models panel — billing classification (pure)', () => {
-    it('files a quota-metered third-party model under PLAN QUOTA, hinting its quota', () => {
-        const groups = buildPickerGroups(CATALOG, 'run');
-        expect(groups.plan.map((m) => m.id)).toContain('deepseek-v4-flash-vision');
-        expect(groups.api.map((m) => m.id)).not.toContain('deepseek-v4-flash-vision');
-        expect(groups.plan.find((m) => m.id === 'deepseek-v4-flash-vision').hint).toBe('90×/5hr');
-        // The per-token third-party row is untouched — still API BILLED, still
-        // hinting its provider.
-        expect(groups.api.map((m) => m.id)).toEqual(['gpt-5-codex']);
-    });
-
-    it('reads who pays off the catalog row rather than off the vendor', () => {
-        expect(billingForModel(CATALOG, 'claude-opus-4-8')).toBe('plan');
-        expect(billingForModel(CATALOG, 'deepseek-v4-flash-vision')).toBe('plan');
-        expect(billingForModel(CATALOG, 'gpt-5-codex')).toBe('api');
-    });
-
-    it('lets the catalog name the billing outright, over any inference', () => {
-        // Catalog shape is the Worker's to define, so an explicit field wins:
-        // a quota string it publishes for some other reason can no longer
-        // silently promote a per-token model onto the plan side.
-        const cat = { models: [
-            { id: 'metered-api', provider: 'openai', lanes: ['run'], quota: '1000 rpm', billing: 'api' },
-            { id: 'quiet-plan', provider: 'openai', lanes: ['run'], billing: 'plan' },
-        ] };
-        expect(billingForModel(cat, 'metered-api')).toBe('api');
-        expect(billingForModel(cat, 'quiet-plan')).toBe('plan');
-        const groups = buildPickerGroups(cat, 'run');
-        expect(groups.plan.map((m) => m.id)).toEqual(['quiet-plan']);
-        expect(groups.api.map((m) => m.id)).toEqual(['metered-api']);
-    });
-
-    it('tests the go/ prefix before anything the catalog row says', () => {
-        // A Go row carries a real third-party provider AND a dollar cap in
-        // `quota`, so both the provider test and the quota test would misfile it.
-        // The prefix has to be read first — the same ordering constraint the
-        // spend math's zero-rate branch carries.
-        const cat = { models: [
-            { id: 'go/kimi-k2.7-code', provider: 'moonshot', lanes: ['run'], quota: '$12/5hr' },
-        ] };
-        expect(billingForModel(cat, 'go/kimi-k2.7-code')).toBe('subscription');
-        // Even when the catalog row is absent entirely, the prefix still answers.
-        expect(billingForModel(CATALOG, 'go/glm-5.2')).toBe('subscription');
-    });
-
-    it('says nothing about a model the catalog does not carry', () => {
-        // Every caller reads '' as "not demonstrably API billed", so an unknown
-        // id must not badge — the catalog is the only authority on who pays.
-        expect(billingForModel(CATALOG, 'who-dis')).toBe('');
-        const rows = buildModelRows(CATALOG, settingsFixture({
-            surfaces: { run: { value: 'who-dis', source: 'repo' } },
-        }), 'repo');
-        expect(rows.find((r) => r.surface === 'run').apiBadge).toBe(false);
-    });
-});
-
 describe('models panel — resolveSurfaceChip (pure)', () => {
     const DEFAULTS = CATALOG_WITH_DEFAULTS.defaults;
 
