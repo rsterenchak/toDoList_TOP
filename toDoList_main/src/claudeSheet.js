@@ -1618,9 +1618,10 @@ function rateForModel(model) {
     const m = (typeof model === 'string' ? model : '').toLowerCase();
     // ORDER MATTERS ABSOLUTELY — this branch MUST stay FIRST, above every
     // substring family below it, with no exceptions. A Go id carries the
-    // underlying model's name (`go/kimi-k3` contains `kimi`), so any family
-    // branch placed above this one would bill a subscription-covered turn at
-    // that family's per-token rate — $3/$15 for the kimi example.
+    // underlying model's name: `go/kimi-k2.7-code` contains `kimi` and
+    // `go/deepseek-v4-flash` contains `deepseek`, so any family branch placed
+    // above this one would bill a subscription-covered turn at that family's
+    // per-token rate — $3/$15 for the kimi example.
     if (isOpencodeGoModel(m)) return USAGE_RATES.opencodeGo;
     // Every opus generation (`claude-opus-4-8`, `claude-opus-5`, …) prices at the
     // opus family rate — the deep_think path's model id can bump without an edit.

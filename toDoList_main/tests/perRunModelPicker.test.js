@@ -307,13 +307,19 @@ describe('USAGE_RATES — the third-party families a run can now be pinned to', 
 
     it('prices every OpenCode Go id at zero, with its branch ahead of every family', () => {
         // THE ordering guard for the Go branch, and the reason it must sit first
-        // in rateForModel: `go/kimi-k3` contains `kimi`, so let any family
-        // branch run ahead of it and a subscription-covered turn bills at
+        // in rateForModel: `go/kimi-k2.7-code` contains `kimi`, so let any
+        // family branch run ahead of it and a subscription-covered turn bills at
         // $3/$15. Move the branch down and this pair fails.
-        expect(priceForUsageEvent({ model: 'go/kimi-k3', input_tokens: 1e6, output_tokens: 1e6 }))
+        expect(priceForUsageEvent({ model: 'go/kimi-k2.7-code', input_tokens: 1e6, output_tokens: 1e6 }))
             .toBe(0);
         expect(priceForUsageEvent({ model: 'kimi-k3', input_tokens: 1e6 }))
             .toBeCloseTo(USAGE_RATES.kimi.input, 6);
+        // The same guard on the other family whose name a Go id carries — and
+        // the un-prefixed row still prices, so history keeps its figures.
+        expect(priceForUsageEvent({ model: 'go/deepseek-v4-flash', input_tokens: 1e6, output_tokens: 1e6 }))
+            .toBe(0);
+        expect(priceForUsageEvent({ model: 'deepseek-v4-flash', input_tokens: 1e6 }))
+            .toBeCloseTo(USAGE_RATES.deepseek.input, 6);
         // Every lane zero, so no token type leaks a charge.
         expect(USAGE_RATES.opencodeGo)
             .toEqual({ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 });
@@ -396,8 +402,8 @@ describe('buildPickerList — one list builder, two surfaces', () => {
     // has to keep apart.
     const GO_CATALOG = {
         models: CATALOG.models.concat([
-            { id: 'go/kimi-k3', provider: 'moonshot', lanes: ['run'] },
-            { id: 'go/glm-5.2', provider: 'zai', lanes: ['run'] },
+            { id: 'go/kimi-k3', provider: 'moonshot', lanes: ['run'], quota: '$12/5hr' },
+            { id: 'go/glm-5.2', provider: 'zai', lanes: ['run'], quota: '$30/wk' },
         ]),
         plan_lanes: CATALOG.plan_lanes,
     };
@@ -408,7 +414,7 @@ describe('buildPickerList — one list builder, two surfaces', () => {
             .map(function(el) { return el.textContent; });
         expect(headings).toEqual([
             'PLAN QUOTA',
-            'OPENCODE GO · subscription · $12/5hr · $30/wk · $60/mo caps',
+            'OPENCODE GO · INCLUDED · CAPS VARY BY MODEL',
             'API BILLED · leaves plan, pays per token',
         ]);
         // Neither plan nor per-token, so it wears its own dim class and not the
@@ -422,6 +428,12 @@ describe('buildPickerList — one list builder, two surfaces', () => {
             'kimi-k3', 'glm-5.2',
             'kimi-k3', 'grok-4-fast',
         ]);
+        // The caps vary per model, so each Go row carries its own on the right
+        // exactly as a plan row carries its quota — the heading says only that
+        // the lane is included.
+        const hints = Array.from(list.querySelectorAll('.modelsPickerHint'))
+            .map(function(el) { return el.textContent; });
+        expect(hints.slice(3, 5)).toEqual(['$12/5hr', '$30/wk']);
     });
 
     it('picks and checks a Go row by its full prefixed id, never the stripped label', () => {

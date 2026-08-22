@@ -9,12 +9,14 @@ export const changelog = [
         added: [
             'OpenCode Go models now sit in their own model-picker group, and their turns count as subscription-covered rather than adding to API spend.',
         ],
+        changed: [
+            'The OpenCode Go picker group now reads as included coverage with each model’s own cap shown on the row, and the picker note spells out that non-Claude models open a PR for manual review.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-08-21',
         fixed: [
-            'Spend under a cent now reads as a real figure in the provider breakdown and the daily-spend tooltip instead of showing $0.00.',
             'Spend totals for runs on the GPT models now use their published prices instead of a far higher placeholder estimate.',
             'Spend totals for runs on the MiniMax, GLM, and Gemini models now use their published prices instead of a far higher placeholder estimate.',
             'The API spend panel’s coverage note no longer claims third-party pipeline runs go unmeasured — they are tracked, and only plan-lane runs sit outside the total.',
