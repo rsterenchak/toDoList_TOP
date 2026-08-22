@@ -358,16 +358,27 @@ describe('models panel — picker groups (pure)', () => {
         const groups = buildPickerGroups({
             models: [
                 { id: 'claude-sonnet-5', provider: 'anthropic', lanes: ['run'], quota: '40×/day' },
-                { id: 'go/kimi-k3', provider: 'moonshot', lanes: ['run'] },
+                { id: 'go/kimi-k2.7-code', provider: 'moonshot', lanes: ['run'], quota: '$12/5hr' },
                 { id: 'kimi-k3', provider: 'moonshot', lanes: ['run'] },
             ],
         }, 'run');
         expect(groups.plan.map((m) => m.id)).toEqual(['claude-sonnet-5']);
-        expect(groups.go.map((m) => m.id)).toEqual(['go/kimi-k3']);
+        expect(groups.go.map((m) => m.id)).toEqual(['go/kimi-k2.7-code']);
         expect(groups.api.map((m) => m.id)).toEqual(['kimi-k3']);
         // The id stays prefixed — only the display label drops it.
-        expect(groups.go[0].label).toBe('kimi-k3');
-        expect(groups.go[0].hint).toBe('moonshot');
+        expect(groups.go[0].label).toBe('kimi-k2.7-code');
+        // A Go row hints its own cap, the way a plan row hints its quota — the
+        // provider is what an API row hints, and saying it here would read as
+        // per-token billing.
+        expect(groups.go[0].hint).toBe('$12/5hr');
+        expect(groups.plan[0].hint).toBe('40×/day');
+    });
+
+    it('leaves a Go row with no quota hinting nothing rather than its provider', () => {
+        const groups = buildPickerGroups({
+            models: [{ id: 'go/glm-5.2', provider: 'zai', lanes: ['run'] }],
+        }, 'run');
+        expect(groups.go[0].hint).toBe('');
     });
 
     it('reads go/ as a prefix, so an id merely containing it stays API billed', () => {
@@ -687,7 +698,7 @@ describe('models panel — panel behaviour', () => {
         rowBySurface('run').click();
         await flush();
         expect(document.querySelector('.modelsPickerNote').textContent)
-            .toContain('third-party picks open a PR and wait for manual merge');
+            .toBe('Non-Claude models open a PR; manual review and merge required.');
 
         // Not a plan lane — nothing leaves plan quota, so no disclosure.
         document.getElementById('modelsPanelBack').click();

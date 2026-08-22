@@ -263,8 +263,10 @@ export function opencodeGoLabel(id) {
 // The picker's three groups for one surface, split by who pays. PLAN QUOTA holds
 // the Anthropic models allowlisted for the surface and hints each one's quota
 // string verbatim from the catalog; OPENCODE GO holds the `go/`-prefixed
-// subscription rows; API BILLED holds the remaining third-party ones and hints
-// the provider instead. A model with no `lanes` is treated as allowlisted
+// subscription rows and hints THEIR quota the same way, since a Go pick is
+// bounded by a per-model dollar cap rather than by its provider's price sheet;
+// API BILLED holds the remaining third-party ones and hints the provider
+// instead. A model with no `lanes` is treated as allowlisted
 // nowhere rather than everywhere — an unknown allowlist should narrow the menu,
 // not widen it into picks the Worker would reject.
 //
@@ -285,7 +287,7 @@ export function buildPickerGroups(catalog, surface) {
         if (!m || !m.id) continue;
         if (!Array.isArray(m.lanes) || m.lanes.indexOf(lane) === -1) continue;
         if (isOpencodeGoId(m.id)) {
-            go.push({ id: m.id, label: opencodeGoLabel(m.id), hint: m.provider ? String(m.provider) : '' });
+            go.push({ id: m.id, label: opencodeGoLabel(m.id), hint: m.quota ? String(m.quota) : '' });
         } else if (m.provider === 'anthropic') {
             plan.push({ id: m.id, hint: m.quota ? String(m.quota) : '' });
         } else {
@@ -376,11 +378,13 @@ export function buildPickerList(options) {
 
     // Between the two: subscription is neither plan quota nor per-token, so it
     // sits between them and wears a dim heading rather than API BILLED's amber.
-    // Rows show the un-prefixed name; `m.id` — still prefixed — is what gets
-    // picked and written.
+    // The heading names the coverage rather than a cap figure — the caps differ
+    // per model and each row hints its own on the right, the way a plan row
+    // hints its quota. Rows show the un-prefixed name; `m.id` — still prefixed —
+    // is what gets picked and written.
     if (groups.go && groups.go.length) {
         list.appendChild(buildPickerGroupHeading(
-            'OPENCODE GO · subscription · $12/5hr · $30/wk · $60/mo caps', 'go'));
+            'OPENCODE GO · INCLUDED · CAPS VARY BY MODEL', 'go'));
         for (let g = 0; g < groups.go.length; g++) {
             const m = groups.go[g];
             list.appendChild(buildPickerOption({
@@ -757,7 +761,7 @@ export function openModelsPanel(anchorEl) {
         if (planLanes.indexOf(surface) !== -1 && !readAutoMerge3pAtScope(settings, scope)) {
             const note = document.createElement('div');
             note.className = 'modelsPickerNote';
-            note.textContent = 'third-party picks open a PR and wait for manual merge';
+            note.textContent = 'Non-Claude models open a PR; manual review and merge required.';
             body.appendChild(note);
         }
     }
