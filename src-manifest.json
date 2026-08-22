@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-22T15:21:12.719Z",
-  "sha": "a2f616466392b053383a669f884f073c5e939dbd",
+  "generatedAt": "2026-08-22T15:31:54.764Z",
+  "sha": "75b5675e64894b1b6165d950908394cb2bb01d2f",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -4482,11 +4482,11 @@
       "selector": "#modelsPanelBack",
       "label": "Models Panel Back",
       "file": "modelsPanel.js",
-      "line": 572,
+      "line": 519,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 572
+          "line": 519
         },
         {
           "file": "style.css",
@@ -4498,11 +4498,11 @@
       "selector": "#modelsPanelBackdrop",
       "label": "Models Panel Backdrop",
       "file": "modelsPanel.js",
-      "line": 557,
+      "line": 504,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 557
+          "line": 504
         },
         {
           "file": "style.css",
@@ -4514,11 +4514,11 @@
       "selector": "#modelsPanelBody",
       "label": "Models Panel Body",
       "file": "modelsPanel.js",
-      "line": 624,
+      "line": 571,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 624
+          "line": 571
         },
         {
           "file": "style.css",
@@ -4530,11 +4530,11 @@
       "selector": "#modelsPanelClose",
       "label": "Models Panel Close",
       "file": "modelsPanel.js",
-      "line": 613,
+      "line": 560,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 613
+          "line": 560
         },
         {
           "file": "style.css",
@@ -4546,11 +4546,11 @@
       "selector": "#modelsPanelEyebrow",
       "label": "Models Panel Eyebrow",
       "file": "modelsPanel.js",
-      "line": 581,
+      "line": 528,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 581
+          "line": 528
         },
         {
           "file": "style.css",
@@ -4562,11 +4562,11 @@
       "selector": "#modelsPanelHeader",
       "label": "Models Panel Header",
       "file": "modelsPanel.js",
-      "line": 566,
+      "line": 513,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 566
+          "line": 513
         },
         {
           "file": "style.css",
@@ -4578,11 +4578,11 @@
       "selector": "#modelsPanelModal",
       "label": "Models Panel Modal",
       "file": "modelsPanel.js",
-      "line": 560,
+      "line": 507,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 560
+          "line": 507
         },
         {
           "file": "style.css",
@@ -4594,11 +4594,11 @@
       "selector": "#modelsPanelScope",
       "label": "Models Panel Scope",
       "file": "modelsPanel.js",
-      "line": 595,
+      "line": 542,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 595
+          "line": 542
         },
         {
           "file": "style.css",
@@ -4610,11 +4610,11 @@
       "selector": "#modelsPanelTitle",
       "label": "Models Panel Title",
       "file": "modelsPanel.js",
-      "line": 579,
+      "line": 526,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 579
+          "line": 526
         },
         {
           "file": "style.css",
@@ -4626,11 +4626,11 @@
       "selector": "#modelsPanelTitleText",
       "label": "Models Panel Title Text",
       "file": "modelsPanel.js",
-      "line": 584,
+      "line": 531,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 584
+          "line": 531
         },
         {
           "file": "style.css",
