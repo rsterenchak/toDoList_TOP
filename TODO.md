@@ -1777,3 +1777,17 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`
   - Sequencing: touches `claudeSheet.js` alongside the pending rates entry and the coverage-note entry — run all three sequentially, never batched.
   <!-- id: 45ffe0d2-4d59-41bb-bce4-bdc0eaa51732 -->
+
+- [ ] **[MEDIUM]** Group OpenCode Go models in the picker and treat their spend as subscription-covered
+  - Type: feature
+  - Description: The Worker now serves OpenCode Go rows — allowlist ids carrying a `go/` prefix (e.g. `go/kimi-k2.7-code`), routed to a $10/month subscription endpoint with per-model dollar caps rather than per-token billing. The picker currently shows these under API BILLED, which is wrong twice: the label misstates the billing, and the spend math prices them by substring (a `go/kimi-…` turn books at kimi's $3/$15 despite costing nothing marginal). The `go/` prefix is self-describing — use it for both fixes.
+  - Behavior:
+    - Model picker (`modelsPanel.js` and the surface pickers in `claudeSheet.js`): rows whose id starts with `go/` render in a third group between PLAN QUOTA and API BILLED, headed `OPENCODE GO · INCLUDED · CAPS VARY BY MODEL` in the existing group-header style (SpaceMono; a neutral/dim tone rather than the API header's amber — subscription is neither plan nor per-token). Display names strip the `go/` prefix inside the group (the header carries the context); the rows' `quota` hints render on the right exactly as the plan rows' do; values written through `saveModelSetting` keep the full prefixed id as the catalog serves it.
+    - The picker footer copy becomes: `Non-Claude models open a PR; manual review and merge required.`
+    - Spend math (`claudeSheet.js`): `rateForModel` gains a `go/` prefix branch returning a zero-rate family `{ input: 0, output: 0, cacheWrite: 0, cacheRead: 0 }` — and the ordering constraint is absolute, with a comment saying so: this branch MUST be first in the function, before every substring family, because `go/kimi-k2.7-code` contains `kimi` and `go/deepseek-v4-flash` contains `deepseek`, and either would otherwise bill per-token for a subscription-covered turn.
+    - Spend panel: `go/` rows contribute zero to the dollar total by construction and are excluded from the provider legend buckets; one dim line joins the coverage note: `OpenCode Go turns are subscription-covered and not counted here.`
+  - Implementation notes: Vitest the ordering guard explicitly — `go/kimi-k2.7-code` → the zero family (fails if the branch order slips), and `kimi-k3` → the kimi family (historical rows still price). Picker grouping is pure presentation off the id prefix; no catalog schema changes.
+  - Out of scope: cap/usage tracking against Go's quotas (their console owns that), Worker changes (deployed), budget logic.
+  - File: `toDoList_main/src/modelsPanel.js`, `toDoList_main/src/claudeSheet.js`
+  - Sequencing: touches `claudeSheet.js` alongside the pending rates entry and the coverage-note entry — run all three sequentially, never batched.
+  <!-- id: ecca25de-1213-4722-b43d-d1011520080f -->
