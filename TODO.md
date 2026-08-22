@@ -1752,3 +1752,15 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: promo-rate modeling, long-context tier modeling, spend-panel changes, Worker changes.
   - File: `toDoList_main/src/claudeSheet.js`
   <!-- id: 1512afe6-99f2-4843-bafd-756b3d8ee9a2 -->
+
+- [ ] **[LOW]** Correct the spend panel's coverage note — pipeline runs are now measured
+  - Type: bug
+  - Description: The API spend panel's coverage note (claudeSheet.js ~line 2055, the `note.textContent` beginning `'Tracks Worker API calls — chat, scans, and the ghost — only for '…`) predates the usage-attribution build and now states something false: third-party pipeline runs ARE captured — the workflows send an attribution header and the Worker records every gateway request against the user, which is where the Kimi/Grok/DeepSeek run spend already visible in the panel comes from. Only the plan lane remains unmeasured.
+  - Behavior:
+    - Replace the note's full text (it is concatenated across multiple lines — replace the whole string, not one fragment) with: `Tracks all API-billed usage — chat, scans, the ghost, and third-party pipeline runs (run · triage · derive through the gateway). Plan-lane runs bill the Max plan and aren't measured here.`
+    - No other copy, layout, or logic changes anywhere in the panel; the "Rows recorded before usage tagging…" footnote below the tiles stays exactly as-is.
+  - Implementation notes: Pure string replacement; if a Vitest asserts on the old note text, update that assertion to the new string. Nothing else.
+  - Out of scope: the provider legend buckets and their match tables, budget logic, chart, tiles.
+  - File: `toDoList_main/src/claudeSheet.js`
+  - Sequencing: touches the same file as the pending rates entry (MiniMax/GLM/Gemini families) — run them sequentially, never batched, if both are in the queue.
+  <!-- id: e9c7bbee-1a3f-4fd4-80ec-5bc2a981d20d -->
