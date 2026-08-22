@@ -1792,9 +1792,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Sequencing: touches `claudeSheet.js` alongside the pending rates entry and the coverage-note entry — run all three sequentially, never batched.
   <!-- id: ecca25de-1213-4722-b43d-d1011520080f -->
 
-- [ ] **[HIGH]** Fix Models panel mislabeling Claude Code Pro-plan models as API-billed
+- [x] **[HIGH]** Fix Models panel mislabeling Claude Code Pro-plan models as API-billed — Completed: 2026-08-22
   - Type: bug
   - Description: In the Models panel's per-workflow model picker, any model billed under the Claude Code Pro plan quota (e.g. `deepseek-v4-flash-vision` on the RUN row) is incorrectly shown with the amber "→ api" badge instead of the purple plan-quota indicator. The classification logic that decides purple (plan quota) vs amber (API billed) isn't recognizing Pro-plan models as plan-quota — likely a hardcoded or incomplete model-list check rather than reading the model's actual billing source. Fix the classification so any Pro-plan-quota model renders purple/plan-quota across all workflow rows, not just the default Claude models. Likely in `toDoList_main/src/modelsPanel.js` where the color/badge is derived per model.
   - File: `toDoList_main/src/modelsPanel.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-08-22
   <!-- id: ced6bb8d-8f23-44a8-a85e-1592f2d54ac8 -->
