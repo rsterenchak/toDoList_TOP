@@ -912,3 +912,163 @@ describe('COVERAGE tab — drafted and failed queue states', () => {
         expect(document.querySelectorAll('.proposalCard').length).toBe(1);
     });
 });
+
+// The review sheet is read on a phone, where a derive description is far longer
+// than the two lines a scannable card can spare. Each card therefore collapses to
+// a clamped preview and expands on a tap of its body, with one card open at a time
+// (an `_activeProposalId`-style state that also survives the wholesale repaint
+// renderList does on every queue change). The card's own Accept / Dismiss must keep
+// working from the expanded state — they sit under the same card the tap handler is
+// bound to, so their clicks stop propagating rather than toggling the description.
+describe('COVERAGE tab — proposal card tap-to-expand', () => {
+    async function openModal(name, rows) {
+        setQueueRows(rows, name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+    }
+    function cards() { return Array.from(document.querySelectorAll('.proposalCard')); }
+    function twoProposals() {
+        return [proposedRow(80, 'A1', 'Add a menu'), proposedRow(81, 'A2', 'Persist')];
+    }
+
+    it('renders each card collapsed, with the description in a tappable body region', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        cards().forEach(function (card) {
+            const body = card.querySelector('.proposalCardBody');
+            expect(body).toBeTruthy();
+            // The preview lives inside the tap target, not as a card-level sibling.
+            expect(body.querySelector('.proposalCardPreview')).toBeTruthy();
+            expect(card.classList.contains('is-expandable')).toBe(true);
+            expect(card.classList.contains('is-expanded')).toBe(false);
+            expect(body.getAttribute('role')).toBe('button');
+            expect(body.getAttribute('tabindex')).toBe('0');
+            expect(body.getAttribute('aria-expanded')).toBe('false');
+        });
+    });
+
+    it('tapping the card body expands it to the full description and tapping again collapses it', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        const card = cards()[0];
+        const body = card.querySelector('.proposalCardBody');
+
+        body.click();
+        expect(card.classList.contains('is-expanded')).toBe(true);
+        expect(body.getAttribute('aria-expanded')).toBe('true');
+        // Expanding reveals the proposal's complete text — the clamp is CSS-side,
+        // so the preview always carries the whole description.
+        expect(card.querySelector('.proposalCardPreview').textContent)
+            .toBe('Add a menu description');
+
+        body.click();
+        expect(card.classList.contains('is-expanded')).toBe(false);
+        expect(body.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('expands from the keyboard, so the body region is a real control', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        const body = cards()[0].querySelector('.proposalCardBody');
+        body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+        expect(cards()[0].classList.contains('is-expanded')).toBe(true);
+        body.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true }));
+        expect(cards()[0].classList.contains('is-expanded')).toBe(false);
+    });
+
+    it('keeps only one card expanded at a time', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        cards()[0].querySelector('.proposalCardBody').click();
+        cards()[1].querySelector('.proposalCardBody').click();
+        expect(cards()[0].classList.contains('is-expanded')).toBe(false);
+        expect(cards()[0].querySelector('.proposalCardBody').getAttribute('aria-expanded'))
+            .toBe('false');
+        expect(cards()[1].classList.contains('is-expanded')).toBe(true);
+    });
+
+    it('keeps the expanded card expanded across a queue-change repaint', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        cards()[1].querySelector('.proposalCardBody').click();
+
+        // An unrelated proposal arrives; renderList rebuilds every card.
+        setQueueRows([
+            proposedRow(80, 'A1', 'Add a menu'),
+            proposedRow(81, 'A2', 'Persist'),
+            proposedRow(82, 'A3', 'Undo'),
+        ], name);
+        notifyQueueChange();
+
+        const rebuilt = cards();
+        expect(rebuilt.length).toBe(3);
+        expect(rebuilt[1].querySelector('.proposalCardTitle').textContent).toBe('Persist');
+        expect(rebuilt[1].classList.contains('is-expanded')).toBe(true);
+        expect(rebuilt[0].classList.contains('is-expanded')).toBe(false);
+    });
+
+    it('Accept still ships from an expanded card, without collapsing it', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        const card = cards()[0];
+        card.querySelector('.proposalCardBody').click();
+
+        card.querySelector('.proposalAcceptBtn').click();
+        await flush();
+        expect(injectCalls.length).toBe(1);
+        expect(dispatchRunCalls.length).toBe(1);
+        // The Accept click must not have reached the card's expand handler.
+        expect(card.classList.contains('is-expanded')).toBe(true);
+    });
+
+    it('Dismiss still removes the row from an expanded card', async () => {
+        const name = freshProject();
+        const spy = vi.spyOn(listLogic, 'unflagAgentTask');
+        await openModal(name, twoProposals());
+        const card = cards()[0];
+        card.querySelector('.proposalCardBody').click();
+
+        card.querySelector('.proposalDismissBtn').click();
+        await flush();
+        expect(spy).toHaveBeenCalledWith(80);
+        expect(card.classList.contains('is-expanded')).toBe(true);
+        spy.mockRestore();
+    });
+
+    it('a click inside a disclosed mockup flow does not toggle the description', async () => {
+        const name = freshProject();
+        await openModal(name, [mockupRow(83, 'A1', 'Pick a look')]);
+        const card = cards()[0];
+        card.querySelector('.proposalMockupBtn').click();
+        const flow = card.querySelector('.proposalMockupFlow');
+        expect(flow.childNodes.length).toBeGreaterThan(0);
+        expect(card.classList.contains('is-expanded')).toBe(false);
+
+        flow.click();
+        expect(card.classList.contains('is-expanded')).toBe(false);
+    });
+
+    it('starts collapsed again after the sheet is closed and reopened', async () => {
+        const name = freshProject();
+        await openModal(name, twoProposals());
+        cards()[0].querySelector('.proposalCardBody').click();
+        expect(cards()[0].classList.contains('is-expanded')).toBe(true);
+
+        document.getElementById('proposalReviewModalCloseBtn').click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(cards()[0].classList.contains('is-expanded')).toBe(false);
+    });
+
+    it('leaves a proposal with no description unexpandable', async () => {
+        const name = freshProject();
+        const bare = { ...proposedRow(84, 'A1', 'Add a menu'), context: { title: 'Add a menu' } };
+        await openModal(name, [bare]);
+        const card = cards()[0];
+        expect(card.querySelector('.proposalCardPreview')).toBeFalsy();
+        expect(card.classList.contains('is-expandable')).toBe(false);
+        expect(card.querySelector('.proposalCardBody').getAttribute('role')).toBeNull();
+        card.querySelector('.proposalCardBody').click();
+        expect(card.classList.contains('is-expanded')).toBe(false);
+    });
+});
