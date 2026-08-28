@@ -1812,3 +1812,12 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `main.js`, `style.css`
   - Completed: 2026-08-28
   <!-- id: 75b5234c-cb88-4f38-8632-c43d05fdcd79 -->
+
+- [ ] **[MEDIUM]** Block swipe-to-complete on task rows still awaiting REVIEW
+  - Type: feature
+  - Description: A committed row whose linked agent_queue entry has shipped but not yet been acknowledged renders the amber `⌁ REVIEW` badge — `derivePhase(item)` resolves it to `PHASE.ACCEPT` in `toDoList_main/src/phase.js`. Today `attachToDoDrag`'s `swipeCfg.onRight` handler (`toDoList_main/src/toDoRow.js`, ~line 4962) toggles the row's own `checkToDo` checkbox unconditionally on a far-enough swipe-right, so a task can be swiped complete — and vanish into the completed section — before anyone has looked at what the agent shipped for it. Gate `onRight`: when `derivePhase(item) === PHASE.ACCEPT`, do not toggle `checkToDo`; instead call `invokeReviewBadgeTap(item.entryId, projectName)` (already imported into toDoRow.js from `todoStatus.js`), the same handler the `⌁ REVIEW` badge tap uses, so the swipe lands the user on the TODO.md viewer to acknowledge the entry. Once acknowledged (`entry_reviewed_at` stamped, phase flips to `PHASE.DONE`), swipe-to-complete on that row works exactly as it does today.
+  - Behavior: Swiping right past the completion threshold on a row in `PHASE.ACCEPT` (REVIEW) does not check the row off and does not fire the `todoSwipeRightComplete` checkmark flash; it opens the TODO.md viewer anchored to that entry instead, identical to tapping the row's `⌁ REVIEW` badge. Swiping right on any row NOT in `PHASE.ACCEPT` is unaffected. Swipe-to-delete (`onLeft`) and the desktop checkbox click are out of scope — only the swipe-right completion path is gated.
+  - Out of scope: `isSwipeable()` itself (the row should still arm for swipe-left delete); any new visual treatment on the row; the desktop mouse-click checkbox path, which has no review gate today and is unchanged by this task.
+  - File: `toDoList_main/src/toDoRow.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 4350e661-7f4e-43fd-bfa8-2af56c0617f9 -->
