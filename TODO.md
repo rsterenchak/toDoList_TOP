@@ -1806,9 +1806,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-08-22
   <!-- id: 1be1a51c-8a0b-4ecf-ace2-e959d8cdec95 -->
 
-- [ ] **[MEDIUM]** Fix proposals sheet overflowing the phone viewport and add tap-to-expand on proposal cards
+- [x] **[MEDIUM]** Fix proposals sheet overflowing the phone viewport and add tap-to-expand on proposal cards
   - Type: bug
   - Description: The proposals sheet in `main.js` renders at a fixed size that overflows the phone viewport, pushing the Close button off-screen and colliding with the status bar; rebuild it as a full-height column with an internally scrolling card list and a pinned bottom Close, using the current CSS token variables in `style.css`. Add A1 tap-to-expand: tapping a card body toggles it between a 2-line clamped preview and its full description, and the card must stop propagation so the per-card Dismiss and Accept buttons keep firing their existing handlers even in the expanded state. Track the active proposal (an `activeProposalId`-style state) so the expanded card shows that proposal's complete text and collapses cleanly; accepting/dismissing still mutates the underlying list, and the expand-state/outside-close listeners must be registered on the new mount path rather than inherited from the old render.
   - File: `main.js`, `style.css`
-  - Completed:
+  - Completed: 2026-08-28
   <!-- id: 75b5234c-cb88-4f38-8632-c43d05fdcd79 -->
