@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-28',
+        changed: [
+            'Swiping a task right no longer completes it while its shipped change is still awaiting review — the swipe opens that entry in TODO.md instead.',
+        ],
         fixed: [
             'The proposal review sheet now fits a phone screen with its Close button always reachable, and tapping a proposal card opens its full description.',
         ],
@@ -21,13 +24,6 @@ export const changelog = [
         ],
         fixed: [
             'Models panel rows set to an OpenCode Go model no longer show the amber API-billed badge, which wrongly implied those runs bill per token.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-21',
-        fixed: [
-            'The API spend panel’s coverage note no longer claims third-party pipeline runs go unmeasured — they are tracked, and only plan-lane runs sit outside the total.',
         ],
     },
 ];

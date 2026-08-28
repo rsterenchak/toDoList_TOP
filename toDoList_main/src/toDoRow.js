@@ -4952,7 +4952,10 @@ export function reorderToDoDOM(projectName) {
 // browser's drag handler during editing.
 // `swipeTargets` (optional) wires horizontal swipe-to-complete / swipe-to-delete
 // on touch devices. Swipe-right reuses the existing checkbox change path so
-// persistence is identical. Swipe-left commits the delete immediately (no
+// persistence is identical, EXCEPT on a row in the review phase (PHASE.ACCEPT):
+// there the swipe opens the entry in the TODO.md viewer instead of completing
+// the row, so a shipped change can't vanish into the completed section before
+// it has been acknowledged. Swipe-left commits the delete immediately (no
 // confirm modal — the mobile flow uses a 5s UNDO toast for recovery per
 // the STACK mobile task-interactions spec) and surfaces an undo affordance
 // the user can tap to restore the row at its original position.
@@ -4962,6 +4965,25 @@ export function attachToDoDrag(toDoChild, toDoInput, project, swipeTargets) {
         onRight: function() {
             const cb = swipeTargets.checkToDo;
             if (!cb || cb.style.display === 'none') return;
+            // REVIEW gate: a row whose shipped entry has not been acknowledged
+            // yet (PHASE.ACCEPT — the amber `⌁ REVIEW` badge) must not be
+            // swiped off into the completed section before anyone has read what
+            // the agent shipped for it. Send the swipe where the badge tap goes
+            // instead — the project's TODO.md viewer anchored to this entry —
+            // and leave the checkbox completely alone: no toggle, no change
+            // event, no completion flash. Once the entry is acknowledged the
+            // phase flips to DONE and swipe-to-complete works as it always has.
+            const reviewItem = swipeTargets.item;
+            if (reviewItem && derivePhase(reviewItem) === PHASE.ACCEPT) {
+                // Resolve the live project name from the row for the same reason
+                // onLeft does — the closed-over `project` may be stale after a
+                // project switch, while data-value is kept in sync.
+                const reviewProject = toDoChild.dataset && toDoChild.dataset.value
+                    ? toDoChild.dataset.value
+                    : project;
+                invokeReviewBadgeTap(reviewItem.entryId, reviewProject);
+                return;
+            }
             // Capture direction BEFORE toggling so the center-screen
             // confirmation flash only fires on the complete direction —
             // swiping right on an already-completed row to uncomplete it
