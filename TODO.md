@@ -1792,13 +1792,6 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Sequencing: touches `claudeSheet.js` alongside the pending rates entry and the coverage-note entry — run all three sequentially, never batched.
   <!-- id: ecca25de-1213-4722-b43d-d1011520080f -->
 
-- [ ] **[HIGH]** Fix Models panel mislabeling Claude Code Pro-plan models as API-billed
-  - Type: bug
-  - Description: In the Models panel's per-workflow model picker, any model billed under the Claude Code Pro plan quota (e.g. `deepseek-v4-flash-vision` on the RUN row) is incorrectly shown with the amber "→ api" badge instead of the purple plan-quota indicator. The classification logic that decides purple (plan quota) vs amber (API billed) isn't recognizing Pro-plan models as plan-quota — likely a hardcoded or incomplete model-list check rather than reading the model's actual billing source. Fix the classification so any Pro-plan-quota model renders purple/plan-quota across all workflow rows, not just the default Claude models. Likely in `toDoList_main/src/modelsPanel.js` where the color/badge is derived per model.
-  - File: `toDoList_main/src/modelsPanel.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
-  <!-- id: ced6bb8d-8f23-44a8-a85e-1592f2d54ac8 -->
-
 - [x] **[HIGH]** Suppress amber API badge for Claude Code Pro-plan ("go/") models in Models panel
   - Type: bug
   - Description: In the per-workflow Models panel, rows using a "go/"-prefixed model (e.g. `go/deepseek-v4-flash-vision` on the RUN row) currently render the amber "→ api" badge, incorrectly implying API billing when the model is actually billed under the Claude Code Pro plan quota. Fix the badge logic so any model whose identifier is plan-quota-sourced (the "go/" prefix) never renders the amber API badge, while all other existing badges/labels (purple plan-quota dots, "default", "global", "fast sends"/"deep sends" tags, the locked GHOST row) remain unchanged. Only the erroneous amber badge should be removed for this model class — do not alter which rows are dim/purple/amber otherwise. Likely in the badge-derivation logic in `toDoList_main/src/modelsPanel.js`.
