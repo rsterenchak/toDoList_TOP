@@ -2406,6 +2406,14 @@ let _queueRepaintWired = false;
 // _mockupVariants cache repaints the already-generated previews alongside it).
 // Session-scoped only; never pruned, since a resolved row simply stops rendering.
 const _expandedMockupRows = new Set();
+// The one proposal card whose description is expanded to its full text, or null
+// when every card sits at its two-line preview. Module-level for the same reason
+// _expandedMockupRows is: renderList rebuilds the card list wholesale on every
+// onQueueChange, so an expanded card would silently collapse when an unrelated
+// proposal resolved elsewhere. Single-valued rather than a Set — the sheet is a
+// phone-height column, so opening a second description would push the first one
+// (and the card's own Accept / Dismiss) out of view.
+let _activeProposalId = null;
 function ensureQueueRepaintListener() {
     if (_queueRepaintWired) return;
     _queueRepaintWired = true;
@@ -2451,6 +2459,12 @@ function buildProposalCard(row) {
     const card = document.createElement('div');
     card.className = 'proposalCard';
 
+    // Badge + title + description preview, grouped so the tap target for
+    // expanding the card is one element rather than "everything above the
+    // buttons". The actions row and the mockup flow stay outside it.
+    const bodyRegion = document.createElement('div');
+    bodyRegion.className = 'proposalCardBody';
+
     const headRow = document.createElement('div');
     headRow.className = 'proposalCardHead';
     const badge = buildAspectBadge(row);
@@ -2462,15 +2476,16 @@ function buildProposalCard(row) {
     titleEl.className = 'proposalCardTitle';
     titleEl.textContent = titleText;
     headRow.appendChild(titleEl);
-    card.appendChild(headRow);
+    bodyRegion.appendChild(headRow);
 
     const description = (ctx.description || '').toString().trim();
     if (description) {
         const preview = document.createElement('p');
         preview.className = 'proposalCardPreview';
         preview.textContent = description;
-        card.appendChild(preview);
+        bodyRegion.appendChild(preview);
     }
+    card.appendChild(bodyRegion);
 
     const errorEl = document.createElement('p');
     errorEl.className = 'proposalCardError';
@@ -2570,6 +2585,57 @@ function buildProposalCard(row) {
     actions.appendChild(dismiss);
     actions.appendChild(accept);
     card.appendChild(actions);
+
+    // TAP TO EXPAND — the card body toggles between the two-line clamped preview
+    // and the proposal's full description. The listener sits on the card root so
+    // the whole card (padding included) is the target on a phone, which means
+    // every interactive region below it has to stop its clicks from bubbling up:
+    // otherwise tapping Dismiss or Accept — or a mockup variant inside the
+    // disclosed flow — would toggle the description as a side effect, and on an
+    // expanded card the buttons would shift under the finger mid-tap. Wired here
+    // on the freshly-built card, so the repaint that renderList does on every
+    // queue change re-registers it rather than leaving a listener bound to a card
+    // that is no longer in the document.
+    actions.addEventListener('click', function (e) { e.stopPropagation(); });
+    flow.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (description) {
+        card.classList.add('is-expandable');
+        bodyRegion.setAttribute('role', 'button');
+        bodyRegion.setAttribute('tabindex', '0');
+        // Paint the collapsed/expanded chrome without touching _activeProposalId,
+        // so the initial restore below can run on every card in the list without
+        // the later ones clearing the active id the earlier ones just honoured.
+        const paint = function (expanded) {
+            card.classList.toggle('is-expanded', expanded);
+            bodyRegion.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        };
+        const setExpanded = function (next) {
+            _activeProposalId = next ? row.id : null;
+            // Only one description is open at a time, so collapse whichever
+            // sibling card was expanded before this tap.
+            const list = card.parentNode;
+            if (list && next) {
+                const others = list.querySelectorAll('.proposalCard.is-expanded');
+                Array.prototype.forEach.call(others, function (el) {
+                    if (el === card) return;
+                    el.classList.remove('is-expanded');
+                    const otherBody = el.querySelector('.proposalCardBody');
+                    if (otherBody) otherBody.setAttribute('aria-expanded', 'false');
+                });
+            }
+            paint(next);
+        };
+        paint(_activeProposalId === row.id);
+        card.addEventListener('click', function () {
+            setExpanded(!card.classList.contains('is-expanded'));
+        });
+        bodyRegion.addEventListener('keydown', function (e) {
+            if (e.key !== 'Enter' && e.key !== ' ' && e.key !== 'Spacebar') return;
+            e.preventDefault();
+            setExpanded(!card.classList.contains('is-expanded'));
+        });
+    }
+
     if (isMockup) {
         card.appendChild(flow);
         // The modal body is rebuilt on every onQueueChange, so a flow the user had
@@ -2594,6 +2660,13 @@ export function showProposalReviewModal() {
 
     const prior = document.getElementById('proposalReviewModalBackdrop');
     if (prior && prior.parentNode) prior.parentNode.removeChild(prior);
+
+    // An expanded description is a reading state within one review pass, not a
+    // preference — every open starts with the cards collapsed. Reset here rather
+    // than on close so a sheet torn out of the DOM without its close path (the
+    // stale-backdrop removal directly above, a view rebuild) can't leave a card
+    // pre-expanded for whoever opens the sheet next.
+    _activeProposalId = null;
 
     const backdrop = document.createElement('div');
     backdrop.id = 'proposalReviewModalBackdrop';

@@ -9562,7 +9562,10 @@ button.complexityNestChip:disabled {
   overflow: hidden;
 }
 
+/* The header and the footer are the column's fixed ends — never let a long card
+   list squeeze either one, or the pinned Close shrinks away as proposals pile up. */
 #proposalReviewModalHeader {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -9635,6 +9638,21 @@ button.complexityNestChip:disabled {
   border: 0.5px solid var(--border-dim);
   border-radius: 8px;
 }
+/* The tap target for expanding a card: badge + title + clamped preview. It carries
+   role="button" when the proposal has a description, so it gets the pointer and a
+   focus ring of its own; a description-less card keeps the plain layout. */
+.proposalCardBody {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-radius: 6px;
+}
+.proposalCard.is-expandable .proposalCardBody { cursor: pointer; }
+.proposalCardBody:focus { outline: none; }
+.proposalCardBody:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
 .proposalCardHead {
   display: flex;
   align-items: center;
@@ -9652,6 +9670,18 @@ button.complexityNestChip:disabled {
   font-size: 12px;
   line-height: 1.5;
   color: var(--text-secondary);
+  /* Collapsed by default at two lines so a batch of proposals reads as a scannable
+     list instead of a wall of derive prose; tapping the card body lifts the clamp
+     onto the full description. */
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.proposalCard.is-expanded .proposalCardPreview {
+  -webkit-line-clamp: unset;
+  overflow: visible;
+  white-space: pre-wrap;
 }
 .proposalCardError {
   margin: 0;
@@ -9713,6 +9743,7 @@ button.complexityNestChip:disabled {
 }
 
 #proposalReviewModalActions {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -9739,7 +9770,28 @@ button.complexityNestChip:disabled {
 }
 
 @media (max-width: 480px) {
-  #proposalReviewModal { max-height: 92vh; }
+  /* PHONE: a full-height column, not a centred card.
+     `max-height: 92vh` sized the dialog against the LARGE viewport — the one iOS
+     Safari reports with its toolbars retracted — so a sheet holding more than a
+     couple of proposals rendered taller than the visible viewport: the header rode
+     up under the status bar and the pinned Close sat below the bottom toolbar,
+     unreachable. Pin the backdrop to the dynamic viewport instead, inset it by the
+     safe area (status bar at the top, the same capped home-indicator reserve the
+     rest of the mobile chrome uses at the bottom), and let the dialog fill what's
+     left. Header and footer are flex: 0 0 auto, so the card list is the only thing
+     that scrolls. */
+  #proposalReviewModalBackdrop {
+    height: 100dvh;
+    align-items: stretch;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px)
+             10px
+             calc(var(--mobile-bottom-inset) + 10px);
+  }
+  #proposalReviewModal {
+    max-width: none;
+    max-height: none;
+    height: 100%;
+  }
   #proposalReviewModalCloseBtn { font-size: 14px; padding: 10px 16px; }
 }
 

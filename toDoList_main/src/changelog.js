@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-08-28',
+        fixed: [
+            'The proposal review sheet now fits a phone screen with its Close button always reachable, and tapping a proposal card opens its full description.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-22',
         added: [
             'OpenCode Go models now sit in their own model-picker group, and their turns count as subscription-covered rather than adding to API spend.',
@@ -20,7 +27,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-08-21',
         fixed: [
-            'Spend totals for runs on the MiniMax, GLM, and Gemini models now use their published prices instead of a far higher placeholder estimate.',
             'The API spend panel’s coverage note no longer claims third-party pipeline runs go unmeasured — they are tracked, and only plan-lane runs sit outside the total.',
         ],
     },
