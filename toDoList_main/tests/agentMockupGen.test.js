@@ -56,7 +56,11 @@ vi.mock('../src/inject.js', () => ({
     isInjectConfigured: () => true,
     chatWithWorker: (messages, entryId, attach, repo) => {
         chatCalls.push({ messages, entryId, attach, repo });
-        if (chatReject) return Promise.reject(new Error(chatReject));
+        // A string rejects as a plain Error; an Error is rejected as-is so a
+        // test can script the `reason` chatWithWorker attaches to real failures.
+        if (chatReject) {
+            return Promise.reject(chatReject instanceof Error ? chatReject : new Error(chatReject));
+        }
         return Promise.resolve({ reply: chatReply, suggestedFiles: [] });
     },
 }));
@@ -355,6 +359,37 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         const err = document.querySelector('.agentMockupGenError');
         expect(err.hidden).toBe(false);
         expect(document.querySelector('.agentMockupGenerate').disabled).toBe(false);
+    });
+
+    it('surfaces the failure cause the error carries instead of generic copy', async () => {
+        // chatWithWorker attaches the Worker's own `{ error, detail }` body to the
+        // thrown error as `reason`; the banner has to show it, not swallow it.
+        const boom = new Error('Upstream 502 — model overloaded');
+        boom.reason = 'Upstream 502 — model overloaded';
+        chatReject = boom;
+        queueRows = [{ id: 'g6b', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+
+        const err = document.querySelector('.agentMockupGenError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toContain('Upstream 502 — model overloaded');
+        expect(err.textContent).toContain('fallback below');
+    });
+
+    it('keeps the generic copy when the error names no cause', async () => {
+        chatReject = new Error('');
+        queueRows = [{ id: 'g6c', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+
+        const err = document.querySelector('.agentMockupGenError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('Couldn’t generate mockups — try again, or use the fallback below.');
     });
 
     it('points the generation at the project repo when a target is routed, null otherwise', async () => {
