@@ -1835,3 +1835,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-09-02
   <!-- id: 48dc6c45-3d4b-482b-a2e7-33eeb150cf64 -->
+
+- [ ] **[MEDIUM]** Surface the real Worker error in the mockup Generate failure banner
+  - Type: bug
+  - Description: The in-app mockup generation card swallows the actual failure cause. In `mockupFlow.js`, the Generate button's `.catch(function () { genFail('Couldn’t generate mockups — try again, or use the fallback below.') })` ignores the caught error entirely, even though `chatWithWorker` already threw an `Error` whose `message`/`reason` carries the Worker's own `{ error, detail }` body via `describeError` (e.g. an upstream status and the upstream API's error text on 502 paths). Change the catch to accept the error argument and pass its described message through: `genFail('Couldn’t generate mockups — ' + (e && (e.reason || e.message) || 'try again') + '. Or use the fallback below.')`, falling back to the current generic copy only when the error carries no reason. Apply the same treatment to the parse-failure path only if it already routes through genFail with its own message (it does — leave it as is). Do not add new fetch logic or touch `inject.js`; the diagnostic string already arrives on the error object.
+  - File: `toDoList_main/src/mockupFlow.js`
+  - Completed:
+  <!-- id: 8427a4a2-782b-4e5b-a761-974ed51af2b7 -->
