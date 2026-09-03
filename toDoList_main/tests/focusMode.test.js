@@ -451,11 +451,36 @@ describe('focus mode — video scene CSS hooks', () => {
         expect(wrap[1]).toMatch(/position:\s*absolute/);
         expect(wrap[1]).toMatch(/inset:\s*0/);
         expect(wrap[1]).toMatch(/width:\s*auto/);
-        expect(wrap[1]).toMatch(/height:\s*auto/);
         const frame = css.match(/body\.focusVideoOn \.musicPlayerWrap iframe\s*\{([^}]*)\}/);
         expect(frame).not.toBeNull();
         expect(frame[1]).toMatch(/width:\s*100%/);
         expect(frame[1]).toMatch(/height:\s*100%/);
+    });
+
+    // Regression: the wrap rendered full-width x 150px (the UA default
+    // intrinsic iframe height), vertically centred, because the base
+    // .musicPlayerWrap rule's `align-self: center` still applies to the
+    // abspos wrap inside the flex popover — any non-stretch self-alignment
+    // resolves `top: 0; bottom: 0; height: auto` to intrinsic height rather
+    // than stretching. Both overrides are kept; either one alone fixes it.
+    it('overrides the base align-self so the promoted wrap really stretches', () => {
+        const wrap = css.match(/body\.focusVideoOn \.musicPlayerWrap\s*\{([^}]*)\}/);
+        expect(wrap).not.toBeNull();
+        expect(wrap[1]).toMatch(/align-self:\s*stretch/);
+        expect(wrap[1]).toMatch(/height:\s*100%/);
+        expect(wrap[1]).not.toMatch(/height:\s*auto/);
+        // The base rule keeps its centred, fixed-size layout for the normal popover.
+        const base = css.match(/\n\.musicPlayerWrap\s*\{([^}]*)\}/);
+        expect(base).not.toBeNull();
+        expect(base[1]).toMatch(/align-self:\s*center/);
+        expect(base[1]).toMatch(/height:\s*135px/);
+    });
+
+    // The visualizer mounts inside .musicPlayerWrap at inset: 0 with an opaque
+    // radial-gradient backdrop above the iframe, so a stretched wrap would let
+    // it cover the whole video. Suppressed for the duration of the swap only.
+    it('hides the decorative visualizer while the video swap is on', () => {
+        expect(css).toMatch(/body\.focusVideoOn \.musicViz\s*\{\s*display:\s*none/);
     });
 
     it('turns the overlay itself into the scrim so the video shows through', () => {

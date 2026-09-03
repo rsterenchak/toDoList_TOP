@@ -1829,9 +1829,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-09-02
   <!-- id: 53d105f5-72b0-4b31-8a28-ffa18d56433b -->
 
-- [ ] **[HIGH]** Fix focus-mode video stuck at 150px tall — align-self blocks the wrap's absolute stretch
+- [x] **[HIGH]** Fix focus-mode video stuck at 150px tall — align-self blocks the wrap's absolute stretch
   - Type: bug
   - Description: With the focus-mode video swap on, `body.focusVideoOn .musicPlayerWrap` computes `position: absolute; inset: 0` but renders full-width × 150px, vertically centered (live-measured: pop 1237×1011, wrap 1237×150, iframe 1237×150 — 150 being the UA default intrinsic iframe height). Cause: the base `.musicPlayerWrap` rule's `align-self: center` still applies to the absolutely-positioned wrap inside the flex popover — per CSS Box Alignment, self-alignment on an abspos box aligns it within its inset rectangle in the block axis, and any non-stretch value makes `top: 0; bottom: 0; height: auto` resolve to intrinsic height instead of stretching. Fix in `toDoList_main/src/style.css`: (1) add `align-self: stretch;` and `height: 100%;` to the existing `body.focusVideoOn .musicPlayerWrap` rule (belt and braces — either alone fixes it; keep both), so the wrap genuinely covers the promoted popover and the iframe's `width: 100%; height: 100%` resolves against a definite box. (2) Add `body.focusVideoOn .musicViz { display: none; }` — the decorative visualizer mounts inside `.musicPlayerWrap` at `inset: 0` with an opaque radial-gradient background above the iframe, so once the wrap stretches, an active visualizer style would cover the full-screen video; it must be suppressed for the duration of the swap only (unaffected in the normal popover). No JS changes. Acceptance: with the swap on, the iframe measures the full viewport (YouTube's own internal letterboxing is expected and fine); toggling off restores the 240×135 popover player exactly; switching visualizer styles while the swap is on never occludes the video.
   - File: `toDoList_main/src/style.css`
-  - Completed:
+  - Completed: 2026-09-02
   <!-- id: 48dc6c45-3d4b-482b-a2e7-33eeb150cf64 -->
