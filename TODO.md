@@ -1842,3 +1842,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/mockupFlow.js`
   - Completed: 2026-09-03
   <!-- id: 8427a4a2-782b-4e5b-a761-974ed51af2b7 -->
+
+- [ ] **[MEDIUM]** Reduce main-thread work on project switch and task-commit to fix perceived UI lag
+  - Type: bug
+  - Description: Two concrete hot paths do more synchronous work than needed. (1) Switching projects in the sidebar (the `projChild` click handler in `main.js` around line 2369, and the equivalent post-create/rename path) calls `addAllToDo_DOM` / `addToDos_restore` in `toDoRow.js`, which tear down and fully rebuild every row of the target project via `buildToDoRow` (toDoRow.js:4006, an ~800-line function that attaches dozens of listeners and mounts sub-panels per row) on every single switch, even when re-entering a project whose rows were already built earlier in the session — cost scales with the project's todo count and repeats on every click. (2) Pressing Enter to commit a new task (the `toDoInput` "keydown" Enter handler in `toDoRow.js` around line 4483) synchronously calls `listLogic.saveToStorage()` (listLogic.js:338), which runs `JSON.stringify(allProjects)` over the ENTIRE app state — every project's items, not just the active project's. The same row's `toDoInput` "keyup" handler (toDoRow.js:4631) also calls `saveToStorage()` on every keystroke while typing a title, so that full-app stringify runs on every keypress, not just on commit. Investigate caching/reusing already-built row DOM across repeat project switches, and scoping or debouncing the localStorage write in `saveToStorage` so typing a title doesn't re-serialize every other project's data on each keystroke.
+  - File: `toDoList_main/src/toDoRow.js`, `toDoList_main/src/listLogic.js`
+  <!-- id: f96cec7f-13ab-4cf1-b34a-e0d85d6c0589 -->
