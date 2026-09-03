@@ -1850,8 +1850,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-09-03
   <!-- id: f96cec7f-13ab-4cf1-b34a-e0d85d6c0589 -->
 
-- [ ] **[MEDIUM]** Cache and reuse built todo-row DOM across repeat project switches to cut mobile sidebar lag
+- [x] **[MEDIUM]** Cache and reuse built todo-row DOM across repeat project switches to cut mobile sidebar lag
   - Type: bug
   - Description: Clicking a project row (the projChild click handler in main.js around line 2369, and the equivalent post-create/rename commit path) unconditionally calls addAllToDo_DOM (toDoRow.js:4859) on every switch, which calls clearDetailPane() and then rebuilds every row from scratch via buildToDoRow (toDoRow.js:4006, an ~850-line function that attaches dozens of per-row listeners and mounts sub-panels) even when returning to a project whose rows were already built earlier in the session. A prior TODO entry (id f96cec7f-13ab-4cf1-b34a-e0d85d6c0589, marked completed 2026-09-03) scoped this exact hot path but only landed the saveToStorage half of the fix (the debounced saveToStorageSoon at listLogic.js:384) -- the DOM-rebuild half is unchanged: addAllToDo_DOM still calls mainListDiv.appendChild(buildToDoRow(item, name)) in a loop for every item on every switch, so cost still scales with a projects todo count and repeats on every tap. This is the mobile sidebar lag being reported now. Cache built rows per project (keyed by project name, invalidated when that projects items actually change) and reattach them with appendChild -- which preserves listeners, the same in-place-move pattern reorderToDoDOM (toDoRow.js:4919) already uses for reordering within one project -- instead of calling buildToDoRow again for rows that already exist and are unchanged.
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`
+  - Completed: 2026-09-03
   <!-- id: 0ebba8a1-cdc4-4ff8-a1f0-3c8cdb9813ff -->

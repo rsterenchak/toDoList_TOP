@@ -4853,6 +4853,129 @@ function renderOrderForSort(items) {
 }
 
 
+// ── Per-project built-row cache ──────────────────────────────────────────
+// A project switch clears #mainList and re-renders the target project, and the
+// render path used to call buildToDoRow — an ~850-line factory that wires
+// dozens of listeners and mounts sub-panels per row — once per item on EVERY
+// switch, even when returning to a project whose rows were built minutes
+// earlier. The cost scales with the project's todo count and repeats on every
+// tap, which is the sidebar lag felt on mobile.
+//
+// Detaching a node from #mainList does not destroy it: its listeners and
+// sub-panels survive, so re-appending the same element is a pure move — the
+// in-place pattern reorderToDoDOM already relies on. Each full render therefore
+// records the rows it produced, keyed by project name and then by the item
+// OBJECT (identity, not title — the same anchor reorderToDoDOM matches on), and
+// the next render of that project re-appends them instead of rebuilding.
+//
+// A cached row is reused ONLY when nothing that feeds its markup has moved:
+//   • the item is still the same object AND its render signature is unchanged —
+//     a reload, an import, or a re-hydrate mints new objects, and any edit
+//     changes the signature, so both miss;
+//   • the project's hideDates preference is unchanged (it gates the due pill at
+//     build time, and toggling it re-renders expecting fresh rows);
+//   • the row is not the blank placeholder — its input can hold text the user
+//     typed but never committed, and a project switch is expected to discard
+//     that (see the `originalBlank` marker in buildToDoRow);
+//   • the row has no description panel open — clearing #mainList detaches the
+//     panel, so rebuilding beats resurrecting a half-open row;
+//   • the row is detached or still parented to #mainList, so a reuse can never
+//     move a node some other surface has taken ownership of.
+// Every miss falls back to buildToDoRow, so the cache can only ever skip work
+// that would have produced an identical row.
+const ROW_CACHE_PROJECT_LIMIT = 8;
+// projectName -> { hideDates, rows: Map(item -> { row, sig }) }, insertion
+// ordered so the first key is the least recently rendered project.
+const rowCache = new Map();
+
+
+// Every item field buildToDoRow reads while painting a row. Anything absent
+// here is either derived state repainted after the render (task filter, queue
+// badges, shipped markers) or not rendered at all — `pos` only feeds the render
+// ORDER, which the caller applies to the rows it gets back.
+function rowRenderSignature(item) {
+    if (!item) return '';
+    return JSON.stringify([
+        item.id || '',
+        item.tit || '',
+        item.desc || '',
+        item.due || '',
+        item.pri == null ? '' : item.pri,
+        !!item.completed,
+        item.status || '',
+        item.entryId || '',
+        item.injectedAt || '',
+        item.recurrence || null,
+    ]);
+}
+
+
+// Resolve a reusable row element for `item` in `name`, or null when it has to
+// be rebuilt. See the cache comment above for what each guard protects.
+function takeCachedRow(name, item, hideDates, mainListDiv) {
+    const entry = rowCache.get(name);
+    if (!entry || entry.hideDates !== hideDates) return null;
+    const cached = entry.rows.get(item);
+    if (!cached) return null;
+    if (cached.sig !== rowRenderSignature(item)) return null;
+    const row = cached.row;
+    if (row.parentNode && row.parentNode !== mainListDiv) return null;
+    const toggle = row.querySelector('#descToggle');
+    if (toggle && toggle.classList.contains('open')) return null;
+    // Transient per-visit state a rebuild used to wipe: the keyboard-nav marker
+    // and the detail-pane selection. Both are re-applied by the handlers that
+    // own them, so a revisited project opens as neutral as a freshly built one.
+    row.classList.remove('todo-active', 'todo-detail-open');
+    return row;
+}
+
+
+// Record what a completed render left in #mainList as this project's cache,
+// REPLACING whatever it held — so rows for items deleted since the last render
+// are dropped — and evict the least recently rendered project past the cap.
+function cacheRenderedRows(name, rendered, hideDates) {
+    const rows = new Map();
+    rendered.forEach(function(entry) {
+        // The blank placeholder is deliberately never cached (see above).
+        if (!entry.item || !entry.item.tit) return;
+        rows.set(entry.item, { row: entry.row, sig: rowRenderSignature(entry.item) });
+    });
+    // Delete-then-set re-inserts the key at the end of the Map's iteration
+    // order, which is what makes the eviction below least-recently-rendered.
+    rowCache.delete(name);
+    rowCache.set(name, { hideDates: hideDates, rows: rows });
+    while (rowCache.size > ROW_CACHE_PROJECT_LIMIT) {
+        rowCache.delete(rowCache.keys().next().value);
+    }
+}
+
+
+// Drop one item's cached row. Called wherever a row is rebuilt OUTSIDE a full
+// render, so the cache can never hand back the superseded element on the next
+// project switch.
+function forgetCachedRow(name, item) {
+    const entry = rowCache.get(name);
+    if (entry) entry.rows.delete(item);
+}
+
+
+// Shared tail of both full-render paths: append one row per item in render
+// order — reusing the cached element wherever the cache says nothing that feeds
+// its markup changed — then re-record the cache from what actually landed.
+function appendProjectRows(mainListDiv, items, name) {
+    const hideDates = !!listLogic.getProjectHideDates(name);
+    const renderOrder = renderOrderForSort(items);
+    const rendered = [];
+    renderOrder.forEach(function(item) {
+        const row = takeCachedRow(name, item, hideDates, mainListDiv)
+            || buildToDoRow(item, name);
+        mainListDiv.appendChild(row);
+        rendered.push({ item: item, row: row });
+    });
+    cacheRenderedRows(name, rendered, hideDates);
+}
+
+
 // Render every persisted item for `name` into #mainList. Used on the bulk
 // add path (project switch from a fresh project, post-delete re-render).
 // `items` is the array returned by listLogic.listItems(name).
@@ -4865,10 +4988,7 @@ export function addAllToDo_DOM(items, name) {
     // e.g. after a delete or project switch) — clear it so the pane never shows a
     // stale detail.
     clearDetailPane();
-    const renderOrder = renderOrderForSort(items);
-    renderOrder.forEach(function(item) {
-        mainListDiv.appendChild(buildToDoRow(item, name));
-    });
+    appendProjectRows(mainListDiv, items, name);
     updateCompletedSection(mainListDiv);
     applyTaskFilter();
     // Load this project's agent_queue rows into the shared store so any task
@@ -4899,10 +5019,7 @@ export function addToDos_restore(toDoArray, toDoName, opts) {
     if (!mainListDiv) return;
     // Full rebuild — drop any open detail pane panel (its row is being replaced).
     clearDetailPane();
-    const renderOrder = renderOrderForSort(items);
-    renderOrder.forEach(function(item) {
-        mainListDiv.appendChild(buildToDoRow(item, toDoName));
-    });
+    appendProjectRows(mainListDiv, items, toDoName);
     updateCompletedSection(mainListDiv);
     applyTaskFilter();
     loadQueueRowsForRender(toDoName);
@@ -4931,7 +5048,13 @@ export function reorderToDoDOM(projectName) {
     const renderOrder = renderOrderForSort(items);
     renderOrder.forEach(function(item) {
         let row = rowsByItem.get(item);
-        if (!row) row = buildToDoRow(item, projectName);
+        if (!row) {
+            row = buildToDoRow(item, projectName);
+            // This item's row was just replaced outside a full render, so the
+            // cached element is superseded — drop it rather than let the next
+            // project switch re-append the stale node in place of this one.
+            forgetCachedRow(projectName, item);
+        }
         // Collect any auxiliary panels that belong to this row (the
         // description panel, the recurring-task stats drawer, the blank
         // placeholder's mobile chip row, and the paste-entry panel can be
