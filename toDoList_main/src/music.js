@@ -198,6 +198,23 @@ export function getStationById(state, id) {
 }
 
 
+// The live player node and the wrap it belongs to. The YT IFrame API replaces
+// `#musicPlayerTarget` with a real <iframe> inside `.musicPlayerWrap`, so the
+// frame only exists once music has actually started this session. Focus mode
+// borrows that node — reparenting it full-bleed and handing it back — so both
+// lookups are exported rather than duplicated as ad-hoc selectors: the frame
+// must never be destroyed or recreated, or playback stops.
+export function getMusicPlayerHome(doc) {
+    doc = doc || document;
+    return doc.querySelector('.musicPlayerWrap');
+}
+
+export function getMusicPlayerFrame(doc) {
+    const home = getMusicPlayerHome(doc);
+    return home ? home.querySelector('iframe') : null;
+}
+
+
 // Module-level loader so concurrent `play()` calls don't queue a second
 // `<script>` tag. The promise resolves once `window.onYouTubeIframeAPIReady`
 // fires (or immediately if `window.YT && window.YT.Player` is already there).

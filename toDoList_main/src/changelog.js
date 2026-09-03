@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-02',
+        added: [
+            'Focus mode can swap its star scene for the video that’s playing, full-screen, and swap back.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-08-28',
         changed: [
             'Swiping a task right no longer completes it while its shipped change is still awaiting review — the swipe opens that entry in TODO.md instead.',
@@ -16,9 +23,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-22',
-        added: [
-            'OpenCode Go models now sit in their own model-picker group, and their turns count as subscription-covered rather than adding to API spend.',
-        ],
         changed: [
             'The OpenCode Go picker group now reads as included coverage with each model’s own cap shown on the row, and the picker note spells out that non-Claude models open a PR for manual review.',
         ],
