@@ -7,10 +7,12 @@
 // session keeps running silently.
 //
 // A third corner control swaps the star scene for the currently-playing
-// YouTube video, full-bleed. The swap BORROWS the live player iframe from the
-// music popover — the same node is reparented into the overlay and handed
-// back on toggle-off or focus exit. It is never destroyed or recreated,
-// because recreating it would restart playback.
+// YouTube video, full-bleed. The swap NEVER touches the DOM the player lives
+// in: moving an iframe always reloads its document, which severs its
+// handshake with the YT.Player instance and stops playback. Instead a
+// `focusVideoOn` class on <body> promotes the iframe's existing ancestors —
+// the music popover and its player wrap — to full-bleed with CSS, so the node
+// itself never moves and the stream plays straight through the swap.
 //
 // The controller mirrors the shape of companion.js / pomodoro.js / music.js:
 // `createFocusMode(doc)` returns { activate, deactivate, isActive, destroy }.
@@ -21,7 +23,7 @@
 // companion's "no work when disabled" approach. Focus mode is session-only
 // and never persisted, so a page refresh always returns to the dashboard.
 
-import { ensureMusic, getMusicPlayerFrame, getMusicPlayerHome } from './music.js';
+import { ensureMusic, getMusicPlayerFrame } from './music.js';
 import { ensurePomodoro } from './pomodoro.js';
 
 // Gate: focus mode only runs on desktop-class viewports with a fine pointer —
@@ -43,10 +45,7 @@ export function createFocusMode(doc) {
     let stationLabel = null;   // station name text inside the chip
     let sessionBtn   = null;   // single icon-only pomodoro control
     let videoBtn     = null;   // icon-only star-scene ⇄ video toggle
-    let videoLayer   = null;   // full-bleed host for the borrowed player iframe
     let videoOn      = false;  // session-only; never persisted, resets on exit
-    let borrowedFrame = null;  // the live player iframe while it is borrowed
-    let frameHome    = null;   // .musicPlayerWrap the frame is handed back to
     let active       = false;
     let unsubMusic   = null;
     let unsubPom     = null;
@@ -81,18 +80,6 @@ export function createFocusMode(doc) {
             '<div class="focusShootingStar"></div>' +
             '<div class="focusVignette"></div>';
         overlay.appendChild(scene);
-
-        // ── Video layer — host for the borrowed player iframe ──
-        // Empty until the scene swap is toggled on. Sits above the scene and
-        // below the corner cluster; the scrim keeps the controls legible over
-        // bright video. Decorative chrome, so aria-hidden.
-        videoLayer = doc.createElement('div');
-        videoLayer.className = 'focusVideoLayer';
-        videoLayer.setAttribute('aria-hidden', 'true');
-        const scrim = doc.createElement('div');
-        scrim.className = 'focusVideoScrim';
-        videoLayer.appendChild(scrim);
-        overlay.appendChild(videoLayer);
 
         // ── Corner controls — no countdown ──
         const corner = doc.createElement('div');
@@ -171,11 +158,13 @@ export function createFocusMode(doc) {
     }
 
     // ── Scene swap — star field ⇄ the live video ──
-    // The player iframe is BORROWED from the music popover, never recreated:
-    // reparenting the very same node is what keeps the stream playing across
-    // the swap. While borrowed the node lives in `.focusVideoLayer`.
+    // Purely a pair of class toggles: `focusVideoOn` on <body> promotes the
+    // popover and its player wrap to full-bleed at z-index 10001, just below
+    // the overlay, and `--video` drops the overlay to a translucent scrim and
+    // hides the star scene so the video shows through. The iframe stays put,
+    // which is the only way the stream survives the swap.
     function currentFrame() {
-        return videoOn ? borrowedFrame : getMusicPlayerFrame(doc);
+        return getMusicPlayerFrame(doc);
     }
 
     function syncVideoBtn() {
@@ -191,32 +180,25 @@ export function createFocusMode(doc) {
     }
 
     function showVideoScene() {
-        if (videoOn || !videoLayer) return;
-        const frame = getMusicPlayerFrame(doc);
+        if (videoOn) return;
         // No player yet (music never started this session) — a no-op; the
         // button already renders its disabled state.
-        if (!frame) { syncVideoBtn(); return; }
-        frameHome = frame.parentNode;
-        borrowedFrame = frame;
-        videoLayer.appendChild(frame);
+        if (!getMusicPlayerFrame(doc)) { syncVideoBtn(); return; }
         videoOn = true;
+        doc.body.classList.add('focusVideoOn');
         if (overlay) overlay.classList.add('focusModeOverlay--video');
         syncVideoBtn();
     }
 
-    // Hands the iframe back to the music popover. Called by the toggle, by
-    // deactivate and by destroy — leaving focus mode must restore the frame
-    // even while the toggle is still on, so re-entry starts on the star scene.
+    // Drops the promotion, returning the popover to its normal anchored size.
+    // Called by the toggle, by deactivate and by destroy — leaving focus mode
+    // must clear it even while the toggle is still on, so re-entry starts on
+    // the star scene and the popover renders exactly as it did before.
     function hideVideoScene() {
         if (!videoOn) return;
         videoOn = false;
+        doc.body.classList.remove('focusVideoOn');
         if (overlay) overlay.classList.remove('focusModeOverlay--video');
-        const home = getMusicPlayerHome(doc) || frameHome;
-        if (borrowedFrame && home) {
-            home.appendChild(borrowedFrame);
-            borrowedFrame = null;
-            frameHome = null;
-        }
         syncVideoBtn();
     }
 
@@ -312,7 +294,7 @@ export function createFocusMode(doc) {
     function deactivate() {
         if (!active) return;
         active = false;
-        // Always hand the player iframe back, even mid-swap.
+        // Always drop the video promotion, even mid-swap.
         hideVideoScene();
         if (overlay) {
             overlay.classList.remove('focusModeOverlay--active');
@@ -338,7 +320,6 @@ export function createFocusMode(doc) {
         stationLabel = null;
         sessionBtn = null;
         videoBtn = null;
-        videoLayer = null;
         lastPomStatus = null;
     }
 

@@ -254,29 +254,34 @@ describe('focus mode — main.js nav wiring', () => {
     });
 });
 
-// The scene swap borrows the live YouTube player iframe from the music
-// popover and hands it back. The node identity assertions below are the point
-// of these tests: recreating the iframe instead of reparenting it would
-// restart playback, which is exactly the regression this feature must not
-// introduce.
+// The scene swap promotes the live YouTube player iframe with CSS classes —
+// it never touches the DOM tree the frame lives in. Moving an iframe reloads
+// its document, which severs the YT.Player handshake and stops playback, so
+// the parent-identity assertions below are the point of these tests: any
+// reparent, removal or recreation of the frame is the regression this feature
+// must not reintroduce.
 describe('focus mode — video scene swap', () => {
     function mountFakePlayer() {
+        const popover = document.createElement('div');
+        popover.id = 'musicPopover';
         const wrap = document.createElement('div');
         wrap.className = 'musicPlayerWrap';
         const frame = document.createElement('iframe');
         frame.id = 'musicPlayerTarget';
         wrap.appendChild(frame);
-        document.body.appendChild(wrap);
-        return { wrap, frame };
+        popover.appendChild(wrap);
+        document.body.appendChild(popover);
+        return { popover, wrap, frame };
     }
 
     afterEach(() => {
         destroyFocusMode();
         const stray = document.getElementById('focusModeOverlay');
         if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
-        const wrap = document.querySelector('.musicPlayerWrap');
-        if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        const pop = document.getElementById('musicPopover');
+        if (pop && pop.parentNode) pop.parentNode.removeChild(pop);
         document.body.classList.remove('focusModeOpen');
+        document.body.classList.remove('focusVideoOn');
         delete window.matchMedia;
     });
 
@@ -296,14 +301,12 @@ describe('focus mode — video scene swap', () => {
         f.destroy();
     });
 
-    it('mounts an empty .focusVideoLayer with a scrim above the scene', () => {
+    it('mounts no video host element — the frame is promoted where it lives', () => {
         stubMatchMedia(true);
         const f = createFocusMode(document);
         f.activate();
-        const layer = document.querySelector('#focusModeOverlay .focusVideoLayer');
-        expect(layer).not.toBeNull();
-        expect(layer.querySelector('.focusVideoScrim')).not.toBeNull();
-        expect(layer.querySelector('iframe')).toBeNull();
+        expect(document.querySelector('#focusModeOverlay .focusVideoLayer')).toBeNull();
+        expect(document.querySelector('#focusModeOverlay iframe')).toBeNull();
         f.destroy();
     });
 
@@ -315,29 +318,30 @@ describe('focus mode — video scene swap', () => {
         expect(videoBtn.disabled).toBe(true);
         videoBtn.click();
         expect(document.getElementById('focusModeOverlay').classList.contains('focusModeOverlay--video')).toBe(false);
-        expect(document.querySelector('.focusVideoLayer iframe')).toBeNull();
+        expect(document.body.classList.contains('focusVideoOn')).toBe(false);
         expect(videoBtn.getAttribute('aria-pressed')).toBe('false');
         f.destroy();
     });
 
-    it('reparents the SAME iframe node into the video layer and hides the star scene', () => {
+    it('promotes via body/overlay classes and leaves the iframe exactly where it was', () => {
         stubMatchMedia(true);
-        const { frame } = mountFakePlayer();
+        const { wrap, frame } = mountFakePlayer();
         const f = createFocusMode(document);
         f.activate();
         const videoBtn = document.querySelector('.focusVideoBtn');
         expect(videoBtn.disabled).toBe(false);
         videoBtn.click();
-        const layer = document.querySelector('.focusVideoLayer');
-        // Same node, never recreated — that is what preserves playback.
-        expect(layer.querySelector('iframe')).toBe(frame);
-        expect(document.querySelector('.musicPlayerWrap iframe')).toBeNull();
+        // The node never moves — same frame, same parent, still the only one.
+        expect(frame.parentNode).toBe(wrap);
+        expect(wrap.querySelector('iframe')).toBe(frame);
+        expect(document.querySelectorAll('iframe').length).toBe(1);
+        expect(document.body.classList.contains('focusVideoOn')).toBe(true);
         expect(document.getElementById('focusModeOverlay').classList.contains('focusModeOverlay--video')).toBe(true);
         expect(videoBtn.getAttribute('aria-pressed')).toBe('true');
         f.destroy();
     });
 
-    it('toggling off hands the same iframe back to .musicPlayerWrap and restores the scene', () => {
+    it('toggling off drops both classes without moving the iframe', () => {
         stubMatchMedia(true);
         const { wrap, frame } = mountFakePlayer();
         const f = createFocusMode(document);
@@ -345,32 +349,58 @@ describe('focus mode — video scene swap', () => {
         const videoBtn = document.querySelector('.focusVideoBtn');
         videoBtn.click();
         videoBtn.click();
-        expect(wrap.querySelector('iframe')).toBe(frame);
-        expect(document.querySelector('.focusVideoLayer iframe')).toBeNull();
+        expect(frame.parentNode).toBe(wrap);
+        expect(document.querySelectorAll('iframe').length).toBe(1);
+        expect(document.body.classList.contains('focusVideoOn')).toBe(false);
         expect(document.getElementById('focusModeOverlay').classList.contains('focusModeOverlay--video')).toBe(false);
         expect(videoBtn.getAttribute('aria-pressed')).toBe('false');
         f.destroy();
     });
 
-    it('exiting focus mode restores the iframe even while the swap is still on, and re-entry starts on the star scene', () => {
+    it('never mutates the player DOM across toggle on, off and focus exit', () => {
+        stubMatchMedia(true);
+        const { popover, wrap, frame } = mountFakePlayer();
+        const f = createFocusMode(document);
+        // Any structural mutation under the popover would reload the iframe.
+        const seen = [];
+        const obs = new MutationObserver(function(records) {
+            for (let i = 0; i < records.length; i++) seen.push(records[i]);
+        });
+        obs.observe(popover, { childList: true, subtree: true, attributes: true });
+        f.activate();
+        const videoBtn = document.querySelector('.focusVideoBtn');
+        videoBtn.click();
+        videoBtn.click();
+        videoBtn.click();
+        f.deactivate();
+        obs.takeRecords().forEach(function(r) { seen.push(r); });
+        obs.disconnect();
+        expect(seen).toEqual([]);
+        expect(frame.parentNode).toBe(wrap);
+        expect(wrap.parentNode).toBe(popover);
+        f.destroy();
+    });
+
+    it('exiting focus mode clears the promotion even while the swap is still on, and re-entry starts on the star scene', () => {
         stubMatchMedia(true);
         const { wrap, frame } = mountFakePlayer();
         const f = createFocusMode(document);
         f.activate();
         document.querySelector('.focusVideoBtn').click();
         f.deactivate();
-        expect(wrap.querySelector('iframe')).toBe(frame);
+        expect(frame.parentNode).toBe(wrap);
+        expect(document.body.classList.contains('focusVideoOn')).toBe(false);
         const overlay = document.getElementById('focusModeOverlay');
         expect(overlay.classList.contains('focusModeOverlay--video')).toBe(false);
         // Re-entry: star scene, toggle reset to off.
         f.activate();
         expect(overlay.classList.contains('focusModeOverlay--video')).toBe(false);
+        expect(document.body.classList.contains('focusVideoOn')).toBe(false);
         expect(document.querySelector('.focusVideoBtn').getAttribute('aria-pressed')).toBe('false');
-        expect(document.querySelector('.focusVideoLayer iframe')).toBeNull();
         f.destroy();
     });
 
-    it('Escape exits and restores the iframe', () => {
+    it('Escape exits and clears the promotion', () => {
         stubMatchMedia(true);
         const { wrap, frame } = mountFakePlayer();
         const f = createFocusMode(document);
@@ -378,18 +408,20 @@ describe('focus mode — video scene swap', () => {
         document.querySelector('.focusVideoBtn').click();
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
         expect(f.isActive()).toBe(false);
-        expect(wrap.querySelector('iframe')).toBe(frame);
+        expect(document.body.classList.contains('focusVideoOn')).toBe(false);
+        expect(frame.parentNode).toBe(wrap);
         f.destroy();
     });
 
-    it('destroy hands the iframe back before tearing the overlay down', () => {
+    it('destroy clears the promotion before tearing the overlay down', () => {
         stubMatchMedia(true);
         const { wrap, frame } = mountFakePlayer();
         const f = createFocusMode(document);
         f.activate();
         document.querySelector('.focusVideoBtn').click();
         f.destroy();
-        expect(wrap.querySelector('iframe')).toBe(frame);
+        expect(document.body.classList.contains('focusVideoOn')).toBe(false);
+        expect(frame.parentNode).toBe(wrap);
         expect(document.getElementById('focusModeOverlay')).toBeNull();
     });
 });
@@ -397,23 +429,37 @@ describe('focus mode — video scene swap', () => {
 describe('focus mode — video scene CSS hooks', () => {
     const css = read('style.css');
 
-    it('sizes .focusVideoLayer to cover, above the scene and below the corner cluster', () => {
-        const block = css.match(/\.focusVideoLayer\s*\{([^}]*)\}/);
+    // The whole point of the CSS-promotion approach: the popover and its
+    // player wrap are restyled in place, so no JS ever moves the iframe.
+    it('promotes the music popover full-bleed under body.focusVideoOn', () => {
+        const block = css.match(/body\.focusVideoOn #musicPopover\s*\{([^}]*)\}/);
         expect(block).not.toBeNull();
-        expect(block[1]).toMatch(/position:\s*absolute/);
+        expect(block[1]).toMatch(/display:\s*flex/);
+        expect(block[1]).toMatch(/position:\s*fixed/);
         expect(block[1]).toMatch(/inset:\s*0/);
-        expect(block[1]).toMatch(/z-index:\s*1\b/);
+        // Below the overlay (10002) so the overlay is the legibility scrim.
+        expect(block[1]).toMatch(/z-index:\s*10001\b/);
+        expect(block[1]).toMatch(/background:\s*transparent/);
+        expect(block[1]).toMatch(/border:\s*none/);
+        expect(block[1]).toMatch(/box-shadow:\s*none/);
     });
 
-    it('stretches the borrowed iframe to fill the layer', () => {
-        const block = css.match(/\.focusVideoLayer iframe\s*\{([^}]*)\}/);
-        expect(block).not.toBeNull();
-        expect(block[1]).toMatch(/width:\s*100%/);
-        expect(block[1]).toMatch(/height:\s*100%/);
+    it('hides the popover chrome and stretches the wrap and iframe to fill', () => {
+        expect(css).toMatch(/body\.focusVideoOn #musicPopover > :not\(\.musicPlayerWrap\)\s*\{\s*display:\s*none/);
+        const wrap = css.match(/body\.focusVideoOn \.musicPlayerWrap\s*\{([^}]*)\}/);
+        expect(wrap).not.toBeNull();
+        expect(wrap[1]).toMatch(/position:\s*absolute/);
+        expect(wrap[1]).toMatch(/inset:\s*0/);
+        expect(wrap[1]).toMatch(/width:\s*auto/);
+        expect(wrap[1]).toMatch(/height:\s*auto/);
+        const frame = css.match(/body\.focusVideoOn \.musicPlayerWrap iframe\s*\{([^}]*)\}/);
+        expect(frame).not.toBeNull();
+        expect(frame[1]).toMatch(/width:\s*100%/);
+        expect(frame[1]).toMatch(/height:\s*100%/);
     });
 
-    it('scrims the video so the corner controls stay legible', () => {
-        const block = css.match(/\.focusVideoScrim\s*\{([^}]*)\}/);
+    it('turns the overlay itself into the scrim so the video shows through', () => {
+        const block = css.match(/\.focusModeOverlay--video\s*\{([^}]*)\}/);
         expect(block).not.toBeNull();
         expect(block[1]).toMatch(/background:\s*rgba\(0,\s*0,\s*0,\s*0\.35\)/);
     });
@@ -423,15 +469,23 @@ describe('focus mode — video scene CSS hooks', () => {
         expect(read('focusMode.js')).not.toMatch(/style\.display/);
     });
 
+    // Regression guard: the borrow/return implementation is gone for good.
+    // Reintroducing a DOM move here is what reloaded the iframe and broke
+    // playback, and neither the old host element nor its scrim exist now.
+    it('keeps no trace of the old borrow/return implementation', () => {
+        const js = read('focusMode.js');
+        expect(js).not.toMatch(/appendChild\(\s*(?:borrowedFrame|frame)\s*\)/);
+        expect(js).not.toMatch(/focusVideoLayer/);
+        expect(js).not.toMatch(/getMusicPlayerHome/);
+        expect(css).not.toMatch(/\.focusVideoLayer/);
+        expect(css).not.toMatch(/\.focusVideoScrim/);
+    });
+
     it('gives the swap control a purple active state and a disabled state', () => {
         const active = css.match(/\.focusVideoBtn\[aria-pressed="true"\]\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
         expect(active[1]).toMatch(/rgba\(108,\s*93,\s*245,\s*0\.28\)/);
         expect(active[1]).toMatch(/#9D93EE/i);
         expect(css).toMatch(/\.focusVideoBtn:disabled\s*\{/);
-    });
-
-    it('respects prefers-reduced-motion on the swap transition', () => {
-        expect(css).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*\.focusVideoLayer\s*\{\s*transition:\s*none/);
     });
 });

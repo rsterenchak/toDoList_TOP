@@ -201,9 +201,10 @@ export function getStationById(state, id) {
 // The live player node and the wrap it belongs to. The YT IFrame API replaces
 // `#musicPlayerTarget` with a real <iframe> inside `.musicPlayerWrap`, so the
 // frame only exists once music has actually started this session. Focus mode
-// borrows that node — reparenting it full-bleed and handing it back — so both
-// lookups are exported rather than duplicated as ad-hoc selectors: the frame
-// must never be destroyed or recreated, or playback stops.
+// probes for that node to decide whether its video scene is available, so the
+// lookups are exported rather than duplicated as ad-hoc selectors. The frame
+// must never be moved, destroyed or recreated: any of those reloads the embed
+// and stops playback.
 export function getMusicPlayerHome(doc) {
     doc = doc || document;
     return doc.querySelector('.musicPlayerWrap');

@@ -24047,39 +24047,48 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 
 /* ── Scene swap — the live video, full-bleed ──
-   Host for the player iframe borrowed from the music popover. Above the star
-   scene, below the corner cluster. The iframe is stretched to fill rather
-   than letterboxed, so the video is genuinely full-bleed; the scrim keeps the
-   corner controls legible over bright footage. The star scene is hidden by
-   the same `--video` class rather than by an inline style, so toggling back
-   restores it with no leftover state. */
-.focusVideoLayer {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  overflow: hidden;
-  background: #000;
-  opacity: 0;
-  visibility: hidden;
-  transition: opacity 320ms ease-out, visibility 320ms ease-out;
+   The player iframe is NEVER moved. Moving an iframe in the DOM reloads its
+   document, which severs the handshake with the YT.Player instance in
+   music.js and stops playback, so the swap promotes the frame's existing
+   ancestors in place instead: `body.focusVideoOn` blows the music popover up
+   to full-bleed at z-index 10001 — just BELOW the focus overlay (10002) —
+   hides its chrome, and stretches the player wrap and iframe to cover.
+   `.focusModeOverlay--video` then drops the overlay's opaque backdrop to a
+   35% black and hides the star scene, so the video shows through while the
+   overlay itself acts as the legibility scrim and the corner cluster (a child
+   of the overlay) stays on top with no extra z work. Class toggles only —
+   nothing to restore on exit beyond removing them.
+   `inset` needs `!important` because music.js anchors the popover with inline
+   `top` / `left` while it is a normal dropdown. */
+body.focusVideoOn #musicPopover {
+  display: flex;
+  position: fixed;
+  inset: 0 !important;
+  width: auto;
+  max-height: none;
+  z-index: 10001;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  border-radius: 0;
+  padding: 0;
 }
-.focusVideoLayer iframe {
+body.focusVideoOn #musicPopover > :not(.musicPlayerWrap) {
+  display: none;
+}
+body.focusVideoOn .musicPlayerWrap {
   position: absolute;
   inset: 0;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+}
+body.focusVideoOn .musicPlayerWrap iframe {
   width: 100%;
   height: 100%;
-  border: 0;
 }
-.focusVideoScrim {
-  position: absolute;
-  inset: 0;
-  z-index: 1;
-  pointer-events: none;
-  background: rgba(0,0,0,0.35);
-}
-.focusModeOverlay--video .focusVideoLayer {
-  opacity: 1;
-  visibility: visible;
+.focusModeOverlay--video {
+  background: rgba(0, 0, 0, 0.35);
 }
 .focusModeOverlay--video .focusScene {
   display: none;
@@ -24315,8 +24324,6 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .focusModeOverlay--complete .focusScene {
     animation: none;
   }
-  /* The scene swap cuts straight to the video instead of cross-fading. */
-  .focusVideoLayer { transition: none; }
 }
 
 /* ── MOBILE INTERACTIVE-LAYER CONTRAST (dark theme) ──
