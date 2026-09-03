@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-08-28T18:18:39.324Z",
-  "sha": "425df9922e6f8c137c6add3ff62927e5532d8b3d",
+  "generatedAt": "2026-09-03T06:20:50.239Z",
+  "sha": "16e92f5f7b26a680743da94f13dca50aafb553a5",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -2830,11 +2830,11 @@
       "selector": "#focusModeOverlay",
       "label": "Focus Mode Overlay",
       "file": "focusMode.js",
-      "line": 49,
+      "line": 60,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 49
+          "line": 60
         }
       ]
     },
@@ -4654,11 +4654,11 @@
       "selector": "#musicPlayerTarget",
       "label": "Music Player Target",
       "file": "music.js",
-      "line": 783,
+      "line": 800,
       "files": [
         {
           "file": "music.js",
-          "line": 783
+          "line": 800
         },
         {
           "file": "style.css",
@@ -4670,11 +4670,11 @@
       "selector": "#musicPopover",
       "label": "Music Popover",
       "file": "music.js",
-      "line": 732,
+      "line": 749,
       "files": [
         {
           "file": "music.js",
-          "line": 732
+          "line": 749
         },
         {
           "file": "style.css",
@@ -4718,11 +4718,11 @@
       "selector": "#nowPlayingStrip",
       "label": "Now Playing Strip",
       "file": "music.js",
-      "line": 587,
+      "line": 604,
       "files": [
         {
           "file": "music.js",
-          "line": 587
+          "line": 604
         },
         {
           "file": "style.css",
@@ -4774,7 +4774,7 @@
         },
         {
           "file": "style.css",
-          "line": 24857
+          "line": 24934
         }
       ]
     },
@@ -4790,7 +4790,7 @@
         },
         {
           "file": "style.css",
-          "line": 24760
+          "line": 24837
         }
       ]
     },
@@ -4806,7 +4806,7 @@
         },
         {
           "file": "style.css",
-          "line": 24811
+          "line": 24888
         }
       ]
     },
@@ -4834,7 +4834,7 @@
         },
         {
           "file": "style.css",
-          "line": 24797
+          "line": 24874
         }
       ]
     },
@@ -4862,7 +4862,7 @@
         },
         {
           "file": "style.css",
-          "line": 24785
+          "line": 24862
         }
       ]
     },
@@ -4878,7 +4878,7 @@
         },
         {
           "file": "style.css",
-          "line": 24719
+          "line": 24796
         }
       ]
     },
@@ -4918,7 +4918,7 @@
         },
         {
           "file": "style.css",
-          "line": 24793
+          "line": 24870
         }
       ]
     },
@@ -5314,7 +5314,7 @@
         },
         {
           "file": "style.css",
-          "line": 24305
+          "line": 24382
         }
       ]
     },
@@ -5330,7 +5330,7 @@
         },
         {
           "file": "style.css",
-          "line": 24349
+          "line": 24426
         }
       ]
     },
@@ -5346,7 +5346,7 @@
         },
         {
           "file": "style.css",
-          "line": 24336
+          "line": 24413
         }
       ]
     },
@@ -5362,7 +5362,7 @@
         },
         {
           "file": "style.css",
-          "line": 24402
+          "line": 24479
         }
       ]
     },
@@ -5378,7 +5378,7 @@
         },
         {
           "file": "style.css",
-          "line": 24356
+          "line": 24433
         }
       ]
     },
@@ -5394,7 +5394,7 @@
         },
         {
           "file": "style.css",
-          "line": 24616
+          "line": 24693
         }
       ]
     },
@@ -5422,7 +5422,7 @@
         },
         {
           "file": "style.css",
-          "line": 24325
+          "line": 24402
         }
       ]
     },
@@ -5438,7 +5438,7 @@
         },
         {
           "file": "style.css",
-          "line": 24414
+          "line": 24491
         }
       ]
     },
@@ -5454,7 +5454,7 @@
         },
         {
           "file": "style.css",
-          "line": 24314
+          "line": 24391
         }
       ]
     },
@@ -5482,7 +5482,7 @@
         },
         {
           "file": "style.css",
-          "line": 24396
+          "line": 24473
         }
       ]
     },
@@ -5498,7 +5498,7 @@
         },
         {
           "file": "style.css",
-          "line": 24332
+          "line": 24409
         }
       ]
     },
@@ -6918,11 +6918,11 @@
       "selector": "#youtubeIframeApi",
       "label": "Youtube Iframe Api",
       "file": "music.js",
-      "line": 230,
+      "line": 247,
       "files": [
         {
           "file": "music.js",
-          "line": 230
+          "line": 247
         }
       ]
     },
