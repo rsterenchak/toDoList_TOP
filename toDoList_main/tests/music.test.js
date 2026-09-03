@@ -17,6 +17,8 @@ import {
     ensureMusic,
     destroyMusic,
     youTubeUrlForStation,
+    getMusicPlayerHome,
+    getMusicPlayerFrame,
 } from '../src/music.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -481,5 +483,42 @@ describe('music — Focus Music modal header carries an Open-in-YouTube icon but
         expect(block).not.toContain('↗');
         // No leftover CSS for the removed per-row class either.
         expect(css).not.toContain('.musicStationOpenExt');
+    });
+});
+
+// The live player node lookups. Focus mode borrows this iframe for its
+// full-bleed video scene, so both the wrap and the frame have to be findable
+// from outside music.js — and the frame must read as absent until the YT API
+// has actually replaced #musicPlayerTarget with an iframe.
+describe('music — live player node lookups', () => {
+    afterEach(() => {
+        const wrap = document.querySelector('.musicPlayerWrap');
+        if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+    });
+
+    it('returns null for both when the popover has never been built', () => {
+        expect(getMusicPlayerHome(document)).toBeNull();
+        expect(getMusicPlayerFrame(document)).toBeNull();
+    });
+
+    it('finds the wrap but no frame while the target is still the placeholder div', () => {
+        const wrap = document.createElement('div');
+        wrap.className = 'musicPlayerWrap';
+        const target = document.createElement('div');
+        target.id = 'musicPlayerTarget';
+        wrap.appendChild(target);
+        document.body.appendChild(wrap);
+        expect(getMusicPlayerHome(document)).toBe(wrap);
+        expect(getMusicPlayerFrame(document)).toBeNull();
+    });
+
+    it('finds the iframe once the YT API has replaced the target', () => {
+        const wrap = document.createElement('div');
+        wrap.className = 'musicPlayerWrap';
+        const frame = document.createElement('iframe');
+        frame.id = 'musicPlayerTarget';
+        wrap.appendChild(frame);
+        document.body.appendChild(wrap);
+        expect(getMusicPlayerFrame(document)).toBe(frame);
     });
 });

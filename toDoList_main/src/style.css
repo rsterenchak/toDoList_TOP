@@ -24046,6 +24046,45 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
 }
 
+/* ── Scene swap — the live video, full-bleed ──
+   Host for the player iframe borrowed from the music popover. Above the star
+   scene, below the corner cluster. The iframe is stretched to fill rather
+   than letterboxed, so the video is genuinely full-bleed; the scrim keeps the
+   corner controls legible over bright footage. The star scene is hidden by
+   the same `--video` class rather than by an inline style, so toggling back
+   restores it with no leftover state. */
+.focusVideoLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  overflow: hidden;
+  background: #000;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 320ms ease-out, visibility 320ms ease-out;
+}
+.focusVideoLayer iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+.focusVideoScrim {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: rgba(0,0,0,0.35);
+}
+.focusModeOverlay--video .focusVideoLayer {
+  opacity: 1;
+  visibility: visible;
+}
+.focusModeOverlay--video .focusScene {
+  display: none;
+}
+
 /* ── Corner controls — no countdown ──
    A now-playing chip plus one icon-only session control, bottom-left. Kept
    simple and inline so they introduce no new anchored popovers. */
@@ -24138,6 +24177,42 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 .focusSessionPause { display: none; }
 .focusSessionBtn[data-pomo-status="RUNNING"] .focusSessionPlay  { display: none; }
 .focusSessionBtn[data-pomo-status="RUNNING"] .focusSessionPause { display: block; }
+
+/* Round icon-only scene-swap control, matching the session button's geometry.
+   Purple while the video scene is showing; dimmed and inert until a player
+   iframe exists (i.e. until music has played this session). */
+.focusVideoBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.9);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.focusVideoBtn:hover:not(:disabled) {
+  border-color: var(--accent);
+  background: rgba(139,123,255,0.16);
+}
+.focusVideoBtn:focus { outline: none; }
+.focusVideoBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.focusVideoBtn[aria-pressed="true"] {
+  background: rgba(108,93,245,0.28);
+  border-color: #9D93EE;
+  color: #9D93EE;
+}
+.focusVideoBtn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
 
 /* ── Exit affordance — dim "exit · esc" pill, top-right ── */
 .focusExitPill {
@@ -24240,6 +24315,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .focusModeOverlay--complete .focusScene {
     animation: none;
   }
+  /* The scene swap cuts straight to the video instead of cross-fading. */
+  .focusVideoLayer { transition: none; }
 }
 
 /* ── MOBILE INTERACTIVE-LAYER CONTRAST (dark theme) ──

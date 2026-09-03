@@ -253,3 +253,185 @@ describe('focus mode — main.js nav wiring', () => {
         expect(js).toMatch(/musicToggle,\s*focusModeToggle,\s*spendToggle,\s*settingsToggle/);
     });
 });
+
+// The scene swap borrows the live YouTube player iframe from the music
+// popover and hands it back. The node identity assertions below are the point
+// of these tests: recreating the iframe instead of reparenting it would
+// restart playback, which is exactly the regression this feature must not
+// introduce.
+describe('focus mode — video scene swap', () => {
+    function mountFakePlayer() {
+        const wrap = document.createElement('div');
+        wrap.className = 'musicPlayerWrap';
+        const frame = document.createElement('iframe');
+        frame.id = 'musicPlayerTarget';
+        wrap.appendChild(frame);
+        document.body.appendChild(wrap);
+        return { wrap, frame };
+    }
+
+    afterEach(() => {
+        destroyFocusMode();
+        const stray = document.getElementById('focusModeOverlay');
+        if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
+        const wrap = document.querySelector('.musicPlayerWrap');
+        if (wrap && wrap.parentNode) wrap.parentNode.removeChild(wrap);
+        document.body.classList.remove('focusModeOpen');
+        delete window.matchMedia;
+    });
+
+    it('renders a third icon-only control after the session button in the corner cluster', () => {
+        stubMatchMedia(true);
+        const f = createFocusMode(document);
+        f.activate();
+        const corner = document.querySelector('.focusCorner');
+        const videoBtn = corner.querySelector('.focusVideoBtn');
+        expect(videoBtn).not.toBeNull();
+        // Order: chip, session button, then the scene swap.
+        const kids = Array.from(corner.children);
+        expect(kids.indexOf(videoBtn)).toBe(kids.indexOf(corner.querySelector('.focusSessionBtn')) + 1);
+        // Icon-only, inline stroke SVG — no text label.
+        expect(videoBtn.querySelector('svg[stroke="currentColor"]')).not.toBeNull();
+        expect(videoBtn.textContent.trim()).toBe('');
+        f.destroy();
+    });
+
+    it('mounts an empty .focusVideoLayer with a scrim above the scene', () => {
+        stubMatchMedia(true);
+        const f = createFocusMode(document);
+        f.activate();
+        const layer = document.querySelector('#focusModeOverlay .focusVideoLayer');
+        expect(layer).not.toBeNull();
+        expect(layer.querySelector('.focusVideoScrim')).not.toBeNull();
+        expect(layer.querySelector('iframe')).toBeNull();
+        f.destroy();
+    });
+
+    it('is disabled and a no-op when no player iframe exists yet', () => {
+        stubMatchMedia(true);
+        const f = createFocusMode(document);
+        f.activate();
+        const videoBtn = document.querySelector('.focusVideoBtn');
+        expect(videoBtn.disabled).toBe(true);
+        videoBtn.click();
+        expect(document.getElementById('focusModeOverlay').classList.contains('focusModeOverlay--video')).toBe(false);
+        expect(document.querySelector('.focusVideoLayer iframe')).toBeNull();
+        expect(videoBtn.getAttribute('aria-pressed')).toBe('false');
+        f.destroy();
+    });
+
+    it('reparents the SAME iframe node into the video layer and hides the star scene', () => {
+        stubMatchMedia(true);
+        const { frame } = mountFakePlayer();
+        const f = createFocusMode(document);
+        f.activate();
+        const videoBtn = document.querySelector('.focusVideoBtn');
+        expect(videoBtn.disabled).toBe(false);
+        videoBtn.click();
+        const layer = document.querySelector('.focusVideoLayer');
+        // Same node, never recreated — that is what preserves playback.
+        expect(layer.querySelector('iframe')).toBe(frame);
+        expect(document.querySelector('.musicPlayerWrap iframe')).toBeNull();
+        expect(document.getElementById('focusModeOverlay').classList.contains('focusModeOverlay--video')).toBe(true);
+        expect(videoBtn.getAttribute('aria-pressed')).toBe('true');
+        f.destroy();
+    });
+
+    it('toggling off hands the same iframe back to .musicPlayerWrap and restores the scene', () => {
+        stubMatchMedia(true);
+        const { wrap, frame } = mountFakePlayer();
+        const f = createFocusMode(document);
+        f.activate();
+        const videoBtn = document.querySelector('.focusVideoBtn');
+        videoBtn.click();
+        videoBtn.click();
+        expect(wrap.querySelector('iframe')).toBe(frame);
+        expect(document.querySelector('.focusVideoLayer iframe')).toBeNull();
+        expect(document.getElementById('focusModeOverlay').classList.contains('focusModeOverlay--video')).toBe(false);
+        expect(videoBtn.getAttribute('aria-pressed')).toBe('false');
+        f.destroy();
+    });
+
+    it('exiting focus mode restores the iframe even while the swap is still on, and re-entry starts on the star scene', () => {
+        stubMatchMedia(true);
+        const { wrap, frame } = mountFakePlayer();
+        const f = createFocusMode(document);
+        f.activate();
+        document.querySelector('.focusVideoBtn').click();
+        f.deactivate();
+        expect(wrap.querySelector('iframe')).toBe(frame);
+        const overlay = document.getElementById('focusModeOverlay');
+        expect(overlay.classList.contains('focusModeOverlay--video')).toBe(false);
+        // Re-entry: star scene, toggle reset to off.
+        f.activate();
+        expect(overlay.classList.contains('focusModeOverlay--video')).toBe(false);
+        expect(document.querySelector('.focusVideoBtn').getAttribute('aria-pressed')).toBe('false');
+        expect(document.querySelector('.focusVideoLayer iframe')).toBeNull();
+        f.destroy();
+    });
+
+    it('Escape exits and restores the iframe', () => {
+        stubMatchMedia(true);
+        const { wrap, frame } = mountFakePlayer();
+        const f = createFocusMode(document);
+        f.activate();
+        document.querySelector('.focusVideoBtn').click();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(f.isActive()).toBe(false);
+        expect(wrap.querySelector('iframe')).toBe(frame);
+        f.destroy();
+    });
+
+    it('destroy hands the iframe back before tearing the overlay down', () => {
+        stubMatchMedia(true);
+        const { wrap, frame } = mountFakePlayer();
+        const f = createFocusMode(document);
+        f.activate();
+        document.querySelector('.focusVideoBtn').click();
+        f.destroy();
+        expect(wrap.querySelector('iframe')).toBe(frame);
+        expect(document.getElementById('focusModeOverlay')).toBeNull();
+    });
+});
+
+describe('focus mode — video scene CSS hooks', () => {
+    const css = read('style.css');
+
+    it('sizes .focusVideoLayer to cover, above the scene and below the corner cluster', () => {
+        const block = css.match(/\.focusVideoLayer\s*\{([^}]*)\}/);
+        expect(block).not.toBeNull();
+        expect(block[1]).toMatch(/position:\s*absolute/);
+        expect(block[1]).toMatch(/inset:\s*0/);
+        expect(block[1]).toMatch(/z-index:\s*1\b/);
+    });
+
+    it('stretches the borrowed iframe to fill the layer', () => {
+        const block = css.match(/\.focusVideoLayer iframe\s*\{([^}]*)\}/);
+        expect(block).not.toBeNull();
+        expect(block[1]).toMatch(/width:\s*100%/);
+        expect(block[1]).toMatch(/height:\s*100%/);
+    });
+
+    it('scrims the video so the corner controls stay legible', () => {
+        const block = css.match(/\.focusVideoScrim\s*\{([^}]*)\}/);
+        expect(block).not.toBeNull();
+        expect(block[1]).toMatch(/background:\s*rgba\(0,\s*0,\s*0,\s*0\.35\)/);
+    });
+
+    it('hides the star scene via the --video class, not an inline style', () => {
+        expect(css).toMatch(/\.focusModeOverlay--video\s+\.focusScene\s*\{\s*display:\s*none/);
+        expect(read('focusMode.js')).not.toMatch(/style\.display/);
+    });
+
+    it('gives the swap control a purple active state and a disabled state', () => {
+        const active = css.match(/\.focusVideoBtn\[aria-pressed="true"\]\s*\{([^}]*)\}/);
+        expect(active).not.toBeNull();
+        expect(active[1]).toMatch(/rgba\(108,\s*93,\s*245,\s*0\.28\)/);
+        expect(active[1]).toMatch(/#9D93EE/i);
+        expect(css).toMatch(/\.focusVideoBtn:disabled\s*\{/);
+    });
+
+    it('respects prefers-reduced-motion on the swap transition', () => {
+        expect(css).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*\.focusVideoLayer\s*\{\s*transition:\s*none/);
+    });
+});
