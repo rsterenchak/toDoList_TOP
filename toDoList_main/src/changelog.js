@@ -9,14 +9,12 @@ export const changelog = [
         fixed: [
             'A failed mockup generation now says what actually went wrong instead of a generic try-again message.',
             'Typing a task title or description no longer stutters as your saved projects grow.',
+            'Switching back to a project you already opened is instant — its task list is reused instead of rebuilt from scratch.',
         ],
     },
     {
         version: '1.1',
         date: '2026-09-02',
-        added: [
-            'Focus mode can swap its star scene for the video that’s playing, full-screen, and swap back.',
-        ],
         fixed: [
             'Focus mode’s full-screen video scene no longer reloads the player — audio and video keep playing straight through toggling it on, off, and leaving focus mode.',
             'Focus mode’s full-screen video now fills the whole screen instead of a short strip, and the music visualizer no longer covers it.',
