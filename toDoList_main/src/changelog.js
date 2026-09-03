@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             'Focus mode can swap its star scene for the video that’s playing, full-screen, and swap back.',
         ],
+        fixed: [
+            'Focus mode’s full-screen video scene no longer reloads the player — audio and video keep playing straight through toggling it on, off, and leaving focus mode.',
+        ],
     },
     {
         version: '1.1',
@@ -23,9 +26,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-22',
-        changed: [
-            'The OpenCode Go picker group now reads as included coverage with each model’s own cap shown on the row, and the picker note spells out that non-Claude models open a PR for manual review.',
-        ],
         fixed: [
             'Models panel rows set to an OpenCode Go model no longer show the amber API-billed badge, which wrongly implied those runs bill per token.',
         ],
