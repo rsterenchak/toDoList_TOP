@@ -24080,12 +24080,26 @@ body.focusVideoOn .musicPlayerWrap {
   position: absolute;
   inset: 0;
   width: auto;
-  height: auto;
+  /* Both of these are load-bearing against the base rule's
+     `align-self: center`, which keeps applying to the abspos wrap inside the
+     flex popover: a non-stretch self-alignment aligns the box within its inset
+     rectangle in the block axis, so a zero top/bottom pair with an auto block
+     size resolves to the iframe's intrinsic 150px instead of stretching.
+     Either override alone cures it; both are kept as belt and braces. */
+  align-self: stretch;
+  height: 100%;
   border-radius: 0;
 }
 body.focusVideoOn .musicPlayerWrap iframe {
   width: 100%;
   height: 100%;
+}
+/* The decorative visualizer mounts inside the wrap at `inset: 0` with an
+   opaque radial-gradient backdrop above the iframe, so once the wrap covers
+   the viewport an active style would cover the video with it. Suppressed for
+   the duration of the swap only — the normal popover is untouched. */
+body.focusVideoOn .musicViz {
+  display: none;
 }
 .focusModeOverlay--video {
   background: rgba(0, 0, 0, 0.35);
