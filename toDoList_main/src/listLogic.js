@@ -326,6 +326,23 @@ export const listLogic = (function () {
 
     // ********************* STORAGE HANDLING ********************* //
 
+    // Coalescing state for the keystroke save path (see saveToStorageSoon).
+    // Declared above saveToStorage so the cancel call inside it can never
+    // hit the temporal dead zone — saveToStorage runs during module init on
+    // the fresh-start branch below, before these lines would otherwise be
+    // evaluated.
+    const COALESCED_SAVE_DELAY_MS = 200;
+    let coalescedSaveTimer = null;
+
+    // Drop a pending coalesced write. Safe unconditionally: every save
+    // serializes the WHOLE allProjects object, so any later write subsumes
+    // whatever an earlier pending one would have written.
+    function cancelCoalescedSave() {
+        if (coalescedSaveTimer === null) return;
+        clearTimeout(coalescedSaveTimer);
+        coalescedSaveTimer = null;
+    }
+
     // HELPER: persist current state of allProjects to localStorage. This is
     // the single funnel every mutation routes through — adds, removes,
     // edits, completion toggles, reorders, recurrence config, project
@@ -336,12 +353,63 @@ export const listLogic = (function () {
     // saveToStorageCallers lint contract). The fromSync flag is interpreted
     // by callers' persistMutation gates, not here.
     function saveToStorage(_opts) {
+        // This write already covers every project, so it supersedes any
+        // coalesced write still waiting — cancel it rather than let it fire
+        // a redundant second full-state stringify a moment later.
+        cancelCoalescedSave();
         localStorage.setItem('allProjects', JSON.stringify(allProjects));
         if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
             try {
                 document.dispatchEvent(new CustomEvent('dataChanged'));
             } catch (e) { /* CustomEvent unsupported — listeners refresh on next mutation */ }
         }
+    }
+
+    // @category: user-mutation-only
+    // HELPER: coalesced variant of saveToStorage for callers that fire on
+    // every keystroke — the todo title and description keyup handlers. Each
+    // save re-serializes EVERY project's items, not just the one being typed
+    // into, so a per-keypress save made the cost of typing scale with total
+    // app state. One trailing write lands COALESCED_SAVE_DELAY_MS after the
+    // first keypress of a burst instead.
+    //
+    // The window is deliberately NOT extended by later keypresses: a
+    // continuous typist still gets a write every COALESCED_SAVE_DELAY_MS, so
+    // the worst-case staleness is bounded and a long uninterrupted burst can
+    // never starve the save the way a resetting debounce would.
+    //
+    // Only the localStorage round-trip and its dataChanged fan-out are
+    // deferred — callers mutate the in-memory model synchronously before
+    // calling, so every reader of allProjects still sees the edit at once.
+    function saveToStorageSoon() {
+        if (coalescedSaveTimer !== null) return;
+        coalescedSaveTimer = setTimeout(function() {
+            coalescedSaveTimer = null;
+            saveToStorage();
+        }, COALESCED_SAVE_DELAY_MS);
+    }
+
+    // @category: user-mutation-only
+    // HELPER: write out a pending coalesced save right now. No-op when
+    // nothing is pending, so it is safe to call from any path that needs
+    // localStorage to be current before it reads.
+    function flushPendingSave() {
+        if (coalescedSaveTimer === null) return;
+        saveToStorage();
+    }
+
+    // Never let the page go away holding an unwritten keystroke. `pagehide`
+    // covers navigation, tab close, and bfcache entry; the hidden
+    // `visibilitychange` covers mobile app-switching, which on iOS can
+    // discard the page without firing pagehide at all. Both no-op unless a
+    // coalesced write is actually pending.
+    if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        window.addEventListener('pagehide', flushPendingSave);
+    }
+    if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+        document.addEventListener('visibilitychange', function() {
+            if (document.visibilityState === 'hidden') flushPendingSave();
+        });
     }
 
     // INIT: restore any previously saved projects from localStorage
@@ -3273,6 +3341,9 @@ export const listLogic = (function () {
 
 
     function _reset() {
+        // Drop any coalesced write still in flight — otherwise it fires after
+        // the reset and re-seeds storage with state the caller just cleared.
+        cancelCoalescedSave();
         Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
         localStorage.clear();
         allProjectsTotal = 0;
@@ -4443,6 +4514,8 @@ export const listLogic = (function () {
         getProjectIncompleteCount,
         PROJECT_COLOR_KEYS,
         saveToStorage,
+        saveToStorageSoon,
+        flushPendingSave,
         replaceAllProjects,
         snapshotProjects,
         setRecurrence,

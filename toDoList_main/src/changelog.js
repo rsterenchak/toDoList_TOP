@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-09-03',
         fixed: [
             'A failed mockup generation now says what actually went wrong instead of a generic try-again message.',
+            'Typing a task title or description no longer stutters as your saved projects grow.',
         ],
     },
     {
@@ -19,13 +20,6 @@ export const changelog = [
         fixed: [
             'Focus mode’s full-screen video scene no longer reloads the player — audio and video keep playing straight through toggling it on, off, and leaving focus mode.',
             'Focus mode’s full-screen video now fills the whole screen instead of a short strip, and the music visualizer no longer covers it.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-08-28',
-        fixed: [
-            'The proposal review sheet now fits a phone screen with its Close button always reachable, and tapping a proposal card opens its full description.',
         ],
     },
 ];

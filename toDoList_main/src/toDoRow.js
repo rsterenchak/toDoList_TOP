@@ -4628,6 +4628,12 @@ export function buildToDoRow(item, toDoName) {
     // after a project switch, since buildToDoRow keys its placeholder branches
     // off `!item.tit`. The Enter commit handler clears the flag, so chained
     // edits after commit keystroke-save like any other committed row.
+    //
+    // The write goes through saveToStorageSoon: a plain saveToStorage here
+    // re-serialized every project in the app on every single keypress, which
+    // is the dominant cost of typing a title once the user has real data.
+    // item.tit is still assigned synchronously, so nothing that reads the
+    // model sees a delay — only the localStorage round-trip coalesces.
     toDoInput.addEventListener("keyup", function() {
         if (toDoChild.dataset.originalBlank === "true") return;
         const val = toDoInput.value.trim();
@@ -4635,7 +4641,7 @@ export function buildToDoRow(item, toDoName) {
             item.tit = val;
             toDoInput.title = val;
             toDoTitleDisplay.textContent = val;
-            listLogic.saveToStorage();
+            listLogic.saveToStorageSoon();
             // Keep the detail-pane header's title in step with a live rename —
             // it reads this row's __item, so a stale header after a rename is the
             // most likely defect. No-op unless this row is the one open in the pane.
@@ -4696,10 +4702,13 @@ export function buildToDoRow(item, toDoName) {
 
     // descInput keyup — save on every keystroke (empty saves too). No trim:
     // leading / trailing newlines and indentation are part of the user's
-    // markdown draft and must survive save → reload round-trips.
+    // markdown draft and must survive save → reload round-trips. Coalesced
+    // for the same reason as the title above — a description is typed in long
+    // bursts, and each unbatched write re-serialized the entire app state.
+    // The blur handler below still persists synchronously on every exit path.
     descInput.addEventListener("keyup", function() {
         item.desc = descInput.value;
-        listLogic.saveToStorage();
+        listLogic.saveToStorageSoon();
         refreshInjectButton(injectBtn, item, toDoName);
     });
 
