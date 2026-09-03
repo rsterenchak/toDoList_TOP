@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-03',
+        fixed: [
+            'A failed mockup generation now says what actually went wrong instead of a generic try-again message.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-02',
         added: [
             'Focus mode can swap its star scene for the video that’s playing, full-screen, and swap back.',
@@ -17,9 +24,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-08-28',
-        changed: [
-            'Swiping a task right no longer completes it while its shipped change is still awaiting review — the swipe opens that entry in TODO.md instead.',
-        ],
         fixed: [
             'The proposal review sheet now fits a phone screen with its Close button always reachable, and tapping a proposal card opens its full description.',
         ],

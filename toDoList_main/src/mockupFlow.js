@@ -936,8 +936,15 @@ function buildMockupSecondary(row, options) {
             genBtn.disabled = false;
             genBtn.classList.remove('is-pending');
             genBtn.textContent = 'Regenerate';
-        }).catch(function () {
-            genFail('Couldn’t generate mockups — try again, or use the fallback below.');
+        }).catch(function (e) {
+            // chatWithWorker hands up the Worker's own `{ error, detail }` body as
+            // `reason` (an upstream status and its error text on the 502 paths), so
+            // name the cause rather than swallowing it. The generic copy stands in
+            // only when the error carries nothing to say.
+            const reason = e && (e.reason || e.message);
+            genFail(reason
+                ? 'Couldn’t generate mockups — ' + reason + '. Or use the fallback below.'
+                : 'Couldn’t generate mockups — try again, or use the fallback below.');
         });
     });
 
