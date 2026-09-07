@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-07T14:47:49.559Z",
-  "sha": "1d944a5addac967189cdcd29e95148f0729e3955",
+  "generatedAt": "2026-09-07T15:05:25.362Z",
+  "sha": "da1ca7dc36f848d6ca19e7c40d616882c02e1a5f",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -98,11 +98,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 4094,
+      "line": 4098,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4094
+          "line": 4098
         },
         {
           "file": "style.css",
@@ -142,11 +142,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 4120,
+      "line": 4124,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4120
+          "line": 4124
         }
       ]
     },
@@ -942,11 +942,11 @@
       "selector": "#checkToDo",
       "label": "Check To Do",
       "file": "toDoRow.js",
-      "line": 2994,
+      "line": 2998,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2994
+          "line": 2998
         },
         {
           "file": "style.css",
@@ -1606,11 +1606,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 4141,
+      "line": 4145,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4141
+          "line": 4145
         },
         {
           "file": "style.css",
@@ -1826,11 +1826,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 4166,
+      "line": 4170,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4166
+          "line": 4170
         }
       ]
     },
@@ -2570,11 +2570,11 @@
       "selector": "#descIndicator",
       "label": "Desc Indicator",
       "file": "toDoRow.js",
-      "line": 4321,
+      "line": 4325,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4321
+          "line": 4325
         },
         {
           "file": "style.css",
@@ -2586,11 +2586,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 4201,
+      "line": 4205,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4201
+          "line": 4205
         },
         {
           "file": "style.css",
@@ -2602,11 +2602,11 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 4200,
+      "line": 4204,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4200
+          "line": 4204
         },
         {
           "file": "style.css",
@@ -2626,7 +2626,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4175
+          "line": 4179
         },
         {
           "file": "style.css",
@@ -2770,7 +2770,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4044
+          "line": 4048
         },
         {
           "file": "style.css",
@@ -6050,11 +6050,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 4049,
+      "line": 4053,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4049
+          "line": 4053
         },
         {
           "file": "style.css",
@@ -6222,11 +6222,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 4191,
+      "line": 4195,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4191
+          "line": 4195
         },
         {
           "file": "style.css",
@@ -6418,11 +6418,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 4028,
+      "line": 4032,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4028
+          "line": 4032
         },
         {
           "file": "style.css",
@@ -6434,11 +6434,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 4064,
+      "line": 4068,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4064
+          "line": 4068
         },
         {
           "file": "style.css",
@@ -6450,11 +6450,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 4057,
+      "line": 4061,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4057
+          "line": 4061
         }
       ]
     },
