@@ -1439,6 +1439,15 @@ let _workingWatchSweepSeenActive = false;
 let _workingWatchSweepGraceDeadline = 0;
 let _workingWatchSweepHardDeadline = 0;
 
+// Stranded-row reaping state (see noteStrandedTriaging). `_watchStrandedSince` is
+// the timestamp the current run of stranded readings began, `_watchStrandedProject`
+// the project those readings belong to (a switch restarts the window), and
+// `_watchReconciling` guards against a second reap starting while one is in flight —
+// ticks fire on both the interval and every agent_queue realtime push.
+let _watchStrandedSince = null;
+let _watchStrandedProject = null;
+let _watchReconciling = false;
+
 // Background probe cadence for the persistent working watch. Slower than the
 // mounted sweep poller (SWEEP_POLL_MS) — this only drives a cosmetic nav dot, so
 // a gentle tick keeps Worker load low while still catching a triage sweep or a
@@ -1504,6 +1513,50 @@ function resolveWatchSweepWorking(probeActive) {
     return true;
 }
 
+// Reap rows left stranded at 'triaging' with no sweep behind them.
+//
+// The post-settle reconcile (verifyThenReconcile → reconcileStuckTriaging) only ever
+// runs in the session that dispatched the sweep, so a row flagged by a dispatch that
+// never registered, flagged from another device whose sweep has since settled, or
+// stranded before the workflow-side reaper existed, sits at Generating… forever with
+// no run behind it. The watch already computes both halves of that condition every
+// tick for the nav dot — the project owns a 'triaging' row, and the repo-wide triage
+// probe says nothing is in flight — so it can repair the row too.
+//
+// A single reading is never enough: claude-triage.yml serialises on its concurrency
+// group, so a just-dispatched run sits QUEUED and invisible to the probe for a while.
+// The reap therefore requires CONFIRMED inactivity sustained across the whole
+// SWEEP_RECONCILE_QUIET_MS window — the same window verifyThenReconcile waits out.
+// Any active reading, any probe error, a live local seed, an active sweep tracker, or
+// a project switch resets it, so a row flagged seconds ago inside the registration lag
+// is never reaped.
+function noteStrandedTriaging(projectName, reading) {
+    const stranded = !!(
+        reading.projectTriaging && !reading.repoActive && reading.probeOk &&
+        !_sweepActive && !_workingWatchSweepSeeded
+    );
+    // Any non-stranded reading, or a switch to a different project, restarts the
+    // window from this tick (or drops it entirely when nothing is stranded).
+    if (!stranded || projectName !== _watchStrandedProject) {
+        _watchStrandedSince = stranded ? Date.now() : null;
+        _watchStrandedProject = stranded ? projectName : null;
+        return;
+    }
+    if (Date.now() - _watchStrandedSince < SWEEP_RECONCILE_QUIET_MS) return;
+    // Window elapsed — clear it first so a reconcile that finds nothing (or fails)
+    // starts a fresh window rather than re-firing on every subsequent tick.
+    _watchStrandedSince = null;
+    _watchStrandedProject = null;
+    if (_watchReconciling) return;
+    _watchReconciling = true;
+    // reconcileStuckTriaging reads the queue fresh and refreshes it through
+    // _trackerDeps.refreshAgentQueue, whose agent_queue push re-syncs every
+    // .generateBtn via syncGenerateControl — no extra repaint wiring needed here.
+    Promise.resolve(reconcileStuckTriaging(projectName))
+        .catch(function () { /* transient — the next quiet window retries */ })
+        .then(function () { _watchReconciling = false; });
+}
+
 // One watch tick: compute `working` = a triage sweep in flight for the selected
 // project OR any dispatched/running row for the selected project OR a derive run in
 // flight (isDeriveActive, folded in below) — the same predicate the header pill uses
@@ -1540,21 +1593,33 @@ export function pollAgentWorkingWatch() {
     // in-flight 'triaging' agent_queue row (the state flagTaskForAgent writes and
     // reconcileStuckTriaging later clears), so the dot lights only while THIS
     // project has a sweep actually processing its flagged tasks.
+    // The raw pieces are kept rather than collapsed to one boolean: the dot reads
+    // `repoActive && projectTriaging`, while the stranded-row reap below needs the
+    // opposite pairing (a triaging row with NO run in flight) plus whether the probe
+    // reading is trustworthy at all — an errored probe must never reap a row.
+    const emptyReading = { repoActive: false, projectTriaging: false, probeOk: false };
     const sweepProbe = (target && projectId)
         ? Promise.all([
             Promise.resolve(_trackerDeps.fetchActiveRuns(target, 'triage')),
             fetchQueueRows(projectId),
         ]).then(function (parts) {
-            const repoActive = !!(parts[0] && parts[0].ok !== false && parts[0].active);
-            const projectTriaging = (Array.isArray(parts[1]) ? parts[1] : []).some(function (r) {
-                return r && r.state === 'triaging';
-            });
-            return repoActive && projectTriaging;
-        }).catch(function () { return false; })
-        : Promise.resolve(false);
+            const probeOk = !!(parts[0] && parts[0].ok !== false);
+            return {
+                repoActive: probeOk && !!parts[0].active,
+                projectTriaging: (Array.isArray(parts[1]) ? parts[1] : []).some(function (r) {
+                    return r && r.state === 'triaging';
+                }),
+                probeOk: probeOk,
+            };
+        }).catch(function () { return emptyReading; })
+        : Promise.resolve(emptyReading);
 
     return Promise.all([shipProbe, sweepProbe]).then(function (parts) {
-        const sweepWorking = resolveWatchSweepWorking(parts[1]);
+        const reading = parts[1];
+        const sweepWorking = resolveWatchSweepWorking(reading.repoActive && reading.projectTriaging);
+        // Repair a row the sweep left behind, using the same readings. Runs after the
+        // sweep resolution above so the local-seed check sees the settled seed state.
+        noteStrandedTriaging(projectName, reading);
         // Fold in a live derive run. A derive isn't a triage sweep and leaves no
         // dispatched/running row (its output lands as `proposed`), so neither probe
         // above catches it — without this the nav dot would never light for a derive.

@@ -2660,11 +2660,15 @@ function onGenerateClick(btn) {
         Promise.resolve(loadQueueRows(projectName)).then(refreshDescStatusDots);
         // Auto-fire the sweep now the row is queued — exactly as the board's Run
         // does, sharing the store's in-flight guard. The flag already succeeded,
-        // so a failed dispatch only means a manual Run is needed; surface it as a
-        // toast, never a block.
+        // so a failed dispatch only means the row has no run behind it; surface it
+        // as a toast, never a block. A null result counts as a failure: both the
+        // in-flight guard and a missed project id return null from the wiring's
+        // fireTriageSweep, and the store returns null when no dispatcher is
+        // registered — all three flag the row and dispatch nothing, which without
+        // this read as success and left the row showing Generating… silently.
         Promise.resolve(fireTriageSweep(projectName)).then(function(tr) {
-            if (tr && tr.ok === false) {
-                showRowToast('Flagged, but triage didn’t start — Run it from the Agent tab.');
+            if (tr == null || tr.ok === false) {
+                showRowToast('Flagged, but no triage run started — the row will show Retry triage shortly.');
             }
         });
     }).catch(function() {
