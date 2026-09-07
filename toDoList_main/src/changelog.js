@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-07',
+        fixed: [
+            'Tasks left showing “Generating…” with no triage run behind them now settle to a retryable state on their own, and a Generate whose triage never starts says so straight away.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-03',
         fixed: [
             'A failed mockup generation now says what actually went wrong instead of a generic try-again message.',
@@ -16,7 +23,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-02',
         fixed: [
-            'Focus mode’s full-screen video scene no longer reloads the player — audio and video keep playing straight through toggling it on, off, and leaving focus mode.',
             'Focus mode’s full-screen video now fills the whole screen instead of a short strip, and the music visualizer no longer covers it.',
         ],
     },
