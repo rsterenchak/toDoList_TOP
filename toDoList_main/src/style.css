@@ -13367,6 +13367,129 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 .pasteEntryAdd:hover { background: var(--accent-strong, var(--accent)); }
 
+/* MOBILE QUICK-CAPTURE PANEL — the capture chip's inline panel. It mounts the
+   same way #pasteEntryPanel does (the placeholder's sibling in #mainList, since
+   the row is `overflow: clip`) and reuses that panel's label, input and button
+   classes; the shell is repeated rather than merged into the selector above so
+   each panel's placement rule stays independently readable. Unlike the paste
+   panel this one is mobile-only, but the gate lives in JS — the chip that opens
+   it is never built above 1023px — so no media scoping is needed here. */
+#captureEntryPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-surface);
+  border: 0.5px solid var(--border-mid);
+  border-top: 0.5px dashed var(--border-mid);
+  border-left: 2px solid var(--accent-dim);
+  border-radius: 0 0 6px 6px;
+  margin: -3px 8px 5px;
+  padding: 10px 12px;
+}
+.captureEntryProject {
+  /* 16px keeps iOS Safari from auto-zooming when the select takes focus. */
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  min-height: 40px;
+  padding: 0 8px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  width: 100%;
+  box-sizing: border-box;
+}
+/* The mic docks inside the textarea's bottom-right corner rather than sitting
+   in its own row, so the field keeps the panel's full width and the control
+   reads as belonging to the text it dictates into. */
+.captureEntryField {
+  position: relative;
+  display: flex;
+}
+.captureEntryMic {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+}
+.captureEntryInput {
+  /* Room for the docked mic so a long transcript never runs under it. */
+  padding-right: 52px;
+}
+.captureReviewList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+.captureReviewRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 10px;
+  background: var(--bg-base);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+}
+.captureReviewCheck {
+  /* 20px so the checkbox is a real touch target, nudged down to sit on the
+     title's baseline rather than the row's top edge. */
+  width: 20px;
+  height: 20px;
+  margin: 3px 0 0;
+  flex-shrink: 0;
+  accent-color: var(--accent);
+}
+.captureReviewText {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1;
+}
+/* The title is an editable input styled to read as plain text — tapping it
+   puts the caret straight in rather than swapping a span for a field. */
+.captureReviewTitle {
+  font-size: 16px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  line-height: 1.4;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-bottom: 0.5px solid transparent;
+  border-radius: 0;
+  padding: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+.captureReviewTitle:focus {
+  outline: none;
+  border-bottom-color: var(--accent);
+}
+.captureReviewDesc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+.captureReviewHint {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+/* A task the Worker matched against open work is struck through and starts
+   unchecked, so committing it is a deliberate second decision. */
+.captureReviewRow[data-dupe] .captureReviewTitle {
+  text-decoration: line-through;
+  color: var(--text-muted);
+}
+.captureEntryError {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--danger, #e2748a);
+}
+
 /* COMPLETED SECTION HEADER — collapsible divider inserted before the first
    completed row. Clicking toggles visibility of the completed group; the
    collapsed state is stored in localStorage and survives reloads. */
@@ -15736,8 +15859,20 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Keep the chip row visible while the inline paste panel is open — moving
      focus into the sibling panel drops the row's :focus-within, which would
      otherwise hide the row (and the pressed paste chip). */
-  #toDoChild[data-blank-placeholder][data-paste-open] + #createChipRow {
+  #toDoChild[data-blank-placeholder][data-paste-open] + #createChipRow,
+  #toDoChild[data-blank-placeholder][data-capture-open] + #createChipRow {
     display: flex;
+  }
+  /* The quick-capture chip carries an inline currentColor SVG rather than a
+     text label, so it takes the calendar chip's fixed 44px circle treatment
+     for an even touch target beside the text chips. */
+  .captureChip {
+    width: 44px;
+    padding: 0;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
   .createChip {
     appearance: none;

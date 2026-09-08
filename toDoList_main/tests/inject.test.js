@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, extractTasksFromWorker, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -614,3 +614,75 @@ describe('fetchActiveRuns — optional workflow scope', () => {
     });
 });
 
+
+// extractTasksFromWorker — the mobile quick-capture panel's Worker call. It is
+// shaped like chatWithWorker (same postToWorker wrapper, same describeError
+// translation), so the assertions here are about the `extract` payload it
+// assembles and the normalization it applies to the reply: the panel renders
+// straight off `tasks`, so a junk or missing array must yield an empty list
+// rather than a render-time crash.
+describe('extractTasksFromWorker payload + reply normalization', () => {
+
+    function lastExtractBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).extract; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    function replyWith(body) {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve(body),
+        }));
+    }
+
+    it('posts the transcript, project name, repo and open titles', async () => {
+        replyWith({ tasks: [] });
+        await extractTasksFromWorker('Inbox', 'owner/repo', 'two things', ['call the vet']);
+        const body = lastExtractBody();
+        expect(body.extract).toBe(true);
+        expect(body.project_name).toBe('Inbox');
+        expect(body.repo).toBe('owner/repo');
+        expect(body.transcript).toBe('two things');
+        expect(body.open_titles).toEqual(['call the vet']);
+    });
+
+    it('omits repo and open_titles entirely when there are none', async () => {
+        replyWith({ tasks: [] });
+        await extractTasksFromWorker('Inbox', null, 'two things', []);
+        const body = lastExtractBody();
+        expect('repo' in body).toBe(false);
+        expect('open_titles' in body).toBe(false);
+    });
+
+    it('normalizes each task and drops entries with no title', async () => {
+        replyWith({ tasks: [
+            { title: '  Call the vet  ', description: 'Booster.', source: 'said it', similar_to: ' Vet call ' },
+            { title: '', description: 'no title' },
+            null,
+            { title: 'Book a flight' },
+        ] });
+        const res = await extractTasksFromWorker('Inbox', null, 'x', []);
+        expect(res.tasks).toEqual([
+            { title: 'Call the vet', description: 'Booster.', source: 'said it', similar_to: 'Vet call' },
+            { title: 'Book a flight', description: '', source: '', similar_to: '' },
+        ]);
+    });
+
+    it('yields an empty list when the Worker reply carries no tasks array', async () => {
+        replyWith({ ok: true });
+        const res = await extractTasksFromWorker('Inbox', null, 'x', []);
+        expect(res.tasks).toEqual([]);
+    });
+
+    it('rejects with the Worker error message on a failure', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false,
+            status: 502,
+            json: () => Promise.resolve({ error: 'Upstream refused' }),
+        }));
+        await expect(extractTasksFromWorker('Inbox', null, 'x', []))
+            .rejects.toThrow('Upstream refused (502)');
+    });
+});

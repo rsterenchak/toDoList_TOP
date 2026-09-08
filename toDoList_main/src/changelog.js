@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-09-08',
+        added: [
+            'On mobile, a new capture chip turns one spoken or typed paragraph into several tasks you can review, edit, and add at once.',
+        ],
         fixed: [
             'A task now leaves “Generating…” on its own as soon as its triage run finishes, instead of waiting for a refresh or a project switch.',
         ],
@@ -21,7 +24,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-03',
         fixed: [
-            'A failed mockup generation now says what actually went wrong instead of a generic try-again message.',
             'Typing a task title or description no longer stutters as your saved projects grow.',
             'Switching back to a project you already opened is instant — its task list is reused instead of rebuilt from scratch.',
         ],
