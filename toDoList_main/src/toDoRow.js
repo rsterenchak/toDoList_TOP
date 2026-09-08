@@ -4585,22 +4585,28 @@ export function buildToDoRow(item, toDoName) {
         // next blank placeholder stacks a second one beneath it.
         toDoChild.removeAttribute('data-blank-placeholder');
         toDoChild.removeAttribute('data-paste-open');
+        toDoChild.removeAttribute('data-capture-open');
         toDoChild.classList.remove('mobile-create-row');
         // The chip row lives as the row's next sibling (its own grid row),
-        // not a child, so reach it there to strip it on commit. The paste
-        // chip's inline panel (mounted right after the chip row) must go too —
-        // committing via a typed title while it is open would otherwise leave
-        // it orphaned beneath a now-committed row.
+        // not a child, so reach it there to strip it on commit. The inline
+        // panels mounted after it — the paste chip's and the capture chip's —
+        // must go too: committing via a typed title while one is open would
+        // otherwise leave it orphaned beneath a now-committed row.
         let chipRow = null;
         let pastePanel = null;
+        let capturePanel = null;
         let scan = toDoChild.nextSibling;
-        while (scan && (scan.id === 'createChipRow' || scan.id === 'pasteEntryPanel')) {
+        while (scan && (scan.id === 'createChipRow'
+            || scan.id === 'pasteEntryPanel'
+            || scan.id === 'captureEntryPanel')) {
             if (scan.id === 'createChipRow') chipRow = scan;
             if (scan.id === 'pasteEntryPanel') pastePanel = scan;
+            if (scan.id === 'captureEntryPanel') capturePanel = scan;
             scan = scan.nextSibling;
         }
         if (chipRow) chipRow.remove();
         if (pastePanel) pastePanel.remove();
+        if (capturePanel) capturePanel.remove();
 
         // STACK mobile commit accent — 700ms fading purple left-edge so the
         // user sees their just-committed task land — plus the session flip

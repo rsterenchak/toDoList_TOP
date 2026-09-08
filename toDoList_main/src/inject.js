@@ -494,6 +494,55 @@ export async function chatWithWorker(messages, entryId, attachFiles, repo, sugge
     }
 }
 
+// Turn one free-text paragraph into several discrete tasks through the Worker's
+// `extract` route. Shaped exactly like chatWithWorker — same postToWorker
+// wrapper, same describeError translation on failure — because the mobile
+// quick-capture panel needs the same error vocabulary the chat surfaces use.
+//
+// `openTitles` is the target project's still-open task titles; the Worker uses
+// them to flag a candidate that duplicates existing work by echoing the matched
+// title back as `similar_to`, which the panel renders as a struck-through,
+// unchecked row rather than dropping silently. `repo` is optional (null for a
+// project with no inject target) — it only sharpens the Worker's framing.
+//
+// Always resolves to `{ tasks: [...] }` with a normalized shape, so a Worker
+// reply missing `tasks` (or carrying junk entries) yields an empty list rather
+// than a render-time crash.
+export async function extractTasksFromWorker(projectName, repo, transcript, openTitles) {
+    try {
+        const payload = {
+            extract: true,
+            project_name: projectName || '',
+            transcript: String(transcript == null ? '' : transcript),
+        };
+        if (repo) payload.repo = repo;
+        if (Array.isArray(openTitles) && openTitles.length) {
+            payload.open_titles = openTitles.slice();
+        }
+        const res = await postToWorker(payload);
+        const raw = (res && Array.isArray(res.tasks)) ? res.tasks : [];
+        const tasks = [];
+        for (let i = 0; i < raw.length; i++) {
+            const t = raw[i];
+            if (!t || typeof t !== 'object') continue;
+            const title = typeof t.title === 'string' ? t.title.trim() : '';
+            if (!title) continue;
+            tasks.push({
+                title: title,
+                description: typeof t.description === 'string' ? t.description : '',
+                source: typeof t.source === 'string' ? t.source : '',
+                similar_to: typeof t.similar_to === 'string' ? t.similar_to.trim() : '',
+            });
+        }
+        return { tasks: tasks };
+    } catch (e) {
+        const err = new Error(describeError(e));
+        err.reason = describeError(e);
+        if (e && typeof e.status === 'number') err.status = e.status;
+        throw err;
+    }
+}
+
 // Read a file from the configured Worker. Mirrors postToWorker's wiring
 // (same URL, same Bearer secret, same `Content-Type: application/json`)
 // but sends `{ read: true, repo, filePath }` so the Worker fetches the
