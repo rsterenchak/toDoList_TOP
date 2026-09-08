@@ -223,6 +223,10 @@ describe('quick-capture panel — compose stage', () => {
         const opts = mountMicButton.mock.calls[0][1];
         expect(opts.onFinal).toBeUndefined();
         expect(opts.overlay).toBe(true);
+        // Continuous even though it's review-only: capture is a paragraph, so a
+        // pause between thoughts must not end the session (and continuous is
+        // what arms the runaway watchdog behind the overlay).
+        expect(opts.continuous).toBe(true);
         expect(panelFor().querySelector('.captureEntryMic')).not.toBeNull();
     });
 

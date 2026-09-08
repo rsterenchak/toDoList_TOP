@@ -461,15 +461,18 @@ function openCapturePanel(toDoChild, item, captureChip) {
         field.appendChild(textarea);
 
         // Review-only mic: no onFinal, so dictation lands in the field for the
-        // user to edit rather than committing a todo outright. Null when the
-        // platform exposes no SpeechRecognition, in which case the panel is
-        // simply type-only.
+        // user to edit rather than committing a todo outright. Continuous
+        // regardless — capture is a paragraph, and a pause between thoughts must
+        // not end the session (it also arms the runaway watchdog, so the overlay
+        // can never be the only way out). Null when the platform exposes no
+        // SpeechRecognition, in which case the panel is simply type-only.
         const mic = mountMicButton(textarea, {
             className: 'micButton captureEntryMic',
             ariaLabel: 'Dictate tasks',
             overlay: true,
             focusTarget: true,
             stopPropagation: true,
+            continuous: true,
         });
         if (mic) field.appendChild(mic);
 

@@ -333,6 +333,61 @@ describe('voiceInput — shared mic + dictation module', () => {
             expect(calls).toEqual(['second']);
         });
     });
+
+    // Regression: the mobile quick-capture panel dictates a whole paragraph
+    // review-only, so it needs continuous listening WITHOUT the auto-commit
+    // hook. Deriving `continuous` from onFinal alone left that surface running
+    // a non-continuous session behind the overlay, whose only automatic exit is
+    // an onend iOS standalone doesn't reliably fire — the app looked hung with
+    // no way out.
+    describe('continuous opt-in without onFinal (review-only paragraph dictation)', () => {
+        it('listens continuously and arms the runaway watchdog', () => {
+            vi.useFakeTimers();
+            try {
+                const input = makeInput();
+                const btn = mountMicButton(input, { overlay: true, continuous: true });
+                btn.click();
+                const rec = lastRecognition();
+                expect(rec.continuous).toBe(true);
+                rec.emitResult('two thoughts in one paragraph');
+                expect(isDictating()).toBe(true);
+                // The watchdog is the safety net that makes the overlay never
+                // the only way out of a continuous session.
+                vi.advanceTimersByTime(60000);
+                expect(isDictating()).toBe(false);
+                expect(document.querySelector('.voiceOverlay')).toBeNull();
+                expect(input.value).toBe('two thoughts in one paragraph');
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('keeps the tap-to-add hint and the commit callback gated on onFinal', () => {
+            const input = makeInput();
+            const btn = mountMicButton(input, { overlay: true, continuous: true });
+            btn.click();
+            // Continuous, but review-only: the "add" framing would be wrong copy.
+            expect(document.querySelector('.voiceOverlay .voiceHint')).toBeNull();
+            lastRecognition().emitResult('leave me for review');
+            document.querySelector('.voiceOverlay').click();
+            // Nothing committed — the transcript stays in the field to edit.
+            expect(input.value).toBe('leave me for review');
+            expect(isDictating()).toBe(false);
+        });
+
+        it('a tap dismisses an overlay left behind after its session ended', () => {
+            const btn = mountMicButton(makeInput(), { overlay: true, continuous: true });
+            btn.click();
+            const overlay = document.querySelector('.voiceOverlay');
+            stopDictation();
+            // Orphaned: in the DOM, but no session state behind it — the shape
+            // iOS standalone produces when onend never arrives.
+            document.body.appendChild(overlay);
+            expect(document.querySelector('.voiceOverlay')).toBe(overlay);
+            overlay.click();
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+        });
+    });
 });
 
 // Source-level checks: buildToDoRow is too heavily wired to instantiate
