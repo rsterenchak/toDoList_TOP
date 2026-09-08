@@ -412,7 +412,13 @@ export async function materializeEntryTodo(projectName, title, entryText, entryI
 // are pulled in with a dynamic import to avoid a static cycle (see the module note
 // above). Best-effort by design: a repaint failure must never turn a dispatch that
 // already created the todo and shipped the run into a surfaced error.
-async function rebuildSelectedList(projectName) {
+//
+// Exported because addEntryTodo is data-only by design, so EVERY caller has to
+// repaint for itself: mobileTaskCreate's quick-capture ADD commits its checked
+// rows through the same data-only insert and reuses this one implementation
+// rather than growing a second copy of the render (each caller owns the
+// selected-project guard, since only it knows which project it targeted).
+export async function rebuildSelectedList(projectName) {
     const mainList = document.getElementById('mainList');
     if (!mainList) return;
     try {

@@ -71,6 +71,13 @@ vi.mock('../src/todoMdViewer.js', () => ({
     refreshViewerExpandedHeight: vi.fn(),
 }));
 
+// The shared post-insert repaint. Mocked so ADD's render call is observed
+// without pulling the row layer (or dispatchDraft's Worker/Supabase graph) in.
+const rebuildSelectedList = vi.fn();
+vi.mock('../src/dispatchDraft.js', () => ({
+    rebuildSelectedList: (...a) => rebuildSelectedList(...a),
+}));
+
 import {
     attachMobileCreateChips,
     resetMobileCreateSession,
@@ -154,6 +161,7 @@ beforeEach(() => {
     dictating = false;
     extractTasksFromWorker.mockClear();
     addEntryTodo.mockClear();
+    rebuildSelectedList.mockClear();
     stopDictation.mockClear();
     mountMicButton.mockClear();
 });
@@ -382,6 +390,30 @@ describe('quick-capture panel — review stage', () => {
             .toEqual(['Side quests', 'Call the vet', 'Booster shot is overdue.']);
         expect(addEntryTodo.mock.calls[1]).toEqual(['Side quests', 'Book a flight', '']);
         expect(panelFor()).toBeNull();
+    });
+
+    it('ADD repaints the visible list once when the target is the viewed project', async () => {
+        // Panel opens seeded to the viewed project ('Inbox'), so ADD commits
+        // into the list that is on screen.
+        const { panel } = await openReview();
+        expect(panel.querySelector('.captureEntryProject').value).toBe('Inbox');
+
+        actionByText(panel, 'ADD 2 TASKS').click();
+
+        // Two inserts, ONE repaint — a rebuild per task would flicker.
+        expect(addEntryTodo).toHaveBeenCalledTimes(2);
+        expect(rebuildSelectedList).toHaveBeenCalledTimes(1);
+        expect(rebuildSelectedList.mock.calls[0]).toEqual(['Inbox']);
+    });
+
+    it('ADD leaves the visible list alone when the target is another project', async () => {
+        const { panel } = await openReview();
+        panel.querySelector('.captureEntryProject').value = 'Side quests';
+
+        actionByText(panel, 'ADD 2 TASKS').click();
+
+        expect(addEntryTodo).toHaveBeenCalledTimes(2);
+        expect(rebuildSelectedList).not.toHaveBeenCalled();
     });
 
     it('commits an inline title edit rather than the extracted text', async () => {

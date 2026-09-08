@@ -22,6 +22,7 @@ import { refreshViewerExpandedHeight } from './todoMdViewer.js';
 import { mountMicButton, isDictating, stopDictation } from './voiceInput.js';
 import { listLogic } from './listLogic.js';
 import { activeProjectNameForViewer } from './runState.js';
+import { rebuildSelectedList } from './dispatchDraft.js';
 
 // Re-exported so existing importers (and tests) can keep reaching the parser
 // through this module; the single implementation now lives in entryParse.js,
@@ -625,6 +626,18 @@ function openCapturePanel(toDoChild, item, captureChip) {
                 );
             }
             closeCapturePanel(toDoChild, captureChip);
+            // addEntryTodo is data-only, and #mainList rebuilds from the model
+            // on project selection alone, so the new rows would stay invisible
+            // until a reload. Repaint ONCE after the loop (never per task, which
+            // would flicker), and only when the target is the project on screen
+            // — committing to another project must leave this list untouched.
+            // After closeCapturePanel, not before: the rebuild clears #mainList,
+            // and the panel lives inside it beside the placeholder row, so
+            // closing first keeps the data-capture-open cleanup honest instead
+            // of tearing down a panel the rebuild is about to drop anyway.
+            if (projectName === activeProjectNameForViewer()) {
+                rebuildSelectedList(projectName);
+            }
         });
 
         function updateAddLabel() {
