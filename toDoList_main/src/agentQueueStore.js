@@ -33,6 +33,10 @@ const SHIPPED_STATE = 'shipped';
 let _rows = [];
 let _loadedProjectName = null;
 let _channel = null;
+// Whether the realtime channel has dropped since it last reported SUBSCRIBED, so a
+// reconnect can be told apart from the first subscribe and replay the pushes the
+// dead socket swallowed (see startAgentQueueSubscription).
+let _channelDropped = false;
 
 // The all-projects `agent_queue` cache — every one of the user's rows across ALL
 // projects, held SEPARATELY from `_rows`. `_rows` stays scoped to the selected
@@ -427,6 +431,33 @@ export function refreshMarkersForShippedTransitions(prevRows, currentRows) {
     } catch (e) { /* never let a realtime push handler throw */ }
 }
 
+// Reload both queue caches and repaint from them. This is what a realtime push
+// does, factored out so the reconnect catch-up below can run the exact same work
+// rather than a second, drifting copy of it.
+//
+// One pass refreshes BOTH the selected-project cache (task-row badges) and the
+// all-projects cache (the switcher's per-project question counts); listeners then
+// repaint both surfaces from cache. Reuses this single app-lifetime channel rather
+// than opening a second subscription for the switcher counts.
+function reloadAndNotifyQueue() {
+    // Snapshot the all-projects rows BEFORE the reload so a row's transition into
+    // the terminal shipped state can be detected against the prior cache
+    // (loadAllQueueRows REPLACES `_allRows` rather than mutating it, so this
+    // reference stays the old set).
+    const prevAllRows = getAllQueueRows();
+    return Promise.all([
+        loadQueueRows(resolveSelectedProjectName()),
+        loadAllQueueRows(),
+    ]).then(function () {
+        // A run that merges on Actions flips its queue row to `shipped` without the
+        // client ship path's forced marker refresh, so force one here for any
+        // project whose row just reached shipped — the row then repaints to
+        // `⌁ REVIEW` via the TODO_RUN_STATUS_EVENT refreshShippedMarkers emits.
+        refreshMarkersForShippedTransitions(prevAllRows, getAllQueueRows());
+        notifyQueueChange();
+    });
+}
+
 // Open the realtime subscription on agent_queue. Idempotent. On each push it
 // reloads the selected project's rows ONCE, then notifies listeners to repaint
 // from cache — so the board and the task rows update from a single fetch. The
@@ -441,32 +472,27 @@ export function startAgentQueueSubscription() {
             .channel('public:agent_queue')
             .on('postgres_changes',
                 { event: '*', schema: 'public', table: 'agent_queue' },
-                function () {
-                    // One push refreshes BOTH the selected-project cache (task-row
-                    // badges) and the all-projects cache (the switcher's per-project
-                    // question counts); listeners then repaint both surfaces from
-                    // cache. Reuses this single app-lifetime channel rather than
-                    // opening a second subscription for the switcher counts.
-                    //
-                    // Snapshot the all-projects rows BEFORE the reload so a row's
-                    // transition into the terminal shipped state can be detected
-                    // against the prior cache (loadAllQueueRows REPLACES `_allRows`
-                    // rather than mutating it, so this reference stays the old set).
-                    const prevAllRows = getAllQueueRows();
-                    Promise.all([
-                        loadQueueRows(resolveSelectedProjectName()),
-                        loadAllQueueRows(),
-                    ]).then(function () {
-                        // A run that merges on Actions flips its queue row to
-                        // `shipped` without the client ship path's forced marker
-                        // refresh, so force one here for any project whose row just
-                        // reached shipped — the row then repaints to `⌁ REVIEW` via
-                        // the TODO_RUN_STATUS_EVENT refreshShippedMarkers emits.
-                        refreshMarkersForShippedTransitions(prevAllRows, getAllQueueRows());
-                        notifyQueueChange();
-                    });
-                })
-            .subscribe();
+                function () { reloadAndNotifyQueue(); })
+            .subscribe(function (status) {
+                // Supabase replays nothing on reconnect, so every push that landed
+                // while the socket was down is simply lost — the rows a finished
+                // triage sweep flipped to `drafted` stay painted Generating… until a
+                // manual refresh. Treat the re-SUBSCRIBED after a drop as one
+                // synthetic push and run the same reload, so the reconnect catches
+                // up. Gated on having actually seen a drop, so the FIRST subscribe
+                // (which the caller's own initial load already covers) doesn't
+                // trigger a redundant reload.
+                if (status === 'SUBSCRIBED') {
+                    if (_channelDropped) {
+                        _channelDropped = false;
+                        reloadAndNotifyQueue();
+                    }
+                    return;
+                }
+                if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+                    _channelDropped = true;
+                }
+            });
     } catch (e) {
         _channel = null;
     }
@@ -476,6 +502,7 @@ export function stopAgentQueueSubscription() {
         try { supabase.removeChannel(_channel); } catch (e) { /* ignore */ }
     }
     _channel = null;
+    _channelDropped = false;
 }
 
 // ── PERSISTENT DISPATCH RECONCILER ────────────────────────────────────
@@ -1045,7 +1072,17 @@ function finishSweep() {
     const projectName = _sweepProjectName;
     const wasActive = _sweepActive;
     stopSweepTracking();
-    if (wasActive) verifyThenReconcile(projectName);
+    if (!wasActive) return;
+    // The confirmed end of the run is also the moment its verdicts are on the table,
+    // so reload the swept project's rows here. On the SUCCESS path nothing else did:
+    // verifyThenReconcile reloads rows only in its stuck-'triaging' failure branch, so
+    // the drafted row's repaint rested entirely on the `agent_queue` realtime push —
+    // and a push missed (socket dropped while the app was backgrounded, reconnect
+    // without replay) left the task row stuck at Generating… until a manual refresh.
+    // refreshAgentQueue already no-ops its notify when the swept project is no longer
+    // the loaded one, so a mid-sweep project switch can't repaint the wrong board.
+    if (_trackerDeps && _trackerDeps.refreshAgentQueue) _trackerDeps.refreshAgentQueue(projectName);
+    verifyThenReconcile(projectName);
 }
 
 // Cancel a pending reconcile verification. Bumping the generation is what actually
@@ -1557,6 +1594,36 @@ function noteStrandedTriaging(projectName, reading) {
         .then(function () { _watchReconciling = false; });
 }
 
+// Order-independent `id:state` fingerprint of a row set. The watch compares two
+// separate fetches, and `select` promises no ordering, so the ids are sorted before
+// joining — otherwise a reshuffled but unchanged result would read as a diff and
+// repaint every tick.
+function queueRowsSignature(rows) {
+    return (Array.isArray(rows) ? rows : [])
+        .map(function (r) { return String(r && r.id) + ':' + String(r && r.state); })
+        .sort()
+        .join('|');
+}
+
+// Fold the watch's own fetch back into the render cache. The watch already pulls the
+// selected project's rows fresh every WORKING_WATCH_POLL_MS and then throws them
+// away, so a realtime push missed while the app was backgrounded left the cache — and
+// every badge painted from it — stale indefinitely. Adopting the fetch whenever it
+// disagrees with the cache makes a missed push self-heal within one tick.
+//
+// Notified only on an actual `id:state` change, and only after `_rows` has been
+// replaced, so the board's full-paint listener (which clobbers the Run button's
+// transient label) fires at most once per change rather than on every tick. Rows from
+// a project that is no longer the loaded one are dropped rather than cached: the tick
+// is async, so a project switch mid-flight would otherwise write another project's
+// rows into the selected project's cache.
+function adoptWatchQueueRows(projectName, rows) {
+    if (!rows || !projectName || projectName !== _loadedProjectName) return;
+    if (queueRowsSignature(rows) === queueRowsSignature(_rows)) return;
+    _rows = rows;
+    notifyQueueChange();
+}
+
 // One watch tick: compute `working` = a triage sweep in flight for the selected
 // project OR any dispatched/running row for the selected project OR a derive run in
 // flight (isDeriveActive, folded in below) — the same predicate the header pill uses
@@ -1577,9 +1644,13 @@ export function pollAgentWorkingWatch() {
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     const target = _trackerDeps ? _trackerDeps.resolveDispatchTarget() : null;
 
+    // The ship probe's fetch doubles as the cache self-heal's source (see
+    // adoptWatchQueueRows below), so its rows are retained rather than reduced away.
+    let fetchedRows = null;
     const shipProbe = projectId
         ? fetchQueueRows(projectId).then(function (rows) {
-            return (Array.isArray(rows) ? rows : []).some(function (r) {
+            fetchedRows = Array.isArray(rows) ? rows : [];
+            return fetchedRows.some(function (r) {
                 return r && (r.state === 'dispatched' || r.state === 'running');
             });
         }).catch(function () { return false; })
@@ -1620,6 +1691,9 @@ export function pollAgentWorkingWatch() {
         // Repair a row the sweep left behind, using the same readings. Runs after the
         // sweep resolution above so the local-seed check sees the settled seed state.
         noteStrandedTriaging(projectName, reading);
+        // Self-heal the render cache from this tick's fetch, so a row the realtime
+        // push never delivered still repaints within WORKING_WATCH_POLL_MS.
+        adoptWatchQueueRows(projectName, fetchedRows);
         // Fold in a live derive run. A derive isn't a triage sweep and leaves no
         // dispatched/running row (its output lands as `proposed`), so neither probe
         // above catches it — without this the nav dot would never light for a derive.

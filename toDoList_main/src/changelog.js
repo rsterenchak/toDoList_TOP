@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-08',
+        fixed: [
+            'A task now leaves “Generating…” on its own as soon as its triage run finishes, instead of waiting for a refresh or a project switch.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-07',
         fixed: [
             'Tasks left showing “Generating…” with no triage run behind them now settle to a retryable state on their own, and a Generate whose triage never starts says so straight away.',
@@ -17,13 +24,6 @@ export const changelog = [
             'A failed mockup generation now says what actually went wrong instead of a generic try-again message.',
             'Typing a task title or description no longer stutters as your saved projects grow.',
             'Switching back to a project you already opened is instant — its task list is reused instead of rebuilt from scratch.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-09-02',
-        fixed: [
-            'Focus mode’s full-screen video now fills the whole screen instead of a short strip, and the music visualizer no longer covers it.',
         ],
     },
 ];
