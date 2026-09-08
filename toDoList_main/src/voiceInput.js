@@ -3,10 +3,13 @@
 // placeholder row) mounts a mic button via mountMicButton() and dictates into a
 // target <input>/<textarea>. Review-only surfaces (the Claude composer) leave
 // the transcribed text in the field for the user to edit and send manually.
-// Auto-commit surfaces (the add-task row) opt in with an onFinal callback: they
-// listen continuously and the user taps the overlay (or re-taps the mic) to add
-// the todo, which fires onFinal with the transcript; a natural pause no longer
-// ends or commits the session. Escape / surface-close cancel and discard.
+// Auto-commit surfaces (the add-task row) opt in with an onFinal callback: the
+// user taps the overlay (or re-taps the mic) to add the todo, which fires
+// onFinal with the transcript. Escape / surface-close cancel and discard.
+// Continuous listening — where a natural speech pause no longer ends the
+// session — is a separate opt-in: passing onFinal implies it, and a review-only
+// surface that dictates paragraphs (the quick-capture panel) asks for it
+// directly with `continuous: true`.
 //
 // The optional "listening overlay" (a centered pill with an equalizer and the
 // live interim transcript over a dimmed, blurred backdrop) also lives here so
@@ -84,12 +87,16 @@ function resolveTarget(target) {
 //                   focus, e.g. the mobile placeholder row)
 //   stopPropagation — stop the click from bubbling (so a row-level click
 //                   handler doesn't also fire)
+//   continuous    — listen continuously: a speech pause doesn't end the
+//                   session, and the runaway watchdog is armed. Implied by
+//                   onFinal; review-only surfaces that dictate more than one
+//                   sentence (the quick-capture panel) pass it on its own.
 //   onFinal(text) — auto-commit hook: called once with the final transcript
 //                   when the user commits (tapping the overlay or re-tapping the
 //                   mic), and NOT when the user cancels (Escape / surface-close)
-//                   or the transcript is empty. Passing it also makes the session
-//                   listen continuously — it no longer ends on a speech pause, so
-//                   the user taps to add. Surfaces that want the dictated text
+//                   or the transcript is empty. Passing it also turns on
+//                   continuous listening, so the user taps to add rather than
+//                   pausing to finish. Surfaces that want the dictated text
 //                   committed for them (the add-task row, where iOS can't reopen
 //                   the keyboard to press Enter) pass this; review-only surfaces
 //                   (the Claude composer) omit it and keep the text in the field
@@ -156,10 +163,11 @@ export function startDictation(target, btn, opts = {}) {
         try { input.focus(); } catch (e) { /* not focusable */ }
     }
 
-    // Auto-commit surfaces (those passing onFinal) listen continuously so a
-    // speech pause doesn't end the session — the user taps to add. Review-only
-    // surfaces keep the old pause-ends-the-session behavior.
-    const continuous = activeOnFinal != null;
+    // Continuous listening: a speech pause doesn't end the session, so the user
+    // finishes by tapping. Auto-commit surfaces get it implicitly (they tap to
+    // add); review-only surfaces dictating a paragraph ask for it outright.
+    // Everything else keeps the pause-ends-the-session behavior.
+    const continuous = activeOnFinal != null || opts.continuous === true;
 
     const begin = function() {
         const rec = new Ctor();
@@ -260,9 +268,12 @@ function finishSession(btn) {
 
 // Commit path — the user tapped the overlay or re-tapped the mic to finish.
 // Stop WITHOUT suppressing so onend fires onFinal with the transcript (when
-// non-empty). Safe to call when nothing is recording (a no-op).
+// non-empty). Safe to call when nothing is recording.
 function commitDictation() {
-    if (!recording && !activeRec) return;
+    // No live session, but the tap still has to dismiss: an overlay can outlive
+    // its session (iOS standalone doesn't reliably fire onend), and leaving it
+    // up reads as a hung app with no way out.
+    if (!recording && !activeRec) { closeOverlay(); return; }
     recording = false;
     if (activeRec) {
         try { activeRec.stop(); } catch (e) { /* already stopped */ }
@@ -359,10 +370,15 @@ function closeOverlay() {
         document.removeEventListener('keydown', overlayKeyHandler, true);
         overlayKeyHandler = null;
     }
-    if (overlayEl && overlayEl.parentNode) {
-        overlayEl.parentNode.removeChild(overlayEl);
-    }
     overlayEl = null;
+    // Sweep by class rather than only the tracked node: an overlay whose session
+    // was torn down without closing it is still in the DOM but no longer
+    // referenced, and it has to come out too or the dismiss does nothing.
+    if (typeof document === 'undefined' || !document.querySelectorAll) return;
+    const stray = document.querySelectorAll('.voiceOverlay');
+    for (let i = 0; i < stray.length; i++) {
+        if (stray[i].parentNode) stray[i].parentNode.removeChild(stray[i]);
+    }
 }
 
 function updateOverlayInterim(text) {

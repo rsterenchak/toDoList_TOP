@@ -11,6 +11,7 @@ export const changelog = [
         ],
         fixed: [
             'A task now leaves “Generating…” on its own as soon as its triage run finishes, instead of waiting for a refresh or a project switch.',
+            'Dictating into the mobile quick-capture panel now keeps listening through pauses, and the listening overlay always closes on a tap.',
         ],
     },
     {
@@ -24,7 +25,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-03',
         fixed: [
-            'Typing a task title or description no longer stutters as your saved projects grow.',
             'Switching back to a project you already opened is instant — its task list is reused instead of rebuilt from scratch.',
         ],
     },
