@@ -1908,3 +1908,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/tests/voiceInput.test.js`
   - Completed: 2026-09-08
   <!-- id: e7150c79-4a9d-463a-a86a-e8244f8664c4 -->
+
+- [ ] **[HIGH]** Fix quick-capture tasks not appearing until the app is refreshed
+  - Type: bug
+  - Description: Committing tasks from the quick-capture review checklist writes them to the data model and Supabase but they do not appear in the list until the app is reloaded. `listLogic.addEntryTodo` is data-only by design; `#mainList` rebuilds from the model on project selection and nowhere else. The other caller, `materializeEntryTodo` in `dispatchDraft.js`, handles this by calling its module-private `rebuildSelectedList(projectName)` after the insert, guarded on the target project being the one on screen. The capture panel's ADD handler in `mobileTaskCreate.js` loops `addEntryTodo` and closes the panel without any repaint. Export `rebuildSelectedList` from `dispatchDraft.js` (leave its dynamic `toDoRow.js` import in place — that is what keeps the graph acyclic) and call it ONCE after the loop in the ADD handler, only when the selected target project equals the currently viewed project. Keep it best-effort as it already is: a repaint error must not surface after the inserts have succeeded.
+  - Behavior: After ADD, the new rows appear immediately in the visible list when the target is the current project, with the blank placeholder row and chip row intact. When the target is a different project, nothing on screen changes; the rows are present on navigating to that project. Single-task and multi-task commits behave the same; no per-task repaint flicker.
+  - Implementation notes:
+    - Use `activeProjectNameForViewer()` (already imported in `mobileTaskCreate.js`) for the on-screen check, matching how the panel seeds the select.
+    - Call the repaint AFTER `closeCapturePanel`, not before — the rebuild clears `#mainList`, and the panel is a sibling of the placeholder row inside it; closing first avoids tearing down a panel the rebuild is about to remove anyway and keeps `data-capture-open` cleanup honest.
+    - Add a Vitest case in `toDoList_main/tests/mobileTaskCreate.test.js`: ADD with the current project selected calls the exported `rebuildSelectedList` once with that name; ADD targeting another project does not call it.
+  - Out of scope: Making `addEntryTodo` repaint (it is intentionally data-only and other callers manage their own render). Toasts or scroll-to-new-row. The dictation overlay fix in its own entry.
+  - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/dispatchDraft.js`, `toDoList_main/tests/mobileTaskCreate.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 867ccfc7-0030-4caa-a254-a8f2b6f736ed -->
