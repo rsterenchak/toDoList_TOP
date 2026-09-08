@@ -1895,3 +1895,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/mobileTaskCreate.test.js`
   - Completed: 2026-09-08
   <!-- id: 47db3081-127a-486d-8e39-09b7ce78f6a5 -->
+
+- [ ] **[HIGH]** Fix quick-capture dictation overlay that cannot be dismissed on iOS
+  - Type: bug
+  - Description: Tapping the mic in the mobile quick-capture panel opens the shared listening overlay and the app appears to hang — the overlay never closes, taps anywhere do nothing, and the only way out is killing the app. The panel mounts its mic review-only (no `onFinal`), and `startDictation` derives `continuous` from `onFinal`, so this is the only surface running `rec.continuous = false` WITH the overlay: the add-task row is continuous and the Claude composer has no overlay. In non-continuous mode the overlay's only automatic exit is `onend` after a speech pause, which iOS does not reliably fire in standalone, and there is no runaway watchdog because that is also gated on `continuous`. The mode is wrong for this surface regardless — capture is a paragraph, and a pause between thoughts must not end the session. Fix in two parts. (1) `voiceInput.js`: add an explicit `continuous` option to `mountMicButton` / `startDictation` so `const continuous = activeOnFinal != null || opts.continuous === true;` — the watchdog and continuous listening follow that flag, while the "Tap to add" hint and the commit callback stay gated on `onFinal`. Make `commitDictation` close an orphaned overlay instead of returning early: when neither `recording` nor `activeRec` is set, call `closeOverlay()` and return, so a tap always dismisses even if session state has already been torn down. (2) `mobileTaskCreate.js`: mount the capture mic with `continuous: true`; keep it review-only (no `onFinal`).
+  - Behavior: Tapping the capture mic listens until the user taps the overlay, re-taps the mic, or the 60-second watchdog fires; pauses between sentences do not end the session. Dismissing leaves the full transcript in the textarea for editing. The add-task row and the Claude composer behave exactly as before. A tap on the overlay always removes it, in every session state.
+  - Implementation notes:
+    - Do not pass a no-op `onFinal` from the panel to get continuous mode — that would show the "Tap to add" hint, which is wrong copy here. The new flag is the honest path.
+    - Update the header comment in `voiceInput.js` that ties continuous listening to auto-commit surfaces; it is now either.
+    - Add a Vitest case in the existing voice-input test file: a mount with `continuous: true` and no `onFinal` sets `rec.continuous`, arms the watchdog, and never calls a commit callback; a second case that `commitDictation` removes `.voiceOverlay` when called with no live session.
+  - Out of scope: The overlay's visual design. Changing the composer or add-task row mic options. The extract flow after dismissal.
+  - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/mobileTaskCreate.js`, `toDoList_main/tests/voiceInput.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: e7150c79-4a9d-463a-a86a-e8244f8664c4 -->
