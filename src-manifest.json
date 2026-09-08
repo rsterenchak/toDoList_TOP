@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-08T12:06:01.594Z",
-  "sha": "2ddb9fbcd60ef6d36df8a3bcd212956b14ac7cf2",
+  "generatedAt": "2026-09-08T13:37:07.555Z",
+  "sha": "50ef7dc8c32f0f6ce353a417f62434a66a3f008f",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -2158,11 +2158,11 @@
       "selector": "#createCaptureChip",
       "label": "Create Capture Chip",
       "file": "mobileTaskCreate.js",
-      "line": 693,
+      "line": 696,
       "files": [
         {
           "file": "mobileTaskCreate.js",
-          "line": 693
+          "line": 696
         }
       ]
     },
@@ -2170,11 +2170,11 @@
       "selector": "#createChipRow",
       "label": "Create Chip Row",
       "file": "mobileTaskCreate.js",
-      "line": 766,
+      "line": 769,
       "files": [
         {
           "file": "mobileTaskCreate.js",
-          "line": 766
+          "line": 769
         },
         {
           "file": "style.css",
@@ -2186,11 +2186,11 @@
       "selector": "#createDescChip",
       "label": "Create Desc Chip",
       "file": "mobileTaskCreate.js",
-      "line": 798,
+      "line": 801,
       "files": [
         {
           "file": "mobileTaskCreate.js",
-          "line": 798
+          "line": 801
         }
       ]
     },
@@ -2198,11 +2198,11 @@
       "selector": "#createPasteChip",
       "label": "Create Paste Chip",
       "file": "mobileTaskCreate.js",
-      "line": 723,
+      "line": 726,
       "files": [
         {
           "file": "mobileTaskCreate.js",
-          "line": 723
+          "line": 726
         }
       ]
     },
