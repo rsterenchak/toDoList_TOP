@@ -58,6 +58,20 @@ describe('Dense left-aligned mobile header (Variant C)', () => {
         expect(header).toMatch(/position:\s*relative/);
     });
 
+    it('clears the iOS status-bar scroll-edge blur band with 28px above the safe-area inset', () => {
+        // iOS draws a blurring/dimming scroll-edge effect over web content under
+        // the status bar on viewport-fit=cover + black-translucent pages, and the
+        // band reaches roughly 30pt past the safe-area inset. A 4px offset left
+        // the PROJECT N OF M eyebrow inside it (blurred and near-invisible), so
+        // the top padding adds 28px on top of the floored inset to push the whole
+        // left column clear. The OS composites the effect above the page, so this
+        // spacing — not backdrop-filter or z-index — is the only fix.
+        const header = rule(denseBlock(), '#mobileProjHeader');
+        expect(header).toMatch(
+            /padding:\s*calc\(\s*max\(\s*env\(safe-area-inset-top\s*,\s*0px\s*\)\s*,\s*12px\s*\)\s*\+\s*28px\s*\)\s+16px\s+6px\s+16px/
+        );
+    });
+
     it('stacks the label / name-row / counts flush-left in the left column', () => {
         const main2 = rule(denseBlock(), '#mobileProjMain');
         expect(main2).toMatch(/display:\s*flex/);
