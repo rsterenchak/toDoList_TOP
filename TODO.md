@@ -1922,8 +1922,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-09-08
   <!-- id: 867ccfc7-0030-4caa-a254-a8f2b6f736ed -->
 
-- [ ] **[MEDIUM]** Add a Live preview chip to the Structure header from the target's preview_url
+- [x] **[MEDIUM]** Add a Live preview chip to the Structure header from the target's preview_url
   - Type: feature
   - Description: MAUI repos now publish an in-browser Appetize preview, and their CI writes the link to the project's `inject_targets` row as `preview_url`; `loadInjectTargets` already selects every column, so the value is on the cached row with no fetch change. In `renderStructureView`, resolve the selected project's target row the same way `resolveProjectRepo` does (`listLogic.getProjectTargetId` → `findTargetById` from `inject.js`) and, when `preview_url` is a string starting with `https://`, append a `LIVE PREVIEW` chip to the header's `labelGroup` directly below the `structureRepoLabel` row; render nothing when the value is missing, null, or any other scheme. The chip is an `<a>` with `target="_blank"` and `rel="noopener noreferrer"`, 36px tall with a 10px radius, `var(--bg-surface)` background, 1px `var(--accent)` border, `var(--accent-text)` label in the `'SpaceMono'` stack, and a small inline-SVG play glyph before the label (inline SVG like `buildPagesIconLink`, no icon font); hover uses `var(--accent-dim)`. Leave the existing Pages ↗ icon untouched. Add tests to `tests/structureView.test.js` covering the chip rendering with the row's URL, no chip when `preview_url` is absent, and no chip for a non-https value.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureView.test.js`
+  - Completed: 2026-09-26
   <!-- id: 382eece7-c78f-406f-8de2-e95fc824b041 -->

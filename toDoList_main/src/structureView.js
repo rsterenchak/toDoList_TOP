@@ -1,4 +1,4 @@
-import { chatWithWorker } from './inject.js';
+import { chatWithWorker, findTargetById } from './inject.js';
 import {
     loadManifest,
     getRunningAppRepo,
@@ -428,6 +428,30 @@ function buildPagesIconLink(repo) {
         'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
         '<path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>' +
         '<path d="M15 3h6v6"/><path d="M10 14 21 3"/></svg>';
+    return a;
+}
+
+// The header's Live preview chip: an anchor that opens the in-browser preview a
+// MAUI repo's CI publishes onto its `inject_targets` row as `preview_url`. The
+// row is resolved the same way `resolveProjectRepo` does — project → target_id →
+// cached target — so it costs no fetch. Gated on the value being an https URL:
+// a missing, null, or other-scheme value renders nothing (null) rather than a
+// chip pointing somewhere unsafe.
+function buildLivePreviewChip(projectName) {
+    const target = findTargetById(listLogic.getProjectTargetId(projectName));
+    const url = target ? target.preview_url : null;
+    if (typeof url !== 'string' || url.indexOf('https://') !== 0) return null;
+    const a = document.createElement('a');
+    a.className = 'structureLivePreviewChip';
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    a.title = 'Open the live preview';
+    a.setAttribute('aria-label', 'Open the live preview for ' + projectName);
+    a.innerHTML =
+        '<svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor" aria-hidden="true">' +
+        '<path d="M8 5v14l11-7z"/></svg>' +
+        '<span class="structureLivePreviewLabel">LIVE PREVIEW</span>';
     return a;
 }
 
@@ -3431,6 +3455,12 @@ export function renderStructureView() {
     if (pagesLink) repoLabel.appendChild(pagesLink);
 
     labelGroup.appendChild(repoLabel);
+
+    // Sits directly below the repo row, so the preview link reads as belonging to
+    // the same repo without crowding the name/Pages-icon row.
+    const previewChip = buildLivePreviewChip(projectName);
+    if (previewChip) labelGroup.appendChild(previewChip);
+
     header.appendChild(labelGroup);
 
     const tree = document.createElement('div');

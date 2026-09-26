@@ -45,6 +45,9 @@ vi.mock('../src/inject.js', () => ({
     // The NEXT REFACTOR card mounts inside the view; keep it inert here.
     scanRefactor: vi.fn(function () { return Promise.resolve({ ok: true, found: false }); }),
     getCachedTargets: vi.fn(function () { return []; }),
+    // The header's Live preview chip resolves the project's target row through
+    // this; these tests link no target, so it never resolves and no chip renders.
+    findTargetById: vi.fn(function () { return null; }),
     isInjectConfigured: vi.fn(function () { return false; }),
     dispatchScan: vi.fn(function () { return Promise.resolve({ ok: true }); }),
     mintEntryId: vi.fn(function () { return 'corr-test'; }),

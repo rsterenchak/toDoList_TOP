@@ -26,6 +26,10 @@ const { state } = vi.hoisted(() => ({
             'Game': 'rsterenchak/matchingGame-test',
         },
         runningRepo: 'rsterenchak/toDoList_TOP',
+        // project name → inject_targets.id, and that id → its cached target row.
+        // The header's Live preview chip walks exactly this path.
+        projectTargets: {},
+        targetRows: {},
         manifests: {},
         explainReply: 'This file does a thing.',
         explainError: null,
@@ -68,6 +72,11 @@ vi.mock('../src/inject.js', () => ({
         return Promise.resolve({ ok: true, found: false, all_under_budget: true });
     }),
     getCachedTargets: vi.fn(function () { return []; }),
+    // The Live preview chip resolves the selected project's target row through
+    // this; rows are canned per test via `state.targetRows`.
+    findTargetById: vi.fn(function (id) {
+        return (id && state.targetRows[id]) || null;
+    }),
     // The card imports these for its request-scan control. isInjectConfigured returns
     // false so the control never mounts during these structure-tree tests; the other
     // two are never exercised here.
@@ -94,6 +103,7 @@ import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, } from '../src/inject.js';
 import { captureRemote, pagesUrlFor } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
+import { listLogic } from '../src/listLogic.js';
 import {
     setStructureLens,
     STRUCTURE_LENS_KEY,
@@ -126,6 +136,8 @@ beforeEach(() => {
         'Game': 'rsterenchak/matchingGame-test',
     };
     state.runningRepo = 'rsterenchak/toDoList_TOP';
+    state.projectTargets = {};
+    state.targetRows = {};
     state.manifests = {};
     state.explainReply = 'This file does a thing.';
     state.explainError = null;
@@ -225,6 +237,17 @@ describe('buildUiTree — class-kept region labels (classLabels)', () => {
 });
 
 describe('renderStructureView — project-derived repo', () => {
+    // The Live preview chip reads the project's target_id off the real data
+    // model; these tests never seed projects, so stand it in from `state`.
+    let targetIdSpy;
+    beforeEach(() => {
+        targetIdSpy = vi.spyOn(listLogic, 'getProjectTargetId')
+            .mockImplementation(function (name) { return state.projectTargets[name] || null; });
+    });
+    afterEach(() => {
+        targetIdSpy.mockRestore();
+    });
+
     it('resolves the repo from the selected project and shows it as a read-only label', async () => {
         mountDom('Game');
         renderStructureView();
@@ -276,6 +299,65 @@ describe('renderStructureView — project-derived repo', () => {
         } finally {
             pagesUrlFor.mockImplementation(realImpl);
         }
+    });
+
+    it('renders a Live preview chip from the target row’s preview_url', async () => {
+        state.projectTargets = { Game: 'tgt-game' };
+        state.targetRows = {
+            'tgt-game': {
+                id: 'tgt-game',
+                repo: 'rsterenchak/matchingGame-test',
+                preview_url: 'https://appetize.io/embed/abc123',
+            },
+        };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        const chip = document.querySelector('.structureLivePreviewChip');
+        expect(chip).toBeTruthy();
+        expect(chip.tagName).toBe('A');
+        expect(chip.href).toBe('https://appetize.io/embed/abc123');
+        expect(chip.target).toBe('_blank');
+        expect(chip.rel).toBe('noopener noreferrer');
+        expect(chip.textContent).toContain('LIVE PREVIEW');
+        // The play glyph is inline SVG, not an icon font.
+        expect(chip.querySelector('svg')).toBeTruthy();
+        // It sits in the header group below the repo label row, not inside it.
+        const group = document.querySelector('.structurePickerGroup');
+        const label = document.querySelector('.structureRepoLabel');
+        expect(chip.parentElement).toBe(group);
+        expect(label.contains(chip)).toBe(false);
+        expect(Array.prototype.indexOf.call(group.children, chip))
+            .toBeGreaterThan(Array.prototype.indexOf.call(group.children, label));
+        // The existing Pages icon link is untouched.
+        expect(document.querySelector('.structurePagesIconLink')).toBeTruthy();
+    });
+
+    it('renders no Live preview chip when the target row carries no preview_url', async () => {
+        state.projectTargets = { Game: 'tgt-game' };
+        state.targetRows = {
+            'tgt-game': { id: 'tgt-game', repo: 'rsterenchak/matchingGame-test' },
+        };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureRepoName')).toBeTruthy();
+        expect(document.querySelector('.structureLivePreviewChip')).toBeFalsy();
+    });
+
+    it('renders no Live preview chip for a non-https preview_url', async () => {
+        state.projectTargets = { Game: 'tgt-game' };
+        state.targetRows = {
+            'tgt-game': {
+                id: 'tgt-game',
+                repo: 'rsterenchak/matchingGame-test',
+                preview_url: 'javascript:alert(1)',
+            },
+        };
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureLivePreviewChip')).toBeFalsy();
     });
 
     it('short-circuits cleanly when the container is absent', () => {
