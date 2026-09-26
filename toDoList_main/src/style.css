@@ -21393,7 +21393,12 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
        stacking context from the base block. */
     position: relative;
     background: #15151e;
-    padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 4px) 16px 6px 16px;
+    /* iOS paints a scroll-edge blur/dim band over web content under the status
+       bar on viewport-fit=cover + black-translucent pages, reaching roughly
+       30pt past the safe-area inset. The OS composites it above the page, so
+       clearance — not backdrop-filter or z-index — is what keeps the eyebrow,
+       name row, and counts crisp. */
+    padding: calc(max(env(safe-area-inset-top, 0px), 12px) + 28px) 16px 6px 16px;
   }
 
   /* Left column — label / name-row / counts, stacked and left-aligned. It

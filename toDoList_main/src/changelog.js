@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             'The Structure view header now shows a Live preview chip that opens the project’s in-browser preview build.',
         ],
+        fixed: [
+            'The mobile project header now sits clear of the iOS status bar, so the PROJECT N OF M line no longer reads as blurred.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-09-08',
-        added: [
-            'On mobile, a new capture chip turns one spoken or typed paragraph into several tasks you can review, edit, and add at once.',
-        ],
         fixed: [
             'A task now leaves “Generating…” on its own as soon as its triage run finishes, instead of waiting for a refresh or a project switch.',
             'Dictating into the mobile quick-capture panel now keeps listening through pauses, and the listening overlay always closes on a tap.',
