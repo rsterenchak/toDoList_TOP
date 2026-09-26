@@ -1928,3 +1928,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureView.test.js`
   - Completed: 2026-09-26
   <!-- id: 382eece7-c78f-406f-8de2-e95fc824b041 -->
+
+- [ ] **[MEDIUM]** Push mobile project header below the iOS status-bar blur band
+  - Type: bug
+  - Description: On iOS 26 standalone PWA, the "PROJECT N OF M" eyebrow in `#mobileProjHeader` renders blurred and nearly invisible, and the top edge of the project name is also soft. The app isn't causing this. iOS applies a top scroll-edge effect that blurs and dims content drawn under the status bar in `viewport-fit=cover` + `black-translucent` pages, and that band extends roughly 30pt below the safe-area inset. The dense Variant C header rule (the `#mobileProjHeader` block under "Dense left-aligned mobile header (Variant C)", ~line 21387) sets `padding-top: calc(max(env(safe-area-inset-top, 0px), 12px) + 4px)`, which puts the eyebrow only 4px below the Dynamic Island inset, inside the band. Change that `+ 4px` to `+ 28px` so the eyebrow, name row, and counts all clear the band. Leave the layout, font sizes, and the rest of the padding shorthand (`6px 16px 6px 16px` sides/bottom) unchanged. Only touch the Variant C rule, not the base STACK `#mobileProjHeader` block (~line 16152). Don't try to counter the blur with `backdrop-filter`, an overlay, or a z-index change, because the effect is composited by the OS above the web content. Also leave `apple-mobile-web-app-status-bar-style` in `template.html` as `black-translucent`. Verify on a notched iPhone that "PROJECT 1 OF 6" renders crisp and that the header's flat `#15151e` background no longer visibly darkens toward the top behind the text.
+  - File: `toDoList_main/src/style.css`
+  <!-- id: 328f8990-efd5-44a4-b438-3606291edb89 -->
