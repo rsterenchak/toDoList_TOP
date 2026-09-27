@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-27',
+        fixed: [
+            'The API spend panel now prices DeepSeek turns at current V4.1 rates, with off-peak turns counted at half price.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-26',
         added: [
             'The Structure view header now shows a Live preview chip that opens the project’s in-browser preview build.',
@@ -17,7 +24,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-08',
         fixed: [
-            'A task now leaves “Generating…” on its own as soon as its triage run finishes, instead of waiting for a refresh or a project switch.',
             'Dictating into the mobile quick-capture panel now keeps listening through pauses, and the listening overlay always closes on a tap.',
             'Tasks added from the mobile quick-capture panel now appear in the list right away instead of only after a refresh.',
         ],

@@ -150,6 +150,47 @@ describe('API spend — pricing', () => {
     });
 });
 
+describe('API spend — DeepSeek peak/off-peak pricing', () => {
+    // 2026-09-14 is a Monday, 2026-09-19 a Saturday.
+    it('prices a weekday 02:00 UTC flash row at the full peak rate', () => {
+        const row = { model: 'deepseek-flash', input_tokens: 1e6, output_tokens: 1e6,
+            created_at: '2026-09-14T02:00:00Z' };
+        expect(priceForUsageEvent(row)).toBeCloseTo(0.30 + 1.20, 6);
+    });
+
+    it('halves a weekday 14:00 UTC flash row (off-peak)', () => {
+        const row = { model: 'deepseek-flash', input_tokens: 1e6, output_tokens: 1e6,
+            created_at: '2026-09-14T14:00:00Z' };
+        expect(priceForUsageEvent(row)).toBeCloseTo((0.30 + 1.20) / 2, 6);
+    });
+
+    it('halves a Saturday 02:00 UTC row — weekends are off-peak all day', () => {
+        const row = { model: 'deepseek-flash', input_tokens: 1e6,
+            created_at: '2026-09-19T02:00:00Z' };
+        expect(priceForUsageEvent(row)).toBeCloseTo(0.30 / 2, 6);
+    });
+
+    it('prices a row with no created_at at peak (errs high)', () => {
+        const row = { model: 'deepseek-flash', input_tokens: 1e6, cache_read_input_tokens: 1e6 };
+        expect(priceForUsageEvent(row)).toBeCloseTo(0.30 + 0.006, 6);
+        expect(priceForUsageEvent(Object.assign({ created_at: 'not a date' }, row)))
+            .toBeCloseTo(0.30 + 0.006, 6);
+    });
+
+    it('prices deepseek-v4-pro at pro rates, not flash', () => {
+        const row = { model: 'deepseek-v4-pro', input_tokens: 1e6, output_tokens: 1e6,
+            cache_read_input_tokens: 1e6, cache_creation_input_tokens: 1e6,
+            created_at: '2026-09-14T07:00:00Z' };
+        expect(priceForUsageEvent(row)).toBeCloseTo(1.32 + 3.96 + 0.044 + 1.32, 6);
+    });
+
+    it('prices a go/deepseek-v4.1-flash row at zero', () => {
+        const row = { model: 'go/deepseek-v4.1-flash', input_tokens: 1e6, output_tokens: 1e6,
+            created_at: '2026-09-14T02:00:00Z' };
+        expect(priceForUsageEvent(row)).toBe(0);
+    });
+});
+
 describe('API spend — local-month boundary', () => {
     it('localMonthStartISO encodes local midnight on the first of the month', () => {
         const now = new Date(2026, 6, 15, 9, 30, 0); // Jul 15 2026, local
@@ -670,13 +711,13 @@ describe('API spend — sub-cent formatting', () => {
     });
 
     it('shows a sub-cent provider row as a real number rather than $0.00', async () => {
-        // 5000 input tokens at the deepseek flash rate = $0.0007.
+        // 5000 input tokens at the deepseek flash peak rate (no created_at) = $0.0015.
         globalThis.__usageRows = [{ model: 'deepseek-v4-flash', input_tokens: 5000 }];
         openSpendPanel(document.createElement('button'));
         await flush();
         const providers = document.getElementById('usageSpendProviders');
         const text = providers.querySelector('.usageSpendProviderLegendText').textContent;
-        expect(text).toBe('Other $0.0007');
+        expect(text).toBe('Other $0.0015');
         expect(text).not.toContain('$0.00 ');
     });
 
@@ -692,16 +733,17 @@ describe('API spend — sub-cent formatting', () => {
     it('shows a sub-cent day in the chart tooltip rather than $0.00', () => {
         const c = document.createElement('div');
         const now = new Date(2026, 7, 6, 12, 0, 0);
+        // Aug 2 2026 is a Sunday, so off-peak: 4000 tokens at half the flash rate.
         const rows = [{
             model: 'deepseek-v4-flash',
-            input_tokens: 5000,
+            input_tokens: 4000,
             created_at: new Date(2026, 7, 2, 12, 0, 0).toISOString(),
         }];
         renderSpendChart(c, rows, now);
         const hit = c.querySelectorAll('.usageSpendChartHit')[1]; // Aug 2
-        expect(hit.querySelector('title').textContent).toBe('Aug 2: $0.0007');
+        expect(hit.querySelector('title').textContent).toBe('Aug 2: $0.0006');
         hit.dispatchEvent(new MouseEvent('mouseenter'));
-        expect(c.querySelector('.usageSpendChartTip').textContent).toBe('Aug 2 · $0.0007');
+        expect(c.querySelector('.usageSpendChartTip').textContent).toBe('Aug 2 · $0.0006');
     });
 
     it('leaves an ordinary day in the chart tooltip at two decimals', () => {

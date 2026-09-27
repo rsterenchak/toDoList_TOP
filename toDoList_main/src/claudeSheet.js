@@ -1564,14 +1564,15 @@ export const USAGE_RATES = {
     // deliberately does not model that tier, so a long-context grok run
     // under-reports.
     grok:   { input: 2,   output: 6,  cacheWrite: 2,     cacheRead: 0.3 },
-    // DeepSeek moved to peak/off-peak billing on 2026-08-16, where off-peak is
-    // half of peak; this flat table holds the standard listed rates and
-    // deliberately does not model that time-of-day split. The legacy
-    // `deepseek-chat`/`deepseek-reasoner` aliases both served v4-flash, so
-    // historical usage_events rows recorded under those names price correctly
-    // at the generic (flash) rate below.
-    deepseekPro: { input: 0.435, output: 0.87, cacheWrite: 0.435, cacheRead: 0.003625 },
-    deepseek:    { input: 0.14,  output: 0.28, cacheWrite: 0.14,  cacheRead: 0.0028 },
+    // DeepSeek V4.1 at its PEAK list rates as published on 2026-09-10 (the
+    // generic row is V4.1 Flash, API id `deepseek-flash`). DeepSeek bills
+    // off-peak at half of peak; these rows store the peak figures and
+    // priceForUsageEvent halves a row whose created_at falls off-peak (see
+    // isDeepseekOffPeak). No cache-write premium, so cacheWrite equals input.
+    // The legacy `deepseek-chat`/`deepseek-reasoner` aliases match the generic
+    // `deepseek` substring and price at the flash rate below.
+    deepseekPro: { input: 1.32, output: 3.96, cacheWrite: 1.32, cacheRead: 0.044 },
+    deepseek:    { input: 0.30, output: 1.20, cacheWrite: 0.30, cacheRead: 0.006 },
     // The two GPT rows reached through the Vercel AI Gateway provider, at the
     // rates listed on Vercel's model pages on 2026-08-22 (Vercel mirrors OpenAI
     // list pricing with no markup). Caching is implicit here too, so cacheWrite
@@ -1652,7 +1653,7 @@ function rateForModel(model) {
 
 // Display precision for one dollar figure. Two decimals is right for everything
 // the panel normally shows, but a real-but-tiny spend — a deepseek-v4-flash turn
-// at $0.14/M, a kimi cache-hit one — rounds to `$0.00` there and reads as no
+// at $0.30/M, a kimi cache-hit one — rounds to `$0.00` there and reads as no
 // spend at all. Anything under a cent therefore falls back to four decimals, so
 // a small number looks small rather than looking like zero. A genuine zero (and
 // a non-numeric figure) still reads `$0.00`.
@@ -1665,6 +1666,23 @@ export function formatUsd(cost) {
 function usageTokenCount(value) {
     const n = typeof value === 'number' ? value : parseFloat(value);
     return (isFinite(n) && n > 0) ? n : 0;
+}
+
+// True when a DeepSeek row's created_at falls in the off-peak window. Peak is
+// Mon–Fri, UTC hours 1–3 and 6–9 inclusive; everything else, weekends included,
+// is off-peak. Read in UTC, never local time. A missing or unparseable timestamp
+// is treated as peak so an unknown case over-reports rather than under-reports
+// (the HIGHEST_USAGE_RATE reasoning). Chinese public holidays, also off-peak on
+// DeepSeek's schedule, are deliberately not modeled — that errs high too.
+function isDeepseekOffPeak(createdAt) {
+    if (createdAt == null || createdAt === '') return false;
+    const d = new Date(createdAt);
+    if (isNaN(d.getTime())) return false;
+    const day = d.getUTCDay();
+    if (day === 0 || day === 6) return true;
+    const h = d.getUTCHours();
+    const peak = (h >= 1 && h <= 3) || (h >= 6 && h <= 9);
+    return !peak;
 }
 
 // Dollar cost of a single usage_events row. Tolerant of the exact column names
@@ -1680,10 +1698,12 @@ export function priceForUsageEvent(row) {
         row.cache_read_input_tokens != null ? row.cache_read_input_tokens : row.cache_read_tokens);
     const cacheWrite = usageTokenCount(
         row.cache_creation_input_tokens != null ? row.cache_creation_input_tokens : row.cache_write_tokens);
-    return (input * rate.input
+    const cost = (input * rate.input
         + output * rate.output
         + cacheRead * rate.cacheRead
         + cacheWrite * rate.cacheWrite) / 1e6;
+    const isDeepseek = rate === USAGE_RATES.deepseek || rate === USAGE_RATES.deepseekPro;
+    return (isDeepseek && isDeepseekOffPeak(row.created_at)) ? cost * 0.5 : cost;
 }
 
 // Total dollar spend across a set of usage_events rows.
