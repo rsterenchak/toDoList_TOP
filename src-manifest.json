@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-09-26T10:05:39.012Z",
-  "sha": "561031940d3de5c26b6a70157a48b969e4189009",
+  "generatedAt": "2026-09-27T11:30:29.635Z",
+  "sha": "eda7db7b42defe5a868fd31a4b158dbe4b8ca1d6",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -974,11 +974,11 @@
       "selector": "#claudeAttachChips",
       "label": "Claude Attach Chips",
       "file": "claudeSheet.js",
-      "line": 2823,
+      "line": 2843,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2823
+          "line": 2843
         }
       ]
     },
@@ -986,11 +986,11 @@
       "selector": "#claudeAttachIntro",
       "label": "Claude Attach Intro",
       "file": "claudeSheet.js",
-      "line": 3404,
+      "line": 3424,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3404
+          "line": 3424
         }
       ]
     },
@@ -998,11 +998,11 @@
       "selector": "#claudeAttachList",
       "label": "Claude Attach List",
       "file": "claudeSheet.js",
-      "line": 2353,
+      "line": 2373,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2353
+          "line": 2373
         }
       ]
     },
@@ -1010,11 +1010,11 @@
       "selector": "#claudeAttachNotice",
       "label": "Claude Attach Notice",
       "file": "claudeSheet.js",
-      "line": 2388,
+      "line": 2408,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2388
+          "line": 2408
         }
       ]
     },
@@ -1022,11 +1022,11 @@
       "selector": "#claudeAttachPanel",
       "label": "Claude Attach Panel",
       "file": "claudeSheet.js",
-      "line": 2335,
+      "line": 2355,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2335
+          "line": 2355
         }
       ]
     },
@@ -1034,11 +1034,11 @@
       "selector": "#claudeAttachPathAdd",
       "label": "Claude Attach Path Add",
       "file": "claudeSheet.js",
-      "line": 2371,
+      "line": 2391,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2371
+          "line": 2391
         }
       ]
     },
@@ -1046,11 +1046,11 @@
       "selector": "#claudeAttachPathInput",
       "label": "Claude Attach Path Input",
       "file": "claudeSheet.js",
-      "line": 2366,
+      "line": 2386,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2366
+          "line": 2386
         }
       ]
     },
@@ -1058,11 +1058,11 @@
       "selector": "#claudeAttachPathRow",
       "label": "Claude Attach Path Row",
       "file": "claudeSheet.js",
-      "line": 2362,
+      "line": 2382,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2362
+          "line": 2382
         }
       ]
     },
@@ -1070,11 +1070,11 @@
       "selector": "#claudeAttachSearch",
       "label": "Claude Attach Search",
       "file": "claudeSheet.js",
-      "line": 2348,
+      "line": 2368,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2348
+          "line": 2368
         }
       ]
     },
@@ -1082,11 +1082,11 @@
       "selector": "#claudeChatHeader",
       "label": "Claude Chat Header",
       "file": "claudeSheet.js",
-      "line": 2785,
+      "line": 2805,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2785
+          "line": 2805
         }
       ]
     },
@@ -1106,11 +1106,11 @@
       "selector": "#claudeChatSurface",
       "label": "Claude Chat Surface",
       "file": "claudeSheet.js",
-      "line": 2795,
+      "line": 2815,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2795
+          "line": 2815
         },
         {
           "file": "style.css",
@@ -1122,11 +1122,11 @@
       "selector": "#claudeChatView",
       "label": "Claude Chat View",
       "file": "claudeSheet.js",
-      "line": 2774,
+      "line": 2794,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2774
+          "line": 2794
         },
         {
           "file": "style.css",
@@ -1150,11 +1150,11 @@
       "selector": "#claudeComposer",
       "label": "Claude Composer",
       "file": "claudeSheet.js",
-      "line": 2836,
+      "line": 2856,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2836
+          "line": 2856
         }
       ]
     },
@@ -1162,11 +1162,11 @@
       "selector": "#claudeComposerAttach",
       "label": "Claude Composer Attach",
       "file": "claudeSheet.js",
-      "line": 2320,
+      "line": 2340,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2320
+          "line": 2340
         }
       ]
     },
@@ -1174,11 +1174,11 @@
       "selector": "#claudeComposerImage",
       "label": "Claude Composer Image",
       "file": "claudeSheet.js",
-      "line": 2426,
+      "line": 2446,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2426
+          "line": 2446
         }
       ]
     },
@@ -1186,11 +1186,11 @@
       "selector": "#claudeComposerInput",
       "label": "Claude Composer Input",
       "file": "claudeSheet.js",
-      "line": 2839,
+      "line": 2859,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2839
+          "line": 2859
         },
         {
           "file": "style.css",
@@ -1202,11 +1202,11 @@
       "selector": "#claudeComposerMic",
       "label": "Claude Composer Mic",
       "file": "claudeSheet.js",
-      "line": 3046,
+      "line": 3066,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3046
+          "line": 3066
         },
         {
           "file": "style.css",
@@ -1218,11 +1218,11 @@
       "selector": "#claudeComposerModeMenu",
       "label": "Claude Composer Mode Menu",
       "file": "claudeSheet.js",
-      "line": 2883,
+      "line": 2903,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2883
+          "line": 2903
         }
       ]
     },
@@ -1230,11 +1230,11 @@
       "selector": "#claudeComposerModelToggle",
       "label": "Claude Composer Model Toggle",
       "file": "claudeSheet.js",
-      "line": 2862,
+      "line": 2882,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2862
+          "line": 2882
         }
       ]
     },
@@ -1242,11 +1242,11 @@
       "selector": "#claudeComposerModelToggleWrap",
       "label": "Claude Composer Model Toggle Wrap",
       "file": "claudeSheet.js",
-      "line": 2917,
+      "line": 2937,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2917
+          "line": 2937
         },
         {
           "file": "style.css",
@@ -1258,11 +1258,11 @@
       "selector": "#claudeComposerSend",
       "label": "Claude Composer Send",
       "file": "claudeSheet.js",
-      "line": 2849,
+      "line": 2869,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2849
+          "line": 2869
         },
         {
           "file": "style.css",
@@ -1274,11 +1274,11 @@
       "selector": "#claudeCoverageView",
       "label": "Claude Coverage View",
       "file": "claudeSheet.js",
-      "line": 4893,
+      "line": 4913,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4893
+          "line": 4913
         }
       ]
     },
@@ -1286,11 +1286,11 @@
       "selector": "#claudeGhostChip",
       "label": "Claude Ghost Chip",
       "file": "claudeSheet.js",
-      "line": 3683,
+      "line": 3703,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3683
+          "line": 3703
         }
       ]
     },
@@ -1298,11 +1298,11 @@
       "selector": "#claudeGhostListening",
       "label": "Claude Ghost Listening",
       "file": "claudeSheet.js",
-      "line": 3695,
+      "line": 3715,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3695
+          "line": 3715
         }
       ]
     },
@@ -1310,11 +1310,11 @@
       "selector": "#claudeGhostThread",
       "label": "Claude Ghost Thread",
       "file": "claudeSheet.js",
-      "line": 2803,
+      "line": 2823,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2803
+          "line": 2823
         }
       ]
     },
@@ -1322,11 +1322,11 @@
       "selector": "#claudeImageInput",
       "label": "Claude Image Input",
       "file": "claudeSheet.js",
-      "line": 2433,
+      "line": 2453,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2433
+          "line": 2453
         }
       ]
     },
@@ -1334,11 +1334,11 @@
       "selector": "#claudeImageRail",
       "label": "Claude Image Rail",
       "file": "claudeSheet.js",
-      "line": 2832,
+      "line": 2852,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2832
+          "line": 2852
         },
         {
           "file": "style.css",
@@ -1366,11 +1366,11 @@
       "selector": "#claudeRunsClear",
       "label": "Claude Runs Clear",
       "file": "claudeSheet.js",
-      "line": 5294,
+      "line": 5314,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5294
+          "line": 5314
         }
       ]
     },
@@ -1378,11 +1378,11 @@
       "selector": "#claudeRunsEmpty",
       "label": "Claude Runs Empty",
       "file": "claudeSheet.js",
-      "line": 5268,
+      "line": 5288,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 5268
+          "line": 5288
         }
       ]
     },
@@ -1390,11 +1390,11 @@
       "selector": "#claudeRunsList",
       "label": "Claude Runs List",
       "file": "claudeSheet.js",
-      "line": 4933,
+      "line": 4953,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4933
+          "line": 4953
         }
       ]
     },
@@ -1402,11 +1402,11 @@
       "selector": "#claudeRunsNew",
       "label": "Claude Runs New",
       "file": "claudeSheet.js",
-      "line": 4937,
+      "line": 4957,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4937
+          "line": 4957
         }
       ]
     },
@@ -1414,11 +1414,11 @@
       "selector": "#claudeRunsView",
       "label": "Claude Runs View",
       "file": "claudeSheet.js",
-      "line": 4902,
+      "line": 4922,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4902
+          "line": 4922
         }
       ]
     },
@@ -1426,11 +1426,11 @@
       "selector": "#claudeScopeChip",
       "label": "Claude Scope Chip",
       "file": "claudeSheet.js",
-      "line": 2814,
+      "line": 2834,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2814
+          "line": 2834
         },
         {
           "file": "style.css",
@@ -1442,11 +1442,11 @@
       "selector": "#claudeScrollDown",
       "label": "Claude Scroll Down",
       "file": "claudeSheet.js",
-      "line": 3000,
+      "line": 3020,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 3000
+          "line": 3020
         }
       ]
     },
@@ -1454,11 +1454,11 @@
       "selector": "#claudeSheet",
       "label": "Claude Sheet",
       "file": "claudeSheet.js",
-      "line": 6331,
+      "line": 6351,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6331
+          "line": 6351
         },
         {
           "file": "style.css",
@@ -1470,11 +1470,11 @@
       "selector": "#claudeSheetBackdrop",
       "label": "Claude Sheet Backdrop",
       "file": "claudeSheet.js",
-      "line": 6502,
+      "line": 6522,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6502
+          "line": 6522
         },
         {
           "file": "style.css",
@@ -1486,11 +1486,11 @@
       "selector": "#claudeSheetBody",
       "label": "Claude Sheet Body",
       "file": "claudeSheet.js",
-      "line": 6406,
+      "line": 6426,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6406
+          "line": 6426
         },
         {
           "file": "style.css",
@@ -1502,11 +1502,11 @@
       "selector": "#claudeSheetClose",
       "label": "Claude Sheet Close",
       "file": "claudeSheet.js",
-      "line": 6350,
+      "line": 6370,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6350
+          "line": 6370
         },
         {
           "file": "style.css",
@@ -1518,11 +1518,11 @@
       "selector": "#claudeSheetCloseRow",
       "label": "Claude Sheet Close Row",
       "file": "claudeSheet.js",
-      "line": 6359,
+      "line": 6379,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6359
+          "line": 6379
         }
       ]
     },
@@ -1530,11 +1530,11 @@
       "selector": "#claudeSheetHandle",
       "label": "Claude Sheet Handle",
       "file": "claudeSheet.js",
-      "line": 6341,
+      "line": 6361,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6341
+          "line": 6361
         },
         {
           "file": "style.css",
@@ -1546,11 +1546,11 @@
       "selector": "#claudeSheetTabs",
       "label": "Claude Sheet Tabs",
       "file": "claudeSheet.js",
-      "line": 6364,
+      "line": 6384,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6364
+          "line": 6384
         },
         {
           "file": "style.css",
@@ -1574,11 +1574,11 @@
       "selector": "#claudeTabCoverageBadge",
       "label": "Claude Tab Coverage Badge",
       "file": "claudeSheet.js",
-      "line": 6381,
+      "line": 6401,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 6381
+          "line": 6401
         }
       ]
     },
@@ -1586,11 +1586,11 @@
       "selector": "#claudeUpdateNudge",
       "label": "Claude Update Nudge",
       "file": "claudeSheet.js",
-      "line": 4910,
+      "line": 4930,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4910
+          "line": 4930
         }
       ]
     },
@@ -1598,11 +1598,11 @@
       "selector": "#claudeUpdateReload",
       "label": "Claude Update Reload",
       "file": "claudeSheet.js",
-      "line": 4917,
+      "line": 4937,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 4917
+          "line": 4937
         }
       ]
     },
@@ -6646,11 +6646,11 @@
       "selector": "#usageSpendBackdrop",
       "label": "Usage Spend Backdrop",
       "file": "claudeSheet.js",
-      "line": 2137,
+      "line": 2157,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2137
+          "line": 2157
         },
         {
           "file": "style.css",
@@ -6662,11 +6662,11 @@
       "selector": "#usageSpendBody",
       "label": "Usage Spend Body",
       "file": "claudeSheet.js",
-      "line": 2209,
+      "line": 2229,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2209
+          "line": 2229
         },
         {
           "file": "style.css",
@@ -6678,11 +6678,11 @@
       "selector": "#usageSpendBudgetInput",
       "label": "Usage Spend Budget Input",
       "file": "claudeSheet.js",
-      "line": 2194,
+      "line": 2214,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2194
+          "line": 2214
         },
         {
           "file": "style.css",
@@ -6694,11 +6694,11 @@
       "selector": "#usageSpendBudgetLabel",
       "label": "Usage Spend Budget Label",
       "file": "claudeSheet.js",
-      "line": 2190,
+      "line": 2210,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2190
+          "line": 2210
         },
         {
           "file": "style.css",
@@ -6710,11 +6710,11 @@
       "selector": "#usageSpendBudgetRow",
       "label": "Usage Spend Budget Row",
       "file": "claudeSheet.js",
-      "line": 2188,
+      "line": 2208,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2188
+          "line": 2208
         },
         {
           "file": "style.css",
@@ -6726,11 +6726,11 @@
       "selector": "#usageSpendChart",
       "label": "Usage Spend Chart",
       "file": "claudeSheet.js",
-      "line": 2181,
+      "line": 2201,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2181
+          "line": 2201
         },
         {
           "file": "style.css",
@@ -6742,11 +6742,11 @@
       "selector": "#usageSpendClose",
       "label": "Usage Spend Close",
       "file": "claudeSheet.js",
-      "line": 2160,
+      "line": 2180,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2160
+          "line": 2180
         },
         {
           "file": "style.css",
@@ -6758,11 +6758,11 @@
       "selector": "#usageSpendEyebrow",
       "label": "Usage Spend Eyebrow",
       "file": "claudeSheet.js",
-      "line": 2151,
+      "line": 2171,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2151
+          "line": 2171
         },
         {
           "file": "style.css",
@@ -6774,11 +6774,11 @@
       "selector": "#usageSpendHeader",
       "label": "Usage Spend Header",
       "file": "claudeSheet.js",
-      "line": 2146,
+      "line": 2166,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2146
+          "line": 2166
         },
         {
           "file": "style.css",
@@ -6790,11 +6790,11 @@
       "selector": "#usageSpendModal",
       "label": "Usage Spend Modal",
       "file": "claudeSheet.js",
-      "line": 2140,
+      "line": 2160,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2140
+          "line": 2160
         },
         {
           "file": "style.css",
@@ -6806,11 +6806,11 @@
       "selector": "#usageSpendProviders",
       "label": "Usage Spend Providers",
       "file": "claudeSheet.js",
-      "line": 2175,
+      "line": 2195,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2175
+          "line": 2195
         },
         {
           "file": "style.css",
@@ -6822,11 +6822,11 @@
       "selector": "#usageSpendReadout",
       "label": "Usage Spend Readout",
       "file": "claudeSheet.js",
-      "line": 2169,
+      "line": 2189,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2169
+          "line": 2189
         },
         {
           "file": "style.css",
@@ -6838,11 +6838,11 @@
       "selector": "#usageSpendTitle",
       "label": "Usage Spend Title",
       "file": "claudeSheet.js",
-      "line": 2149,
+      "line": 2169,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2149
+          "line": 2169
         },
         {
           "file": "style.css",
@@ -6854,11 +6854,11 @@
       "selector": "#usageSpendTitleText",
       "label": "Usage Spend Title Text",
       "file": "claudeSheet.js",
-      "line": 2154,
+      "line": 2174,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 2154
+          "line": 2174
         },
         {
           "file": "style.css",
