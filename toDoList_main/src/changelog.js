@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-09-29',
         added: [
             'The proposal review sheet now lists proposals in the order derive built them, with a Build order / Rubric toggle to switch to rubric aspect order.',
+            'Proposals in Build order can now be moved up or down with arrows on each card, and the new order is saved.',
         ],
     },
     {
@@ -25,13 +26,6 @@ export const changelog = [
         ],
         fixed: [
             'The mobile project header now sits clear of the iOS status bar, so the PROJECT N OF M line no longer reads as blurred.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-09-08',
-        fixed: [
-            'Tasks added from the mobile quick-capture panel now appear in the list right away instead of only after a refresh.',
         ],
     },
 ];

@@ -307,18 +307,74 @@ function compareProposalsByAspect(a, b) {
     return compareProposalIds(a, b);
 }
 
+// A proposal's position in Build order: its manual `sort_key` when the user has
+// moved it with the review modal's arrows (a finite number), else its insertion
+// time in epoch ms — so an unmoved row keeps derive's order and a moved one slots
+// between its neighbours' timestamps. Null when neither is usable.
+function proposalBuildKey(row) {
+    const k = row && row.sort_key;
+    if (typeof k === 'number' && Number.isFinite(k)) return k;
+    return proposalInsertedAt(row);
+}
+
 // Order proposals the way derive inserted them — oldest `created_at` first,
-// aspect tags ignored. Derive writes one row at a time foundation-first, so this
+// aspect tags ignored — with any manual `sort_key` taking precedence (see
+// proposalBuildKey). Derive writes one row at a time foundation-first, so this
 // is the dependency order the review modal defaults to; Rubric mode swaps in
-// compareProposalsByAspect instead. Absent, unparseable, or equal timestamps fall
-// back to the id, then to the stable sort's fetch order, exactly like the
+// compareProposalsByAspect instead and ignores `sort_key`. Absent or equal keys
+// fall back to the id, then to the stable sort's fetch order, exactly like the
 // untagged branch of compareProposalsByAspect.
 function compareProposalsByBuildOrder(a, b) {
-    const ta = proposalInsertedAt(a);
-    const tb = proposalInsertedAt(b);
+    const ta = proposalBuildKey(a);
+    const tb = proposalBuildKey(b);
     if (ta === null || tb === null) return 0;
     if (ta !== tb) return ta - tb;
     return compareProposalIds(a, b);
+}
+
+// Spacing, in ms-of-key, for a move to the very top or bottom and for a full
+// respace — one minute, so a rewritten key still reads as a plausible timestamp.
+const PROPOSAL_SORT_KEY_STEP = 60000;
+
+// The new Build-order key for moving `orderedRows[index]` one slot up
+// (direction -1) or down (+1), given the rows in their rendered order. Returns:
+//   { sortKey }  — one write: the midpoint of the two keys bracketing the target
+//                  slot, or the end card's key ∓ PROPOSAL_SORT_KEY_STEP when the
+//                  row moves to the very top or bottom;
+//   { respace }  — [{ row, sortKey }, …] for EVERY listed row at step spacing in
+//                  the post-move order, when the midpoint can't be told apart
+//                  from either bound (float precision exhausted, or two rows
+//                  sharing a key and ordered only by id);
+//   null         — a no-op: out-of-range index or direction, or a bracketing row
+//                  with no usable key.
+// Pure — never mutates the rows — so the modal can apply, write, and roll back.
+export function computeMovedSortKey(orderedRows, index, direction) {
+    const rows = Array.isArray(orderedRows) ? orderedRows : [];
+    if (direction !== -1 && direction !== 1) return null;
+    if (!Number.isInteger(index) || index < 0 || index >= rows.length) return null;
+    const target = index + direction;
+    if (target < 0 || target >= rows.length) return null;
+    const moving = rows[index];
+    const others = rows.filter(function (r, i) { return i !== index; });
+    const above = target > 0 ? others[target - 1] : null;
+    const below = target < others.length ? others[target] : null;
+    const lo = above ? proposalBuildKey(above) : null;
+    const hi = below ? proposalBuildKey(below) : null;
+    if ((above && lo === null) || (below && hi === null)) return null;
+    if (!above) return { sortKey: hi - PROPOSAL_SORT_KEY_STEP };
+    if (!below) return { sortKey: lo + PROPOSAL_SORT_KEY_STEP };
+    const mid = lo + (hi - lo) / 2;
+    if (mid > lo && mid < hi) return { sortKey: mid };
+    const reordered = others.slice();
+    reordered.splice(target, 0, moving);
+    let base = null;
+    for (let i = 0; i < rows.length && base === null; i++) base = proposalBuildKey(rows[i]);
+    if (base === null) base = 0;
+    return {
+        respace: reordered.map(function (row, i) {
+            return { row: row, sortKey: base + i * PROPOSAL_SORT_KEY_STEP };
+        }),
+    };
 }
 
 // Every `<!-- … -->` span removed. The template seeds assignment.md with
@@ -2470,7 +2526,12 @@ function ensureQueueRepaintListener() {
 // listLogic.unflagAgentTask (the board's × remove control) — cheap to redo by
 // deriving again, so no confirm. Both controls disable while their action is in
 // flight and re-enable with an inline error on failure.
-function buildProposalCard(row) {
+//
+// `reorder` is passed only in Build order: { canUp, canDown, onMove(direction) }.
+// It adds a column of Move up / Move down chevrons at the card's left edge,
+// outside the tap-to-expand body. An end card's missing arrow leaves a hidden
+// spacer in its slot so every title stays aligned.
+function buildProposalCard(row, reorder) {
     const isMockup = row.state === 'needs_mockup';
     const isDrafted = row.state === 'drafted';
     // The primary's wording, shared by its idle label, its pending label and both
@@ -2478,6 +2539,7 @@ function buildProposalCard(row) {
     const primaryLabel = isDrafted ? 'Dispatch' : 'Accept';
     const card = document.createElement('div');
     card.className = 'proposalCard';
+    card.dataset.rowId = String(row.id);
 
     // Badge + title + description preview, grouped so the tap target for
     // expanding the card is one element rather than "everything above the
@@ -2664,7 +2726,47 @@ function buildProposalCard(row) {
         // in-flight "Generating…" state) from the shared module-level caches.
         if (_expandedMockupRows.has(row.id)) openMockupFlow();
     }
+
+    if (reorder) {
+        // Re-parent everything built above into a main column beside the arrows,
+        // so the card itself stays the list's child (setExpanded's sibling
+        // collapse and the repaint both rely on that).
+        const main = document.createElement('div');
+        main.className = 'proposalCardMain';
+        while (card.firstChild) main.appendChild(card.firstChild);
+        const moveCol = document.createElement('div');
+        moveCol.className = 'proposalCardMove';
+        moveCol.appendChild(buildProposalMoveButton(-1, reorder.canUp, reorder.onMove));
+        moveCol.appendChild(buildProposalMoveButton(1, reorder.canDown, reorder.onMove));
+        // The card root toggles the description; an arrow tap must not.
+        moveCol.addEventListener('click', function (e) { e.stopPropagation(); });
+        card.classList.add('has-reorder');
+        card.appendChild(moveCol);
+        card.appendChild(main);
+    }
     return card;
+}
+
+// One Build-order chevron (direction -1 = up, 1 = down), or — for the end card's
+// missing arrow — a visibility-hidden spacer that keeps the slot.
+function buildProposalMoveButton(direction, enabled, onMove) {
+    if (!enabled) {
+        const spacer = document.createElement('span');
+        spacer.className = 'proposalMoveSpacer';
+        spacer.setAttribute('aria-hidden', 'true');
+        return spacer;
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'proposalMoveBtn ' + (direction < 0 ? 'proposalMoveUp' : 'proposalMoveDown');
+    btn.setAttribute('aria-label', direction < 0 ? 'Move up' : 'Move down');
+    btn.innerHTML =
+        '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+        'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+        (direction < 0 ? '<path d="M6 15l6-6 6 6"/>' : '<path d="M6 9l6 6 6-6"/>') +
+        '</svg>';
+    btn.addEventListener('click', function () { onMove(direction); });
+    return btn;
 }
 
 // The batch proposal review modal — lists every row waiting on a review decision
@@ -2780,13 +2882,62 @@ export function showProposalReviewModal() {
     // Re-render the list from the live proposal set. Closes the modal outright once
     // the last proposal is resolved so an empty shell never lingers.
     function renderList() {
+        const buildMode = _proposalSortMode !== 'rubric';
         const proposals = getProposedRows().slice().sort(
-            _proposalSortMode === 'rubric' ? compareProposalsByAspect : compareProposalsByBuildOrder);
+            buildMode ? compareProposalsByBuildOrder : compareProposalsByAspect);
         if (!proposals.length) { closeFn(); return; }
         titleText.textContent = proposals.length + ' proposal' +
             (proposals.length === 1 ? '' : 's') + ' to review';
         body.textContent = '';
-        proposals.forEach(function (row) { body.appendChild(buildProposalCard(row)); });
+        proposals.forEach(function (row, i) {
+            const reorder = buildMode ? {
+                canUp: i > 0,
+                canDown: i < proposals.length - 1,
+                onMove: function (direction) { moveProposal(proposals, i, direction); },
+            } : null;
+            body.appendChild(buildProposalCard(row, reorder));
+        });
+    }
+
+    // Move one card a slot up or down in Build order. The new key is applied to
+    // the in-memory row(s) and the list repaints at once; the write follows. On
+    // failure every touched key is restored, the list repaints back, and the
+    // moved card shows the same inline error line the Accept path uses. Taps
+    // while a write is in flight are ignored so two moves never interleave.
+    let moveInFlight = false;
+    function moveProposal(orderedRows, index, direction) {
+        if (moveInFlight) return;
+        const plan = computeMovedSortKey(orderedRows, index, direction);
+        if (!plan) return;
+        const moved = orderedRows[index];
+        const writes = plan.respace
+            ? plan.respace
+            : [{ row: moved, sortKey: plan.sortKey }];
+        const previous = writes.map(function (w) {
+            return { row: w.row, had: Object.prototype.hasOwnProperty.call(w.row, 'sort_key'), key: w.row.sort_key };
+        });
+        writes.forEach(function (w) { w.row.sort_key = w.sortKey; });
+        renderList();
+        moveInFlight = true;
+        Promise.all(writes.map(function (w) {
+            return Promise.resolve(listLogic.setProposalSortKey(w.row.id, w.sortKey))
+                .catch(function () { return { ok: false }; });
+        })).then(function (results) {
+            moveInFlight = false;
+            if (results.every(function (r) { return r && r.ok; })) return;
+            previous.forEach(function (p) {
+                if (p.had) p.row.sort_key = p.key;
+                else delete p.row.sort_key;
+            });
+            if (!_proposalModal) return;
+            renderList();
+            const card = body.querySelector('.proposalCard[data-row-id="' + String(moved.id) + '"]');
+            const errorEl = card && card.querySelector('.proposalCardError');
+            if (errorEl) {
+                errorEl.textContent = 'Could not move. Try again.';
+                errorEl.hidden = false;
+            }
+        });
     }
 
     _proposalModal = { onQueueChange: renderList };

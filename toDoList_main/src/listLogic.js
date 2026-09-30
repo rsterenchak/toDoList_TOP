@@ -1361,6 +1361,38 @@ export const listLogic = (function () {
     }
 
 
+    // Persist a proposal's manual Build-order position: write `sort_key` on one
+    // agent_queue row. The proposal review modal's up/down arrows compute the
+    // key and call this rather than writing to Supabase directly (mirrors
+    // answerAgentTask). `sortKey` must be a finite number — the modal sorts by
+    // it in preference to `created_at`, so a NaN would silently scramble the
+    // order. Returns a { ok, error? } result so the caller can restore the
+    // previous key and surface a non-blocking failure.
+    // @category: user-mutation-only
+    async function setProposalSortKey(rowId, sortKey) {
+        if (!rowId) return { ok: false, error: 'Missing row id.' };
+        if (typeof sortKey !== 'number' || !Number.isFinite(sortKey)) {
+            return { ok: false, error: 'Invalid sort key.' };
+        }
+        try {
+            const result = await Promise.resolve(
+                supabase
+                    .from('agent_queue')
+                    .update({ sort_key: sortKey })
+                    .eq('id', rowId)
+            );
+            if (result && result.error) {
+                return {
+                    ok: false,
+                    error: (result.error && result.error.message) || 'Update failed.',
+                };
+            }
+            return { ok: true };
+        } catch (e) {
+            return { ok: false, error: (e && e.message) || 'Update failed.' };
+        }
+    }
+
     // Remove an agent_queue row entirely — the "Shelve + unflag" action on a
     // Stuck (failed / no_change) card. Deleting the row drops the task from the
     // queue, so it reappears in the Not-assigned bucket (its todo_id is no
@@ -4472,6 +4504,7 @@ export const listLogic = (function () {
         getProjectId,
         flagTaskForAgent,
         answerAgentTask,
+        setProposalSortKey,
         setAgentRunState,
         getAspectSubmissions,
         setAspectSubmitted,

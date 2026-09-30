@@ -90,6 +90,7 @@ import { listLogic } from '../src/listLogic.js';
 import '../src/agentView.js';
 import { mountClaudeSheet, syncClaudeSheetForProject } from '../src/claudeSheet.js';
 import { setQueueRows, notifyQueueChange, isDeriveActive, stopDeriveTracking } from '../src/agentQueueStore.js';
+import { computeMovedSortKey } from '../src/assignmentCoverage.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
 async function flush(n = 8) { for (let i = 0; i < n; i++) await tick(); }
@@ -605,6 +606,183 @@ describe('COVERAGE tab — proposal review modal', () => {
         coverageView().querySelector('.claudeCoverageProposals').click();
         expect(pressedModes()).toEqual(['build:true', 'rubric:false']);
         expect(renderedTitles()).toEqual(['model', 'service', 'screen']);
+    });
+});
+
+// Build order's manual up/down arrows: a move writes one `sort_key` through
+// listLogic.setProposalSortKey (midpoint of the bracketing keys, ∓60000 at the
+// ends, a full respace when the midpoint is indistinguishable), repaints at once,
+// and restores on a failed write. Rubric mode renders no arrows.
+describe('COVERAGE tab — proposal review modal manual reordering', () => {
+    const T0 = Date.parse('2026-08-08T10:00:00Z');
+    function row(id, title, createdMs, sortKey) {
+        const r = { ...proposedRow(id, 'A' + id, title), created_at: new Date(createdMs).toISOString() };
+        if (sortKey !== undefined) r.sort_key = sortKey;
+        return r;
+    }
+    function threeRows() {
+        return [
+            row(1, 'first', T0),
+            row(2, 'second', T0 + 10000),
+            row(3, 'third', T0 + 20000),
+        ];
+    }
+    async function openWith(name, rows) {
+        setQueueRows(rows, name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+    }
+    function titles() {
+        return Array.from(document.querySelectorAll('.proposalCardTitle'))
+            .map(function (t) { return t.textContent; });
+    }
+    function cards() { return Array.from(document.querySelectorAll('.proposalCard')); }
+    function spyWrite(result) {
+        return vi.spyOn(listLogic, 'setProposalSortKey').mockResolvedValue(result || { ok: true });
+    }
+    afterEach(() => { vi.restoreAllMocks(); });
+
+    it('renders arrows in Build order and none in Rubric', async () => {
+        await openWith(freshProject(), threeRows());
+        expect(document.querySelectorAll('.proposalMoveBtn').length).toBe(4);
+        expect(cards()[1].querySelector('[aria-label="Move up"]')).toBeTruthy();
+        expect(cards()[1].querySelector('[aria-label="Move down"]')).toBeTruthy();
+        selectRubric();
+        expect(document.querySelectorAll('.proposalMoveBtn').length).toBe(0);
+        expect(document.querySelectorAll('.proposalCardMove').length).toBe(0);
+    });
+
+    it('omits the first card\'s up arrow and the last card\'s down arrow, keeping the slot', async () => {
+        await openWith(freshProject(), threeRows());
+        const c = cards();
+        expect(c[0].querySelector('.proposalMoveUp')).toBeNull();
+        expect(c[0].querySelector('.proposalMoveDown')).toBeTruthy();
+        expect(c[0].querySelector('.proposalMoveSpacer')).toBeTruthy();
+        expect(c[2].querySelector('.proposalMoveDown')).toBeNull();
+        expect(c[2].querySelector('.proposalMoveUp')).toBeTruthy();
+        expect(c[2].querySelector('.proposalMoveSpacer')).toBeTruthy();
+    });
+
+    it('sorts a row by its sort_key over its created_at', async () => {
+        await openWith(freshProject(), [
+            row(1, 'first', T0),
+            row(2, 'second', T0 + 10000),
+            row(3, 'third', T0 + 20000, T0 - 5000),
+        ]);
+        expect(titles()).toEqual(['third', 'first', 'second']);
+    });
+
+    it('moving up writes the midpoint key once and repaints', async () => {
+        const spy = spyWrite();
+        await openWith(freshProject(), threeRows());
+        cards()[2].querySelector('.proposalMoveUp').click();
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledWith(3, T0 + 5000);
+        expect(titles()).toEqual(['first', 'third', 'second']);
+    });
+
+    it('moving down writes the midpoint key once and repaints', async () => {
+        const spy = spyWrite();
+        await openWith(freshProject(), threeRows());
+        cards()[0].querySelector('.proposalMoveDown').click();
+        expect(spy).toHaveBeenCalledTimes(1);
+        expect(spy).toHaveBeenCalledWith(1, T0 + 15000);
+        expect(titles()).toEqual(['second', 'first', 'third']);
+    });
+
+    it('moving to the very top or bottom offsets the end card by 60000', async () => {
+        const spy = spyWrite();
+        await openWith(freshProject(), threeRows());
+        cards()[1].querySelector('.proposalMoveUp').click();
+        expect(spy).toHaveBeenLastCalledWith(2, T0 - 60000);
+        expect(titles()).toEqual(['second', 'first', 'third']);
+        await flush();
+        cards()[1].querySelector('.proposalMoveDown').click();
+        expect(spy).toHaveBeenLastCalledWith(1, T0 + 20000 + 60000);
+        expect(titles()).toEqual(['second', 'third', 'first']);
+    });
+
+    it('respaces every card when the midpoint is indistinguishable from its bounds', async () => {
+        const spy = spyWrite();
+        const lo = 1;
+        const hi = 1 + Number.EPSILON;
+        await openWith(freshProject(), [
+            row(1, 'first', T0, lo),
+            row(2, 'second', T0, hi),
+            row(3, 'third', T0, 5),
+        ]);
+        cards()[2].querySelector('.proposalMoveUp').click();
+        expect(spy).toHaveBeenCalledTimes(3);
+        expect(spy.mock.calls).toEqual([[1, 1], [3, 60001], [2, 120001]]);
+        expect(titles()).toEqual(['first', 'third', 'second']);
+    });
+
+    it('a failed write restores the previous order and shows an inline error', async () => {
+        spyWrite({ ok: false, error: 'nope' });
+        await openWith(freshProject(), threeRows());
+        cards()[2].querySelector('.proposalMoveUp').click();
+        expect(titles()).toEqual(['first', 'third', 'second']);
+        await flush();
+        expect(titles()).toEqual(['first', 'second', 'third']);
+        const err = cards()[2].querySelector('.proposalCardError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('Could not move. Try again.');
+    });
+
+    it('an arrow tap does not expand the card', async () => {
+        spyWrite();
+        await openWith(freshProject(), threeRows());
+        cards()[0].querySelector('.proposalMoveDown').click();
+        expect(document.querySelectorAll('.proposalCard.is-expanded').length).toBe(0);
+    });
+
+    it('keeps Build order and reflects a sort_key moved elsewhere on a queue repaint', async () => {
+        const name = freshProject();
+        await openWith(name, threeRows());
+        const rows = threeRows();
+        rows[0].sort_key = T0 + 30000;
+        setQueueRows(rows, name);
+        notifyQueueChange();
+        expect(titles()).toEqual(['second', 'third', 'first']);
+        expect(document.querySelectorAll('.proposalMoveBtn').length).toBe(4);
+    });
+
+    it('Rubric mode ignores sort_key', async () => {
+        await openWith(freshProject(), [
+            row(1, 'first', T0),
+            row(2, 'second', T0 + 10000, T0 - 99999),
+        ]);
+        expect(titles()).toEqual(['second', 'first']);
+        selectRubric();
+        expect(titles()).toEqual(['first', 'second']);
+    });
+});
+
+describe('computeMovedSortKey', () => {
+    const r = (id, key) => ({ id: id, sort_key: key });
+
+    it('returns the midpoint of the bracketing keys', () => {
+        expect(computeMovedSortKey([r(1, 0), r(2, 100), r(3, 200)], 2, -1)).toEqual({ sortKey: 50 });
+        expect(computeMovedSortKey([r(1, 0), r(2, 100), r(3, 200)], 0, 1)).toEqual({ sortKey: 150 });
+    });
+
+    it('offsets the end card by 60000 at the very top or bottom', () => {
+        expect(computeMovedSortKey([r(1, 0), r(2, 100)], 1, -1)).toEqual({ sortKey: -60000 });
+        expect(computeMovedSortKey([r(1, 0), r(2, 100)], 0, 1)).toEqual({ sortKey: 60100 });
+    });
+
+    it('is a no-op past either end or when a bracketing row has no usable key', () => {
+        expect(computeMovedSortKey([r(1, 0), r(2, 100)], 0, -1)).toBeNull();
+        expect(computeMovedSortKey([r(1, 0), r(2, 100)], 1, 1)).toBeNull();
+        expect(computeMovedSortKey([{ id: 1 }, r(2, 100), r(3, 200)], 2, -1)).toBeNull();
+    });
+
+    it('respaces every row when keys tie', () => {
+        const rows = [r(1, 10), r(2, 10), r(3, 20)];
+        const plan = computeMovedSortKey(rows, 2, -1);
+        expect(plan.respace.map((w) => [w.row.id, w.sortKey])).toEqual([[1, 10], [3, 60010], [2, 120010]]);
+        expect(rows[2].sort_key).toBe(20);
     });
 });
 

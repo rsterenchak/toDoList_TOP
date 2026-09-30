@@ -1288,6 +1288,27 @@ describe('listLogic.answerAgentTask', () => {
     });
 });
 
+describe('listLogic.setProposalSortKey', () => {
+    it('writes sort_key on the row and returns ok', async () => {
+        const res = await listLogic.setProposalSortKey('row-1', 1234.5);
+        expect(res).toEqual({ ok: true });
+        expect(updateCalls).toEqual([{ patch: { sort_key: 1234.5 }, id: 'row-1' }]);
+    });
+
+    it('returns an error result when the update fails', async () => {
+        updateError = { message: 'nope' };
+        const res = await listLogic.setProposalSortKey('row-2', 10);
+        expect(res.ok).toBe(false);
+        expect(res.error).toMatch(/nope/);
+    });
+
+    it('rejects a missing row id or a non-finite key and writes nothing', async () => {
+        expect((await listLogic.setProposalSortKey('', 10)).ok).toBe(false);
+        expect((await listLogic.setProposalSortKey('row-3', NaN)).ok).toBe(false);
+        expect(updateCalls.length).toBe(0);
+    });
+});
+
 describe('AGENT view — needs_mockup launcher', () => {
     let clipboardText;
     let openArgs;

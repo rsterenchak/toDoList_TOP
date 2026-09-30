@@ -9711,6 +9711,52 @@ button.complexityNestChip:disabled {
   border: 0.5px solid var(--border-dim);
   border-radius: 8px;
 }
+/* Build order only: a column of Move up / Move down chevrons at the card's left
+   edge, beside a main column holding everything the card normally stacks. An end
+   card's missing arrow keeps its slot as a hidden spacer so titles stay aligned. */
+.proposalCard.has-reorder {
+  flex-direction: row;
+  align-items: flex-start;
+  padding-left: 6px;
+}
+.proposalCardMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.proposalCardMove {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.proposalMoveBtn,
+.proposalMoveSpacer {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 32px;
+}
+.proposalMoveSpacer { visibility: hidden; }
+.proposalMoveBtn {
+  appearance: none;
+  -webkit-appearance: none;
+  padding: 0;
+  background: transparent;
+  border: 0.5px solid var(--border-dim);
+  border-radius: 6px;
+  color: var(--accent-text);
+  cursor: pointer;
+}
+.proposalMoveBtn:hover { background: var(--bg-hover); }
+.proposalMoveBtn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* The tap target for expanding a card: badge + title + clamped preview. It carries
    role="button" when the proposal has a description, so it gets the pointer and a
    focus ring of its own; a description-less card keeps the plain layout. */
