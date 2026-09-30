@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-09-30',
         fixed: [
             'Generating mockups no longer gets stuck on “Generating…” in the task detail pane, and a stalled or failed generation now shows its error instead.',
+            'Generated mockups now come back as a full A/B/C set instead of cutting off mid-variant, and a reply that still runs short shows the variants that fit with a note to regenerate.',
         ],
     },
     {
@@ -23,13 +24,6 @@ export const changelog = [
         date: '2026-09-27',
         fixed: [
             'The API spend panel now prices DeepSeek turns at current V4.1 rates, with off-peak turns counted at half price.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-09-26',
-        fixed: [
-            'The mobile project header now sits clear of the iOS status bar, so the PROJECT N OF M line no longer reads as blurred.',
         ],
     },
 ];

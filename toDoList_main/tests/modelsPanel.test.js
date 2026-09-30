@@ -314,13 +314,21 @@ describe('models panel — row presentation (pure)', () => {
     it('stacks DEEP between CHAT and GHOST, pickable and on the non-plan lane', () => {
         const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
         const order = rows.map((r) => r.surface);
-        expect(order).toEqual(['run', 'triage', 'derive', 'scan', 'chat', 'deep', 'ghost']);
+        expect(order).toEqual(['run', 'triage', 'derive', 'scan', 'chat', 'deep', 'mockup', 'ghost']);
         const deep = rows.find((r) => r.surface === 'deep');
         // Not in plan_lanes, so the existing dot logic amber-dots it for free —
         // and it is a real row, not the locked display-only shape GHOST uses.
         expect(deep.lane).toBe('other');
         expect(deep.locked).toBe(false);
         expect(deep.label).toBe('DEEP');
+    });
+
+    it('stacks MOCKUP after DEEP, pickable, noted as the A/B/C previews row', () => {
+        const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
+        const mockup = rows.find((r) => r.surface === 'mockup');
+        expect(mockup.locked).toBe(false);
+        expect(mockup.label).toBe('MOCKUP');
+        expect(mockup.subline).toBe('A/B/C previews');
     });
 
     it('names which send mode each of CHAT and DEEP serves', () => {
@@ -550,7 +558,7 @@ describe('models panel — panel behaviour', () => {
     it('renders every surface plus ghost, reading the active repo for the scope toggle', async () => {
         await openPanel();
         const labels = [...document.querySelectorAll('.modelsRowLabel')].map((el) => el.textContent);
-        expect(labels).toEqual(['RUN', 'TRIAGE', 'DERIVE', 'SCAN', 'CHAT', 'DEEP', 'GHOST']);
+        expect(labels).toEqual(['RUN', 'TRIAGE', 'DERIVE', 'SCAN', 'CHAT', 'DEEP', 'MOCKUP', 'GHOST']);
         expect(fetchModelSettings).toHaveBeenCalledWith('rsterenchak/toDoList_TOP');
         // The REPO half is labelled with the workspace's short name, not owner/name.
         expect(document.querySelectorAll('.modelsScopeSeg')[0].textContent).toBe('toDoList_TOP');

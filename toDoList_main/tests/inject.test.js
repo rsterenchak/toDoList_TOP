@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, extractTasksFromWorker, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, extractTasksFromWorker, generateMockupsFromWorker, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -726,5 +726,54 @@ describe('chatWithWorker — request timeout', () => {
         await chatWithWorker([{ role: 'user', content: 'hi' }]);
         const init = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1][1];
         expect(init.signal).toBeUndefined();
+    });
+});
+
+// Mockup Generate goes through the Worker's dedicated `mockup` route rather than a
+// chat turn, so the reply isn't cut off by the chat budget. The result is
+// normalized so a sparse Worker reply never crashes the caller.
+describe('generateMockupsFromWorker — mockup route', () => {
+    function lastMockupBody() {
+        const call = fetchSpy.mock.calls.find((c) => {
+            try { return JSON.parse(c[1].body).mockup; } catch (e) { return false; }
+        });
+        return call ? JSON.parse(call[1].body) : null;
+    }
+
+    it('posts { mockup: true, prompt, repo } and returns the normalized result', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({ reply: '===VARIANT A===\n<p>A</p>', variants: 1, truncated: true, model: 'm-1' }),
+        }));
+        const res = await generateMockupsFromWorker('make mockups', 'rsterenchak/toDoList_TOP');
+        expect(lastMockupBody()).toEqual({ mockup: true, prompt: 'make mockups', repo: 'rsterenchak/toDoList_TOP' });
+        expect(res).toEqual({ reply: '===VARIANT A===\n<p>A</p>', variants: 1, truncated: true, model: 'm-1' });
+    });
+
+    it('omits repo when none is routed and normalizes missing fields', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: true,
+            json: () => Promise.resolve({}),
+        }));
+        const res = await generateMockupsFromWorker('p', null);
+        expect(lastMockupBody()).toEqual({ mockup: true, prompt: 'p' });
+        expect(res).toEqual({ reply: '', variants: 0, truncated: false, model: '' });
+    });
+
+    it('rejects with the Worker error as `reason`', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false,
+            status: 502,
+            json: () => Promise.resolve({ error: 'Upstream refused' }),
+        }));
+        const err = await generateMockupsFromWorker('p', null).then(() => null, (e) => e);
+        expect(err.reason).toBe('Upstream refused (502)');
+        expect(err.status).toBe(502);
+    });
+
+    it('passes opts.timeoutMs through as an abort signal', async () => {
+        await generateMockupsFromWorker('p', null, { timeoutMs: 180000 });
+        const init = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1][1];
+        expect(init.signal).toBeDefined();
     });
 });
