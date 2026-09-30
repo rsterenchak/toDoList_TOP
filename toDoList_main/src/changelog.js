@@ -12,13 +12,13 @@ export const changelog = [
         fixed: [
             'Generating mockups no longer gets stuck on “Generating…” in the task detail pane, and a stalled or failed generation now shows its error instead.',
             'Generated mockups now come back as a full A/B/C set instead of cutting off mid-variant, and a reply that still runs short shows the variants that fit with a note to regenerate.',
+            'Accepting a proposal now marks its newly created task as In Progress while its run is underway.',
         ],
     },
     {
         version: '1.1',
         date: '2026-09-29',
         added: [
-            'The proposal review sheet now lists proposals in the order derive built them, with a Build order / Rubric toggle to switch to rubric aspect order.',
             'Proposals in Build order can now be moved up or down with arrows on each card, and the new order is saved.',
         ],
     },

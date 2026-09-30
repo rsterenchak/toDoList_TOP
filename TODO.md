@@ -1974,7 +1974,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`, `toDoList_main/src/prefs.js`
   <!-- id: 6ea93add-eea9-4622-9c98-535169da98d6 -->
 
-- [ ] **[MEDIUM]** Set the auto-created task to In Progress when an assignment proposal is accepted
+- [x] **[MEDIUM]** Set the auto-created task to In Progress when an assignment proposal is accepted — Completed: 2026-09-30
   - Type: bug
   - Description: Accepting a derive/assignment proposal ships its draft through `dispatchDraft`, which (when the row has no `todo_id`) creates the task via `materializeEntryTodo` -> `listLogic.addEntryTodo`. That task is created with the default `active` status (`toDo(...)` in `addEntryTodo`), so it sits as a plain active task while its run is in flight. After the task is created in `dispatchDraft`, set its status to `in_progress` through the existing `listLogic.setToDoStatus(projectName, item, 'in_progress')` (locate the item by the returned `createdId` in `listLogic.listItems(projectName)`), so the mutation goes through `listLogic.js` and persists to Supabase. Repaint the selected list afterwards if the project is on screen so the status shows immediately.
   - Behavior: Only tasks auto-created by accepting a proposal (rows with no source `todo_id`) start as `in_progress`; rows that already carry a `todo_id` keep their current status. If creation is skipped or the ship fails, no status change is made.

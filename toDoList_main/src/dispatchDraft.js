@@ -102,6 +102,7 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
 
     let todoId = row.todo_id;
     let shipEntryId = existingEntryId;
+    let createdProject = '';
     if (!todoId) {
         const projectName = getSelectedProjectName();
         if (projectName && contextTitle) {
@@ -115,6 +116,7 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
             if (createdId) {
                 todoId = createdId;
                 shipEntryId = entryId;
+                createdProject = projectName;
             }
         }
     }
@@ -127,6 +129,22 @@ export async function dispatchDraft(row, draftText, existingEntryId, tail) {
     });
     if (!res || !res.ok) {
         return { ok: false, error: res.error };
+    }
+
+    // A todo this run materialized is born `active`, but its run is now in
+    // flight — move it to In Progress through listLogic so the change persists,
+    // and repaint when its project is on screen so the status shows at once.
+    // Only after a successful ship: a failed one leaves the status alone. Rows
+    // that already carried a todo_id never reach this (createdProject is '').
+    if (createdProject && typeof listLogic.setToDoStatus === 'function') {
+        const items = listLogic.listItems(createdProject) || [];
+        const created = items.find(function (i) { return i && i.id === todoId; });
+        if (created) {
+            listLogic.setToDoStatus(createdProject, created, 'in_progress');
+            if (createdProject === getSelectedProjectName()) {
+                await rebuildSelectedList(createdProject);
+            }
+        }
     }
 
     const patch = {
