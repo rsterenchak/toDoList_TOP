@@ -26,6 +26,8 @@ import { dispatchDraft, resolveDispatchTarget } from './dispatchDraft.js';
 // the proposal review modal. mockupFlow.js imports only listLogic / inject /
 // modalDismiss — never this module — so the edge is acyclic.
 import { buildMockupSecondary } from './mockupFlow.js';
+import { getProposalReviewModalSize, setProposalReviewModalSize } from './prefs.js';
+import { isMobileViewport } from './viewport.js';
 
 // The assignment / rubric-coverage subsystem, extracted verbatim from
 // agentView.js so it can be re-homed as a chat-pane tab later. It owns reading
@@ -2769,6 +2771,127 @@ function buildProposalMoveButton(direction, enabled, onMove) {
     return btn;
 }
 
+// Desktop resize bounds for the proposal review modal. The upper bounds also give
+// way to the live viewport (the backdrop's 18px padding each side, and the same
+// 86vh the CSS caps the dialog at) so a size saved on a big monitor still fits a
+// smaller window.
+const PROPOSAL_REVIEW_MIN_WIDTH = 360;
+const PROPOSAL_REVIEW_MAX_WIDTH = 720;
+const PROPOSAL_REVIEW_MIN_HEIGHT = 300;
+const PROPOSAL_REVIEW_KEY_STEP = 20;
+
+function clampProposalReviewSize(width, height) {
+    const maxWidth = Math.max(PROPOSAL_REVIEW_MIN_WIDTH,
+        Math.min(PROPOSAL_REVIEW_MAX_WIDTH, window.innerWidth - 36));
+    const maxHeight = Math.max(PROPOSAL_REVIEW_MIN_HEIGHT,
+        Math.floor(window.innerHeight * 0.86));
+    return {
+        width: Math.round(Math.min(maxWidth, Math.max(PROPOSAL_REVIEW_MIN_WIDTH, width))),
+        height: Math.round(Math.min(maxHeight, Math.max(PROPOSAL_REVIEW_MIN_HEIGHT, height))),
+    };
+}
+
+// Wire the bottom-right grip: pointer drag or arrow keys (Right/Left for width,
+// Down/Up for height) resize the dialog, and each finished change is persisted.
+// Mobile (isMobileViewport) keeps the CSS sheet untouched — no inline size and the
+// grip hidden — and a window resize across the breakpoint re-evaluates, so a
+// desktop size never leaks into the mobile layout. Returns a teardown for the
+// window listener.
+function setupProposalReviewResize(dialog, grip) {
+    let size = getProposalReviewModalSize();
+
+    function apply() {
+        const mobile = isMobileViewport();
+        grip.hidden = mobile;
+        if (mobile || !size) {
+            dialog.classList.remove('proposalReviewModalSized');
+            dialog.style.removeProperty('width');
+            dialog.style.removeProperty('height');
+            return;
+        }
+        const clamped = clampProposalReviewSize(size.width, size.height);
+        dialog.classList.add('proposalReviewModalSized');
+        dialog.style.width = clamped.width + 'px';
+        dialog.style.height = clamped.height + 'px';
+    }
+
+    // The size a gesture starts from: the saved one, or the dialog's rendered
+    // default the first time the user resizes.
+    function currentSize() {
+        if (size) return clampProposalReviewSize(size.width, size.height);
+        const rect = dialog.getBoundingClientRect();
+        return clampProposalReviewSize(rect.width || 460, rect.height || PROPOSAL_REVIEW_MIN_HEIGHT);
+    }
+
+    let dragging = false;
+    let pointerId = null;
+    let startX = 0;
+    let startY = 0;
+    let start = null;
+
+    grip.addEventListener('pointerdown', function (e) {
+        if (isMobileViewport()) return;
+        dragging = true;
+        pointerId = e.pointerId;
+        startX = e.clientX;
+        startY = e.clientY;
+        start = currentSize();
+        grip.classList.add('dragging');
+        try { grip.setPointerCapture(e.pointerId); } catch (err) { /* not captured */ }
+        e.preventDefault();
+    });
+
+    grip.addEventListener('pointermove', function (e) {
+        if (!dragging) return;
+        size = clampProposalReviewSize(
+            start.width + (e.clientX - startX),
+            start.height + (e.clientY - startY));
+        apply();
+        e.preventDefault();
+    });
+
+    function endDrag() {
+        if (!dragging) return;
+        dragging = false;
+        grip.classList.remove('dragging');
+        try {
+            if (pointerId != null) grip.releasePointerCapture(pointerId);
+        } catch (err) { /* already released */ }
+        pointerId = null;
+        if (size) setProposalReviewModalSize(size);
+    }
+
+    grip.addEventListener('pointerup', endDrag);
+    grip.addEventListener('pointercancel', endDrag);
+
+    grip.addEventListener('keydown', function (e) {
+        if (isMobileViewport()) return;
+        const deltas = {
+            ArrowRight: [PROPOSAL_REVIEW_KEY_STEP, 0],
+            ArrowLeft: [-PROPOSAL_REVIEW_KEY_STEP, 0],
+            ArrowDown: [0, PROPOSAL_REVIEW_KEY_STEP],
+            ArrowUp: [0, -PROPOSAL_REVIEW_KEY_STEP],
+        };
+        const delta = deltas[e.key];
+        if (!delta) return;
+        const cur = currentSize();
+        size = clampProposalReviewSize(cur.width + delta[0], cur.height + delta[1]);
+        apply();
+        setProposalReviewModalSize(size);
+        e.preventDefault();
+    });
+
+    // A sheet torn out without its close path (the stale-backdrop removal on the
+    // next open) drops its own listener on the first resize after.
+    function onWindowResize() {
+        if (!dialog.isConnected) { window.removeEventListener('resize', onWindowResize); return; }
+        apply();
+    }
+    window.addEventListener('resize', onWindowResize);
+    apply();
+    return function () { window.removeEventListener('resize', onWindowResize); };
+}
+
 // The batch proposal review modal — lists every row waiting on a review decision
 // (see getProposedRows) with its aspect tag, title, description preview, and a
 // state-appropriate primary (Accept / Choose mockup / Dispatch) + Dismiss. Built with
@@ -2873,6 +2996,15 @@ export function showProposalReviewModal() {
     dialog.appendChild(sortControl);
     dialog.appendChild(body);
     dialog.appendChild(actions);
+
+    const resizeGrip = document.createElement('button');
+    resizeGrip.id = 'proposalReviewModalResize';
+    resizeGrip.type = 'button';
+    resizeGrip.title = 'Drag to resize';
+    resizeGrip.setAttribute('aria-label', 'Resize proposal review (arrow keys adjust size)');
+    dialog.appendChild(resizeGrip);
+    const teardownResize = setupProposalReviewResize(dialog, resizeGrip);
+
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
 
@@ -2952,6 +3084,7 @@ export function showProposalReviewModal() {
         closeButtons: [closeX, closeBtn],
         onClose: function () {
             _proposalModal = null;
+            teardownResize();
             if (previouslyFocused &&
                 typeof previouslyFocused.focus === 'function' &&
                 document.contains(previouslyFocused)) {

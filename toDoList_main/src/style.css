@@ -9593,7 +9593,51 @@ button.complexityNestChip:disabled {
   line-height: 1.5;
   animation: confirmSlideIn 0.14s ease-out;
   overflow: hidden;
+  position: relative;
 }
+
+/* A desktop corner-drag (or arrow-key) resize sets an inline width/height; lift
+   the default 460px cap so the user's width is authoritative. */
+#proposalReviewModal.proposalReviewModalSized {
+  max-width: none;
+}
+
+/* Bottom-right resize grip — the assignment editor's three stepped dots, sized
+   to 12px so it clears the pinned Close button's corner. A focusable button so
+   arrow keys can resize without a pointer. Below the 1024px mobile breakpoint
+   the modal sets `hidden` on it (no display rule here, so that sticks) and
+   keeps its sheet layout. */
+#proposalReviewModalResize {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 12px;
+  height: 12px;
+  padding: 0;
+  border: none;
+  border-radius: 2px;
+  background-color: transparent;
+  cursor: nwse-resize;
+  touch-action: none;
+  z-index: 1;
+  background-image:
+    radial-gradient(circle 1.5px at 9px 9px, var(--text-secondary) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 9px 4px, var(--text-secondary) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 4px 9px, var(--text-secondary) 99%, transparent 100%);
+  transition: opacity 0.12s ease;
+  opacity: 0.65;
+}
+#proposalReviewModalResize:hover,
+#proposalReviewModalResize:focus-visible,
+#proposalReviewModalResize.dragging {
+  opacity: 1;
+  background-image:
+    radial-gradient(circle 1.5px at 9px 9px, var(--accent-text) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 9px 4px, var(--accent-text) 99%, transparent 100%),
+    radial-gradient(circle 1.5px at 4px 9px, var(--accent-text) 99%, transparent 100%);
+}
+#proposalReviewModalResize:focus { outline: none; }
+#proposalReviewModalResize:focus-visible { box-shadow: 0 0 0 2px var(--accent-dim); }
 
 /* The header and the footer are the column's fixed ends — never let a long card
    list squeeze either one, or the pinned Close shrinks away as proposals pile up. */
