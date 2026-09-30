@@ -50,6 +50,46 @@ const _mockupVariants = new Map();
 // disabled/"Generating…" after a repaint instead of resetting it to idle.
 // Session-scoped only; resets on reload.
 const _mockupPending = new Set();
+// The last generation failure per agent_queue row id → its error message. Set in
+// genFail, cleared on a new Generate click or a successful generation. A block
+// built fresh for a row with no generation in flight shows this error with the
+// button idle, so a failure isn't lost when the node that started it is gone.
+// Session-scoped only; resets on reload.
+const _mockupErrors = new Map();
+// How long a Generate click waits on the chat Worker before giving up.
+const MOCKUP_GEN_TIMEOUT_MS = 120000;
+// Every mounted mockup block, keyed by agent_queue row id → a Set of handles
+// ({ genBtn, genError, previews, renderInto }). The board, the desktop detail
+// pane, the mobile modal, and assignment coverage all mount buildMockupSecondary,
+// but only the board is rebuilt by paint(); when the block that started a
+// generation has been detached (its host rebuilt mid-flight), the fresh block in
+// another host would otherwise stay on "Generating…". Completion and failure
+// update every still-connected handle for the row and prune the detached ones.
+const _mockupHandles = new Map();
+
+function registerMockupHandle(rowId, handle) {
+    let set = _mockupHandles.get(rowId);
+    if (!set) {
+        set = new Set();
+        _mockupHandles.set(rowId, set);
+    }
+    set.add(handle);
+}
+
+// Run `apply(handle)` on each still-connected handle for the row, dropping the
+// ones whose button has left the document.
+function forEachLiveMockupHandle(rowId, apply) {
+    const set = _mockupHandles.get(rowId);
+    if (!set) return;
+    set.forEach(function (handle) {
+        if (!handle.genBtn.isConnected) {
+            set.delete(handle);
+            return;
+        }
+        apply(handle);
+    });
+    if (!set.size) _mockupHandles.delete(rowId);
+}
 
 // How a mockup prompt names the repo it targets. The three prompt builders no
 // longer hardcode `toDoList_TOP` / `toDoList_main/src/`: given the active
@@ -882,26 +922,39 @@ function buildMockupSecondary(row, options) {
     // repaint tore down the button that started it). Re-render as the disabled
     // "Generating…" state rather than a bare idle button so the user doesn't
     // click again and fire a redundant generation against a detached node.
+    // Otherwise surface the row's last failure, so an error whose original node
+    // is gone still reaches the user.
     if (_mockupPending.has(row.id)) {
         genBtn.disabled = true;
         genBtn.classList.add('is-pending');
         genBtn.textContent = 'Generating…';
+    } else if (_mockupErrors.has(row.id)) {
+        genError.textContent = _mockupErrors.get(row.id);
+        genError.hidden = false;
     }
 
+    registerMockupHandle(row.id, {
+        genBtn: genBtn,
+        genError: genError,
+        previews: previews,
+        renderInto: renderInto,
+    });
+
     function genFail(message) {
+        const text = message || 'Couldn’t generate mockups. Try again.';
         _mockupPending.delete(row.id);
-        // A repaint detached this card while the request was in flight; the
-        // visible button is a fresh node still showing "Generating…". Repaint so
-        // it leaves that state (the error surfaces on the next attempt).
-        if (!genBtn.isConnected) {
-            paint();
-            return;
-        }
-        genBtn.disabled = false;
-        genBtn.classList.remove('is-pending');
-        genBtn.textContent = previews.childNodes.length ? 'Regenerate' : 'Generate mockups';
-        genError.textContent = message || 'Couldn’t generate mockups. Try again.';
-        genError.hidden = false;
+        _mockupErrors.set(row.id, text);
+        // Update every still-mounted block for this row (the one that started
+        // the generation may have been detached and rebuilt in another host),
+        // then repaint so the board stays in sync.
+        forEachLiveMockupHandle(row.id, function (h) {
+            h.genBtn.disabled = false;
+            h.genBtn.classList.remove('is-pending');
+            h.genBtn.textContent = h.previews.childNodes.length ? 'Regenerate' : 'Generate mockups';
+            h.genError.textContent = text;
+            h.genError.hidden = false;
+        });
+        paint();
     }
 
     genBtn.addEventListener('click', function () {
@@ -912,9 +965,16 @@ function buildMockupSecondary(row, options) {
         genBtn.classList.add('is-pending');
         genBtn.textContent = 'Generating…';
         _mockupPending.add(row.id);
+        _mockupErrors.delete(row.id);
         const repo = mockupChatRepo(getSelectedProjectName());
         Promise.resolve().then(function () {
-            return chatWithWorker([{ role: 'user', content: buildMockupGenPrompt(ctx, repo) }], null, null, repo);
+            // Bounded so a stalled Worker call lands in genFail instead of
+            // leaving the button on "Generating…" forever.
+            return chatWithWorker(
+                [{ role: 'user', content: buildMockupGenPrompt(ctx, repo) }],
+                null, null, repo, undefined, undefined, undefined,
+                { timeoutMs: MOCKUP_GEN_TIMEOUT_MS },
+            );
         }).then(function (res) {
             const reply = (res && typeof res.reply === 'string') ? res.reply : '';
             const variants = parseMockupVariants(reply);
@@ -925,17 +985,18 @@ function buildMockupSecondary(row, options) {
             // Cache the parsed variants so a realtime repaint restores them.
             _mockupVariants.set(row.id, variants);
             _mockupPending.delete(row.id);
-            // If a repaint detached this card mid-flight, its button is elsewhere
-            // stuck on "Generating…"; repaint so the visible card renders the new
-            // previews from cache. Otherwise update this (still-connected) node.
-            if (!genBtn.isConnected) {
-                paint();
-                return;
-            }
-            renderInto(previews, variants);
-            genBtn.disabled = false;
-            genBtn.classList.remove('is-pending');
-            genBtn.textContent = 'Regenerate';
+            _mockupErrors.delete(row.id);
+            // Render into every still-mounted block for this row — including one
+            // rebuilt in a host paint() never touches — then repaint the board.
+            forEachLiveMockupHandle(row.id, function (h) {
+                h.renderInto(h.previews, variants);
+                h.genBtn.disabled = false;
+                h.genBtn.classList.remove('is-pending');
+                h.genBtn.textContent = 'Regenerate';
+                h.genError.hidden = true;
+                h.genError.textContent = '';
+            });
+            paint();
         }).catch(function (e) {
             // chatWithWorker hands up the Worker's own `{ error, detail }` body as
             // `reason` (an upstream status and its error text on the 502 paths), so

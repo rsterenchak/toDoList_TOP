@@ -115,26 +115,43 @@ export function showInjectToast(message, variant) {
 
 
 // ── WORKER CALLS ──
-export async function postToWorker(payload) {
+// `opts.timeoutMs` (optional) bounds the request: an AbortController cancels the
+// fetch once it elapses and the call throws an error flagged `timeout` (with the
+// `timeoutMs` it waited), so a stalled Worker call settles instead of hanging
+// forever. Callers that pass no `opts` get the bare, unbounded fetch as before.
+export async function postToWorker(payload, opts) {
     if (!isInjectConfigured()) {
         const e = new Error('Not configured');
         e.notConfigured = true;
         throw e;
     }
+    const timeoutMs = (opts && typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0) ? opts.timeoutMs : 0;
+    const controller = timeoutMs ? new AbortController() : null;
+    const timer = controller ? setTimeout(function () { controller.abort(); }, timeoutMs) : null;
     let res;
     try {
-        res = await fetch(cachedUrl, {
+        const init = {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'Authorization': 'Bearer ' + cachedSecret,
             },
             body: JSON.stringify(payload),
-        });
+        };
+        if (controller) init.signal = controller.signal;
+        res = await fetch(cachedUrl, init);
     } catch (networkErr) {
+        if (controller && controller.signal.aborted) {
+            const e = new Error('Timed out');
+            e.timeout = true;
+            e.timeoutMs = timeoutMs;
+            throw e;
+        }
         const e = new Error('Network error');
         e.network = true;
         throw e;
+    } finally {
+        if (timer) clearTimeout(timer);
     }
     if (!res.ok) {
         const worker = await readWorkerError(res);
@@ -190,6 +207,7 @@ function describeError(e) {
     if (e.status === 403) return '403 Forbidden';
     if (e.status && e.status >= 500) return 'Server error ' + e.status;
     if (e.status) return 'HTTP ' + e.status;
+    if (e.timeout) return 'Timed out after ' + Math.round((e.timeoutMs || 0) / 1000) + 's';
     if (e.network) return 'Network error';
     return e.message || 'Unknown error';
 }
@@ -447,10 +465,14 @@ export async function injectEntry(options) {
 // attach/detach is frequent and putting it earlier would invalidate the Worker's
 // cached repo-stable prefix on every scope change.
 //
+// `opts` is an optional trailing object handed straight to postToWorker — e.g.
+// `{ timeoutMs }` bounds the request so a stalled turn rejects with a
+// "Timed out after <N>s" reason instead of never settling.
+//
 // Returns `{ reply, suggestedFiles }`: `reply` is the assistant's text, and
 // `suggestedFiles` is the array of paths the Worker proposed attaching this
 // turn (empty when none).
-export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles, deepThink, attachTask) {
+export async function chatWithWorker(messages, entryId, attachFiles, repo, suggestedAttachFiles, deepThink, attachTask, opts) {
     try {
         const payload = { chat: true, messages: messages };
         if (entryId) payload.entry_id = entryId;
@@ -477,7 +499,7 @@ export async function chatWithWorker(messages, entryId, attachFiles, repo, sugge
                 description: attachTask.description || '',
             };
         }
-        const res = await postToWorker(payload);
+        const res = await postToWorker(payload, opts);
         const suggestedFiles = res && Array.isArray(res.suggested_files)
             ? res.suggested_files.slice()
             : [];
