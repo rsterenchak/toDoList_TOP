@@ -565,6 +565,36 @@ export async function extractTasksFromWorker(projectName, repo, transcript, open
     }
 }
 
+// Generate A/B/C mockup variants through the Worker's `mockup` route. Shaped
+// like extractTasksFromWorker — same postToWorker wrapper, same describeError
+// translation on failure. The dedicated route runs the mockup model on its own
+// output budget rather than a chat turn, so the three documents aren't cut off
+// mid-variant. `prompt` is the marker-delimited generation prompt; `repo` is
+// optional (null for a project with no inject target). `opts` is handed straight
+// to postToWorker — e.g. `{ timeoutMs }` bounds the request.
+//
+// Always resolves to `{ reply, variants, truncated, model }` with missing fields
+// normalized to '' / 0 / false / '', so a sparse Worker reply never crashes the
+// caller. `truncated` is the Worker's signal that the reply hit its output cap.
+export async function generateMockupsFromWorker(prompt, repo, opts) {
+    try {
+        const payload = { mockup: true, prompt: String(prompt == null ? '' : prompt) };
+        if (repo) payload.repo = repo;
+        const res = await postToWorker(payload, opts);
+        return {
+            reply: (res && typeof res.reply === 'string') ? res.reply : '',
+            variants: (res && typeof res.variants === 'number') ? res.variants : 0,
+            truncated: !!(res && res.truncated === true),
+            model: (res && typeof res.model === 'string') ? res.model : '',
+        };
+    } catch (e) {
+        const err = new Error(describeError(e));
+        err.reason = describeError(e);
+        if (e && typeof e.status === 'number') err.status = e.status;
+        throw err;
+    }
+}
+
 // Read a file from the configured Worker. Mirrors postToWorker's wiring
 // (same URL, same Bearer secret, same `Content-Type: application/json`)
 // but sends `{ read: true, repo, filePath }` so the Worker fetches the

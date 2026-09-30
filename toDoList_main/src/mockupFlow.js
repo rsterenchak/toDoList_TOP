@@ -1,5 +1,5 @@
 import { listLogic } from './listLogic.js';
-import { findTargetById, chatWithWorker, showInjectToast } from './inject.js';
+import { findTargetById, chatWithWorker, generateMockupsFromWorker, showInjectToast } from './inject.js';
 // wireModalDismiss centralizes the modal close contract (close button, backdrop
 // tap, Escape) + focus restoration. Imported from its own leaf module (NOT
 // modals.js, which imports buildMockupSecondary from here — a static modals.js
@@ -56,8 +56,8 @@ const _mockupPending = new Set();
 // button idle, so a failure isn't lost when the node that started it is gone.
 // Session-scoped only; resets on reload.
 const _mockupErrors = new Map();
-// How long a Generate click waits on the chat Worker before giving up.
-const MOCKUP_GEN_TIMEOUT_MS = 120000;
+// How long a Generate click waits on the Worker's mockup route before giving up.
+const MOCKUP_GEN_TIMEOUT_MS = 180000;
 // Every mounted mockup block, keyed by agent_queue row id → a Set of handles
 // ({ genBtn, genError, previews, renderInto }). The board, the desktop detail
 // pane, the mobile modal, and assignment coverage all mount buildMockupSecondary,
@@ -843,7 +843,7 @@ function renderMockupTabs(container, variants, row, options) {
 // Secondary content for a `needs_mockup` card. Two paths stacked top-to-bottom:
 //
 //   1. In-app A/B/C generation — a Generate / Regenerate control that calls the
-//      chat Worker with a machine-parseable prompt, parses the reply, and
+//      Worker's mockup route with a machine-parseable prompt, parses the reply, and
 //      renders the three variants as sandboxed preview iframes right on the
 //      card. This is the primary path.
 //   2. A tucked "Not quite right?" fallback — the original manual hand-off,
@@ -854,8 +854,8 @@ function renderMockupTabs(container, variants, row, options) {
 //      row to `drafted` — where the Dispatch card already ships it.
 //
 // The view never writes to Supabase directly (the save routes through
-// listLogic.setAgentRunState) and generation reuses the existing chat proxy
-// (no Worker change). Each preview tile also carries a "use this" control that
+// listLogic.setAgentRunState) and generation goes through the Worker's dedicated
+// mockup route. Each preview tile also carries a "use this" control that
 // turns the chosen variant into the finished entry and flips the row to
 // `drafted`; the fallback paste-back stays as the manual escape hatch.
 // `options` (all optional, defaulting off so the board's `buildMockupSecondary(row)`
@@ -888,7 +888,7 @@ function buildMockupSecondary(row, options) {
         + (useTabs ? ' agentMockup--tabbed' : (opts.grid ? ' agentMockup--grid' : ''));
 
     // ── In-app A/B/C generation ──
-    // Generate calls the chat Worker with buildMockupGenPrompt, parses the reply
+    // Generate calls the Worker's mockup route with buildMockupGenPrompt, parses the reply
     // into three variants, and renders them as sandboxed preview iframes.
     // Regenerate re-runs and replaces the tiles. A generation or parse failure
     // shows a non-blocking error and leaves the fallback hand-off fully usable.
@@ -970,9 +970,9 @@ function buildMockupSecondary(row, options) {
         Promise.resolve().then(function () {
             // Bounded so a stalled Worker call lands in genFail instead of
             // leaving the button on "Generating…" forever.
-            return chatWithWorker(
-                [{ role: 'user', content: buildMockupGenPrompt(ctx, repo) }],
-                null, null, repo, undefined, undefined, undefined,
+            return generateMockupsFromWorker(
+                buildMockupGenPrompt(ctx, repo),
+                repo,
                 { timeoutMs: MOCKUP_GEN_TIMEOUT_MS },
             );
         }).then(function (res) {
@@ -982,10 +982,19 @@ function buildMockupSecondary(row, options) {
                 genFail('Couldn’t read the mockups from the reply — try Regenerate, or use the fallback below.');
                 return;
             }
+            // A reply cut off at the Worker's output cap still renders the
+            // variants that parsed, with a non-blocking note inviting a rerun.
+            // The note is stored like an error so a block rebuilt by the paint()
+            // below (or a later reopen) still shows it.
+            const parsedCount = Object.keys(variants).length;
+            const note = (res && res.truncated && parsedCount < 3)
+                ? 'Only ' + parsedCount + ' of 3 variants fit — Regenerate for a full set.'
+                : '';
             // Cache the parsed variants so a realtime repaint restores them.
             _mockupVariants.set(row.id, variants);
             _mockupPending.delete(row.id);
-            _mockupErrors.delete(row.id);
+            if (note) _mockupErrors.set(row.id, note);
+            else _mockupErrors.delete(row.id);
             // Render into every still-mounted block for this row — including one
             // rebuilt in a host paint() never touches — then repaint the board.
             forEachLiveMockupHandle(row.id, function (h) {
@@ -993,12 +1002,12 @@ function buildMockupSecondary(row, options) {
                 h.genBtn.disabled = false;
                 h.genBtn.classList.remove('is-pending');
                 h.genBtn.textContent = 'Regenerate';
-                h.genError.hidden = true;
-                h.genError.textContent = '';
+                h.genError.hidden = !note;
+                h.genError.textContent = note;
             });
             paint();
         }).catch(function (e) {
-            // chatWithWorker hands up the Worker's own `{ error, detail }` body as
+            // generateMockupsFromWorker hands up the Worker's own `{ error, detail }` body as
             // `reason` (an upstream status and its error text on the 502 paths), so
             // name the cause rather than swallowing it. The generic copy stands in
             // only when the error carries nothing to say.

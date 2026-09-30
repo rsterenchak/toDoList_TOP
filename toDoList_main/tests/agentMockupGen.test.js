@@ -38,6 +38,7 @@ vi.mock('../src/supabaseClient.js', () => ({
 let chatReply = '';
 let chatReject = null;
 let chatCalls = [];
+let genTruncated = false;
 let targetById = null;
 
 vi.mock('../src/inject.js', () => ({
@@ -62,6 +63,16 @@ vi.mock('../src/inject.js', () => ({
             return Promise.reject(chatReject instanceof Error ? chatReject : new Error(chatReject));
         }
         return Promise.resolve({ reply: chatReply, suggestedFiles: [] });
+    },
+    // Generate goes through the Worker's dedicated mockup route. Its calls land
+    // in the same chatCalls log (tagged `route: 'mockup'`) so a test can follow
+    // Generate → "use this" in call order.
+    generateMockupsFromWorker: (prompt, repo, opts) => {
+        chatCalls.push({ route: 'mockup', messages: [{ role: 'user', content: prompt }], repo, opts });
+        if (chatReject) {
+            return Promise.reject(chatReject instanceof Error ? chatReject : new Error(chatReject));
+        }
+        return Promise.resolve({ reply: chatReply, variants: 0, truncated: genTruncated, model: '' });
     },
 }));
 
@@ -108,6 +119,7 @@ beforeEach(() => {
     chatReply = ABC;
     chatReject = null;
     chatCalls = [];
+    genTruncated = false;
     targetById = null;
     listLogic.addProject('Mocky');
     mountDom('Mocky');
@@ -400,9 +412,40 @@ describe('AGENT view — needs_mockup in-app A/B/C previews', () => {
         document.querySelector('.agentMockupGenerate').click();
         await flush();
         expect(chatCalls[0].repo).toBeNull();
-        // The chat turn carries no iterate seed and no attachments.
-        expect(chatCalls[0].entryId).toBeNull();
-        expect(chatCalls[0].attach).toBeNull();
+        // Generate uses the Worker's mockup route, bounded by a 180s timeout —
+        // not a chat turn.
+        expect(chatCalls[0].route).toBe('mockup');
+        expect(chatCalls[0].opts).toEqual({ timeoutMs: 180000 });
+    });
+
+    it('renders the variants that parsed and notes a truncated reply without blocking', async () => {
+        genTruncated = true;
+        chatReply = '===VARIANT A===\n<p>Alpha</p>\n===VARIANT B===\n<p>Bravo</p>';
+        queueRows = [{ id: 'g6t', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+
+        expect(document.querySelectorAll('.agentMockupFrame').length).toBe(2);
+        const err = document.querySelector('.agentMockupGenError');
+        expect(err.hidden).toBe(false);
+        expect(err.textContent).toBe('Only 2 of 3 variants fit — Regenerate for a full set.');
+        const genBtn = document.querySelector('.agentMockupGenerate');
+        expect(genBtn.disabled).toBe(false);
+        expect(genBtn.textContent).toBe('Regenerate');
+    });
+
+    it('shows no truncation note when the reply was not truncated', async () => {
+        chatReply = '===VARIANT A===\n<p>Alpha</p>\n===VARIANT B===\n<p>Bravo</p>';
+        queueRows = [{ id: 'g6u', state: 'needs_mockup', context: { title: 'T' } }];
+        await loadBoard();
+
+        document.querySelector('.agentMockupGenerate').click();
+        await flush();
+
+        expect(document.querySelectorAll('.agentMockupFrame').length).toBe(2);
+        expect(document.querySelector('.agentMockupGenError').hidden).toBe(true);
     });
 
     it('names the linked repo (not toDoList_TOP) and drops the toDoList_main/src pin when a repo is routed', async () => {

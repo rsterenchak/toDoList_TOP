@@ -5,7 +5,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 // (the detail pane, the mobile modal, assignment coverage) rebuilds mid-flight,
 // and the old fallback only called paint() — which rebuilds the Agent board, not
 // those hosts — so the fresh block stayed pending. These tests drive the flow
-// through buildMockupSecondary with a scripted chatWithWorker and prove every
+// through buildMockupSecondary with a scripted generateMockupsFromWorker and prove every
 // still-mounted block for the row settles, a failure survives the node that saw
 // it, and the Generate call is bounded by a timeout.
 
@@ -15,7 +15,7 @@ let pendingChat = null;
 vi.mock('../src/inject.js', () => ({
     findTargetById: () => null,
     showInjectToast: () => {},
-    chatWithWorker: (...args) => {
+    generateMockupsFromWorker: (...args) => {
         chatCalls.push(args);
         return new Promise((resolve, reject) => { pendingChat = { resolve, reject }; });
     },
@@ -49,13 +49,13 @@ beforeEach(() => {
 });
 
 describe('mockupFlow — Generate recovers when its host rebuilds mid-flight', () => {
-    it('bounds the Generate chat call with a 120s timeout', async () => {
+    it('bounds the Generate mockup-route call with a 180s timeout', async () => {
         const pane = document.getElementById('pane');
         mount(pane, 'rt-timeout');
         pane.querySelector('.agentMockupGenerate').click();
         await flush();
         expect(chatCalls).toHaveLength(1);
-        expect(chatCalls[0][7]).toEqual({ timeoutMs: 120000 });
+        expect(chatCalls[0][2]).toEqual({ timeoutMs: 180000 });
         pendingChat.resolve({ reply: ABC });
         await flush();
     });

@@ -34,19 +34,21 @@ import { wireModalDismiss } from './modalDismiss.js';
 // DEEP closes the pickable set, straight after CHAT: the composer's two send
 // modes are two registry surfaces now, so the panel stacks them together rather
 // than leaving deep-think as the one model the user can't see or change.
-const MODEL_SURFACES = ['run', 'triage', 'derive', 'scan', 'chat', 'deep'];
+// MOCKUP follows: the Agent board's A/B/C Generate runs on its own Worker route.
+const MODEL_SURFACES = ['run', 'triage', 'derive', 'scan', 'chat', 'deep', 'mockup'];
 
 // The dim right-hand note on a row, where the label alone doesn't say which of
 // two neighbours a surface is. CHAT and DEEP are the composer's two send modes,
 // and nothing about the words "CHAT" and "DEEP" says which one a Fast send uses.
-const SURFACE_SUBLINES = { chat: 'fast sends', deep: 'deep sends' };
+const SURFACE_SUBLINES = { chat: 'fast sends', deep: 'deep sends', mockup: 'A/B/C previews' };
 
 // The catalog lane a surface's picker filters on. The Worker validates a `deep`
 // pick against the `chat` lane — deep-think is the chat route on a heavier
 // model, not a route of its own — so the picker mirrors that mapping here and
 // offers exactly the set a deep write would accept. Every other surface is its
-// own lane.
-const PICKER_LANE_ALIASES = { deep: 'chat' };
+// own lane. MOCKUP maps the same way: the Worker validates a mockup pick
+// against the `chat` lane.
+const PICKER_LANE_ALIASES = { deep: 'chat', mockup: 'chat' };
 
 function pickerLaneFor(surface) {
     return PICKER_LANE_ALIASES[surface] || surface;
