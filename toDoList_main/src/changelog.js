@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-29',
+        added: [
+            'The proposal review sheet now lists proposals in the order derive built them, with a Build order / Rubric toggle to switch to rubric aspect order.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-27',
         fixed: [
             'The API spend panel now prices DeepSeek turns at current V4.1 rates, with off-peak turns counted at half price.',
@@ -24,7 +31,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-08',
         fixed: [
-            'Dictating into the mobile quick-capture panel now keeps listening through pauses, and the listening overlay always closes on a tap.',
             'Tasks added from the mobile quick-capture panel now appear in the list right away instead of only after a refresh.',
         ],
     },

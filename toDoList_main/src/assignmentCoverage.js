@@ -307,6 +307,20 @@ function compareProposalsByAspect(a, b) {
     return compareProposalIds(a, b);
 }
 
+// Order proposals the way derive inserted them — oldest `created_at` first,
+// aspect tags ignored. Derive writes one row at a time foundation-first, so this
+// is the dependency order the review modal defaults to; Rubric mode swaps in
+// compareProposalsByAspect instead. Absent, unparseable, or equal timestamps fall
+// back to the id, then to the stable sort's fetch order, exactly like the
+// untagged branch of compareProposalsByAspect.
+function compareProposalsByBuildOrder(a, b) {
+    const ta = proposalInsertedAt(a);
+    const tb = proposalInsertedAt(b);
+    if (ta === null || tb === null) return 0;
+    if (ta !== tb) return ta - tb;
+    return compareProposalIds(a, b);
+}
+
 // Every `<!-- … -->` span removed. The template seeds assignment.md with
 // commented-out example rows and hint prose, and a comment is not content: the
 // derive agent already ignores it (`.claude/derive.md`), so the parse must too
@@ -2414,6 +2428,12 @@ const _expandedMockupRows = new Set();
 // phone-height column, so opening a second description would push the first one
 // (and the card's own Accept / Dismiss) out of view.
 let _activeProposalId = null;
+// The review modal's sort mode — 'build' (derive's insertion order) or 'rubric'
+// (aspect order). A viewing choice within one review pass, not a preference, so
+// every showProposalReviewModal open resets it to 'build' alongside
+// _activeProposalId; it lives at module scope only so the onQueueChange repaint
+// keeps whatever the user selected.
+let _proposalSortMode = 'build';
 function ensureQueueRepaintListener() {
     if (_queueRepaintWired) return;
     _queueRepaintWired = true;
@@ -2667,6 +2687,7 @@ export function showProposalReviewModal() {
     // stale-backdrop removal directly above, a view rebuild) can't leave a card
     // pre-expanded for whoever opens the sheet next.
     _activeProposalId = null;
+    _proposalSortMode = 'build';
 
     const backdrop = document.createElement('div');
     backdrop.id = 'proposalReviewModalBackdrop';
@@ -2702,6 +2723,39 @@ export function showProposalReviewModal() {
     header.appendChild(title);
     header.appendChild(closeX);
 
+    // Build order / Rubric toggle. Mockup-park and drafted cards sort with the
+    // same comparator as plain proposals in either mode.
+    const sortControl = document.createElement('div');
+    sortControl.id = 'proposalReviewModalSort';
+    sortControl.setAttribute('role', 'group');
+    sortControl.setAttribute('aria-label', 'Proposal order');
+    const sortSegs = [
+        { mode: 'build', label: 'Build order' },
+        { mode: 'rubric', label: 'Rubric' },
+    ].map(function (spec) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'proposalReviewModalSortSeg';
+        seg.dataset.mode = spec.mode;
+        seg.textContent = spec.label;
+        seg.addEventListener('click', function () {
+            if (_proposalSortMode === spec.mode) return;
+            _proposalSortMode = spec.mode;
+            paintSortControl();
+            renderList();
+        });
+        sortControl.appendChild(seg);
+        return seg;
+    });
+    function paintSortControl() {
+        sortSegs.forEach(function (seg) {
+            const on = seg.dataset.mode === _proposalSortMode;
+            seg.classList.toggle('selected', on);
+            seg.setAttribute('aria-pressed', on ? 'true' : 'false');
+        });
+    }
+    paintSortControl();
+
     const body = document.createElement('div');
     body.id = 'proposalReviewModalBody';
 
@@ -2714,6 +2768,7 @@ export function showProposalReviewModal() {
     actions.appendChild(closeBtn);
 
     dialog.appendChild(header);
+    dialog.appendChild(sortControl);
     dialog.appendChild(body);
     dialog.appendChild(actions);
     backdrop.appendChild(dialog);
@@ -2725,7 +2780,8 @@ export function showProposalReviewModal() {
     // Re-render the list from the live proposal set. Closes the modal outright once
     // the last proposal is resolved so an empty shell never lingers.
     function renderList() {
-        const proposals = getProposedRows().slice().sort(compareProposalsByAspect);
+        const proposals = getProposedRows().slice().sort(
+            _proposalSortMode === 'rubric' ? compareProposalsByAspect : compareProposalsByBuildOrder);
         if (!proposals.length) { closeFn(); return; }
         titleText.textContent = proposals.length + ' proposal' +
             (proposals.length === 1 ? '' : 's') + ' to review';

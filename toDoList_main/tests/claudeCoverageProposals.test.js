@@ -129,6 +129,12 @@ async function switchTo(name, result) {
     await flush();
 }
 
+// The review modal opens in Build order (derive's insertion order); tests that
+// pin the aspect ordering flip it to Rubric first.
+function selectRubric() {
+    document.querySelector('.proposalReviewModalSortSeg[data-mode="rubric"]').click();
+}
+
 function proposedRow(id, aspect, title) {
     return {
         id: id,
@@ -395,6 +401,7 @@ describe('COVERAGE tab — proposal review modal', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(renderedAspects()).toEqual(['A1', 'A2', 'B1', 'B3', 'C1']);
     });
 
@@ -407,6 +414,7 @@ describe('COVERAGE tab — proposal review modal', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(renderedAspects()).toEqual(['B2', 'B10']);
     });
 
@@ -422,6 +430,7 @@ describe('COVERAGE tab — proposal review modal', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(renderedAspects()).toEqual(['B', 'B1', 'B2a', 'B2b', 'B3']);
     });
 
@@ -435,6 +444,7 @@ describe('COVERAGE tab — proposal review modal', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(renderedTitles()).toEqual(['a1', 'b1', 'untagged']);
     });
 
@@ -448,6 +458,7 @@ describe('COVERAGE tab — proposal review modal', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(renderedAspects()).toEqual(['A1', 'B1', 'C1']);
 
         // Resolve the middle card (B1) elsewhere → the rest stay in order.
@@ -505,6 +516,7 @@ describe('COVERAGE tab — proposal review modal', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(renderedTitles()).toEqual(['a1', 'b1', 'untagged early']);
     });
 
@@ -519,6 +531,80 @@ describe('COVERAGE tab — proposal review modal', () => {
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
         expect(renderedTitles()).toEqual(['no timestamp', 'garbage timestamp', 'real timestamp']);
+    });
+
+    // Derive inserts proposals foundation-first, one row at a time, so the modal
+    // defaults to that build order even when every row carries an aspect tag.
+    function taggedRow(id, aspect, title, createdAt) {
+        return { ...proposedRow(id, aspect, title), created_at: createdAt };
+    }
+    function buildOrderRows() {
+        return [
+            taggedRow(120, 'A1', 'screen', '2026-08-08T10:00:09Z'),
+            taggedRow(121, 'C1', 'model', '2026-08-08T10:00:01Z'),
+            taggedRow(122, 'B1', 'service', '2026-08-08T10:00:05Z'),
+        ];
+    }
+    async function openWith(name, rows) {
+        setQueueRows(rows, name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+    }
+    function pressedModes() {
+        return Array.from(document.querySelectorAll('.proposalReviewModalSortSeg'))
+            .map(function (b) { return b.dataset.mode + ':' + b.getAttribute('aria-pressed'); });
+    }
+
+    it('opens in Build order with tagged rows ordered by created_at, not aspect', async () => {
+        const name = freshProject();
+        await openWith(name, buildOrderRows());
+        expect(pressedModes()).toEqual(['build:true', 'rubric:false']);
+        expect(document.querySelector('.proposalReviewModalSortSeg.selected').textContent)
+            .toBe('Build order');
+        expect(renderedTitles()).toEqual(['model', 'service', 'screen']);
+    });
+
+    it('breaks a created_at tie by id in Build order', async () => {
+        const name = freshProject();
+        await openWith(name, [
+            taggedRow(133, 'A1', 'third', '2026-08-08T10:00:00Z'),
+            taggedRow(131, 'C1', 'first', '2026-08-08T10:00:00Z'),
+            taggedRow(132, 'B1', 'second', '2026-08-08T10:00:00Z'),
+        ]);
+        expect(renderedTitles()).toEqual(['first', 'second', 'third']);
+    });
+
+    it('switches to Rubric (A→K) and back to Build order', async () => {
+        const name = freshProject();
+        await openWith(name, buildOrderRows());
+        selectRubric();
+        expect(pressedModes()).toEqual(['build:false', 'rubric:true']);
+        expect(renderedAspects()).toEqual(['A1', 'B1', 'C1']);
+        document.querySelector('.proposalReviewModalSortSeg[data-mode="build"]').click();
+        expect(pressedModes()).toEqual(['build:true', 'rubric:false']);
+        expect(renderedTitles()).toEqual(['model', 'service', 'screen']);
+    });
+
+    it('keeps the selected mode across an onQueueChange repaint', async () => {
+        const name = freshProject();
+        await openWith(name, buildOrderRows());
+        selectRubric();
+        setQueueRows(buildOrderRows().concat([taggedRow(123, 'A2', 'extra', '2026-08-08T10:00:00Z')]), name);
+        notifyQueueChange();
+        expect(pressedModes()).toEqual(['build:false', 'rubric:true']);
+        expect(renderedAspects()).toEqual(['A1', 'A2', 'B1', 'C1']);
+    });
+
+    it('resets to Build order when the modal is reopened', async () => {
+        const name = freshProject();
+        await openWith(name, buildOrderRows());
+        selectRubric();
+        document.getElementById('proposalReviewModalClose').click();
+        expect(document.getElementById('proposalReviewModalBackdrop')).toBeFalsy();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+        expect(pressedModes()).toEqual(['build:true', 'rubric:false']);
+        expect(renderedTitles()).toEqual(['model', 'service', 'screen']);
     });
 });
 
@@ -655,6 +741,7 @@ describe('COVERAGE tab — needs_mockup rows', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(Array.from(document.querySelectorAll('.proposalCardTitle'))
             .map(function (t) { return t.textContent; }))
             .toEqual(['a1', 'a2 mockup', 'c1']);
@@ -669,6 +756,7 @@ describe('COVERAGE tab — needs_mockup rows', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(document.querySelectorAll('.proposalCard').length).toBe(2);
         // A mockup was chosen → the row moves to `drafted`, still homeless, so the
         // sheet keeps it and swaps the mockup primary for Dispatch (the entry is
@@ -889,6 +977,7 @@ describe('COVERAGE tab — drafted and failed queue states', () => {
         await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
         coverageTab().click();
         coverageView().querySelector('.claudeCoverageProposals').click();
+        selectRubric();
         expect(Array.from(document.querySelectorAll('.proposalCardTitle'))
             .map(function (t) { return t.textContent; }))
             .toEqual(['a1', 'a2 draft', 'c1']);
