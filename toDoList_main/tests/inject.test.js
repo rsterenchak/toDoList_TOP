@@ -686,3 +686,45 @@ describe('extractTasksFromWorker payload + reply normalization', () => {
             .rejects.toThrow('Upstream refused (502)');
     });
 });
+
+// postToWorker takes an optional `{ timeoutMs }`: an AbortController cancels a
+// stalled fetch and the call rejects with a "Timed out after <N>s" reason rather
+// than never settling. Callers that pass nothing get the bare fetch as before.
+describe('chatWithWorker — request timeout', () => {
+    it('rejects with "Timed out after <N>s" when the fetch stalls past timeoutMs', async () => {
+        vi.useFakeTimers();
+        try {
+            fetchSpy.mockImplementationOnce((url, init) => new Promise((resolve, reject) => {
+                init.signal.addEventListener('abort', () => reject(new Error('aborted')));
+            }));
+            const p = chatWithWorker(
+                [{ role: 'user', content: 'hi' }],
+                null, null, null, undefined, undefined, undefined,
+                { timeoutMs: 2000 },
+            );
+            const settled = p.then(() => null, (e) => e);
+            await vi.advanceTimersByTimeAsync(2000);
+            const err = await settled;
+            expect(err).toBeTruthy();
+            expect(err.reason).toBe('Timed out after 2s');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    it('still reports a plain network failure as "Network error" when a timeout is set', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.reject(new Error('offline')));
+        const err = await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            null, null, null, undefined, undefined, undefined,
+            { timeoutMs: 2000 },
+        ).then(() => null, (e) => e);
+        expect(err.reason).toBe('Network error');
+    });
+
+    it('sends no abort signal when no opts are passed', async () => {
+        await chatWithWorker([{ role: 'user', content: 'hi' }]);
+        const init = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1][1];
+        expect(init.signal).toBeUndefined();
+    });
+});

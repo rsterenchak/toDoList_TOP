@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-09-30',
+        fixed: [
+            'Generating mockups no longer gets stuck on “Generating…” in the task detail pane, and a stalled or failed generation now shows its error instead.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-29',
         added: [
             'The proposal review sheet now lists proposals in the order derive built them, with a Build order / Rubric toggle to switch to rubric aspect order.',
@@ -21,9 +28,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-09-26',
-        added: [
-            'The Structure view header now shows a Live preview chip that opens the project’s in-browser preview build.',
-        ],
         fixed: [
             'The mobile project header now sits clear of the iOS status bar, so the PROJECT N OF M line no longer reads as blurred.',
         ],
