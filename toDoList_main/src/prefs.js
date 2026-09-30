@@ -453,3 +453,35 @@ export function setUsageBudget(amount) {
         }
     } catch (e) { /* ignore quota/private-mode */ }
 }
+
+// ── proposal review modal size ──
+// The desktop Proposal review modal is corner-drag resizable; the chosen size
+// comes back on the next open. Stored as `{ width, height }` in px. Anything
+// that doesn't parse to two positive finite numbers reads as null (the modal
+// then opens at its CSS default size); clamping to the live viewport is the
+// modal's job, not the pref's.
+export const PROPOSAL_REVIEW_MODAL_SIZE_KEY = 'todoapp_proposalReviewModalSize';
+
+export function getProposalReviewModalSize() {
+    try {
+        const raw = localStorage.getItem(PROPOSAL_REVIEW_MODAL_SIZE_KEY);
+        if (!raw) return null;
+        const parsed = JSON.parse(raw);
+        const width = parsed && Number(parsed.width);
+        const height = parsed && Number(parsed.height);
+        if (!isFinite(width) || !isFinite(height) || width <= 0 || height <= 0) return null;
+        return { width: width, height: height };
+    } catch (e) {
+        return null;
+    }
+}
+
+export function setProposalReviewModalSize(size) {
+    try {
+        const width = size && Number(size.width);
+        const height = size && Number(size.height);
+        if (!isFinite(width) || !isFinite(height) || width <= 0 || height <= 0) return;
+        localStorage.setItem(PROPOSAL_REVIEW_MODAL_SIZE_KEY,
+            JSON.stringify({ width: Math.round(width), height: Math.round(height) }));
+    } catch (e) { /* ignore quota/private-mode */ }
+}

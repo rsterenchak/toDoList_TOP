@@ -1968,9 +1968,8 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/modelsPanel.js`
   <!-- id: 0d2b0514-733a-4050-8da0-349cdee6c985 -->
 
-- [ ] **[MEDIUM]** Make the Proposal review modal user-resizable with persisted size
+- [x] **[MEDIUM]** Make the Proposal review modal user-resizable with persisted size — Completed: 2026-09-30
   - Type: feature
   - Description: The Proposal review modal (`#proposalReviewModal`, built by `showProposalReviewModal`) is fixed at `max-width: 460px` / `max-height: 86vh`; on desktop it should be draggable to resize via a corner grip in the bottom-right (matching variant A), clamped to sane bounds (roughly 360–720px wide, 300px–86vh tall), with the chosen `{ width, height }` persisted in localStorage under `todoapp_proposalReviewModalSize` and restored on open. Mobile (`isMobile()`, `< 1024px`) must keep the current full-height sheet behavior with the grip hidden and no inline width/height applied, so the desktop size never leaks into the mobile layout. The resize must not break the existing header/close, sort segment, scrolling `#proposalReviewModalBody`, and actions row — the body keeps `flex: 1 1 auto; min-height: 0; overflow: auto`, and Escape / backdrop / close button still dismiss the modal. Add the grip as a keyboard-focusable control (arrow keys adjust size when focused) so it is reachable without a pointer.
   - File: `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/style.css`, `toDoList_main/src/prefs.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 6ea93add-eea9-4622-9c98-535169da98d6 -->

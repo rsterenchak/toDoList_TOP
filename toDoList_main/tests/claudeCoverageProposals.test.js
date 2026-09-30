@@ -759,6 +759,147 @@ describe('COVERAGE tab — proposal review modal manual reordering', () => {
     });
 });
 
+describe('COVERAGE tab — proposal review modal resize', () => {
+    const SIZE_KEY = 'todoapp_proposalReviewModalSize';
+    const origWidth = window.innerWidth;
+    const origHeight = window.innerHeight;
+    function setViewport(w, h) {
+        Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: w });
+        Object.defineProperty(window, 'innerHeight', { configurable: true, writable: true, value: h });
+    }
+    async function openModal() {
+        const name = freshProject();
+        setQueueRows([proposedRow(10, 'A1', 'Add a menu'), proposedRow(11, 'A2', 'Persist')], name);
+        await switchTo(name, { ok: true, content: FILLED_WITH_ASPECTS });
+        coverageTab().click();
+        coverageView().querySelector('.claudeCoverageProposals').click();
+    }
+    function dialog() { return document.getElementById('proposalReviewModal'); }
+    function grip() { return document.getElementById('proposalReviewModalResize'); }
+    function key(k) {
+        grip().dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true }));
+    }
+    function pointer(type, x, y) {
+        const e = new Event(type, { bubbles: true, cancelable: true });
+        e.clientX = x;
+        e.clientY = y;
+        e.pointerId = 1;
+        grip().dispatchEvent(e);
+    }
+    function stored() { return JSON.parse(localStorage.getItem(SIZE_KEY)); }
+
+    beforeEach(() => { setViewport(1280, 1000); });
+    afterEach(() => { setViewport(origWidth, origHeight); });
+
+    it('renders a focusable grip and no inline size by default', async () => {
+        await openModal();
+        expect(grip()).toBeTruthy();
+        expect(grip().tagName).toBe('BUTTON');
+        expect(grip().hidden).toBe(false);
+        expect(dialog().style.width).toBe('');
+        expect(dialog().style.height).toBe('');
+        expect(dialog().classList.contains('proposalReviewModalSized')).toBe(false);
+    });
+
+    it('restores a persisted size on open', async () => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 600, height: 500 }));
+        await openModal();
+        expect(dialog().style.width).toBe('600px');
+        expect(dialog().style.height).toBe('500px');
+        expect(dialog().classList.contains('proposalReviewModalSized')).toBe(true);
+    });
+
+    it('clamps a persisted size to the 360–720 width and 300–86vh height bounds', async () => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 5000, height: 5000 }));
+        await openModal();
+        expect(dialog().style.width).toBe('720px');
+        expect(dialog().style.height).toBe('860px');
+        document.getElementById('proposalReviewModalClose').click();
+
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 10, height: 10 }));
+        await openModal();
+        expect(dialog().style.width).toBe('360px');
+        expect(dialog().style.height).toBe('300px');
+    });
+
+    it('ignores a malformed stored size', async () => {
+        localStorage.setItem(SIZE_KEY, 'not json');
+        await openModal();
+        expect(dialog().style.width).toBe('');
+    });
+
+    it('arrow keys on the grip resize and persist', async () => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 500, height: 400 }));
+        await openModal();
+        key('ArrowRight');
+        expect(dialog().style.width).toBe('520px');
+        expect(stored()).toEqual({ width: 520, height: 400 });
+        key('ArrowDown');
+        expect(dialog().style.height).toBe('420px');
+        key('ArrowLeft');
+        key('ArrowUp');
+        expect(stored()).toEqual({ width: 500, height: 400 });
+        // A non-arrow key leaves the size alone.
+        key('a');
+        expect(stored()).toEqual({ width: 500, height: 400 });
+    });
+
+    it('a pointer drag on the grip resizes and persists on release', async () => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 500, height: 400 }));
+        await openModal();
+        pointer('pointerdown', 100, 100);
+        pointer('pointermove', 180, 150);
+        expect(dialog().style.width).toBe('580px');
+        expect(dialog().style.height).toBe('450px');
+        // Not persisted until the drag ends.
+        expect(stored()).toEqual({ width: 500, height: 400 });
+        pointer('pointerup', 180, 150);
+        expect(stored()).toEqual({ width: 580, height: 450 });
+    });
+
+    it('mobile hides the grip and applies no stored size', async () => {
+        setViewport(800, 900);
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 600, height: 500 }));
+        await openModal();
+        expect(grip().hidden).toBe(true);
+        expect(dialog().style.width).toBe('');
+        expect(dialog().style.height).toBe('');
+        key('ArrowRight');
+        expect(dialog().style.width).toBe('');
+        expect(stored()).toEqual({ width: 600, height: 500 });
+    });
+
+    it('drops the inline size when the window shrinks past the mobile breakpoint', async () => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 600, height: 500 }));
+        await openModal();
+        expect(dialog().style.width).toBe('600px');
+        setViewport(800, 900);
+        window.dispatchEvent(new Event('resize'));
+        expect(dialog().style.width).toBe('');
+        expect(grip().hidden).toBe(true);
+        setViewport(1280, 1000);
+        window.dispatchEvent(new Event('resize'));
+        expect(dialog().style.width).toBe('600px');
+    });
+
+    it('Escape, backdrop, and close button still dismiss a resized modal', async () => {
+        localStorage.setItem(SIZE_KEY, JSON.stringify({ width: 600, height: 500 }));
+        await openModal();
+        grip().focus();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(document.getElementById('proposalReviewModalBackdrop')).toBeFalsy();
+
+        await openModal();
+        const backdrop = document.getElementById('proposalReviewModalBackdrop');
+        backdrop.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(document.getElementById('proposalReviewModalBackdrop')).toBeFalsy();
+
+        await openModal();
+        document.getElementById('proposalReviewModalCloseBtn').click();
+        expect(document.getElementById('proposalReviewModalBackdrop')).toBeFalsy();
+    });
+});
+
 describe('computeMovedSortKey', () => {
     const r = (id, key) => ({ id: id, sort_key: key });
 
