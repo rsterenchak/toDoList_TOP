@@ -9652,6 +9652,46 @@ button.complexityNestChip:disabled {
 #proposalReviewModalClose:hover { color: var(--text-primary); }
 #proposalReviewModalClose:focus { outline: none; color: var(--accent-text); }
 
+/* Build order / Rubric toggle — a fixed band under the header, styled after the
+   description editor's status segments. */
+#proposalReviewModalSort {
+  flex: 0 0 auto;
+  display: flex;
+  margin: 10px 14px 0;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.proposalReviewModalSortSeg {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 8px 6px;
+  background: var(--bg-surface);
+  border: none;
+  border-left: 0.5px solid var(--border-bright);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  color: var(--accent-text);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.proposalReviewModalSortSeg:first-child { border-left: none; }
+.proposalReviewModalSortSeg:hover { background: var(--bg-hover); }
+.proposalReviewModalSortSeg:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -2px;
+}
+.proposalReviewModalSortSeg.selected,
+.proposalReviewModalSortSeg.selected:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
 #proposalReviewModalBody {
   padding: 10px 14px;
   flex: 1 1 auto;
