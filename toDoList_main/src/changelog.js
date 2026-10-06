@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-05',
+        fixed: [
+            'Opening the project sidebar on mobile now darkens the task list behind it and no longer lets taps reach the tasks underneath.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-09-30',
         added: [
             'The proposal review modal can now be resized on desktop by dragging its bottom-right corner or with the arrow keys, and remembers its size.',
@@ -13,13 +20,6 @@ export const changelog = [
             'Generating mockups no longer gets stuck on “Generating…” in the task detail pane, and a stalled or failed generation now shows its error instead.',
             'Generated mockups now come back as a full A/B/C set instead of cutting off mid-variant, and a reply that still runs short shows the variants that fit with a note to regenerate.',
             'Accepting a proposal now marks its newly created task as In Progress while its run is underway.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-09-29',
-        added: [
-            'Proposals in Build order can now be moved up or down with arrows on each card, and the new order is saved.',
         ],
     },
 ];
