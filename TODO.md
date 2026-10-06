@@ -1981,3 +1981,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: Chat's Inject & run path in `claudeSheet.js` (also uses `materializeEntryTodo`) and any change to `addEntryTodo`'s default status for other callers such as `mobileTaskCreate.js`.
   - File: `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/listLogic.js`
   <!-- id: ec7930c7-3c07-4f77-a104-33beb65bf7b6 -->
+
+- [ ] **[MEDIUM]** Block task interaction and darken the tasks pane behind the open mobile project sidebar
+  - Type: bug
+  - Description: On mobile, opening the project sidebar leaves the tasks pane undimmed and still tappable, so taps intended for the drawer land on the todo rows underneath. The existing `#sidebarOverlay` backdrop (dims + blurs, click closes the drawer via `sidebarDrawer.js`) is either too light or painted below the tasks pane, so it neither darkens the tasks side nor intercepts touches. Deepen the dim to ~`rgba(0,0,0,0.68)` with `blur(3px)` and ensure the overlay stacks above the tasks pane but below `#sideBar` (z-index 9) while blocking pointer events, so no task tap-through leaks. Scope the change to the mobile sidebar-open state — desktop layout, the click-backdrop-to-close behavior, and all four drawer dismiss affordances must be unchanged.
+  - File: `toDoList_main/src/style.css`, `toDoList_main/src/sidebarDrawer.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: a84663c5-0e5d-4206-b131-f20e10607bd8 -->
