@@ -15653,6 +15653,14 @@ body.row-dragging * { cursor: grabbing !important; }
     transform: translateX(0);
   }
 
+  /* Open-drawer backdrop: a deeper dim than desktop so the tasks pane
+     clearly recedes behind the drawer. */
+  #sidebarOverlay {
+    background: rgba(0,0,0,0.68);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
   /* #sidebarBottom sizes to its actual content (the Settings button wrap
      and the version footer — roughly 80–100px) and #sidebarTop expands
      to fill all remaining vertical space inside #sideBar. min-height:0
@@ -16428,6 +16436,16 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Three tracks at this breakpoint: the mobile project header (row 1), the
      status filter pill row (row 2), and the scrollable list (row 3). */
   #mainBar         { grid-template-rows: auto auto 1fr; }
+  /* #mainBar is position:relative with no z-index, so positioned task-pane
+     children with a z-index above the overlay's 8 painted over the backdrop
+     and took taps meant for the drawer. While the drawer is open, pin the
+     tasks pane to its own z-index:0 stacking context (below the overlay,
+     which stays below #sideBar's 9) and stop it taking pointer events. */
+  #sideBar.sidebar-open ~ #mainBar {
+    z-index: 0;
+    pointer-events: none;
+  }
+
   /* Top/bottom padding bumped (sides stay tight at 4px) so the taller
      segmented filter + sort controls sit in the bar without clipping. */
   /* Left-align the un-fused row so the cycle pill hugs its content at the left
