@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-06T03:10:56.336Z",
-  "sha": "0469c5c81b84df166471928177fc92dea63a0a31",
+  "generatedAt": "2026-10-07T14:20:27.986Z",
+  "sha": "fd22486e54b41ffdb928758f09865a3150f5abab",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -690,11 +690,11 @@
       "selector": "#bulkDescActions",
       "label": "Bulk Desc Actions",
       "file": "main.js",
-      "line": 1183,
+      "line": 1186,
       "files": [
         {
           "file": "main.js",
-          "line": 1183
+          "line": 1186
         },
         {
           "file": "style.css",
@@ -2682,11 +2682,11 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 1579,
+      "line": 1582,
       "files": [
         {
           "file": "main.js",
-          "line": 1579
+          "line": 1582
         },
         {
           "file": "style.css",
@@ -2698,11 +2698,11 @@
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
       "file": "main.js",
-      "line": 1584,
+      "line": 1587,
       "files": [
         {
           "file": "main.js",
-          "line": 1584
+          "line": 1587
         },
         {
           "file": "style.css",
@@ -2714,11 +2714,11 @@
       "selector": "#drawerFooterVersion",
       "label": "Drawer Footer Version",
       "file": "main.js",
-      "line": 1581,
+      "line": 1584,
       "files": [
         {
           "file": "main.js",
-          "line": 1581
+          "line": 1584
         },
         {
           "file": "style.css",
@@ -2730,11 +2730,11 @@
       "selector": "#drawerSettingsBtn",
       "label": "Drawer Settings Btn",
       "file": "main.js",
-      "line": 1518,
+      "line": 1521,
       "files": [
         {
           "file": "main.js",
-          "line": 1518
+          "line": 1521
         },
         {
           "file": "style.css",
@@ -2746,11 +2746,11 @@
       "selector": "#drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 1536,
+      "line": 1539,
       "files": [
         {
           "file": "main.js",
-          "line": 1536
+          "line": 1539
         }
       ]
     },
@@ -2758,11 +2758,11 @@
       "selector": "#drawerSettingsBtnWrap",
       "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
-      "line": 1575,
+      "line": 1578,
       "files": [
         {
           "file": "main.js",
-          "line": 1575
+          "line": 1578
         },
         {
           "file": "style.css",
@@ -4418,11 +4418,11 @@
       "selector": "#mobileSidebarClose",
       "label": "Mobile Sidebar Close",
       "file": "main.js",
-      "line": 1164,
+      "line": 1167,
       "files": [
         {
           "file": "main.js",
-          "line": 1164
+          "line": 1167
         },
         {
           "file": "style.css",
@@ -5026,11 +5026,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 2161,
+      "line": 2164,
       "files": [
         {
           "file": "main.js",
-          "line": 2161
+          "line": 2164
         },
         {
           "file": "style.css",
@@ -5058,11 +5058,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 2169,
+      "line": 2172,
       "files": [
         {
           "file": "main.js",
-          "line": 2169
+          "line": 2172
         },
         {
           "file": "style.css",
@@ -5090,11 +5090,11 @@
       "selector": "#projectPickerDropdown",
       "label": "Project Picker Dropdown",
       "file": "main.js",
-      "line": 874,
+      "line": 877,
       "files": [
         {
           "file": "main.js",
-          "line": 874
+          "line": 877
         },
         {
           "file": "style.css",
@@ -6310,11 +6310,11 @@
       "selector": "#structureView",
       "label": "Structure View",
       "file": "main.js",
-      "line": 1078,
+      "line": 1081,
       "files": [
         {
           "file": "main.js",
-          "line": 1078
+          "line": 1081
         },
         {
           "file": "style.css",
@@ -6354,11 +6354,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3821,
+      "line": 3824,
       "files": [
         {
           "file": "main.js",
-          "line": 3821
+          "line": 3824
         },
         {
           "file": "style.css",
@@ -6370,11 +6370,11 @@
       "selector": "#taskSortBtn",
       "label": "Task Sort Btn",
       "file": "main.js",
-      "line": 1201,
+      "line": 1204,
       "files": [
         {
           "file": "main.js",
-          "line": 1201
+          "line": 1204
         },
         {
           "file": "style.css",
@@ -6386,11 +6386,11 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 1238,
+      "line": 1241,
       "files": [
         {
           "file": "main.js",
-          "line": 1238
+          "line": 1241
         },
         {
           "file": "style.css",
@@ -6918,11 +6918,11 @@
       "selector": "#viewPillProjects",
       "label": "View Pill Projects",
       "file": "main.js",
-      "line": 994,
+      "line": 997,
       "files": [
         {
           "file": "main.js",
-          "line": 994
+          "line": 997
         },
         {
           "file": "style.css",
@@ -6934,11 +6934,11 @@
       "selector": "#viewPillStructure",
       "label": "View Pill Structure",
       "file": "main.js",
-      "line": 1020,
+      "line": 1023,
       "files": [
         {
           "file": "main.js",
-          "line": 1020
+          "line": 1023
         },
         {
           "file": "style.css",
@@ -6950,11 +6950,11 @@
       "selector": "#viewSwitcher",
       "label": "View Switcher",
       "file": "main.js",
-      "line": 989,
+      "line": 992,
       "files": [
         {
           "file": "main.js",
-          "line": 989
+          "line": 992
         },
         {
           "file": "style.css",
