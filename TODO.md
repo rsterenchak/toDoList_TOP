@@ -1989,9 +1989,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-05
   <!-- id: a84663c5-0e5d-4206-b131-f20e10607bd8 -->
 
-- [ ] **[MEDIUM]** Fix mobile projects-drawer backdrop not dimming the tasks pane
+- [x] **[MEDIUM]** Fix mobile projects-drawer backdrop not dimming the tasks pane
   - Type: bug
   - Description: With the mobile projects drawer open, the tasks pane behind it is not visibly darkened even though `#sidebarOverlay` is already defined with `background: rgba(0,0,0,0.68)` and `backdrop-filter: blur(3px)` in the mobile media query. Verify the on-device stacking instead of assuming the rule applies: the overlay is `z-index: 8` and `#sideBar` is `z-index: 9`, while `#mainBar` is set to `z-index: 0` with `pointer-events: none` while open — if `#mainBar` (or a task-pane ancestor) creates its own stacking context or paints above the overlay, the dim is swallowed and the backdrop never appears. Make the overlay reliably paint above the task rows so the tasks pane clearly recedes behind the drawer on mobile, matching the chosen variant-A mockup (deep dim + blur, drawer crisply on top). Preserve the existing open-drawer behavior intact: the `pointer-events: none` on `#mainBar` must still block taps on todo elements, `#sidebarOverlay.visible` must still be toggled by `openSidebar()`/close in `sidebarDrawer.js`, and Escape/backdrop-tap drawer dismissal must still work. Confirm the fix at the mobile breakpoint (`isMobile()`, `< 1024px`) only and that the desktop layout is unchanged.
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/sidebarDrawer.js`, `toDoList_main/src/main.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-10-07
   <!-- id: 2ed069fd-22c5-4fdd-bf2d-85ac7aee82ec -->
