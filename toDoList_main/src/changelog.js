@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-07',
+        fixed: [
+            'Opening the projects drawer on mobile by tapping the project name now dims the task list behind it.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-05',
         fixed: [
             'Opening the project sidebar on mobile now darkens the task list behind it and no longer lets taps reach the tasks underneath.',
@@ -13,9 +20,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-09-30',
-        added: [
-            'The proposal review modal can now be resized on desktop by dragging its bottom-right corner or with the arrow keys, and remembers its size.',
-        ],
         fixed: [
             'Generating mockups no longer gets stuck on “Generating…” in the task detail pane, and a stalled or failed generation now shows its error instead.',
             'Generated mockups now come back as a full A/B/C set instead of cutting off mid-variant, and a reply that still runs short shows the variants that fit with a note to regenerate.',
