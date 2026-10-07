@@ -851,10 +851,13 @@ function component() {
 
     // Tap on name/chevron opens the drawer (the project picker on
     // mobile). Desktop ignores the gesture because the drawer pattern is
-    // mobile-only, but the listener is harmless above 1023px.
+    // mobile-only, but the listener is harmless above 1023px. The backdrop is
+    // shown alongside the drawer so the tasks pane dims behind it, exactly as
+    // the hamburger's openSidebar() does.
     function openMobileDrawer() {
         if (!main1.classList.contains('sidebar-open')) {
             main1.classList.add('sidebar-open');
+            sidebarOverlay.classList.add('visible');
             if (typeof window.bottomSheetRefreshVisibility === 'function') {
                 window.bottomSheetRefreshVisibility();
             }
