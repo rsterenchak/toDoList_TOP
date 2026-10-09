@@ -23873,6 +23873,38 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: var(--text-secondary);
   overflow-wrap: anywhere;
 }
+/* Offboard options inside a target row's Delete confirm — label rows styled
+   like the onboard sub-modal's field labels, with the purge / force options
+   indented beneath the parent checkbox. */
+.injectOffboardConfirm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: -6px 0 16px;
+}
+.injectOffboardSubs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 22px;
+}
+.injectOffboardSubs[hidden] {
+  display: none;
+}
+.injectFieldLabel.injectOffboardCheck {
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  cursor: pointer;
+}
+.injectOffboardCheck input[type="checkbox"] {
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+}
+.injectOffboardCheck--sub {
+  color: var(--text-muted);
+}
 #injectOnboardActions {
   display: flex;
   justify-content: flex-end;

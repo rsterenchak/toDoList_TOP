@@ -2270,6 +2270,26 @@ export async function onboardRepo(targetRepo, shape, purpose, refresh) {
     }
 }
 
+// Fire the Worker's offboard route, which strips a repo's scaffold and
+// secrets. Same postToWorker + describeError vocabulary as onboardRepo.
+// `purge` also deletes the authored docs (CLAUDE.md, routine.md, style docs,
+// briefs, TODO.md); `force` also deletes held files the script can't prove
+// template-sourced. Both are coerced to literal booleans — the Worker only
+// honours `true`, never a truthy string.
+export async function offboardRepo(targetRepo, purge, force) {
+    try {
+        const res = await postToWorker({
+            offboard: true,
+            target_repo: targetRepo,
+            purge: !!purge,
+            force: !!force,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
 // Fire the Worker's preflight route — the same `onboard.yml`, dispatched in
 // report-only mode (ONBOARD_PREFLIGHT=1) so it writes nothing and returns what
 // it *would* do: the resolved shape, the derived commands, a `create[]` list of
@@ -3204,6 +3224,62 @@ function showOnboardModal(options) {
 }
 
 
+// Body for a target row's Delete confirm: one "offboard" checkbox that, when
+// checked, reveals the `purge` / `force` sub-options and relabels the confirm
+// button "Delete + offboard". Everything starts off on every open and is never
+// persisted — offboarding is a deliberate per-delete choice. Returns the node
+// for showConfirmModal's `body` plus a `read()` for the onConfirm handler.
+function buildOffboardConfirmBody() {
+    const body = document.createElement('div');
+    body.className = 'injectOffboardConfirm';
+
+    function checkRow(id, text, sub) {
+        const label = document.createElement('label');
+        label.className = 'injectFieldLabel injectOffboardCheck' + (sub ? ' injectOffboardCheck--sub' : '');
+        const input = document.createElement('input');
+        input.type = 'checkbox';
+        input.id = id;
+        input.checked = false;
+        const span = document.createElement('span');
+        span.textContent = text;
+        label.appendChild(input);
+        label.appendChild(span);
+        return { label: label, input: input };
+    }
+
+    const main = checkRow('injectOffboardCheck', 'Also strip the repo’s scaffold and secrets (offboard)', false);
+    const subs = document.createElement('div');
+    subs.className = 'injectOffboardSubs';
+    subs.hidden = true;
+    const purge = checkRow('injectOffboardPurge', 'purge — also delete CLAUDE.md, routine.md, style docs, briefs, TODO.md', true);
+    const force = checkRow('injectOffboardForce', 'force — also delete held files the script can’t prove template-sourced', true);
+    subs.appendChild(purge.label);
+    subs.appendChild(force.label);
+    body.appendChild(main.label);
+    body.appendChild(subs);
+
+    main.input.addEventListener('change', function() {
+        const on = main.input.checked;
+        subs.hidden = !on;
+        if (!on) {
+            purge.input.checked = false;
+            force.input.checked = false;
+        }
+        const dialog = body.closest('#confirmModal');
+        const confirmBtn = dialog && dialog.querySelector('#confirmModalConfirm');
+        if (confirmBtn) confirmBtn.textContent = on ? 'Delete + offboard' : 'Delete';
+    });
+
+    return {
+        body: body,
+        read: function() {
+            const on = main.input.checked;
+            return { offboard: on, purge: on && purge.input.checked, force: on && force.input.checked };
+        },
+    };
+}
+
+
 // ── SETTINGS MODAL ──
 // Opens the per-device Inject settings dialog. Reads / writes the four
 // localStorage keys above; Save and Clear both refresh every visible
@@ -3879,10 +3955,23 @@ export function showInjectSettingsModal(options) {
         trashIcon.title = 'Delete';
         trashIcon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 4 13 4"/><path d="M5 4v-1a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M4.5 4l.7 9a1 1 0 0 0 1 .9h3.6a1 1 0 0 0 1-.9l.7-9"/></svg>';
         trashIcon.addEventListener('click', function() {
+            const offboard = buildOffboardConfirmBody();
             showConfirmModal({
                 message: 'Delete target `' + target.nickname + '`? Projects routing to it will become unrouted.',
                 confirmLabel: 'Delete',
+                body: offboard.body,
                 onConfirm: async function() {
+                    // Dispatch first, delete second: a failed offboard
+                    // leaves the target in place, so nothing has changed
+                    // yet and the user can retry from the same row.
+                    const choice = offboard.read();
+                    if (choice.offboard) {
+                        const o = await offboardRepo(target.repo, choice.purge, choice.force);
+                        if (!o.ok) {
+                            showInjectToast(o.reason || 'Offboard failed', 'error');
+                            return;
+                        }
+                    }
                     const r = await deleteInjectTarget(target.id);
                     if (!r.ok) {
                         showInjectToast(r.reason || 'Delete failed', 'error');
@@ -3900,7 +3989,7 @@ export function showInjectSettingsModal(options) {
                     // the FK ON DELETE SET NULL has already nulled the
                     // target_id on the server side.
                     listLogic.clearProjectTargetId(target.id, { fromSync: true });
-                    showInjectToast('Target deleted');
+                    showInjectToast(choice.offboard ? 'Target deleted · offboard dispatched' : 'Target deleted');
                     refreshTargets();
                     renderProjectRouting();
                     refreshAllInjectButtons();

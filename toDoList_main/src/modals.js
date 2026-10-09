@@ -60,6 +60,9 @@ export { wireModalDismiss };
 // project, delete todo) require a confirmation step per CLAUDE.md; the native
 // dialog breaks visual continuity and can't be styled. Closes on Cancel,
 // backdrop click, or Escape — matching the modal conventions in CLAUDE.md.
+// An optional `options.body` DOM node is mounted between the message and the
+// actions (e.g. extra checkboxes a caller wants decided alongside the
+// confirm); `onConfirm` receives it so the caller can read those controls.
 export function showConfirmModal(options) {
 
     // Defensive: remove any stray prior modal so we never stack two.
@@ -95,6 +98,8 @@ export function showConfirmModal(options) {
     actions.appendChild(cancelBtn);
     actions.appendChild(confirmBtn);
     dialog.appendChild(msg);
+    const extraBody = options.body || null;
+    if (extraBody) dialog.appendChild(extraBody);
     dialog.appendChild(actions);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
@@ -121,7 +126,10 @@ export function showConfirmModal(options) {
         // Arrow keys swap focus between the two buttons. Trap Tab inside the
         // dialog so focus can never escape into the disabled background while
         // a destructive confirmation is pending.
-        if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+        // With a caller body, arrows only swap the buttons while one of them
+        // has focus — inside the body they belong to the focused control.
+        const onButton = document.activeElement === cancelBtn || document.activeElement === confirmBtn;
+        if ((event.key === 'ArrowLeft' || event.key === 'ArrowRight') && (onButton || !extraBody)) {
             event.preventDefault();
             event.stopPropagation();
             if (event.key === 'ArrowLeft') cancelBtn.focus();
@@ -131,15 +139,27 @@ export function showConfirmModal(options) {
         if (event.key === 'Tab') {
             event.preventDefault();
             event.stopPropagation();
-            const next = document.activeElement === cancelBtn ? confirmBtn : cancelBtn;
-            next.focus();
+            if (!extraBody) {
+                const next = document.activeElement === cancelBtn ? confirmBtn : cancelBtn;
+                next.focus();
+                return;
+            }
+            // With a caller body, cycle every visible control in it plus the
+            // two buttons — still trapped inside the dialog.
+            const ring = Array.prototype.filter.call(
+                extraBody.querySelectorAll('input, button, select, textarea'),
+                function(el) { return !el.disabled && !el.closest('[hidden]'); }
+            ).concat([cancelBtn, confirmBtn]);
+            const at = ring.indexOf(document.activeElement);
+            const step = event.shiftKey ? -1 : 1;
+            ring[(at + step + ring.length) % ring.length].focus();
         }
     }
 
     cancelBtn.addEventListener('click', close);
     confirmBtn.addEventListener('click', function() {
         close();
-        if (typeof options.onConfirm === 'function') options.onConfirm();
+        if (typeof options.onConfirm === 'function') options.onConfirm(extraBody);
     });
     // Only backdrop clicks should dismiss — clicks inside the dialog should not.
     backdrop.addEventListener('click', function(event) {
