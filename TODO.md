@@ -2048,3 +2048,11 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/runsTabVerifyPanel.test.js`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: b8cb8181-71b7-4685-a452-0f64f5eb6b73 -->
+
+- [ ] **[MEDIUM]** Populate `rec.runUrl` on queue run records so the verify panel's "All screenshots" link renders
+  - Type: bug
+  - Description: The verify panel renders its "All screenshots ↗" link only when `rec.runUrl` is truthy, but `buildQueueRunRecords` in `claudeSheet.js` copies `run_id` onto `rec.runId` and never sets `rec.runUrl`, so on every Runs-tab row that link is omitted and a shot's full-size image is reachable only through its own thumbnail. In `buildQueueRunRecords`, beside the existing `verify` mapping, set `rec.runUrl`: prefer `row.run_url` when the queue row carries it, otherwise derive the GitHub Actions run page `https://github.com/<repo>/actions/runs/<row.run_id>` when `row.run_id != null` (`repo` is already in scope from `repoForProject(projectName)`), and leave it unset when neither is available. No other change is needed — `renderVerifyPanel`'s existing `rec.runUrl` branch already emits the link and already stops propagation via `isolateFromRunRow`, and local-storage fallback records still never carry `verify`, so they never reach it.
+  - Tests: extend `tests/runsTabVerifyPanel.test.js` — seed `run_url` on the two-shot shipped row and assert the actions line is `['All screenshots ↗', 'Open PR ↗']` with the run-URL `href`, and that tapping it does not fire iterate; add a row with neither `run_url` nor `run_id` asserting the link is omitted. Run the full suite from `toDoList_main`.
+  - File: `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/runsTabVerifyPanel.test.js`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: f2e7f4b4-6d9d-477f-97af-6c4ec8d0087d -->
