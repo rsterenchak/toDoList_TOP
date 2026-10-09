@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-09T08:43:25.158Z",
-  "sha": "a9b6528aef0f63843545f7d0a7a413e49256f8c1",
+  "generatedAt": "2026-10-09T08:54:22.643Z",
+  "sha": "3b9f4de9ac21b82eea09f8123acef46c8abaa56b",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -202,11 +202,11 @@
       "selector": "#assignmentEditorModal",
       "label": "Assignment Editor Modal",
       "file": "modals.js",
-      "line": 1069,
+      "line": 1089,
       "files": [
         {
           "file": "modals.js",
-          "line": 1069
+          "line": 1089
         },
         {
           "file": "style.css",
@@ -218,11 +218,11 @@
       "selector": "#assignmentEditorModalActions",
       "label": "Assignment Editor Modal Actions",
       "file": "modals.js",
-      "line": 1125,
+      "line": 1145,
       "files": [
         {
           "file": "modals.js",
-          "line": 1125
+          "line": 1145
         },
         {
           "file": "style.css",
@@ -234,11 +234,11 @@
       "selector": "#assignmentEditorModalBackdrop",
       "label": "Assignment Editor Modal Backdrop",
       "file": "modals.js",
-      "line": 1066,
+      "line": 1086,
       "files": [
         {
           "file": "modals.js",
-          "line": 1066
+          "line": 1086
         },
         {
           "file": "style.css",
@@ -250,11 +250,11 @@
       "selector": "#assignmentEditorModalBody",
       "label": "Assignment Editor Modal Body",
       "file": "modals.js",
-      "line": 1101,
+      "line": 1121,
       "files": [
         {
           "file": "modals.js",
-          "line": 1101
+          "line": 1121
         },
         {
           "file": "style.css",
@@ -266,11 +266,11 @@
       "selector": "#assignmentEditorModalCancel",
       "label": "Assignment Editor Modal Cancel",
       "file": "modals.js",
-      "line": 1128,
+      "line": 1148,
       "files": [
         {
           "file": "modals.js",
-          "line": 1128
+          "line": 1148
         },
         {
           "file": "style.css",
@@ -282,11 +282,11 @@
       "selector": "#assignmentEditorModalClose",
       "label": "Assignment Editor Modal Close",
       "file": "modals.js",
-      "line": 1092,
+      "line": 1112,
       "files": [
         {
           "file": "modals.js",
-          "line": 1092
+          "line": 1112
         },
         {
           "file": "style.css",
@@ -298,11 +298,11 @@
       "selector": "#assignmentEditorModalEyebrow",
       "label": "Assignment Editor Modal Eyebrow",
       "file": "modals.js",
-      "line": 1081,
+      "line": 1101,
       "files": [
         {
           "file": "modals.js",
-          "line": 1081
+          "line": 1101
         },
         {
           "file": "style.css",
@@ -314,11 +314,11 @@
       "selector": "#assignmentEditorModalHeader",
       "label": "Assignment Editor Modal Header",
       "file": "modals.js",
-      "line": 1075,
+      "line": 1095,
       "files": [
         {
           "file": "modals.js",
-          "line": 1075
+          "line": 1095
         },
         {
           "file": "style.css",
@@ -330,11 +330,11 @@
       "selector": "#assignmentEditorModalResize",
       "label": "Assignment Editor Modal Resize",
       "file": "modals.js",
-      "line": 1147,
+      "line": 1167,
       "files": [
         {
           "file": "modals.js",
-          "line": 1147
+          "line": 1167
         },
         {
           "file": "style.css",
@@ -346,11 +346,11 @@
       "selector": "#assignmentEditorModalSave",
       "label": "Assignment Editor Modal Save",
       "file": "modals.js",
-      "line": 1134,
+      "line": 1154,
       "files": [
         {
           "file": "modals.js",
-          "line": 1134
+          "line": 1154
         }
       ]
     },
@@ -358,11 +358,11 @@
       "selector": "#assignmentEditorModalStatus",
       "label": "Assignment Editor Modal Status",
       "file": "modals.js",
-      "line": 1120,
+      "line": 1140,
       "files": [
         {
           "file": "modals.js",
-          "line": 1120
+          "line": 1140
         },
         {
           "file": "style.css",
@@ -374,11 +374,11 @@
       "selector": "#assignmentEditorModalTextarea",
       "label": "Assignment Editor Modal Textarea",
       "file": "modals.js",
-      "line": 1104,
+      "line": 1124,
       "files": [
         {
           "file": "modals.js",
-          "line": 1104
+          "line": 1124
         },
         {
           "file": "style.css",
@@ -390,11 +390,11 @@
       "selector": "#assignmentEditorModalTitle",
       "label": "Assignment Editor Modal Title",
       "file": "modals.js",
-      "line": 1078,
+      "line": 1098,
       "files": [
         {
           "file": "modals.js",
-          "line": 1078
+          "line": 1098
         },
         {
           "file": "style.css",
@@ -406,11 +406,11 @@
       "selector": "#assignmentEditorModalTitleText",
       "label": "Assignment Editor Modal Title Text",
       "file": "modals.js",
-      "line": 1085,
+      "line": 1105,
       "files": [
         {
           "file": "modals.js",
-          "line": 1085
+          "line": 1105
         },
         {
           "file": "style.css",
@@ -798,11 +798,11 @@
       "selector": "#changelogModal",
       "label": "Changelog Modal",
       "file": "modals.js",
-      "line": 1331,
+      "line": 1351,
       "files": [
         {
           "file": "modals.js",
-          "line": 1331
+          "line": 1351
         },
         {
           "file": "style.css",
@@ -814,11 +814,11 @@
       "selector": "#changelogModalActions",
       "label": "Changelog Modal Actions",
       "file": "modals.js",
-      "line": 1358,
+      "line": 1378,
       "files": [
         {
           "file": "modals.js",
-          "line": 1358
+          "line": 1378
         },
         {
           "file": "style.css",
@@ -830,11 +830,11 @@
       "selector": "#changelogModalBackdrop",
       "label": "Changelog Modal Backdrop",
       "file": "modals.js",
-      "line": 1328,
+      "line": 1348,
       "files": [
         {
           "file": "modals.js",
-          "line": 1328
+          "line": 1348
         },
         {
           "file": "style.css",
@@ -846,11 +846,11 @@
       "selector": "#changelogModalBody",
       "label": "Changelog Modal Body",
       "file": "modals.js",
-      "line": 1353,
+      "line": 1373,
       "files": [
         {
           "file": "modals.js",
-          "line": 1353
+          "line": 1373
         },
         {
           "file": "style.css",
@@ -862,11 +862,11 @@
       "selector": "#changelogModalClose",
       "label": "Changelog Modal Close",
       "file": "modals.js",
-      "line": 1344,
+      "line": 1364,
       "files": [
         {
           "file": "modals.js",
-          "line": 1344
+          "line": 1364
         },
         {
           "file": "style.css",
@@ -878,11 +878,11 @@
       "selector": "#changelogModalCloseBtn",
       "label": "Changelog Modal Close Btn",
       "file": "modals.js",
-      "line": 1361,
+      "line": 1381,
       "files": [
         {
           "file": "modals.js",
-          "line": 1361
+          "line": 1381
         },
         {
           "file": "style.css",
@@ -894,11 +894,11 @@
       "selector": "#changelogModalHeader",
       "label": "Changelog Modal Header",
       "file": "modals.js",
-      "line": 1337,
+      "line": 1357,
       "files": [
         {
           "file": "modals.js",
-          "line": 1337
+          "line": 1357
         },
         {
           "file": "style.css",
@@ -910,11 +910,11 @@
       "selector": "#changelogModalTitle",
       "label": "Changelog Modal Title",
       "file": "modals.js",
-      "line": 1340,
+      "line": 1360,
       "files": [
         {
           "file": "modals.js",
-          "line": 1340
+          "line": 1360
         },
         {
           "file": "style.css",
@@ -1746,11 +1746,11 @@
       "selector": "#confirmModal",
       "label": "Confirm Modal",
       "file": "modals.js",
-      "line": 73,
+      "line": 76,
       "files": [
         {
           "file": "modals.js",
-          "line": 73
+          "line": 76
         },
         {
           "file": "style.css",
@@ -1762,11 +1762,11 @@
       "selector": "#confirmModalActions",
       "label": "Confirm Modal Actions",
       "file": "modals.js",
-      "line": 82,
+      "line": 85,
       "files": [
         {
           "file": "modals.js",
-          "line": 82
+          "line": 85
         },
         {
           "file": "style.css",
@@ -1778,11 +1778,11 @@
       "selector": "#confirmModalBackdrop",
       "label": "Confirm Modal Backdrop",
       "file": "modals.js",
-      "line": 70,
+      "line": 73,
       "files": [
         {
           "file": "modals.js",
-          "line": 70
+          "line": 73
         },
         {
           "file": "style.css",
@@ -1794,11 +1794,11 @@
       "selector": "#confirmModalCancel",
       "label": "Confirm Modal Cancel",
       "file": "modals.js",
-      "line": 85,
+      "line": 88,
       "files": [
         {
           "file": "modals.js",
-          "line": 85
+          "line": 88
         },
         {
           "file": "style.css",
@@ -1810,11 +1810,11 @@
       "selector": "#confirmModalConfirm",
       "label": "Confirm Modal Confirm",
       "file": "modals.js",
-      "line": 90,
+      "line": 93,
       "files": [
         {
           "file": "modals.js",
-          "line": 90
+          "line": 93
         },
         {
           "file": "style.css",
@@ -1826,11 +1826,11 @@
       "selector": "#confirmModalMessage",
       "label": "Confirm Modal Message",
       "file": "modals.js",
-      "line": 78,
+      "line": 81,
       "files": [
         {
           "file": "modals.js",
-          "line": 78
+          "line": 81
         },
         {
           "file": "style.css",
@@ -2226,11 +2226,11 @@
       "selector": "#descEditorModal",
       "label": "Desc Editor Modal",
       "file": "modals.js",
-      "line": 205,
+      "line": 225,
       "files": [
         {
           "file": "modals.js",
-          "line": 205
+          "line": 225
         },
         {
           "file": "style.css",
@@ -2242,11 +2242,11 @@
       "selector": "#descEditorModalActions",
       "label": "Desc Editor Modal Actions",
       "file": "modals.js",
-      "line": 738,
+      "line": 758,
       "files": [
         {
           "file": "modals.js",
-          "line": 738
+          "line": 758
         },
         {
           "file": "style.css",
@@ -2258,11 +2258,11 @@
       "selector": "#descEditorModalBackdrop",
       "label": "Desc Editor Modal Backdrop",
       "file": "modals.js",
-      "line": 202,
+      "line": 222,
       "files": [
         {
           "file": "modals.js",
-          "line": 202
+          "line": 222
         },
         {
           "file": "style.css",
@@ -2274,11 +2274,11 @@
       "selector": "#descEditorModalBody",
       "label": "Desc Editor Modal Body",
       "file": "modals.js",
-      "line": 389,
+      "line": 409,
       "files": [
         {
           "file": "modals.js",
-          "line": 389
+          "line": 409
         },
         {
           "file": "style.css",
@@ -2290,11 +2290,11 @@
       "selector": "#descEditorModalClear",
       "label": "Desc Editor Modal Clear",
       "file": "modals.js",
-      "line": 741,
+      "line": 761,
       "files": [
         {
           "file": "modals.js",
-          "line": 741
+          "line": 761
         },
         {
           "file": "style.css",
@@ -2306,11 +2306,11 @@
       "selector": "#descEditorModalClose",
       "label": "Desc Editor Modal Close",
       "file": "modals.js",
-      "line": 259,
+      "line": 279,
       "files": [
         {
           "file": "modals.js",
-          "line": 259
+          "line": 279
         },
         {
           "file": "style.css",
@@ -2322,11 +2322,11 @@
       "selector": "#descEditorModalCopy",
       "label": "Desc Editor Modal Copy",
       "file": "modals.js",
-      "line": 747,
+      "line": 767,
       "files": [
         {
           "file": "modals.js",
-          "line": 747
+          "line": 767
         },
         {
           "file": "style.css",
@@ -2338,11 +2338,11 @@
       "selector": "#descEditorModalEntryDisclosure",
       "label": "Desc Editor Modal Entry Disclosure",
       "file": "modals.js",
-      "line": 664,
+      "line": 684,
       "files": [
         {
           "file": "modals.js",
-          "line": 664
+          "line": 684
         }
       ]
     },
@@ -2350,11 +2350,11 @@
       "selector": "#descEditorModalEntryLabel",
       "label": "Desc Editor Modal Entry Label",
       "file": "modals.js",
-      "line": 395,
+      "line": 415,
       "files": [
         {
           "file": "modals.js",
-          "line": 395
+          "line": 415
         },
         {
           "file": "style.css",
@@ -2366,11 +2366,11 @@
       "selector": "#descEditorModalGenerateSpend",
       "label": "Desc Editor Modal Generate Spend",
       "file": "modals.js",
-      "line": 796,
+      "line": 816,
       "files": [
         {
           "file": "modals.js",
-          "line": 796
+          "line": 816
         },
         {
           "file": "style.css",
@@ -2382,11 +2382,11 @@
       "selector": "#descEditorModalHeader",
       "label": "Desc Editor Modal Header",
       "file": "modals.js",
-      "line": 214,
+      "line": 234,
       "files": [
         {
           "file": "modals.js",
-          "line": 214
+          "line": 234
         },
         {
           "file": "style.css",
@@ -2398,11 +2398,11 @@
       "selector": "#descEditorModalMockup",
       "label": "Desc Editor Modal Mockup",
       "file": "modals.js",
-      "line": 494,
+      "line": 514,
       "files": [
         {
           "file": "modals.js",
-          "line": 494
+          "line": 514
         }
       ]
     },
@@ -2410,11 +2410,11 @@
       "selector": "#descEditorModalRail",
       "label": "Desc Editor Modal Rail",
       "file": "modals.js",
-      "line": 345,
+      "line": 365,
       "files": [
         {
           "file": "modals.js",
-          "line": 345
+          "line": 365
         },
         {
           "file": "style.css",
@@ -2474,11 +2474,11 @@
       "selector": "#descEditorModalStuck",
       "label": "Desc Editor Modal Stuck",
       "file": "modals.js",
-      "line": 446,
+      "line": 466,
       "files": [
         {
           "file": "modals.js",
-          "line": 446
+          "line": 466
         }
       ]
     },
@@ -2486,11 +2486,11 @@
       "selector": "#descEditorModalTextarea",
       "label": "Desc Editor Modal Textarea",
       "file": "modals.js",
-      "line": 703,
+      "line": 723,
       "files": [
         {
           "file": "modals.js",
-          "line": 703
+          "line": 723
         },
         {
           "file": "style.css",
@@ -2502,11 +2502,11 @@
       "selector": "#descEditorModalTitle",
       "label": "Desc Editor Modal Title",
       "file": "modals.js",
-      "line": 217,
+      "line": 237,
       "files": [
         {
           "file": "modals.js",
-          "line": 217
+          "line": 237
         },
         {
           "file": "style.css",
@@ -2518,11 +2518,11 @@
       "selector": "#descEditorModalTitleEdit",
       "label": "Desc Editor Modal Title Edit",
       "file": "modals.js",
-      "line": 234,
+      "line": 254,
       "files": [
         {
           "file": "modals.js",
-          "line": 234
+          "line": 254
         },
         {
           "file": "style.css",
@@ -2534,11 +2534,11 @@
       "selector": "#descEditorModalTitleEyebrow",
       "label": "Desc Editor Modal Title Eyebrow",
       "file": "modals.js",
-      "line": 227,
+      "line": 247,
       "files": [
         {
           "file": "modals.js",
-          "line": 227
+          "line": 247
         },
         {
           "file": "style.css",
@@ -2550,11 +2550,11 @@
       "selector": "#descEditorModalTitleEyebrowLabel",
       "label": "Desc Editor Modal Title Eyebrow Label",
       "file": "modals.js",
-      "line": 230,
+      "line": 250,
       "files": [
         {
           "file": "modals.js",
-          "line": 230
+          "line": 250
         },
         {
           "file": "style.css",
@@ -2566,11 +2566,11 @@
       "selector": "#descEditorModalTitleInput",
       "label": "Desc Editor Modal Title Input",
       "file": "modals.js",
-      "line": 246,
+      "line": 266,
       "files": [
         {
           "file": "modals.js",
-          "line": 246
+          "line": 266
         },
         {
           "file": "style.css",
@@ -2582,11 +2582,11 @@
       "selector": "#descEditorModalTitleText",
       "label": "Desc Editor Modal Title Text",
       "file": "modals.js",
-      "line": 242,
+      "line": 262,
       "files": [
         {
           "file": "modals.js",
-          "line": 242
+          "line": 262
         },
         {
           "file": "style.css",
@@ -2994,11 +2994,11 @@
       "selector": "#helpModal",
       "label": "Help Modal",
       "file": "modals.js",
-      "line": 1499,
+      "line": 1519,
       "files": [
         {
           "file": "modals.js",
-          "line": 1499
+          "line": 1519
         },
         {
           "file": "style.css",
@@ -3010,11 +3010,11 @@
       "selector": "#helpModalActions",
       "label": "Help Modal Actions",
       "file": "modals.js",
-      "line": 1603,
+      "line": 1623,
       "files": [
         {
           "file": "modals.js",
-          "line": 1603
+          "line": 1623
         },
         {
           "file": "style.css",
@@ -3026,11 +3026,11 @@
       "selector": "#helpModalBackdrop",
       "label": "Help Modal Backdrop",
       "file": "modals.js",
-      "line": 1496,
+      "line": 1516,
       "files": [
         {
           "file": "modals.js",
-          "line": 1496
+          "line": 1516
         },
         {
           "file": "style.css",
@@ -3042,11 +3042,11 @@
       "selector": "#helpModalBody",
       "label": "Help Modal Body",
       "file": "modals.js",
-      "line": 1521,
+      "line": 1541,
       "files": [
         {
           "file": "modals.js",
-          "line": 1521
+          "line": 1541
         },
         {
           "file": "style.css",
@@ -3058,11 +3058,11 @@
       "selector": "#helpModalClose",
       "label": "Help Modal Close",
       "file": "modals.js",
-      "line": 1512,
+      "line": 1532,
       "files": [
         {
           "file": "modals.js",
-          "line": 1512
+          "line": 1532
         },
         {
           "file": "style.css",
@@ -3074,11 +3074,11 @@
       "selector": "#helpModalCloseBtn",
       "label": "Help Modal Close Btn",
       "file": "modals.js",
-      "line": 1606,
+      "line": 1626,
       "files": [
         {
           "file": "modals.js",
-          "line": 1606
+          "line": 1626
         },
         {
           "file": "style.css",
@@ -3090,11 +3090,11 @@
       "selector": "#helpModalHeader",
       "label": "Help Modal Header",
       "file": "modals.js",
-      "line": 1505,
+      "line": 1525,
       "files": [
         {
           "file": "modals.js",
-          "line": 1505
+          "line": 1525
         },
         {
           "file": "style.css",
@@ -3106,11 +3106,11 @@
       "selector": "#helpModalTitle",
       "label": "Help Modal Title",
       "file": "modals.js",
-      "line": 1508,
+      "line": 1528,
       "files": [
         {
           "file": "modals.js",
-          "line": 1508
+          "line": 1528
         },
         {
           "file": "style.css",
@@ -3218,11 +3218,11 @@
       "selector": "#injectAddTargetBtn",
       "label": "Inject Add Target Btn",
       "file": "inject.js",
-      "line": 3570,
+      "line": 3646,
       "files": [
         {
           "file": "inject.js",
-          "line": 3570
+          "line": 3646
         },
         {
           "file": "style.css",
@@ -3234,11 +3234,11 @@
       "selector": "#injectConnectionEditBtn",
       "label": "Inject Connection Edit Btn",
       "file": "inject.js",
-      "line": 3266,
+      "line": 3342,
       "files": [
         {
           "file": "inject.js",
-          "line": 3266
+          "line": 3342
         }
       ]
     },
@@ -3246,11 +3246,11 @@
       "selector": "#injectConnectionSection",
       "label": "Inject Connection Section",
       "file": "inject.js",
-      "line": 3252,
+      "line": 3328,
       "files": [
         {
           "file": "inject.js",
-          "line": 3252
+          "line": 3328
         }
       ]
     },
@@ -3258,15 +3258,15 @@
       "selector": "#injectOnboardActions",
       "label": "Inject Onboard Actions",
       "file": "inject.js",
-      "line": 2834,
+      "line": 2854,
       "files": [
         {
           "file": "inject.js",
-          "line": 2834
+          "line": 2854
         },
         {
           "file": "style.css",
-          "line": 23876
+          "line": 23908
         }
       ]
     },
@@ -3274,11 +3274,11 @@
       "selector": "#injectOnboardBackdrop",
       "label": "Inject Onboard Backdrop",
       "file": "inject.js",
-      "line": 2667,
+      "line": 2687,
       "files": [
         {
           "file": "inject.js",
-          "line": 2667
+          "line": 2687
         },
         {
           "file": "style.css",
@@ -3290,11 +3290,11 @@
       "selector": "#injectOnboardBody",
       "label": "Inject Onboard Body",
       "file": "inject.js",
-      "line": 2689,
+      "line": 2709,
       "files": [
         {
           "file": "inject.js",
-          "line": 2689
+          "line": 2709
         },
         {
           "file": "style.css",
@@ -3306,11 +3306,11 @@
       "selector": "#injectOnboardCancel",
       "label": "Inject Onboard Cancel",
       "file": "inject.js",
-      "line": 2837,
+      "line": 2857,
       "files": [
         {
           "file": "inject.js",
-          "line": 2837
+          "line": 2857
         }
       ]
     },
@@ -3318,11 +3318,11 @@
       "selector": "#injectOnboardCard",
       "label": "Inject Onboard Card",
       "file": "inject.js",
-      "line": 3586,
+      "line": 3662,
       "files": [
         {
           "file": "inject.js",
-          "line": 3586
+          "line": 3662
         }
       ]
     },
@@ -3330,11 +3330,11 @@
       "selector": "#injectOnboardCheck",
       "label": "Inject Onboard Check",
       "file": "inject.js",
-      "line": 2846,
+      "line": 2866,
       "files": [
         {
           "file": "inject.js",
-          "line": 2846
+          "line": 2866
         }
       ]
     },
@@ -3342,11 +3342,11 @@
       "selector": "#injectOnboardClose",
       "label": "Inject Onboard Close",
       "file": "inject.js",
-      "line": 2681,
+      "line": 2701,
       "files": [
         {
           "file": "inject.js",
-          "line": 2681
+          "line": 2701
         },
         {
           "file": "style.css",
@@ -3358,11 +3358,11 @@
       "selector": "#injectOnboardHeader",
       "label": "Inject Onboard Header",
       "file": "inject.js",
-      "line": 2676,
+      "line": 2696,
       "files": [
         {
           "file": "inject.js",
-          "line": 2676
+          "line": 2696
         },
         {
           "file": "style.css",
@@ -3374,11 +3374,11 @@
       "selector": "#injectOnboardModal",
       "label": "Inject Onboard Modal",
       "file": "inject.js",
-      "line": 2670,
+      "line": 2690,
       "files": [
         {
           "file": "inject.js",
-          "line": 2670
+          "line": 2690
         },
         {
           "file": "style.css",
@@ -3390,11 +3390,11 @@
       "selector": "#injectOnboardPurposeControl",
       "label": "Inject Onboard Purpose Control",
       "file": "inject.js",
-      "line": 2720,
+      "line": 2740,
       "files": [
         {
           "file": "inject.js",
-          "line": 2720
+          "line": 2740
         },
         {
           "file": "style.css",
@@ -3406,11 +3406,11 @@
       "selector": "#injectOnboardPurposeLabel",
       "label": "Inject Onboard Purpose Label",
       "file": "inject.js",
-      "line": 2717,
+      "line": 2737,
       "files": [
         {
           "file": "inject.js",
-          "line": 2717
+          "line": 2737
         }
       ]
     },
@@ -3418,11 +3418,11 @@
       "selector": "#injectOnboardRefreshControl",
       "label": "Inject Onboard Refresh Control",
       "file": "inject.js",
-      "line": 2784,
+      "line": 2804,
       "files": [
         {
           "file": "inject.js",
-          "line": 2784
+          "line": 2804
         },
         {
           "file": "style.css",
@@ -3434,11 +3434,11 @@
       "selector": "#injectOnboardRefreshHint",
       "label": "Inject Onboard Refresh Hint",
       "file": "inject.js",
-      "line": 2803,
+      "line": 2823,
       "files": [
         {
           "file": "inject.js",
-          "line": 2803
+          "line": 2823
         }
       ]
     },
@@ -3446,11 +3446,11 @@
       "selector": "#injectOnboardRefreshLabel",
       "label": "Inject Onboard Refresh Label",
       "file": "inject.js",
-      "line": 2781,
+      "line": 2801,
       "files": [
         {
           "file": "inject.js",
-          "line": 2781
+          "line": 2801
         }
       ]
     },
@@ -3458,11 +3458,11 @@
       "selector": "#injectOnboardRepoError",
       "label": "Inject Onboard Repo Error",
       "file": "inject.js",
-      "line": 2704,
+      "line": 2724,
       "files": [
         {
           "file": "inject.js",
-          "line": 2704
+          "line": 2724
         }
       ]
     },
@@ -3470,11 +3470,11 @@
       "selector": "#injectOnboardRepoInput",
       "label": "Inject Onboard Repo Input",
       "file": "inject.js",
-      "line": 2696,
+      "line": 2716,
       "files": [
         {
           "file": "inject.js",
-          "line": 2696
+          "line": 2716
         }
       ]
     },
@@ -3482,11 +3482,11 @@
       "selector": "#injectOnboardShapeSelect",
       "label": "Inject Onboard Shape Select",
       "file": "inject.js",
-      "line": 2759,
+      "line": 2779,
       "files": [
         {
           "file": "inject.js",
-          "line": 2759
+          "line": 2779
         }
       ]
     },
@@ -3494,15 +3494,15 @@
       "selector": "#injectOnboardSubmit",
       "label": "Inject Onboard Submit",
       "file": "inject.js",
-      "line": 2852,
+      "line": 2872,
       "files": [
         {
           "file": "inject.js",
-          "line": 2852
+          "line": 2872
         },
         {
           "file": "style.css",
-          "line": 23883
+          "line": 23915
         }
       ]
     },
@@ -3510,11 +3510,11 @@
       "selector": "#injectOnboardTitle",
       "label": "Inject Onboard Title",
       "file": "inject.js",
-      "line": 2678,
+      "line": 2698,
       "files": [
         {
           "file": "inject.js",
-          "line": 2678
+          "line": 2698
         },
         {
           "file": "style.css",
@@ -3526,15 +3526,15 @@
       "selector": "#injectOnboardVerdict",
       "label": "Inject Onboard Verdict",
       "file": "inject.js",
-      "line": 2825,
+      "line": 2845,
       "files": [
         {
           "file": "inject.js",
-          "line": 2825
+          "line": 2845
         },
         {
           "file": "style.css",
-          "line": 23895
+          "line": 23927
         }
       ]
     },
@@ -3542,15 +3542,15 @@
       "selector": "#injectProjectRoutingBody",
       "label": "Inject Project Routing Body",
       "file": "inject.js",
-      "line": 3951,
+      "line": 4040,
       "files": [
         {
           "file": "inject.js",
-          "line": 3951
+          "line": 4040
         },
         {
           "file": "style.css",
-          "line": 24101
+          "line": 24133
         }
       ]
     },
@@ -3558,11 +3558,11 @@
       "selector": "#injectProjectRoutingEmpty",
       "label": "Inject Project Routing Empty",
       "file": "inject.js",
-      "line": 3961,
+      "line": 4050,
       "files": [
         {
           "file": "inject.js",
-          "line": 3961
+          "line": 4050
         }
       ]
     },
@@ -3570,11 +3570,11 @@
       "selector": "#injectProjectRoutingSection",
       "label": "Inject Project Routing Section",
       "file": "inject.js",
-      "line": 3939,
+      "line": 4028,
       "files": [
         {
           "file": "inject.js",
-          "line": 3939
+          "line": 4028
         }
       ]
     },
@@ -3582,11 +3582,11 @@
       "selector": "#injectProjectRoutingTable",
       "label": "Inject Project Routing Table",
       "file": "inject.js",
-      "line": 3977,
+      "line": 4066,
       "files": [
         {
           "file": "inject.js",
-          "line": 3977
+          "line": 4066
         }
       ]
     },
@@ -3594,11 +3594,11 @@
       "selector": "#injectProjectRoutingTitle",
       "label": "Inject Project Routing Title",
       "file": "inject.js",
-      "line": 3945,
+      "line": 4034,
       "files": [
         {
           "file": "inject.js",
-          "line": 3945
+          "line": 4034
         }
       ]
     },
@@ -3606,11 +3606,11 @@
       "selector": "#injectSettingsActions",
       "label": "Inject Settings Actions",
       "file": "inject.js",
-      "line": 3356,
+      "line": 3432,
       "files": [
         {
           "file": "inject.js",
-          "line": 3356
+          "line": 3432
         },
         {
           "file": "style.css",
@@ -3622,11 +3622,11 @@
       "selector": "#injectSettingsBackdrop",
       "label": "Inject Settings Backdrop",
       "file": "inject.js",
-      "line": 3222,
+      "line": 3298,
       "files": [
         {
           "file": "inject.js",
-          "line": 3222
+          "line": 3298
         },
         {
           "file": "style.css",
@@ -3638,11 +3638,11 @@
       "selector": "#injectSettingsBody",
       "label": "Inject Settings Body",
       "file": "inject.js",
-      "line": 3305,
+      "line": 3381,
       "files": [
         {
           "file": "inject.js",
-          "line": 3305
+          "line": 3381
         },
         {
           "file": "style.css",
@@ -3654,11 +3654,11 @@
       "selector": "#injectSettingsClear",
       "label": "Inject Settings Clear",
       "file": "inject.js",
-      "line": 3374,
+      "line": 3450,
       "files": [
         {
           "file": "inject.js",
-          "line": 3374
+          "line": 3450
         }
       ]
     },
@@ -3666,11 +3666,11 @@
       "selector": "#injectSettingsClose",
       "label": "Inject Settings Close",
       "file": "inject.js",
-      "line": 3237,
+      "line": 3313,
       "files": [
         {
           "file": "inject.js",
-          "line": 3237
+          "line": 3313
         },
         {
           "file": "style.css",
@@ -3682,11 +3682,11 @@
       "selector": "#injectSettingsHeader",
       "label": "Inject Settings Header",
       "file": "inject.js",
-      "line": 3232,
+      "line": 3308,
       "files": [
         {
           "file": "inject.js",
-          "line": 3232
+          "line": 3308
         },
         {
           "file": "style.css",
@@ -3698,11 +3698,11 @@
       "selector": "#injectSettingsModal",
       "label": "Inject Settings Modal",
       "file": "inject.js",
-      "line": 3225,
+      "line": 3301,
       "files": [
         {
           "file": "inject.js",
-          "line": 3225
+          "line": 3301
         },
         {
           "file": "style.css",
@@ -3714,11 +3714,11 @@
       "selector": "#injectSettingsSave",
       "label": "Inject Settings Save",
       "file": "inject.js",
-      "line": 3359,
+      "line": 3435,
       "files": [
         {
           "file": "inject.js",
-          "line": 3359
+          "line": 3435
         }
       ]
     },
@@ -3726,11 +3726,11 @@
       "selector": "#injectSettingsScroll",
       "label": "Inject Settings Scroll",
       "file": "inject.js",
-      "line": 4048,
+      "line": 4137,
       "files": [
         {
           "file": "inject.js",
-          "line": 4048
+          "line": 4137
         },
         {
           "file": "style.css",
@@ -3742,11 +3742,11 @@
       "selector": "#injectSettingsStatusRow",
       "label": "Inject Settings Status Row",
       "file": "inject.js",
-      "line": 3263,
+      "line": 3339,
       "files": [
         {
           "file": "inject.js",
-          "line": 3263
+          "line": 3339
         },
         {
           "file": "style.css",
@@ -3758,11 +3758,11 @@
       "selector": "#injectSettingsTest",
       "label": "Inject Settings Test",
       "file": "inject.js",
-      "line": 3365,
+      "line": 3441,
       "files": [
         {
           "file": "inject.js",
-          "line": 3365
+          "line": 3441
         }
       ]
     },
@@ -3770,11 +3770,11 @@
       "selector": "#injectSettingsTitle",
       "label": "Inject Settings Title",
       "file": "inject.js",
-      "line": 3234,
+      "line": 3310,
       "files": [
         {
           "file": "inject.js",
-          "line": 3234
+          "line": 3310
         },
         {
           "file": "style.css",
@@ -3786,11 +3786,11 @@
       "selector": "#injectSharedSecretInput",
       "label": "Inject Shared Secret Input",
       "file": "inject.js",
-      "line": 3325,
+      "line": 3401,
       "files": [
         {
           "file": "inject.js",
-          "line": 3325
+          "line": 3401
         },
         {
           "file": "style.css",
@@ -3938,11 +3938,11 @@
       "selector": "#injectTargetsBody",
       "label": "Inject Targets Body",
       "file": "inject.js",
-      "line": 3429,
+      "line": 3505,
       "files": [
         {
           "file": "inject.js",
-          "line": 3429
+          "line": 3505
         },
         {
           "file": "style.css",
@@ -3954,11 +3954,11 @@
       "selector": "#injectTargetsEmpty",
       "label": "Inject Targets Empty",
       "file": "inject.js",
-      "line": 3545,
+      "line": 3621,
       "files": [
         {
           "file": "inject.js",
-          "line": 3545
+          "line": 3621
         }
       ]
     },
@@ -3966,11 +3966,11 @@
       "selector": "#injectTargetsList",
       "label": "Inject Targets List",
       "file": "inject.js",
-      "line": 3551,
+      "line": 3627,
       "files": [
         {
           "file": "inject.js",
-          "line": 3551
+          "line": 3627
         }
       ]
     },
@@ -3978,11 +3978,11 @@
       "selector": "#injectTargetsSection",
       "label": "Inject Targets Section",
       "file": "inject.js",
-      "line": 3418,
+      "line": 3494,
       "files": [
         {
           "file": "inject.js",
-          "line": 3418
+          "line": 3494
         }
       ]
     },
@@ -3998,7 +3998,7 @@
         },
         {
           "file": "style.css",
-          "line": 24166
+          "line": 24198
         }
       ]
     },
@@ -4006,11 +4006,11 @@
       "selector": "#injectWorkerUrlInput",
       "label": "Inject Worker Url Input",
       "file": "inject.js",
-      "line": 3311,
+      "line": 3387,
       "files": [
         {
           "file": "inject.js",
-          "line": 3311
+          "line": 3387
         },
         {
           "file": "style.css",
@@ -4114,11 +4114,11 @@
       "selector": "#missedDatesModal",
       "label": "Missed Dates Modal",
       "file": "modals.js",
-      "line": 1662,
+      "line": 1682,
       "files": [
         {
           "file": "modals.js",
-          "line": 1662
+          "line": 1682
         },
         {
           "file": "style.css",
@@ -4130,11 +4130,11 @@
       "selector": "#missedDatesModalActions",
       "label": "Missed Dates Modal Actions",
       "file": "modals.js",
-      "line": 1764,
+      "line": 1784,
       "files": [
         {
           "file": "modals.js",
-          "line": 1764
+          "line": 1784
         },
         {
           "file": "style.css",
@@ -4146,11 +4146,11 @@
       "selector": "#missedDatesModalBackdrop",
       "label": "Missed Dates Modal Backdrop",
       "file": "modals.js",
-      "line": 1659,
+      "line": 1679,
       "files": [
         {
           "file": "modals.js",
-          "line": 1659
+          "line": 1679
         },
         {
           "file": "style.css",
@@ -4162,11 +4162,11 @@
       "selector": "#missedDatesModalBody",
       "label": "Missed Dates Modal Body",
       "file": "modals.js",
-      "line": 1684,
+      "line": 1704,
       "files": [
         {
           "file": "modals.js",
-          "line": 1684
+          "line": 1704
         },
         {
           "file": "style.css",
@@ -4178,11 +4178,11 @@
       "selector": "#missedDatesModalClose",
       "label": "Missed Dates Modal Close",
       "file": "modals.js",
-      "line": 1675,
+      "line": 1695,
       "files": [
         {
           "file": "modals.js",
-          "line": 1675
+          "line": 1695
         },
         {
           "file": "style.css",
@@ -4194,11 +4194,11 @@
       "selector": "#missedDatesModalCloseBtn",
       "label": "Missed Dates Modal Close Btn",
       "file": "modals.js",
-      "line": 1767,
+      "line": 1787,
       "files": [
         {
           "file": "modals.js",
-          "line": 1767
+          "line": 1787
         },
         {
           "file": "style.css",
@@ -4210,11 +4210,11 @@
       "selector": "#missedDatesModalHeader",
       "label": "Missed Dates Modal Header",
       "file": "modals.js",
-      "line": 1668,
+      "line": 1688,
       "files": [
         {
           "file": "modals.js",
-          "line": 1668
+          "line": 1688
         },
         {
           "file": "style.css",
@@ -4226,11 +4226,11 @@
       "selector": "#missedDatesModalTitle",
       "label": "Missed Dates Modal Title",
       "file": "modals.js",
-      "line": 1671,
+      "line": 1691,
       "files": [
         {
           "file": "modals.js",
-          "line": 1671
+          "line": 1691
         },
         {
           "file": "style.css",
@@ -4830,7 +4830,7 @@
         },
         {
           "file": "style.css",
-          "line": 25293
+          "line": 25325
         }
       ]
     },
@@ -4846,7 +4846,7 @@
         },
         {
           "file": "style.css",
-          "line": 25196
+          "line": 25228
         }
       ]
     },
@@ -4862,7 +4862,7 @@
         },
         {
           "file": "style.css",
-          "line": 25247
+          "line": 25279
         }
       ]
     },
@@ -4890,7 +4890,7 @@
         },
         {
           "file": "style.css",
-          "line": 25233
+          "line": 25265
         }
       ]
     },
@@ -4918,7 +4918,7 @@
         },
         {
           "file": "style.css",
-          "line": 25221
+          "line": 25253
         }
       ]
     },
@@ -4934,7 +4934,7 @@
         },
         {
           "file": "style.css",
-          "line": 25155
+          "line": 25187
         }
       ]
     },
@@ -4974,7 +4974,7 @@
         },
         {
           "file": "style.css",
-          "line": 25229
+          "line": 25261
         }
       ]
     },
@@ -5402,7 +5402,7 @@
         },
         {
           "file": "style.css",
-          "line": 24741
+          "line": 24773
         }
       ]
     },
@@ -5418,7 +5418,7 @@
         },
         {
           "file": "style.css",
-          "line": 24785
+          "line": 24817
         }
       ]
     },
@@ -5434,7 +5434,7 @@
         },
         {
           "file": "style.css",
-          "line": 24772
+          "line": 24804
         }
       ]
     },
@@ -5450,7 +5450,7 @@
         },
         {
           "file": "style.css",
-          "line": 24838
+          "line": 24870
         }
       ]
     },
@@ -5466,7 +5466,7 @@
         },
         {
           "file": "style.css",
-          "line": 24792
+          "line": 24824
         }
       ]
     },
@@ -5482,7 +5482,7 @@
         },
         {
           "file": "style.css",
-          "line": 25052
+          "line": 25084
         }
       ]
     },
@@ -5510,7 +5510,7 @@
         },
         {
           "file": "style.css",
-          "line": 24761
+          "line": 24793
         }
       ]
     },
@@ -5526,7 +5526,7 @@
         },
         {
           "file": "style.css",
-          "line": 24850
+          "line": 24882
         }
       ]
     },
@@ -5542,7 +5542,7 @@
         },
         {
           "file": "style.css",
-          "line": 24750
+          "line": 24782
         }
       ]
     },
@@ -5570,7 +5570,7 @@
         },
         {
           "file": "style.css",
-          "line": 24832
+          "line": 24864
         }
       ]
     },
@@ -5586,7 +5586,7 @@
         },
         {
           "file": "style.css",
-          "line": 24768
+          "line": 24800
         }
       ]
     },
