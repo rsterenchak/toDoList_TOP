@@ -1990,6 +1990,32 @@ function validateTargetForm(values) {
     return errors;
 }
 
+// Canonicalize a typed repo before validation: strip a pasted github.com
+// URL prefix and a trailing `/` or `.git`. Casing is kept as typed — the
+// Worker's resolveTarget matches on the stored string, and GitHub slugs are
+// case-insensitive, so existing rows need no migration.
+export function canonicalizeTargetRepo(raw) {
+    let repo = String(raw || '').trim();
+    repo = repo.replace(/^(?:https?:\/\/)?(?:www\.)?github\.com\//i, '');
+    repo = repo.replace(/\/+$/, '');
+    repo = repo.replace(/\.git$/i, '');
+    repo = repo.replace(/\/+$/, '');
+    return repo;
+}
+
+// Return the cached target already pointing at `repo` under any casing,
+// skipping `excludeId` (the row being edited), or null when there is none.
+export function findDuplicateTarget(repo, targets, excludeId) {
+    if (!Array.isArray(targets)) return null;
+    const key = normalizeOnboardRepo(repo);
+    for (let i = 0; i < targets.length; i++) {
+        const t = targets[i];
+        if (!t || (excludeId && t.id === excludeId)) continue;
+        if (normalizeOnboardRepo(t.repo) === key) return t;
+    }
+    return null;
+}
+
 
 // ── TARGET SUB-MODAL ──
 // Add / edit sub-modal mounted on top of the settings modal. Escape only
@@ -2133,7 +2159,7 @@ function showInjectTargetSubModal(options) {
         clearErrors();
         const values = {
             nickname: nicknameField.input.value.trim(),
-            repo: repoField.input.value.trim(),
+            repo: canonicalizeTargetRepo(repoField.input.value),
             file_path: filePathField.input.value.trim(),
         };
         const errors = validateTargetForm(values);
@@ -2154,6 +2180,14 @@ function showInjectTargetSubModal(options) {
         if (allowed && !allowed.repos.some(r => r.repo === values.repo)) {
             saveBtn.disabled = false;
             setError(repoField, 'Not in the Worker allowlist — add it to ALLOWED_TARGETS first');
+            return;
+        }
+        // Same repo under another spelling (case, `.git`, pasted URL) would
+        // save as a second row — block it against the cached target list.
+        const dup = findDuplicateTarget(values.repo, cachedTargets, existing ? existing.id : null);
+        if (dup) {
+            saveBtn.disabled = false;
+            setError(repoField, 'Already a target: ' + (dup.nickname || dup.repo));
             return;
         }
         const result = isEdit
