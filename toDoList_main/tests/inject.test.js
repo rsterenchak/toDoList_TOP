@@ -7,7 +7,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // set `deep_think: true` on the payload (the Worker routes that turn to its
 // heavier model); when omitted the field must not appear at all, preserving
 // today's fast-default behavior for every other chat turn.
-import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, extractTasksFromWorker, generateMockupsFromWorker, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig } from '../src/inject.js';
+import { chatWithWorker, rewriteTodoMd, dispatchTriage, dispatchDerive, extractTasksFromWorker, generateMockupsFromWorker, fetchActiveRuns, onboardRepo, readAssignmentFromWorker, readRepoFile, writeAssignmentToWorker, initInjectConfig, classifyTargetError } from '../src/inject.js';
 
 let fetchSpy;
 let realFetch;
@@ -775,5 +775,39 @@ describe('generateMockupsFromWorker — mockup route', () => {
         await generateMockupsFromWorker('p', null, { timeoutMs: 180000 });
         const init = fetchSpy.mock.calls[fetchSpy.mock.calls.length - 1][1];
         expect(init.signal).toBeDefined();
+    });
+});
+
+describe('classifyTargetError — inject_targets unique constraints', () => {
+    it('maps the case-insensitive repo index (named in message) to duplicate-repo', () => {
+        const err = {
+            code: '23505',
+            message: 'duplicate key value violates unique constraint "inject_targets_user_repo_ci"',
+        };
+        expect(classifyTargetError(err)).toEqual({ ok: false, reason: 'duplicate-repo' });
+    });
+
+    it('maps the repo index named only in details to duplicate-repo', () => {
+        const err = {
+            code: '23505',
+            message: 'duplicate key value violates unique constraint',
+            details: 'Key (user_id, lower(repo)) conflicts via inject_targets_user_repo_ci.',
+        };
+        expect(classifyTargetError(err)).toEqual({ ok: false, reason: 'duplicate-repo' });
+    });
+
+    it('keeps the nickname constraint mapped to duplicate-nickname', () => {
+        const err = {
+            code: '23505',
+            message: 'duplicate key value violates unique constraint "inject_targets_user_id_nickname_key"',
+            details: 'Key (user_id, nickname)=(abc, Main) already exists.',
+        };
+        expect(classifyTargetError(err)).toEqual({ ok: false, reason: 'duplicate-nickname' });
+    });
+
+    it('falls back to a generic save failure for other errors', () => {
+        expect(classifyTargetError({ code: '42501', message: 'permission denied' }))
+            .toEqual({ ok: false, reason: 'Save failed' });
+        expect(classifyTargetError(null)).toEqual({ ok: false, reason: 'Save failed' });
     });
 });

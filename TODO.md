@@ -2027,7 +2027,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/inject.js`
   <!-- id: ce9ec7c1-8ee3-4022-9b62-d7c894b7975f -->
 
-- [ ] **[HIGH]** Enforce one inject target per repo at save, independent of the cached list
+- [x] **[HIGH]** Enforce one inject target per repo at save, independent of the cached list — Completed: 2026-10-09
   - Type: bug
   - Description: A duplicate `inject_targets` row for `rsterenchak/matchinggame-test` was saved through the target sub-modal despite `findDuplicateTarget`, which means the dedupe guard ran against a `cachedTargets` that did not contain the canonical row (stale cache, or a bundle that predated the guard). Two changes in `onSave`: (1) immediately before the duplicate check, `await loadInjectTargets()` and run `findDuplicateTarget` against the fresh result rather than the module cache, so the guard can never be fooled by a stale list — one extra query per save is fine; (2) the database now carries a unique index `inject_targets_user_repo_ci` on `(user_id, lower(repo))`, so extend `classifyTargetError` to inspect the Postgres error's `message`/`details` for that index name and return `{ ok: false, reason: 'duplicate-repo' }`, keeping the existing `duplicate-nickname` mapping for the nickname constraint; in `onSave`, map `duplicate-repo` to `setError(repoField, 'Already a target under another spelling')` instead of the nickname field. Add a unit test for `classifyTargetError` covering both constraint names. No new deps.
   - File: `toDoList_main/src/inject.js`, `toDoList_main/tests/inject.test.js`

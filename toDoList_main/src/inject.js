@@ -1965,13 +1965,18 @@ async function deleteInjectTarget(id) {
     }
 }
 
-// Map a Supabase error into either a nickname-collision (so the sub-modal
-// can surface it inline against the offending field) or a generic save
-// failure. The unique constraint on (user_id, nickname) is the source of
-// truth for duplicate detection — we just translate its error shape.
-function classifyTargetError(err) {
+// Map a Supabase error into a repo-collision, a nickname-collision (so the
+// sub-modal can surface either inline against the offending field) or a
+// generic save failure. The unique indexes on (user_id, lower(repo)) and
+// (user_id, nickname) are the source of truth for duplicate detection — we
+// just translate their error shape.
+export function classifyTargetError(err) {
     const code = err && err.code;
     const msg  = (err && err.message) || '';
+    const details = (err && err.details) || '';
+    if (/inject_targets_user_repo_ci/.test(msg + ' ' + details)) {
+        return { ok: false, reason: 'duplicate-repo' };
+    }
     if (code === '23505' || /duplicate|unique/i.test(msg)) {
         return { ok: false, reason: 'duplicate-nickname' };
     }
@@ -2170,9 +2175,10 @@ function showInjectTargetSubModal(options) {
             return;
         }
         saveBtn.disabled = true;
-        // Same repo under another spelling (case, `.git`, pasted URL) would
-        // save as a second row — block it against the cached target list.
-        const dup = findDuplicateTarget(values.repo, cachedTargets, existing ? existing.id : null);
+        // Same repo under another spelling would save as a second row —
+        // check a fresh load, never the (possibly stale) module cache.
+        const freshTargets = await loadInjectTargets();
+        const dup = findDuplicateTarget(values.repo, freshTargets, existing ? existing.id : null);
         if (dup) {
             saveBtn.disabled = false;
             setError(repoField, 'Already a target: ' + (dup.nickname || dup.repo));
@@ -2183,7 +2189,9 @@ function showInjectTargetSubModal(options) {
             : await insertInjectTarget(values);
         saveBtn.disabled = false;
         if (!result.ok) {
-            if (result.reason === 'duplicate-nickname') {
+            if (result.reason === 'duplicate-repo') {
+                setError(repoField, 'Already a target under another spelling');
+            } else if (result.reason === 'duplicate-nickname') {
                 setError(nicknameField, 'A target with this nickname already exists');
             } else {
                 setError(nicknameField, result.reason || 'Save failed');
