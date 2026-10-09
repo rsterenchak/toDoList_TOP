@@ -70,7 +70,7 @@ describe('Runs tab — verification screenshots chip + panel', () => {
         // fetch so a stray iterate would be observable rather than networked.
         globalThis.fetch = vi.fn(function() { return new Promise(function() {}); });
         setQueueRows([
-            { id: 'r1', state: 'shipped', entry_id: 'e1', correlation_id: 'c1', draft: draftFor('Verified run'), pr_url: 'https://github.com/o/r/pull/7', created_at: '2026-10-09T10:00:00Z', verify: twoShotVerify() },
+            { id: 'r1', state: 'shipped', entry_id: 'e1', correlation_id: 'c1', draft: draftFor('Verified run'), pr_url: 'https://github.com/o/r/pull/7', run_url: 'https://github.com/o/r/actions/runs/42', created_at: '2026-10-09T10:00:00Z', verify: twoShotVerify() },
         ], 'ProjA');
         mountClaudeSheet(document.body);
         document.getElementById('claudeTabRuns').click();
@@ -104,11 +104,13 @@ describe('Runs tab — verification screenshots chip + panel', () => {
         const labels = Array.from(panel.querySelectorAll('.claudeRunVerifyMetaLabel')).map(function(el) { return el.textContent; });
         expect(labels).toEqual(['1300x900 · click "Fight"', '390x844']);
         expect(panel.querySelector('.claudeRunVerifyText').textContent).toBe('✓ Both viewports render the board.');
-        const links = Array.from(panel.querySelectorAll('.claudeRunVerifyActions a')).map(function(a) { return a.textContent; });
-        expect(links).toEqual(['Open PR ↗']);
+        const linkEls = Array.from(panel.querySelectorAll('.claudeRunVerifyActions a'));
+        expect(linkEls.map(function(a) { return a.textContent; })).toEqual(['All screenshots ↗', 'Open PR ↗']);
+        expect(linkEls[0].getAttribute('href')).toBe('https://github.com/o/r/actions/runs/42');
 
-        // Clicking a thumbnail opens the image, never the row's iterate action.
+        // Clicking a thumbnail or the run link opens it, never the row's iterate action.
         shots[0].querySelector('img').click();
+        linkEls[0].click();
         panel.click();
 
         expect(fetch).not.toHaveBeenCalled();
@@ -118,6 +120,17 @@ describe('Runs tab — verification screenshots chip + panel', () => {
         chip.click();
         expect(panel.hidden).toBe(true);
         expect(chip.getAttribute('aria-expanded')).toBe('false');
+    });
+
+    it('omits the All screenshots link when the row has neither run_url nor run_id', () => {
+        setQueueRows([
+            { id: 'r1', state: 'shipped', entry_id: 'e1', correlation_id: 'c1', draft: draftFor('No run link'), pr_url: 'https://github.com/o/r/pull/8', created_at: '2026-10-09T10:00:00Z', verify: twoShotVerify() },
+        ], 'ProjA');
+        mountClaudeSheet(document.body);
+
+        document.querySelector('.claudeRunVerifyChip').click();
+        const links = Array.from(document.querySelectorAll('.claudeRunVerifyActions a')).map(function(a) { return a.textContent; });
+        expect(links).toEqual(['Open PR ↗']);
     });
 
     it('flags a failed step and omits the summary prefix when ok is null', () => {

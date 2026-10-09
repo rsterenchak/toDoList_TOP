@@ -5200,6 +5200,13 @@ function buildQueueRunRecords() {
             Array.isArray(row.verify.shots) && row.verify.shots.length) {
             rec.verify = row.verify;
         }
+        // The run's Actions page, where the full `verify-screenshots` artifact
+        // lives. Prefer the row's own URL; otherwise derive it from the run id.
+        if (row.run_url) {
+            rec.runUrl = row.run_url;
+        } else if (row.run_id != null && repo) {
+            rec.runUrl = 'https://github.com/' + repo + '/actions/runs/' + row.run_id;
+        }
         // A no-change row already carries the agent's closing summary in
         // failure_reason — surface it without a second fetch.
         if (status === 'NOCHANGE' && typeof row.failure_reason === 'string') {
