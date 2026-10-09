@@ -5193,6 +5193,13 @@ function buildQueueRunRecords() {
         // cross-device record, so this is what makes an API-billed run legible on
         // a device that never saw the ship.
         if (row.model) rec.model = row.model;
+        // The screenshots the run's visual verification looked at, published to
+        // the row after the agent's turn. Only a non-empty shot list counts —
+        // anything else leaves the row without a verify chip.
+        if (row.verify && typeof row.verify === 'object' &&
+            Array.isArray(row.verify.shots) && row.verify.shots.length) {
+            rec.verify = row.verify;
+        }
         // A no-change row already carries the agent's closing summary in
         // failure_reason — surface it without a second fetch.
         if (status === 'NOCHANGE' && typeof row.failure_reason === 'string') {
@@ -5514,6 +5521,16 @@ function buildRunRow(rec) {
         row.appendChild(tag);
     }
 
+    // A run whose visual verification published screenshots wears a chip
+    // between the model tag and the badge; the chip alone toggles its panel.
+    let verifyPanel = null;
+    if (rec.verify) {
+        row.classList.add('claudeRunRow--hasVerify');
+        const built = buildVerifyChip(rec);
+        row.appendChild(built.chip);
+        verifyPanel = built.panel;
+    }
+
     row.appendChild(badge);
 
     // A SHIPPED run has a merged change behind it, so its row becomes the
@@ -5609,7 +5626,148 @@ function buildRunRow(rec) {
             }
         });
     }
+    // Appended last so it wraps beneath everything else, including a "No
+    // change" row's summary panel.
+    if (verifyPanel) row.appendChild(verifyPanel);
     return row;
+}
+
+// Keep a control inside a run row from also firing the row's own action
+// (iterate on SHIPPED, the summary accordion on NOCHANGE) — on click and on the
+// Enter/Space keydown that bubbles to the row's keydown handler.
+function isolateFromRunRow(el) {
+    el.addEventListener('click', function(event) { event.stopPropagation(); });
+    el.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+    });
+}
+
+// The verify chip and its (initially hidden) panel. Expand state is per-row and
+// not persisted; the panel is built once on first open from the data already on
+// the record — no fetch.
+function buildVerifyChip(rec) {
+    const count = rec.verify.shots.length;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'claudeRunVerifyChip';
+    chip.setAttribute('aria-label',
+        'Show ' + count + ' verification screenshot' + (count === 1 ? '' : 's'));
+    chip.setAttribute('aria-expanded', 'false');
+    chip.innerHTML =
+        '<svg class="claudeRunVerifyIcon" width="12" height="12" viewBox="0 0 24 24" ' +
+        'fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" ' +
+        'stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+        '<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>' +
+        '<circle cx="12" cy="13" r="4"></circle></svg>';
+    const countEl = document.createElement('span');
+    countEl.textContent = String(count);
+    chip.appendChild(countEl);
+
+    const panel = document.createElement('div');
+    panel.className = 'claudeRunVerifyPanel';
+    panel.hidden = true;
+    // A tap anywhere in the panel belongs to the panel, never to the row.
+    isolateFromRunRow(panel);
+
+    let built = false;
+    chip.addEventListener('click', function(event) {
+        event.stopPropagation();
+        const open = panel.hidden;
+        if (open && !built) {
+            renderVerifyPanel(rec, panel);
+            built = true;
+        }
+        panel.hidden = !open;
+        chip.setAttribute('aria-expanded', String(open));
+        chip.classList.toggle('claudeRunVerifyChip--open', open);
+    });
+    chip.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter' || event.key === ' ') event.stopPropagation();
+    });
+    return { chip: chip, panel: panel };
+}
+
+// The right-hand flag on a shot's meta line: the agent's own verdict when it
+// gave one, else what the page metrics say about the render.
+function verifyShotFlag(shot) {
+    if (shot.verdict) return { text: String(shot.verdict), danger: false };
+    if (shot.stepsOk === false) return { text: 'step failed', danger: true };
+    const overflows = typeof shot.scrollHeight === 'number' &&
+        typeof shot.innerHeight === 'number' &&
+        shot.scrollHeight > shot.innerHeight + 2;
+    if (overflows && shot.overflowY === 'hidden') return { text: 'clipped', danger: true };
+    if (overflows) return { text: 'scrolls', danger: false };
+    return { text: 'fits', danger: false };
+}
+
+function renderVerifyPanel(rec, panel) {
+    const verify = rec.verify;
+    panel.innerHTML = '';
+
+    const grid = document.createElement('div');
+    grid.className = 'claudeRunVerifyGrid';
+    verify.shots.forEach(function(shot) {
+        if (!shot) return;
+        const link = document.createElement('a');
+        link.className = 'claudeRunVerifyShot';
+        if (shot.url) link.href = shot.url;
+        link.target = '_blank';
+        link.rel = 'noopener';
+        isolateFromRunRow(link);
+
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.alt = (shot.viewport || '') + ' ' + (shot.route || '');
+        if (shot.url) img.src = shot.url;
+        img.addEventListener('click', function(event) { event.stopPropagation(); });
+        link.appendChild(img);
+
+        const meta = document.createElement('div');
+        meta.className = 'claudeRunVerifyMeta';
+        const left = document.createElement('span');
+        left.className = 'claudeRunVerifyMetaLabel';
+        left.textContent = (shot.viewport || '') + (shot.steps ? ' · ' + shot.steps : '');
+        const flag = verifyShotFlag(shot);
+        const right = document.createElement('span');
+        right.className = 'claudeRunVerifyFlag' + (flag.danger ? ' claudeRunVerifyFlag--danger' : '');
+        right.textContent = flag.text;
+        meta.appendChild(left);
+        meta.appendChild(right);
+        link.appendChild(meta);
+
+        grid.appendChild(link);
+    });
+    panel.appendChild(grid);
+
+    const summary = typeof verify.summary === 'string' ? verify.summary.trim() : '';
+    if (summary) {
+        const text = document.createElement('p');
+        text.className = 'claudeRunVerifyText';
+        const prefix = verify.ok === true ? '✓ ' : (verify.ok === false ? '✗ ' : '');
+        text.textContent = prefix + summary;
+        panel.appendChild(text);
+    }
+
+    const prUrl = rec.pr_url || rec.awaitingPrUrl;
+    if (rec.runUrl || prUrl) {
+        const actions = document.createElement('div');
+        actions.className = 'claudeRunVerifyActions';
+        const addLink = function(href, label) {
+            const a = document.createElement('a');
+            a.className = 'claudeRunVerifyLink';
+            a.href = href;
+            a.target = '_blank';
+            a.rel = 'noopener';
+            a.textContent = label;
+            isolateFromRunRow(a);
+            actions.appendChild(a);
+        };
+        // The full `verify-screenshots` artifact lives on the run page.
+        if (rec.runUrl) addLink(rec.runUrl, 'All screenshots ↗');
+        if (prUrl) addLink(prUrl, 'Open PR ↗');
+        panel.appendChild(actions);
+    }
 }
 
 // Populate a "No change" row's summary panel. The agent's closing summary is
