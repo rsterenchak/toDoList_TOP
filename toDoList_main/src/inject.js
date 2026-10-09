@@ -2252,17 +2252,17 @@ function normalizeOnboardRepo(repo) {
 // error vocabulary. `shape` defaults to 'auto' (Worker auto-detects the repo
 // shape) when omitted. `purpose` is a declared choice (not auto-detectable) —
 // normalized to 'personal' | 'assignment', defaulting to 'personal'.
-// `backfillStale` is the sub-modal's refresh opt-in, coerced to a strict
-// boolean — the Worker ignores a string, so a truthy '' or 'false' slipping
-// through would silently mean "don't refresh" while the UI said otherwise.
-export async function onboardRepo(targetRepo, shape, purpose, backfillStale) {
+// `refresh` is the sub-modal's refresh level, normalized to 'none' | 'stale' |
+// 'all' and defaulting to 'none' — anything else would leave the Worker to
+// guess, and the safe never-overwrite level is the only acceptable guess.
+export async function onboardRepo(targetRepo, shape, purpose, refresh) {
     try {
         const res = await postToWorker({
             onboard: true,
             target_repo: targetRepo,
             shape: shape || 'auto',
             purpose: purpose === 'assignment' ? 'assignment' : 'personal',
-            backfill_stale: !!backfillStale,
+            refresh: refresh === 'stale' || refresh === 'all' ? refresh : 'none',
         });
         return Object.assign({ ok: true }, res || {});
     } catch (e) {
@@ -2483,7 +2483,7 @@ function preflightStaleEdits(entry) {
     return { state: 'unknown', text: 'local edits unknown' };
 }
 
-// How many of a report's stale files a `backfill_stale` run could provably
+// How many of a report's stale files a `refresh: 'stale'` run could provably
 // overwrite — the ones the preflight measured as carrying no local edits.
 function preflightRefreshableCount(report) {
     const stale = report && Array.isArray(report.stale) ? report.stale : [];
@@ -2769,23 +2769,52 @@ function showOnboardModal(options) {
     shapeWrap.appendChild(shapeSelect);
     body.appendChild(shapeWrap);
 
-    // Refresh opt-in for the stale routine files the verdict lists. Off on
-    // every open and never persisted: the Worker's never-overwrite default is
-    // the safe one, so each backfill is a deliberate choice made against the
-    // report currently on screen rather than a setting left switched on.
+    // Refresh level for the managed files the verdict lists, a segmented radio
+    // built like Purpose. `none` on every open and never persisted: the
+    // Worker's never-overwrite default is the safe one, so each refresh is a
+    // deliberate choice made against the report currently on screen rather
+    // than a setting left switched on.
+    let selectedRefresh = 'none';
     const backfillWrap = document.createElement('div');
-    backfillWrap.className = 'injectFieldLabel injectOnboardBackfillWrap';
-    const backfillInput = document.createElement('input');
-    backfillInput.type = 'checkbox';
-    backfillInput.id = 'injectOnboardBackfill';
-    backfillInput.className = 'injectOnboardBackfillCheckbox';
-    backfillInput.checked = false;
-    const backfillLabel = document.createElement('label');
-    backfillLabel.className = 'injectOnboardBackfillText';
-    backfillLabel.setAttribute('for', 'injectOnboardBackfill');
-    backfillLabel.textContent = 'Refresh stale routine files';
-    backfillWrap.appendChild(backfillInput);
-    backfillWrap.appendChild(backfillLabel);
+    backfillWrap.className = 'injectFieldLabel';
+    const refreshLabel = document.createElement('span');
+    refreshLabel.id = 'injectOnboardRefreshLabel';
+    refreshLabel.textContent = 'Refresh managed files';
+    const refreshControl = document.createElement('div');
+    refreshControl.id = 'injectOnboardRefreshControl';
+    refreshControl.setAttribute('role', 'radiogroup');
+    refreshControl.setAttribute('aria-labelledby', 'injectOnboardRefreshLabel');
+    const refreshHints = {
+        none: 'Create what’s missing only',
+        stale: 'Also overwrite stale files nobody edited',
+        all: 'Overwrite every stale managed file, local edits included — authored files are never touched',
+    };
+    const refreshSegs = ['none', 'stale', 'all'].map(function(value) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'injectOnboardRefreshSeg';
+        seg.dataset.refresh = value;
+        seg.textContent = value;
+        seg.setAttribute('role', 'radio');
+        refreshControl.appendChild(seg);
+        return seg;
+    });
+    const refreshHint = document.createElement('div');
+    refreshHint.id = 'injectOnboardRefreshHint';
+    refreshHint.className = 'injectOnboardRefreshHint';
+    function applyRefresh(value) {
+        selectedRefresh = value;
+        refreshSegs.forEach(function(seg) {
+            const on = seg.dataset.refresh === value;
+            seg.classList.toggle('selected', on);
+            seg.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+        refreshHint.textContent = refreshHints[value];
+    }
+    applyRefresh('none');
+    backfillWrap.appendChild(refreshLabel);
+    backfillWrap.appendChild(refreshControl);
+    backfillWrap.appendChild(refreshHint);
     body.appendChild(backfillWrap);
 
     // Preflight verdict block — empty and hidden until Check runs. Sits below
@@ -2951,22 +2980,54 @@ function showOnboardModal(options) {
         };
     }
 
+    // The `all` caveat for a report's stale files — every one of them is
+    // overwritten at that level, local edits or not. Empty when it doesn't
+    // apply, so the verdict renders without a note.
+    function refreshNote(report) {
+        const stale = report && Array.isArray(report.stale) ? report.stale : [];
+        if (selectedRefresh !== 'all' || !stale.length) return '';
+        return stale.length === 1
+            ? 'Refresh all will overwrite this 1 stale file regardless of local edits.'
+            : 'Refresh all will overwrite these ' + stale.length + ' stale files regardless of local edits.';
+    }
+
     // The report currently on screen, or null whenever there isn't one — never
     // checked, a Check mid-flight, or a Check that errored. The Onboard button
     // only ever counts refreshable files from a report the user can see.
     let lastVerdictReport = null;
 
-    // `Onboard + refresh N` only when the opt-in is on AND the visible verdict
-    // has at least one provably-safe stale file; otherwise plain `Onboard`.
+    // `Onboard + refresh N` when the visible verdict has files the selected
+    // level would overwrite — the provably-safe ones at `stale`, every stale
+    // file at `all`; otherwise plain `Onboard`.
     function syncOnboardLabel() {
-        const refreshable = backfillInput.checked
-            ? preflightRefreshableCount(lastVerdictReport)
-            : 0;
+        let refreshable = 0;
+        if (selectedRefresh === 'stale') {
+            refreshable = preflightRefreshableCount(lastVerdictReport);
+        } else if (selectedRefresh === 'all' && lastVerdictReport
+                && Array.isArray(lastVerdictReport.stale)) {
+            refreshable = lastVerdictReport.stale.length;
+        }
         onboardBtnText.textContent = refreshable
             ? 'Onboard + refresh ' + refreshable
             : 'Onboard';
     }
-    backfillInput.addEventListener('change', syncOnboardLabel);
+
+    // A level change relabels the button and, when it flips the `all` caveat
+    // on or off, re-renders the visible verdict — keeping it expanded if it was.
+    refreshSegs.forEach(function(seg) {
+        seg.addEventListener('click', function() {
+            const hadNote = !!refreshNote(lastVerdictReport);
+            applyRefresh(seg.dataset.refresh);
+            if (lastVerdictReport && hadNote !== !!refreshNote(lastVerdictReport)) {
+                const strip = verdict.querySelector('.injectOnboardVerdictStrip');
+                const wasOpen = !!strip && strip.getAttribute('aria-expanded') === 'true';
+                renderVerdictReport(lastVerdictReport);
+                const nextStrip = verdict.querySelector('.injectOnboardVerdictStrip');
+                if (wasOpen && nextStrip) nextStrip.click();
+            }
+            syncOnboardLabel();
+        });
+    });
 
     function renderVerdictRunning() {
         const spinner = document.createElement('span');
@@ -2987,7 +3048,9 @@ function showOnboardModal(options) {
     }
 
     function renderVerdictReport(report) {
-        renderPreflightVerdictReport(verdict, report, verdictOptions());
+        const opts = verdictOptions();
+        opts.note = refreshNote(report);
+        renderPreflightVerdictReport(verdict, report, opts);
         lastVerdictReport = report;
         syncOnboardLabel();
     }
@@ -3119,7 +3182,7 @@ function showOnboardModal(options) {
         if (!repo) return;
         onboardBtn.disabled = true;
         const res = await onboardRepo(
-            repo, shapeSelect.value, selectedPurpose, backfillInput.checked);
+            repo, shapeSelect.value, selectedPurpose, selectedRefresh);
         if (res && res.ok && res.dispatched) {
             close();
             showInjectToast("Onboarding started — it'll appear here when ready (~30s).");

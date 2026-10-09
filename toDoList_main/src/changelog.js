@@ -9,6 +9,9 @@ export const changelog = [
         fixed: [
             'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
         ],
+        changed: [
+            'Onboarding a repo now offers a none / stale / all choice for refreshing managed files, with a hint for each level and a warning in the check results when all would overwrite locally edited files.',
+        ],
     },
     {
         version: '1.1',
@@ -28,7 +31,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-30',
         fixed: [
-            'Generated mockups now come back as a full A/B/C set instead of cutting off mid-variant, and a reply that still runs short shows the variants that fit with a note to regenerate.',
             'Accepting a proposal now marks its newly created task as In Progress while its run is underway.',
         ],
     },

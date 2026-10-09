@@ -206,7 +206,7 @@ describe('onboard sub-modal — Check action', () => {
         const kids = Array.from(document.getElementById('injectOnboardBody').children);
         expect(kids.indexOf(verdict)).toBe(kids.length - 1);
         const shapeIdx = kids.findIndex((el) => el.contains(document.getElementById('injectOnboardShapeSelect')));
-        const backfillIdx = kids.findIndex((el) => el.contains(document.getElementById('injectOnboardBackfill')));
+        const backfillIdx = kids.findIndex((el) => el.contains(document.getElementById('injectOnboardRefreshControl')));
         expect(shapeIdx).toBeGreaterThan(-1);
         expect(shapeIdx).toBeLessThan(backfillIdx);
         expect(backfillIdx).toBeLessThan(kids.indexOf(verdict));
@@ -463,7 +463,7 @@ describe('onboard sub-modal — expanded verdict layout', () => {
     });
 });
 
-describe('onboard sub-modal — refresh stale routine files opt-in', () => {
+describe('onboard sub-modal — refresh managed files level', () => {
     function lastOnboardBody() {
         const call = fetchSpy.mock.calls.find((c) => {
             try { return JSON.parse(c[1].body).onboard; } catch (e) { return false; }
@@ -478,54 +478,71 @@ describe('onboard sub-modal — refresh stale routine files opt-in', () => {
         return lastOnboardBody();
     }
 
-    it('renders a native checkbox with a wired label, unchecked by default', () => {
+    function chip(value) {
+        return document.querySelector('.injectOnboardRefreshSeg[data-refresh="' + value + '"]');
+    }
+
+    it('renders a none / stale / all radiogroup with a label, none selected by default', () => {
         openOnboardModal();
-        const box = document.getElementById('injectOnboardBackfill');
-        expect(box).toBeTruthy();
-        expect(box.type).toBe('checkbox');
-        expect(box.checked).toBe(false);
-        const label = document.querySelector('label[for="injectOnboardBackfill"]');
-        expect(label).toBeTruthy();
-        expect(label.textContent).toBe('Refresh stale routine files');
+        const control = document.getElementById('injectOnboardRefreshControl');
+        expect(control.getAttribute('role')).toBe('radiogroup');
+        const labelId = control.getAttribute('aria-labelledby');
+        expect(document.getElementById(labelId).textContent).toBe('Refresh managed files');
+        const segs = Array.from(control.querySelectorAll('.injectOnboardRefreshSeg'));
+        expect(segs.map((s) => s.textContent)).toEqual(['none', 'stale', 'all']);
+        segs.forEach((s) => {
+            expect(s.tagName).toBe('BUTTON');
+            expect(s.type).toBe('button');
+            expect(s.getAttribute('role')).toBe('radio');
+        });
+        expect(chip('none').getAttribute('aria-checked')).toBe('true');
+        expect(chip('none').classList.contains('selected')).toBe(true);
+        expect(chip('all').getAttribute('aria-checked')).toBe('false');
         // It hides with the rest of the form on a mobile takeover.
-        expect(box.closest('.injectFieldLabel')).toBeTruthy();
+        expect(control.closest('.injectFieldLabel')).toBeTruthy();
+        expect(document.getElementById('injectOnboardBackfill')).toBeNull();
     });
 
-    it('never persists — reopening the sub-modal brings it back unchecked', () => {
+    it('swaps the hint line with the selection', () => {
         openOnboardModal();
-        const box = document.getElementById('injectOnboardBackfill');
-        box.checked = true;
-        box.dispatchEvent(new Event('change'));
+        const hint = document.getElementById('injectOnboardRefreshHint');
+        expect(hint.textContent).toBe('Create what’s missing only');
+        chip('stale').click();
+        expect(hint.textContent).toBe('Also overwrite stale files nobody edited');
+        chip('all').click();
+        expect(hint.textContent).toBe(
+            'Overwrite every stale managed file, local edits included — authored files are never touched');
+        expect(chip('all').getAttribute('aria-checked')).toBe('true');
+        expect(chip('none').getAttribute('aria-checked')).toBe('false');
+    });
+
+    it('never persists — reopening the sub-modal brings it back to none', () => {
+        openOnboardModal();
+        chip('all').click();
         document.getElementById('injectOnboardCancel').click();
 
         openOnboardModal();
-        expect(document.getElementById('injectOnboardBackfill').checked).toBe(false);
-        expect(localStorage.getItem('todoapp_injectBackfillStale')).toBeNull();
+        expect(chip('none').getAttribute('aria-checked')).toBe('true');
+        expect(chip('all').getAttribute('aria-checked')).toBe('false');
+        expect(Object.keys(localStorage).filter((k) => /refresh|backfill/i.test(k))).toEqual([]);
     });
 
-    it('sends backfill_stale: true as a literal boolean when checked', async () => {
+    it.each(['none', 'stale', 'all'])('sends refresh: "%s" and no backfill_stale', async (value) => {
         openOnboardModal();
-        document.getElementById('injectOnboardBackfill').checked = true;
+        chip(value).click();
         const body = await submitOnboard('rsterenchak/new-repo');
         expect(body).toBeTruthy();
-        expect(body.backfill_stale).toBe(true);
-        expect(typeof body.backfill_stale).toBe('boolean');
+        expect(body.refresh).toBe(value);
+        expect('backfill_stale' in body).toBe(false);
     });
 
-    it('sends backfill_stale false — never a string — when left unchecked', async () => {
+    it('has no effect on Check — preflight never refreshes', async () => {
         openOnboardModal();
-        const body = await submitOnboard('rsterenchak/new-repo');
-        expect(body).toBeTruthy();
-        expect(body.backfill_stale === false || !('backfill_stale' in body)).toBe(true);
-        expect(typeof body.backfill_stale).not.toBe('string');
-    });
-
-    it('has no effect on Check — preflight never backfills', async () => {
-        openOnboardModal();
-        document.getElementById('injectOnboardBackfill').checked = true;
+        chip('all').click();
         document.getElementById('injectOnboardRepoInput').value = 'rsterenchak/new-repo';
         document.getElementById('injectOnboardCheck').click();
         await flush();
+        expect('refresh' in lastPreflightBody()).toBe(false);
         expect('backfill_stale' in lastPreflightBody()).toBe(false);
     });
 });
@@ -583,9 +600,16 @@ describe('onboard sub-modal — Onboard button refresh count', () => {
     }
 
     function toggleBackfill(on) {
-        const box = document.getElementById('injectOnboardBackfill');
-        box.checked = on;
-        box.dispatchEvent(new Event('change'));
+        selectRefresh(on ? 'stale' : 'none');
+    }
+
+    function selectRefresh(value) {
+        document.querySelector('.injectOnboardRefreshSeg[data-refresh="' + value + '"]').click();
+    }
+
+    function note() {
+        const el = document.querySelector('#injectOnboardVerdict .injectOnboardVerdictNote');
+        return el ? el.textContent : null;
     }
 
     it('reads "Onboard" before any Check, checked or not', () => {
@@ -639,6 +663,60 @@ describe('onboard sub-modal — Onboard button refresh count', () => {
         toggleBackfill(true);
         expect(document.querySelector('#injectOnboardSubmit svg')).toBeTruthy();
     });
+
+    it('counts every stale row at all, local edits or not', async () => {
+        await checkWith([
+            { file: '.claude/a.md', lines: 3, local_edits: 'no' },
+            { file: '.claude/b.md', lines: 9, local_edits: 'yes' },
+            { file: '.claude/c.md', lines: 1 },
+        ]);
+        selectRefresh('all');
+        expect(label()).toBe('Onboard + refresh 3');
+        selectRefresh('stale');
+        expect(label()).toBe('Onboard + refresh 1');
+    });
+
+    it('adds the overwrite caveat to the verdict only while all is selected', async () => {
+        await checkWith([
+            { file: '.claude/a.md', lines: 3, local_edits: 'no' },
+            { file: '.claude/b.md', lines: 9, local_edits: 'yes' },
+        ]);
+        expect(note()).toBeNull();
+        selectRefresh('stale');
+        expect(note()).toBeNull();
+
+        const strip = document.querySelector('#injectOnboardVerdict .injectOnboardVerdictStrip');
+        strip.click();
+        selectRefresh('all');
+        expect(note()).toBe('Refresh all will overwrite these 2 stale files regardless of local edits.');
+        // An expanded verdict stays expanded across the re-render.
+        expect(document.querySelector('#injectOnboardVerdict .injectOnboardVerdictStrip')
+            .getAttribute('aria-expanded')).toBe('true');
+
+        selectRefresh('none');
+        expect(note()).toBeNull();
+    });
+
+    it('carries the caveat onto a report that settles while all is selected', async () => {
+        openOnboardModal();
+        selectRefresh('all');
+        document.getElementById('injectOnboardRepoInput').value = 'rsterenchak/new-repo';
+        document.getElementById('injectOnboardCheck').click();
+        await flush();
+        await settleWith({
+            repo: 'rsterenchak/new-repo', shape: 'repo', purpose: 'personal',
+            warnings: [], create: [],
+            stale: [{ file: '.claude/a.md', lines: 3, local_edits: 'yes' }],
+        });
+        expect(note()).toBe('Refresh all will overwrite this 1 stale file regardless of local edits.');
+    });
+
+    it('adds no caveat at all when the verdict lists no stale files', async () => {
+        await checkWith([]);
+        selectRefresh('all');
+        expect(note()).toBeNull();
+        expect(label()).toBe('Onboard');
+    });
 });
 
 describe('onboard preflight — style.css hidden guards', () => {
@@ -662,6 +740,9 @@ describe('onboard preflight — style.css hidden guards', () => {
         expect(css).toMatch(/\.injectOnboardVerdictStaleEdits\[data-edits="no"\]/);
         expect(css).toMatch(/\.injectOnboardVerdictStaleEdits\[data-edits="yes"\]/);
         expect(css).toMatch(/\.injectOnboardVerdictStaleEdits\[data-edits="unknown"\]/);
-        expect(css).toMatch(/\.injectOnboardBackfillWrap\s*\{/);
+        expect(css).toMatch(/\.injectOnboardRefreshSeg\s*\{/);
+        expect(css).toMatch(/\.injectOnboardRefreshSeg\.selected\s*\{/);
+        expect(css).toMatch(/\.injectOnboardRefreshHint\s*\{/);
+        expect(css).not.toMatch(/\.injectOnboardBackfill/);
     });
 });
