@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-09',
+        fixed: [
+            'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-07',
         fixed: [
             'Opening the projects drawer on mobile by tapping the project name now dims the task list behind it.',
@@ -21,7 +28,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-09-30',
         fixed: [
-            'Generating mockups no longer gets stuck on “Generating…” in the task detail pane, and a stalled or failed generation now shows its error instead.',
             'Generated mockups now come back as a full A/B/C set instead of cutting off mid-variant, and a reply that still runs short shows the variants that fit with a note to regenerate.',
             'Accepting a proposal now marks its newly created task as In Progress while its run is underway.',
         ],
