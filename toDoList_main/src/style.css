@@ -4326,6 +4326,127 @@ button.claudeAttachChipLabel { cursor: pointer; }
   text-decoration: underline;
 }
 
+/* A run that published verification screenshots: a chip between the model tag
+   and the badge toggles a panel of thumbnails that wraps to its own line below
+   the header. Unlike --collapsible, the row itself is not a toggle. */
+.claudeRunRow--hasVerify {
+  flex-wrap: wrap;
+}
+.claudeRunVerifyChip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  min-height: 24px;
+  padding: 2px 7px;
+  background: var(--accent-dim);
+  color: var(--accent);
+  border: 0.5px solid var(--accent);
+  border-radius: 6px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  line-height: 1;
+  cursor: pointer;
+}
+.claudeRunVerifyChip:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.claudeRunVerifyChip--open {
+  background: var(--accent);
+  color: var(--bg-surface);
+}
+.claudeRunVerifyIcon {
+  flex: none;
+}
+.claudeRunVerifyPanel {
+  flex-basis: 100%;
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 6px;
+  background: var(--accent-dim);
+  border: 0.5px solid rgba(139, 123, 255, 0.35);
+  cursor: default;
+}
+.claudeRunVerifyGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+@media (max-width: 479px) {
+  .claudeRunVerifyGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.claudeRunVerifyShot {
+  display: block;
+  overflow: hidden;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 5px;
+  background: #000;
+  text-decoration: none;
+}
+.claudeRunVerifyShot img {
+  display: block;
+  width: 100%;
+  height: 84px;
+  object-fit: cover;
+  object-position: top;
+}
+.claudeRunVerifyMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+  padding: 3px 6px;
+  background: #111218;
+  color: #cfd0da;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 9px;
+  line-height: 1.4;
+}
+.claudeRunVerifyMetaLabel,
+.claudeRunVerifyFlag {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.claudeRunVerifyFlag {
+  flex: none;
+  max-width: 55%;
+}
+.claudeRunVerifyFlag--danger {
+  color: var(--text-danger);
+}
+.claudeRunVerifyText {
+  margin: 10px 0 0;
+  font-family: "SpaceMono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #b9b2ee;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+:root[data-theme="light"] .claudeRunVerifyText {
+  color: var(--accent-text);
+}
+.claudeRunVerifyActions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+.claudeRunVerifyLink {
+  flex: none;
+  font-size: 12px;
+  color: var(--accent-text);
+  text-decoration: none;
+}
+.claudeRunVerifyLink:hover {
+  text-decoration: underline;
+}
+
 /* Per-row Revert control on a SHIPPED run — quiet by default, warning-amber
    accent (deliberately distinct from delete-red and run-purple) so the caution
    intent reads only when the user reaches for it. Sits inside the iterable row

@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-09',
         added: [
-            'Deleting a project can now also remove its inject target and offboard the repo when no other project uses that target.',
+            'Runs with verification screenshots now show a camera chip that opens the screenshots, the verdict for each, and the overall summary right on the run row.',
         ],
         fixed: [
             'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
