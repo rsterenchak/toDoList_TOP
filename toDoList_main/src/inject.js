@@ -2170,18 +2170,6 @@ function showInjectTargetSubModal(options) {
             return;
         }
         saveBtn.disabled = true;
-        // Save-time allowlist gate: a repo not in the Worker's
-        // ALLOWED_TARGETS saves cleanly but then silently fails at
-        // inject/dispatch time. Block the write when the allowlist
-        // resolves without this repo. If the fetch is null/throws
-        // (Worker unreachable), fall through and allow the save —
-        // graceful degradation over blocking on a transient failure.
-        const allowed = await fetchAllowedRepos();
-        if (allowed && !allowed.repos.some(r => r.repo === values.repo)) {
-            saveBtn.disabled = false;
-            setError(repoField, 'Not in the Worker allowlist — add it to ALLOWED_TARGETS first');
-            return;
-        }
         // Same repo under another spelling (case, `.git`, pasted URL) would
         // save as a second row — block it against the cached target list.
         const dup = findDuplicateTarget(values.repo, cachedTargets, existing ? existing.id : null);
