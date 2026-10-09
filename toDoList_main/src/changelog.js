@@ -6,6 +6,9 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-10-09',
+        added: [
+            'Deleting an inject target can now also offboard its repo, with options to purge the authored docs and force-remove held files.',
+        ],
         fixed: [
             'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
         ],
@@ -25,13 +28,6 @@ export const changelog = [
         date: '2026-10-05',
         fixed: [
             'Opening the project sidebar on mobile now darkens the task list behind it and no longer lets taps reach the tasks underneath.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-09-30',
-        fixed: [
-            'Accepting a proposal now marks its newly created task as In Progress while its run is underway.',
         ],
     },
 ];
