@@ -7,12 +7,12 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-09',
         added: [
-            'Deleting an inject target can now also offboard its repo, with options to purge the authored docs and force-remove held files.',
             'Deleting a project can now also remove its inject target and offboard the repo when no other project uses that target.',
         ],
         fixed: [
             'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
             '"+ Add target" can now register a new repo instead of rejecting it as missing from the allowlist, and a case-variant of an existing target now shows the "Already a target" message.',
+            'Saving an inject target now always refuses a repo that is already a target, even when the target list on screen is out of date.',
         ],
         changed: [
             'Onboarding a repo now offers a none / stale / all choice for refreshing managed files, with a hint for each level and a warning in the check results when all would overwrite locally edited files.',

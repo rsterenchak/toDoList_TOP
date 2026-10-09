@@ -76,7 +76,7 @@ describe('sub-modal save wiring', () => {
 
     it('blocks the save with an "Already a target" repo error before the write', () => {
         expect(inject).toMatch(
-            /findDuplicateTarget\(\s*values\.repo\s*,\s*cachedTargets\s*,\s*existing\s*\?\s*existing\.id\s*:\s*null\s*\)[\s\S]{0,300}saveBtn\.disabled\s*=\s*false[\s\S]{0,200}setError\(\s*repoField\s*,\s*['"]Already a target: ['"]\s*\+[\s\S]{0,400}insertInjectTarget\(\s*values\s*\)/
+            /const\s+freshTargets\s*=\s*await\s+loadInjectTargets\(\s*\)\s*;\s*const\s+dup\s*=\s*findDuplicateTarget\(\s*values\.repo\s*,\s*freshTargets\s*,\s*existing\s*\?\s*existing\.id\s*:\s*null\s*\)[\s\S]{0,300}saveBtn\.disabled\s*=\s*false[\s\S]{0,200}setError\(\s*repoField\s*,\s*['"]Already a target: ['"]\s*\+[\s\S]{0,400}insertInjectTarget\(\s*values\s*\)/
         );
     });
 });
