@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-10-09',
         added: [
             'Deleting an inject target can now also offboard its repo, with options to purge the authored docs and force-remove held files.',
+            'Deleting a project can now also remove its inject target and offboard the repo when no other project uses that target.',
         ],
         fixed: [
             'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
@@ -21,13 +22,6 @@ export const changelog = [
         date: '2026-10-07',
         fixed: [
             'Opening the projects drawer on mobile by tapping the project name now dims the task list behind it.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-05',
-        fixed: [
-            'Opening the project sidebar on mobile now darkens the task list behind it and no longer lets taps reach the tasks underneath.',
         ],
     },
 ];
