@@ -1995,3 +1995,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/style.css`, `toDoList_main/src/sidebarDrawer.js`, `toDoList_main/src/main.js`
   - Completed: 2026-10-07
   <!-- id: 2ed069fd-22c5-4fdd-bf2d-85ac7aee82ec -->
+
+- [ ] **[MEDIUM]** Fix inject-target save allowing a duplicate row for the same repo under a different spelling
+  - Type: bug
+  - Description: The target sub-modal stores `repo` exactly as typed (`insertInjectTarget` / `updateInjectTarget` write `values.repo`, read from `repoField.input.value.trim()`), and nothing checks whether an existing target already points at that repo under another spelling — so `rsterenchak/matchinggame-test`, `rsterenchak/matchingGame-test.git` and `https://github.com/rsterenchak/matchingGame-test` all save as separate rows, and `onboard.sh`'s case-sensitive `repo=eq.` existence check then inserts yet another one (this just happened on matchingGame-test). Fix in two parts, both in the sub-modal save handler. First, canonicalize the typed value before `validateTargetForm` runs: trim, strip a leading `https://github.com/` or `github.com/`, strip a trailing `/` and `.git`, then validate the `owner/repo` shape as today — keep the user's casing (GitHub slugs are case-insensitive and the Worker's `resolveTarget` matches on the stored string, so no migration of existing rows). Second, before the insert/update, compare `normalizeOnboardRepo(values.repo)` against every row in the cached target list (the same `cachedTargets[i].repo` that `normalizeOnboardRepo` already exists for), skipping `existing.id` on the edit path; on a hit, re-enable the save button and `setError(repoField, 'Already a target: <that row's nickname>')` instead of saving. No new deps, no schema change.
+  - File: `toDoList_main/src/inject.js`
+  <!-- id: b0ffe262-b227-4c7f-b3d5-dbdf159b53fb -->
