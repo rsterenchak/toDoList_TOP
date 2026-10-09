@@ -2057,7 +2057,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-09
   <!-- id: f2e7f4b4-6d9d-477f-97af-6c4ec8d0087d -->
 
-- [ ] **[MEDIUM]** Refresh a repo straight from its target row's Check verdict
+- [x] **[MEDIUM]** Refresh a repo straight from its target row's Check verdict
   - Type: feature
   - Description: The per-row Check (magnifier) on an INJECT TARGETS row already answers "what has drifted" — stale routine files with their local-edits verdict, missing scaffold chips — but acting on the answer means leaving the row for the Onboard sub-modal, retyping the repo, and picking a refresh level there. Put the action on the verdict itself: one button per refresh level, each labelled by what it would do to *this* report, dispatching the same `onboardRepo(repo, shape, purpose, refresh)` the sub-modal's Onboard already sends (inject.js, `onboard: true` to the Worker, `refresh: 'none' | 'stale' | 'all'`). No new Worker route, no new workflow — `onboard.yml`'s `refresh` input does the work.
   - Behavior:
@@ -2074,5 +2074,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Visual: the new buttons live inside a Check verdict, which needs a signed-in session and a live Worker round-trip — they cannot render in the CI preview. The `style.css` change will trigger the default render of `/`; treat those shots as a layout regression check only, and do not count the buttons' absence there as a failed shot.
   - Out of scope: the Onboard sub-modal's own refresh segments and `Onboard + refresh N` label (unchanged); polling or watching the refresh run to completion; any Worker or workflow change; offboard.
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/injectTargetRowRefresh.test.js`, `toDoList_main/tests/injectTargetDriftCheck.test.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-10-09
   <!-- id: d235d17a-bfb2-4b37-9b90-7bc5b4a93075 -->
