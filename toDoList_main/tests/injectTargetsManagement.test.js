@@ -160,46 +160,37 @@ describe('inject targets — sub-modal shell', () => {
     });
 });
 
-describe('inject targets — save-time allowlist check', () => {
+// The save-time ALLOWED_TARGETS gate predated the registry: the `repos`
+// route now returns the enabled targets, so the gate rejected every new repo
+// and hid the dedupe error on case variants. The Worker's resolveTarget is
+// the real guard, so onSave must go straight from validation to dedupe.
+describe('inject targets — no save-time allowlist gate', () => {
 
     const inject = read('inject.js');
+    const onSave = inject.slice(
+        inject.indexOf('async function onSave()'),
+        inject.indexOf("saveBtn.addEventListener('click', onSave)")
+    );
 
-    it('onSave calls fetchAllowedRepos after the synchronous shape validation', () => {
-        // The async allowlist gate lives in onSave, after validateTargetForm
-        // returns clean and before the Supabase write.
-        expect(inject).toMatch(
-            /validateTargetForm\s*\([\s\S]{0,1000}await\s+fetchAllowedRepos\s*\(\s*\)/
-        );
+    it('onSave does not call fetchAllowedRepos', () => {
+        expect(onSave).toMatch(/validateTargetForm\s*\(/);
+        expect(onSave).not.toMatch(/fetchAllowedRepos/);
     });
 
-    it('blocks the write when the allowlist resolves without values.repo', () => {
-        // Match against result.repos.some(r => r.repo === values.repo) per
-        // the implementation note, and abort (return) when absent.
-        expect(inject).toMatch(
-            /\.repos\.some\(\s*\(?\s*r\s*\)?\s*=>\s*r\.repo\s*===\s*values\.repo\s*\)/
-        );
+    it('drops the "Not in the Worker allowlist" repo error', () => {
+        expect(inject).not.toMatch(/Not in the Worker allowlist/);
     });
 
-    it('surfaces the allowlist failure as an inline repo-field error', () => {
-        expect(inject).toMatch(
-            /setError\(\s*repoField\s*,\s*['"]Not in the Worker allowlist[^'"]*['"]\s*\)/
+    it('the dedupe guard is the first check after validation', () => {
+        expect(onSave).toMatch(
+            /saveBtn\.disabled\s*=\s*true;[\s\S]{0,300}findDuplicateTarget\(/
         );
+        expect(onSave).not.toMatch(/\.repos\.some\(/);
     });
 
-    it('re-enables Save on a blocked result so the user can retry', () => {
-        // The blocked path must clear saveBtn.disabled before returning so
-        // Save is never left stuck disabled.
-        expect(inject).toMatch(
-            /Not in the Worker allowlist[\s\S]{0,400}saveBtn\.disabled\s*=\s*false/
-        );
-    });
-
-    it('skips the check (allows save) when fetchAllowedRepos returns null', () => {
-        // The guard must be conditional on a truthy allow result, so a null
-        // (Worker-unreachable) return falls through to the write.
-        expect(inject).toMatch(
-            /if\s*\(\s*allow(?:ed)?\b[\s\S]{0,160}\.repos\.some/
-        );
+    it('keeps fetchAllowedRepos exported for the purpose-stamping path', () => {
+        expect(inject).toMatch(/export\s+async\s+function\s+fetchAllowedRepos\s*\(/);
+        expect(inject).toMatch(/repoPurposesInFlight\s*=\s*fetchAllowedRepos\(\)/);
     });
 });
 

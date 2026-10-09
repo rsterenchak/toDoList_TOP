@@ -2021,7 +2021,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/projectRow.js`, `toDoList_main/src/inject.js`
   <!-- id: 07ccc55e-46bd-4b46-850c-f2f2d7f6f4a4 -->
 
-- [ ] **[MEDIUM]** Remove the obsolete ALLOWED_TARGETS gate from the inject-target save
+- [x] **[MEDIUM]** Remove the obsolete ALLOWED_TARGETS gate from the inject-target save — Completed: 2026-10-09
   - Type: bug
   - Description: `onSave` in the target sub-modal still runs a save-time allowlist gate (`fetchAllowedRepos()` then `allowed.repos.some(r => r.repo === values.repo)`, erroring "Not in the Worker allowlist — add it to ALLOWED_TARGETS first"). That gate predates the registry: `repos` now returns the enabled `inject_targets` rows, so the check only passes for a repo that is already a target — "+ Add target" cannot register a new repo, and because the compare is case-sensitive it also fires before the dedupe guard on a case variant, hiding the "Already a target" message. Delete the gate block (the `fetchAllowedRepos` call and the `if` that follows it, through its `return`) and its comment; the dedupe guard that follows becomes the first post-validation check. Keep `fetchAllowedRepos` itself — the purpose-stamping path still uses it. The Worker's `resolveTarget` already rejects injects for unregistered repos, so nothing is lost. No new deps.
   - File: `toDoList_main/src/inject.js`

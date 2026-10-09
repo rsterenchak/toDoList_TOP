@@ -12,16 +12,10 @@ export const changelog = [
         ],
         fixed: [
             'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
+            '"+ Add target" can now register a new repo instead of rejecting it as missing from the allowlist, and a case-variant of an existing target now shows the "Already a target" message.',
         ],
         changed: [
             'Onboarding a repo now offers a none / stale / all choice for refreshing managed files, with a hint for each level and a warning in the check results when all would overwrite locally edited files.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-07',
-        fixed: [
-            'Opening the projects drawer on mobile by tapping the project name now dims the task list behind it.',
         ],
     },
 ];
