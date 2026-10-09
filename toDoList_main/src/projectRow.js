@@ -17,6 +17,12 @@ import { showConfirmModal } from './modals.js';
 import { updateEmptyState } from './emptyState.js';
 import { isInjectConfigured } from './inject.js';
 import {
+    findTargetById,
+    buildOffboardChoice,
+    offboardAndDeleteTarget,
+    showInjectToast,
+} from './inject.js';
+import {
     addAllToDo_DOM,
     addToDos_restore,
     focusBlankToDoInputIfDesktop,
@@ -185,6 +191,22 @@ function countRealToDos(projectName) {
 }
 
 
+// Resolve the inject target `projectName` routes to, plus how many OTHER
+// projects route to the same target. Null when the project has no target or
+// the id doesn't resolve in the targets cache.
+function resolveProjectTarget(projectName) {
+    const targetId = listLogic.getProjectTargetId(projectName);
+    const target = targetId ? findTargetById(targetId) : null;
+    if (!target) return null;
+    const names = listLogic.listProjectsArray() || [];
+    let others = 0;
+    names.forEach(function(name) {
+        if (name !== projectName && listLogic.getProjectTargetId(name) === targetId) others++;
+    });
+    return { target: target, others: others };
+}
+
+
 export function deleteProjectFlow(projChild, projectName) {
 
     // New rows that haven't been named yet aren't in the data model —
@@ -201,9 +223,34 @@ export function deleteProjectFlow(projChild, projectName) {
         ? 'Delete project "' + projectName + '" and its ' + count + ' todo item' + (count === 1 ? '' : 's') + '? This cannot be undone.'
         : 'Delete project "' + projectName + '"? This cannot be undone.';
 
+    // A target only this project routes to can be removed (and its repo
+    // offboarded) in the same confirm; a shared one is named but left alone.
+    // No target → the plain confirm, exactly as before.
+    const routed = resolveProjectTarget(projectName);
+    let offboard = null;
+    let body;
+    if (routed && routed.others === 0) {
+        offboard = buildOffboardChoice(routed.target, {
+            label: 'Also delete target ' + routed.target.nickname + ' and offboard ' + routed.target.repo,
+        });
+        body = offboard.node;
+    } else if (routed) {
+        body = document.createElement('div');
+        body.className = 'injectOffboardConfirm';
+        const line = document.createElement('div');
+        line.className = 'injectFieldLabel injectOffboardCheck--sub injectOffboardShared';
+        line.textContent = 'Target ' + routed.target.nickname + ' is used by ' + routed.others
+            + ' other project' + (routed.others === 1 ? '' : 's') + ' — left in place';
+        body.appendChild(line);
+    }
+
     showConfirmModal({
         message: message,
+        body: body,
         onConfirm: function() {
+            // Read the choice before the project goes; the project is what the
+            // user asked to remove, so it's deleted even if the dispatch fails.
+            const choice = offboard ? offboard.read() : null;
             const mainListEl = document.getElementById('mainList');
             const projButton = document.getElementById('projButton');
             const wasSelected = projChild.classList.contains('selectedProject');
@@ -233,6 +280,17 @@ export function deleteProjectFlow(projChild, projectName) {
                     applyProjectAccent(mainListEl, null);
                     updateEmptyState(mainListEl);
                 }
+            }
+
+            if (choice && choice.offboard) {
+                const target = routed.target;
+                offboardAndDeleteTarget(target, choice.purge, choice.force).then(function(r) {
+                    if (!r.ok) {
+                        showInjectToast(r.reason || 'Offboard failed', 'error');
+                        return;
+                    }
+                    showInjectToast('Project deleted · target removed · offboard dispatched');
+                });
             }
         }
     });

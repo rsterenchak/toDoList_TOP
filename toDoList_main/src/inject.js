@@ -2290,6 +2290,26 @@ export async function offboardRepo(targetRepo, purge, force) {
     }
 }
 
+// Offboard `target`'s repo and then delete the target row, outside the
+// settings modal (the project delete confirm). Same order and local cleanup as
+// the target row's Delete: dispatch first so a failed offboard leaves the
+// target in place, then drop the row, clear the now-orphan target_id from
+// every cached project (fromSync — the FK's ON DELETE SET NULL already did it
+// server-side), refresh the settings panel if it's mounted (or just the
+// cache), and re-evaluate the inject buttons. Resolves { ok } or
+// { ok: false, reason }.
+export async function offboardAndDeleteTarget(target, purge, force) {
+    const o = await offboardRepo(target.repo, purge, force);
+    if (!o.ok) return { ok: false, reason: o.reason || 'Offboard failed' };
+    const r = await deleteInjectTarget(target.id);
+    if (!r.ok) return { ok: false, reason: r.reason || 'Delete failed' };
+    listLogic.clearProjectTargetId(target.id, { fromSync: true });
+    if (typeof onboardRefreshHook === 'function') await onboardRefreshHook();
+    else await loadInjectTargets();
+    refreshAllInjectButtons();
+    return { ok: true };
+}
+
 // Fire the Worker's preflight route — the same `onboard.yml`, dispatched in
 // report-only mode (ONBOARD_PREFLIGHT=1) so it writes nothing and returns what
 // it *would* do: the resolved shape, the derived commands, a `create[]` list of
@@ -3224,12 +3244,15 @@ function showOnboardModal(options) {
 }
 
 
-// Body for a target row's Delete confirm: one "offboard" checkbox that, when
-// checked, reveals the `purge` / `force` sub-options and relabels the confirm
-// button "Delete + offboard". Everything starts off on every open and is never
-// persisted — offboarding is a deliberate per-delete choice. Returns the node
-// for showConfirmModal's `body` plus a `read()` for the onConfirm handler.
-function buildOffboardConfirmBody() {
+// Body for a Delete confirm that can also offboard `target`'s repo: one
+// "offboard" checkbox that, when checked, reveals the `purge` / `force`
+// sub-options and relabels the confirm button "Delete + offboard". Everything
+// starts off on every open and is never persisted — offboarding is a deliberate
+// per-delete choice. Shared by the target row's Delete and the project delete
+// confirm (which passes its own parent `label`). Returns the `node` for
+// showConfirmModal's `body` plus a `read()` for the onConfirm handler.
+export function buildOffboardChoice(target, opts) {
+    const label = (opts && opts.label) || 'Also strip the repo’s scaffold and secrets (offboard)';
     const body = document.createElement('div');
     body.className = 'injectOffboardConfirm';
 
@@ -3247,7 +3270,7 @@ function buildOffboardConfirmBody() {
         return { label: label, input: input };
     }
 
-    const main = checkRow('injectOffboardCheck', 'Also strip the repo’s scaffold and secrets (offboard)', false);
+    const main = checkRow('injectOffboardCheck', label, false);
     const subs = document.createElement('div');
     subs.className = 'injectOffboardSubs';
     subs.hidden = true;
@@ -3271,7 +3294,7 @@ function buildOffboardConfirmBody() {
     });
 
     return {
-        body: body,
+        node: body,
         read: function() {
             const on = main.input.checked;
             return { offboard: on, purge: on && purge.input.checked, force: on && force.input.checked };
@@ -3955,11 +3978,11 @@ export function showInjectSettingsModal(options) {
         trashIcon.title = 'Delete';
         trashIcon.innerHTML = '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 4 13 4"/><path d="M5 4v-1a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/><path d="M4.5 4l.7 9a1 1 0 0 0 1 .9h3.6a1 1 0 0 0 1-.9l.7-9"/></svg>';
         trashIcon.addEventListener('click', function() {
-            const offboard = buildOffboardConfirmBody();
+            const offboard = buildOffboardChoice(target);
             showConfirmModal({
                 message: 'Delete target `' + target.nickname + '`? Projects routing to it will become unrouted.',
                 confirmLabel: 'Delete',
-                body: offboard.body,
+                body: offboard.node,
                 onConfirm: async function() {
                     // Dispatch first, delete second: a failed offboard
                     // leaves the target in place, so nothing has changed
