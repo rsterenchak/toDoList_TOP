@@ -3845,7 +3845,89 @@ export function showInjectSettingsModal(options) {
                 fallbackRepo: target.repo,
                 cleanText: 'Up to date — nothing missing, nothing behind.',
             });
+            appendRefreshActions(report);
             appendVerdictDismiss();
+        }
+
+        // Act on the verdict in place: one button per onboard refresh level,
+        // each labelled by what it would do to this report. Same dispatch the
+        // onboard sub-modal sends — no poll, since the registry row already
+        // exists and a new-row watch would resolve at once. Every level also
+        // creates whatever is missing, so the titles say so where it applies.
+        function appendRefreshActions(report) {
+            if (target.repo === '*') return;
+            const create = Array.isArray(report.create) ? report.create.filter(Boolean) : [];
+            const stale = Array.isArray(report.stale)
+                ? report.stale.filter(function(s) { return s && s.file; })
+                : [];
+            const safe = preflightRefreshableCount({ stale: stale });
+            const held = stale.length - safe;
+            const missingNote = create.length > 0
+                ? '; also creates ' + create.length + ' missing'
+                : '';
+            const specs = [];
+            if (create.length > 0) {
+                specs.push({
+                    level: 'none',
+                    label: 'Create ' + create.length + ' missing',
+                    title: 'Create ' + create.length + ' missing ' + (create.length === 1 ? 'file' : 'files') + '; overwrites nothing',
+                });
+            }
+            if (safe > 0) {
+                specs.push({
+                    level: 'stale',
+                    label: 'Refresh ' + safe + ' safe',
+                    title: 'Refresh ' + safe + ' stale ' + (safe === 1 ? 'file' : 'files') + ' nobody edited' + missingNote,
+                    variant: 'injectSettingsBtn--primary',
+                });
+            }
+            if (stale.length > 0 && held > 0) {
+                specs.push({
+                    level: 'all',
+                    label: 'Refresh all ' + stale.length,
+                    title: 'Overwrites every stale file, local edits included.',
+                    variant: 'injectSettingsBtn--danger',
+                });
+            }
+            if (!specs.length) return;
+
+            const actions = document.createElement('div');
+            actions.className = 'injectTargetRefreshActions';
+            const buttons = specs.map(function(spec) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'injectSettingsBtn injectTargetRefreshBtn';
+                if (spec.variant) btn.classList.add(spec.variant);
+                btn.textContent = spec.label;
+                btn.title = spec.title;
+                btn.addEventListener('click', function() { runRefresh(spec.level); });
+                actions.appendChild(btn);
+                return btn;
+            });
+
+            async function runRefresh(level) {
+                if (buttons.some(function(b) { return b.disabled; })) return;
+                buttons.forEach(function(b) { b.disabled = true; });
+                // Same shape/purpose fallbacks as the row's Check — see the
+                // preflightRepo call below for why a defaulted purpose is wrong.
+                const res = await onboardRepo(
+                    target.repo,
+                    target.shape || 'auto',
+                    target.purpose || 'personal',
+                    level);
+                if (res && res.ok && res.dispatched) {
+                    const started = document.createElement('p');
+                    started.className = 'injectTargetRefreshStarted';
+                    started.textContent = 'Refresh started — run Check again in about a minute to confirm.';
+                    if (actions.parentNode) actions.parentNode.replaceChild(started, actions);
+                    showInjectToast('Refresh started for ' + target.nickname);
+                    return;
+                }
+                showInjectToast((res && res.reason) || 'Refresh failed', 'error');
+                buttons.forEach(function(b) { b.disabled = false; });
+            }
+
+            verdictHost.appendChild(actions);
         }
 
         function renderRowError(reason, onRetry) {

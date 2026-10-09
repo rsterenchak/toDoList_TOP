@@ -23614,6 +23614,33 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   outline: none;
   box-shadow: 0 0 0 2px var(--accent-dim);
 }
+/* Refresh actions under a row's verdict — one button per onboard refresh
+   level. Wraps so on a phone the first two share a line and `Refresh all N`
+   takes its own. */
+.injectTargetRefreshActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.injectTargetRefreshActions[hidden] { display: none !important; }
+.injectTargetRefreshBtn {
+  flex: 1 1 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.injectTargetRefreshStarted {
+  margin: 4px 0 0;
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-secondary);
+}
+.injectTargetRefreshStarted[hidden] { display: none !important; }
 .injectTargetInfo {
   flex: 1;
   display: flex;

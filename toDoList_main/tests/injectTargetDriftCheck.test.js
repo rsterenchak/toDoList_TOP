@@ -530,4 +530,10 @@ describe('inject target drift check — style.css', () => {
         expect(css).toMatch(/\.injectOnboardVerdictStaleDirs\[hidden\]\s*\{\s*display:\s*none\s*!important/);
         expect(css).toMatch(/\.injectOnboardVerdictCount--stale\[hidden\]\s*\{\s*display:\s*none\s*!important/);
     });
+
+    it('styles the row refresh actions, their buttons, and the started line', () => {
+        expect(css).toMatch(/\.injectTargetRefreshActions\s*\{[^}]*flex-wrap:\s*wrap/);
+        expect(css).toMatch(/\.injectTargetRefreshBtn\s*\{[^}]*white-space:\s*nowrap/);
+        expect(css).toMatch(/\.injectTargetRefreshStarted\s*\{[^}]*color:\s*var\(--text-secondary\)/);
+    });
 });
