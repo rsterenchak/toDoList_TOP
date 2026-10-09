@@ -375,7 +375,7 @@ describe('inject target rows — Check control', () => {
         ]);
         expect(edits.map((el) => el.dataset.edits)).toEqual(['no', 'yes', 'unknown']);
         // The row Check reports only — it gains no refresh control of its own.
-        expect(rows()[0].querySelector('#injectOnboardBackfill')).toBeNull();
+        expect(rows()[0].querySelector('#injectOnboardRefreshControl')).toBeNull();
     });
 
     it('is not clean when the report carries only stale entries', async () => {

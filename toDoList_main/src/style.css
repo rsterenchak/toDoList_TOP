@@ -23835,6 +23835,44 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: var(--accent-text);
   border-color: var(--accent);
 }
+/* Refresh-level segmented control — Purpose's treatment in SpaceMono, with
+   the selected chip filled solid so the riskier levels read as a choice. */
+#injectOnboardRefreshControl {
+  display: flex;
+  gap: 6px;
+}
+.injectOnboardRefreshSeg {
+  appearance: none;
+  -webkit-appearance: none;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 36px;
+  padding: 0 10px;
+  border-radius: 10px;
+  border: 0.5px solid var(--border-bright);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 16px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.injectOnboardRefreshSeg:hover { color: var(--text-primary); }
+.injectOnboardRefreshSeg:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.injectOnboardRefreshSeg.selected {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+.injectOnboardRefreshHint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
 #injectOnboardActions {
   display: flex;
   justify-content: flex-end;
@@ -23861,27 +23899,6 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 }
 #injectOnboardVerdict[hidden] { display: none !important; }
 #injectOnboardBody .injectFieldLabel[hidden] { display: none !important; }
-
-/* Refresh opt-in. A native checkbox beside its label, so it lays out as a row
-   rather than the stacked label/control every other field uses. */
-.injectOnboardBackfillWrap {
-  flex-direction: row;
-  align-items: center;
-  gap: 8px;
-}
-.injectOnboardBackfillCheckbox {
-  flex-shrink: 0;
-  width: 15px;
-  height: 15px;
-  margin: 0;
-  accent-color: var(--accent);
-  cursor: pointer;
-}
-.injectOnboardBackfillText {
-  min-width: 0;
-  cursor: pointer;
-  overflow-wrap: anywhere;
-}
 
 /* Collapsed strip. A button when there's a report to expand, a plain div for
    the running and failed states — both share the layout. */
