@@ -2033,7 +2033,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/inject.js`, `toDoList_main/tests/inject.test.js`
   <!-- id: fbe60196-cd68-4b45-af3c-1403eab273f1 -->
 
-- [ ] **[HIGH]** Show a run's verification screenshots on its run-sheet row
+- [x] **[HIGH]** Show a run's verification screenshots on its run-sheet row — Completed: 2026-10-09
   - Type: feature
   - Description: `claude-run.yml` now publishes the screenshots the routine looked at (`<visual_verification>`) to the app: the PNGs go to the public `verify` Storage bucket and the Worker's `verify_result` route stores an index on the run's `agent_queue` row as a new `verify` jsonb column — `{ uploaded_at, ok: true|false|null, summary, lines: [<Verify lines>], run_id, shots: [{ file, url, viewport, route, steps, stepsOk, verdict?, error?, scrollHeight?, innerHeight?, overflowY? }] }` (`steps` is a one-line string such as `click "Fight" · wait 1500`; `verdict` is the agent's one-line judgment of that shot; `summary` is its one- or two-sentence overall verdict). The run sheet (RUNS tab in `claudeSheet.js`) ignores the column today. Surface it as a chip + accordion on the row, mirroring the existing "No change" accordion (`claudeRunRow--collapsible` / `claudeRunResultPanel`), so a verified run is legible from a phone without opening GitHub.
   - Behavior:
