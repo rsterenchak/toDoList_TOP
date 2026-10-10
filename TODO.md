@@ -2083,3 +2083,11 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/style.css`
   - Completed: 2026-10-10
   <!-- id: f6e42fed-0af5-4bca-a313-9b06bfb6aaae -->
+
+- [ ] **[MEDIUM]** Replace hardcoded near-black fill on the task filter pills with theme tokens
+  - Type: bug
+  - Description: In light theme, the unselected ALL / IN PROGRESS / DONE pills in `#taskFilterBar` still render near-black on the light page. The cause is that `.taskPhaseFilterPill` (desktop) and `.taskFilterPill` (mobile cycle pill) in `toDoList_main/src/style.css` hardcode `background: #15151e` and `border: 0.5px solid #2a2a3a`, and there is no `:root[data-theme="light"]` override for either. Replace the hardcoded values with tokens in BOTH base rules so each theme resolves on its own; do not add a light-only override. Unselected pills get `background: var(--bg-elevated)` and `border-color: var(--border-dim)`, with color staying `var(--text-muted)`. `.selected` gets `background: var(--bg-raised)` and keeps `color: var(--accent-text)` and `border-color: var(--border-bright)`. Selected now lifts to `--bg-raised` instead of `--bg-elevated`, because otherwise it would match the new unselected fill. Leave `:hover` and `:focus-visible` unchanged. Leave the other `#15151e` uses (`.claudeComposerInput`, `#projectPickerDropdown`, `#desktopChatPane` tab rules) alone; they are out of scope. Expected result in light theme: unselected pills are pale grey (#f0f2f7) with a light hairline on the #e8eaef bar, and the selected pill is white with a #969aaa border and purple text. At 1300x900 that applies to the desktop phase-pill row; at 390x844 it applies to the mobile cycle pill. Dark theme should look essentially the same as today (#14151b vs the old #15151e), with the selected pill only slightly lifted (#1c1e27). The theme falls back to `prefers-color-scheme`, so a default headless render shows light; confirm dark by emulating `prefers-color-scheme: dark` or setting `data-theme="dark"` on `<html>`.
+  - File: `toDoList_main/src/style.css`
+  - Verify: 1300x900, 390x844 → /
+  - Completed:
+  <!-- id: 76a57520-bc60-4e4e-b547-3c5d6998678b -->
