@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-09T16:22:31.624Z",
-  "sha": "487d69f4da7405aed878adc94d7aafbd14e5ab6b",
+  "generatedAt": "2026-10-10T09:22:22.017Z",
+  "sha": "0bd45a3709fedeb24fc0e44992ead97bff7d5b34",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -9462,11 +9462,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 68,
+      "line": 72,
       "files": [
         {
           "file": "changelog.js",
-          "line": 68
+          "line": 72
         },
         {
           "file": "style.css",
@@ -9478,11 +9478,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 37,
+      "line": 41,
       "files": [
         {
           "file": "changelog.js",
-          "line": 37
+          "line": 41
         },
         {
           "file": "style.css",
@@ -9494,11 +9494,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 47,
+      "line": 51,
       "files": [
         {
           "file": "changelog.js",
-          "line": 47
+          "line": 51
         },
         {
           "file": "style.css",
@@ -9510,11 +9510,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 40,
+      "line": 44,
       "files": [
         {
           "file": "changelog.js",
-          "line": 40
+          "line": 44
         },
         {
           "file": "style.css",
@@ -9526,11 +9526,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 43,
+      "line": 47,
       "files": [
         {
           "file": "changelog.js",
-          "line": 43
+          "line": 47
         },
         {
           "file": "style.css",
@@ -9542,11 +9542,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 64,
+      "line": 68,
       "files": [
         {
           "file": "changelog.js",
-          "line": 64
+          "line": 68
         },
         {
           "file": "style.css",
