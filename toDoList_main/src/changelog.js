@@ -8,13 +8,13 @@ export const changelog = [
         date: '2026-10-10',
         fixed: [
             'In light mode, the mobile project header and the Runs tab status badges now use light colors instead of dark ones.',
+            'In light mode, the ALL / IN PROGRESS / DONE task filter pills now show light fills instead of near-black ones.',
         ],
     },
     {
         version: '1.1',
         date: '2026-10-09',
         fixed: [
-            'Saving an inject target now accepts a pasted GitHub URL or a trailing .git, and refuses a repo that is already a target under a different spelling.',
             '"+ Add target" can now register a new repo instead of rejecting it as missing from the allowlist, and a case-variant of an existing target now shows the "Already a target" message.',
             'Saving an inject target now always refuses a repo that is already a target, even when the target list on screen is out of date.',
             'A run\'s screenshots panel now links to all of its screenshots on the run page.',
