@@ -2091,3 +2091,21 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   - Completed: 2026-10-10
   <!-- id: 76a57520-bc60-4e4e-b547-3c5d6998678b -->
+
+- [ ] **[MEDIUM]** Add a high scores button to the HomePage and PlayPage nav stacks
+  - Type: feature
+  - Description: Saved runs already persist in `localStorage` under `matchingGame_highScores` (`highScoresKey` in `src/PlayPage.jsx`, entries `{name, score}`, sorted by `sortHighScores`, rendered by the `.highScoresBlock` list in the end-game popup) but are only visible after a game ends. Add a trophy button that opens the list from either page.
+  - Behavior:
+    1. Button. On HomePage add a `<div className='scoresButton navStackButton'>` to `.topColumn1` after the speaker button; on PlayPage add the same to `.topColumn3` after `.helpButton`. Use a new `src/assets/trophy.svg` (simple black trophy outline, like `planet.svg`) rendered as an `<img>` with `alt="High scores"`, sized by the existing `.topColumn1 .navStackButton img` / `.musicIcon3`-style rules. No new styling beyond the shared `.navStackButton` DBZ treatment (gradient face, bevel, hover/press from the `.topColumn1` / `.topColumn3` rules), so it matches the music/planet/help circles at every breakpoint, including the ≤480px pill (4 × 48px buttons still fit the 320px max width) and the desktop 60x55 size. Thread `popUpStyle` through on PlayPage like the other nav buttons.
+    2. Mobile menu. `src/MobileMenu.jsx` already takes `openInstructions`; add an `openScores` prop and render a `mobileMenuRow` "High scores" (trophy icon + label) after the help row on both pages, closing the menu on tap like the other rows.
+    3. Modal. Add `activeScoresModal` state and a `HighScoresModal` rendered in `src/MainSection.jsx` so both pages share one instance. Reuse the instructions modal pattern: `.instructionsBackdrop` + `.instructionsCard` classes (or `scoresBackdrop` / `scoresCard` aliases that share the same rules), closing on backdrop tap, Escape, and a `gotItButton`-styled "Close" button, with the same 400ms ghost-click guard PlayPage uses. Body is the existing `.highScoresBlock` markup (title, `<ol className='highScoresList'>` of rank / name / score rows, `.highScoresEmpty` "No scores yet") showing the top 10 instead of `maxHighScoresShown`.
+    4. Shared data. Move `highScoresKey`, `sortHighScores`, and `loadHighScores` into a new `src/highScores.js` (pure helpers, no React) and import them in `PlayPage.jsx` and the modal, so HomePage can read the list without mounting the game. Game state itself stays in `PlayPage` / `Card`. When the end-game save writes a new entry, include `level: isLevel` so the modal can show a level badge per row; entries without a `level` field display as "Easy".
+  - Acceptance criteria:
+    - 1300x900 home: a fourth yellow circle (trophy) sits in the top-left stack beside music and speaker, same size and hover/press as the others; clicking opens the high scores modal centered with the backdrop blur, listing saved runs or "No scores yet".
+    - 1300x900 play: the trophy is the fourth circle in the nav stack under `?`; opens the same modal; the end-game popup list is unchanged.
+    - 390x844 both pages: the trophy appears as a row in the hamburger menu on home and as the fourth button in the bottom pill on play; the modal fits the 90% width card.
+    - Saving a run from the end-game popup makes it appear in the modal on the next open without a reload.
+  - Out of scope: changing how runs are saved or ranked, clearing scores, and any desktop-only placement; no new dependencies.
+  - File: `src/MainSection.jsx`, `src/HomePage.jsx`, `src/PlayPage.jsx`, `src/MobileMenu.jsx`, `src/highScores.js`, `src/assets/trophy.svg`, `src/style.css`
+  - Verify: 1300x900, 390x844 → /
+  <!-- id: 37324bac-c9d9-42bb-8b2f-416a6181c377 -->
