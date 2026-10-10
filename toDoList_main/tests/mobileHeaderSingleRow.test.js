@@ -10,8 +10,8 @@ function read(relative) {
 }
 
 // Pins the dense left-aligned mobile project header (Variant C). At the
-// ≤1023px breakpoint the header lays out as a horizontal row on a deep
-// #15151e bar: a left column (#mobileProjMain) stacks, flush to the left
+// ≤1023px breakpoint the header lays out as a horizontal row on a themed
+// --bg-elevated bar: a left column (#mobileProjMain) stacks, flush to the left
 // edge, the PROJECT N OF M label, a name row (project name + ▾ dropdown
 // chevron + run spinner inline) rendered as a clean left-aligned accent
 // title, and an open/done counts line below; a vertically-stacked ‹ / ›
@@ -44,13 +44,13 @@ describe('Dense left-aligned mobile header (Variant C)', () => {
         return m[1];
     }
 
-    it('lays the header out as a single horizontal row on the deep #15151e bar', () => {
+    it('lays the header out as a single horizontal row on the themed elevated-surface bar', () => {
         const block = denseBlock();
         const header = rule(block, '#mobileProjHeader');
         expect(header).toMatch(/flex-direction:\s*row/);
         expect(header).toMatch(/align-items:\s*center/);
         expect(header).toMatch(/gap:\s*12px/);
-        expect(header).toMatch(/background:\s*#15151e/i);
+        expect(header).toMatch(/background:\s*var\(--bg-elevated\)/);
         // Left/right padding is symmetric now — the hamburger is gone on mobile
         // so no right-side slot is reserved.
         expect(header).toMatch(/padding:[^;]*\)\s+16px\s+6px\s+16px/);

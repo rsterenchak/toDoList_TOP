@@ -4186,10 +4186,20 @@ button.claudeAttachChipLabel { cursor: pointer; }
   border: 0.5px solid var(--border-mid);
   color: var(--text-secondary);
 }
+/* Status tints derive from one per-status --c, mixed against the themed
+   surface and text tokens, so a single rule set reads in both themes. */
+.claudeRunBadge--queued,
+.claudeRunBadge--shipped,
+.claudeRunBadge--failed,
+.claudeRunBadge--unconfirmed,
+.claudeRunBadge--nochange,
+.claudeRunBadge--awaiting {
+  background: color-mix(in srgb, var(--c) 14%, var(--bg-elevated));
+  border-color: color-mix(in srgb, var(--c) 45%, transparent);
+  color: color-mix(in srgb, var(--c) 75%, var(--text-primary));
+}
 .claudeRunBadge--queued {
-  background: #161622;
-  border-color: #444441;
-  color: #b8b6ac;
+  --c: var(--text-secondary);
 }
 .claudeRunBadge--running {
   background: var(--accent-dim);
@@ -4197,34 +4207,24 @@ button.claudeAttachChipLabel { cursor: pointer; }
   color: var(--accent-text);
 }
 .claudeRunBadge--shipped {
-  background: #0f2a20;
-  border-color: #1d6e56;
-  color: #5dcaa5;
+  --c: var(--type-feature);
 }
 .claudeRunBadge--failed {
-  background: #2a1414;
-  border-color: #a32d2d;
-  color: #f09595;
+  --c: var(--text-danger);
 }
 .claudeRunBadge--unconfirmed {
-  background: #1c1c1c;
-  border-color: #555550;
-  color: #9a988e;
+  --c: var(--text-warning);
   border-style: dashed;
 }
 .claudeRunBadge--nochange {
-  background: #241d12;
-  border: 0.5px solid #6e5a2a;
-  color: #cbb079;
+  --c: var(--text-muted);
 }
 /* "Awaiting merge" — the run finished green but its PR is still open behind a
-   manual merge. Amber like the caution family (revert, no-change) rather than
-   shipped-green, since nothing has landed yet, but brighter than "No change":
-   this state is live and will resolve, not a settled verdict. */
+   manual merge. Tinted from the accent rather than shipped-green, since
+   nothing has landed yet: this state is live and will resolve, not a settled
+   verdict. */
 .claudeRunBadge--awaiting {
-  background: #2a2113;
-  border: 0.5px solid #8a6f2e;
-  color: #d9b86a;
+  --c: var(--accent);
 }
 /* The door to the PR an "Awaiting merge" row is parked behind. Sits in the row
    beside the badge; absent entirely when the resolve turned up no url. */
@@ -21658,10 +21658,10 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     align-items: center;
     gap: 12px;
     min-height: 40px;
-    /* Deep near-black header bar; position:relative keeps the defensive
+    /* Themed elevated header bar; position:relative keeps the defensive
        stacking context from the base block. */
     position: relative;
-    background: #15151e;
+    background: var(--bg-elevated);
     /* iOS paints a scroll-edge blur/dim band over web content under the status
        bar on viewport-fit=cover + black-translucent pages, reaching roughly
        30pt past the safe-area inset. The OS composites it above the page, so
