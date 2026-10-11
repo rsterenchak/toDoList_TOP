@@ -2182,7 +2182,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 672a4aa2-3ee3-4cbc-8b3c-c78142f1fa1a -->
 
-- [ ] **[MEDIUM]** Give the Map lens a three-pane desktop layout
+- [x] **[MEDIUM]** Give the Map lens a three-pane desktop layout
   - Type: feature
   - Description: On desktop (>1023px) the Map lens is cramped. It renders inside the Structure rail, which the desktop grid fixes at `minmax(260px, 300px)`, and shares that rail with the NEXT REFACTOR card and the filter row. As a result the mini-map scrolls out of view, file names truncate (`agentQueueStore…`) and purposes clip to one line, while the wide right column only ever shows code. In the Map lens, switch desktop to three columns: a narrow rail listing the areas, a 380px map pane holding the existing level-1/level-2 content, and the code viewer in the remaining width. Mobile (≤1023px) stays exactly as it is. Reference mockup: "Desktop B — Three panes" from the design review.
   - Behavior:
@@ -2197,4 +2197,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - If the preview has no linked project and shows the Structure empty state, say so in the verdict and rely on the DOM tests.
   - File: `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/structureView.test.js`
   - Verify: 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; click "text=Pipeline" ; wait 800, 1100x800 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; click "text=Pipeline" ; wait 800, 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=map]" ; wait 800
+  - Completed: 2026-10-11
   <!-- id: 7343a65d-6c31-43fb-937a-3cf6bf3b5d48 -->
