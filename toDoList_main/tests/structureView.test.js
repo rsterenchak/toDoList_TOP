@@ -34,8 +34,19 @@ const { state } = vi.hoisted(() => ({
         explainReply: 'This file does a thing.',
         explainError: null,
         lastChatCall: null,
+        // What the tour loader resolves for any repo (null = no src-tours.json).
+        tours: null,
     },
 }));
+
+// The tours loader would fetch the repo's src-tours.json from Pages; the tests
+// feed it from `state.tours` instead, keeping the real pure helpers.
+vi.mock('../src/codeTours.js', async (importOriginal) => {
+    const actual = await importOriginal();
+    return Object.assign({}, actual, {
+        loadTours: vi.fn(function () { return Promise.resolve(state.tours); }),
+    });
+});
 
 vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(function (repo) {
@@ -103,6 +114,8 @@ import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, readRepoFile } from '../src/inject.js';
 import { captureRemote, pagesUrlFor } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
+import { loadTours } from '../src/codeTours.js';
+import { closeTourPlayer } from '../src/tourPlayer.js';
 import { listLogic } from '../src/listLogic.js';
 import { readFileSync } from 'fs';
 import { resolve as resolvePath } from 'path';
@@ -111,6 +124,9 @@ import {
     STRUCTURE_LENS_KEY,
     STRUCTURE_TREE_KEY,
     getStructureTreeState,
+    getTourProgress,
+    setTourProgress,
+    setTourCardHidden,
 } from '../src/prefs.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -144,6 +160,7 @@ beforeEach(() => {
     state.explainReply = 'This file does a thing.';
     state.explainError = null;
     state.lastChatCall = null;
+    state.tours = null;
     chatWithWorker.mockClear();
     setChatWorkspaceRepo.mockClear();
     insertReference.mockClear();
@@ -3003,5 +3020,238 @@ describe('renderStructureView — Map lens three-pane desktop layout', () => {
         expect(tree().querySelector('.structureMap')).toBeTruthy();
         expect(tree().querySelector('.structureMapRail')).toBeFalsy();
         expect(pane().children).toHaveLength(0);
+    });
+});
+
+describe('renderStructureView — code tours', () => {
+    const TOP = 'rsterenchak/toDoList_TOP';
+    const OTHER = 'rsterenchak/matchingGame-test';
+    const MANIFEST = {
+        ok: true,
+        srcRoot: 'src',
+        files: ['inject.js', 'listLogic.js', 'toDoRow.js'],
+        modules: [
+            { path: 'inject.js', lines: 1200, imports: [], purpose: 'Worker calls.' },
+            { path: 'listLogic.js', lines: 800, imports: ['inject.js'] },
+            { path: 'toDoRow.js', lines: 400, imports: ['listLogic.js'] },
+        ],
+        areas: [
+            { id: 'pipeline', name: 'Pipeline', purpose: 'Ships entries.', pos: [0.7, 0.5], files: ['inject.js'] },
+            { id: 'tasks', name: 'Tasks', purpose: 'The core list.', pos: [0.2, 0.5], files: ['listLogic.js', 'toDoRow.js'] },
+        ],
+    };
+    const tstep = (file, symbol, line, area) => ({
+        file, symbol, line, area, next: null, title: symbol + ' title', why: symbol + ' why',
+        snippet: [{ n: line, t: symbol + '()', hi: true }],
+    });
+    const TOURS = {
+        sections: [{ id: 'foundations', title: 'Foundations' }, { id: 'tasks', title: 'Tasks & projects' }],
+        tours: [
+            {
+                id: 'add-task', section: 'tasks', title: 'Adding a task', recap: [{ title: 'R', body: 'r' }],
+                steps: [
+                    tstep('listLogic.js', 'addToDo', 10, 'tasks'),
+                    tstep('toDoRow.js', 'buildToDoRow', 20, 'tasks'),
+                    tstep('inject.js', 'postToWorker', 30, 'pipeline'),
+                    tstep('listLogic.js', 'persistMutation', 40, 'tasks'),
+                ],
+            },
+            {
+                id: 'second', section: 'tasks', title: 'Second tour', recap: [],
+                steps: [tstep('listLogic.js', 'a', 1, 'tasks'), tstep('listLogic.js', 'b', 2, 'tasks'), tstep('listLogic.js', 'c', 3, 'tasks')],
+            },
+        ],
+    };
+    const realInnerWidth = window.innerWidth;
+    function setWidth(w) {
+        Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
+    }
+    const view = () => document.getElementById('structureView');
+    const card = () => view().querySelector(':scope > .tourStartCard');
+    const chip = () => document.querySelector('.structureTourChip');
+    const area = (id) => document.querySelector('.structureMapArea[data-area="' + id + '"]');
+    const lensBtn = (id) => document.querySelector('.structureLensBtn[data-lens="' + id + '"]');
+
+    async function render(name = 'My Project') {
+        mountDom(name);
+        renderStructureView();
+        await flush();
+    }
+
+    beforeEach(async () => {
+        localStorage.clear();
+        state.manifests[TOP] = MANIFEST;
+        state.manifests[OTHER] = MANIFEST;
+        setStructureLens('map');
+        setWidth(500);
+        // Round-trip through another repo so each test starts on a clean level 1.
+        await render('Game');
+    });
+    afterEach(() => {
+        closeTourPlayer();
+        document.querySelectorAll('.tourAllBackdrop').forEach((n) => n.remove());
+        setWidth(realInnerWidth);
+    });
+
+    it('renders the START HERE card above the header when an unfinished tour exists', async () => {
+        state.tours = TOURS;
+        await render();
+        expect(loadTours).toHaveBeenCalledWith(TOP);
+        expect(view().firstElementChild).toBe(card());
+        expect(card().hidden).toBe(false);
+        expect(view().classList.contains('has-tourStart')).toBe(true);
+        expect(card().querySelector('.tourStartEyebrow').textContent).toBe('START HERE');
+        expect(card().querySelector('.tourStartMeta').textContent).toBe('0 of 2 · ~2 min left');
+        expect(card().querySelector('.tourStartNext').textContent).toBe('Next: Adding a task');
+        expect(card().querySelectorAll('.tourStartDot')).toHaveLength(2);
+        expect(card().querySelector('.tourStartDot').classList.contains('is-current')).toBe(true);
+        expect(chip().hidden).toBe(true);
+    });
+
+    it('keeps every tour surface absent when loadTours returns null', async () => {
+        state.tours = null;
+        await render();
+        expect(card().hidden).toBe(true);
+        expect(view().classList.contains('has-tourStart')).toBe(false);
+        expect(chip().hidden).toBe(true);
+        area('tasks').click();
+        document.querySelector('.structureMapOpenBtn').click();
+        await flush();
+        expect(document.querySelector('.structureMapLevel2')).toBeTruthy();
+        expect(document.querySelector('.structureMapTours')).toBeFalsy();
+    });
+
+    it('hides the card once every tour is done and shows the chip instead', async () => {
+        state.tours = TOURS;
+        setTourProgress(TOP, { 'add-task': { step: 4, done: true }, second: { step: 2, done: true } });
+        await render();
+        expect(card().hidden).toBe(true);
+        expect(chip().hidden).toBe(false);
+        expect(chip().textContent).toBe('Tours 2/2');
+    });
+
+    it('Continue resumes the next tour at its saved step', async () => {
+        state.tours = TOURS;
+        setTourProgress(TOP, { 'add-task': { step: 2, done: false } });
+        await render();
+        card().querySelector('.tourStartContinue').click();
+        const player = document.querySelector('.tourPlayer--sheet');
+        expect(player).toBeTruthy();
+        expect(player.querySelector('.tourPlayerCount').textContent).toBe('3 / 4');
+        expect(player.querySelector('.tourPlayerStepTitle').textContent).toBe('postToWorker title');
+        expect(player.querySelector('.tourPlayerArea').textContent).toBe('Pipeline');
+    });
+
+    it('dismissing the card swaps in the chip, which opens All tours', async () => {
+        state.tours = TOURS;
+        setTourProgress(TOP, { 'add-task': { step: 1, done: false }, second: { step: 0, done: true } });
+        await render();
+        card().querySelector('.tourStartHide').click();
+        expect(card().hidden).toBe(true);
+        expect(view().classList.contains('has-tourStart')).toBe(false);
+        expect(chip().hidden).toBe(false);
+        expect(chip().textContent).toBe('Tours 1/2');
+        // The dismissal is remembered for this repo.
+        await render();
+        expect(card().hidden).toBe(true);
+
+        chip().click();
+        const sheet = document.querySelector('.tourAllBackdrop .tourAllSheet');
+        expect(sheet).toBeTruthy();
+        expect(sheet.querySelector('.tourAllTitle').textContent).toBe('Learn this codebase');
+        const sections = sheet.querySelectorAll('.tourAllSection');
+        expect(sections).toHaveLength(1);
+        expect(sections[0].querySelector('.tourAllSectionHead').textContent).toBe('Tasks & projects1 / 2');
+        const rows = sheet.querySelectorAll('.tourAllRow');
+        expect(rows[0].querySelector('.tourGlyph').classList.contains('is-progress')).toBe(true);
+        expect(rows[0].querySelector('.tourAllRowMeta').textContent).toBe('step 2 / 4');
+        expect(rows[1].querySelector('.tourGlyph').classList.contains('is-done')).toBe(true);
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(document.querySelector('.tourAllBackdrop')).toBeFalsy();
+    });
+
+    it('an All tours row starts that tour and closes the sheet', async () => {
+        state.tours = TOURS;
+        await render();
+        card().querySelector('.tourStartAll').click();
+        document.querySelectorAll('.tourAllRow')[1].click();
+        expect(document.querySelector('.tourAllBackdrop')).toBeFalsy();
+        expect(document.querySelector('.tourPlayerTourTitle').textContent).toBe('Second tour');
+        expect(getTourProgress(TOP).second).toEqual({ step: 0, done: false });
+    });
+
+    it('shows the area tour row in level 2 only for areas with tours', async () => {
+        state.tours = TOURS;
+        await render();
+        area('tasks').click();
+        document.querySelector('.structureMapOpenBtn').click();
+        await flush();
+        const row = document.querySelector('.structureMapTours');
+        expect(row).toBeTruthy();
+        expect(row.querySelector('.structureMapFilesLabel').textContent).toBe('TOURS IN TASKS · 2');
+        // Above the FILES list.
+        expect(row.nextElementSibling.classList.contains('structureMapFiles')).toBe(true);
+        const cards = row.querySelectorAll('.structureMapTourCard');
+        expect(cards).toHaveLength(2);
+        expect(cards[0].querySelector('.structureMapTourFoot').textContent).toBe('▶ 4 steps');
+
+        document.querySelector('.structureMapCrumbBack').click();
+        area('pipeline').click();
+        document.querySelector('.structureMapOpenBtn').click();
+        await flush();
+        expect(document.querySelector('.structureMapLevel2')).toBeTruthy();
+        expect(document.querySelector('.structureMapTours')).toBeFalsy();
+    });
+
+    it('on desktop docks the player in the code column and the map follows each step', async () => {
+        state.tours = TOURS;
+        setWidth(1300);
+        await render();
+        expect(view().classList.contains('is-map-lens')).toBe(true);
+        card().querySelector('.tourStartContinue').click();
+        const host = view().querySelector(':scope > .structureCanvasHost');
+        expect(host.classList.contains('is-touring')).toBe(true);
+        expect(host.querySelector('.tourPlayer--docked')).toBeTruthy();
+        expect(document.querySelector('.tourPlayer--sheet')).toBeFalsy();
+        const pane = view().querySelector(':scope > .structureMapPane');
+        expect(pane.querySelector('.structureMapCrumbHere').textContent).toBe('Tasks');
+        document.querySelector('.tourPlayerNext').click();
+        document.querySelector('.tourPlayerNext').click();
+        expect(pane.querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+
+        // Open in code viewer closes the tour and opens the span in the column.
+        document.querySelector('.tourPlayerOpenCode').click();
+        expect(host.classList.contains('is-touring')).toBe(false);
+        expect(host.querySelector('.tourPlayer')).toBeFalsy();
+        const codePane = host.querySelector('.codeViewerPane');
+        expect(codePane.hidden).toBe(false);
+        expect(codePane.textContent).toContain('src/inject.js');
+        expect(getTourProgress(TOP)['add-task']).toEqual({ step: 2, done: false });
+    });
+
+    it('a lens switch closes a docked tour', async () => {
+        state.tours = TOURS;
+        setWidth(1300);
+        await render();
+        card().querySelector('.tourStartContinue').click();
+        const host = view().querySelector(':scope > .structureCanvasHost');
+        expect(host.classList.contains('is-touring')).toBe(true);
+        lensBtn('code').click();
+        await flush();
+        expect(host.classList.contains('is-touring')).toBe(false);
+        expect(document.querySelector('.tourPlayer')).toBeFalsy();
+    });
+
+    it('lays the card out as a full-width first row on desktop', () => {
+        const css = readFileSync(resolvePath(__dirname, '../src/style.css'), 'utf8');
+        expect(css).toMatch(/#structureView\.has-tourStart > \.tourStartCard \{\s*grid-column: 1 \/ -1;\s*grid-row: 1;/);
+    });
+
+    it('hides the card when dismissed for this repo only', async () => {
+        state.tours = TOURS;
+        setTourCardHidden(OTHER, true);
+        await render();
+        expect(card().hidden).toBe(false);
     });
 });
