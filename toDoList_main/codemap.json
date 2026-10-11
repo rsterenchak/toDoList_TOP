@@ -116,6 +116,7 @@
       ],
       "files": [
         "structureView.js",
+        "codeMapModel.js",
         "structureCanvas.js",
         "structureRemoteCapture.js",
         "codeViewer.js",
