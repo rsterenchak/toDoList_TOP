@@ -286,6 +286,12 @@ let mapFileSort = 'used';
 let mapFilesExpanded = false;
 let mapEls = null;
 let mapCtx = null;
+// Desktop's three-pane Map layout: the area rail fills the tree, the map pane
+// (`currentMapPane`, a flat child of #structureView) takes the level-1/level-2
+// content, and the code viewer keeps the remaining width. `mapRailRows` holds the
+// rail's rows by area id so the filter can dim them like the circles.
+let currentMapPane = null;
+let mapRailRows = null;
 // The toggle's Map segment, built with the toggle but attached by
 // syncMapLensSegment only when the repo has areas.
 let mapLensBtn = null;
@@ -2791,6 +2797,7 @@ function renderLens(repo, treeEl) {
     // cleared by each lens's own render). Record the breakpoint this paint targets
     // so a later resize can tell the host would change and re-home the canvas.
     canvasHostDesktop = structureIsDesktop();
+    syncMapLensLayout();
     // Everything below throws the open file away, so record it first — this is the
     // only point that still knows what the column was reading.
     rememberOpenCodeFile();
@@ -2889,6 +2896,7 @@ function otherEnd(e, id) {
 function renderMapLens(repo, treeEl) {
     canvasActive = false;
     mapEls = null;
+    mapRailRows = null;
     // The detail column has no Map counterpart; show the code viewer's empty state.
     if (structureIsDesktop() && currentCanvasHost) clearCodeViewer(currentCanvasHost);
     clear(treeEl);
@@ -2911,8 +2919,36 @@ function renderMapLens(repo, treeEl) {
     });
 }
 
-// Paint the Map lens's current level into `treeEl`: level 2 (one area's files)
-// while `openArea` names an area of this graph, otherwise level 1. Also the
+// True while the Map lens lays out as three panes: the Map lens, above 1023px,
+// with the map pane mounted.
+function mapLensIsThreePane() {
+    return lens === 'map' && structureIsDesktop() && !!currentMapPane;
+}
+
+// Apply or drop the three-pane layout class for the lens and breakpoint this
+// paint targets. Called on every lens repaint, so leaving the Map lens or
+// crossing 1024px leaves no class behind and no stale content in the map pane.
+function syncMapLensLayout() {
+    if (!currentMapPane) return;
+    const on = mapLensIsThreePane();
+    const view = currentMapPane.parentNode;
+    if (view) view.classList.toggle('is-map-lens', on);
+    if (!on) {
+        clear(currentMapPane);
+        mapRailRows = null;
+    }
+}
+
+// Where the level-1/level-2 content paints: the map pane in the three-pane
+// layout, otherwise the tree (mobile, unchanged).
+function mapContentHost() {
+    if (!mapCtx) return null;
+    return mapLensIsThreePane() ? currentMapPane : mapCtx.treeEl;
+}
+
+// Paint the Map lens's current level: level 2 (one area's files) while
+// `openArea` names an area of this graph, otherwise level 1. On desktop the
+// level goes into the map pane and the tree becomes the area rail. Also the
 // repaint for a level switch, which leaves the detail column's open file alone.
 function mountMapLens(repo, treeEl, graph) {
     mapCtx = { repo: repo, treeEl: treeEl, graph: graph };
@@ -2920,10 +2956,74 @@ function mountMapLens(repo, treeEl, graph) {
     // A selection from another repo's graph can't carry over.
     if (selectedArea && !ids.has(selectedArea)) selectedArea = null;
     if (openArea && !ids.has(openArea)) openArea = null;
+    const host = mapContentHost();
     clear(treeEl);
-    treeEl.appendChild(openArea ? buildMapLevel2(graph) : buildMapLens(graph));
+    if (host !== treeEl) {
+        clear(host);
+        treeEl.appendChild(buildMapRail(graph));
+    }
+    host.appendChild(openArea ? buildMapLevel2(graph) : buildMapLens(graph));
+    applyMapFileRowSelection();
     if (filterQuery) applyMapFilter(filterQuery.trim().toLowerCase());
 }
+
+// The desktop rail's area list: an AREAS label, then one row per area (name and
+// line total). A row opens that area straight at level 2; the open area's row
+// is highlighted.
+function buildMapRail(graph) {
+    const rail = document.createElement('nav');
+    rail.className = 'structureMapRail';
+    rail.setAttribute('aria-label', 'Areas');
+    const label = document.createElement('div');
+    label.className = 'structureMapRailLabel';
+    label.textContent = 'AREAS';
+    rail.appendChild(label);
+    mapRailRows = new Map();
+    graph.areas.forEach(function (a) {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'structureMapRailRow';
+        row.dataset.area = a.id;
+        const open = a.id === openArea;
+        row.classList.toggle('is-open', open);
+        row.setAttribute('aria-pressed', String(open));
+
+        const name = document.createElement('span');
+        name.className = 'structureMapRailName';
+        name.textContent = a.name;
+        row.appendChild(name);
+        const lines = document.createElement('span');
+        lines.className = 'structureMapRailLines';
+        lines.textContent = formatLines(a.lines);
+        row.appendChild(lines);
+
+        row.addEventListener('click', function () {
+            if (openArea === a.id) return;
+            openArea = a.id;
+            selectedArea = a.id;
+            mapFilesExpanded = false;
+            repaintMapLens();
+        });
+        rail.appendChild(row);
+        mapRailRows.set(a.id, row);
+    });
+    return rail;
+}
+
+// Mark the level-2 file row for whatever the code viewer is showing, whichever
+// surface opened it. Rows carry MANIFEST-relative paths and the viewer the
+// REPO-relative one, so the srcRoot is joined before comparing.
+function applyMapFileRowSelection() {
+    const host = mapContentHost();
+    if (!host) return;
+    const open = getOpenCodeViewerFile();
+    Array.prototype.forEach.call(host.querySelectorAll('.structureMapFileRow'), function (row) {
+        const on = !!open && joinSrcRootPath(currentSrcRoot, row.dataset.path) === open;
+        row.classList.toggle('is-open', on);
+    });
+}
+
+onCodeViewerChange(applyMapFileRowSelection);
 
 function repaintMapLens() {
     if (!mapCtx) return;
@@ -3146,6 +3246,7 @@ function buildMapFileList(rows) {
                 list.appendChild(buildMapFileRow(repo, row));
             });
             more.remove();
+            applyMapFileRowSelection();
         });
         section.appendChild(more);
     }
@@ -3250,7 +3351,8 @@ function renderMapPanel(links) {
         repaintMapLens();
         // The button sits below the constellation, so a user who scrolled down to
         // reach it could land with level 2's top above the fold; bring it back.
-        const crumb = mapCtx && mapCtx.treeEl.querySelector('.structureMapCrumb');
+        const host = mapContentHost();
+        const crumb = host && host.querySelector('.structureMapCrumb');
         if (crumb && typeof crumb.scrollIntoView === 'function') crumb.scrollIntoView({ block: 'nearest' });
     });
     panel.appendChild(open);
@@ -3271,6 +3373,8 @@ function applyMapFilter(q) {
             return matchesQuery(f, q);
         });
         btn.classList.toggle('is-filtered-out', !hit);
+        const railRow = mapRailRows && mapRailRows.get(id);
+        if (railRow) railRow.classList.toggle('is-filtered-out', !hit);
         if (hit) visible++;
     });
     if (filterCountEl) filterCountEl.textContent = q ? visible + ' of ' + mapEls.buttons.size : '';
@@ -3853,6 +3957,9 @@ export function renderStructureView() {
         priorCaptureCard._captureTeardown();
     }
     clear(view);
+    view.classList.remove('is-map-lens');
+    currentMapPane = null;
+    mapRailRows = null;
 
     const projectName = getSelectedProjectName();
     if (!projectName) {
@@ -4034,6 +4141,14 @@ export function renderStructureView() {
     view.appendChild(actionToolbar);
 
     view.appendChild(tree);
+
+    // The Map lens's middle column on desktop (level 1 / level 2). A flat child
+    // like the canvas host below, hidden by CSS everywhere but the three-pane
+    // layout, so the mobile stack is unchanged.
+    const mapPane = document.createElement('div');
+    mapPane.className = 'structureMapPane';
+    currentMapPane = mapPane;
+    view.appendChild(mapPane);
 
     // Detail-column host for the block canvas at desktop widths. Kept a flat child
     // of #structureView (in mobile source order, after the tree) so the ≤1023px

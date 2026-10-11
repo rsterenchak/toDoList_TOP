@@ -10,6 +10,9 @@ export const changelog = [
             'The Structure tab has a new Map view that shows the app\'s areas as linked circles sized by code, and tapping an area describes what it does and what it connects to.',
             'In the Structure tab\'s Map view, an area can now be opened to list its files by most used or size, and tapping a file opens its code.',
         ],
+        changed: [
+            'On desktop, the Structure tab\'s Map view now spreads across three columns, with a list of areas on the left, the map and file list in the middle, and the open file\'s code on the right.',
+        ],
     },
     {
         version: '1.1',
@@ -17,13 +20,6 @@ export const changelog = [
         fixed: [
             'In light mode, the mobile project header and the Runs tab status badges now use light colors instead of dark ones.',
             'In light mode, the ALL / IN PROGRESS / DONE task filter pills now show light fills instead of near-black ones.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-09',
-        fixed: [
-            'A run\'s screenshots panel now links to all of its screenshots on the run page.',
         ],
     },
 ];

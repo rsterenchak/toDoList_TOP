@@ -104,6 +104,8 @@ import { chatWithWorker, readRepoFile } from '../src/inject.js';
 import { captureRemote, pagesUrlFor } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
 import { listLogic } from '../src/listLogic.js';
+import { readFileSync } from 'fs';
+import { resolve as resolvePath } from 'path';
 import {
     setStructureLens,
     STRUCTURE_LENS_KEY,
@@ -2861,5 +2863,145 @@ describe('renderStructureView — Map lens level 2 (an open area)', () => {
         await flush();
         expect(document.querySelector('.structureMapCrumb')).toBeFalsy();
         expect(document.querySelector('.structureMapPanel').textContent).toContain('Tap an area to see what it does');
+    });
+});
+
+describe('renderStructureView — Map lens three-pane desktop layout', () => {
+    const TOP = 'rsterenchak/toDoList_TOP';
+    const OTHER = 'rsterenchak/matchingGame-test';
+    const MANIFEST = {
+        ok: true,
+        srcRoot: 'src',
+        files: ['inject.js', 'shipEntry.js', 'listLogic.js'],
+        modules: [
+            { path: 'inject.js', lines: 1200, imports: [], purpose: 'Worker calls.' },
+            { path: 'shipEntry.js', lines: 400, imports: ['inject.js'], purpose: 'Ships an entry.' },
+            { path: 'listLogic.js', lines: 800, imports: ['inject.js'] },
+        ],
+        areas: [
+            { id: 'pipeline', name: 'Pipeline', purpose: 'Ships entries.', pos: [0.7, 0.5], files: ['inject.js', 'shipEntry.js'] },
+            { id: 'tasks', name: 'Tasks', purpose: 'The core list.', pos: [0.2, 0.5], files: ['listLogic.js'] },
+        ],
+    };
+    const realInnerWidth = window.innerWidth;
+    function setWidth(w) {
+        Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
+    }
+    const view = () => document.getElementById('structureView');
+    const pane = () => view().querySelector(':scope > .structureMapPane');
+    const tree = () => view().querySelector(':scope > .structureTree');
+    const railRow = (id) => document.querySelector('.structureMapRailRow[data-area="' + id + '"]');
+    const lensBtn = (id) => document.querySelector('.structureLensBtn[data-lens="' + id + '"]');
+    const fileRow = (p) => document.querySelector('.structureMapFileRow[data-path="' + p + '"]');
+
+    beforeEach(async () => {
+        state.manifests[TOP] = MANIFEST;
+        state.manifests[OTHER] = MANIFEST;
+        setStructureLens('map');
+        setWidth(1300);
+        // Round-trip through another repo so each test starts on a clean level 1.
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        mountDom();
+        renderStructureView();
+        await flush();
+    });
+    afterEach(() => {
+        setWidth(realInnerWidth);
+    });
+
+    it('applies the lens class only for Map on desktop, with the level in the map pane and the area rail in the tree', () => {
+        expect(view().classList.contains('is-map-lens')).toBe(true);
+        expect(pane().querySelector('.structureMap')).toBeTruthy();
+        expect(tree().querySelector('.structureMap')).toBeFalsy();
+        expect(tree().querySelector('.structureMapRailLabel').textContent).toBe('AREAS');
+        const rows = Array.from(tree().querySelectorAll('.structureMapRailRow'));
+        expect(rows.map((r) => r.querySelector('.structureMapRailName').textContent)).toEqual(['Pipeline', 'Tasks']);
+        expect(railRow('pipeline').querySelector('.structureMapRailLines').textContent).toBe('1.6k');
+    });
+
+    it('hides the refactor / capture cards and the toolbar only in the three-pane state', () => {
+        const css = readFileSync(resolvePath(__dirname, '../src/style.css'), 'utf8');
+        expect(css).toMatch(/#structureView\.is-map-lens > \.refactorCard,\s*#structureView\.is-map-lens > \.captureCard,\s*#structureView\.is-map-lens > \.structureActionToolbar \{\s*display: none;/);
+        expect(css).toMatch(/#structureView\.is-map-lens \{\s*grid-template-columns: 220px 380px minmax\(0, 1fr\);/);
+        expect(view().querySelector(':scope > .refactorCard')).toBeTruthy();
+        expect(view().querySelector(':scope > .captureCard')).toBeTruthy();
+        lensBtn('code').click();
+        expect(view().classList.contains('is-map-lens')).toBe(false);
+    });
+
+    it('a rail area row opens that area at level 2 and is highlighted', async () => {
+        railRow('tasks').click();
+        await flush();
+        expect(pane().querySelector('.structureMapCrumbHere').textContent).toBe('Tasks');
+        expect(railRow('tasks').classList.contains('is-open')).toBe(true);
+        expect(railRow('tasks').getAttribute('aria-pressed')).toBe('true');
+        expect(railRow('pipeline').classList.contains('is-open')).toBe(false);
+        // ← Areas returns the pane to level 1 and drops the rail highlight.
+        pane().querySelector('.structureMapCrumbBack').click();
+        expect(pane().querySelector('.structureMapPanel')).toBeTruthy();
+        expect(railRow('tasks').classList.contains('is-open')).toBe(false);
+    });
+
+    it('the filter dims non-matching rail rows', () => {
+        const input = document.querySelector('.structureFilterBox input');
+        input.value = 'listlogic';
+        input.dispatchEvent(new Event('input'));
+        expect(railRow('tasks').classList.contains('is-filtered-out')).toBe(false);
+        expect(railRow('pipeline').classList.contains('is-filtered-out')).toBe(true);
+    });
+
+    it('highlights the open file’s row and follows the code viewer', async () => {
+        railRow('pipeline').click();
+        await flush();
+        fileRow('shipEntry.js').click();
+        await flush();
+        expect(view().querySelector(':scope > .structureCanvasHost .codeViewerPane')).toBeTruthy();
+        expect(fileRow('shipEntry.js').classList.contains('is-open')).toBe(true);
+        expect(fileRow('inject.js').classList.contains('is-open')).toBe(false);
+        fileRow('inject.js').click();
+        await flush();
+        expect(fileRow('inject.js').classList.contains('is-open')).toBe(true);
+        expect(fileRow('shipEntry.js').classList.contains('is-open')).toBe(false);
+    });
+
+    it('switching lens restores the two-column layout and empties the map pane', async () => {
+        lensBtn('code').click();
+        await flush();
+        expect(view().classList.contains('is-map-lens')).toBe(false);
+        expect(pane().children).toHaveLength(0);
+        expect(tree().querySelector('.structureMapRail')).toBeFalsy();
+        lensBtn('map').click();
+        await flush();
+        expect(view().classList.contains('is-map-lens')).toBe(true);
+    });
+
+    it('crossing the breakpoint moves the map back into the tree and drops the class', async () => {
+        railRow('pipeline').click();
+        await flush();
+        setWidth(390);
+        syncStructureCanvasForViewport();
+        await flush();
+        expect(view().classList.contains('is-map-lens')).toBe(false);
+        expect(pane().children).toHaveLength(0);
+        expect(tree().querySelector('.structureMapRail')).toBeFalsy();
+        // The open area survives the resize, now painted in the mobile stack.
+        expect(tree().querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+        setWidth(1300);
+        syncStructureCanvasForViewport();
+        await flush();
+        expect(view().classList.contains('is-map-lens')).toBe(true);
+        expect(pane().querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+    });
+
+    it('mobile keeps the Map lens in the tree with no lens class', async () => {
+        setWidth(390);
+        renderStructureView();
+        await flush();
+        expect(view().classList.contains('is-map-lens')).toBe(false);
+        expect(tree().querySelector('.structureMap')).toBeTruthy();
+        expect(tree().querySelector('.structureMapRail')).toBeFalsy();
+        expect(pane().children).toHaveLength(0);
     });
 });
