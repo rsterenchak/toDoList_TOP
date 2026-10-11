@@ -1,3 +1,7 @@
+// The service worker: precaches the build and serves the HTML shell network-first.
+// It also activates a waiting update on SKIP_WAITING and claims open pages as
+// soon as it activates.
+
 import { precacheAndRoute, cleanupOutdatedCaches, matchPrecache } from 'workbox-precaching';
 import { registerRoute, NavigationRoute } from 'workbox-routing';
 import { NetworkFirst } from 'workbox-strategies';

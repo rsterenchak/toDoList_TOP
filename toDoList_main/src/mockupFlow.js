@@ -1,3 +1,7 @@
+// The A/B/C mockup flow for `needs_mockup` agent_queue rows: generate three variants, preview them, pick one.
+// It builds the prompts, parses the reply, renders the preview iframes and the
+// card's secondary content for whichever surface mounts it.
+
 import { listLogic } from './listLogic.js';
 import { findTargetById, chatWithWorker, generateMockupsFromWorker, showInjectToast } from './inject.js';
 // wireModalDismiss centralizes the modal close contract (close button, backdrop

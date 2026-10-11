@@ -1,3 +1,13 @@
+// The generic "ship a TODO.md entry tied to a todo and dispatch a run for it"
+// core, extracted verbatim from agentView's dispatchDraft. It mints (or reuses)
+// an entry id, embeds the marker, injects the entry into TODO.md, stamps the id
+// back onto the source todo, waits (best-effort) for the marker to surface on
+// main, then dispatches claude-run.yml in entry mode against that id.
+//
+// This module owns none of the Agent board's bookkeeping: it does NOT touch
+// agent_queue, does NOT start any poller, and does NOT refresh any view — those
+// stay in the caller. It returns enough for the caller to do that tail itself.
+
 import { listLogic } from './listLogic.js';
 import {
     mintEntryId,
@@ -9,16 +19,6 @@ import {
     refreshShippedMarkers,
     showInjectToast,
 } from './inject.js';
-
-// The generic "ship a TODO.md entry tied to a todo and dispatch a run for it"
-// core, extracted verbatim from agentView's dispatchDraft. It mints (or reuses)
-// an entry id, embeds the marker, injects the entry into TODO.md, stamps the id
-// back onto the source todo, waits (best-effort) for the marker to surface on
-// main, then dispatches claude-run.yml in entry mode against that id.
-//
-// This module owns none of the Agent board's bookkeeping: it does NOT touch
-// agent_queue, does NOT start any poller, and does NOT refresh any view — those
-// stay in the caller. It returns enough for the caller to do that tail itself.
 
 // How long the head-start marker-visibility poll waits before dispatching
 // anyway. The on-main read served by the Worker is content-cache backed by a

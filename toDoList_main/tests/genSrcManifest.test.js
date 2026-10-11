@@ -176,3 +176,21 @@ describe('gen-src-manifest buildWebManifest modules/areas', () => {
         expect(warn).not.toHaveBeenCalled();
     });
 });
+
+// Guards the real src/ so a new module can't ship without a top-of-file purpose
+// comment (the Map lens shows it) or without a place in codemap.json.
+describe('gen-src-manifest real src/ coverage', () => {
+    const path = require('path');
+
+    it('gives every module a purpose and puts every JS file in exactly one area', () => {
+        const warn = vi.fn();
+        const m = buildWebManifest({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+        expect(m.modules.length).toBeGreaterThan(0);
+        expect(m.modules.filter((mod) => !mod.purpose).map((mod) => mod.path)).toEqual([]);
+        expect(Array.isArray(m.areas)).toBe(true);
+        const counts = {};
+        m.areas.forEach((a) => a.files.forEach((f) => { counts[f] = (counts[f] || 0) + 1; }));
+        const misplaced = m.modules.map((mod) => mod.path).filter((p) => counts[p] !== 1);
+        expect(misplaced).toEqual([]);
+    });
+});

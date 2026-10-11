@@ -1,3 +1,5 @@
+// The factory for a single todo item object, holding its fields and their default values.
+
 import './style.css';
 
 

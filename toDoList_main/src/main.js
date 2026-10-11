@@ -1,3 +1,7 @@
+// The app shell: builds the page structure in component() and wires user actions to the data model and views.
+// index.js mounts what this module returns; the feature modules it imports are
+// handed their DOM refs and callbacks here at boot.
+
 import './style.css';
 // Pipeline verification no-op (entry 1ab046ed) — non-functional marker comment.
 // reload-on-update test — safe to remove (entry ddbe5425) — non-functional marker comment.

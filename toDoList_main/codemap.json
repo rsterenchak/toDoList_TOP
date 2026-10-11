@@ -24,8 +24,7 @@
         "mockupFlow.js",
         "assignmentCoverage.js",
         "seedTasksModal.js",
-        "conceiveShapes.js",
-        "captureCard.js"
+        "conceiveShapes.js"
       ]
     },
     {
@@ -122,6 +121,7 @@
         "codeViewer.js",
         "complexityHotspots.js",
         "refactorCard.js",
+        "captureCard.js",
         "srcPath.js"
       ]
     },

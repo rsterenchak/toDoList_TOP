@@ -34,6 +34,8 @@ All source lives in `toDoList_main/src/`. Each JS file has a defined responsibil
 
 Do not mutate the data model from UI files (`index.js`, `toDo.js`, `main.js`). Go through `listLogic.js`.
 
+Every `src/` JS module opens with a `//` purpose comment above its imports (its first sentence is what the Structure tab's Map lens shows), and every new module is added to an area in `toDoList_main/codemap.json`. `tests/genSrcManifest.test.js` enforces both.
+
 ## Assets
 
 - Icons are SVG files committed to `toDoList_main/src/` (e.g., `addProj_button.svg`, `close-svgrepo-com.svg`, `empty_state.svg`, `favicon.svg`). When adding a new icon, commit the SVG file to `src/` and reference it — do not introduce icon libraries or icon fonts.

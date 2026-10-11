@@ -1,3 +1,15 @@
+// Shared dispatch core for a drafted/stuck agent_queue row's entry. Extracted out
+// of agentView so BOTH the Agent board and the task-row description panel ship a
+// draft and retry a failed run through ONE implementation — the entry-id reuse
+// that keeps Retry from appending a duplicate to TODO.md, and the dispatched-state
+// persistence that moves the card on, can never drift between the two surfaces.
+// This module statically imports neither agentView.js nor the row layer, so it
+// stays acyclic for both importers. The row-layer render helpers it needs to
+// repaint #mainList after materializing a derive-proposal todo are pulled in
+// lazily via a dynamic import (see rebuildSelectedList), which keeps the static
+// module graph free of the cycle that a top-level `import ./toDoRow.js` would form
+// (toDoRow imports this module).
+
 import { listLogic } from './listLogic.js';
 import {
     findTargetById,
@@ -10,18 +22,6 @@ import {
 import { shipEntryForTodo } from './shipEntry.js';
 import { kickDispatchReconciler, getQueueRowForEntry } from './agentQueueStore.js';
 import { parsePastedEntry, reopenEntryInMarkdown } from './entryParse.js';
-
-// Shared dispatch core for a drafted/stuck agent_queue row's entry. Extracted out
-// of agentView so BOTH the Agent board and the task-row description panel ship a
-// draft and retry a failed run through ONE implementation — the entry-id reuse
-// that keeps Retry from appending a duplicate to TODO.md, and the dispatched-state
-// persistence that moves the card on, can never drift between the two surfaces.
-// This module statically imports neither agentView.js nor the row layer, so it
-// stays acyclic for both importers. The row-layer render helpers it needs to
-// repaint #mainList after materializing a derive-proposal todo are pulled in
-// lazily via a dynamic import (see rebuildSelectedList), which keeps the static
-// module graph free of the cycle that a top-level `import ./toDoRow.js` would form
-// (toDoRow imports this module).
 
 // The name of the currently-selected project, read from the sidebar's selected
 // row. A DOM read kept local so this shared core has no dependency on either

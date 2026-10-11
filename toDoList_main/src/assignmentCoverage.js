@@ -1,3 +1,12 @@
+// The assignment / rubric-coverage subsystem, extracted verbatim from
+// agentView.js so it can be re-homed as a chat-pane tab later. It owns reading
+// and classifying `assignment.md`, parsing rubric aspects, computing per-aspect
+// coverage from the tagged agent_queue rows, the coverage summary, the coverage
+// detail modal, the manual commit-tick controls backed by `aspect_submissions`,
+// and the assignment editor trigger. The board imports the same entry points it
+// called before (buildAspectBadge / buildAssignmentCard / refreshAssignment) and
+// nothing a user sees changes.
+
 import { listLogic } from './listLogic.js';
 import {
     readAssignmentFromWorker,
@@ -29,15 +38,6 @@ import { buildMockupSecondary } from './mockupFlow.js';
 import { getProposalReviewModalSize, setProposalReviewModalSize } from './prefs.js';
 import { isMobileViewport } from './viewport.js';
 
-// The assignment / rubric-coverage subsystem, extracted verbatim from
-// agentView.js so it can be re-homed as a chat-pane tab later. It owns reading
-// and classifying `assignment.md`, parsing rubric aspects, computing per-aspect
-// coverage from the tagged agent_queue rows, the coverage summary, the coverage
-// detail modal, the manual commit-tick controls backed by `aspect_submissions`,
-// and the assignment editor trigger. The board imports the same entry points it
-// called before (buildAspectBadge / buildAssignmentCard / refreshAssignment) and
-// nothing a user sees changes.
-//
 // The subsystem calls back out to read the selected project, repaint, resolve the
 // read target, hand a blocked aspect's question off to the chat, and fire the
 // board's own derive dispatch (getSelectedProjectName / paint / resolveReadTarget

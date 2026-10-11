@@ -1,3 +1,33 @@
+// Boot-time wiring for the extracted agent subsystems.
+//
+// The mockup flow (mockupFlow.js), the assignment / coverage subsystem
+// (assignmentCoverage.js), and the triage-sweep / derive run trackers
+// (agentQueueStore.js) each deliberately avoid importing their board-side
+// callbacks directly — doing so would form a view → module → view cycle — so
+// those callbacks are injected once, at load, through the modules' configure*
+// entry points. Historically the Agent board (agentView.js) did that injection
+// as a module-load side effect. When main.js was severed from the board, the
+// board module stopped loading in the app, so none of the three configure* calls
+// ran and the extracted subsystems were left unconfigured: the Coverage tab could
+// not resolve its read target or fire Derive, and the run trackers never probed.
+//
+// This module re-homes that wiring to a leaf that main.js DOES import on boot, so
+// the subsystems are configured whether or not the board ever mounts. The board's
+// own repaint callbacks (paint / refreshStatusPill / bucket collapse state) are
+// deliberately NOT re-supplied — no board is mounted in the running app, so they
+// are genuinely dead. Every live callback is sourced acyclically: the Worker
+// probes come straight from inject.js / dispatchDraft.js (neither is a view), and
+// the two small view-local helpers the board used to own — the selected-project
+// reader and the read-target resolver — are reproduced here.
+//
+// For the same reason this module also re-homes the board's TRIAGE-SWEEP dispatcher
+// (setTriageDispatcher). The board registered it at its module load so the task-row
+// Generate button and the ASKING answer path could fire a sweep through the store
+// without importing the view; with the board no longer loading, that registration
+// stopped running, leaving fireTriageSweep a null-dispatcher no-op — flagging a task
+// queued a `triaging` row but never launched claude-triage.yml. The boardless
+// dispatcher below (fireTriageSweep) restores it, sourced acyclically the same way.
+
 import { listLogic } from './listLogic.js';
 import {
     fetchActiveRuns,
@@ -29,36 +59,6 @@ import {
 import { configureMockupFlow } from './mockupFlow.js';
 import { configureAssignmentCoverage } from './assignmentCoverage.js';
 import { openChatWithSeed } from './claudeSheet.js';
-
-// Boot-time wiring for the extracted agent subsystems.
-//
-// The mockup flow (mockupFlow.js), the assignment / coverage subsystem
-// (assignmentCoverage.js), and the triage-sweep / derive run trackers
-// (agentQueueStore.js) each deliberately avoid importing their board-side
-// callbacks directly — doing so would form a view → module → view cycle — so
-// those callbacks are injected once, at load, through the modules' configure*
-// entry points. Historically the Agent board (agentView.js) did that injection
-// as a module-load side effect. When main.js was severed from the board, the
-// board module stopped loading in the app, so none of the three configure* calls
-// ran and the extracted subsystems were left unconfigured: the Coverage tab could
-// not resolve its read target or fire Derive, and the run trackers never probed.
-//
-// This module re-homes that wiring to a leaf that main.js DOES import on boot, so
-// the subsystems are configured whether or not the board ever mounts. The board's
-// own repaint callbacks (paint / refreshStatusPill / bucket collapse state) are
-// deliberately NOT re-supplied — no board is mounted in the running app, so they
-// are genuinely dead. Every live callback is sourced acyclically: the Worker
-// probes come straight from inject.js / dispatchDraft.js (neither is a view), and
-// the two small view-local helpers the board used to own — the selected-project
-// reader and the read-target resolver — are reproduced here.
-//
-// For the same reason this module also re-homes the board's TRIAGE-SWEEP dispatcher
-// (setTriageDispatcher). The board registered it at its module load so the task-row
-// Generate button and the ASKING answer path could fire a sweep through the store
-// without importing the view; with the board no longer loading, that registration
-// stopped running, leaving fireTriageSweep a null-dispatcher no-op — flagging a task
-// queued a `triaging` row but never launched claude-triage.yml. The boardless
-// dispatcher below (fireTriageSweep) restores it, sourced acyclically the same way.
 
 // The currently-selected project's name, read from the sidebar — the same source
 // of truth agentView.js and the row layer read. Returns '' when nothing is
