@@ -2161,7 +2161,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: f7631900-4b65-4cfe-97ea-5885c8dea77e -->
 
-- [ ] **[MEDIUM]** Add level 2 to the Map lens: open an area to see its files
+- [x] **[MEDIUM]** Add level 2 to the Map lens: open an area to see its files
   - Type: feature
   - Description: Level 1 of the Structure tab's Map lens (the area constellation) shows an area's description when you tap it but can't go deeper. Add an "Open <area> →" button to the selected-area panel. It opens that area's level-2 view: a breadcrumb `← Areas › <area>`, a compact mini-map with the open area highlighted, the area's name, stats and purpose, then a list of its files sortable by "Most used" or "Size". Tapping a file opens it in the existing code viewer — the detail column on desktop, the code sheet on mobile — so the map now reaches all the way down to the code. Reference mockup: "L2 C — Mini-map + list" from the design review.
   - Behavior:
@@ -2179,4 +2179,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - If the preview has no linked project and shows the Structure empty state, say so in the verdict and rely on the DOM tests.
   - File: `toDoList_main/src/codeMapModel.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/codeMapModel.test.js`, `toDoList_main/tests/structureView.test.js`
   - Verify: 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=map]" ; click ".structureMapArea[data-area=pipeline]" ; click "text=Open Pipeline →" ; wait 800, 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; click ".structureMapArea[data-area=pipeline]" ; click "text=Open Pipeline →" ; wait 800
+  - Completed: 2026-10-11
   <!-- id: 672a4aa2-3ee3-4cbc-8b3c-c78142f1fa1a -->

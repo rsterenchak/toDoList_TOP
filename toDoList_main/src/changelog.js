@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-10-11',
         added: [
             'The Structure tab has a new Map view that shows the app\'s areas as linked circles sized by code, and tapping an area describes what it does and what it connects to.',
+            'In the Structure tab\'s Map view, an area can now be opened to list its files by most used or size, and tapping a file opens its code.',
         ],
     },
     {
@@ -22,7 +23,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-09',
         fixed: [
-            'Saving an inject target now always refuses a repo that is already a target, even when the target list on screen is out of date.',
             'A run\'s screenshots panel now links to all of its screenshots on the run page.',
         ],
     },

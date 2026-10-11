@@ -1,4 +1,4 @@
-import { deriveAreaGraph, linksFor, formatLines } from '../src/codeMapModel.js';
+import { deriveAreaGraph, linksFor, formatLines, areaFiles } from '../src/codeMapModel.js';
 
 // The Map lens's area graph: areas sized by their files' lines, edges weighted
 // by the imports between two areas' files, counted in both directions.
@@ -77,5 +77,49 @@ describe('formatLines', () => {
     it('shows thousands with one decimal and small counts as-is', () => {
         expect(formatLines(17338)).toBe('17.3k');
         expect(formatLines(775)).toBe('775');
+    });
+});
+
+describe('areaFiles', () => {
+    const tasks = AREAS[1];
+
+    it('counts usedBy across the whole repo, not just within the area', () => {
+        // listLogic.js is imported by inject.js (pipe) and toDo.js (tasks).
+        const rows = areaFiles(MODULES, tasks, 'used');
+        expect(rows.find((r) => r.path === 'listLogic.js')).toEqual({
+            path: 'listLogic.js', lines: 300, purpose: null, usedBy: 2, uses: 2,
+        });
+        expect(rows.find((r) => r.path === 'toDo.js')).toMatchObject({ usedBy: 1, uses: 3 });
+    });
+
+    it("sorts 'used' by usedBy then lines, and 'size' by lines", () => {
+        const pipe = AREAS[0];
+        // inject.js: usedBy 3 (listLogic, toDo, main); runState.js: usedBy 2.
+        expect(areaFiles(MODULES, pipe, 'used').map((r) => r.path)).toEqual(['inject.js', 'runState.js']);
+        const mods = MODULES.concat([{ path: 'x.js', lines: 5, imports: ['runState.js'] }]);
+        // Now both have usedBy 3 → inject.js (100 lines) beats runState.js (50).
+        expect(areaFiles(mods, pipe, 'used').map((r) => r.path)).toEqual(['inject.js', 'runState.js']);
+        expect(areaFiles(MODULES, tasks, 'size').map((r) => r.path)).toEqual(['listLogic.js', 'toDo.js']);
+    });
+
+    it('breaks ties by path', () => {
+        const area = { id: 'z', files: ['b.js', 'c.js', 'a.js'] };
+        const mods = [
+            { path: 'a.js', lines: 10, imports: [] },
+            { path: 'b.js', lines: 10, imports: [] },
+            { path: 'c.js', lines: 10, imports: [] },
+        ];
+        expect(areaFiles(mods, area, 'used').map((r) => r.path)).toEqual(['a.js', 'b.js', 'c.js']);
+        expect(areaFiles(mods, area, 'size').map((r) => r.path)).toEqual(['a.js', 'b.js', 'c.js']);
+    });
+
+    it('skips files missing from modules and carries purpose through', () => {
+        const area = { id: 'z', files: ['gone.js', 'companion.js'] };
+        const mods = MODULES.map((m) => (m.path === 'companion.js' ? { ...m, purpose: 'The ghost.' } : m));
+        expect(areaFiles(mods, area, 'used')).toEqual([
+            { path: 'companion.js', lines: 10, purpose: 'The ghost.', usedBy: 0, uses: 0 },
+        ]);
+        expect(areaFiles(undefined, area, 'used')).toEqual([]);
+        expect(areaFiles(MODULES, undefined, 'used')).toEqual([]);
     });
 });

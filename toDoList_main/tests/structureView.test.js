@@ -100,7 +100,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
 
 import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport, exitStructureLiveView } from '../src/structureView.js';
 import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
-import { chatWithWorker, } from '../src/inject.js';
+import { chatWithWorker, readRepoFile } from '../src/inject.js';
 import { captureRemote, pagesUrlFor } from '../src/structureRemoteCapture.js';
 import { setChatWorkspaceRepo, insertReference } from '../src/claudeSheet.js';
 import { listLogic } from '../src/listLogic.js';
@@ -2718,5 +2718,148 @@ describe('renderStructureView — Map lens (code-map areas)', () => {
         input.value = '';
         input.dispatchEvent(new Event('input'));
         expect(document.querySelectorAll('.structureMapArea.is-filtered-out')).toHaveLength(0);
+    });
+});
+
+describe('renderStructureView — Map lens level 2 (an open area)', () => {
+    const TOP = 'rsterenchak/toDoList_TOP';
+    const OTHER = 'rsterenchak/matchingGame-test';
+    // Pipeline holds ten files so the list needs its `Show N more`. p0.js is the
+    // largest; p9.js is imported by every tasks file, so it leads "Most used".
+    const pipeFiles = Array.from({ length: 10 }, (_, i) => 'p' + i + '.js');
+    const MANIFEST = {
+        ok: true,
+        srcRoot: 'src',
+        files: pipeFiles.concat(['listLogic.js', 'toDo.js']),
+        modules: pipeFiles.map((f, i) => ({
+            path: f, lines: 1000 - i * 50, imports: [], purpose: 'Pipe file ' + i + '.',
+        })).concat([
+            { path: 'listLogic.js', lines: 300, imports: ['p9.js', 'p8.js'], purpose: 'The data model.' },
+            { path: 'toDo.js', lines: 200, imports: ['p9.js', 'listLogic.js'] },
+        ]),
+        areas: [
+            { id: 'pipeline', name: 'Pipeline', purpose: 'Ships entries.', pos: [0.7, 0.5], files: pipeFiles },
+            { id: 'tasks', name: 'Tasks', purpose: 'The core list.', pos: [0.2, 0.5], files: ['listLogic.js', 'toDo.js'] },
+        ],
+    };
+    const area = (id) => document.querySelector('.structureMapArea[data-area="' + id + '"]');
+    const openBtn = () => document.querySelector('.structureMapOpenBtn');
+    const rowPaths = () => Array.from(document.querySelectorAll('.structureMapFileRow')).map((r) => r.dataset.path);
+    const sortBtn = (k) => document.querySelector('.structureMapSortBtn[data-sort="' + k + '"]');
+
+    async function openPipeline() {
+        area('pipeline').click();
+        openBtn().click();
+        await flush();
+    }
+
+    beforeEach(async () => {
+        state.manifests[TOP] = MANIFEST;
+        state.manifests[OTHER] = MANIFEST;
+        setStructureLens('map');
+        readRepoFile.mockClear();
+        // The selection survives a same-repo repaint, so round-trip through
+        // another repo to start each test on a clean level 1.
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        mountDom();
+        renderStructureView();
+        await flush();
+    });
+
+    it('shows the Open button only while an area is selected', () => {
+        expect(openBtn()).toBeFalsy();
+        area('tasks').click();
+        expect(openBtn().textContent).toBe('Open Tasks →');
+        area('tasks').click();
+        expect(openBtn()).toBeFalsy();
+    });
+
+    it('opening an area renders its breadcrumb, mini-map, header and file rows', async () => {
+        await openPipeline();
+        expect(document.querySelector('.structureMapPanel')).toBeFalsy();
+        expect(document.querySelector('.structureMapCrumbBack').textContent).toBe('← Areas');
+        expect(document.querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+        expect(document.querySelector('.structureMap--mini')).toBeTruthy();
+        expect(area('pipeline').classList.contains('is-selected')).toBe(true);
+        expect(area('tasks').classList.contains('is-selected')).toBe(false);
+        // Compact circles carry no line count.
+        expect(document.querySelector('.structureMapCircle').textContent).toBe('');
+        expect(document.querySelectorAll('.structureMapEdge.is-active')).toHaveLength(1);
+        expect(document.querySelector('.structureMapAreaName').textContent).toBe('Pipeline');
+        expect(document.querySelector('.structureMapAreaMeta').textContent).toBe('10 files · 7.8k lines');
+        expect(document.querySelector('.structureMapAreaPurpose').textContent).toBe('Ships entries.');
+        // Most used by default: p9 (used by 2), p8 (1), then by size.
+        expect(sortBtn('used').getAttribute('aria-pressed')).toBe('true');
+        expect(rowPaths()).toEqual(['p9.js', 'p8.js', 'p0.js', 'p1.js', 'p2.js', 'p3.js', 'p4.js', 'p5.js']);
+        const first = document.querySelector('.structureMapFileRow');
+        expect(first.querySelector('.structureMapFileStats').textContent).toBe('used by 2 · 550');
+        expect(first.querySelector('.structureMapFilePurpose').textContent).toBe('Pipe file 9.');
+    });
+
+    it('← Areas returns to level 1 with the area still selected', async () => {
+        await openPipeline();
+        document.querySelector('.structureMapCrumbBack').click();
+        await flush();
+        expect(document.querySelector('.structureMapCrumb')).toBeFalsy();
+        expect(document.querySelector('.structureMap--mini')).toBeFalsy();
+        expect(area('pipeline').classList.contains('is-selected')).toBe(true);
+        expect(openBtn().textContent).toBe('Open Pipeline →');
+    });
+
+    it('a mini-map tap switches the open area', async () => {
+        await openPipeline();
+        area('tasks').click();
+        await flush();
+        expect(document.querySelector('.structureMapCrumbHere').textContent).toBe('Tasks');
+        expect(area('tasks').classList.contains('is-selected')).toBe(true);
+        expect(rowPaths()).toEqual(['listLogic.js', 'toDo.js']);
+        // A row without a purpose reads as undescribed.
+        expect(document.querySelectorAll('.structureMapFilePurpose')[1].textContent).toBe('No description yet');
+    });
+
+    it('the sort toggle reorders rows', async () => {
+        await openPipeline();
+        sortBtn('size').click();
+        expect(sortBtn('size').getAttribute('aria-pressed')).toBe('true');
+        expect(sortBtn('used').getAttribute('aria-pressed')).toBe('false');
+        expect(rowPaths()).toEqual(['p0.js', 'p1.js', 'p2.js', 'p3.js', 'p4.js', 'p5.js', 'p6.js', 'p7.js']);
+        sortBtn('used').click();
+        expect(rowPaths()[0]).toBe('p9.js');
+    });
+
+    it('Show N more reveals the rest', async () => {
+        await openPipeline();
+        const more = document.querySelector('.structureMapMore');
+        expect(more.textContent).toBe('Show 2 more');
+        more.click();
+        expect(rowPaths()).toHaveLength(10);
+        expect(document.querySelector('.structureMapMore')).toBeFalsy();
+    });
+
+    it('a row tap opens the src-root-joined path in the code viewer', async () => {
+        await openPipeline();
+        document.querySelector('.structureMapFileRow[data-path="p8.js"]').click();
+        await flush();
+        expect(readRepoFile).toHaveBeenCalledWith(expect.objectContaining({ repo: TOP }), 'src/p8.js');
+        // The level-2 view is left as it was.
+        expect(document.querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+    });
+
+    it('keeps the open area across a same-repo repaint', async () => {
+        await openPipeline();
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+    });
+
+    it('clears the open area on a repo change', async () => {
+        await openPipeline();
+        mountDom('Game');
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureMapCrumb')).toBeFalsy();
+        expect(document.querySelector('.structureMapPanel').textContent).toContain('Tap an area to see what it does');
     });
 });
