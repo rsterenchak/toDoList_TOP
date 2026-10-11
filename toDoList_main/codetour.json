@@ -28,6 +28,574 @@
   ],
   "tours": [
     {
+      "id": "app-starts",
+      "section": "foundations",
+      "title": "How the app starts up",
+      "recap": [
+        {
+          "title": "index.js is the entry point",
+          "body": "Its top-level code runs once on load: build the page, check the session, register the service worker."
+        },
+        {
+          "title": "Skeleton first, data second",
+          "body": "component() builds empty containers. restoreFromStorage() fills them."
+        },
+        {
+          "title": "Local paint, then cloud",
+          "body": "The screen draws from localStorage before Supabase answers, so the app opens instantly."
+        },
+        {
+          "title": "Boot runs once",
+          "body": "bootApp guards itself, so a second auth event can't start the app twice."
+        }
+      ],
+      "steps": [
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "document.body.appendChild(component())"
+          ],
+          "title": "The page skeleton is built first.",
+          "why": "Before anyone is signed in, index.js builds the whole page and attaches it to the body."
+        },
+        {
+          "file": "main.js",
+          "symbol": "component",
+          "match": [
+            "const base = document.createElement('div');",
+            "base.id ='outerContainer';",
+            "base.appendChild(nav);"
+          ],
+          "title": "component() makes the empty layout.",
+          "why": "Nav bar, sidebar, list and footer are created here, still with no projects in them."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "supabase.auth.getSession().then",
+            "bootApp(session.user && session.user.id);",
+            "showAuthModal();"
+          ],
+          "title": "Signed in? Boot. Otherwise, the sign-in modal.",
+          "why": "The saved session decides the path. No session means the sign-in form covers the page."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "if (booted) return;",
+            "const sampleJustSeeded = restoreFromStorage();",
+            "return bootSyncPipeline(userId, cloudHasData);"
+          ],
+          "title": "bootApp paints from localStorage first.",
+          "why": "Your projects appear straight away from this device's copy. The cloud catches up after."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "const savedProjects = listLogic.listProjectsArray();",
+            "savedProjects.forEach(function(projectName) {",
+            "addToDos_restore(lastItems, targetProject, opts);"
+          ],
+          "title": "restoreFromStorage draws the sidebar and list.",
+          "why": "One sidebar row per project, then the selected project's todos in the main list."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootSyncPipeline",
+          "match": [
+            "? maybeMigrateLocalToSupabase(",
+            ".then(function() { return listLogic.hydrateFromSupabase(); })",
+            ".then(function() { listLogic.subscribeToRealtime(); })"
+          ],
+          "title": "Then sync: migrate, hydrate, subscribe.",
+          "why": "Upload old local data once, pull everything from Supabase, then listen for live changes."
+        }
+      ]
+    },
+    {
+      "id": "database-connects",
+      "section": "foundations",
+      "title": "How the database connects",
+      "recap": [
+        {
+          "title": "One shared client",
+          "body": "supabaseClient.js makes the only Supabase client. Every file imports it."
+        },
+        {
+          "title": "Missing keys never crash",
+          "body": "Without build-time keys a stub client answers with empty data."
+        },
+        {
+          "title": "Email codes, no passwords",
+          "body": "sendCode emails a one-time code. verifyCode turns it into a session."
+        },
+        {
+          "title": "The session gates every write",
+          "body": "persistMutation and hydrate both stop when nobody is signed in."
+        }
+      ],
+      "steps": [
+        {
+          "file": "supabaseClient.js",
+          "symbol": "@file",
+          "match": [
+            "const SUPABASE_URL      = process.env.SUPABASE_URL",
+            "? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {"
+          ],
+          "title": "One client, built from build-time keys.",
+          "why": "Webpack bakes the URL and public key in. The session is saved and refreshed for you."
+        },
+        {
+          "file": "supabaseClient.js",
+          "symbol": "buildStubClient",
+          "match": [
+            "function buildStubClient() {",
+            "getSession: function() {",
+            "from: function() { return noopQuery; },"
+          ],
+          "title": "No keys? A stub keeps the app running.",
+          "why": "It answers every call with empty data, so a local build still opens, signed out."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "sendCode",
+          "match": [
+            "return supabase.auth.signInWithOtp({",
+            "shouldCreateUser: false,",
+            "return { ok: false, message: 'No account for that email' };"
+          ],
+          "title": "Sign-in starts with an emailed code.",
+          "why": "Only existing accounts get one. Errors become short messages for the form."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "verifyCode",
+          "match": [
+            "return supabase.auth.verifyOtp({",
+            "if (!error) return { ok: true };"
+          ],
+          "title": "The code is swapped for a session.",
+          "why": "Supabase checks the code. On success the client now holds a signed-in session."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "supabase.auth.onAuthStateChange(function(_event, session) {",
+            "bootApp(session.user && session.user.id);",
+            "try { listLogic.handleSignOut(); }"
+          ],
+          "title": "Auth changes boot the app or tear it down.",
+          "why": "A new session hides the modal and boots. Signing out clears data and shows it again."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "const sessionResult = await supabase.auth.getSession();",
+            "if (!session) return;",
+            "user_id: userId,"
+          ],
+          "title": "Every write checks the session first.",
+          "why": "Projects carry your user_id. Todos don't: their access is checked through their project."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            ".from('projects')",
+            ".eq('user_id', userId)",
+            ".from('todos')"
+          ],
+          "title": "Hydrate reads everything back.",
+          "why": "Your projects, then all todos you can see. The database only returns rows you own."
+        }
+      ]
+    },
+    {
+      "id": "first-sign-in",
+      "section": "foundations",
+      "title": "Signing in for the first time",
+      "recap": [
+        {
+          "title": "Ask the cloud before onboarding",
+          "body": "A user with cloud projects skips the sample project and the tour."
+        },
+        {
+          "title": "Migration runs once per user",
+          "body": "A marker in localStorage records that this device already uploaded."
+        },
+        {
+          "title": "Cloud wins when it has data",
+          "body": "Local data only uploads into an empty account."
+        },
+        {
+          "title": "Sign-out wipes this device",
+          "body": "Local projects and the marker go, so the next user starts clean."
+        }
+      ],
+      "steps": [
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {",
+            "return bootSyncPipeline(userId, cloudHasData);"
+          ],
+          "title": "Boot first asks: do you already have data?",
+          "why": "The answer decides onboarding, and is passed on so the migration needn't ask again."
+        },
+        {
+          "file": "migration.js",
+          "symbol": "maybeSkipFirstRunForCloudUser",
+          "match": [
+            "if (isOnboardingComplete()) return null;",
+            "probeCloudProjects(userId),",
+            "setOnboardingComplete(true);"
+          ],
+          "title": "Existing users skip the welcome.",
+          "why": "Cloud projects found? Onboarding is marked done. A timeout stops a slow check blocking the page."
+        },
+        {
+          "file": "migration.js",
+          "symbol": "probeCloudProjects",
+          "match": [
+            ".select('id')",
+            ".limit(1);",
+            "return !!(probe && Array.isArray(probe.data) && probe.data.length > 0);"
+          ],
+          "title": "The probe fetches one project id.",
+          "why": "One row is enough to know. It returns null on errors, meaning 'couldn't tell'."
+        },
+        {
+          "file": "migration.js",
+          "symbol": "maybeMigrateLocalToSupabase",
+          "match": [
+            "markerSet = localStorage.getItem(markerKey(userId)) === 'true';",
+            "if (!cloudHasData && localNames.length > 0) {",
+            "localStorage.setItem(markerKey(userId), 'true');"
+          ],
+          "title": "Local data moves up once per user.",
+          "why": "Only into an empty account. The marker is set afterwards, so it never runs twice."
+        },
+        {
+          "file": "migration.js",
+          "symbol": "uploadLocalToCloud",
+          "match": [
+            "table: 'projects',",
+            "if (!item.tit || item.tit === '') continue;",
+            "table: 'todos',"
+          ],
+          "title": "Each project goes up, then its todos.",
+          "why": "Parents first, so every todo has a project to belong to. Blank rows are skipped."
+        },
+        {
+          "file": "migration.js",
+          "symbol": "wipeLocalUserDataOnSignOut",
+          "match": [
+            "try { localStorage.removeItem(ALL_PROJECTS_KEY); }",
+            "localStorage.removeItem(markerKey(userId));"
+          ],
+          "title": "Signing out clears this device.",
+          "why": "Projects and the migration marker are removed, so the next person sees none of it."
+        }
+      ]
+    },
+    {
+      "id": "data-saved",
+      "section": "foundations",
+      "title": "How data is saved",
+      "recap": [
+        {
+          "title": "Memory first, always",
+          "body": "Edits change the item in memory straight away. Saving follows."
+        },
+        {
+          "title": "Typing is batched",
+          "body": "saveToStorageSoon waits a moment, so a burst of keys is one write."
+        },
+        {
+          "title": "dataChanged tells the UI",
+          "body": "Every local save fires it, so badges and counts refresh."
+        },
+        {
+          "title": "Two names for every field",
+          "body": "toTodoRowPayload maps tit / desc / due to title / description / due_date."
+        },
+        {
+          "title": "Parents land first",
+          "body": "A todo write waits for its project's insert to finish."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "toDoInput.addEventListener(\"keyup\", function() {",
+            "item.tit = val;",
+            "listLogic.saveToStorageSoon();"
+          ],
+          "title": "Each keystroke updates the item in memory.",
+          "why": "The title changes on the item right away. The save to disk is asked for, not done."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "saveToStorageSoon",
+          "parent": "listLogic",
+          "match": [
+            "if (coalescedSaveTimer !== null) return;",
+            "saveToStorage();"
+          ],
+          "title": "Saves while typing are combined.",
+          "why": "One timer at a time: fast typing becomes a single write instead of one per key."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "saveToStorage",
+          "parent": "listLogic",
+          "match": [
+            "localStorage.setItem('allProjects', JSON.stringify(allProjects));",
+            "document.dispatchEvent(new CustomEvent('dataChanged'));"
+          ],
+          "title": "All projects go to localStorage.",
+          "why": "The whole model is written under one key, then dataChanged tells the UI to refresh."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "toTodoRowPayload",
+          "match": [
+            "title: item.tit,",
+            "description: item.desc || null,",
+            "due_date: dueStringToISO(item.due),"
+          ],
+          "title": "Memory names become column names.",
+          "why": "The app says tit, desc and due. The database says title, description and due_date."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "const pending = _pendingProjectInserts.get(payload.project_id);",
+            "await pending;"
+          ],
+          "title": "A todo waits for its project to exist.",
+          "why": "If the project's insert is still in flight, the todo write waits, so it's never orphaned."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "if (op === 'insert') {",
+            "noteSelfEcho(row.id);",
+            "if (op === 'update') {"
+          ],
+          "title": "Insert or update, and note our own echo.",
+          "why": "New rows insert, edits update. noteSelfEcho lets realtime skip the copy we just sent."
+        }
+      ]
+    },
+    {
+      "id": "devices-sync",
+      "section": "foundations",
+      "title": "How devices stay in sync",
+      "recap": [
+        {
+          "title": "Realtime updates the data",
+          "body": "Supabase pushes each change; listLogic applies it to memory and storage."
+        },
+        {
+          "title": "Re-sync repaints the screen",
+          "body": "hydrateFromSupabase pulls everything, then fires listLogicHydrated."
+        },
+        {
+          "title": "Never while you type",
+          "body": "A re-sync is skipped while an input has focus."
+        },
+        {
+          "title": "Last write wins",
+          "body": "When both sides changed, the newer updated_at is kept."
+        }
+      ],
+      "steps": [
+        {
+          "file": "listLogic.js",
+          "symbol": "subscribeToRealtime",
+          "parent": "listLogic",
+          "match": [
+            ".channel('public:projects')",
+            ".channel('public:todos')",
+            "handleTodosRealtime)"
+          ],
+          "title": "Two live channels: projects and todos.",
+          "why": "Supabase pushes every insert, update and delete on those tables to this device."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "handleTodosRealtime",
+          "parent": "listLogic",
+          "match": [
+            "if (_selfEchoIds.has(row.id)) {",
+            "proj.items.push(mapped);",
+            "saveFromRealtime({ fromSync: true });"
+          ],
+          "title": "A pushed change is applied to memory.",
+          "why": "Our own echoes are skipped. Others are added, updated or removed, then saved locally."
+        },
+        {
+          "file": "index.js",
+          "symbol": "rehydrateUnlessEditing",
+          "match": [
+            "if (isEditableElementFocused()) return;",
+            "listLogic.hydrateFromSupabase();"
+          ],
+          "title": "A full re-sync, but never while you type.",
+          "why": "Repainting would wipe a half-typed edit, so focus in an input skips this round."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "if (document.visibilityState === 'visible') rehydrateUnlessEditing();",
+            "window.addEventListener('focus', function () {",
+            "setInterval(rehydrateUnlessEditing, 5 * 60 * 1000);"
+          ],
+          "title": "When re-syncs happen.",
+          "why": "Tab visible again, window focus or back online. A 5-minute timer is the backstop."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            "if (hydrationInFlight) return;",
+            "if (localEntry && localUpdatedAt > remoteUpdatedAt) {",
+            "if (!_pendingTodoInserts.has(it.id)) return;"
+          ],
+          "title": "Merge: last write wins.",
+          "why": "The newer side wins. Local todos the server hasn't confirmed yet are kept, not lost."
+        },
+        {
+          "file": "main.js",
+          "symbol": "onHydrate",
+          "match": [
+            "const selectedRow = document.querySelector('#projChild.selectedProject');",
+            "restoreFromStorage({ fromSync: true, selectProject: activeProject || undefined });"
+          ],
+          "title": "The screen repaints, same project selected.",
+          "why": "Sidebar and list are rebuilt from the merged data, keeping the project you had open."
+        }
+      ]
+    },
+    {
+      "id": "app-updates",
+      "section": "foundations",
+      "title": "How the app updates itself",
+      "recap": [
+        {
+          "title": "The service worker caches the build",
+          "body": "Files load from cache, so the app opens offline. The page itself checks the network first."
+        },
+        {
+          "title": "A new build waits",
+          "body": "It installs in the background and waits until you choose to reload."
+        },
+        {
+          "title": "Two cues, one path",
+          "body": "The mobile pill and the About row both call applyPendingUpdate."
+        },
+        {
+          "title": "Only the tapping tab reloads",
+          "body": "Other open tabs get a 'Reload to finish' cue instead."
+        }
+      ],
+      "steps": [
+        {
+          "file": "sw.js",
+          "symbol": "@file",
+          "match": [
+            "cleanupOutdatedCaches();",
+            "const htmlHandler = new NetworkFirst({",
+            "precacheAndRoute(self.__WB_MANIFEST || []);"
+          ],
+          "title": "The service worker caches the whole build.",
+          "why": "Old caches are dropped. Pages try the network first; everything else loads from cache."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' })",
+            "notifyUpdateAvailable(registration);",
+            "setInterval(checkForUpdate, 60 * 60 * 1000);"
+          ],
+          "title": "The page registers it and watches for builds.",
+          "why": "A new worker waiting means an update. Checks run on load, on return and hourly."
+        },
+        {
+          "file": "index.js",
+          "symbol": "requestUpdateCheck",
+          "match": [
+            "swRegistration.update();"
+          ],
+          "title": "Checks can also be forced.",
+          "why": "When a run ships, the assistant asks for a check now instead of waiting for the next poll."
+        },
+        {
+          "file": "mobileUpdatePill.js",
+          "symbol": "showMobileUpdatePill",
+          "parent": "createMobileUpdatePill",
+          "match": [
+            "if (!isMobile()) return;",
+            "if (!hasPendingUpdate()) return;",
+            "document.body.appendChild(mobileUpdatePill);"
+          ],
+          "title": "Phones get an 'Update available' pill.",
+          "why": "It sits above the bottom nav, appears once, and stays away for the session if dismissed."
+        },
+        {
+          "file": "aboutVersionCue.js",
+          "symbol": "paintAboutVersionUpdateCue",
+          "match": [
+            "if (hasPendingUpdate()) {",
+            "updatePill.textContent = 'Update available';",
+            "applyPendingUpdate();"
+          ],
+          "title": "Settings › About shows the same cue.",
+          "why": "The Version row gets its own pill. Tapping it takes the same path as the mobile one."
+        },
+        {
+          "file": "modals.js",
+          "symbol": "applyPendingUpdate",
+          "match": [
+            "sessionStorage.setItem(SW_UPDATE_INITIATOR_KEY, '1');",
+            "worker.postMessage({ type: 'SKIP_WAITING' });"
+          ],
+          "title": "Both cues share one reload path.",
+          "why": "Mark this tab as the one that asked, then tell the waiting worker to take over."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "navigator.serviceWorker.addEventListener('controllerchange', function () {",
+            "if (!initiated) {",
+            "window.location.reload();"
+          ],
+          "title": "The new worker takes over; this tab reloads.",
+          "why": "Only the tab that asked reloads. Other open tabs get a 'Reload to finish' cue instead."
+        }
+      ]
+    },
+    {
       "id": "add-task",
       "section": "tasks",
       "title": "Adding a task",
