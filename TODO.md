@@ -2219,7 +2219,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 64b5796d-8d2c-444e-802e-78f17f41fcbf -->
 
-- [ ] **[MEDIUM]** Compile code tours (codetour.json → src-tours.json) with "Adding a task" as tour 1
+- [x] **[MEDIUM]** Compile code tours (codetour.json → src-tours.json) with "Adding a task" as tour 1
   - Type: feature
   - Description: Groundwork for guided code tours in the Structure tab: short step-by-step walkthroughs ("Adding a task", "How the app starts up") that follow real code with Back / Next arrows. Tours are written in a committed `toDoList_main/codetour.json`. Each step is anchored to a function name from the definitions index plus lines to find inside that function — never a line number — so tours survive edits. At deploy time `gen-src-manifest.js` compiles it into `src-tours.json` beside `src-manifest.json`, with real line numbers, each step's area and the code snippet embedded, so the PWA needs no extra fetches. This entry ships the format, the compiler, a test that fails when a tour goes stale or wordy, and the first tour. No PWA changes.
   - Behavior:
@@ -2242,4 +2242,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - A real-repo test compiles the actual `codetour.json` and asserts that every tour and step resolves (zero warnings), that every `title` is ≤ 60 characters and every `why` ≤ 140, and that each tour has 3–10 steps. This is the guard that keeps tours fresh and short as the code changes. If a later change breaks an anchor, that PR updates the tour.
     - Add a line to `CLAUDE.md`'s conventions: when a change renames or moves code that a tour step in `toDoList_main/codetour.json` anchors to, update the step in the same PR.
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`, `CLAUDE.md`
+  - Completed: 2026-10-11
   <!-- id: 848bd514-dc2d-426c-aa22-03938471346f -->
