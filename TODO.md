@@ -2307,3 +2307,23 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   - Completed: 2026-10-11
   <!-- id: 6420ced1-aa61-4d04-8879-8448b635a6a7 -->
+
+- [ ] **[MEDIUM]** Write the Pipeline code tours
+  - Type: feature
+  - Description: Add the eight tours of the `pipeline` section to `toDoList_main/codetour.json`, covering how a task becomes a TODO.md entry, a run, and a merged PR, plus the surfaces around it. Tours can only anchor to files in `src/`. When a path crosses into the Worker (`todo-injector-worker`, a separate repo) or into GitHub Actions, end that stretch with one step anchored on the call that leaves the app (usually `postToWorker` or `chatWithWorker`), whose `why` states plainly what happens on the other side. Never claim details of Worker or workflow code the step can't show.
+  - Behavior:
+    1. Same rules as the previous batches: follow the real code where it differs from these outlines; 5–8 steps per tour; `title` ≤ 60 and `why` ≤ 140 characters; one idea per step in the "Adding a task" voice; a 3–5 card `recap`; every claim checked against the lines its `match` highlights.
+       1. `inject-entry` "Injecting a task into TODO.md": the description panel's inject control → `inject.js` › `injectDescription` → `injectEntry` → `postToWorker` (boundary: the Worker appends the entry to TODO.md) → the toast and the `injectedAt` stamp saved through `listLogic`.
+       2. `ship-run` "Shipping a task: dispatching a run": `dispatchDraft.js` › `dispatchDraft` → `shipEntry.js` › `shipEntryForTodo` (mint the id, embed the marker, inject, dispatch) → `inject.js` › `dispatchRun` (boundary: the Worker starts `claude-run.yml`) → `runState.js` › `writeActiveRun` → the queue row's state change.
+       3. `follow-run` "Following a run to a merged PR": `agentQueueStore.js` › `startAgentQueueSubscription` → `phase.js` › `derivePhase` → the phase rail builder → `runState.js` › `emitChange` → `inject.js` › `resolveEntryRunState` → the shipped glyph (`agentView.js` › `buildShippedGlyph`).
+       4. `agent-board` "The Agent board": `agentQueueStore.js` › `loadQueueRows` → `agentView.js` › `buildCard` → `buildSecondary` (one secondary per state: drafted, proposed, stuck, shipped) → `inject.js` › `dispatchTriage` → derive proposals (`dispatchDraft.js` › `isDeriveProposalRow`).
+       5. `mockups` "A/B/C mockups for a task": `mockupFlow.js` › `openMockupOverlay` → the generate call (`generateMockupsFromWorker`, boundary) → `renderMockupTabs` / `renderMockupPreviews` → picking a variant and where the pick is stored.
+       6. `generate-tasks` "Generating tasks from a project plan": `seedTasksModal.js` › `openSeedTasksModal` → `buildPrompt` (only the actionable stage becomes tasks) → `chatWithWorker` (boundary) → `renderChecklist` → accepted rows added through `listLogic.addToDo`.
+       7. `coverage` "Assignment coverage": `inject.js` › `readAssignmentFromWorker` (boundary: reads `assignment.md`) → `assignmentCoverage.js` › `computeCoverage` → `buildCoverageSummary` → `buildCoverageDetailRow` → `openChatWithSeed`.
+       8. `todo-md-viewer` "The TODO.md viewer: run, revert, redeploy": `todoMdViewer.js` › `buildTodoMdViewerCard` → `inject.js` › `readTodoMdFromWorker` (boundary) → `parseTodoMdChecklist` → `runSync` → `revertCompletedEntry` / `dispatchDraft.js` › `unshipEntry` → the redeploy state in `runState.js`.
+    2. Section `pipeline` is ordered as numbered.
+  - Acceptance criteria:
+    - The real-repo tours test passes with all 23 tours: zero warnings, 3–10 steps each, length limits held.
+    - Every step whose `why` describes Worker or workflow behaviour is anchored on the call that leaves the app (`postToWorker`, `chatWithWorker`, `dispatchRun`, `dispatchTriage`, `readTodoMdFromWorker`, `readAssignmentFromWorker` or `generateMockupsFromWorker`).
+  - File: `toDoList_main/codetour.json`
+  <!-- id: 0410953c-462b-4498-9520-4ff2f006a130 -->
