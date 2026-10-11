@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-11T10:54:54.880Z",
-  "sha": "812b4362e648c242f464b4158dd941fcbd1776e4",
+  "generatedAt": "2026-10-11T11:38:20.885Z",
+  "sha": "e5a264568981cbcefa7ad9ab562975ff7fa88217",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -115,11 +115,11 @@
       "selector": "#addProj",
       "label": "Add Proj",
       "file": "main.js",
-      "line": 235,
+      "line": 239,
       "files": [
         {
           "file": "main.js",
-          "line": 235
+          "line": 239
         },
         {
           "file": "style.css",
@@ -155,11 +155,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 1748,
+      "line": 1753,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1748
+          "line": 1753
         }
       ]
     },
@@ -167,11 +167,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 227,
+      "line": 232,
       "files": [
         {
           "file": "agentView.js",
-          "line": 227
+          "line": 232
         }
       ]
     },
@@ -691,11 +691,11 @@
       "selector": "#bulkDescActions",
       "label": "Bulk Desc Actions",
       "file": "main.js",
-      "line": 1186,
+      "line": 1190,
       "files": [
         {
           "file": "main.js",
-          "line": 1186
+          "line": 1190
         },
         {
           "file": "style.css",
@@ -723,11 +723,11 @@
       "selector": "#changelogDot",
       "label": "Changelog Dot",
       "file": "main.js",
-      "line": 627,
+      "line": 631,
       "files": [
         {
           "file": "main.js",
-          "line": 627
+          "line": 631
         },
         {
           "file": "style.css",
@@ -927,11 +927,11 @@
       "selector": "#chatCollapseButton",
       "label": "Chat Collapse Button",
       "file": "main.js",
-      "line": 543,
+      "line": 547,
       "files": [
         {
           "file": "main.js",
-          "line": 543
+          "line": 547
         },
         {
           "file": "style.css",
@@ -943,11 +943,11 @@
       "selector": "#chatExpandButton",
       "label": "Chat Expand Button",
       "file": "main.js",
-      "line": 548,
+      "line": 552,
       "files": [
         {
           "file": "main.js",
-          "line": 548
+          "line": 552
         },
         {
           "file": "style.css",
@@ -2211,11 +2211,11 @@
       "selector": "#descDetailPane",
       "label": "Desc Detail Pane",
       "file": "main.js",
-      "line": 672,
+      "line": 676,
       "files": [
         {
           "file": "main.js",
-          "line": 672
+          "line": 676
         },
         {
           "file": "style.css",
@@ -2667,11 +2667,11 @@
       "selector": "#desktopChatPane",
       "label": "Desktop Chat Pane",
       "file": "main.js",
-      "line": 532,
+      "line": 536,
       "files": [
         {
           "file": "main.js",
-          "line": 532
+          "line": 536
         },
         {
           "file": "style.css",
@@ -2683,11 +2683,11 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 1582,
+      "line": 1586,
       "files": [
         {
           "file": "main.js",
-          "line": 1582
+          "line": 1586
         },
         {
           "file": "style.css",
@@ -2699,11 +2699,11 @@
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
       "file": "main.js",
-      "line": 1587,
+      "line": 1591,
       "files": [
         {
           "file": "main.js",
-          "line": 1587
+          "line": 1591
         },
         {
           "file": "style.css",
@@ -2715,11 +2715,11 @@
       "selector": "#drawerFooterVersion",
       "label": "Drawer Footer Version",
       "file": "main.js",
-      "line": 1584,
+      "line": 1588,
       "files": [
         {
           "file": "main.js",
-          "line": 1584
+          "line": 1588
         },
         {
           "file": "style.css",
@@ -2731,11 +2731,11 @@
       "selector": "#drawerSettingsBtn",
       "label": "Drawer Settings Btn",
       "file": "main.js",
-      "line": 1521,
+      "line": 1525,
       "files": [
         {
           "file": "main.js",
-          "line": 1521
+          "line": 1525
         },
         {
           "file": "style.css",
@@ -2747,11 +2747,11 @@
       "selector": "#drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 1539,
+      "line": 1543,
       "files": [
         {
           "file": "main.js",
-          "line": 1539
+          "line": 1543
         }
       ]
     },
@@ -2759,11 +2759,11 @@
       "selector": "#drawerSettingsBtnWrap",
       "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
-      "line": 1578,
+      "line": 1582,
       "files": [
         {
           "file": "main.js",
-          "line": 1578
+          "line": 1582
         },
         {
           "file": "style.css",
@@ -2871,11 +2871,11 @@
       "selector": "#focusModeToggle",
       "label": "Focus Mode Toggle",
       "file": "main.js",
-      "line": 373,
+      "line": 377,
       "files": [
         {
           "file": "main.js",
-          "line": 373
+          "line": 377
         },
         {
           "file": "style.css",
@@ -2887,11 +2887,11 @@
       "selector": "#footBar",
       "label": "Foot Bar",
       "file": "main.js",
-      "line": 213,
+      "line": 217,
       "files": [
         {
           "file": "main.js",
-          "line": 213
+          "line": 217
         },
         {
           "file": "style.css",
@@ -2903,11 +2903,11 @@
       "selector": "#footCounts",
       "label": "Foot Counts",
       "file": "main.js",
-      "line": 645,
+      "line": 649,
       "files": [
         {
           "file": "main.js",
-          "line": 645
+          "line": 649
         },
         {
           "file": "style.css",
@@ -2919,11 +2919,11 @@
       "selector": "#footDone",
       "label": "Foot Done",
       "file": "main.js",
-      "line": 647,
+      "line": 651,
       "files": [
         {
           "file": "main.js",
-          "line": 647
+          "line": 651
         },
         {
           "file": "style.css",
@@ -2935,11 +2935,11 @@
       "selector": "#footOpen",
       "label": "Foot Open",
       "file": "main.js",
-      "line": 646,
+      "line": 650,
       "files": [
         {
           "file": "main.js",
-          "line": 646
+          "line": 650
         },
         {
           "file": "style.css",
@@ -2951,11 +2951,11 @@
       "selector": "#footVersion",
       "label": "Foot Version",
       "file": "main.js",
-      "line": 616,
+      "line": 620,
       "files": [
         {
           "file": "main.js",
-          "line": 616
+          "line": 620
         },
         {
           "file": "style.css",
@@ -2967,11 +2967,11 @@
       "selector": "#footVersionLabel",
       "label": "Foot Version Label",
       "file": "main.js",
-      "line": 623,
+      "line": 627,
       "files": [
         {
           "file": "main.js",
-          "line": 623
+          "line": 627
         },
         {
           "file": "style.css",
@@ -4039,11 +4039,11 @@
       "selector": "#mainBar",
       "label": "Main Bar",
       "file": "main.js",
-      "line": 216,
+      "line": 220,
       "files": [
         {
           "file": "main.js",
-          "line": 216
+          "line": 220
         },
         {
           "file": "style.css",
@@ -4055,11 +4055,11 @@
       "selector": "#mainList",
       "label": "Main List",
       "file": "main.js",
-      "line": 244,
+      "line": 248,
       "files": [
         {
           "file": "main.js",
-          "line": 244
+          "line": 248
         },
         {
           "file": "style.css",
@@ -4071,11 +4071,11 @@
       "selector": "#mainSec",
       "label": "Main Sec",
       "file": "main.js",
-      "line": 212,
+      "line": 216,
       "files": [
         {
           "file": "main.js",
-          "line": 212
+          "line": 216
         },
         {
           "file": "style.css",
@@ -4087,11 +4087,11 @@
       "selector": "#mainSplit",
       "label": "Main Split",
       "file": "main.js",
-      "line": 529,
+      "line": 533,
       "files": [
         {
           "file": "main.js",
-          "line": 529
+          "line": 533
         },
         {
           "file": "style.css",
@@ -4243,11 +4243,11 @@
       "selector": "#mobileProjChevCol",
       "label": "Mobile Proj Chev Col",
       "file": "main.js",
-      "line": 770,
+      "line": 774,
       "files": [
         {
           "file": "main.js",
-          "line": 770
+          "line": 774
         },
         {
           "file": "style.css",
@@ -4259,11 +4259,11 @@
       "selector": "#mobileProjChevron",
       "label": "Mobile Proj Chevron",
       "file": "main.js",
-      "line": 795,
+      "line": 799,
       "files": [
         {
           "file": "main.js",
-          "line": 795
+          "line": 799
         }
       ]
     },
@@ -4271,11 +4271,11 @@
       "selector": "#mobileProjCountBadge",
       "label": "Mobile Proj Count Badge",
       "file": "main.js",
-      "line": 816,
+      "line": 820,
       "files": [
         {
           "file": "main.js",
-          "line": 816
+          "line": 820
         }
       ]
     },
@@ -4283,11 +4283,11 @@
       "selector": "#mobileProjCounts",
       "label": "Mobile Proj Counts",
       "file": "main.js",
-      "line": 768,
+      "line": 772,
       "files": [
         {
           "file": "main.js",
-          "line": 768
+          "line": 772
         },
         {
           "file": "style.css",
@@ -4299,11 +4299,11 @@
       "selector": "#mobileProjHeader",
       "label": "Mobile Proj Header",
       "file": "main.js",
-      "line": 761,
+      "line": 765,
       "files": [
         {
           "file": "main.js",
-          "line": 761
+          "line": 765
         },
         {
           "file": "style.css",
@@ -4315,11 +4315,11 @@
       "selector": "#mobileProjLabel",
       "label": "Mobile Proj Label",
       "file": "main.js",
-      "line": 762,
+      "line": 766,
       "files": [
         {
           "file": "main.js",
-          "line": 762
+          "line": 766
         },
         {
           "file": "style.css",
@@ -4331,11 +4331,11 @@
       "selector": "#mobileProjMain",
       "label": "Mobile Proj Main",
       "file": "main.js",
-      "line": 769,
+      "line": 773,
       "files": [
         {
           "file": "main.js",
-          "line": 769
+          "line": 773
         },
         {
           "file": "style.css",
@@ -4347,11 +4347,11 @@
       "selector": "#mobileProjName",
       "label": "Mobile Proj Name",
       "file": "main.js",
-      "line": 765,
+      "line": 769,
       "files": [
         {
           "file": "main.js",
-          "line": 765
+          "line": 769
         },
         {
           "file": "style.css",
@@ -4363,11 +4363,11 @@
       "selector": "#mobileProjNext",
       "label": "Mobile Proj Next",
       "file": "main.js",
-      "line": 766,
+      "line": 770,
       "files": [
         {
           "file": "main.js",
-          "line": 766
+          "line": 770
         }
       ]
     },
@@ -4375,11 +4375,11 @@
       "selector": "#mobileProjPill",
       "label": "Mobile Proj Pill",
       "file": "main.js",
-      "line": 821,
+      "line": 825,
       "files": [
         {
           "file": "main.js",
-          "line": 821
+          "line": 825
         },
         {
           "file": "style.css",
@@ -4391,11 +4391,11 @@
       "selector": "#mobileProjPrev",
       "label": "Mobile Proj Prev",
       "file": "main.js",
-      "line": 764,
+      "line": 768,
       "files": [
         {
           "file": "main.js",
-          "line": 764
+          "line": 768
         }
       ]
     },
@@ -4403,11 +4403,11 @@
       "selector": "#mobileProjRunSpinner",
       "label": "Mobile Proj Run Spinner",
       "file": "main.js",
-      "line": 834,
+      "line": 838,
       "files": [
         {
           "file": "main.js",
-          "line": 834
+          "line": 838
         }
       ]
     },
@@ -4415,11 +4415,11 @@
       "selector": "#mobileProjStats",
       "label": "Mobile Proj Stats",
       "file": "main.js",
-      "line": 767,
+      "line": 771,
       "files": [
         {
           "file": "main.js",
-          "line": 767
+          "line": 771
         },
         {
           "file": "style.css",
@@ -4431,11 +4431,11 @@
       "selector": "#mobileProjTitleRow",
       "label": "Mobile Proj Title Row",
       "file": "main.js",
-      "line": 763,
+      "line": 767,
       "files": [
         {
           "file": "main.js",
-          "line": 763
+          "line": 767
         },
         {
           "file": "style.css",
@@ -4447,11 +4447,11 @@
       "selector": "#mobileSidebarClose",
       "label": "Mobile Sidebar Close",
       "file": "main.js",
-      "line": 1167,
+      "line": 1171,
       "files": [
         {
           "file": "main.js",
-          "line": 1167
+          "line": 1171
         },
         {
           "file": "style.css",
@@ -4527,11 +4527,11 @@
       "selector": "#mockupOverlayBackdrop",
       "label": "Mockup Overlay Backdrop",
       "file": "mockupFlow.js",
-      "line": 410,
+      "line": 414,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 410
+          "line": 414
         }
       ]
     },
@@ -4743,11 +4743,11 @@
       "selector": "#musicToggle",
       "label": "Music Toggle",
       "file": "main.js",
-      "line": 323,
+      "line": 327,
       "files": [
         {
           "file": "main.js",
-          "line": 323
+          "line": 327
         },
         {
           "file": "style.css",
@@ -4759,11 +4759,11 @@
       "selector": "#navBar",
       "label": "Nav Bar",
       "file": "main.js",
-      "line": 211,
+      "line": 215,
       "files": [
         {
           "file": "main.js",
-          "line": 211
+          "line": 215
         },
         {
           "file": "style.css",
@@ -4791,11 +4791,11 @@
       "selector": "#outerContainer",
       "label": "Outer Container",
       "file": "main.js",
-      "line": 210,
+      "line": 214,
       "files": [
         {
           "file": "main.js",
-          "line": 210
+          "line": 214
         },
         {
           "file": "style.css",
@@ -5023,11 +5023,11 @@
       "selector": "#pomodoroToggle",
       "label": "Pomodoro Toggle",
       "file": "main.js",
-      "line": 287,
+      "line": 291,
       "files": [
         {
           "file": "main.js",
-          "line": 287
+          "line": 291
         },
         {
           "file": "style.css",
@@ -5039,11 +5039,11 @@
       "selector": "#projButton",
       "label": "Proj Button",
       "file": "main.js",
-      "line": 236,
+      "line": 240,
       "files": [
         {
           "file": "main.js",
-          "line": 236
+          "line": 240
         },
         {
           "file": "style.css",
@@ -5055,11 +5055,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 2164,
+      "line": 2168,
       "files": [
         {
           "file": "main.js",
-          "line": 2164
+          "line": 2168
         },
         {
           "file": "style.css",
@@ -5087,11 +5087,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 2172,
+      "line": 2176,
       "files": [
         {
           "file": "main.js",
-          "line": 2172
+          "line": 2176
         },
         {
           "file": "style.css",
@@ -5119,11 +5119,11 @@
       "selector": "#projectPickerDropdown",
       "label": "Project Picker Dropdown",
       "file": "main.js",
-      "line": 877,
+      "line": 881,
       "files": [
         {
           "file": "main.js",
-          "line": 877
+          "line": 881
         },
         {
           "file": "style.css",
@@ -5355,11 +5355,11 @@
       "selector": "#queueResizeHandle",
       "label": "Queue Resize Handle",
       "file": "main.js",
-      "line": 685,
+      "line": 689,
       "files": [
         {
           "file": "main.js",
-          "line": 685
+          "line": 689
         },
         {
           "file": "style.css",
@@ -5999,11 +5999,11 @@
       "selector": "#settingsToggle",
       "label": "Settings Toggle",
       "file": "main.js",
-      "line": 424,
+      "line": 428,
       "files": [
         {
           "file": "main.js",
-          "line": 424
+          "line": 428
         },
         {
           "file": "style.css",
@@ -6027,11 +6027,11 @@
       "selector": "#sideBar",
       "label": "Side Bar",
       "file": "main.js",
-      "line": 215,
+      "line": 219,
       "files": [
         {
           "file": "main.js",
-          "line": 215
+          "line": 219
         },
         {
           "file": "style.css",
@@ -6043,11 +6043,11 @@
       "selector": "#sideMa",
       "label": "Side Ma",
       "file": "main.js",
-      "line": 233,
+      "line": 237,
       "files": [
         {
           "file": "main.js",
-          "line": 233
+          "line": 237
         },
         {
           "file": "style.css",
@@ -6059,11 +6059,11 @@
       "selector": "#sideTit",
       "label": "Side Tit",
       "file": "main.js",
-      "line": 232,
+      "line": 236,
       "files": [
         {
           "file": "main.js",
-          "line": 232
+          "line": 236
         },
         {
           "file": "style.css",
@@ -6075,11 +6075,11 @@
       "selector": "#sidebarBottom",
       "label": "Sidebar Bottom",
       "file": "main.js",
-      "line": 726,
+      "line": 730,
       "files": [
         {
           "file": "main.js",
-          "line": 726
+          "line": 730
         },
         {
           "file": "style.css",
@@ -6091,11 +6091,11 @@
       "selector": "#sidebarOverlay",
       "label": "Sidebar Overlay",
       "file": "main.js",
-      "line": 260,
+      "line": 264,
       "files": [
         {
           "file": "main.js",
-          "line": 260
+          "line": 264
         },
         {
           "file": "style.css",
@@ -6107,11 +6107,11 @@
       "selector": "#sidebarToggle",
       "label": "Sidebar Toggle",
       "file": "main.js",
-      "line": 255,
+      "line": 259,
       "files": [
         {
           "file": "main.js",
-          "line": 255
+          "line": 259
         },
         {
           "file": "style.css",
@@ -6123,11 +6123,11 @@
       "selector": "#sidebarTop",
       "label": "Sidebar Top",
       "file": "main.js",
-      "line": 725,
+      "line": 729,
       "files": [
         {
           "file": "main.js",
-          "line": 725
+          "line": 729
         },
         {
           "file": "style.css",
@@ -6339,11 +6339,11 @@
       "selector": "#structureView",
       "label": "Structure View",
       "file": "main.js",
-      "line": 1081,
+      "line": 1085,
       "files": [
         {
           "file": "main.js",
-          "line": 1081
+          "line": 1085
         },
         {
           "file": "style.css",
@@ -6383,11 +6383,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3824,
+      "line": 3828,
       "files": [
         {
           "file": "main.js",
-          "line": 3824
+          "line": 3828
         },
         {
           "file": "style.css",
@@ -6399,11 +6399,11 @@
       "selector": "#taskSortBtn",
       "label": "Task Sort Btn",
       "file": "main.js",
-      "line": 1204,
+      "line": 1208,
       "files": [
         {
           "file": "main.js",
-          "line": 1204
+          "line": 1208
         },
         {
           "file": "style.css",
@@ -6415,11 +6415,11 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 1241,
+      "line": 1245,
       "files": [
         {
           "file": "main.js",
-          "line": 1241
+          "line": 1245
         },
         {
           "file": "style.css",
@@ -6551,11 +6551,11 @@
       "selector": "#todoMdViewerCard",
       "label": "Todo Md Viewer Card",
       "file": "todoMdViewer.js",
-      "line": 1071,
+      "line": 1075,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1071
+          "line": 1075
         },
         {
           "file": "style.css",
@@ -6655,11 +6655,11 @@
       "selector": "#todoMdViewerStrip",
       "label": "Todo Md Viewer Strip",
       "file": "todoMdViewer.js",
-      "line": 492,
+      "line": 496,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 492
+          "line": 496
         },
         {
           "file": "style.css",
@@ -6931,11 +6931,11 @@
       "selector": "#usageSpendToggle",
       "label": "Usage Spend Toggle",
       "file": "main.js",
-      "line": 404,
+      "line": 408,
       "files": [
         {
           "file": "main.js",
-          "line": 404
+          "line": 408
         },
         {
           "file": "style.css",
@@ -6947,11 +6947,11 @@
       "selector": "#viewPillProjects",
       "label": "View Pill Projects",
       "file": "main.js",
-      "line": 997,
+      "line": 1001,
       "files": [
         {
           "file": "main.js",
-          "line": 997
+          "line": 1001
         },
         {
           "file": "style.css",
@@ -6963,11 +6963,11 @@
       "selector": "#viewPillStructure",
       "label": "View Pill Structure",
       "file": "main.js",
-      "line": 1023,
+      "line": 1027,
       "files": [
         {
           "file": "main.js",
-          "line": 1023
+          "line": 1027
         },
         {
           "file": "style.css",
@@ -6979,11 +6979,11 @@
       "selector": "#viewSwitcher",
       "label": "View Switcher",
       "file": "main.js",
-      "line": 992,
+      "line": 996,
       "files": [
         {
           "file": "main.js",
-          "line": 992
+          "line": 996
         },
         {
           "file": "style.css",
@@ -7019,11 +7019,11 @@
       "selector": ".agentAcceptButton",
       "label": "Agent Accept Button",
       "file": "agentView.js",
-      "line": 745,
+      "line": 750,
       "files": [
         {
           "file": "agentView.js",
-          "line": 745
+          "line": 750
         },
         {
           "file": "style.css",
@@ -7035,11 +7035,11 @@
       "selector": ".agentAnswerActions",
       "label": "Agent Answer Actions",
       "file": "agentView.js",
-      "line": 410,
+      "line": 415,
       "files": [
         {
           "file": "agentView.js",
-          "line": 410
+          "line": 415
         },
         {
           "file": "style.css",
@@ -7051,11 +7051,11 @@
       "selector": ".agentAnswerError",
       "label": "Agent Answer Error",
       "file": "agentView.js",
-      "line": 413,
+      "line": 418,
       "files": [
         {
           "file": "agentView.js",
-          "line": 413
+          "line": 418
         },
         {
           "file": "style.css",
@@ -7067,11 +7067,11 @@
       "selector": ".agentAnswerInput",
       "label": "Agent Answer Input",
       "file": "agentView.js",
-      "line": 392,
+      "line": 397,
       "files": [
         {
           "file": "agentView.js",
-          "line": 392
+          "line": 397
         },
         {
           "file": "style.css",
@@ -7083,11 +7083,11 @@
       "selector": ".agentAnswerSend",
       "label": "Agent Answer Send",
       "file": "agentView.js",
-      "line": 427,
+      "line": 432,
       "files": [
         {
           "file": "agentView.js",
-          "line": 427
+          "line": 432
         },
         {
           "file": "style.css",
@@ -7099,11 +7099,11 @@
       "selector": ".agentAnswerWithWords",
       "label": "Agent Answer With Words",
       "file": "agentView.js",
-      "line": 1126,
+      "line": 1131,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1126
+          "line": 1131
         },
         {
           "file": "style.css",
@@ -7243,11 +7243,11 @@
       "selector": ".agentBoard",
       "label": "Agent Board",
       "file": "agentView.js",
-      "line": 1804,
+      "line": 1809,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1804
+          "line": 1809
         },
         {
           "file": "style.css",
@@ -7259,11 +7259,11 @@
       "selector": ".agentBucket",
       "label": "Agent Bucket",
       "file": "agentView.js",
-      "line": 1564,
+      "line": 1569,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1564
+          "line": 1569
         },
         {
           "file": "style.css",
@@ -7275,11 +7275,11 @@
       "selector": ".agentBucketCaret",
       "label": "Agent Bucket Caret",
       "file": "agentView.js",
-      "line": 1517,
+      "line": 1522,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1517
+          "line": 1522
         },
         {
           "file": "style.css",
@@ -7291,11 +7291,11 @@
       "selector": ".agentBucketCount",
       "label": "Agent Bucket Count",
       "file": "agentView.js",
-      "line": 1528,
+      "line": 1533,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1528
+          "line": 1533
         },
         {
           "file": "style.css",
@@ -7307,11 +7307,11 @@
       "selector": ".agentBucketHeader",
       "label": "Agent Bucket Header",
       "file": "agentView.js",
-      "line": 1514,
+      "line": 1519,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1514
+          "line": 1519
         },
         {
           "file": "style.css",
@@ -7323,11 +7323,11 @@
       "selector": ".agentBucketLabel",
       "label": "Agent Bucket Label",
       "file": "agentView.js",
-      "line": 1523,
+      "line": 1528,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1523
+          "line": 1528
         },
         {
           "file": "style.css",
@@ -7339,11 +7339,11 @@
       "selector": ".agentBucketList",
       "label": "Agent Bucket List",
       "file": "agentView.js",
-      "line": 1568,
+      "line": 1573,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1568
+          "line": 1573
         },
         {
           "file": "style.css",
@@ -7355,11 +7355,11 @@
       "selector": ".agentCard",
       "label": "Agent Card",
       "file": "agentView.js",
-      "line": 896,
+      "line": 901,
       "files": [
         {
           "file": "agentView.js",
-          "line": 896
+          "line": 901
         },
         {
           "file": "style.css",
@@ -7371,11 +7371,11 @@
       "selector": ".agentCardBody",
       "label": "Agent Card Body",
       "file": "agentView.js",
-      "line": 1419,
+      "line": 1424,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1419
+          "line": 1424
         },
         {
           "file": "style.css",
@@ -7387,11 +7387,11 @@
       "selector": ".agentCardHead",
       "label": "Agent Card Head",
       "file": "agentView.js",
-      "line": 907,
+      "line": 912,
       "files": [
         {
           "file": "agentView.js",
-          "line": 907
+          "line": 912
         },
         {
           "file": "style.css",
@@ -7403,11 +7403,11 @@
       "selector": ".agentCardRemove",
       "label": "Agent Card Remove",
       "file": "agentView.js",
-      "line": 962,
+      "line": 967,
       "files": [
         {
           "file": "agentView.js",
-          "line": 962
+          "line": 967
         },
         {
           "file": "style.css",
@@ -7419,11 +7419,11 @@
       "selector": ".agentCardTitle",
       "label": "Agent Card Title",
       "file": "agentView.js",
-      "line": 910,
+      "line": 915,
       "files": [
         {
           "file": "agentView.js",
-          "line": 910
+          "line": 915
         },
         {
           "file": "style.css",
@@ -7435,11 +7435,11 @@
       "selector": ".agentChip",
       "label": "Agent Chip",
       "file": "agentView.js",
-      "line": 343,
+      "line": 348,
       "files": [
         {
           "file": "agentView.js",
-          "line": 343
+          "line": 348
         },
         {
           "file": "style.css",
@@ -7451,11 +7451,11 @@
       "selector": ".agentContinueChat",
       "label": "Agent Continue Chat",
       "file": "agentView.js",
-      "line": 1105,
+      "line": 1110,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1105
+          "line": 1110
         },
         {
           "file": "style.css",
@@ -7467,11 +7467,11 @@
       "selector": ".agentCounts",
       "label": "Agent Counts",
       "file": "agentView.js",
-      "line": 1794,
+      "line": 1799,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1794
+          "line": 1799
         },
         {
           "file": "style.css",
@@ -7579,11 +7579,11 @@
       "selector": ".agentDiscussLink",
       "label": "Agent Discuss Link",
       "file": "agentView.js",
-      "line": 1075,
+      "line": 1080,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1075
+          "line": 1080
         },
         {
           "file": "style.css",
@@ -7595,11 +7595,11 @@
       "selector": ".agentDispatchButton",
       "label": "Agent Dispatch Button",
       "file": "agentView.js",
-      "line": 673,
+      "line": 678,
       "files": [
         {
           "file": "agentView.js",
-          "line": 673
+          "line": 678
         },
         {
           "file": "style.css",
@@ -7611,11 +7611,11 @@
       "selector": ".agentDraftActions",
       "label": "Agent Draft Actions",
       "file": "agentView.js",
-      "line": 663,
+      "line": 668,
       "files": [
         {
           "file": "agentView.js",
-          "line": 663
+          "line": 668
         },
         {
           "file": "style.css",
@@ -7627,15 +7627,15 @@
       "selector": ".agentDraftBlock",
       "label": "Agent Draft Block",
       "file": "agentView.js",
-      "line": 656,
+      "line": 661,
       "files": [
         {
           "file": "agentView.js",
-          "line": 656
+          "line": 661
         },
         {
           "file": "mockupFlow.js",
-          "line": 1059
+          "line": 1063
         },
         {
           "file": "style.css",
@@ -7647,11 +7647,11 @@
       "selector": ".agentDraftError",
       "label": "Agent Draft Error",
       "file": "agentView.js",
-      "line": 666,
+      "line": 671,
       "files": [
         {
           "file": "agentView.js",
-          "line": 666
+          "line": 671
         },
         {
           "file": "style.css",
@@ -7663,11 +7663,11 @@
       "selector": ".agentEmptyGlyph",
       "label": "Agent Empty Glyph",
       "file": "agentView.js",
-      "line": 1701,
+      "line": 1706,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1701
+          "line": 1706
         },
         {
           "file": "style.css",
@@ -7679,11 +7679,11 @@
       "selector": ".agentEmptyState",
       "label": "Agent Empty State",
       "file": "agentView.js",
-      "line": 1685,
+      "line": 1690,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1685
+          "line": 1690
         },
         {
           "file": "style.css",
@@ -7695,11 +7695,11 @@
       "selector": ".agentFailure",
       "label": "Agent Failure",
       "file": "agentView.js",
-      "line": 798,
+      "line": 803,
       "files": [
         {
           "file": "agentView.js",
-          "line": 798
+          "line": 803
         },
         {
           "file": "style.css",
@@ -7711,11 +7711,11 @@
       "selector": ".agentGiveButton",
       "label": "Agent Give Button",
       "file": "agentView.js",
-      "line": 1405,
+      "line": 1410,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1405
+          "line": 1410
         },
         {
           "file": "style.css",
@@ -7727,11 +7727,11 @@
       "selector": ".agentGiveButtonLabel",
       "label": "Agent Give Button Label",
       "file": "agentView.js",
-      "line": 1409,
+      "line": 1414,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1409
+          "line": 1414
         }
       ]
     },
@@ -7739,11 +7739,11 @@
       "selector": ".agentGiveError",
       "label": "Agent Give Error",
       "file": "agentView.js",
-      "line": 1428,
+      "line": 1433,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1428
+          "line": 1433
         },
         {
           "file": "style.css",
@@ -7755,11 +7755,11 @@
       "selector": ".agentHeaderControls",
       "label": "Agent Header Controls",
       "file": "agentView.js",
-      "line": 1741,
+      "line": 1746,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1741
+          "line": 1746
         },
         {
           "file": "style.css",
@@ -7771,11 +7771,11 @@
       "selector": ".agentIdentity",
       "label": "Agent Identity",
       "file": "agentView.js",
-      "line": 1722,
+      "line": 1727,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1722
+          "line": 1727
         },
         {
           "file": "style.css",
@@ -7787,11 +7787,11 @@
       "selector": ".agentIdentityBadge",
       "label": "Agent Identity Badge",
       "file": "agentView.js",
-      "line": 1724,
+      "line": 1729,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1724
+          "line": 1729
         },
         {
           "file": "style.css",
@@ -7803,11 +7803,11 @@
       "selector": ".agentIdentityLabel",
       "label": "Agent Identity Label",
       "file": "agentView.js",
-      "line": 1728,
+      "line": 1733,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1728
+          "line": 1733
         },
         {
           "file": "style.css",
@@ -7819,11 +7819,11 @@
       "selector": ".agentMockupActions",
       "label": "Agent Mockup Actions",
       "file": "mockupFlow.js",
-      "line": 1121,
+      "line": 1125,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1121
+          "line": 1125
         },
         {
           "file": "style.css",
@@ -7835,11 +7835,11 @@
       "selector": ".agentMockupCopy",
       "label": "Agent Mockup Copy",
       "file": "mockupFlow.js",
-      "line": 1073,
+      "line": 1077,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1073
+          "line": 1077
         },
         {
           "file": "style.css",
@@ -7851,11 +7851,11 @@
       "selector": ".agentMockupDesignLink",
       "label": "Agent Mockup Design Link",
       "file": "mockupFlow.js",
-      "line": 1094,
+      "line": 1098,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1094
+          "line": 1098
         },
         {
           "file": "style.css",
@@ -7867,11 +7867,11 @@
       "selector": ".agentMockupEnlarge",
       "label": "Agent Mockup Enlarge",
       "file": "mockupFlow.js",
-      "line": 544,
+      "line": 548,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 544
+          "line": 548
         },
         {
           "file": "style.css",
@@ -7883,11 +7883,11 @@
       "selector": ".agentMockupEnlargeHint",
       "label": "Agent Mockup Enlarge Hint",
       "file": "mockupFlow.js",
-      "line": 548,
+      "line": 552,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 548
+          "line": 552
         },
         {
           "file": "style.css",
@@ -7899,11 +7899,11 @@
       "selector": ".agentMockupError",
       "label": "Agent Mockup Error",
       "file": "mockupFlow.js",
-      "line": 1124,
+      "line": 1128,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1124
+          "line": 1128
         },
         {
           "file": "style.css",
@@ -7915,11 +7915,11 @@
       "selector": ".agentMockupFallback",
       "label": "Agent Mockup Fallback",
       "file": "mockupFlow.js",
-      "line": 1031,
+      "line": 1035,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1031
+          "line": 1035
         },
         {
           "file": "style.css",
@@ -7931,11 +7931,11 @@
       "selector": ".agentMockupFallbackSummary",
       "label": "Agent Mockup Fallback Summary",
       "file": "mockupFlow.js",
-      "line": 1033,
+      "line": 1037,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1033
+          "line": 1037
         },
         {
           "file": "style.css",
@@ -7947,11 +7947,11 @@
       "selector": ".agentMockupFrame",
       "label": "Agent Mockup Frame",
       "file": "mockupFlow.js",
-      "line": 441,
+      "line": 445,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 441
+          "line": 445
         },
         {
           "file": "style.css",
@@ -7963,11 +7963,11 @@
       "selector": ".agentMockupFrameScaler",
       "label": "Agent Mockup Frame Scaler",
       "file": "mockupFlow.js",
-      "line": 439,
+      "line": 443,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 439
+          "line": 443
         },
         {
           "file": "style.css",
@@ -7979,11 +7979,11 @@
       "selector": ".agentMockupGen",
       "label": "Agent Mockup Gen",
       "file": "mockupFlow.js",
-      "line": 896,
+      "line": 900,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 896
+          "line": 900
         },
         {
           "file": "style.css",
@@ -7995,11 +7995,11 @@
       "selector": ".agentMockupGenError",
       "label": "Agent Mockup Gen Error",
       "file": "mockupFlow.js",
-      "line": 902,
+      "line": 906,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 902
+          "line": 906
         },
         {
           "file": "style.css",
@@ -8011,11 +8011,11 @@
       "selector": ".agentMockupGenerate",
       "label": "Agent Mockup Generate",
       "file": "mockupFlow.js",
-      "line": 908,
+      "line": 912,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 908
+          "line": 912
         },
         {
           "file": "style.css",
@@ -8027,11 +8027,11 @@
       "selector": ".agentMockupOpen",
       "label": "Agent Mockup Open",
       "file": "mockupFlow.js",
-      "line": 1049,
+      "line": 1053,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1049
+          "line": 1053
         },
         {
           "file": "style.css",
@@ -8043,11 +8043,11 @@
       "selector": ".agentMockupPaste",
       "label": "Agent Mockup Paste",
       "file": "mockupFlow.js",
-      "line": 1114,
+      "line": 1118,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1114
+          "line": 1118
         },
         {
           "file": "style.css",
@@ -8059,11 +8059,11 @@
       "selector": ".agentMockupPreviews",
       "label": "Agent Mockup Previews",
       "file": "mockupFlow.js",
-      "line": 899,
+      "line": 903,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 899
+          "line": 903
         },
         {
           "file": "style.css",
@@ -8075,11 +8075,11 @@
       "selector": ".agentMockupPrompt",
       "label": "Agent Mockup Prompt",
       "file": "mockupFlow.js",
-      "line": 1055,
+      "line": 1059,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1055
+          "line": 1059
         },
         {
           "file": "style.css",
@@ -8091,11 +8091,11 @@
       "selector": ".agentMockupPromptActions",
       "label": "Agent Mockup Prompt Actions",
       "file": "mockupFlow.js",
-      "line": 1066,
+      "line": 1070,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1066
+          "line": 1070
         },
         {
           "file": "style.css",
@@ -8107,11 +8107,11 @@
       "selector": ".agentMockupSave",
       "label": "Agent Mockup Save",
       "file": "mockupFlow.js",
-      "line": 1131,
+      "line": 1135,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 1131
+          "line": 1135
         },
         {
           "file": "style.css",
@@ -8123,11 +8123,11 @@
       "selector": ".agentMockupTab",
       "label": "Agent Mockup Tab",
       "file": "mockupFlow.js",
-      "line": 768,
+      "line": 772,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 768
+          "line": 772
         },
         {
           "file": "style.css",
@@ -8139,11 +8139,11 @@
       "selector": ".agentMockupTabs",
       "label": "Agent Mockup Tabs",
       "file": "mockupFlow.js",
-      "line": 729,
+      "line": 733,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 729
+          "line": 733
         },
         {
           "file": "style.css",
@@ -8155,11 +8155,11 @@
       "selector": ".agentMockupTile",
       "label": "Agent Mockup Tile",
       "file": "mockupFlow.js",
-      "line": 620,
+      "line": 624,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 620
+          "line": 624
         },
         {
           "file": "style.css",
@@ -8171,11 +8171,11 @@
       "selector": ".agentMockupTileLabel",
       "label": "Agent Mockup Tile Label",
       "file": "mockupFlow.js",
-      "line": 623,
+      "line": 627,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 623
+          "line": 627
         },
         {
           "file": "style.css",
@@ -8187,11 +8187,11 @@
       "selector": ".agentMockupUse",
       "label": "Agent Mockup Use",
       "file": "mockupFlow.js",
-      "line": 462,
+      "line": 466,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 462
+          "line": 466
         },
         {
           "file": "style.css",
@@ -8203,11 +8203,11 @@
       "selector": ".agentMockupUseError",
       "label": "Agent Mockup Use Error",
       "file": "mockupFlow.js",
-      "line": 456,
+      "line": 460,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 456
+          "line": 460
         },
         {
           "file": "style.css",
@@ -8219,11 +8219,11 @@
       "selector": ".agentMockupUseRow",
       "label": "Agent Mockup Use Row",
       "file": "mockupFlow.js",
-      "line": 453,
+      "line": 457,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 453
+          "line": 457
         },
         {
           "file": "style.css",
@@ -8235,11 +8235,11 @@
       "selector": ".agentNoRepoMarker",
       "label": "Agent No Repo Marker",
       "file": "main.js",
-      "line": 1032,
+      "line": 1036,
       "files": [
         {
           "file": "main.js",
-          "line": 1032
+          "line": 1036
         },
         {
           "file": "mobileUtilitySheet.js",
@@ -8255,11 +8255,11 @@
       "selector": ".agentPasteCopy",
       "label": "Agent Paste Copy",
       "file": "agentView.js",
-      "line": 1043,
+      "line": 1048,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1043
+          "line": 1048
         },
         {
           "file": "style.css",
@@ -8271,11 +8271,11 @@
       "selector": ".agentPasteHandoff",
       "label": "Agent Paste Handoff",
       "file": "agentView.js",
-      "line": 1034,
+      "line": 1039,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1034
+          "line": 1039
         },
         {
           "file": "style.css",
@@ -8287,11 +8287,11 @@
       "selector": ".agentPasteOpen",
       "label": "Agent Paste Open",
       "file": "agentView.js",
-      "line": 1052,
+      "line": 1057,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1052
+          "line": 1057
         },
         {
           "file": "style.css",
@@ -8303,11 +8303,11 @@
       "selector": ".agentPasteTag",
       "label": "Agent Paste Tag",
       "file": "agentView.js",
-      "line": 1037,
+      "line": 1042,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1037
+          "line": 1042
         },
         {
           "file": "style.css",
@@ -8319,11 +8319,11 @@
       "selector": ".agentProposedActions",
       "label": "Agent Proposed Actions",
       "file": "agentView.js",
-      "line": 735,
+      "line": 740,
       "files": [
         {
           "file": "agentView.js",
-          "line": 735
+          "line": 740
         },
         {
           "file": "style.css",
@@ -8335,11 +8335,11 @@
       "selector": ".agentProposedError",
       "label": "Agent Proposed Error",
       "file": "agentView.js",
-      "line": 738,
+      "line": 743,
       "files": [
         {
           "file": "agentView.js",
-          "line": 738
+          "line": 743
         },
         {
           "file": "style.css",
@@ -8351,11 +8351,11 @@
       "selector": ".agentQuestion",
       "label": "Agent Question",
       "file": "agentView.js",
-      "line": 387,
+      "line": 392,
       "files": [
         {
           "file": "agentView.js",
-          "line": 387
+          "line": 392
         },
         {
           "file": "style.css",
@@ -8367,11 +8367,11 @@
       "selector": ".agentRunBtn",
       "label": "Agent Run Btn",
       "file": "agentView.js",
-      "line": 1764,
+      "line": 1769,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1764
+          "line": 1769
         },
         {
           "file": "style.css",
@@ -8383,15 +8383,15 @@
       "selector": ".agentSecondary",
       "label": "Agent Secondary",
       "file": "agentView.js",
-      "line": 384,
+      "line": 389,
       "files": [
         {
           "file": "agentView.js",
-          "line": 384
+          "line": 389
         },
         {
           "file": "mockupFlow.js",
-          "line": 887
+          "line": 891
         },
         {
           "file": "style.css",
@@ -8403,11 +8403,11 @@
       "selector": ".agentSecondaryMuted",
       "label": "Agent Secondary Muted",
       "file": "agentView.js",
-      "line": 729,
+      "line": 734,
       "files": [
         {
           "file": "agentView.js",
-          "line": 729
+          "line": 734
         },
         {
           "file": "style.css",
@@ -8419,11 +8419,11 @@
       "selector": ".agentShippedGlyph",
       "label": "Agent Shipped Glyph",
       "file": "agentView.js",
-      "line": 359,
+      "line": 364,
       "files": [
         {
           "file": "agentView.js",
-          "line": 359
+          "line": 364
         },
         {
           "file": "style.css",
@@ -8435,11 +8435,11 @@
       "selector": ".agentShippedRow",
       "label": "Agent Shipped Row",
       "file": "agentView.js",
-      "line": 538,
+      "line": 543,
       "files": [
         {
           "file": "agentView.js",
-          "line": 538
+          "line": 543
         },
         {
           "file": "style.css",
@@ -8451,11 +8451,11 @@
       "selector": ".agentStatusDot",
       "label": "Agent Status Dot",
       "file": "agentView.js",
-      "line": 1751,
+      "line": 1756,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1751
+          "line": 1756
         },
         {
           "file": "style.css",
@@ -8467,11 +8467,11 @@
       "selector": ".agentStatusLabel",
       "label": "Agent Status Label",
       "file": "agentView.js",
-      "line": 1754,
+      "line": 1759,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1754
+          "line": 1759
         }
       ]
     },
@@ -8479,11 +8479,11 @@
       "selector": ".agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 294,
+      "line": 299,
       "files": [
         {
           "file": "agentView.js",
-          "line": 294
+          "line": 299
         },
         {
           "file": "style.css",
@@ -8495,11 +8495,11 @@
       "selector": ".agentStuckActions",
       "label": "Agent Stuck Actions",
       "file": "agentView.js",
-      "line": 803,
+      "line": 808,
       "files": [
         {
           "file": "agentView.js",
-          "line": 803
+          "line": 808
         },
         {
           "file": "style.css",
@@ -8511,11 +8511,11 @@
       "selector": ".agentStuckError",
       "label": "Agent Stuck Error",
       "file": "agentView.js",
-      "line": 806,
+      "line": 811,
       "files": [
         {
           "file": "agentView.js",
-          "line": 806
+          "line": 811
         },
         {
           "file": "style.css",
@@ -8527,11 +8527,11 @@
       "selector": ".agentStuckRetry",
       "label": "Agent Stuck Retry",
       "file": "agentView.js",
-      "line": 815,
+      "line": 820,
       "files": [
         {
           "file": "agentView.js",
-          "line": 815
+          "line": 820
         },
         {
           "file": "style.css",
@@ -8543,11 +8543,11 @@
       "selector": ".agentViewHeader",
       "label": "Agent View Header",
       "file": "agentView.js",
-      "line": 1716,
+      "line": 1721,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1716
+          "line": 1721
         },
         {
           "file": "style.css",
@@ -8559,11 +8559,11 @@
       "selector": ".agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 228,
+      "line": 233,
       "files": [
         {
           "file": "agentView.js",
-          "line": 228
+          "line": 233
         },
         {
           "file": "toDoRow.js",
@@ -8579,11 +8579,11 @@
       "selector": ".agentWorkingMarker",
       "label": "Agent Working Marker",
       "file": "main.js",
-      "line": 1010,
+      "line": 1014,
       "files": [
         {
           "file": "main.js",
-          "line": 1010
+          "line": 1014
         },
         {
           "file": "mobileUtilitySheet.js",
@@ -8967,11 +8967,11 @@
       "selector": ".bulkDescBtn",
       "label": "Bulk Desc Btn",
       "file": "main.js",
-      "line": 1205,
+      "line": 1209,
       "files": [
         {
           "file": "main.js",
-          "line": 1205
+          "line": 1209
         },
         {
           "file": "style.css",
@@ -8983,11 +8983,11 @@
       "selector": ".bulkDescCaret",
       "label": "Bulk Desc Caret",
       "file": "main.js",
-      "line": 1211,
+      "line": 1215,
       "files": [
         {
           "file": "main.js",
-          "line": 1211
+          "line": 1215
         },
         {
           "file": "style.css",
@@ -8999,11 +8999,11 @@
       "selector": ".bulkDescLabel",
       "label": "Bulk Desc Label",
       "file": "main.js",
-      "line": 1209,
+      "line": 1213,
       "files": [
         {
           "file": "main.js",
-          "line": 1209
+          "line": 1213
         }
       ]
     },
@@ -11139,11 +11139,11 @@
       "selector": ".claudeRunRevertBtn",
       "label": "Claude Run Revert Btn",
       "file": "agentView.js",
-      "line": 573,
+      "line": 578,
       "files": [
         {
           "file": "agentView.js",
-          "line": 573
+          "line": 578
         },
         {
           "file": "claudeSheet.js",
@@ -11159,11 +11159,11 @@
       "selector": ".claudeRunRevertIcon",
       "label": "Claude Run Revert Icon",
       "file": "agentView.js",
-      "line": 580,
+      "line": 585,
       "files": [
         {
           "file": "agentView.js",
-          "line": 580
+          "line": 585
         },
         {
           "file": "claudeSheet.js",
@@ -11819,11 +11819,11 @@
       "selector": ".clockIcon",
       "label": "Clock Icon",
       "file": "main.js",
-      "line": 297,
+      "line": 301,
       "files": [
         {
           "file": "main.js",
-          "line": 297
+          "line": 301
         }
       ]
     },
@@ -11831,11 +11831,11 @@
       "selector": ".clockIconHand",
       "label": "Clock Icon Hand",
       "file": "main.js",
-      "line": 302,
+      "line": 306,
       "files": [
         {
           "file": "main.js",
-          "line": 302
+          "line": 306
         },
         {
           "file": "style.css",
@@ -13487,11 +13487,11 @@
       "selector": ".descDetailEmpty",
       "label": "Desc Detail Empty",
       "file": "main.js",
-      "line": 675,
+      "line": 679,
       "files": [
         {
           "file": "main.js",
-          "line": 675
+          "line": 679
         },
         {
           "file": "style.css",
@@ -14707,11 +14707,11 @@
       "selector": ".divider",
       "label": "Divider",
       "file": "agentView.js",
-      "line": 1148,
+      "line": 1153,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1148
+          "line": 1153
         },
         {
           "file": "style.css",
@@ -14791,11 +14791,11 @@
       "selector": ".drawerSettingsBtnLabel",
       "label": "Drawer Settings Btn Label",
       "file": "main.js",
-      "line": 1527,
+      "line": 1531,
       "files": [
         {
           "file": "main.js",
-          "line": 1527
+          "line": 1531
         },
         {
           "file": "style.css",
@@ -14807,11 +14807,11 @@
       "selector": ".drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 1540,
+      "line": 1544,
       "files": [
         {
           "file": "main.js",
-          "line": 1540
+          "line": 1544
         },
         {
           "file": "style.css",
@@ -15623,11 +15623,11 @@
       "selector": ".focusModeIcon",
       "label": "Focus Mode Icon",
       "file": "main.js",
-      "line": 381,
+      "line": 385,
       "files": [
         {
           "file": "main.js",
-          "line": 381
+          "line": 385
         }
       ]
     },
@@ -15843,11 +15843,11 @@
       "selector": ".gearIcon",
       "label": "Gear Icon",
       "file": "main.js",
-      "line": 436,
+      "line": 440,
       "files": [
         {
           "file": "main.js",
-          "line": 436
+          "line": 440
         },
         {
           "file": "style.css",
@@ -16035,11 +16035,11 @@
       "selector": ".iconBtn",
       "label": "Icon Btn",
       "file": "agentView.js",
-      "line": 1167,
+      "line": 1172,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1167
+          "line": 1172
         },
         {
           "file": "style.css",
@@ -17163,11 +17163,11 @@
       "selector": ".mobileProjChev",
       "label": "Mobile Proj Chev",
       "file": "main.js",
-      "line": 774,
+      "line": 778,
       "files": [
         {
           "file": "main.js",
-          "line": 774
+          "line": 778
         },
         {
           "file": "style.css",
@@ -17179,11 +17179,11 @@
       "selector": ".mobileProjCountBadge",
       "label": "Mobile Proj Count Badge",
       "file": "main.js",
-      "line": 817,
+      "line": 821,
       "files": [
         {
           "file": "main.js",
-          "line": 817
+          "line": 821
         },
         {
           "file": "style.css",
@@ -17195,11 +17195,11 @@
       "selector": ".mobileProjDropdownChev",
       "label": "Mobile Proj Dropdown Chev",
       "file": "main.js",
-      "line": 796,
+      "line": 800,
       "files": [
         {
           "file": "main.js",
-          "line": 796
+          "line": 800
         },
         {
           "file": "style.css",
@@ -17211,11 +17211,11 @@
       "selector": ".mobileProjRunSpinner",
       "label": "Mobile Proj Run Spinner",
       "file": "main.js",
-      "line": 835,
+      "line": 839,
       "files": [
         {
           "file": "main.js",
-          "line": 835
+          "line": 839
         },
         {
           "file": "style.css",
@@ -17339,11 +17339,11 @@
       "selector": ".mockupOverlay",
       "label": "Mockup Overlay",
       "file": "mockupFlow.js",
-      "line": 414,
+      "line": 418,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 414
+          "line": 418
         },
         {
           "file": "style.css",
@@ -17355,11 +17355,11 @@
       "selector": ".mockupOverlayBackdrop",
       "label": "Mockup Overlay Backdrop",
       "file": "mockupFlow.js",
-      "line": 411,
+      "line": 415,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 411
+          "line": 415
         },
         {
           "file": "style.css",
@@ -17371,11 +17371,11 @@
       "selector": ".mockupOverlayClose",
       "label": "Mockup Overlay Close",
       "file": "mockupFlow.js",
-      "line": 429,
+      "line": 433,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 429
+          "line": 433
         },
         {
           "file": "style.css",
@@ -17387,11 +17387,11 @@
       "selector": ".mockupOverlayHeader",
       "label": "Mockup Overlay Header",
       "file": "mockupFlow.js",
-      "line": 420,
+      "line": 424,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 420
+          "line": 424
         },
         {
           "file": "style.css",
@@ -17403,11 +17403,11 @@
       "selector": ".mockupOverlayLabel",
       "label": "Mockup Overlay Label",
       "file": "mockupFlow.js",
-      "line": 423,
+      "line": 427,
       "files": [
         {
           "file": "mockupFlow.js",
-          "line": 423
+          "line": 427
         },
         {
           "file": "style.css",
@@ -18235,11 +18235,11 @@
       "selector": ".musicVizBars",
       "label": "Music Viz Bars",
       "file": "main.js",
-      "line": 334,
+      "line": 338,
       "files": [
         {
           "file": "main.js",
-          "line": 334
+          "line": 338
         },
         {
           "file": "style.css",
@@ -18755,11 +18755,11 @@
       "selector": ".pill",
       "label": "Pill",
       "file": "agentView.js",
-      "line": 1421,
+      "line": 1426,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1421
+          "line": 1426
         },
         {
           "file": "style.css",
@@ -18931,11 +18931,11 @@
       "selector": ".pomodoroCountdownInline",
       "label": "Pomodoro Countdown Inline",
       "file": "main.js",
-      "line": 308,
+      "line": 312,
       "files": [
         {
           "file": "main.js",
-          "line": 308
+          "line": 312
         },
         {
           "file": "style.css",
@@ -19139,11 +19139,11 @@
       "selector": ".projBadge",
       "label": "Proj Badge",
       "file": "main.js",
-      "line": 2184,
+      "line": 2188,
       "files": [
         {
           "file": "main.js",
-          "line": 2184
+          "line": 2188
         },
         {
           "file": "style.css",
@@ -19271,11 +19271,11 @@
       "selector": ".projQuestionCount",
       "label": "Proj Question Count",
       "file": "main.js",
-      "line": 3257,
+      "line": 3261,
       "files": [
         {
           "file": "main.js",
-          "line": 3257
+          "line": 3261
         },
         {
           "file": "style.css",
@@ -20079,11 +20079,11 @@
       "selector": ".refreshSplashGlyph",
       "label": "Refresh Splash Glyph",
       "file": "main.js",
-      "line": 3726,
+      "line": 3730,
       "files": [
         {
           "file": "main.js",
-          "line": 3726
+          "line": 3730
         },
         {
           "file": "template.html",
@@ -20799,11 +20799,11 @@
       "selector": ".settingsAboutUpdatePill",
       "label": "Settings About Update Pill",
       "file": "aboutVersionCue.js",
-      "line": 50,
+      "line": 55,
       "files": [
         {
           "file": "aboutVersionCue.js",
-          "line": 50
+          "line": 55
         },
         {
           "file": "style.css",
@@ -21935,11 +21935,11 @@
       "selector": ".spendIcon",
       "label": "Spend Icon",
       "file": "main.js",
-      "line": 412,
+      "line": 416,
       "files": [
         {
           "file": "main.js",
-          "line": 412
+          "line": 416
         }
       ]
     },
@@ -22207,11 +22207,11 @@
       "selector": ".stripe",
       "label": "Stripe",
       "file": "agentView.js",
-      "line": 1390,
+      "line": 1395,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1390
+          "line": 1395
         },
         {
           "file": "style.css",
@@ -24247,11 +24247,11 @@
       "selector": ".swipeCompleteFlash",
       "label": "Swipe Complete Flash",
       "file": "main.js",
-      "line": 2992,
+      "line": 2996,
       "files": [
         {
           "file": "main.js",
-          "line": 2992
+          "line": 2996
         },
         {
           "file": "style.css",
@@ -24263,11 +24263,11 @@
       "selector": ".swipeCompleteFlashCheck",
       "label": "Swipe Complete Flash Check",
       "file": "main.js",
-      "line": 2997,
+      "line": 3001,
       "files": [
         {
           "file": "main.js",
-          "line": 2997
+          "line": 3001
         },
         {
           "file": "style.css",
@@ -24279,11 +24279,11 @@
       "selector": ".swipeCompleteFlashRipple",
       "label": "Swipe Complete Flash Ripple",
       "file": "main.js",
-      "line": 2995,
+      "line": 2999,
       "files": [
         {
           "file": "main.js",
-          "line": 2995
+          "line": 2999
         },
         {
           "file": "style.css",
@@ -24571,11 +24571,11 @@
       "selector": ".taskRefreshBtnGlyph",
       "label": "Task Refresh Btn Glyph",
       "file": "main.js",
-      "line": 3829,
+      "line": 3833,
       "files": [
         {
           "file": "main.js",
-          "line": 3829
+          "line": 3833
         },
         {
           "file": "style.css",
@@ -24587,11 +24587,11 @@
       "selector": ".taskSortBtnMobileGlyph",
       "label": "Task Sort Btn Mobile Glyph",
       "file": "main.js",
-      "line": 1252,
+      "line": 1256,
       "files": [
         {
           "file": "main.js",
-          "line": 1252
+          "line": 1256
         },
         {
           "file": "style.css",
@@ -24731,11 +24731,11 @@
       "selector": ".thinActions",
       "label": "Thin Actions",
       "file": "agentView.js",
-      "line": 1163,
+      "line": 1168,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1163
+          "line": 1168
         },
         {
           "file": "style.css",
@@ -24763,11 +24763,11 @@
       "selector": ".todoMdViewerAckEntryBtn",
       "label": "Todo Md Viewer Ack Entry Btn",
       "file": "todoMdViewer.js",
-      "line": 994,
+      "line": 998,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 994
+          "line": 998
         },
         {
           "file": "style.css",
@@ -24779,11 +24779,11 @@
       "selector": ".todoMdViewerAckEntryIcon",
       "label": "Todo Md Viewer Ack Entry Icon",
       "file": "todoMdViewer.js",
-      "line": 872,
+      "line": 876,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 872
+          "line": 876
         },
         {
           "file": "style.css",
@@ -24795,11 +24795,11 @@
       "selector": ".todoMdViewerAckEntryLabel",
       "label": "Todo Md Viewer Ack Entry Label",
       "file": "todoMdViewer.js",
-      "line": 999,
+      "line": 1003,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 999
+          "line": 1003
         }
       ]
     },
@@ -24807,11 +24807,11 @@
       "selector": ".todoMdViewerBody",
       "label": "Todo Md Viewer Body",
       "file": "todoMdViewer.js",
-      "line": 1246,
+      "line": 1250,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1246
+          "line": 1250
         },
         {
           "file": "style.css",
@@ -24823,11 +24823,11 @@
       "selector": ".todoMdViewerCard",
       "label": "Todo Md Viewer Card",
       "file": "todoMdViewer.js",
-      "line": 1072,
+      "line": 1076,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1072
+          "line": 1076
         },
         {
           "file": "style.css",
@@ -24839,11 +24839,11 @@
       "selector": ".todoMdViewerCheckBox",
       "label": "Todo Md Viewer Check Box",
       "file": "todoMdViewer.js",
-      "line": 920,
+      "line": 924,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 920
+          "line": 924
         },
         {
           "file": "style.css",
@@ -24855,11 +24855,11 @@
       "selector": ".todoMdViewerCheckRow",
       "label": "Todo Md Viewer Check Row",
       "file": "todoMdViewer.js",
-      "line": 911,
+      "line": 915,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 911
+          "line": 915
         },
         {
           "file": "style.css",
@@ -24871,11 +24871,11 @@
       "selector": ".todoMdViewerCheckText",
       "label": "Todo Md Viewer Check Text",
       "file": "todoMdViewer.js",
-      "line": 924,
+      "line": 928,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 924
+          "line": 928
         },
         {
           "file": "style.css",
@@ -24887,11 +24887,11 @@
       "selector": ".todoMdViewerCollapseBtn",
       "label": "Todo Md Viewer Collapse Btn",
       "file": "todoMdViewer.js",
-      "line": 1142,
+      "line": 1146,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1142
+          "line": 1146
         },
         {
           "file": "style.css",
@@ -24903,11 +24903,11 @@
       "selector": ".todoMdViewerDeleteEntryBtn",
       "label": "Todo Md Viewer Delete Entry Btn",
       "file": "todoMdViewer.js",
-      "line": 1012,
+      "line": 1016,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1012
+          "line": 1016
         },
         {
           "file": "style.css",
@@ -24919,11 +24919,11 @@
       "selector": ".todoMdViewerDeleteEntryIcon",
       "label": "Todo Md Viewer Delete Entry Icon",
       "file": "todoMdViewer.js",
-      "line": 852,
+      "line": 856,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 852
+          "line": 856
         },
         {
           "file": "style.css",
@@ -24935,11 +24935,11 @@
       "selector": ".todoMdViewerDeployPill",
       "label": "Todo Md Viewer Deploy Pill",
       "file": "todoMdViewer.js",
-      "line": 1126,
+      "line": 1130,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1126
+          "line": 1130
         },
         {
           "file": "style.css",
@@ -24951,11 +24951,11 @@
       "selector": ".todoMdViewerDeployPillGlyph",
       "label": "Todo Md Viewer Deploy Pill Glyph",
       "file": "todoMdViewer.js",
-      "line": 2011,
+      "line": 2015,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 2011
+          "line": 2015
         },
         {
           "file": "style.css",
@@ -24967,11 +24967,11 @@
       "selector": ".todoMdViewerDeployPillLabel",
       "label": "Todo Md Viewer Deploy Pill Label",
       "file": "todoMdViewer.js",
-      "line": 2016,
+      "line": 2020,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 2016
+          "line": 2020
         },
         {
           "file": "style.css",
@@ -24983,11 +24983,11 @@
       "selector": ".todoMdViewerDeployPillSpinner",
       "label": "Todo Md Viewer Deploy Pill Spinner",
       "file": "todoMdViewer.js",
-      "line": 2009,
+      "line": 2013,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 2009
+          "line": 2013
         },
         {
           "file": "style.css",
@@ -24999,11 +24999,11 @@
       "selector": ".todoMdViewerError",
       "label": "Todo Md Viewer Error",
       "file": "todoMdViewer.js",
-      "line": 1312,
+      "line": 1316,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1312
+          "line": 1316
         },
         {
           "file": "style.css",
@@ -25015,11 +25015,11 @@
       "selector": ".todoMdViewerHeader",
       "label": "Todo Md Viewer Header",
       "file": "todoMdViewer.js",
-      "line": 1076,
+      "line": 1080,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1076
+          "line": 1080
         },
         {
           "file": "style.css",
@@ -25031,11 +25031,11 @@
       "selector": ".todoMdViewerHeading",
       "label": "Todo Md Viewer Heading",
       "file": "todoMdViewer.js",
-      "line": 904,
+      "line": 908,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 904
+          "line": 908
         },
         {
           "file": "style.css",
@@ -25047,11 +25047,11 @@
       "selector": ".todoMdViewerMeta",
       "label": "Todo Md Viewer Meta",
       "file": "todoMdViewer.js",
-      "line": 1100,
+      "line": 1104,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1100
+          "line": 1104
         },
         {
           "file": "style.css",
@@ -25063,11 +25063,11 @@
       "selector": ".todoMdViewerNote",
       "label": "Todo Md Viewer Note",
       "file": "todoMdViewer.js",
-      "line": 1249,
+      "line": 1253,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1249
+          "line": 1253
         },
         {
           "file": "style.css",
@@ -25079,11 +25079,11 @@
       "selector": ".todoMdViewerOverflowBtn",
       "label": "Todo Md Viewer Overflow Btn",
       "file": "todoMdViewer.js",
-      "line": 1162,
+      "line": 1166,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1162
+          "line": 1166
         },
         {
           "file": "style.css",
@@ -25095,11 +25095,11 @@
       "selector": ".todoMdViewerOverflowDivider",
       "label": "Todo Md Viewer Overflow Divider",
       "file": "todoMdViewer.js",
-      "line": 1200,
+      "line": 1204,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1200
+          "line": 1204
         },
         {
           "file": "style.css",
@@ -25111,11 +25111,11 @@
       "selector": ".todoMdViewerOverflowItem",
       "label": "Todo Md Viewer Overflow Item",
       "file": "todoMdViewer.js",
-      "line": 1183,
+      "line": 1187,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1183
+          "line": 1187
         },
         {
           "file": "style.css",
@@ -25127,11 +25127,11 @@
       "selector": ".todoMdViewerOverflowMenu",
       "label": "Todo Md Viewer Overflow Menu",
       "file": "todoMdViewer.js",
-      "line": 1170,
+      "line": 1174,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1170
+          "line": 1174
         },
         {
           "file": "style.css",
@@ -25143,11 +25143,11 @@
       "selector": ".todoMdViewerOverflowWrap",
       "label": "Todo Md Viewer Overflow Wrap",
       "file": "todoMdViewer.js",
-      "line": 1158,
+      "line": 1162,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1158
+          "line": 1162
         },
         {
           "file": "style.css",
@@ -25159,11 +25159,11 @@
       "selector": ".todoMdViewerPaneCloseBtn",
       "label": "Todo Md Viewer Pane Close Btn",
       "file": "todoMdViewer.js",
-      "line": 1238,
+      "line": 1242,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1238
+          "line": 1242
         },
         {
           "file": "style.css",
@@ -25175,11 +25175,11 @@
       "selector": ".todoMdViewerRaw",
       "label": "Todo Md Viewer Raw",
       "file": "todoMdViewer.js",
-      "line": 1041,
+      "line": 1045,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1041
+          "line": 1045
         },
         {
           "file": "style.css",
@@ -25191,11 +25191,11 @@
       "selector": ".todoMdViewerRendered",
       "label": "Todo Md Viewer Rendered",
       "file": "todoMdViewer.js",
-      "line": 895,
+      "line": 899,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 895
+          "line": 899
         },
         {
           "file": "style.css",
@@ -25207,11 +25207,11 @@
       "selector": ".todoMdViewerRevertEntryBtn",
       "label": "Todo Md Viewer Revert Entry Btn",
       "file": "todoMdViewer.js",
-      "line": 961,
+      "line": 965,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 961
+          "line": 965
         },
         {
           "file": "style.css",
@@ -25223,11 +25223,11 @@
       "selector": ".todoMdViewerRevertEntryIcon",
       "label": "Todo Md Viewer Revert Entry Icon",
       "file": "todoMdViewer.js",
-      "line": 863,
+      "line": 867,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 863
+          "line": 867
         },
         {
           "file": "style.css",
@@ -25239,11 +25239,11 @@
       "selector": ".todoMdViewerRevertEntryLabel",
       "label": "Todo Md Viewer Revert Entry Label",
       "file": "todoMdViewer.js",
-      "line": 969,
+      "line": 973,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 969
+          "line": 973
         }
       ]
     },
@@ -25251,11 +25251,11 @@
       "selector": ".todoMdViewerRunBtn",
       "label": "Todo Md Viewer Run Btn",
       "file": "todoMdViewer.js",
-      "line": 1109,
+      "line": 1113,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1109
+          "line": 1113
         },
         {
           "file": "style.css",
@@ -25267,11 +25267,11 @@
       "selector": ".todoMdViewerRunEntryBtn",
       "label": "Todo Md Viewer Run Entry Btn",
       "file": "todoMdViewer.js",
-      "line": 938,
+      "line": 942,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 938
+          "line": 942
         },
         {
           "file": "style.css",
@@ -25283,11 +25283,11 @@
       "selector": ".todoMdViewerRunEntryIcon",
       "label": "Todo Md Viewer Run Entry Icon",
       "file": "todoMdViewer.js",
-      "line": 847,
+      "line": 851,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 847
+          "line": 851
         },
         {
           "file": "style.css",
@@ -25299,11 +25299,11 @@
       "selector": ".todoMdViewerRunEntryLabel",
       "label": "Todo Md Viewer Run Entry Label",
       "file": "todoMdViewer.js",
-      "line": 943,
+      "line": 947,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 943
+          "line": 947
         }
       ]
     },
@@ -25311,11 +25311,11 @@
       "selector": ".todoMdViewerRunIcon",
       "label": "Todo Md Viewer Run Icon",
       "file": "todoMdViewer.js",
-      "line": 1113,
+      "line": 1117,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1113
+          "line": 1117
         },
         {
           "file": "style.css",
@@ -25327,11 +25327,11 @@
       "selector": ".todoMdViewerRunLabel",
       "label": "Todo Md Viewer Run Label",
       "file": "todoMdViewer.js",
-      "line": 1116,
+      "line": 1120,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1116
+          "line": 1120
         },
         {
           "file": "style.css",
@@ -25343,11 +25343,11 @@
       "selector": ".todoMdViewerRunPill",
       "label": "Todo Md Viewer Run Pill",
       "file": "todoMdViewer.js",
-      "line": 1693,
+      "line": 1697,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1693
+          "line": 1697
         },
         {
           "file": "style.css",
@@ -25359,11 +25359,11 @@
       "selector": ".todoMdViewerRunPillGlyph",
       "label": "Todo Md Viewer Run Pill Glyph",
       "file": "todoMdViewer.js",
-      "line": 1703,
+      "line": 1707,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1703
+          "line": 1707
         },
         {
           "file": "style.css",
@@ -25375,11 +25375,11 @@
       "selector": ".todoMdViewerRunPillLabel",
       "label": "Todo Md Viewer Run Pill Label",
       "file": "todoMdViewer.js",
-      "line": 1709,
+      "line": 1713,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1709
+          "line": 1713
         },
         {
           "file": "style.css",
@@ -25391,11 +25391,11 @@
       "selector": ".todoMdViewerRunPillLink",
       "label": "Todo Md Viewer Run Pill Link",
       "file": "todoMdViewer.js",
-      "line": 1714,
+      "line": 1718,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1714
+          "line": 1718
         },
         {
           "file": "style.css",
@@ -25407,11 +25407,11 @@
       "selector": ".todoMdViewerRunPillSpinner",
       "label": "Todo Md Viewer Run Pill Spinner",
       "file": "todoMdViewer.js",
-      "line": 1698,
+      "line": 1702,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1698
+          "line": 1702
         },
         {
           "file": "style.css",
@@ -25423,11 +25423,11 @@
       "selector": ".todoMdViewerShowCompletedCheck",
       "label": "Todo Md Viewer Show Completed Check",
       "file": "todoMdViewer.js",
-      "line": 1187,
+      "line": 1191,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1187
+          "line": 1191
         },
         {
           "file": "style.css",
@@ -25439,11 +25439,11 @@
       "selector": ".todoMdViewerShowCompletedLabel",
       "label": "Todo Md Viewer Show Completed Label",
       "file": "todoMdViewer.js",
-      "line": 1194,
+      "line": 1198,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1194
+          "line": 1198
         },
         {
           "file": "style.css",
@@ -25455,11 +25455,11 @@
       "selector": ".todoMdViewerStrip",
       "label": "Todo Md Viewer Strip",
       "file": "todoMdViewer.js",
-      "line": 493,
+      "line": 497,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 493
+          "line": 497
         },
         {
           "file": "style.css",
@@ -25471,11 +25471,11 @@
       "selector": ".todoMdViewerStripActions",
       "label": "Todo Md Viewer Strip Actions",
       "file": "todoMdViewer.js",
-      "line": 511,
+      "line": 515,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 511
+          "line": 515
         },
         {
           "file": "style.css",
@@ -25487,11 +25487,11 @@
       "selector": ".todoMdViewerStripName",
       "label": "Todo Md Viewer Strip Name",
       "file": "todoMdViewer.js",
-      "line": 500,
+      "line": 504,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 500
+          "line": 504
         },
         {
           "file": "style.css",
@@ -25503,11 +25503,11 @@
       "selector": ".todoMdViewerStripReview",
       "label": "Todo Md Viewer Strip Review",
       "file": "todoMdViewer.js",
-      "line": 506,
+      "line": 510,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 506
+          "line": 510
         },
         {
           "file": "style.css",
@@ -25519,11 +25519,11 @@
       "selector": ".todoMdViewerSyncBtn",
       "label": "Todo Md Viewer Sync Btn",
       "file": "todoMdViewer.js",
-      "line": 1131,
+      "line": 1135,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1131
+          "line": 1135
         },
         {
           "file": "style.css",
@@ -25535,11 +25535,11 @@
       "selector": ".todoMdViewerSyncIcon",
       "label": "Todo Md Viewer Sync Icon",
       "file": "todoMdViewer.js",
-      "line": 882,
+      "line": 886,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 882
+          "line": 886
         },
         {
           "file": "style.css",
@@ -25551,11 +25551,11 @@
       "selector": ".todoMdViewerSyncLabel",
       "label": "Todo Md Viewer Sync Label",
       "file": "todoMdViewer.js",
-      "line": 1357,
+      "line": 1361,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1357
+          "line": 1361
         },
         {
           "file": "style.css",
@@ -25567,11 +25567,11 @@
       "selector": ".todoMdViewerSyncSpinner",
       "label": "Todo Md Viewer Sync Spinner",
       "file": "todoMdViewer.js",
-      "line": 1356,
+      "line": 1360,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1356
+          "line": 1360
         },
         {
           "file": "style.css",
@@ -25583,11 +25583,11 @@
       "selector": ".todoMdViewerSynced",
       "label": "Todo Md Viewer Synced",
       "file": "todoMdViewer.js",
-      "line": 1103,
+      "line": 1107,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1103
+          "line": 1107
         },
         {
           "file": "style.css",
@@ -25599,11 +25599,11 @@
       "selector": ".todoMdViewerTab",
       "label": "Todo Md Viewer Tab",
       "file": "todoMdViewer.js",
-      "line": 1084,
+      "line": 1088,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1084
+          "line": 1088
         },
         {
           "file": "style.css",
@@ -25615,11 +25615,11 @@
       "selector": ".todoMdViewerTabs",
       "label": "Todo Md Viewer Tabs",
       "file": "todoMdViewer.js",
-      "line": 1079,
+      "line": 1083,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1079
+          "line": 1083
         },
         {
           "file": "style.css",
@@ -25631,11 +25631,11 @@
       "selector": ".todoMdViewerTextLine",
       "label": "Todo Md Viewer Text Line",
       "file": "todoMdViewer.js",
-      "line": 1031,
+      "line": 1035,
       "files": [
         {
           "file": "todoMdViewer.js",
-          "line": 1031
+          "line": 1035
         },
         {
           "file": "style.css",
@@ -26159,11 +26159,11 @@
       "selector": ".viewPill",
       "label": "View Pill",
       "file": "main.js",
-      "line": 999,
+      "line": 1003,
       "files": [
         {
           "file": "main.js",
-          "line": 999
+          "line": 1003
         },
         {
           "file": "style.css",
@@ -26461,11 +26461,11 @@
   "modules": [
     {
       "path": "aboutVersionCue.js",
-      "lines": 96,
+      "lines": 101,
       "imports": [
         "modals.js"
       ],
-      "purpose": null
+      "purpose": "The Settings modal's About → Version row update cue for the service worker."
     },
     {
       "path": "agentQueueStore.js",
@@ -26478,7 +26478,7 @@
     },
     {
       "path": "agentView.js",
-      "lines": 1932,
+      "lines": 1937,
       "imports": [
         "agentQueueStore.js",
         "assignmentCoverage.js",
@@ -26490,7 +26490,7 @@
         "modals.js",
         "supabaseClient.js"
       ],
-      "purpose": null
+      "purpose": "The Agent board: a per-project view of agent_queue rows with dispatch, retry, triage and derive controls."
     },
     {
       "path": "agentWiring.js",
@@ -26504,7 +26504,7 @@
         "listLogic.js",
         "mockupFlow.js"
       ],
-      "purpose": null
+      "purpose": "Boot-time wiring for the extracted agent subsystems."
     },
     {
       "path": "appLock.js",
@@ -26525,7 +26525,7 @@
         "prefs.js",
         "viewport.js"
       ],
-      "purpose": null
+      "purpose": "The assignment / rubric-coverage subsystem, extracted verbatim from agentView.js so it can be re-homed as a chat-pane tab later."
     },
     {
       "path": "auth.js",
@@ -26641,7 +26641,7 @@
         "shipEntry.js",
         "toDoRow.js"
       ],
-      "purpose": null
+      "purpose": "Shared dispatch core for a drafted/stuck agent_queue row's entry."
     },
     {
       "path": "dragDrop.js",
@@ -26782,17 +26782,17 @@
     },
     {
       "path": "listLogic.js",
-      "lines": 4823,
+      "lines": 4827,
       "imports": [
         "prefs.js",
         "supabaseClient.js",
         "toDo.js"
       ],
-      "purpose": null
+      "purpose": "The data model for projects and their todo items, and the only module that mutates them."
     },
     {
       "path": "main.js",
-      "lines": 4115,
+      "lines": 4119,
       "imports": [
         "aboutVersionCue.js",
         "addProj_button.svg",
@@ -26841,7 +26841,7 @@
         "viewSwitcher.js",
         "viewport.js"
       ],
-      "purpose": null
+      "purpose": "The app shell: builds the page structure in component() and wires user actions to the data model and views."
     },
     {
       "path": "migration.js",
@@ -26855,11 +26855,11 @@
     },
     {
       "path": "mobileProjSwipeNav.js",
-      "lines": 45,
+      "lines": 46,
       "imports": [
         "projectBadges.js"
       ],
-      "purpose": null
+      "purpose": "Mobile swipe-on-title navigation gesture, extracted from main.js (a behaviour-preserving move)."
     },
     {
       "path": "mobileSheets.js",
@@ -26905,13 +26905,13 @@
     },
     {
       "path": "mockupFlow.js",
-      "lines": 1186,
+      "lines": 1190,
       "imports": [
         "inject.js",
         "listLogic.js",
         "modalDismiss.js"
       ],
-      "purpose": null
+      "purpose": "The A/B/C mockup flow for `needs_mockup` agent_queue rows: generate three variants, preview them, pick one."
     },
     {
       "path": "modalDismiss.js",
@@ -27013,13 +27013,13 @@
     },
     {
       "path": "projRunSpinner.js",
-      "lines": 118,
+      "lines": 119,
       "imports": [
         "inject.js",
         "listLogic.js",
         "projectRow.js"
       ],
-      "purpose": null
+      "purpose": "Cross-device run spinners."
     },
     {
       "path": "projectBadges.js",
@@ -27031,12 +27031,12 @@
     },
     {
       "path": "projectCreate.js",
-      "lines": 65,
+      "lines": 69,
       "imports": [
         "listLogic.js",
         "projectMenu.js"
       ],
-      "purpose": null
+      "purpose": "Project create and select helpers shared by main.js and the desktop project picker."
     },
     {
       "path": "projectMenu.js",
@@ -27168,7 +27168,7 @@
         "inject.js",
         "listLogic.js"
       ],
-      "purpose": null
+      "purpose": "The generic \"ship a TODO.md entry tied to a todo and dispatch a run for it\" core, extracted verbatim from agentView's dispatchDraft."
     },
     {
       "path": "sidebarDrawer.js",
@@ -27207,7 +27207,7 @@
         "structureCanvas.js",
         "structureView.js"
       ],
-      "purpose": null
+      "purpose": "Remote (guest-repo) layout capture."
     },
     {
       "path": "structureView.js",
@@ -27227,7 +27227,7 @@
         "structureCanvas.js",
         "structureRemoteCapture.js"
       ],
-      "purpose": null
+      "purpose": "The STRUCTURE view: a map of the selected project's source and UI."
     },
     {
       "path": "supabaseClient.js",
@@ -27237,9 +27237,9 @@
     },
     {
       "path": "sw.js",
-      "lines": 63,
+      "lines": 67,
       "imports": [],
-      "purpose": null
+      "purpose": "The service worker: precaches the build and serves the HTML shell network-first."
     },
     {
       "path": "taskFilter.js",
@@ -27264,9 +27264,9 @@
     },
     {
       "path": "toDo.js",
-      "lines": 49,
+      "lines": 51,
       "imports": [],
-      "purpose": null
+      "purpose": "The factory for a single todo item object, holding its fields and their default values."
     },
     {
       "path": "toDoRow.js",
@@ -27300,7 +27300,7 @@
     },
     {
       "path": "todoMdViewer.js",
-      "lines": 2588,
+      "lines": 2592,
       "imports": [
         "agentQueueStore.js",
         "claudeSheet.js",
@@ -27313,7 +27313,7 @@
         "runState.js",
         "viewport.js"
       ],
-      "purpose": null
+      "purpose": "The TODO.md viewer: renders a project's linked TODO.md as a checklist and runs, reverts or redeploys its entries."
     },
     {
       "path": "todoStatus.js",
@@ -27342,11 +27342,11 @@
     },
     {
       "path": "viewSwitcher.js",
-      "lines": 45,
+      "lines": 46,
       "imports": [
         "modals.js"
       ],
-      "purpose": null
+      "purpose": "Roving-tabindex ArrowLeft/ArrowRight navigation across the three view pills."
     },
     {
       "path": "viewport.js",
@@ -27399,8 +27399,7 @@
         "mockupFlow.js",
         "assignmentCoverage.js",
         "seedTasksModal.js",
-        "conceiveShapes.js",
-        "captureCard.js"
+        "conceiveShapes.js"
       ]
     },
     {
@@ -27497,6 +27496,7 @@
         "codeViewer.js",
         "complexityHotspots.js",
         "refactorCard.js",
+        "captureCard.js",
         "srcPath.js"
       ]
     },
