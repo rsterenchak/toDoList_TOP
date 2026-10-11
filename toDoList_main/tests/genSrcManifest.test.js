@@ -644,6 +644,27 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
+    it('compiles the Tasks & projects tours in order, each with a 3–5 card recap', () => {
+        const tasks = tours.tours.filter((t) => t.section === 'tasks');
+        expect(tasks.map((t) => t.id)).toEqual(['add-task', 'edit-task', 'task-status', 'due-date', 'delete-task', 'reorder', 'create-project', 'filter-sort', 'mobile-add']);
+        tasks.forEach((t) => {
+            expect(t.recap.length).toBeGreaterThanOrEqual(3);
+            expect(t.recap.length).toBeLessThanOrEqual(5);
+        });
+    });
+
+    // The data-saved tour says dataChanged has no listeners. Adding one makes
+    // that false, so this fails until the tour text is revisited.
+    it('keeps the data-saved tour honest about dataChanged listeners', () => {
+        const fs = require('fs');
+        const srcDir = path.resolve(__dirname, '..', 'src');
+        const hasListener = fs.readdirSync(srcDir).filter((f) => f.endsWith('.js')).some((f) =>
+            /addEventListener\(\s*['"`]dataChanged['"`]/.test(fs.readFileSync(path.join(srcDir, f), 'utf8')));
+        const saved = doc.tours.find((t) => t.id === 'data-saved');
+        expect(/no listener/i.test(saved.steps[2].why)).toBe(!hasListener);
+        expect(saved.recap.some((r) => /refresh/i.test(r.body))).toBe(false);
+    });
+
     it('lists the six sections in order and every tour in a known section', () => {
         expect(doc.sections.map((s) => s.id)).toEqual(['foundations', 'tasks', 'pipeline', 'chat', 'structure', 'more']);
         const ids = new Set(doc.sections.map((s) => s.id));
