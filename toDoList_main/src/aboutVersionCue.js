@@ -1,3 +1,8 @@
+// The Settings modal's About → Version row update cue for the service worker.
+// It paints a tappable "Update available" pill while a new worker is waiting, a
+// plain "Reload to finish" pill once another tab has applied the update, and
+// the read-only version value otherwise.
+
 import { applyPendingUpdate, hasPendingUpdate } from './modals.js';
 
 // The collateral reload runs main.js's `requestAppReload` (a splash-wrapped

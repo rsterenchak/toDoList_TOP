@@ -1,5 +1,3 @@
-import { navigateToProjectByIndex } from './projectBadges.js';
-
 // Mobile swipe-on-title navigation gesture, extracted from main.js (a
 // behaviour-preserving move). endSwipe is the touchend arm of the horizontal
 // swipe on the mobile project title row: it reads the accumulated gesture and
@@ -13,6 +11,9 @@ import { navigateToProjectByIndex } from './projectBadges.js';
 // resolve position) arrive as factory deps; navigateToProjectByIndex is a
 // stable module import resolved directly, so the returned body is identical to
 // the inline original.
+
+import { navigateToProjectByIndex } from './projectBadges.js';
+
 export function createMobileProjSwipeNav({
     swipeState,
     SWIPE_COMMIT_PX,

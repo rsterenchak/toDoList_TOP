@@ -1,3 +1,7 @@
+// The TODO.md viewer: renders a project's linked TODO.md as a checklist and runs, reverts or redeploys its entries.
+// It also places the viewer card for the current layout and tracks the
+// project's active run or Pages redeploy while one is in flight.
+
 import { listLogic } from './listLogic.js';
 import { isTodoMdShowCompleted, setTodoMdShowCompleted } from './prefs.js';
 import { showConfirmModal } from './modals.js';

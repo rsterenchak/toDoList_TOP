@@ -1,3 +1,7 @@
+// The data model for projects and their todo items, and the only module that mutates them.
+// It holds the in-memory project list, caches it in localStorage, and maps every
+// change to the Supabase rows that persist it.
+
 import './style.css';
 import { toDo } from './toDo.js';
 import { isSampleSeeded, setSampleSeeded } from './prefs.js';

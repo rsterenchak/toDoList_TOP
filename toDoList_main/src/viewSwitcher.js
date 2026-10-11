@@ -1,5 +1,3 @@
-import { isAnyModalOrPopoverOpen } from './modals.js';
-
 // Roving-tabindex ArrowLeft/ArrowRight navigation across the three view pills.
 // The switcher is an ARIA tablist, so exactly one pill is in the Tab order at a
 // time (tabindex 0) while the others are tabindex -1; ArrowLeft / ArrowRight
@@ -19,6 +17,9 @@ import { isAnyModalOrPopoverOpen } from './modals.js';
 // The factory closes over the `viewSwitcherPills` array (the three pill
 // elements, in order) passed in from main.js, so focus movement stays anchored
 // to the same ordered set main.js seeds and applyActiveView keeps in sync.
+
+import { isAnyModalOrPopoverOpen } from './modals.js';
+
 export function createViewSwitcher({ viewSwitcherPills }) {
     function focusViewPillAt(index) {
         const pill = viewSwitcherPills[index];

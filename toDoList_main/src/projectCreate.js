@@ -1,3 +1,7 @@
+// Project create and select helpers shared by main.js and the desktop project picker.
+// Both drive the same sidebar #projChild row flow the + button uses, so a project
+// made or selected from either surface lands identically.
+
 import { listLogic } from './listLogic.js';
 import { applyProjectAccent } from './projectMenu.js';
 

@@ -2145,7 +2145,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 1d8323b3-a8cc-4903-a2b9-4269719fc63e -->
 
-- [ ] **[MEDIUM]** Give every src module a top-of-file purpose comment for the code map
+- [x] **[MEDIUM]** Give every src module a top-of-file purpose comment for the code map
   - Type: feature
   - Description: The Structure tab's Map lens shows each file's purpose, taken from the first sentence of the comment block at the very top of the file (`extractPurpose` in `gen-src-manifest.js`). 18 modules open with their `import` lines instead, so they publish `purpose: null` and will read "No description yet" in the upcoming level-2 file list. Add a header comment above the imports in each of them. Also move `captureCard.js` from the `pipeline` area to `structure` in `codemap.json`: its own header calls it "the Structure tab's on-demand runner for a repo's console app." This entry changes comments and `codemap.json` only — no code behavior changes.
   - Behavior:
@@ -2158,4 +2158,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Add a line to `CLAUDE.md`'s conventions: every `src/` JS module opens with a `//` purpose comment above its imports, and a new module is added to an area in `toDoList_main/codemap.json`.
     - The diff touches only comments, `codemap.json`, `CLAUDE.md` and the test. Existing tests pass unchanged.
   - File: `toDoList_main/src/aboutVersionCue.js`, `toDoList_main/src/agentView.js`, `toDoList_main/src/agentWiring.js`, `toDoList_main/src/assignmentCoverage.js`, `toDoList_main/src/dispatchDraft.js`, `toDoList_main/src/listLogic.js`, `toDoList_main/src/main.js`, `toDoList_main/src/mobileProjSwipeNav.js`, `toDoList_main/src/mockupFlow.js`, `toDoList_main/src/projRunSpinner.js`, `toDoList_main/src/projectCreate.js`, `toDoList_main/src/shipEntry.js`, `toDoList_main/src/structureRemoteCapture.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/sw.js`, `toDoList_main/src/toDo.js`, `toDoList_main/src/todoMdViewer.js`, `toDoList_main/src/viewSwitcher.js`, `toDoList_main/codemap.json`, `toDoList_main/tests/genSrcManifest.test.js`, `CLAUDE.md`
+  - Completed: 2026-10-11
   <!-- id: f7631900-4b65-4cfe-97ea-5885c8dea77e -->

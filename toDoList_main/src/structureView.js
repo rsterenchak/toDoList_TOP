@@ -1,3 +1,31 @@
+// The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
+// toggle swaps between two lenses of that project's linked repo:
+//   • Code lens — the repo's published `src-manifest.json` (the same artifact
+//     the chat's attach-file picker fetches) rendered as a collapsible
+//     folder/file tree. Tapping a file opens its source in the code viewer
+//     (codeViewer.js) — in the detail column at desktop widths, in a full-screen
+//     sheet below 1024px — where one Explain control summarises the open file.
+//   • UI lens — a live, tappable map of the running app's on-screen regions,
+//     walked straight from the DOM. Tapping a region exposes its selector plus
+//     a "Reference in chat" action that hands the selector to the Claude
+//     composer, and a "Copy selector" action. Non-running repos show a "no
+//     published UI map yet" notice until build-time maps land in the fast-follow.
+//
+// The repo is derived from the currently-selected project (the same inject
+// target Conceive's tools resolve via `resolveProjectRepo`), not from a picker:
+// the header shows a read-only repo label, and switching the selected project
+// re-renders the tab against the new project's repo. "Reference in chat" is the
+// one place that reframes the chat workspace — it sets the conversation to the
+// mapped repo at the moment of reference so the referenced selector lands in a
+// chat framed on the right repo; project switches never reframe passively.
+//
+// Like the other view modules this module reaches the DOM via getElementById /
+// createElement at call time and only exports renderStructureView — there is no
+// back-edge into main.js. It never touches localStorage directly except via the
+// prefs accessors; the manifest loader, workspace setter, and running-app repo
+// are reused from claudeSheet.js, and the project→repo resolution from
+// seedTasksModal.js, so the surfaces never drift.
+
 import { chatWithWorker, findTargetById } from './inject.js';
 import {
     loadManifest,
@@ -43,34 +71,6 @@ import { joinSrcRootPath } from './srcPath.js';
 import { buildComplexityChip, setComplexityScans } from './complexityHotspots.js';
 import { listLogic } from './listLogic.js';
 import { deriveAreaGraph, linksFor, formatLines } from './codeMapModel.js';
-
-// The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
-// toggle swaps between two lenses of that project's linked repo:
-//   • Code lens — the repo's published `src-manifest.json` (the same artifact
-//     the chat's attach-file picker fetches) rendered as a collapsible
-//     folder/file tree. Tapping a file opens its source in the code viewer
-//     (codeViewer.js) — in the detail column at desktop widths, in a full-screen
-//     sheet below 1024px — where one Explain control summarises the open file.
-//   • UI lens — a live, tappable map of the running app's on-screen regions,
-//     walked straight from the DOM. Tapping a region exposes its selector plus
-//     a "Reference in chat" action that hands the selector to the Claude
-//     composer, and a "Copy selector" action. Non-running repos show a "no
-//     published UI map yet" notice until build-time maps land in the fast-follow.
-//
-// The repo is derived from the currently-selected project (the same inject
-// target Conceive's tools resolve via `resolveProjectRepo`), not from a picker:
-// the header shows a read-only repo label, and switching the selected project
-// re-renders the tab against the new project's repo. "Reference in chat" is the
-// one place that reframes the chat workspace — it sets the conversation to the
-// mapped repo at the moment of reference so the referenced selector lands in a
-// chat framed on the right repo; project switches never reframe passively.
-//
-// Like the other view modules this module reaches the DOM via getElementById /
-// createElement at call time and only exports renderStructureView — there is no
-// back-edge into main.js. It never touches localStorage directly except via the
-// prefs accessors; the manifest loader, workspace setter, and running-app repo
-// are reused from claudeSheet.js, and the project→repo resolution from
-// seedTasksModal.js, so the surfaces never drift.
 
 // The repo currently shown. Held at module scope so a re-render (view switch,
 // manifest refresh) preserves the user's selection. Null until first resolved

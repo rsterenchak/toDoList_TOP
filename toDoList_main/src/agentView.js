@@ -1,3 +1,8 @@
+// The Agent board: a per-project view of agent_queue rows with dispatch, retry, triage and derive controls.
+// The running app no longer mounts it; the subsystems it used to wire at module
+// load (mockup flow, assignment coverage, run trackers) are configured at boot
+// by agentWiring.js instead.
+
 import { supabase } from './supabaseClient.js';
 import { listLogic } from './listLogic.js';
 import {

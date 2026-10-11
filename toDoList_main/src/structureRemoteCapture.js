@@ -1,6 +1,3 @@
-import { buildUiTree } from './structureView.js';
-import { captureSnapshot } from './structureCanvas.js';
-
 // Remote (guest-repo) layout capture. The self repo's Structure canvas measures
 // its blocks from a live-DOM walk; a linked web repo has no live DOM in this app,
 // only a flat published UI map that can't express containment. But every deployed
@@ -15,6 +12,9 @@ import { captureSnapshot } from './structureCanvas.js';
 // The flow only ever targets the deployed-Pages origin; a page that can't be
 // reached (load error / timeout / a cross-origin `contentDocument` access that
 // throws) fails quietly and leaves any prior capture untouched.
+
+import { buildUiTree } from './structureView.js';
+import { captureSnapshot } from './structureCanvas.js';
 
 // The two breakpoints captured, matching the app's mobile/desktop buckets. The
 // iframe is sized to each width so the guest's viewport-dependent CSS responds to

@@ -1,7 +1,3 @@
-import { listLogic } from './listLogic.js';
-import { isInjectConfigured, findTargetById, fetchActiveRuns } from './inject.js';
-import { setProjectRunSpinnerActive } from './projectRow.js';
-
 // Cross-device run spinners. This module owns the two run-spinner surfaces that
 // share the same routed-repo gate:
 //   • the active project's trigger glyph (#mobileProjRunSpinner), and
@@ -10,6 +6,11 @@ import { setProjectRunSpinnerActive } from './projectRow.js';
 // mobileProjRunSpinner, sideMain), passed in from main.js, and keeps its own
 // request-token / interval state so a stale probe never paints after the active
 // project changed or the drawer closed.
+
+import { listLogic } from './listLogic.js';
+import { isInjectConfigured, findTargetById, fetchActiveRuns } from './inject.js';
+import { setProjectRunSpinnerActive } from './projectRow.js';
+
 const DRAWER_SPINNER_INTERVAL_MS = 10000;
 
 export function createProjRunSpinner({ mobileProjName, mobileProjRunSpinner, sideMain }) {
