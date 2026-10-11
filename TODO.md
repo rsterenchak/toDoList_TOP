@@ -2308,7 +2308,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 6420ced1-aa61-4d04-8879-8448b635a6a7 -->
 
-- [ ] **[MEDIUM]** Write the Pipeline code tours
+- [x] **[MEDIUM]** Write the Pipeline code tours
   - Type: feature
   - Description: Add the eight tours of the `pipeline` section to `toDoList_main/codetour.json`, covering how a task becomes a TODO.md entry, a run, and a merged PR, plus the surfaces around it. Tours can only anchor to files in `src/`. When a path crosses into the Worker (`todo-injector-worker`, a separate repo) or into GitHub Actions, end that stretch with one step anchored on the call that leaves the app (usually `postToWorker` or `chatWithWorker`), whose `why` states plainly what happens on the other side. Never claim details of Worker or workflow code the step can't show.
   - Behavior:
@@ -2326,4 +2326,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The real-repo tours test passes with all 23 tours: zero warnings, 3–10 steps each, length limits held.
     - Every step whose `why` describes Worker or workflow behaviour is anchored on the call that leaves the app (`postToWorker`, `chatWithWorker`, `dispatchRun`, `dispatchTriage`, `readTodoMdFromWorker`, `readAssignmentFromWorker` or `generateMockupsFromWorker`).
   - File: `toDoList_main/codetour.json`
+  - Completed: 2026-10-11
   <!-- id: 0410953c-462b-4498-9520-4ff2f006a130 -->
