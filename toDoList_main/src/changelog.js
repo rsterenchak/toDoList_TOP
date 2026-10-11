@@ -9,6 +9,7 @@ export const changelog = [
         added: [
             'The Structure tab has a new Map view that shows the app\'s areas as linked circles sized by code, and tapping an area describes what it does and what it connects to.',
             'In the Structure tab\'s Map view, an area can now be opened to list its files by most used or size, and tapping a file opens its code.',
+            'The Structure tab now offers guided code tours, with a Start here card, tours for each area, a list of all tours with progress, and a step-by-step player with Back and Next.',
         ],
         changed: [
             'On desktop, the Structure tab\'s Map view now spreads across three columns, with a list of areas on the left, the map and file list in the middle, and the open file\'s code on the right.',
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-10',
         fixed: [
-            'In light mode, the mobile project header and the Runs tab status badges now use light colors instead of dark ones.',
             'In light mode, the ALL / IN PROGRESS / DONE task filter pills now show light fills instead of near-black ones.',
         ],
     },

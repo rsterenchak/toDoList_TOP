@@ -122,7 +122,9 @@
         "complexityHotspots.js",
         "refactorCard.js",
         "captureCard.js",
-        "srcPath.js"
+        "srcPath.js",
+        "codeTours.js",
+        "tourPlayer.js"
       ]
     },
     {

@@ -384,6 +384,66 @@ export function setStructureTreeState(repo, lens, keys) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Structure tab code tours (progress + START HERE card) ──
+// Per-repo tour progress, `{ [tourId]: { step, done } }`, kept in one object
+// keyed by repo so every tour surface (the START HERE card, the area rows, the
+// All tours sheet and the player) reads the same record. `step` is the index the
+// player last showed (the recap is `steps.length`), so Continue resumes there.
+export const TOUR_PROGRESS_KEY = 'todoapp_tourProgress';
+// Repos whose START HERE card the user dismissed with its ×.
+export const TOUR_CARD_HIDDEN_KEY = 'todoapp_tourCardHidden';
+
+function readJsonObject(key) {
+    try {
+        const raw = localStorage.getItem(key);
+        if (!raw) return {};
+        const parsed = JSON.parse(raw);
+        return (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) ? parsed : {};
+    } catch (e) {
+        return {};
+    }
+}
+
+// The repo's progress map, or {} when nothing is stored. Entries that aren't
+// `{ step, done }` shaped are dropped so a hand-edited value can't break a card.
+export function getTourProgress(repo) {
+    if (!repo) return {};
+    const val = readJsonObject(TOUR_PROGRESS_KEY)[repo];
+    if (!val || typeof val !== 'object') return {};
+    const out = {};
+    Object.keys(val).forEach(function (id) {
+        const p = val[id];
+        if (!p || typeof p !== 'object') return;
+        const step = Number(p.step);
+        out[id] = { step: Number.isFinite(step) && step > 0 ? Math.floor(step) : 0, done: p.done === true };
+    });
+    return out;
+}
+
+export function setTourProgress(repo, map) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(TOUR_PROGRESS_KEY);
+        store[repo] = (map && typeof map === 'object') ? map : {};
+        localStorage.setItem(TOUR_PROGRESS_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+export function isTourCardHidden(repo) {
+    if (!repo) return false;
+    return readJsonObject(TOUR_CARD_HIDDEN_KEY)[repo] === true;
+}
+
+export function setTourCardHidden(repo, hidden) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(TOUR_CARD_HIDDEN_KEY);
+        if (hidden) store[repo] = true;
+        else delete store[repo];
+        localStorage.setItem(TOUR_CARD_HIDDEN_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is
