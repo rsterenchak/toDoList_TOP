@@ -2120,7 +2120,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: efe44d6a-a970-4432-bbac-01c629ba5aa4 -->
 
-- [ ] **[MEDIUM]** Add the Map lens (area constellation) to the Structure tab
+- [x] **[MEDIUM]** Add the Map lens (area constellation) to the Structure tab
   - Type: feature
   - Description: Add a third Structure lens, `Map`, after UI and Code. It draws the manifest's `areas` as a constellation: one circle per area, sized by its total lines of code, joined by lines whose thickness is the number of imports between the two areas. A panel below the map describes the selected area. This is level 1 of the code map; tapping into an area's files is a later entry, so this one has no "Open" button. The `Map` segment only appears when the active repo's manifest has `areas` (currently just this repo); otherwise the toggle stays exactly as it is today.
   - Behavior:
@@ -2142,4 +2142,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - If the preview has no linked project, so the Structure tab shows its empty state, say so in the verdict and rely on the DOM tests rather than failing the run.
   - File: `toDoList_main/src/codeMapModel.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/codeMapModel.test.js`, `toDoList_main/tests/structureView.test.js`
   - Verify: 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=map]" ; wait 800, 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; wait 800
+  - Completed: 2026-10-11
   <!-- id: 1d8323b3-a8cc-4903-a2b9-4269719fc63e -->
