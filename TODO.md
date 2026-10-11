@@ -2266,7 +2266,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: b763fb76-c78f-4dd7-b1af-d166047cf1c1 -->
 
-- [ ] **[MEDIUM]** Write the six Foundations code tours (and allow whole-file tour anchors)
+- [x] **[MEDIUM]** Write the six Foundations code tours (and allow whole-file tour anchors)
   - Type: feature
   - Description: The Structure tab's START HERE card points at the Foundations section of `toDoList_main/codetour.json`, which is empty: the only tour is "Adding a task". Write the six Foundations tours: the steps a newcomer needs before anything else makes sense. Some of the most important code isn't inside any named function: the session check and service-worker registration at the top level of `index.js`, `createClient` at the top level of `supabaseClient.js`, and every listener in `sw.js`. So the tour compiler needs one small addition first: `"symbol": "@file"` anchors a step to the whole file.
   - Behavior:
@@ -2284,4 +2284,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The existing real-repo test passes with all 7 tours: zero warnings, every tour 3–10 steps, every `title` ≤ 60 and every `why` ≤ 140 characters.
     - The generated `src-tours.json` lists the six Foundations tours first, in order.
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
+  - Completed: 2026-10-11
   <!-- id: b4143460-df70-4f00-abbb-d6a3e967400a -->

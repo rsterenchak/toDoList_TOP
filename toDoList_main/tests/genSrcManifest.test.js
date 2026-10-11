@@ -518,6 +518,47 @@ describe('gen-src-manifest compileTours', () => {
         expect(gapped.area).toBeNull();
     });
 
+    it('anchors an @file step to the whole file, ignoring parent', () => {
+        const warn = vi.fn();
+        const out = compileTours(doc([
+            st('@file', ['function outer', 'const b = 3;'], { parent: 'nope' }),
+            st('@file', ['return a + b;']),
+            st('outer', ['return inner;']),
+        ]), symbols, sources, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        const t = out.tours[0];
+        const hiLines = (s) => s.snippet.filter((r) => r.hi).map((r) => r.n);
+        // Matches cross definition boundaries (outer at 1, other's inner at 11).
+        expect(hiLines(t.steps[0])).toEqual([1, 11]);
+        expect(t.steps.map((s) => s.line)).toEqual([1, 12, 6]);
+        expect(t.steps.map((s) => s.parent)).toEqual([null, null, null]);
+        expect(t.steps.map((s) => s.area)).toEqual(['core', 'core', 'core']);
+        expect(t.steps[0].symbol).toBe('@file');
+    });
+
+    it('rejects an @file first match that is not unique in the file', () => {
+        const warn = vi.fn();
+        compileTours(doc([
+            st('@file', ['function inner']),
+            st('outer', ['return inner;']),
+            st('other', ['const a']),
+        ]), symbols, sources, areas, warn);
+        expect(warn.mock.calls[0][0]).toMatch(/step 1 \(app\.js › @file\): first match "function inner" is not unique in app\.js — step dropped/);
+    });
+
+    it('labels next with the file name when the following step is @file', () => {
+        const nested = [src('lib/app.js', app)];
+        const nestedSyms = buildSymbols(nested);
+        const s = (symbol, match) => ({ file: 'lib/app.js', symbol, match, title: 'T', why: 'W' });
+        const out = compileTours(doc([
+            s('outer', ['return inner;']),
+            s('@file', ['const b = 3;']),
+            s('@file', ['const a = 1;']),
+            s('other', ['const a = 2;']),
+        ]), nestedSyms, nested, undefined, vi.fn());
+        expect(out.tours[0].steps.map((x) => x.next)).toEqual(['app.js', 'app.js', 'other', null]);
+    });
+
     it('trims each cluster by its own common indent and keeps relative nesting', () => {
         const out = compileTours(doc([
             st('outer', ['function inner', 'return inner;']),
@@ -591,6 +632,15 @@ describe('gen-src-manifest real codetour.json', () => {
                 expect(s.title.length).toBeLessThanOrEqual(60);
                 expect(s.why.length).toBeLessThanOrEqual(140);
             });
+        });
+    });
+
+    it('compiles the six Foundations tours first, in order', () => {
+        expect(tours.tours.slice(0, 6).map((t) => t.id)).toEqual(['app-starts', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'app-updates']);
+        expect(tours.tours.slice(0, 6).every((t) => t.section === 'foundations')).toBe(true);
+        tours.tours.slice(0, 6).forEach((t) => {
+            expect(t.recap.length).toBeGreaterThanOrEqual(3);
+            expect(t.recap.length).toBeLessThanOrEqual(5);
         });
     });
 
