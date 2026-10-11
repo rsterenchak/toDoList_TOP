@@ -653,6 +653,25 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
+    it('compiles the Pipeline tours in order, each with a 3–5 card recap', () => {
+        const pipeline = tours.tours.filter((t) => t.section === 'pipeline');
+        expect(pipeline.map((t) => t.id)).toEqual(['inject-entry', 'ship-run', 'follow-run', 'agent-board', 'mockups', 'generate-tasks', 'coverage', 'todo-md-viewer']);
+        pipeline.forEach((t) => {
+            expect(t.recap.length).toBeGreaterThanOrEqual(3);
+            expect(t.recap.length).toBeLessThanOrEqual(5);
+        });
+    });
+
+    // Tours only see src/, so a step that talks about the Worker or a workflow
+    // must sit on the call that leaves the app.
+    it('anchors every Worker or workflow step on the call that leaves the app', () => {
+        const exits = ['postToWorker', 'chatWithWorker', 'dispatchRun', 'dispatchTriage', 'readTodoMdFromWorker', 'readAssignmentFromWorker', 'generateMockupsFromWorker'];
+        const pipeline = doc.tours.filter((t) => t.section === 'pipeline');
+        pipeline.forEach((t) => t.steps.forEach((s) => {
+            if (/worker|workflow|github actions|claude-run/i.test(s.why)) expect(exits).toContain(s.symbol);
+        }));
+    });
+
     // The data-saved tour says dataChanged has no listeners. Adding one makes
     // that false, so this fails until the tour text is revisited.
     it('keeps the data-saved tour honest about dataChanged listeners', () => {
