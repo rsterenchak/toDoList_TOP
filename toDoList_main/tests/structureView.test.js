@@ -2586,3 +2586,137 @@ describe('renderStructureView — collapse / expand all toolbar pill', () => {
         expect(pill().textContent).toBe('Expand all');
     });
 });
+
+describe('renderStructureView — Map lens (code-map areas)', () => {
+    const TOP = 'rsterenchak/toDoList_TOP';
+    const MAP_MANIFEST = {
+        ok: true,
+        files: ['inject.js', 'listLogic.js', 'main.js'],
+        modules: [
+            { path: 'inject.js', lines: 1200, imports: ['listLogic.js'] },
+            { path: 'listLogic.js', lines: 800, imports: ['inject.js'] },
+            { path: 'main.js', lines: 400, imports: ['listLogic.js'] },
+        ],
+        areas: [
+            { id: 'pipeline', name: 'Pipeline', purpose: 'Ships entries.', pos: [0.7, 0.5], files: ['inject.js'] },
+            { id: 'tasks', name: 'Tasks', purpose: 'The core list.', pos: [0.2, 0.5], files: ['listLogic.js'] },
+            { id: 'shell', name: 'Shell', purpose: 'The app frame.', pos: [0.5, 0.2], files: ['main.js'] },
+        ],
+    };
+    const lensBtn = (id) => document.querySelector('.structureLensBtn[data-lens="' + id + '"]');
+    const area = (id) => document.querySelector('.structureMapArea[data-area="' + id + '"]');
+    const panelText = () => document.querySelector('.structureMapPanel').textContent;
+
+    beforeEach(() => {
+        setStructureLens('ui');
+    });
+
+    it('shows the Map segment only when the manifest has areas', async () => {
+        state.manifests[TOP] = { ok: true, files: ['main.js'] };
+        renderStructureView();
+        await flush();
+        expect(lensBtn('map')).toBeFalsy();
+
+        state.manifests[TOP] = MAP_MANIFEST;
+        renderStructureView();
+        await flush();
+        const labels = Array.from(document.querySelectorAll('.structureLensBtn')).map((b) => b.textContent);
+        expect(labels).toEqual(['UI', 'Code', 'Map']);
+    });
+
+    it('renders one circle per area and edges, with the repo totals in the panel', async () => {
+        state.manifests[TOP] = MAP_MANIFEST;
+        renderStructureView();
+        await flush();
+        lensBtn('map').click();
+        await flush();
+        expect(localStorage.getItem(STRUCTURE_LENS_KEY)).toBe('map');
+        expect(document.querySelectorAll('.structureMapArea')).toHaveLength(3);
+        expect(area('pipeline').getAttribute('aria-label')).toBe('Pipeline, 1.2k lines');
+        expect(document.querySelector('.structureMapEdges').getAttribute('aria-hidden')).toBe('true');
+        expect(document.querySelectorAll('.structureMapEdge')).toHaveLength(2);
+        expect(panelText()).toContain('3 areas · 3 files · 2.4k lines');
+        expect(panelText()).toContain('Tap an area to see what it does');
+        // The Map lens has no handles, so the shared selection toolbar hides.
+        expect(document.querySelector('.structureActionToolbar').hidden).toBe(true);
+    });
+
+    it('selecting a circle describes it and highlights its links; re-tapping deselects', async () => {
+        state.manifests[TOP] = MAP_MANIFEST;
+        setStructureLens('map');
+        renderStructureView();
+        await flush();
+        area('tasks').click();
+        expect(area('tasks').classList.contains('is-selected')).toBe(true);
+        expect(area('tasks').getAttribute('aria-pressed')).toBe('true');
+        expect(area('pipeline').classList.contains('is-linked')).toBe(true);
+        expect(area('shell').classList.contains('is-linked')).toBe(true);
+        expect(document.querySelectorAll('.structureMapEdge.is-active')).toHaveLength(2);
+        expect(panelText()).toContain('Tasks');
+        expect(panelText()).toContain('1 files · 800 lines');
+        expect(panelText()).toContain('The core list.');
+        expect(panelText()).toContain('Linked to 2 of 2 areas · strongest: Pipeline');
+
+        area('tasks').click();
+        expect(area('tasks').classList.contains('is-selected')).toBe(false);
+        expect(document.querySelectorAll('.structureMapEdge.is-active')).toHaveLength(0);
+        expect(panelText()).toContain('Tap an area to see what it does');
+    });
+
+    it('clears the selection on a lens change', async () => {
+        state.manifests[TOP] = MAP_MANIFEST;
+        setStructureLens('map');
+        renderStructureView();
+        await flush();
+        area('shell').click();
+        lensBtn('code').click();
+        await flush();
+        lensBtn('map').click();
+        await flush();
+        expect(area('shell').classList.contains('is-selected')).toBe(false);
+    });
+
+    it('reopens on the stored Map lens after a reload', async () => {
+        state.manifests[TOP] = MAP_MANIFEST;
+        renderStructureView();
+        await flush();
+        lensBtn('map').click();
+        await flush();
+        // A fresh render (reload) reads the persisted lens back.
+        mountDom();
+        renderStructureView();
+        await flush();
+        expect(lensBtn('map').getAttribute('aria-selected')).toBe('true');
+        expect(document.querySelector('.structureMap')).toBeTruthy();
+    });
+
+    it('falls back to the second lens when the stored Map lens has no areas, leaving the choice stored', async () => {
+        state.manifests[TOP] = { ok: true, files: ['main.js'] };
+        setStructureLens('map');
+        renderStructureView();
+        await flush();
+        expect(document.querySelector('.structureMap')).toBeFalsy();
+        expect(lensBtn('map')).toBeFalsy();
+        expect(lensBtn('ui').getAttribute('aria-selected')).toBe('true');
+        expect(localStorage.getItem(STRUCTURE_LENS_KEY)).toBe('map');
+    });
+
+    it('the filter dims areas whose name and files all miss the query', async () => {
+        state.manifests[TOP] = MAP_MANIFEST;
+        setStructureLens('map');
+        renderStructureView();
+        await flush();
+        const input = document.querySelector('.structureFilterBox input');
+        input.value = 'listlogic';
+        input.dispatchEvent(new Event('input'));
+        expect(area('tasks').classList.contains('is-filtered-out')).toBe(false);
+        expect(area('pipeline').classList.contains('is-filtered-out')).toBe(true);
+        input.value = 'pipe';
+        input.dispatchEvent(new Event('input'));
+        expect(area('pipeline').classList.contains('is-filtered-out')).toBe(false);
+        expect(area('tasks').classList.contains('is-filtered-out')).toBe(true);
+        input.value = '';
+        input.dispatchEvent(new Event('input'));
+        expect(document.querySelectorAll('.structureMapArea.is-filtered-out')).toHaveLength(0);
+    });
+});

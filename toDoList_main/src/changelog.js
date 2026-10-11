@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-11',
+        added: [
+            'The Structure tab has a new Map view that shows the app\'s areas as linked circles sized by code, and tapping an area describes what it does and what it connects to.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-10',
         fixed: [
             'In light mode, the mobile project header and the Runs tab status badges now use light colors instead of dark ones.',
@@ -15,7 +22,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-09',
         fixed: [
-            '"+ Add target" can now register a new repo instead of rejecting it as missing from the allowlist, and a case-variant of an existing target now shows the "Already a target" message.',
             'Saving an inject target now always refuses a repo that is already a target, even when the target list on screen is out of date.',
             'A run\'s screenshots panel now links to all of its screenshots on the run page.',
         ],

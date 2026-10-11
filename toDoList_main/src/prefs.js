@@ -307,17 +307,18 @@ export function setTodoMdShowCompleted(show) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// ── Structure tab lens (Code vs. UI) ──
-// The Structure tab swaps between two renderings of a repo: the Code lens (its
-// published source map) and the UI lens (a live map of the running app's
-// on-screen regions). The choice persists so the tab reopens on the lens you
+// ── Structure tab lens (Code vs. UI vs. Map) ──
+// The Structure tab swaps between renderings of a repo: the Code lens (its
+// published source map), the UI lens (a live map of the running app's
+// on-screen regions) and the Map lens (its code-map areas, when the manifest
+// carries them). The choice persists so the tab reopens on the lens you
 // last used. Default is 'ui' — reference-in-chat is the reason to open the tab,
-// so the UI lens leads. Any stored value other than the two known tokens falls
+// so the UI lens leads. Any stored value other than the known tokens falls
 // back to 'ui' so a stale or hand-edited pref can't desync the view.
 export function getStructureLens() {
     try {
         const v = localStorage.getItem(STRUCTURE_LENS_KEY);
-        if (v === 'code') return 'code';
+        if (v === 'code' || v === 'map') return v;
         return 'ui';
     } catch (e) {
         return 'ui';
@@ -326,7 +327,7 @@ export function getStructureLens() {
 
 export function setStructureLens(lens) {
     try {
-        const stored = lens === 'code' ? 'code' : 'ui';
+        const stored = lens === 'code' || lens === 'map' ? lens : 'ui';
         localStorage.setItem(STRUCTURE_LENS_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }

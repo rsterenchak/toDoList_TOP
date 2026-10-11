@@ -42,6 +42,7 @@ import {
 import { joinSrcRootPath } from './srcPath.js';
 import { buildComplexityChip, setComplexityScans } from './complexityHotspots.js';
 import { listLogic } from './listLogic.js';
+import { deriveAreaGraph, linksFor, formatLines } from './codeMapModel.js';
 
 // The STRUCTURE view: a map of the selected project's source and UI. A Code/UI
 // toggle swaps between two lenses of that project's linked repo:
@@ -76,7 +77,8 @@ import { listLogic } from './listLogic.js';
 // against the live allowlist.
 let selectedRepo = null;
 
-// The active lens, 'code' or 'ui'. Hydrated from prefs on each render so the
+// The active lens, 'code', 'map', or the adaptive second slot ('ui' / 'types' /
+// 'sql'). Hydrated from prefs on each render so the
 // tab reopens on the lens you last used.
 let lens = 'ui';
 
@@ -262,6 +264,22 @@ let currentLens = 'ui';
 let currentTypes = [];
 let currentTables = [];
 
+// The Map lens's inputs, also refreshed from the manifest in ensureRegionsLoaded:
+//   • currentModules — the manifest's `modules` (per-JS-file lines + imports).
+//   • currentAreas — the manifest's `areas` (codemap.json), or null when the
+//     manifest carries none; the Map segment only shows when this is set.
+// `selectedArea` is the Map lens's selected area id — ephemeral like
+// `selectedHandle`, cleared on repo change and lens change. `mapEls` holds the
+// painted map's circles, edge lines and panel so a tap or filter keystroke
+// restyles them in place instead of repainting.
+let currentModules = [];
+let currentAreas = null;
+let selectedArea = null;
+let mapEls = null;
+// The toggle's Map segment, built with the toggle but attached by
+// syncMapLensSegment only when the repo has areas.
+let mapLensBtn = null;
+
 // Filter box state. The input lives in the view's persistent header region (not
 // in the tree container `clear()` empties on each lens render), so it survives a
 // lens switch; `filterQuery` is the active query, re-applied to the freshly
@@ -320,6 +338,8 @@ function hydrateActiveLensState(repo, lens) {
     const keys = stored || [];
     if (lens === 'code') {
         openFolders = new Set(keys);
+    } else if (lens === 'map') {
+        // The Map lens has no fold state to restore.
     } else if (lens === 'types') {
         collapsedTypeFiles = new Set(keys);
     } else if (lens === 'sql') {
@@ -336,6 +356,8 @@ function hydrateActiveLensState(repo, lens) {
 // touches these sets) is never written.
 function persistActiveLensState(repo, lens) {
     if (!repo || !lens) return;
+    // The Map lens has no fold state, so it never writes the UI slot.
+    if (lens === 'map') return;
     let keys;
     if (lens === 'code') keys = Array.from(openFolders);
     else if (lens === 'types') keys = Array.from(collapsedTypeFiles);
@@ -364,6 +386,9 @@ function ensureRegionsLoaded(repo) {
             : 'ui';
         currentTypes = (result && Array.isArray(result.types)) ? result.types : [];
         currentTables = (result && Array.isArray(result.tables)) ? result.tables : [];
+        currentModules = (result && Array.isArray(result.modules)) ? result.modules : [];
+        currentAreas = (result && Array.isArray(result.areas) && result.areas.length) ? result.areas : null;
+        if (repo === selectedRepo) syncMapLensSegment();
         const idx = new Map();
         if (result && Array.isArray(result.regions)) {
             result.regions.forEach(function (r) {
@@ -1679,7 +1704,7 @@ function reapplySelection() {
 // selection and repainting its content.
 function refreshActionToolbar() {
     if (!actionToolbarEl) return;
-    if (lens === 'code') {
+    if (lens === 'code' || lens === 'map') {
         actionToolbarEl.hidden = true;
         return;
     }
@@ -2566,8 +2591,8 @@ function renderSecondLens(repo, treeEl) {
 
     return ensureRegionsLoaded(repo).then(function (result) {
         // Drop a stale result if the repo or lens changed mid-flight (e.g. the
-        // user switched to Code, or to another project, while this was loading).
-        if (repo !== selectedRepo || lens === 'code') return;
+        // user switched to Code or Map, or to another project, while this was loading).
+        if (repo !== selectedRepo || lens === 'code' || lens === 'map') return;
         // Adopt this repo's second-slot identity. When it differs from the
         // persisted choice (`ui` ↔ `types`), switch the active lens and re-hydrate
         // its fold set so the correct `<repo>:<lens>` state drives the outline.
@@ -2713,7 +2738,7 @@ function startGuestCapture(repo, treeEl) {
         });
     }).then(function (res) {
         // Drop a stale result if the repo or lens changed mid-capture.
-        if (repo !== selectedRepo || lens === 'code' || currentLens !== 'ui') return;
+        if (repo !== selectedRepo || lens === 'code' || lens === 'map' || currentLens !== 'ui') return;
         if (res && res.ok) {
             renderLens(selectedRepo, treeEl);
         } else {
@@ -2731,7 +2756,7 @@ function startGuestCapture(repo, treeEl) {
 // whose second slot resolved to Types/SQL rather than UI).
 function liveRepaintKeepsMode(repo) {
     if (!repo || liveViewRepo() !== repo) return false;
-    if (lens === 'code') return false;
+    if (lens === 'code' || lens === 'map') return false;
     // The running app's second slot is always the UI lens; every other repo keeps
     // live mode only while its resolved second lens is still UI.
     return repo === getRunningAppRepo() || currentLens === 'ui';
@@ -2785,6 +2810,7 @@ function renderLens(repo, treeEl) {
             return painted;
         });
     }
+    if (lens === 'map') return renderMapLens(repo, treeEl);
     if (repo === getRunningAppRepo()) {
         // The running app is the web app — always the live UI map, never Types.
         currentLens = 'ui';
@@ -2793,6 +2819,236 @@ function renderLens(repo, treeEl) {
         return renderUiLens(repo, treeEl);
     }
     return renderSecondLens(repo, treeEl);
+}
+
+// ── MAP LENS ────────────────────────────────────────────────────────────────
+// Level 1 of the code map: the manifest's `areas` drawn as a constellation —
+// one circle per area sized by its lines of code, joined by edges whose
+// thickness is the number of imports between the two areas — above a panel
+// describing the selected area. Only offered when the manifest has `areas`.
+
+const MAP_INSET = 10;
+const MAP_SPAN = 100 - MAP_INSET * 2;
+const MAP_MIN_DIAMETER = 36;
+const MAP_DIAMETER_RANGE = 44;
+const MAP_COUNT_MIN_DIAMETER = 46;
+const MAP_EDGE_MAX_WIDTH = 6;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+// Attach the toggle's Map segment only while the active repo's manifest has
+// areas. Called whenever the manifest refreshes the module state.
+function syncMapLensSegment() {
+    if (!lensToggleGroup || !mapLensBtn) return;
+    const attached = mapLensBtn.parentNode === lensToggleGroup;
+    if (currentAreas && !attached) lensToggleGroup.appendChild(mapLensBtn);
+    else if (!currentAreas && attached) lensToggleGroup.removeChild(mapLensBtn);
+}
+
+// An area's `pos` (normalized 0–1) as a percentage inside the map box, inset so
+// a circle at the edge never clips.
+function mapPercent(v) {
+    const n = Math.min(1, Math.max(0, Number(v) || 0));
+    return MAP_INSET + n * MAP_SPAN;
+}
+
+function mapDiameter(lines, maxLines) {
+    const ratio = maxLines > 0 ? Math.max(0, lines) / maxLines : 0;
+    return Math.round(MAP_MIN_DIAMETER + Math.sqrt(ratio) * MAP_DIAMETER_RANGE);
+}
+
+function edgeKey(e) {
+    return e.a + '\u0000' + e.b;
+}
+
+function otherEnd(e, id) {
+    return e.a === id ? e.b : e.a;
+}
+
+// Render the Map lens into the tree container. A repo whose manifest has no
+// areas (a stale stored 'map' lens) falls back to its second lens without
+// rewriting the stored choice, so the Map lens returns once areas ship.
+function renderMapLens(repo, treeEl) {
+    canvasActive = false;
+    mapEls = null;
+    // The detail column has no Map counterpart; show the code viewer's empty state.
+    if (structureIsDesktop() && currentCanvasHost) clearCodeViewer(currentCanvasHost);
+    clear(treeEl);
+    const loading = document.createElement('div');
+    loading.className = 'structureTreeLoading';
+    loading.textContent = 'Loading…';
+    treeEl.appendChild(loading);
+
+    return ensureRegionsLoaded(repo).then(function () {
+        if (repo !== selectedRepo || lens !== 'map') return undefined;
+        if (!currentAreas) {
+            lens = repo === getRunningAppRepo() ? 'ui' : currentLens;
+            hydrateActiveLensState(repo, lens);
+            applyLensToggleState();
+            updateFilterPlaceholder();
+            return renderLens(repo, treeEl);
+        }
+        clear(treeEl);
+        treeEl.appendChild(buildMapLens(deriveAreaGraph(currentModules, currentAreas)));
+        return undefined;
+    });
+}
+
+function buildMapLens(graph) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureMapLens';
+
+    const box = document.createElement('div');
+    box.className = 'structureMap';
+
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('class', 'structureMapEdges');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('viewBox', '0 0 100 100');
+    svg.setAttribute('preserveAspectRatio', 'none');
+    const byId = new Map();
+    graph.areas.forEach(function (a) { byId.set(a.id, a); });
+    const lines = new Map();
+    graph.edges.forEach(function (e) {
+        const from = byId.get(e.a);
+        const to = byId.get(e.b);
+        const line = document.createElementNS(SVG_NS, 'line');
+        line.setAttribute('class', 'structureMapEdge');
+        line.setAttribute('x1', String(mapPercent(from.pos[0])));
+        line.setAttribute('y1', String(mapPercent(from.pos[1])));
+        line.setAttribute('x2', String(mapPercent(to.pos[0])));
+        line.setAttribute('y2', String(mapPercent(to.pos[1])));
+        line.setAttribute('stroke-width', String(Math.min(MAP_EDGE_MAX_WIDTH, 1 + e.weight / 6)));
+        line.setAttribute('vector-effect', 'non-scaling-stroke');
+        svg.appendChild(line);
+        lines.set(edgeKey(e), line);
+    });
+    box.appendChild(svg);
+
+    const maxLines = graph.areas.reduce(function (m, a) { return Math.max(m, a.lines); }, 0);
+    const buttons = new Map();
+    graph.areas.forEach(function (a) {
+        const d = mapDiameter(a.lines, maxLines);
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'structureMapArea';
+        btn.dataset.area = a.id;
+        btn.setAttribute('aria-label', a.name + ', ' + formatLines(a.lines) + ' lines');
+        btn.setAttribute('aria-pressed', 'false');
+        // Positioned so the circle's centre (not the button's) sits on `pos`.
+        btn.style.left = mapPercent(a.pos[0]) + '%';
+        btn.style.top = 'calc(' + mapPercent(a.pos[1]) + '% - ' + (d / 2) + 'px)';
+
+        const circle = document.createElement('span');
+        circle.className = 'structureMapCircle';
+        circle.style.width = d + 'px';
+        circle.style.height = d + 'px';
+        if (d >= MAP_COUNT_MIN_DIAMETER) circle.textContent = formatLines(a.lines);
+        btn.appendChild(circle);
+
+        const name = document.createElement('span');
+        name.className = 'structureMapName';
+        name.textContent = a.name;
+        btn.appendChild(name);
+
+        btn.addEventListener('click', function () {
+            selectedArea = selectedArea === a.id ? null : a.id;
+            paintMapSelection();
+        });
+        box.appendChild(btn);
+        buttons.set(a.id, btn);
+    });
+    wrap.appendChild(box);
+
+    const panel = document.createElement('div');
+    panel.className = 'structureMapPanel';
+    panel.setAttribute('aria-live', 'polite');
+    wrap.appendChild(panel);
+
+    mapEls = { graph: graph, byId: byId, lines: lines, buttons: buttons, panel: panel };
+    // A selection from another repo's graph can't carry over.
+    if (selectedArea && !byId.has(selectedArea)) selectedArea = null;
+    paintMapSelection();
+    return wrap;
+}
+
+// Restyle the circles and edges for the current selection and refill the panel.
+function paintMapSelection() {
+    if (!mapEls) return;
+    const graph = mapEls.graph;
+    const links = selectedArea ? linksFor(graph, selectedArea) : [];
+    const linked = new Set(links.map(function (e) { return otherEnd(e, selectedArea); }));
+    mapEls.buttons.forEach(function (btn, id) {
+        const sel = id === selectedArea;
+        btn.classList.toggle('is-selected', sel);
+        btn.classList.toggle('is-linked', linked.has(id));
+        btn.classList.toggle('is-muted', !!selectedArea && !sel && !linked.has(id));
+        btn.setAttribute('aria-pressed', String(sel));
+    });
+    graph.edges.forEach(function (e) {
+        const line = mapEls.lines.get(edgeKey(e));
+        if (!line) return;
+        const on = !!selectedArea && (e.a === selectedArea || e.b === selectedArea);
+        line.setAttribute('class', on ? 'structureMapEdge is-active' : 'structureMapEdge');
+    });
+    renderMapPanel(links);
+}
+
+function renderMapPanel(links) {
+    const panel = mapEls.panel;
+    clear(panel);
+    const graph = mapEls.graph;
+    const title = document.createElement('div');
+    title.className = 'structureMapPanelTitle';
+    const meta = document.createElement('div');
+    meta.className = 'structureMapPanelMeta';
+    const area = selectedArea ? mapEls.byId.get(selectedArea) : null;
+    if (!area) {
+        const t = graph.totals;
+        title.textContent = t.areas + ' areas · ' + t.files + ' files · ' + formatLines(t.lines) + ' lines';
+        meta.textContent = 'Tap an area to see what it does';
+        panel.appendChild(title);
+        panel.appendChild(meta);
+        return;
+    }
+    title.textContent = area.name;
+    meta.textContent = area.fileCount + ' files · ' + formatLines(area.lines) + ' lines';
+    panel.appendChild(title);
+    panel.appendChild(meta);
+    if (area.purpose) {
+        const purpose = document.createElement('p');
+        purpose.className = 'structureMapPanelPurpose';
+        purpose.textContent = area.purpose;
+        panel.appendChild(purpose);
+    }
+    const linksLine = document.createElement('div');
+    linksLine.className = 'structureMapPanelLinks';
+    let text = 'Linked to ' + links.length + ' of ' + Math.max(0, graph.areas.length - 1) + ' areas';
+    if (links.length) {
+        const strongest = mapEls.byId.get(otherEnd(links[0], area.id));
+        text += ' · strongest: ' + strongest.name;
+    }
+    linksLine.textContent = text;
+    panel.appendChild(linksLine);
+}
+
+// Dim the areas whose name and every file path miss the query; matches stay at
+// full strength. Reports "N of M" like the other lenses' filters.
+function applyMapFilter(q) {
+    if (!mapEls) return;
+    const files = new Map();
+    (currentAreas || []).forEach(function (a) {
+        if (a && typeof a.id === 'string') files.set(a.id, Array.isArray(a.files) ? a.files : []);
+    });
+    let visible = 0;
+    mapEls.buttons.forEach(function (btn, id) {
+        const area = mapEls.byId.get(id);
+        const hit = !q || matchesQuery(area.name, q) || (files.get(id) || []).some(function (f) {
+            return matchesQuery(f, q);
+        });
+        btn.classList.toggle('is-filtered-out', !hit);
+        if (hit) visible++;
+    });
+    if (filterCountEl) filterCountEl.textContent = q ? visible + ' of ' + mapEls.buttons.size : '';
 }
 
 // ── FILTER ──────────────────────────────────────────────────────────────────
@@ -3032,6 +3288,12 @@ function applyStructureFilter(rawQuery) {
 
     if (filterClearEl) filterClearEl.hidden = filterQuery.length === 0;
 
+    // The Map lens dims areas in place rather than hiding rows.
+    if (lens === 'map') {
+        applyMapFilter(q);
+        return;
+    }
+
     // The block canvas dims non-matching blocks (rather than removing them) so
     // the layout shape is preserved while filtering the tree below.
     if (canvasActive) applyCanvasFilter(q);
@@ -3076,6 +3338,7 @@ function updateFilterPlaceholder() {
     if (lens === 'code') placeholder = 'Filter files…';
     else if (lens === 'types') placeholder = 'Filter types…';
     else if (lens === 'sql') placeholder = 'Filter tables…';
+    else if (lens === 'map') placeholder = 'Filter areas…';
     filterInputEl.placeholder = placeholder;
 }
 
@@ -3298,7 +3561,7 @@ function appendEmptyState(view, text, glyphMarkup) {
 function relabelSecondLensSegment() {
     if (!lensToggleGroup) return;
     const seg = Array.prototype.find.call(lensToggleGroup.children, function (b) {
-        return b.dataset && b.dataset.lens !== 'code';
+        return b.dataset && b.dataset.lens !== 'code' && b.dataset.lens !== 'map';
     });
     if (!seg) return;
     seg.dataset.lens = currentLens === 'types' ? 'types'
@@ -3321,7 +3584,7 @@ function buildLensToggle(onChange) {
     group.setAttribute('aria-label', 'Structure lens');
     lensToggleGroup = group;
 
-    [['ui', 'UI'], ['code', 'Code']].forEach(function (pair) {
+    [['ui', 'UI'], ['code', 'Code'], ['map', 'Map']].forEach(function (pair) {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'structureLensBtn';
@@ -3339,7 +3602,10 @@ function buildLensToggle(onChange) {
             applyLensToggleState();
             onChange();
         });
-        group.appendChild(btn);
+        // The Map segment stays detached until the manifest shows the repo has
+        // areas (syncMapLensSegment), so other repos keep the two-segment toggle.
+        if (pair[0] === 'map') mapLensBtn = btn;
+        else group.appendChild(btn);
     });
     return group;
 }
@@ -3416,6 +3682,7 @@ export function renderStructureView() {
         selectedHandle = null;
         // The block canvas's drill path + selection are repo-scoped too.
         resetCanvasState();
+        selectedArea = null;
     }
     selectedRepo = repo;
 
@@ -3487,6 +3754,7 @@ export function renderStructureView() {
         // Switching lenses clears the selection — a handle belongs to the lens it
         // was selected in, and the Code lens has no toolbar at all.
         selectedHandle = null;
+        selectedArea = null;
         // Entering a lens restores that lens's persisted fold state for this repo
         // (or its default expansion the first time), independent of the other.
         hydrateActiveLensState(selectedRepo, lens);
@@ -3577,7 +3845,7 @@ export function syncStructureCanvasForViewport() {
     // is where a file opens — so a resize past the breakpoint dismisses it rather
     // than leaving a full-screen overlay stranded over the two-column layout.
     if (structureIsDesktop()) resetCodeSheet();
-    if (currentLens !== 'ui') return;
+    if (lens !== 'map' && currentLens !== 'ui') return;
     if (structureIsDesktop() === canvasHostDesktop) return;
     renderLens(selectedRepo, currentTreeEl);
 }
