@@ -2286,3 +2286,23 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   - Completed: 2026-10-11
   <!-- id: b4143460-df70-4f00-abbb-d6a3e967400a -->
+
+- [ ] **[MEDIUM]** Write the Tasks & projects code tours and correct the "How data is saved" tour
+  - Type: feature
+  - Description: Add the remaining seven tours of the `tasks` section to `toDoList_main/codetour.json` (after "Adding a task"), so every everyday action on a task or project has a guided walkthrough. Also fix a factual error in the `data-saved` tour: step 3 says `dataChanged` tells the UI to refresh, and its recap says every save makes badges and counts refresh. But nothing in `src/` listens for `dataChanged`: `saveToStorage` dispatches it and no handler exists. Rewrite that step's `why` and that recap card to say the event fires but currently has no listeners, so a save alone repaints nothing. Don't add a listener in this entry.
+  - Behavior:
+    1. Write each tour by reading the real code path. The outlines below are the expected route; where the code differs, follow the code. Keep 5–8 steps per tour, `title` ≤ 60 and `why` ≤ 140 characters, one idea per step in the same plain voice as "Adding a task", and end with a 3–5 card `recap`. Every step must state something the code actually does — check each claim against the lines its `match` highlights.
+       1. `edit-task` "Editing a task": title keyup in `buildToDoRow` → `saveToStorageSoon` → description editing in the row's description panel → `listLogic.js` › `editToDoItem` → `persistMutation` update.
+       2. `task-status` "Changing a task's status": `todoStatus.js` › `showStatusPopover` → the status choice handler → `listLogic.js` › `setToDoStatus` → `todoStatus.js` › `refreshTodoStatusUI` → completed items moving through `sortCompletedToBottom`.
+       3. `due-date` "Setting a due date": `dueDate.js` › `showDueDatePopover` → `renderDuePopoverBody` → `setItemDue` → `applyDueUrgency` / `updateDuePillLabel` → the repeat section (`commitRecurrenceFromPopover`) if it applies.
+       4. `delete-task` "Deleting a task, and undo": the delete control or swipe in `toDoRow.js` → `listLogic.js` › `removeToDo` → `undoToast.js` › `showUndoToast` → undo → `listLogic.js` › `insertToDoAt`.
+       5. `reorder` "Reordering by drag and swipe": `dragDrop.js` › `setupRowDrag` → `computeDropIndex` / `showDropIndicator` → the touch path → `listLogic.js` › `reorderToDo` (and `reorderProject` for projects).
+       6. `create-project` "Creating a project": the add-project control → `projectCreate.js` › `createProjectByName` → `listLogic.js` › `addProject` (insert queued first, so its todos can wait on it) → `selectProjectRow`.
+       7. `filter-sort` "Filtering and sorting the list": `taskFilter.js` › `buildTaskFilterBar` → `phaseFilterFor` / `match` → `taskSort.js` › `createTaskSort` → how the list re-renders with both applied.
+       8. `mobile-add` "Adding tasks on mobile": `mobileTaskCreate.js` › `attachMobileCreateChips` → due chips (`applyChosenDueToItem`) → `voiceInput.js` › `startDictation` / `commitDictation` → paste: `entryParse.js` › `parsePastedEntry` → `commitEntryToActiveProject`.
+    2. Section `tasks` ends up in this order: `add-task`, then the eight above as numbered.
+  - Acceptance criteria:
+    - The real-repo tours test passes with all 14 tours: zero warnings, 3–10 steps each, length limits held.
+    - The `data-saved` tour no longer claims `dataChanged` refreshes anything. A test greps `src/` for a `dataChanged` listener and asserts that if one is ever added, the tour text is revisited (keep it simple: assert the tour's step-3 `why` mentions that no listener exists only while none exists).
+  - File: `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
+  <!-- id: 6420ced1-aa61-4d04-8879-8448b635a6a7 -->
