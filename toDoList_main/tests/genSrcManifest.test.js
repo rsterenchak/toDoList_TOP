@@ -397,3 +397,206 @@ describe('gen-src-manifest real src/ symbols', () => {
         expect(parents).toEqual(['showInjectSettingsModal', 'showInjectTargetSubModal', 'showOnboardModal']);
     });
 });
+
+// Code tours compiled from codetour.json into src-tours.json. Steps anchor to
+// a def (file + symbol, + parent) and ordered match text, never line numbers.
+const { compileTours, buildWebTours, writeWebTours } = gen;
+
+describe('gen-src-manifest compileTours', () => {
+    const app = [
+        'function outer() {',                      // 1
+        '    function inner() {',                  // 2
+        '        const a = 1;',                    // 3
+        '        return a;',                       // 4
+        '    }',                                   // 5
+        '    return inner;',                       // 6
+        '}',                                       // 7
+        'function other() {',                      // 8
+        '    function inner() {',                  // 9
+        '        const a = 2;',                    // 10
+        '        const b = 3;',                    // 11
+        '        return a + b;',                   // 12
+        '    }',                                   // 13
+        '}',                                       // 14
+    ].join('\n');
+    const sources = [src('app.js', app)];
+    const symbols = buildSymbols(sources);
+    const areas = [{ id: 'core', files: ['app.js'] }];
+    const st = (symbol, match, extra) => Object.assign({ file: 'app.js', symbol, match, title: 'T ' + symbol, why: 'W' }, extra);
+    const doc = (steps) => ({ version: 1, sections: [{ id: 'tasks', title: 'Tasks' }], tours: [{ id: 't1', section: 'tasks', title: 'Tour', recap: [{ title: 'R', body: 'B' }], steps }] });
+
+    it('resolves by symbol + parent, enriches line/area/next and keeps sections and recap', () => {
+        const warn = vi.fn();
+        const out = compileTours(doc([
+            st('inner', ['const a'], { parent: 'other' }),
+            st('outer', ['return inner;']),
+            st('inner', ['return a;'], { parent: 'outer' }),
+        ]), symbols, sources, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        expect(out.version).toBe(1);
+        expect(out.sections).toEqual([{ id: 'tasks', title: 'Tasks' }]);
+        const t = out.tours[0];
+        expect(t.recap).toEqual([{ title: 'R', body: 'B' }]);
+        expect(t.steps.map((s) => s.line)).toEqual([10, 6, 4]);
+        expect(t.steps.map((s) => s.parent)).toEqual(['other', null, 'outer']);
+        expect(t.steps.map((s) => s.area)).toEqual(['core', 'core', 'core']);
+        expect(t.steps.map((s) => s.next)).toEqual(['outer', 'inner', null]);
+        expect(t.steps[0]).not.toHaveProperty('match');
+    });
+
+    it('finds matches in order, each after the previous one', () => {
+        const warn = vi.fn();
+        const out = compileTours(doc([
+            st('other', ['const b', 'return']),
+            st('other', ['const a', 'const b']),
+            st('outer', ['function inner', 'return']),
+        ]), symbols, sources, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        const hiLines = (s) => s.snippet.filter((r) => r.hi).map((r) => r.n);
+        expect(hiLines(out.tours[0].steps[0])).toEqual([11, 12]);
+        expect(hiLines(out.tours[0].steps[1])).toEqual([10, 11]);
+        // `return` after line 2 is the inner `return a;`, not `return inner;`.
+        expect(hiLines(out.tours[0].steps[2])).toEqual([2, 4]);
+    });
+
+    it('rejects a non-unique first match, an ambiguous symbol and an out-of-order match', () => {
+        const warn = vi.fn();
+        const out = compileTours(doc([
+            st('other', ['const']),
+            st('inner', ['return']),
+            st('other', ['const b', 'const a']),
+            st('outer', ['return inner;']),
+        ]), symbols, sources, areas, warn);
+        const msgs = warn.mock.calls.map((c) => c[0]);
+        expect(msgs[0]).toMatch(/tour "t1" step 1 \(app\.js › other\): first match "const" is not unique/);
+        expect(msgs[1]).toMatch(/step 2 .*ambiguous/);
+        expect(msgs[2]).toMatch(/step 3 .*match "const a" not found after "const b"/);
+        // Only one step resolved, so the tour itself is dropped too.
+        expect(msgs[3]).toMatch(/tour "t1" has 1 resolved step\(s\), needs 3 — tour dropped/);
+        expect(out.tours).toEqual([]);
+    });
+
+    it('drops failing steps with a warning and re-links next over the survivors', () => {
+        const warn = vi.fn();
+        const out = compileTours(doc([
+            st('outer', ['return inner;']),
+            st('missing', ['x']),
+            st('other', ['const a']),
+            st('inner', ['return a;'], { parent: 'outer' }),
+        ]), symbols, sources, areas, warn);
+        expect(warn).toHaveBeenCalledTimes(1);
+        expect(warn.mock.calls[0][0]).toMatch(/step 2 \(app\.js › missing\): symbol not found — step dropped/);
+        expect(out.tours[0].steps.map((s) => s.next)).toEqual(['other', 'inner', null]);
+    });
+
+    it('builds snippets with context, gap rows, trimmed indent and a 12-row cap', () => {
+        const body = ['function big() {'];
+        for (let i = 2; i <= 40; i++) body.push('        line' + i + ';');
+        body.push('}');
+        const bigSrc = [src('big.js', body.join('\n'))];
+        const bigSyms = buildSymbols(bigSrc);
+        const s = (match) => ({ file: 'big.js', symbol: 'big', match, title: 'T', why: 'W' });
+        const out = compileTours({ tours: [{ id: 'b', steps: [
+            s(['line5;', 'line9;']),               // 2 hidden lines (7–8) → joined
+            s(['line5;', 'line11;']),              // 3 hidden lines (7–9) → gap row
+            s(['line3;', 'line10;', 'line17;', 'line24;', 'line31;']),
+        ] }] }, bigSyms, bigSrc, undefined, vi.fn());
+        const [joined, gapped, capped] = out.tours[0].steps;
+        expect(joined.snippet.map((r) => r.n)).toEqual([4, 5, 6, 7, 8, 9, 10]);
+        expect(joined.snippet[0]).toEqual({ n: 4, t: 'line4;', hi: false });
+        expect(joined.snippet[1]).toEqual({ n: 5, t: 'line5;', hi: true });
+        expect(gapped.snippet).toEqual([
+            { n: 4, t: 'line4;', hi: false }, { n: 5, t: 'line5;', hi: true }, { n: 6, t: 'line6;', hi: false },
+            { gap: true },
+            { n: 10, t: 'line10;', hi: false }, { n: 11, t: 'line11;', hi: true }, { n: 12, t: 'line12;', hi: false },
+        ]);
+        // 3 rows + gap per cluster: the cap lands on the 3rd gap row (row 12),
+        // and a snippet never ends on a gap, so 11 rows remain.
+        expect(capped.snippet.length).toBe(11);
+        expect(capped.snippet[capped.snippet.length - 1]).toEqual({ n: 18, t: 'line18;', hi: false });
+        expect(capped.snippet.filter((r) => r.gap).length).toBe(2);
+        expect(gapped.area).toBeNull();
+    });
+
+    it('trims each cluster by its own common indent and keeps relative nesting', () => {
+        const out = compileTours(doc([
+            st('outer', ['function inner', 'return inner;']),
+            st('outer', ['return inner;']),
+            st('other', ['return a + b;']),
+        ]), symbols, sources, areas, vi.fn());
+        const first = out.tours[0].steps[0].snippet;
+        // Lines 1–7 joined; `function outer` has no indent so nothing is cut.
+        expect(first.find((r) => r.n === 3).t).toBe('        const a = 1;');
+        const last = out.tours[0].steps[2].snippet;
+        // Lines 11–13: the closing `}` sits at 4 spaces, so only 4 are cut.
+        expect(last.map((r) => r.t)).toEqual(['    const b = 3;', '    return a + b;', '}']);
+    });
+});
+
+describe('gen-src-manifest writeWebTours', () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    let root;
+    beforeEach(() => {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'gst-'));
+        fs.mkdirSync(path.join(root, 'src'));
+        fs.mkdirSync(path.join(root, 'out'));
+        fs.writeFileSync(path.join(root, 'src', 'a.js'), 'function a() {\n    one();\n    two();\n    three();\n}\n');
+    });
+    afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+
+    it('writes nothing when codetour.json is absent', () => {
+        const opts = { srcDir: path.join(root, 'src'), outDir: path.join(root, 'out'), warn: vi.fn() };
+        expect(buildWebTours(opts)).toBeNull();
+        expect(writeWebTours(opts)).toBeNull();
+        expect(fs.existsSync(path.join(root, 'out', 'src-tours.json'))).toBe(false);
+    });
+
+    it('writes a deterministic src-tours.json when codetour.json exists', () => {
+        const step = (m) => ({ file: 'a.js', symbol: 'a', match: [m], title: 'T', why: 'W' });
+        fs.writeFileSync(path.join(root, 'codetour.json'), JSON.stringify({ version: 1, sections: [], tours: [{ id: 'x', section: 's', title: 'X', recap: [], steps: [step('one'), step('two'), step('three')] }] }));
+        const opts = { srcDir: path.join(root, 'src'), outDir: path.join(root, 'out'), warn: vi.fn() };
+        writeWebTours(opts);
+        const first = fs.readFileSync(path.join(root, 'out', 'src-tours.json'), 'utf8');
+        writeWebTours(opts);
+        expect(fs.readFileSync(path.join(root, 'out', 'src-tours.json'), 'utf8')).toBe(first);
+        const parsed = JSON.parse(first);
+        expect(parsed.tours[0].steps.map((s) => s.line)).toEqual([2, 3, 4]);
+        expect(first).not.toMatch(/generatedAt|sha/);
+        expect(opts.warn).not.toHaveBeenCalled();
+    });
+});
+
+// Keeps the real tours fresh and short: a change that breaks an anchor must
+// update codetour.json in the same PR.
+describe('gen-src-manifest real codetour.json', () => {
+    const path = require('path');
+    const warn = vi.fn();
+    const doc = require('../codetour.json');
+    const tours = buildWebTours({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+
+    it('resolves every tour and step with zero warnings', () => {
+        expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
+        expect(tours.tours.length).toBe(doc.tours.length);
+        tours.tours.forEach((t, i) => expect(t.steps.length).toBe(doc.tours[i].steps.length));
+    });
+
+    it('keeps titles ≤ 60 chars, whys ≤ 140 and 3–10 steps per tour', () => {
+        doc.tours.forEach((t) => {
+            expect(t.title.length).toBeLessThanOrEqual(60);
+            expect(t.steps.length).toBeGreaterThanOrEqual(3);
+            expect(t.steps.length).toBeLessThanOrEqual(10);
+            t.steps.forEach((s) => {
+                expect(s.title.length).toBeLessThanOrEqual(60);
+                expect(s.why.length).toBeLessThanOrEqual(140);
+            });
+        });
+    });
+
+    it('lists the six sections in order and every tour in a known section', () => {
+        expect(doc.sections.map((s) => s.id)).toEqual(['foundations', 'tasks', 'pipeline', 'chat', 'structure', 'more']);
+        const ids = new Set(doc.sections.map((s) => s.id));
+        doc.tours.forEach((t) => expect(ids.has(t.section)).toBe(true));
+    });
+});

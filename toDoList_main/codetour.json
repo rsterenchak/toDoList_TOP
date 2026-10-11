@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "sections": [
+    {
+      "id": "foundations",
+      "title": "Start here · Foundations"
+    },
+    {
+      "id": "tasks",
+      "title": "Tasks & projects"
+    },
+    {
+      "id": "pipeline",
+      "title": "Pipeline"
+    },
+    {
+      "id": "chat",
+      "title": "Chat"
+    },
+    {
+      "id": "structure",
+      "title": "Structure"
+    },
+    {
+      "id": "more",
+      "title": "Settings, focus & ghost"
+    }
+  ],
+  "tours": [
+    {
+      "id": "add-task",
+      "section": "tasks",
+      "title": "Adding a task",
+      "recap": [
+        {
+          "title": "listLogic is the only thing that changes data",
+          "body": "UI code edits the item, then asks listLogic to save it."
+        },
+        {
+          "title": "Two places hold your data",
+          "body": "localStorage first (instant), Supabase second through persistMutation."
+        },
+        {
+          "title": "One blank row, always",
+          "body": "Real in memory, never saved to the database."
+        },
+        {
+          "title": "Two names for every field",
+          "body": "Memory says tit / desc / due. The database says title / description / due_date."
+        },
+        {
+          "title": "Sync has two layers",
+          "body": "Realtime updates the data. Re-sync repaints the screen."
+        }
+      ],
+      "steps": [
+        {
+          "file": "listLogic.js",
+          "symbol": "addToDo",
+          "parent": "listLogic",
+          "match": [
+            "// Skip duplicate blank placeholders",
+            "if (itemTitle === ''"
+          ],
+          "title": "One empty row always sits on top.",
+          "why": "It's a real item in memory, but it never gets saved to the server."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "toDoInput.addEventListener(\"keyup\"",
+            "if (toDoChild.dataset.originalBlank === \"true\") return;"
+          ],
+          "title": "Typing doesn't save the empty row.",
+          "why": "A half-typed title can't become a task if you switch projects mid-word."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "listLogic.commitBlankPlaceholder(toDoName, item);",
+            "listLogic.editToDoItem(toDoName, item);"
+          ],
+          "title": "Enter: save locally, then insert or update.",
+          "why": "First commit inserts. Later edits update. Re-inserting used to cause duplicate errors."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "commitBlankPlaceholder",
+          "match": [
+            "if (!item.tit || item.tit === '') return;",
+            "persistMutation({"
+          ],
+          "title": "The row gets an id and is sent off.",
+          "why": "Blank titles are refused here too, so the empty row can never slip through."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "match": [
+            "await supabase.auth.getSession()",
+            "if (!session) return;",
+            "if (!payload.title || payload.title === '') return;"
+          ],
+          "title": "The one door to the database.",
+          "why": "Every write in the app passes here. Signed out? It stops, and the task stays local."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "appendNewToDoRow",
+          "match": [
+            "listLogic.sortCompletedToBottom(toDoName);",
+            "focusBlankToDoInput();"
+          ],
+          "title": "A fresh empty row appears.",
+          "why": "The cursor jumps into it, so you can type the next task right away."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "handleTodosRealtime",
+          "match": [
+            "if (_selfEchoIds.has(row.id)) {"
+          ],
+          "title": "Other devices receive the new row.",
+          "why": "The device that made it ignores its own echo. Others save it locally."
+        },
+        {
+          "file": "main.js",
+          "symbol": "onHydrate",
+          "match": [
+            "document.addEventListener('listLogicHydrated'"
+          ],
+          "title": "Their screen repaints on re-sync.",
+          "why": "Not instantly: when the tab becomes visible again, or every 5 minutes."
+        }
+      ]
+    }
+  ]
+}
