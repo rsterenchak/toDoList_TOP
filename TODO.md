@@ -2199,3 +2199,21 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; click "text=Pipeline" ; wait 800, 1100x800 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; click "text=Pipeline" ; wait 800, 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=map]" ; wait 800
   - Completed: 2026-10-11
   <!-- id: 7343a65d-6c31-43fb-937a-3cf6bf3b5d48 -->
+
+- [ ] **[MEDIUM]** Publish a definitions index (src-symbols.json) for code tracing
+  - Type: feature
+  - Description: Groundwork for tap-to-trace in the Structure tab's code viewer (tap a name, peek its definition with the lines highlighted, keep tracing). Extend `gen-src-manifest.js` web mode to also write `src-symbols.json` beside `src-manifest.json`: every definition per JS file with its start and end lines and its enclosing definition, plus each file's import bindings. It is a separate file because the manifest is already ~560 KB and the PWA will fetch this one lazily, only on the first trace. Also add end lines to the csharp-mode `types` and `members`, so C# repos can highlight whole methods later. No PWA changes in this entry.
+  - Behavior:
+    1. Shape: `{ "version": 1, "files": { "<src-relative path>": { "defs": [{ "name", "kind", "start", "end", "parent" }], "imports": { "<localName>": { "from": "<src-relative path>", "name": "<exported name>" | "default" | "*" } } } } }`. Lines are 1-based. `parent` is the name of the innermost enclosing def, or `null` at top level.
+    2. Defs to record: `function` declarations at any depth (async/generator included) → `kind: "function"`; `const|let|var x = function…` and arrow functions → `"function"`; class declarations → `"class"`; class methods and object-literal methods (`name(…) {`, `name: function`, `name: (…) =>`) → `"method"`. Never treat control keywords (`if`, `for`, `while`, `switch`, `catch`, `function`) as method names.
+    3. IIFE owner: defs inside `const X = (function () { … })()` (the `listLogic` pattern) get `parent: "X"`. That lets `X.member` resolve to the inner function `member`.
+    4. `end` comes from brace matching from the body's `{`. The matcher skips `//` and `/* */` comments, single-, double- and template-quoted strings (including `${…}` nesting), and regex literals in the obvious positions. A braceless arrow function ends on its own line.
+    5. Imports: `import { a, b as c } from './x.js'` → `a: {from: x.js, name: a}`, `c: {from: x.js, name: b}`; `import d from` → `name: "default"`; `import * as ns from` → `name: "*"`. Resolve paths the same way `parseImports` does, and ignore package imports.
+    6. csharp mode: each `types[]` entry and each member gains `end`, found by brace matching with C#'s string forms (`"…"`, `@"…"`, `$"…"`). Expression-bodied members (`=> …;`) end on their own line.
+    7. Write the file only in web mode. Log its def count and size beside the existing manifest summary line. Keep it deterministic: sorted keys, no timestamps.
+  - Acceptance criteria:
+    - `tests/genSrcManifest.test.js` uses fixtures to cover: nested same-name functions get distinct `parent`s and correct ranges; braces inside strings, template literals, comments and regexes don't break `end`; the IIFE owner pattern; object and class methods; control keywords excluded; all three import forms; csharp `end` for a class, a block method and an expression-bodied property.
+    - Run against the real `src/`, it asserts that `listLogic.js` has `getProjectTargetId` at 2392–2396 with `parent: "listLogic"` (or wherever it sits at run time, matched by name and parent rather than hard-coded lines), and that `inject.js` has three `close` defs whose parents are `showInjectTargetSubModal`, `showOnboardModal` and `showInjectSettingsModal`.
+    - `src-manifest.json` is byte-for-byte unchanged apart from the csharp-only `end` fields.
+  - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/tests/genSrcManifest.test.js`
+  <!-- id: 64b5796d-8d2c-444e-802e-78f17f41fcbf -->
