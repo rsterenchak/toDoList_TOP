@@ -3135,6 +3135,11 @@ export async function loadManifest(repo) {
                 // carrying its columns/constraints. Surfaced for the Structure
                 // tab's adaptive SQL lens; left undefined for non-sql manifests.
                 tables: isObj && Array.isArray(data.tables) ? data.tables : undefined,
+                // The web-mode module graph (per-JS-file lines/imports/purpose)
+                // and the code map's areas, for the Structure tab's Map lens.
+                // Left undefined for manifests that predate them or omit areas.
+                modules: isObj && Array.isArray(data.modules) ? data.modules : undefined,
+                areas: isObj && Array.isArray(data.areas) ? data.areas : undefined,
             };
         }
     } catch (e) {

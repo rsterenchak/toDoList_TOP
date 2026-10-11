@@ -5493,6 +5493,27 @@ describe('loadManifest lens/types passthrough', () => {
         expect(result.hasDom).toBe(true);
     });
 
+    it('surfaces modules and areas from a web manifest that carries them', async () => {
+        const repo = 'rsterenchak/web-map-repo';
+        const modules = [{ path: 'a.js', lines: 3, imports: ['b.js'], purpose: 'Does A.' }];
+        const areas = [{ id: 'core', name: 'Core', purpose: 'Core.', pos: [0.5, 0.5], files: ['a.js'] }];
+        mockManifest(repo, { files: ['a.js', 'b.js'], lens: 'ui', modules: modules, areas: areas });
+        const result = await loadManifest(repo);
+        expect(result.modules).toEqual(modules);
+        expect(result.areas).toEqual(areas);
+    });
+
+    it('leaves modules/areas undefined when absent or malformed', async () => {
+        mockManifest('rsterenchak/web-no-map-repo', { files: ['a.js'] });
+        const absent = await loadManifest('rsterenchak/web-no-map-repo');
+        expect(absent.modules).toBeUndefined();
+        expect(absent.areas).toBeUndefined();
+        mockManifest('rsterenchak/web-bad-map-repo', { files: ['a.js'], modules: 'nope', areas: {} });
+        const bad = await loadManifest('rsterenchak/web-bad-map-repo');
+        expect(bad.modules).toBeUndefined();
+        expect(bad.areas).toBeUndefined();
+    });
+
     it('ignores malformed lens/types/tables (wrong types) rather than passing them through', async () => {
         const repo = 'rsterenchak/malformed-lens-repo';
         mockManifest(repo, { files: ['a.js'], lens: 123, types: 'nope', tables: 'nope' });

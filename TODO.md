@@ -2092,7 +2092,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-10
   <!-- id: 76a57520-bc60-4e4e-b547-3c5d6998678b -->
 
-- [ ] **[MEDIUM]** Add module graph and code-map areas to the src-manifest
+- [x] **[MEDIUM]** Add module graph and code-map areas to the src-manifest
   - Type: feature
   - Description: Groundwork for the Structure tab's upcoming Map lens (a zoomable map of the codebase: areas → files → functions → code). Extend web mode in `gen-src-manifest.js` to emit two new additive fields: `modules`, one entry per JS file with its line count, its local imports and a one-line purpose; and `areas`, read from a new committed `toDoList_main/codemap.json`. Surface both through `loadManifest`, which only passes through fields it names explicitly — skipping this step makes the lens receive nothing, the same trap that blocked the Types lens. Nothing visible changes in this entry.
   - Behavior:
@@ -2117,4 +2117,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Running the generator on this repo reports 0 unassigned files.
     - Existing `files`/`regions`/`lens` output is unchanged.
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codemap.json`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/genSrcManifest.test.js`
+  - Completed: 2026-10-11
   <!-- id: efe44d6a-a970-4432-bbac-01c629ba5aa4 -->
