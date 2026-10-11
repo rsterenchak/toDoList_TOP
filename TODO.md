@@ -2329,7 +2329,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 0410953c-462b-4498-9520-4ff2f006a130 -->
 
-- [ ] **[MEDIUM]** Write the Chat, Structure and Settings/Focus/Ghost code tours (completes the catalog)
+- [x] **[MEDIUM]** Write the Chat, Structure and Settings/Focus/Ghost code tours (completes the catalog)
   - Type: feature
   - Description: Add the last twelve tours to `toDoList_main/codetour.json`, filling the `chat`, `structure` and `more` sections and completing the 35-tour catalog, so every area of the app has a guided walkthrough. Tours anchor only to `src/`. Where a path depends on the Worker or on deploy-time scripts (the manifest, symbols and tours are produced by `scripts/gen-src-manifest.js` during deploy), end that stretch with one step anchored on the app-side call that loads or sends it, whose `why` states plainly what happened on the other side.
   - Behavior:
@@ -2354,4 +2354,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The real-repo tours test passes with all 35 tours: zero warnings, 3–10 steps each, length limits held.
     - Each of `chat`, `structure` and `more` has at least one tour, so no section of the All tours sheet is empty.
   - File: `toDoList_main/codetour.json`
+  - Completed: 2026-10-11
   <!-- id: 08711118-dc5d-4f49-bb42-e75c324b54b6 -->
