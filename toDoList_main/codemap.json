@@ -1,0 +1,181 @@
+{
+  "version": 1,
+  "areas": [
+    {
+      "id": "pipeline",
+      "name": "Pipeline",
+      "purpose": "Turns ideas into TODO entries, dispatches runs, and tracks them to a merged PR.",
+      "pos": [
+        0.71,
+        0.54
+      ],
+      "files": [
+        "inject.js",
+        "agentQueueStore.js",
+        "agentView.js",
+        "agentWiring.js",
+        "dispatchDraft.js",
+        "shipEntry.js",
+        "entryParse.js",
+        "runState.js",
+        "phase.js",
+        "phaseRail.js",
+        "todoMdViewer.js",
+        "mockupFlow.js",
+        "assignmentCoverage.js",
+        "seedTasksModal.js",
+        "conceiveShapes.js",
+        "captureCard.js"
+      ]
+    },
+    {
+      "id": "tasks",
+      "name": "Tasks",
+      "purpose": "Projects, task rows, due dates, filters and drag-drop — the core list everything hangs off.",
+      "pos": [
+        0.22,
+        0.54
+      ],
+      "files": [
+        "listLogic.js",
+        "toDo.js",
+        "toDoRow.js",
+        "todoStatus.js",
+        "dueDate.js",
+        "taskFilter.js",
+        "taskSort.js",
+        "dragDrop.js",
+        "projectRow.js",
+        "projectMenu.js",
+        "projectPicker.js",
+        "projectCreate.js",
+        "projectBadges.js",
+        "projRunSpinner.js",
+        "footerCounts.js",
+        "emptyState.js",
+        "undoToast.js",
+        "statsDrawerPanel.js",
+        "mobileTaskCreate.js",
+        "mobileProjSwipeNav.js"
+      ]
+    },
+    {
+      "id": "shell",
+      "name": "Shell",
+      "purpose": "The app frame: boot, navigation, modals, sheets, theme and onboarding.",
+      "pos": [
+        0.5,
+        0.2
+      ],
+      "files": [
+        "main.js",
+        "index.js",
+        "modals.js",
+        "modalDismiss.js",
+        "viewSwitcher.js",
+        "viewFocusNav.js",
+        "sidebarDrawer.js",
+        "drawerRows.js",
+        "mobileSheets.js",
+        "mobileUpdatePill.js",
+        "desktopHeaderPlacement.js",
+        "viewport.js",
+        "viewportHeal.js",
+        "theme.js",
+        "coachmark.js",
+        "welcomeCarousel.js",
+        "aboutVersionCue.js",
+        "changelog.js",
+        "authoringModeStrip.js",
+        "sw.js"
+      ]
+    },
+    {
+      "id": "chat",
+      "name": "Chat",
+      "purpose": "The Claude sheet: Deep/Fast chat, model picker, file context and voice input.",
+      "pos": [
+        0.81,
+        0.85
+      ],
+      "files": [
+        "claudeSheet.js",
+        "modelsPanel.js",
+        "layoutInspect.js",
+        "filePicker.js",
+        "voiceInput.js"
+      ]
+    },
+    {
+      "id": "structure",
+      "name": "Structure",
+      "purpose": "Reads a repo's shape: block canvas, live view, code viewer and complexity scan.",
+      "pos": [
+        0.36,
+        0.85
+      ],
+      "files": [
+        "structureView.js",
+        "structureCanvas.js",
+        "structureRemoteCapture.js",
+        "codeViewer.js",
+        "complexityHotspots.js",
+        "refactorCard.js",
+        "srcPath.js"
+      ]
+    },
+    {
+      "id": "data",
+      "name": "Data",
+      "purpose": "Supabase client, auth, prefs, app lock, settings and import/export.",
+      "pos": [
+        0.15,
+        0.19
+      ],
+      "files": [
+        "supabaseClient.js",
+        "auth.js",
+        "migration.js",
+        "prefs.js",
+        "appLock.js",
+        "pinLockModal.js",
+        "settingsMenu.js",
+        "settingsModal.js",
+        "settingsDiagnostics.js",
+        "repoSetup.js",
+        "exportImport.js",
+        "jsonImportExport.js"
+      ]
+    },
+    {
+      "id": "focus",
+      "name": "Focus",
+      "purpose": "Pomodoro timer, music player and visualizer.",
+      "pos": [
+        0.87,
+        0.15
+      ],
+      "files": [
+        "focusMode.js",
+        "pomodoro.js",
+        "music.js",
+        "musicVisualizer.js",
+        "mobileUtilitySheet.js",
+        "popoverNav.js"
+      ]
+    },
+    {
+      "id": "ghost",
+      "name": "Ghost",
+      "purpose": "The ghost companion and its talk loop.",
+      "pos": [
+        0.94,
+        0.4
+      ],
+      "files": [
+        "companion.js",
+        "ghostTalk.js"
+      ]
+    }
+  ]
+}
