@@ -70,7 +70,7 @@ import {
 import { joinSrcRootPath } from './srcPath.js';
 import { buildComplexityChip, setComplexityScans } from './complexityHotspots.js';
 import { listLogic } from './listLogic.js';
-import { deriveAreaGraph, linksFor, formatLines } from './codeMapModel.js';
+import { deriveAreaGraph, linksFor, formatLines, areaFiles } from './codeMapModel.js';
 
 // The repo currently shown. Held at module scope so a re-render (view switch,
 // manifest refresh) preserves the user's selection. Null until first resolved
@@ -272,10 +272,20 @@ let currentTables = [];
 // `selectedHandle`, cleared on repo change and lens change. `mapEls` holds the
 // painted map's circles, edge lines and panel so a tap or filter keystroke
 // restyles them in place instead of repainting.
+// `openArea` is the area whose level-2 file list is showing (null = level 1);
+// it follows `selectedArea`'s lifetime, so a same-repo repaint (closing the
+// mobile code sheet) lands back on the same area. `mapFileSort` is the file
+// list's order ('used' | 'size'), kept for the session only, and
+// `mapFilesExpanded` whether `Show N more` was tapped for the open area.
+// `mapCtx` remembers where the lens painted so a level switch repaints in place.
 let currentModules = [];
 let currentAreas = null;
 let selectedArea = null;
+let openArea = null;
+let mapFileSort = 'used';
+let mapFilesExpanded = false;
 let mapEls = null;
+let mapCtx = null;
 // The toggle's Map segment, built with the toggle but attached by
 // syncMapLensSegment only when the repo has areas.
 let mapLensBtn = null;
@@ -2826,12 +2836,16 @@ function renderLens(repo, treeEl) {
 // one circle per area sized by its lines of code, joined by edges whose
 // thickness is the number of imports between the two areas — above a panel
 // describing the selected area. Only offered when the manifest has `areas`.
+// The panel's Open button drills into level 2: that area's files, each opening
+// in the code viewer.
 
 const MAP_INSET = 10;
 const MAP_SPAN = 100 - MAP_INSET * 2;
 const MAP_MIN_DIAMETER = 36;
 const MAP_DIAMETER_RANGE = 44;
 const MAP_COUNT_MIN_DIAMETER = 46;
+const MINI_MAP_MIN_DIAMETER = 12;
+const MINI_MAP_DIAMETER_RANGE = 14;
 const MAP_EDGE_MAX_WIDTH = 6;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -2854,6 +2868,11 @@ function mapPercent(v) {
 function mapDiameter(lines, maxLines) {
     const ratio = maxLines > 0 ? Math.max(0, lines) / maxLines : 0;
     return Math.round(MAP_MIN_DIAMETER + Math.sqrt(ratio) * MAP_DIAMETER_RANGE);
+}
+
+function miniMapDiameter(lines, maxLines) {
+    const ratio = maxLines > 0 ? Math.max(0, lines) / maxLines : 0;
+    return Math.round(MINI_MAP_MIN_DIAMETER + Math.sqrt(ratio) * MINI_MAP_DIAMETER_RANGE);
 }
 
 function edgeKey(e) {
@@ -2887,18 +2906,36 @@ function renderMapLens(repo, treeEl) {
             updateFilterPlaceholder();
             return renderLens(repo, treeEl);
         }
-        clear(treeEl);
-        treeEl.appendChild(buildMapLens(deriveAreaGraph(currentModules, currentAreas)));
+        mountMapLens(repo, treeEl, deriveAreaGraph(currentModules, currentAreas));
         return undefined;
     });
 }
 
-function buildMapLens(graph) {
-    const wrap = document.createElement('div');
-    wrap.className = 'structureMapLens';
+// Paint the Map lens's current level into `treeEl`: level 2 (one area's files)
+// while `openArea` names an area of this graph, otherwise level 1. Also the
+// repaint for a level switch, which leaves the detail column's open file alone.
+function mountMapLens(repo, treeEl, graph) {
+    mapCtx = { repo: repo, treeEl: treeEl, graph: graph };
+    const ids = new Set(graph.areas.map(function (a) { return a.id; }));
+    // A selection from another repo's graph can't carry over.
+    if (selectedArea && !ids.has(selectedArea)) selectedArea = null;
+    if (openArea && !ids.has(openArea)) openArea = null;
+    clear(treeEl);
+    treeEl.appendChild(openArea ? buildMapLevel2(graph) : buildMapLens(graph));
+    if (filterQuery) applyMapFilter(filterQuery.trim().toLowerCase());
+}
 
+function repaintMapLens() {
+    if (!mapCtx) return;
+    mountMapLens(mapCtx.repo, mapCtx.treeEl, mapCtx.graph);
+}
+
+// The constellation itself — edges, then one button per area — shared by level
+// 1 and level 2's compact mini-map. Compact circles are 12–26px with no line
+// count; `onTap(id)` handles a circle tap.
+function buildConstellation(graph, compact, onTap) {
     const box = document.createElement('div');
-    box.className = 'structureMap';
+    box.className = compact ? 'structureMap structureMap--mini' : 'structureMap';
 
     const svg = document.createElementNS(SVG_NS, 'svg');
     svg.setAttribute('class', 'structureMapEdges');
@@ -2927,7 +2964,9 @@ function buildMapLens(graph) {
     const maxLines = graph.areas.reduce(function (m, a) { return Math.max(m, a.lines); }, 0);
     const buttons = new Map();
     graph.areas.forEach(function (a) {
-        const d = mapDiameter(a.lines, maxLines);
+        const d = compact
+            ? miniMapDiameter(a.lines, maxLines)
+            : mapDiameter(a.lines, maxLines);
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'structureMapArea';
@@ -2942,7 +2981,7 @@ function buildMapLens(graph) {
         circle.className = 'structureMapCircle';
         circle.style.width = d + 'px';
         circle.style.height = d + 'px';
-        if (d >= MAP_COUNT_MIN_DIAMETER) circle.textContent = formatLines(a.lines);
+        if (!compact && d >= MAP_COUNT_MIN_DIAMETER) circle.textContent = formatLines(a.lines);
         btn.appendChild(circle);
 
         const name = document.createElement('span');
@@ -2950,25 +2989,196 @@ function buildMapLens(graph) {
         name.textContent = a.name;
         btn.appendChild(name);
 
-        btn.addEventListener('click', function () {
-            selectedArea = selectedArea === a.id ? null : a.id;
-            paintMapSelection();
-        });
+        btn.addEventListener('click', function () { onTap(a.id); });
         box.appendChild(btn);
         buttons.set(a.id, btn);
     });
-    wrap.appendChild(box);
+    return { box: box, byId: byId, lines: lines, buttons: buttons };
+}
+
+function buildMapLens(graph) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureMapLens';
+
+    const map = buildConstellation(graph, false, function (id) {
+        selectedArea = selectedArea === id ? null : id;
+        paintMapSelection();
+    });
+    wrap.appendChild(map.box);
 
     const panel = document.createElement('div');
     panel.className = 'structureMapPanel';
     panel.setAttribute('aria-live', 'polite');
     wrap.appendChild(panel);
 
-    mapEls = { graph: graph, byId: byId, lines: lines, buttons: buttons, panel: panel };
-    // A selection from another repo's graph can't carry over.
-    if (selectedArea && !byId.has(selectedArea)) selectedArea = null;
+    mapEls = { graph: graph, byId: map.byId, lines: map.lines, buttons: map.buttons, panel: panel };
     paintMapSelection();
     return wrap;
+}
+
+// Level 2: one area opened — a breadcrumb back to the areas, the compact
+// mini-map with the open area highlighted, the area's header, then its files.
+function buildMapLevel2(graph) {
+    const wrap = document.createElement('div');
+    wrap.className = 'structureMapLens structureMapLevel2';
+    const area = graph.areas.find(function (a) { return a.id === openArea; });
+
+    const crumb = document.createElement('nav');
+    crumb.className = 'structureMapCrumb';
+    crumb.setAttribute('aria-label', 'Code map');
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'structureMapCrumbBack';
+    back.textContent = '← Areas';
+    back.addEventListener('click', function () {
+        selectedArea = openArea;
+        openArea = null;
+        repaintMapLens();
+    });
+    crumb.appendChild(back);
+    const sep = document.createElement('span');
+    sep.className = 'structureMapCrumbSep';
+    sep.setAttribute('aria-hidden', 'true');
+    sep.textContent = '›';
+    crumb.appendChild(sep);
+    const here = document.createElement('strong');
+    here.className = 'structureMapCrumbHere';
+    here.textContent = area.name;
+    crumb.appendChild(here);
+    wrap.appendChild(crumb);
+
+    const map = buildConstellation(graph, true, function (id) {
+        if (id === openArea) return;
+        openArea = id;
+        selectedArea = id;
+        mapFilesExpanded = false;
+        repaintMapLens();
+    });
+    map.buttons.forEach(function (btn, id) {
+        const sel = id === openArea;
+        btn.classList.toggle('is-selected', sel);
+        btn.setAttribute('aria-pressed', String(sel));
+    });
+    graph.edges.forEach(function (e) {
+        const line = map.lines.get(edgeKey(e));
+        if (line && (e.a === openArea || e.b === openArea)) {
+            line.setAttribute('class', 'structureMapEdge is-active');
+        }
+    });
+    wrap.appendChild(map.box);
+    // The filter keeps dimming the mini-map's areas; there is no panel to refill.
+    mapEls = { graph: graph, byId: map.byId, lines: map.lines, buttons: map.buttons, panel: null };
+
+    const head = document.createElement('div');
+    head.className = 'structureMapAreaHead';
+    const name = document.createElement('div');
+    name.className = 'structureMapAreaName';
+    name.textContent = area.name;
+    head.appendChild(name);
+    const meta = document.createElement('div');
+    meta.className = 'structureMapAreaMeta';
+    meta.textContent = area.fileCount + ' files · ' + formatLines(area.lines) + ' lines';
+    head.appendChild(meta);
+    if (area.purpose) {
+        const purpose = document.createElement('p');
+        purpose.className = 'structureMapAreaPurpose';
+        purpose.textContent = area.purpose;
+        head.appendChild(purpose);
+    }
+    wrap.appendChild(head);
+
+    const source = (currentAreas || []).find(function (a) { return a && a.id === openArea; });
+    wrap.appendChild(buildMapFileList(areaFiles(currentModules, source, mapFileSort)));
+    return wrap;
+}
+
+const MAP_FILES_SHOWN = 8;
+
+// The open area's files: a FILES label with the Most used / Size toggle, the
+// first eight rows, then a `Show N more` button for the rest. A row opens its
+// file in the code viewer (detail column on desktop, code sheet on mobile).
+function buildMapFileList(rows) {
+    const section = document.createElement('section');
+    section.className = 'structureMapFiles';
+
+    const bar = document.createElement('div');
+    bar.className = 'structureMapFilesBar';
+    const label = document.createElement('span');
+    label.className = 'structureMapFilesLabel';
+    label.textContent = 'FILES';
+    bar.appendChild(label);
+    const toggle = document.createElement('div');
+    toggle.className = 'structureMapSort';
+    toggle.setAttribute('role', 'group');
+    toggle.setAttribute('aria-label', 'Sort files');
+    [['used', 'Most used'], ['size', 'Size']].forEach(function (opt) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'structureMapSortBtn';
+        btn.dataset.sort = opt[0];
+        btn.textContent = opt[1];
+        btn.setAttribute('aria-pressed', String(mapFileSort === opt[0]));
+        btn.addEventListener('click', function () {
+            if (mapFileSort === opt[0]) return;
+            mapFileSort = opt[0];
+            repaintMapLens();
+        });
+        toggle.appendChild(btn);
+    });
+    bar.appendChild(toggle);
+    section.appendChild(bar);
+
+    const list = document.createElement('div');
+    list.className = 'structureMapFileList';
+    const repo = mapCtx ? mapCtx.repo : selectedRepo;
+    const shown = mapFilesExpanded ? rows : rows.slice(0, MAP_FILES_SHOWN);
+    shown.forEach(function (row) { list.appendChild(buildMapFileRow(repo, row)); });
+    section.appendChild(list);
+
+    if (shown.length < rows.length) {
+        const more = document.createElement('button');
+        more.type = 'button';
+        more.className = 'structureMapMore';
+        more.textContent = 'Show ' + (rows.length - shown.length) + ' more';
+        more.addEventListener('click', function () {
+            mapFilesExpanded = true;
+            rows.slice(shown.length).forEach(function (row) {
+                list.appendChild(buildMapFileRow(repo, row));
+            });
+            more.remove();
+        });
+        section.appendChild(more);
+    }
+    return section;
+}
+
+function buildMapFileRow(repo, row) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'structureMapFileRow';
+    btn.dataset.path = row.path;
+
+    const top = document.createElement('span');
+    top.className = 'structureMapFileTop';
+    const name = document.createElement('span');
+    name.className = 'structureMapFileName';
+    name.textContent = row.path;
+    top.appendChild(name);
+    const stats = document.createElement('span');
+    stats.className = 'structureMapFileStats';
+    stats.textContent = 'used by ' + row.usedBy + ' · ' + formatLines(row.lines);
+    top.appendChild(stats);
+    btn.appendChild(top);
+
+    const purpose = document.createElement('span');
+    purpose.className = 'structureMapFilePurpose';
+    purpose.textContent = row.purpose || 'No description yet';
+    btn.appendChild(purpose);
+
+    btn.addEventListener('click', function () {
+        openFileInCodeViewer(repo, joinSrcRootPath(currentSrcRoot, row.path));
+    });
+    return btn;
 }
 
 // Restyle the circles and edges for the current selection and refill the panel.
@@ -3029,6 +3239,21 @@ function renderMapPanel(links) {
     }
     linksLine.textContent = text;
     panel.appendChild(linksLine);
+
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'structureMapOpenBtn';
+    open.textContent = 'Open ' + area.name + ' →';
+    open.addEventListener('click', function () {
+        openArea = area.id;
+        mapFilesExpanded = false;
+        repaintMapLens();
+        // The button sits below the constellation, so a user who scrolled down to
+        // reach it could land with level 2's top above the fold; bring it back.
+        const crumb = mapCtx && mapCtx.treeEl.querySelector('.structureMapCrumb');
+        if (crumb && typeof crumb.scrollIntoView === 'function') crumb.scrollIntoView({ block: 'nearest' });
+    });
+    panel.appendChild(open);
 }
 
 // Dim the areas whose name and every file path miss the query; matches stay at
@@ -3683,6 +3908,7 @@ export function renderStructureView() {
         // The block canvas's drill path + selection are repo-scoped too.
         resetCanvasState();
         selectedArea = null;
+        openArea = null;
     }
     selectedRepo = repo;
 
@@ -3755,6 +3981,7 @@ export function renderStructureView() {
         // was selected in, and the Code lens has no toolbar at all.
         selectedHandle = null;
         selectedArea = null;
+        openArea = null;
         // Entering a lens restores that lens's persisted fold state for this repo
         // (or its default expansion the first time), independent of the other.
         hydrateActiveLensState(selectedRepo, lens);

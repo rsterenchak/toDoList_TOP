@@ -96,3 +96,44 @@ export function formatLines(n) {
     if (v < 1000) return String(v);
     return (v / 1000).toFixed(1) + 'k';
 }
+
+// Level 2's file list for one area: a row per file in `area.files` as { path,
+// lines, purpose, usedBy, uses }. `usedBy` counts the modules repo-wide (not
+// just this area's) whose imports include the file; `uses` is its own import
+// count. `sort` 'used' orders by usedBy then lines, 'size' by lines — both
+// descending, ties by path. A file with no module entry is skipped.
+export function areaFiles(modules, area, sort) {
+    const mods = (Array.isArray(modules) ? modules : []).filter(function (m) {
+        return m && typeof m.path === 'string';
+    });
+    const byPath = new Map();
+    mods.forEach(function (m) { if (!byPath.has(m.path)) byPath.set(m.path, m); });
+    const usedBy = new Map();
+    mods.forEach(function (m) {
+        const imports = Array.isArray(m.imports) ? m.imports : [];
+        new Set(imports).forEach(function (imp) {
+            usedBy.set(imp, (usedBy.get(imp) || 0) + 1);
+        });
+    });
+    const files = area && Array.isArray(area.files) ? area.files : [];
+    const rows = [];
+    const seen = new Set();
+    files.forEach(function (f) {
+        const m = byPath.get(f);
+        if (!m || seen.has(f)) return;
+        seen.add(f);
+        rows.push({
+            path: f,
+            lines: Number(m.lines) || 0,
+            purpose: typeof m.purpose === 'string' && m.purpose ? m.purpose : null,
+            usedBy: usedBy.get(f) || 0,
+            uses: Array.isArray(m.imports) ? m.imports.length : 0,
+        });
+    });
+    return rows.sort(function (x, y) {
+        const primary = sort === 'size'
+            ? y.lines - x.lines
+            : (y.usedBy - x.usedBy) || (y.lines - x.lines);
+        return primary || (x.path < y.path ? -1 : x.path > y.path ? 1 : 0);
+    });
+}
