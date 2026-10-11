@@ -7,10 +7,10 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-11',
         added: [
-            'The Structure tab now offers guided code tours, with a Start here card, tours for each area, a list of all tours with progress, and a step-by-step player with Back and Next.',
             'The Structure tab\'s Start here section now has six beginner tours covering how the app starts, signs in, saves data, syncs between devices and updates itself.',
             'The Structure tab\'s Tasks & projects section now has tours for editing, status, due dates, deleting and undo, reordering, creating projects, filtering and sorting, and adding tasks on mobile, and the How data is saved tour no longer claims a save refreshes the screen.',
             'The Structure tab\'s Pipeline section now has tours for injecting a task into TODO.md, shipping and following a run, the Agent board, A/B/C mockups, generating tasks from a plan, assignment coverage and the TODO.md viewer.',
+            'The Structure tab\'s Chat, Structure and Settings, focus & ghost sections now have tours for sending messages, attaching context, choosing models, the Structure tab\'s lenses and code viewer, app lock, export and import, theme and onboarding, focus mode and the ghost, completing the tour catalog.',
         ],
         changed: [
             'On desktop, the Structure tab\'s Map view now spreads across three columns, with a list of areas on the left, the map and file list in the middle, and the open file\'s code on the right.',

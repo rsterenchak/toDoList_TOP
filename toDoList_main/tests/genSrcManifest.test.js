@@ -662,6 +662,27 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
+    it('compiles the Chat, Structure and Settings tours in order, each with a 3–5 card recap', () => {
+        const order = {
+            chat: ['chat-send', 'chat-context', 'chat-model'],
+            structure: ['structure-open', 'code-map', 'code-viewer', 'ui-lens'],
+            more: ['app-lock', 'export-import', 'onboarding', 'focus', 'ghost'],
+        };
+        Object.keys(order).forEach((section) => {
+            const list = tours.tours.filter((t) => t.section === section);
+            expect(list.map((t) => t.id)).toEqual(order[section]);
+            list.forEach((t) => {
+                expect(t.recap.length).toBeGreaterThanOrEqual(3);
+                expect(t.recap.length).toBeLessThanOrEqual(5);
+            });
+        });
+    });
+
+    it('completes the 35-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(35);
+        doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
+    });
+
     // Tours only see src/, so a step that talks about the Worker or a workflow
     // must sit on the call that leaves the app.
     it('anchors every Worker or workflow step on the call that leaves the app', () => {
