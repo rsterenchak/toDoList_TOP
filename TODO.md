@@ -2091,3 +2091,30 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   - Completed: 2026-10-10
   <!-- id: 76a57520-bc60-4e4e-b547-3c5d6998678b -->
+
+- [ ] **[MEDIUM]** Add module graph and code-map areas to the src-manifest
+  - Type: feature
+  - Description: Groundwork for the Structure tab's upcoming Map lens (a zoomable map of the codebase: areas → files → functions → code). Extend web mode in `gen-src-manifest.js` to emit two new additive fields: `modules`, one entry per JS file with its line count, its local imports and a one-line purpose; and `areas`, read from a new committed `toDoList_main/codemap.json`. Surface both through `loadManifest`, which only passes through fields it names explicitly — skipping this step makes the lens receive nothing, the same trap that blocked the Types lens. Nothing visible changes in this entry.
+  - Behavior:
+    1. `modules`: `[{ path, lines, imports, purpose }]` for every `.js/.jsx/.ts/.tsx` under src. `path` is src-relative, matching the `files` entries. `imports` lists src-relative paths resolved from relative specifiers only — static `import … from './x.js'`, `export … from './x.js'`, and string-literal `import('./x.js')` — de-duplicated and sorted; package imports are ignored. `purpose` is the first sentence of the file's leading `//` or `/* */` comment block, trimmed to 140 chars, or `null` when the file has none.
+    2. `areas`: when `codemap.json` exists next to `scripts/`, copy its `areas` array through as-is. When the file is absent (every other repo for now), omit the key.
+    3. Log a deploy-time warning listing any JS file that appears in no area, and any area file that doesn't exist, so the map's drift shows up in the Actions log. Warn only — never fail the build.
+    4. `loadManifest` returns `modules` and `areas` when they are arrays, else `undefined`, following the existing `types`/`tables` pattern.
+  - Implementation notes:
+    - Create `toDoList_main/codemap.json` as `{ "version": 1, "areas": [{ "id", "name", "purpose", "pos": [x, y], "files": [...] }] }`. `pos` is normalized 0–1 within the map. Use these eight areas (file names are src-relative):
+      - `pipeline` "Pipeline" — "Turns ideas into TODO entries, dispatches runs, and tracks them to a merged PR." pos [0.71, 0.54]: inject, agentQueueStore, agentView, agentWiring, dispatchDraft, shipEntry, entryParse, runState, phase, phaseRail, todoMdViewer, mockupFlow, assignmentCoverage, seedTasksModal, conceiveShapes, captureCard
+      - `tasks` "Tasks" — "Projects, task rows, due dates, filters and drag-drop — the core list everything hangs off." pos [0.22, 0.54]: listLogic, toDo, toDoRow, todoStatus, dueDate, taskFilter, taskSort, dragDrop, projectRow, projectMenu, projectPicker, projectCreate, projectBadges, projRunSpinner, footerCounts, emptyState, undoToast, statsDrawerPanel, mobileTaskCreate, mobileProjSwipeNav
+      - `shell` "Shell" — "The app frame: boot, navigation, modals, sheets, theme and onboarding." pos [0.50, 0.20]: main, index, modals, modalDismiss, viewSwitcher, viewFocusNav, sidebarDrawer, drawerRows, mobileSheets, mobileUpdatePill, desktopHeaderPlacement, viewport, viewportHeal, theme, coachmark, welcomeCarousel, aboutVersionCue, changelog, authoringModeStrip, sw
+      - `chat` "Chat" — "The Claude sheet: Deep/Fast chat, model picker, file context and voice input." pos [0.81, 0.85]: claudeSheet, modelsPanel, layoutInspect, filePicker, voiceInput
+      - `structure` "Structure" — "Reads a repo's shape: block canvas, live view, code viewer and complexity scan." pos [0.36, 0.85]: structureView, structureCanvas, structureRemoteCapture, codeViewer, complexityHotspots, refactorCard, srcPath
+      - `data` "Data" — "Supabase client, auth, prefs, app lock, settings and import/export." pos [0.15, 0.19]: supabaseClient, auth, migration, prefs, appLock, pinLockModal, settingsMenu, settingsModal, settingsDiagnostics, repoSetup, exportImport, jsonImportExport
+      - `focus` "Focus" — "Pomodoro timer, music player and visualizer." pos [0.87, 0.15]: focusMode, pomodoro, music, musicVisualizer, mobileUtilitySheet, popoverNav
+      - `ghost` "Ghost" — "The ghost companion and its talk loop." pos [0.94, 0.40]: companion, ghostTalk
+    - Each file name above gets a `.js` suffix in `codemap.json`. Together they cover all 88 current JS files exactly once.
+    - Export the import parser and purpose extractor from the script (alongside `scanRegions`) so tests can call them directly.
+  - Acceptance criteria:
+    - `tests/genSrcManifest.test.js` covers: static, re-export and dynamic imports resolved to src-relative paths; package imports ignored; `purpose` taken from both `//` and `/* */` headers and `null` without one; `areas` omitted when `codemap.json` is absent; and the unassigned-file warning.
+    - Running the generator on this repo reports 0 unassigned files.
+    - Existing `files`/`regions`/`lens` output is unchanged.
+  - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codemap.json`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/genSrcManifest.test.js`
+  <!-- id: efe44d6a-a970-4432-bbac-01c629ba5aa4 -->
