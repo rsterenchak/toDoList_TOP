@@ -1609,6 +1609,855 @@
           "why": "Description and an In Progress status are set first, then a synthetic Enter commits it."
         }
       ]
+    },
+    {
+      "id": "inject-entry",
+      "section": "pipeline",
+      "title": "Injecting a task into TODO.md",
+      "recap": [
+        {
+          "title": "One button, two hosts",
+          "body": "The description panel and the mobile editor both build it with makeInjectButton."
+        },
+        {
+          "title": "The id is minted once",
+          "body": "Re-injecting reuses item.entryId, so a repeat isn't a second copy."
+        },
+        {
+          "title": "postToWorker is the exit",
+          "body": "Everything past that fetch happens in the Worker, not the app."
+        },
+        {
+          "title": "Saved twice",
+          "body": "injectedAt goes to localStorage, then stampTodoEntryId sends the id to the server."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "const injectBtn = makeInjectButton(item, {",
+            "promptRunInjectedEntry(injectedItem, injectTarget, toDoName);"
+          ],
+          "title": "The description panel gets an Inject button.",
+          "why": "Every row builds one. After a good inject it offers to run the entry right away."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "makeInjectButton",
+          "match": [
+            "btn.disabled = true;",
+            "const target = findTargetById(targetId);",
+            "const result = await injectDescription(item, target);"
+          ],
+          "title": "A click locks the button and finds the repo.",
+          "why": "Disabling first stops a double-click. The project's target says which repo gets the entry."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "injectDescription",
+          "match": [
+            "if (!item.entryId) item.entryId = mintEntryId();",
+            "entry: embedEntryMarker(item.desc, item.entryId),"
+          ],
+          "title": "The description gets an id marker.",
+          "why": "The id is minted once and reused, so re-injecting the same task sends the same id."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "postToWorker",
+          "match": [
+            "'Authorization': 'Bearer ' + cachedSecret,",
+            "res = await fetch(cachedUrl, init);"
+          ],
+          "title": "The entry leaves the app.",
+          "why": "One POST to your Worker. The Worker appends the entry to TODO.md on GitHub."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "injectDescription",
+          "match": [
+            "item.injectedAt = Date.now();",
+            "listLogic.saveToStorage();"
+          ],
+          "title": "The task is stamped as injected.",
+          "why": "Only after the POST succeeds. listLogic saves it to localStorage so it survives a reload."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "stampTodoEntryId",
+          "match": [
+            "found.entryId = entryId;",
+            "persistMutation({"
+          ],
+          "title": "The entry id reaches the server too.",
+          "why": "So other devices can link this task to its TODO.md entry, not just this one."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "makeInjectButton",
+          "match": [
+            "showInjectToast('Injected to TODO.md');",
+            "refreshInjectButton(btn, item);"
+          ],
+          "title": "A toast confirms it.",
+          "why": "Then the button repaints itself to match the task's new state."
+        }
+      ]
+    },
+    {
+      "id": "ship-run",
+      "section": "pipeline",
+      "title": "Shipping a task: dispatching a run",
+      "recap": [
+        {
+          "title": "One ship core",
+          "body": "Agent board and description panel both go through dispatchDraft and shipEntryForTodo."
+        },
+        {
+          "title": "Inject, then dispatch",
+          "body": "The entry is injected with its id marker first, then a run is started for that id."
+        },
+        {
+          "title": "Retry reuses the id",
+          "body": "Passing the row's entry_id means no second copy of the entry."
+        },
+        {
+          "title": "dispatchRun is the exit",
+          "body": "The run itself happens in GitHub Actions, outside the app."
+        }
+      ],
+      "steps": [
+        {
+          "file": "agentView.js",
+          "symbol": "buildDraftedSecondary",
+          "match": [
+            "dispatch.textContent = 'Dispatching…';",
+            "dispatchDraft(row, draftText, row.entry_id, boardDispatchTail)"
+          ],
+          "title": "Dispatch on a drafted card.",
+          "why": "The button shows Dispatching… and hands the card's draft to dispatchDraft."
+        },
+        {
+          "file": "dispatchDraft.js",
+          "symbol": "dispatchDraft",
+          "match": [
+            "const target = resolveDispatchTarget();",
+            "const res = await shipEntryForTodo({"
+          ],
+          "title": "Find the repo, then ship.",
+          "why": "The selected project's target picks the repo. The real work is in shipEntryForTodo."
+        },
+        {
+          "file": "shipEntry.js",
+          "symbol": "shipEntryForTodo",
+          "match": [
+            "const entryId = existingEntryId || mintEntryId();",
+            "const entry = embedEntryMarker(entryText, entryId);",
+            "const injectResult = await injectEntry({"
+          ],
+          "title": "Mint the id, mark the entry, inject it.",
+          "why": "Retry passes the old id instead of a new one. A failed inject stops the ship here."
+        },
+        {
+          "file": "shipEntry.js",
+          "symbol": "shipEntryForTodo",
+          "match": [
+            "read = await readTodoMdFromWorker(target);",
+            "read.content.indexOf(marker) !== -1",
+            "dispatching anyway"
+          ],
+          "title": "Wait briefly for the marker to show up.",
+          "why": "It reads TODO.md looking for the id marker. If it never appears in time, it dispatches anyway."
+        },
+        {
+          "file": "shipEntry.js",
+          "symbol": "shipEntryForTodo",
+          "match": [
+            "const correlationId = mintEntryId();",
+            "mode: 'entry',"
+          ],
+          "title": "Dispatch in entry mode.",
+          "why": "A fresh correlation id tags this run, and entry mode points it at this one entry."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "dispatchRun",
+          "match": [
+            "dispatch: true,",
+            "entry_id: opts.entryId || '',"
+          ],
+          "title": "The run request leaves the app.",
+          "why": "One POST to the Worker. The Worker starts the claude-run.yml workflow for this entry."
+        },
+        {
+          "file": "dispatchDraft.js",
+          "symbol": "dispatchDraft",
+          "match": [
+            "state: 'dispatched',",
+            "await listLogic.setAgentRunState(rowId, patch);"
+          ],
+          "title": "The queue row moves to dispatched.",
+          "why": "The state change goes through listLogic, which writes it to the agent queue."
+        },
+        {
+          "file": "dispatchDraft.js",
+          "symbol": "dispatchDraft",
+          "match": [
+            "sheet.trackDispatchedRun({"
+          ],
+          "title": "The Runs tab learns about it.",
+          "why": "A run record is added there too, so the run is tracked right away, not after a reload."
+        }
+      ]
+    },
+    {
+      "id": "follow-run",
+      "section": "pipeline",
+      "title": "Following a run to a merged PR",
+      "recap": [
+        {
+          "title": "One live channel",
+          "body": "A realtime push on agent_queue reloads the rows once, then everything repaints from cache."
+        },
+        {
+          "title": "One phase per task",
+          "body": "derivePhase turns queue state and TODO.md markers into a single answer."
+        },
+        {
+          "title": "The rail has four nodes",
+          "body": "IDEA, DRAFT, REVIEW, DONE. Queue states fold into DRAFT."
+        },
+        {
+          "title": "Shipped comes from TODO.md",
+          "body": "A checked-off marker in the cached TODO.md beats a pending one."
+        }
+      ],
+      "steps": [
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "startAgentQueueSubscription",
+          "match": [
+            ".channel('public:agent_queue')",
+            "function () { reloadAndNotifyQueue(); })"
+          ],
+          "title": "The app listens to the run queue.",
+          "why": "Every push on the agent_queue channel triggers one reload of the queue rows."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "reloadAndNotifyQueue",
+          "match": [
+            "const prevAllRows = getAllQueueRows();",
+            "refreshMarkersForShippedTransitions(prevAllRows, getAllQueueRows());",
+            "notifyQueueChange();"
+          ],
+          "title": "A row that just shipped refreshes markers.",
+          "why": "Old rows are compared with new ones, so a run that just merged gets fresh TODO.md markers."
+        },
+        {
+          "file": "phase.js",
+          "symbol": "derivePhase",
+          "match": [
+            "queueRow.state === 'dispatched' || queueRow.state === 'running'"
+          ],
+          "title": "An in-flight run reads as RUNNING.",
+          "why": "While the queue row says dispatched or running, the task shows RUNNING, not DRAFT."
+        },
+        {
+          "file": "phaseRail.js",
+          "symbol": "paintPhaseRail",
+          "match": [
+            "PHASE_RAIL_ORDER.indexOf(phase) === -1 ? PHASE.DRAFT : phase",
+            "(i === currentIndex ? ' is-current' : '')"
+          ],
+          "title": "The rail lights up the current stage.",
+          "why": "Queue states like running have no node, so they show as DRAFT. Nodes before it fill in."
+        },
+        {
+          "file": "runState.js",
+          "symbol": "emitChange",
+          "match": [
+            "document.dispatchEvent(new CustomEvent(ACTIVE_RUN_CHANGE_EVENT",
+            "detail: { project: project || '' },"
+          ],
+          "title": "Run changes are announced by project.",
+          "why": "One DOM event names the project, so any open surface can update its run state."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "resolveEntryRunState",
+          "match": [
+            "if (entry.shipped && entry.shipped.has(entryId)) {",
+            "state = 'pending';"
+          ],
+          "title": "TODO.md markers decide shipped vs pending.",
+          "why": "A checked-off marker anywhere wins. A marker that's only present means the run is still pending."
+        },
+        {
+          "file": "phase.js",
+          "symbol": "derivePhase",
+          "match": [
+            "const runState = resolveEntryRunState(item.entryId);",
+            "if (runState === 'shipped') {",
+            "return item.entryReviewedAt ? PHASE.DONE : PHASE.ACCEPT;"
+          ],
+          "title": "Shipped becomes REVIEW until you look.",
+          "why": "A shipped entry shows REVIEW until you mark it reviewed. Then it moves to DONE."
+        },
+        {
+          "file": "agentView.js",
+          "symbol": "buildShippedGlyph",
+          "match": [
+            "glyph.title = 'Shipped';",
+            "glyph.innerHTML = SHIPPED_GLYPH_SVG;"
+          ],
+          "title": "The board card gets a check mark.",
+          "why": "Shipped cards swap their text chip for a filled check icon titled Shipped."
+        }
+      ]
+    },
+    {
+      "id": "agent-board",
+      "section": "pipeline",
+      "title": "The Agent board",
+      "recap": [
+        {
+          "title": "Rows live in memory",
+          "body": "loadQueueRows caches the selected project's queue rows. Renders read the cache."
+        },
+        {
+          "title": "One card per row",
+          "body": "A title, a chip or check, and content that depends on the state."
+        },
+        {
+          "title": "Every action ships the same way",
+          "body": "Dispatch, Accept and Retry all go through dispatchDraft."
+        },
+        {
+          "title": "Triage runs elsewhere",
+          "body": "The app only asks the Worker to start it. Results come back as queue rows."
+        }
+      ],
+      "steps": [
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "loadQueueRows",
+          "match": [
+            "_loadedProjectName = projectName;",
+            "if (_loadedProjectName === projectName) {"
+          ],
+          "title": "Only the current project's rows are kept.",
+          "why": "If you switch projects mid-fetch, the late answer is thrown away instead of overwriting."
+        },
+        {
+          "file": "agentView.js",
+          "symbol": "buildCard",
+          "match": [
+            "const thin = THIN_STATES.indexOf(row.state) !== -1;",
+            "buildShippedGlyph() : buildChip(row.state)",
+            "const secondary = buildSecondary(row);"
+          ],
+          "title": "Each row becomes a card.",
+          "why": "Running rows stay thin. Others get a state chip (a check if shipped) plus state-specific content."
+        },
+        {
+          "file": "agentView.js",
+          "symbol": "buildDraftedSecondary",
+          "match": [
+            "block.textContent = draftText || 'No draft text available.';",
+            "dispatchDraft(row, draftText, row.entry_id, boardDispatchTail)"
+          ],
+          "title": "Drafted: read it, then Dispatch.",
+          "why": "The draft entry is shown in full. Dispatch sends it off as a run."
+        },
+        {
+          "file": "agentView.js",
+          "symbol": "buildProposedSecondary",
+          "match": [
+            "preview.textContent = description;",
+            "accept.textContent = 'Accept';",
+            "dispatchDraft(row, draftText, row.entry_id, boardDispatchTail)"
+          ],
+          "title": "Proposed: Accept ships the proposal.",
+          "why": "You see a short description. Accept uses the same dispatch path as a draft."
+        },
+        {
+          "file": "agentView.js",
+          "symbol": "buildStuckSecondary",
+          "match": [
+            "p.textContent = stuckReasonText(row);",
+            "const canRetry = !!(row.entry_id || draftText);"
+          ],
+          "title": "Stuck: see why, then Retry.",
+          "why": "The reason is shown. Retry only works if there's an entry id or draft to send again."
+        },
+        {
+          "file": "agentView.js",
+          "symbol": "buildShippedSecondary",
+          "match": [
+            "a.href = row.pr_url;",
+            "if (row.entry_id && !_revertedEntries.has(row.entry_id)) {"
+          ],
+          "title": "Shipped: a PR link and a Revert.",
+          "why": "The merged PR is one tap away. Revert hides once this entry was reverted this session."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "dispatchTriage",
+          "match": [
+            "dispatch_triage: true,",
+            "project_id: projectId,",
+            "return Object.assign({ ok: true }, res || {});"
+          ],
+          "title": "Triage is handed to the Worker.",
+          "why": "The Worker starts a triage run on GitHub for this project. The app just gets back ok or not."
+        },
+        {
+          "file": "dispatchDraft.js",
+          "symbol": "isDeriveProposalRow",
+          "match": [
+            "return !!(row && row.aspect && (row.draft || '').toString().trim());"
+          ],
+          "title": "Derive proposals carry an aspect and a draft.",
+          "why": "A row needs both an aspect tag and real draft text to count as born from a derive pass."
+        }
+      ]
+    },
+    {
+      "id": "mockups",
+      "section": "pipeline",
+      "title": "A/B/C mockups for a task",
+      "recap": [
+        {
+          "title": "Two Worker calls",
+          "body": "One makes three mockups. A second turns your pick into a TODO.md entry."
+        },
+        {
+          "title": "Markers split the reply",
+          "body": "===VARIANT A/B/C=== lines cut one reply into three HTML pages."
+        },
+        {
+          "title": "Previews can't run code",
+          "body": "Each option is an iframe with an empty sandbox: scripts off."
+        },
+        {
+          "title": "The pick lands on the queue row",
+          "body": "Its entry becomes the row's draft and the row flips to drafted."
+        }
+      ],
+      "steps": [
+        {
+          "file": "mockupFlow.js",
+          "symbol": "buildMockupSecondary",
+          "match": [
+            "genBtn.addEventListener('click', function () {",
+            "genBtn.textContent = 'Generating…';",
+            "buildMockupGenPrompt(ctx, repo),"
+          ],
+          "title": "Tap Generate mockups.",
+          "why": "The button locks on Generating… and a prompt is built from the task's context."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "generateMockupsFromWorker",
+          "match": [
+            "const payload = { mockup: true",
+            "const res = await postToWorker(payload, opts);"
+          ],
+          "title": "The prompt leaves the app.",
+          "why": "The Worker's mockup route runs a model on it and sends back one reply holding the options."
+        },
+        {
+          "file": "mockupFlow.js",
+          "symbol": "parseMockupVariants",
+          "match": [
+            "const markerRe = /={2,}\\s*VARIANT",
+            "return any ? out : null;"
+          ],
+          "title": "The reply is cut into A, B and C.",
+          "why": "Each ===VARIANT X=== marker starts a page. No marker at all means an error."
+        },
+        {
+          "file": "mockupFlow.js",
+          "symbol": "buildMockupSecondary",
+          "match": [
+            "_mockupVariants.set(row.id, variants);",
+            "h.renderInto(h.previews, variants);"
+          ],
+          "title": "Options are cached, then drawn.",
+          "why": "Parsed options are kept in memory by row id, then drawn into the previews."
+        },
+        {
+          "file": "mockupFlow.js",
+          "symbol": "renderInto",
+          "parent": "buildMockupSecondary",
+          "match": [
+            "if (useTabs) renderMockupTabs(",
+            "else renderMockupPreviews("
+          ],
+          "title": "Tabs or tiles, same flow.",
+          "why": "A tabbed host shows one preview with A/B/C tabs. Others get one tile per option."
+        },
+        {
+          "file": "mockupFlow.js",
+          "symbol": "renderMockupPreviews",
+          "match": [
+            "frame.setAttribute('sandbox', '');",
+            "frame.srcdoc = injectPreviewStyle(variants[k]);",
+            "createMockupEntry(row, k, variants[k], useFail);"
+          ],
+          "title": "Each option is a sandboxed preview.",
+          "why": "Scripts stay off. Tapping “use this” on a tile hands that option to createMockupEntry."
+        },
+        {
+          "file": "mockupFlow.js",
+          "symbol": "createMockupEntry",
+          "match": [
+            "return chatWithWorker(",
+            "buildMockupEntryPrompt(row.context, key, html, repo)",
+            "listLogic.setAgentRunState(row.id, { draft: draft, state: 'drafted' })"
+          ],
+          "title": "Your pick becomes an entry.",
+          "why": "Its HTML goes out in a chat asking for a TODO.md entry. The reply is saved as the draft."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "setAgentRunState",
+          "match": [
+            "const allowed = ['state', 'draft'",
+            ".from('agent_queue')"
+          ],
+          "title": "The pick is stored on the queue row.",
+          "why": "draft and state are written to the task's agent_queue row. Keys not on the allowed list are dropped."
+        }
+      ]
+    },
+    {
+      "id": "generate-tasks",
+      "section": "pipeline",
+      "title": "Generating tasks from a project plan",
+      "recap": [
+        {
+          "title": "One stage makes tasks",
+          "body": "Only the actionable stage is decomposed. Other stages are background."
+        },
+        {
+          "title": "Each task comes with an entry",
+          "body": "The reply is a JSON list of a title plus a TODO.md entry."
+        },
+        {
+          "title": "You choose what lands",
+          "body": "A checklist shows every task. Duplicates are locked off."
+        },
+        {
+          "title": "Normal add path",
+          "body": "Accepted rows go through listLogic.addToDo, like typing them in."
+        }
+      ],
+      "steps": [
+        {
+          "file": "seedTasksModal.js",
+          "symbol": "openSeedTasksModal",
+          "match": [
+            "const actionableLabel = actionableStageLabelForStages(",
+            "listLogic.getProjectLifecycle(projectName)"
+          ],
+          "title": "Find the stage that holds the work.",
+          "why": "It's picked from the project's stage labels, with its lifecycle as the fallback."
+        },
+        {
+          "file": "seedTasksModal.js",
+          "symbol": "buildPrompt",
+          "match": [
+            "lines.push('## Project context (background only",
+            "lines.push('## ' + actionableLabel + ' (the ONLY source of tasks)');"
+          ],
+          "title": "Only the actionable stage becomes tasks.",
+          "why": "Other filled-in stages ride along, labeled as background, never as a task source."
+        },
+        {
+          "file": "seedTasksModal.js",
+          "symbol": "buildPrompt",
+          "match": [
+            "'Return ONLY a JSON array of objects",
+            "lines.push('  { \"title\":"
+          ],
+          "title": "Each task asks for a ready entry.",
+          "why": "Every item is a short title plus a TODO.md entry, so it's pipeline-ready."
+        },
+        {
+          "file": "seedTasksModal.js",
+          "symbol": "run",
+          "parent": "openSeedTasksModal",
+          "match": [
+            "chatWithWorker([{ role: 'user', content: prompt }]",
+            "const tasks = parseTasks(reply);"
+          ],
+          "title": "One private chat call.",
+          "why": "A one-off message, so your open chat isn't touched. The reply is parsed into tasks."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "chatWithWorker",
+          "match": [
+            "if (deepThink) payload.deep_think = true;",
+            "const res = await postToWorker(payload, opts);"
+          ],
+          "title": "The prompt leaves the app.",
+          "why": "The Worker runs it on a heavier model, since deep_think is set, and returns the reply text."
+        },
+        {
+          "file": "seedTasksModal.js",
+          "symbol": "renderChecklist",
+          "parent": "openSeedTasksModal",
+          "match": [
+            "const isDup = existing.has(key) || seenInList.has(key);",
+            "cb.checked = !isDup;",
+            "cb.disabled = isDup;"
+          ],
+          "title": "You review a checklist.",
+          "why": "New tasks start checked. Titles already in the project, or repeated, are locked off."
+        },
+        {
+          "file": "seedTasksModal.js",
+          "symbol": "openSeedTasksModal",
+          "match": [
+            "listLogic.addToDo(projectName, r.title);",
+            "item.desc = r.entry;",
+            "listLogic.editToDoItem(projectName, item);"
+          ],
+          "title": "Checked rows become tasks.",
+          "why": "Each is added by title, then its TODO.md entry is saved as the description."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "addToDo",
+          "parent": "listLogic",
+          "match": [
+            "arr.push(listItem);",
+            "saveToStorage();",
+            "op: 'insert',"
+          ],
+          "title": "Saved like any other task.",
+          "why": "The item is stored locally first, then queued as an insert to the database."
+        }
+      ]
+    },
+    {
+      "id": "coverage",
+      "section": "pipeline",
+      "title": "Assignment coverage",
+      "recap": [
+        {
+          "title": "The rubric lives in assignment.md",
+          "body": "Its aspect IDs (A1, B2...) are what coverage counts."
+        },
+        {
+          "title": "Queue rows carry an aspect tag",
+          "body": "Each aspect's status comes from the rows tagged with it."
+        },
+        {
+          "title": "Covered means shipped",
+          "body": "One shipped row is enough. In-flight and blocked don't count yet."
+        },
+        {
+          "title": "Blocked rows can be answered in place",
+          "body": "Or handed to chat with the task already filled in."
+        }
+      ],
+      "steps": [
+        {
+          "file": "inject.js",
+          "symbol": "readAssignmentFromWorker",
+          "match": [
+            "const assignmentPath = assignmentDocPath(target);",
+            "filePath: assignmentPath,"
+          ],
+          "title": "The app asks for assignment.md.",
+          "why": "It sits next to TODO.md. The Worker fetches the file from GitHub and sends back its text."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "refreshAssignment",
+          "match": [
+            "if (_assignmentProject !== name) return;",
+            "_assignment = describeAssignment("
+          ],
+          "title": "Only the latest read is kept.",
+          "why": "Switch projects mid-fetch and the old answer is dropped. The current one gets classified."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "describeAssignment",
+          "match": [
+            "aspects: docKind === 'brief' ? [] : parseAspects(content),"
+          ],
+          "title": "The rubric becomes a list of aspect IDs.",
+          "why": "A project brief has no rubric, so it gets no aspects and no coverage bar."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "aspectStatus",
+          "match": [
+            "if (s === 'shipped') return 'shipped';",
+            "if (inFlight) return 'in-flight';"
+          ],
+          "title": "One shipped row covers an aspect.",
+          "why": "Otherwise any running row makes it in-flight. Failed, blocked and the rest rank below that."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "computeCoverage",
+          "match": [
+            "(byAspect[tag] || (byAspect[tag] = [])).push(r);",
+            "outstanding: total - shipped - inFlight,"
+          ],
+          "title": "Rows are grouped by aspect and tallied.",
+          "why": "Shipped, in-flight, and everything else. Recomputed on every paint."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "buildCoverageSummary",
+          "match": [
+            "wrap.setAttribute('aria-label', 'View coverage detail');",
+            "headline.textContent = outstanding + ' outstanding · ' +",
+            "el.style.flexGrow = String(seg.n);"
+          ],
+          "title": "The summary leads with what's missing.",
+          "why": "It's a button into the detail modal. A headline plus a three-part bar sized by count."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "buildCoverageDetailRow",
+          "match": [
+            "const isAnswerable = !!blockedRow;",
+            "wrap.appendChild(buildAnswerLane(blockedRow));"
+          ],
+          "title": "A blocked aspect expands to an answer lane.",
+          "why": "The agent's question is waiting. You can reply without leaving the modal."
+        },
+        {
+          "file": "assignmentCoverage.js",
+          "symbol": "buildAnswerLane",
+          "match": [
+            "discuss.textContent = 'Discuss in chat';",
+            "openChatWithSeed(buildAnswerSeed(queueRow), queueRow.id);"
+          ],
+          "title": "Or hand the question to chat.",
+          "why": "Chat opens pre-filled with the task and question. The row id links the session back."
+        }
+      ]
+    },
+    {
+      "id": "todo-md-viewer",
+      "section": "pipeline",
+      "title": "The TODO.md viewer: run, revert, redeploy",
+      "recap": [
+        {
+          "title": "The viewer reads TODO.md through the Worker",
+          "body": "Sync fetches the file fresh each time and repaints the card."
+        },
+        {
+          "title": "Entries are found by their id marker",
+          "body": "Only rows with an <!-- id --> can be run, deleted or reverted."
+        },
+        {
+          "title": "Revert only moves records once it merges",
+          "body": "unshipEntry rolls the bookkeeping back to match the code."
+        },
+        {
+          "title": "Runs and redeploys never overlap",
+          "body": "A per-project flag in runState.js blocks runs during a redeploy."
+        }
+      ],
+      "steps": [
+        {
+          "file": "todoMdViewer.js",
+          "symbol": "buildTodoMdViewerCard",
+          "match": [
+            "card.dataset.projectName = projectName;",
+            "const runBacklogBtn = document.createElement('button');",
+            "const deployPill = document.createElement('button');"
+          ],
+          "title": "One card per project.",
+          "why": "Its header holds the Run backlog button and the Redeploy pill for that project."
+        },
+        {
+          "file": "todoMdViewer.js",
+          "symbol": "runSync",
+          "match": [
+            "const res = await readTodoMdFromWorker(target);",
+            "renderContent(res.content);",
+            "refreshPagesStatus();"
+          ],
+          "title": "Sync fetches the file and repaints.",
+          "why": "On success the body re-renders. Every sync also re-checks the Redeploy pill's health."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "readTodoMdFromWorker",
+          "match": [
+            "read: true,",
+            "filePath: target.file_path,"
+          ],
+          "title": "The app asks the Worker for TODO.md.",
+          "why": "The Worker reads the file from the project's GitHub repo and sends back its text."
+        },
+        {
+          "file": "todoMdViewer.js",
+          "symbol": "parseTodoMdChecklist",
+          "match": [
+            "const cb = raw.match(/^(\\s*)- \\[( |x|X)\\]\\s?(.*)$/);",
+            "if (m) currentTop.entryId = m[1];"
+          ],
+          "title": "Each line becomes a checkbox, heading or text.",
+          "why": "Top-level entries pick up their id marker. That id is what Run and Revert target."
+        },
+        {
+          "file": "todoMdViewer.js",
+          "symbol": "performRevert",
+          "match": [
+            "if (res && res.ok && res.merged === true) {",
+            "const unship = await unshipEntry(entryId, { target: target });",
+            "revertedThisSession.add(entryId);"
+          ],
+          "title": "Revert only rolls back records once merged.",
+          "why": "Only a merged revert unships the entry. It's then marked so the pill can't fire twice."
+        },
+        {
+          "file": "dispatchDraft.js",
+          "symbol": "unshipEntry",
+          "match": [
+            "const toProposals = isDeriveProposalRow(row);",
+            "const res = await rewriteTodoMd(target, 'delete_entry', id);",
+            "todoMdUpdated = await reopenEntryInTodoMd(target, id);"
+          ],
+          "title": "The entry goes back where it came from.",
+          "why": "Derive-made work leaves TODO.md for the proposals list. A hand-written entry is reopened."
+        },
+        {
+          "file": "todoMdViewer.js",
+          "symbol": "setPagesRebuilding",
+          "match": [
+            "if (active) writeActiveRedeploy(projectName, { startedAt: Date.now() });",
+            "syncRunButtonsRedeployBlocked();"
+          ],
+          "title": "Redeploy claims the project.",
+          "why": "A per-project flag is written and the Run buttons grey out until the deploy settles."
+        },
+        {
+          "file": "runState.js",
+          "symbol": "readActiveRedeploy",
+          "match": [
+            "Date.now() - rec.startedAt >= REDEPLOY_GIVE_UP_MS) {",
+            "clearActiveRedeploy(project);"
+          ],
+          "title": "A stuck redeploy flag expires.",
+          "why": "Older than six minutes and it's cleared, so a closed tab can't block runs forever."
+        }
+      ]
     }
   ]
 }
