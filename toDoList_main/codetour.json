@@ -2458,6 +2458,1308 @@
           "why": "Older than six minutes and it's cleared, so a closed tab can't block runs forever."
         }
       ]
+    },
+    {
+      "id": "chat-send",
+      "section": "chat",
+      "title": "Sending a message to Claude",
+      "recap": [
+        {
+          "title": "One entry point for sending",
+          "body": "The Send button and Enter both call submitComposer, so they always pick the same conversation."
+        },
+        {
+          "title": "Fast or Deep is a saved default",
+          "body": "Deep adds a deep_think flag to the turn. The chip shows which model each mode runs on."
+        },
+        {
+          "title": "chatWithWorker is the exit",
+          "body": "Everything after that POST, including the model call, happens in the Worker."
+        },
+        {
+          "title": "Turns are saved twice",
+          "body": "localStorage first for each repo, then a chat_turns row on the server in the background."
+        }
+      ],
+      "steps": [
+        {
+          "file": "claudeSheet.js",
+          "symbol": "openClaudeSheet",
+          "match": [
+            "sheetEl.classList.add('open');",
+            "refreshWorkspaceRepos();"
+          ],
+          "title": "Opening the sheet re-syncs the workspaces.",
+          "why": "Repos added while it was closed appear in the pill menu. Chat history and attachments are kept."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "buildChatView",
+          "match": [
+            "send.addEventListener('click', function() { submitComposer(); });",
+            "if (event.key === 'Enter' && !event.shiftKey) {"
+          ],
+          "title": "Send and Enter both call one function.",
+          "why": "submitComposer decides who the text goes to, so the two can't disagree. Shift+Enter adds a new line."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "renderSendMode",
+          "match": [
+            "const modes = describeSendModes(",
+            "if (tag) tag.textContent = modes.toggleLabel;"
+          ],
+          "title": "The mode chip names its model.",
+          "why": "Fast and Deep each map to a model for this repo. The chip shows a short acronym for it."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "sendChatTurn",
+          "match": [
+            "appendChatTurn(turn);",
+            "appendMessageBubble('user', text, turn.images);",
+            "await requestAssistantReply(activeIterateEntry, deep);"
+          ],
+          "title": "Your message is saved and shown first.",
+          "why": "It appears before any reply. During an iterate session, the entry id is sent with every turn."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "chatWithWorker",
+          "match": [
+            "if (deepThink) payload.deep_think = true;",
+            "payload.attach_files = attachFiles.slice();",
+            "const res = await postToWorker(payload, opts);"
+          ],
+          "title": "The turn leaves the app.",
+          "why": "One POST carries the history, repo, files and Deep flag. The Worker calls the model and sends the reply back."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "appendChatTurn({ role: 'assistant', content: reply });",
+            "renderAssistantContent(pending, visible);"
+          ],
+          "title": "The reply replaces the placeholder.",
+          "why": "It's saved to history first. INSPECT and ASK lines are removed from the text you see."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "appendChatTurn",
+          "match": [
+            "saveChatHistory();",
+            "listLogic.insertChatTurn(row)"
+          ],
+          "title": "Each turn is saved twice.",
+          "why": "localStorage for this repo right away, then a server row in the background. A failed save shows no error."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "chatTurnWasPersisted",
+          "match": [
+            "return !!(turn && turn.created_at"
+          ],
+          "title": "Only synced turns can be removed by sync.",
+          "why": "created_at means the turn came back from the server, so if it's gone there, another device deleted it."
+        }
+      ]
+    },
+    {
+      "id": "chat-context",
+      "section": "chat",
+      "title": "Attaching files and layout context",
+      "recap": [
+        {
+          "title": "Two pickers, one manifest",
+          "body": "The ⌖ chip fills a task's File: line. The 📎 picker attaches files to chat. Both read the same cached manifest."
+        },
+        {
+          "title": "The manifest is built at deploy",
+          "body": "The app only fetches src-manifest.json. A failed fetch becomes an empty list."
+        },
+        {
+          "title": "Only paths are sent",
+          "body": "Attachments are re-sent with every turn, and all of them come from one repo."
+        },
+        {
+          "title": "Layout is measured live",
+          "body": "serializeLayout reads what the browser actually draws, not what the stylesheet says."
+        }
+      ],
+      "steps": [
+        {
+          "file": "filePicker.js",
+          "symbol": "createFilePicker",
+          "match": [
+            "if (!repo) trigger.style.display = 'none';",
+            "if (loadStatus === 'idle') {",
+            "loadManifestOnce(repo).then("
+          ],
+          "title": "The ⌖ chip lists the project's files.",
+          "why": "It hides only when no repo is linked. The list loads the first time you open it."
+        },
+        {
+          "file": "filePicker.js",
+          "symbol": "loadManifestOnce",
+          "match": [
+            "const cached = getCachedManifest(repo);",
+            "const inFlight = manifestLoadsInFlight.get(repo);",
+            "manifestLoadsInFlight.set(repo, p);"
+          ],
+          "title": "Two quick opens share one fetch.",
+          "why": "A cached manifest returns at once. A load already running for that repo is reused."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "loadManifest",
+          "match": [
+            "const res = await fetch(manifestUrlForRepo(repo));",
+            "srcManifestCache[repo] = result;"
+          ],
+          "title": "The manifest comes from the published site.",
+          "why": "A deploy script writes src-manifest.json. The app fetches it once per repo and caches even a failure."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "addAttachment",
+          "match": [
+            "if (attachedFiles.length && attachedRepo && repo !== attachedRepo) {",
+            "attachedFiles.push(path);"
+          ],
+          "title": "Chat attachments all come from one repo.",
+          "why": "A file from a different repo is refused with a notice. Accepted paths become chips in the composer."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "const result = await chatWithWorker(toWorkerTurns(chatHistory), entryId, attachedFiles"
+          ],
+          "title": "The attachments are sent with every turn.",
+          "why": "Only the paths are sent. The Worker loads the file contents from the repo for the model."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "renderAttachLayoutButton",
+          "match": [
+            "const result = serializeLayout(selector);",
+            "if (!result || result.found === false) {",
+            "sendInspectTurn(content);"
+          ],
+          "title": "An INSPECT reply offers to attach layout.",
+          "why": "Tapping measures the element and sends it as your next turn. If it isn't on screen, nothing is sent."
+        },
+        {
+          "file": "layoutInspect.js",
+          "symbol": "serializeLayout",
+          "match": [
+            "if (!el) return { found: false, selector };",
+            "parent: snapshotNode(el.parentElement),",
+            "children: Array.from(el.children).map(snapshotNode),"
+          ],
+          "title": "The snapshot covers one small subtree.",
+          "why": "The element, its parent and its direct children. That keeps it small enough to send."
+        },
+        {
+          "file": "layoutInspect.js",
+          "symbol": "snapshotNode",
+          "match": [
+            "const rect = el.getBoundingClientRect();",
+            "style: computedStyles(el),"
+          ],
+          "title": "Each node records its box and styles.",
+          "why": "Computed styles show what is actually drawn, including inline styles set while the app runs."
+        }
+      ]
+    },
+    {
+      "id": "chat-model",
+      "section": "chat",
+      "title": "Choosing a model",
+      "recap": [
+        {
+          "title": "One read, two scopes",
+          "body": "The panel loads settings once. Repo and Global are two views of the same response."
+        },
+        {
+          "title": "Three groups by who pays",
+          "body": "Plan quota for Anthropic, OpenCode Go for go/ models, API billed for the rest."
+        },
+        {
+          "title": "Chips show where a value came from",
+          "body": "No tag means set here. A dim tag reads global or default."
+        },
+        {
+          "title": "Saving is optimistic",
+          "body": "The panel updates first and goes back to the old value if the save fails."
+        },
+        {
+          "title": "Chat sends no model id",
+          "body": "A turn sends only the Deep flag. The model is looked up from the saved settings."
+        }
+      ],
+      "steps": [
+        {
+          "file": "modelsPanel.js",
+          "symbol": "openModelsPanel",
+          "match": [
+            "fetchModelSettings(activeRepo),",
+            "settings = set;"
+          ],
+          "title": "The panel reads models once, on open.",
+          "why": "The catalog and the settings load together. The panel shows a spinner until both arrive."
+        },
+        {
+          "file": "modelsPanel.js",
+          "symbol": "buildModelRows",
+          "match": [
+            "const chip = resolveSurfaceChip(surface, settings, cat.defaults, scope);",
+            "apiBadge: isPlanLane"
+          ],
+          "title": "Each workflow gets one row.",
+          "why": "The chip text comes from resolveSurfaceChip. A plan lane pinned to a non-Anthropic model gets an API badge."
+        },
+        {
+          "file": "modelsPanel.js",
+          "symbol": "resolveSurfaceChip",
+          "match": [
+            "const tag = source === 'repo' ? '' : (source === 'global' ? 'global' : 'default');",
+            "return { text: value || fallbackId || 'default', tag: tag };"
+          ],
+          "title": "The chip says where its model came from.",
+          "why": "Set on this repo, it shows no tag. Otherwise a dim tag reads global or default."
+        },
+        {
+          "file": "modelsPanel.js",
+          "symbol": "buildPickerGroups",
+          "match": [
+            "if (!Array.isArray(m.lanes) || m.lanes.indexOf(lane) === -1) continue;",
+            "if (isOpencodeGoId(m.id)) {",
+            "} else if (m.provider === 'anthropic') {"
+          ],
+          "title": "The picker groups models by who pays.",
+          "why": "go/ models are checked first, then Anthropic for plan quota. The rest are API billed."
+        },
+        {
+          "file": "modelsPanel.js",
+          "symbol": "buildPickerList",
+          "match": [
+            "label: 'Inherit',",
+            "buildPickerGroupHeading('PLAN QUOTA', '')"
+          ],
+          "title": "Inherit sits at the top of the list.",
+          "why": "It's checked when nothing is set here, so 'not set' is a choice you can see and pick."
+        },
+        {
+          "file": "modelsPanel.js",
+          "symbol": "commitModel",
+          "parent": "openModelsPanel",
+          "match": [
+            "const revert = applyPick(surface, model);",
+            "saveModelSetting({",
+            "revert();"
+          ],
+          "title": "A pick shows right away.",
+          "why": "The panel updates before the save. If the save is refused, the old value returns with a toast."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "saveModelSetting",
+          "match": [
+            "models_set: true,",
+            "repo: realRepoOnly(o.repo),"
+          ],
+          "title": "The choice leaves the app.",
+          "why": "One POST names the scope, workflow and model. The Worker saves it and uses it the next time that workflow runs."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "ensureRunModelContext",
+          "match": [
+            "runModelSettingsPromises.set(key, Promise.resolve(fetchModelSettings(repo))",
+            "if (res && res.ok) runModelSettingsByRepo.set(key, res);"
+          ],
+          "title": "The composer reads settings back per repo.",
+          "why": "Fetched once per repo and cached, so the Fast / Deep chip can name each mode's model."
+        }
+      ]
+    },
+    {
+      "id": "structure-open",
+      "section": "structure",
+      "title": "Opening the Structure tab",
+      "recap": [
+        {
+          "title": "The project picks the repo",
+          "body": "No picker. The selected project's linked repo is what gets mapped."
+        },
+        {
+          "title": "One manifest feeds every lens",
+          "body": "src-manifest.json is built at deploy and read by ensureRegionsLoaded."
+        },
+        {
+          "title": "Only the tree repaints",
+          "body": "Header, filter and toolbars stay put. Lens switches redraw the tree."
+        },
+        {
+          "title": "Your lens is remembered",
+          "body": "The last lens you picked is saved and reopened next time."
+        }
+      ],
+      "steps": [
+        {
+          "file": "structureView.js",
+          "symbol": "renderStructureView",
+          "match": [
+            "const projectName = getSelectedProjectName();",
+            "appendEmptyState(view, 'Select a project to see its structure.');",
+            "const repo = resolveProjectRepo(projectName);"
+          ],
+          "title": "The repo comes from the selected project.",
+          "why": "No project selected, or no linked repo, and an empty state explains what's missing."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "renderStructureView",
+          "match": [
+            "lens = getStructureLens();",
+            "if (repo !== selectedRepo) {",
+            "hydrateActiveLensState(repo, lens);"
+          ],
+          "title": "The saved lens and fold state come back.",
+          "why": "A new repo drops the old repo's open folders and restores its own saved ones."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "renderStructureView",
+          "match": [
+            "Promise.resolve(renderLens(selectedRepo, tree)).then(function () {"
+          ],
+          "title": "Once the shell is built, the lens paints.",
+          "why": "Header, filter and toolbars are already in place. The active lens fills the tree."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "renderLens",
+          "match": [
+            "else exitLiveView();",
+            "if (lens === 'code') {",
+            "if (lens === 'map') return renderMapLens(repo, treeEl);",
+            "return renderSecondLens(repo, treeEl);"
+          ],
+          "title": "renderLens sends the paint to one lens.",
+          "why": "A live iframe is suspended or dropped first. Then Code, Map, or the UI-or-second lens paints."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "ensureRegionsLoaded",
+          "match": [
+            "return loadManifest(repo).then(function (result) {",
+            "currentLens = declaredLens === 'types' ? 'types'"
+          ],
+          "title": "Every lens reads the repo's manifest.",
+          "why": "It's src-manifest.json, built at deploy. Its declared lens makes the second slot UI, Types or SQL."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "syncMapLensSegment",
+          "match": [
+            "if (currentAreas && !attached) lensToggleGroup.appendChild(mapLensBtn);"
+          ],
+          "title": "The Map button appears only with areas.",
+          "why": "Repos whose manifest has no areas keep a two-button toggle."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "buildLensToggle",
+          "match": [
+            "const target = btn.dataset.lens;",
+            "setStructureLens(lens);",
+            "onChange();"
+          ],
+          "title": "Tapping a lens saves it.",
+          "why": "The choice is stored so the tab reopens on it. Then the tree repaints."
+        },
+        {
+          "file": "prefs.js",
+          "symbol": "getStructureLens",
+          "match": [
+            "if (v === 'code' || v === 'map') return v;",
+            "return 'ui';"
+          ],
+          "title": "UI is the default lens.",
+          "why": "Anything stored other than code or map reads as UI, so a stale value can't break the toggle."
+        }
+      ]
+    },
+    {
+      "id": "code-map",
+      "section": "structure",
+      "title": "How the code map is built",
+      "recap": [
+        {
+          "title": "The inputs come from deploy",
+          "body": "Per-file lines and imports, plus the areas in codemap.json."
+        },
+        {
+          "title": "Areas are nodes, imports are edges",
+          "body": "deriveAreaGraph sums lines per area and counts imports between areas."
+        },
+        {
+          "title": "Size means lines, thickness means imports",
+          "body": "Bigger circles hold more code. Thicker edges carry more imports."
+        },
+        {
+          "title": "Level 2 lists one area's files",
+          "body": "Sorted by how many files use them, or by size."
+        }
+      ],
+      "steps": [
+        {
+          "file": "structureView.js",
+          "symbol": "ensureRegionsLoaded",
+          "match": [
+            "currentModules = (result",
+            "currentAreas = (result"
+          ],
+          "title": "Modules and areas arrive with the manifest.",
+          "why": "Each file's lines and imports, and the areas from codemap.json, were computed at deploy."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "renderMapLens",
+          "match": [
+            "if (!currentAreas) {",
+            "return renderLens(repo, treeEl);",
+            "mountMapLens(repo, treeEl, deriveAreaGraph(currentModules, currentAreas));"
+          ],
+          "title": "No areas means no map.",
+          "why": "The tab falls back to the other lens. Otherwise modules and areas become a graph."
+        },
+        {
+          "file": "codeMapModel.js",
+          "symbol": "deriveAreaGraph",
+          "match": [
+            "const owner = areaIndex(areaList);",
+            "s.lines += Number(m.lines) || 0;"
+          ],
+          "title": "Each area adds up its files' lines.",
+          "why": "Every file is matched to its owning area. Files in no area are skipped."
+        },
+        {
+          "file": "codeMapModel.js",
+          "symbol": "deriveAreaGraph",
+          "match": [
+            "if (!to || to === from) return;",
+            "const pair = order.get(from) < order.get(to) ? [from, to] : [to, from];",
+            "if (prior) prior.weight += 1;"
+          ],
+          "title": "Imports between areas become edges.",
+          "why": "Each cross-area import adds 1. Both directions share one edge; same-area imports draw none."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "buildMapLens",
+          "match": [
+            "const map = buildConstellation(graph, false, function (id) {",
+            "selectedArea = selectedArea === id ? null : id;",
+            "paintMapSelection();"
+          ],
+          "title": "Level 1 shows every area at once.",
+          "why": "Tapping a circle selects it, tapping again clears it, and the panel below repaints."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "buildConstellation",
+          "match": [
+            "line.setAttribute('stroke-width', String(Math.min(MAP_EDGE_MAX_WIDTH, 1 + e.weight / 6)));",
+            ": mapDiameter(a.lines, maxLines);"
+          ],
+          "title": "Edges thicken with imports, circles with lines.",
+          "why": "Edge width grows with weight up to a cap. Circle size compares an area's lines to the biggest area."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "buildMapLevel2",
+          "match": [
+            "const map = buildConstellation(graph, true, function (id) {",
+            "line.setAttribute('class', 'structureMapEdge is-active');",
+            "wrap.appendChild(buildMapFileList(areaFiles(currentModules, source, mapFileSort)));"
+          ],
+          "title": "Opening an area shows its files.",
+          "why": "A mini-map keeps the open area's edges lit. Its file list follows below."
+        },
+        {
+          "file": "codeMapModel.js",
+          "symbol": "areaFiles",
+          "match": [
+            "usedBy.set(imp, (usedBy.get(imp) || 0) + 1);",
+            "const primary = sort === 'size'"
+          ],
+          "title": "Files sort by use, or by size.",
+          "why": "Used-by counts importers across the whole repo, then lines break ties. Size sorts by lines alone."
+        }
+      ]
+    },
+    {
+      "id": "code-viewer",
+      "section": "structure",
+      "title": "Reading a file in the code viewer",
+      "recap": [
+        {
+          "title": "One opener, two homes",
+          "body": "Detail column on desktop, a full-screen sheet on phones."
+        },
+        {
+          "title": "Files are read once",
+          "body": "Fetched source is cached, so reopening a file is instant."
+        },
+        {
+          "title": "Only a window is painted",
+          "body": "Load more adds chunks above or below, so huge files stay quick."
+        },
+        {
+          "title": "Late reads are dropped",
+          "body": "A generation counter stops an old fetch painting over a newer file."
+        }
+      ],
+      "steps": [
+        {
+          "file": "structureView.js",
+          "symbol": "openFileInCodeViewer",
+          "match": [
+            "const host = codeViewerHost();",
+            "opts.startLine = highlight.startLine;",
+            "renderCodeViewer(host, opts);"
+          ],
+          "title": "Every file open goes through one call.",
+          "why": "It picks the host for this screen. An optional span opens the file at a highlighted range."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "codeViewerHost",
+          "match": [
+            "return structureIsDesktop() ? currentCanvasHost : ensureCodeSheet();"
+          ],
+          "title": "Desktop column or mobile sheet.",
+          "why": "Wider than 1023px, the file opens in the detail column. Narrower, in a full-screen sheet."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "ensureCodeSheet",
+          "match": [
+            "if (event.target === backdrop) hideCodeSheet();",
+            "if (event.key !== 'Escape') return;"
+          ],
+          "title": "The sheet closes on backdrop or Escape.",
+          "why": "Closing only hides the sheet, so the file stays open behind it."
+        },
+        {
+          "file": "codeViewer.js",
+          "symbol": "renderCodeViewer",
+          "match": [
+            "const gen = ++renderGen;",
+            "refs.status.textContent = 'Loading source…';",
+            "notifyChange();"
+          ],
+          "title": "The pane resets and says it's loading.",
+          "why": "Each open gets a new number. Listeners hear which file is open, so its row can light up."
+        },
+        {
+          "file": "codeViewer.js",
+          "symbol": "fetchLines",
+          "match": [
+            "if (hit) return Promise.resolve({ ok: true, lines: hit.lines, sha: hit.sha });",
+            "return Promise.resolve(readRepoFile(target, filePath)).then(function (res) {"
+          ],
+          "title": "Source comes from cache or the Worker.",
+          "why": "A cached file returns at once. Otherwise readRepoFile asks the Worker, which reads it from GitHub."
+        },
+        {
+          "file": "codeViewer.js",
+          "symbol": "renderCodeViewer",
+          "match": [
+            "if (gen !== renderGen) return;",
+            "const win = computeWindow(total, hl);",
+            "if (hl) scrollToLine(state, hl.start);"
+          ],
+          "title": "Only a window of lines is painted.",
+          "why": "A read for an older open is dropped. A jump scrolls straight to its span."
+        },
+        {
+          "file": "codeViewer.js",
+          "symbol": "loadMore",
+          "match": [
+            "const newStart = Math.max(1, state.start - CHUNK);",
+            "paintRange(state, state.end + 1, newEnd, false);",
+            "refreshWindowChrome(state);"
+          ],
+          "title": "Load more adds a chunk at either end.",
+          "why": "Painted lines stay put, so your place holds and huge files stay fast."
+        },
+        {
+          "file": "codeViewer.js",
+          "symbol": "clearCodeViewer",
+          "match": [
+            "renderGen++;",
+            "shell.empty.hidden = false;"
+          ],
+          "title": "Closing returns the empty placeholder.",
+          "why": "Bumping the counter means a read still in flight can't paint into a closed column."
+        }
+      ]
+    },
+    {
+      "id": "ui-lens",
+      "section": "structure",
+      "title": "The UI view: mapping live screen regions",
+      "recap": [
+        {
+          "title": "The running app maps itself",
+          "body": "Its regions are walked straight from the live page."
+        },
+        {
+          "title": "Other repos use a published map",
+          "body": "Their regions come from the deploy-built manifest."
+        },
+        {
+          "title": "Snapshots are kept per screen size",
+          "body": "Mobile and desktop captures live in separate buckets."
+        },
+        {
+          "title": "Live view is opt-in and short-lived",
+          "body": "The deployed page loads only on tap and is removed on exit."
+        }
+      ],
+      "steps": [
+        {
+          "file": "structureView.js",
+          "symbol": "renderUiLens",
+          "match": [
+            "if (repo === getRunningAppRepo()) {",
+            "const tree = buildUiTree();",
+            "else treeEl.appendChild(buildRegionRow(node, 0));"
+          ],
+          "title": "The running app walks its own page.",
+          "why": "Its on-screen regions become a tree of rows, read live from the page."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "renderUiLens",
+          "match": [
+            "return ensureRegionsLoaded(repo).then(function (result) {",
+            "renderPublishedUiMap(repo, result, treeEl);"
+          ],
+          "title": "Other repos show their published map.",
+          "why": "Their regions come from the manifest, computed at deploy rather than walked live."
+        },
+        {
+          "file": "structureView.js",
+          "symbol": "renderUiLens",
+          "match": [
+            "if (repo === SELF_REPO) {",
+            "const canvasHost = resolveCanvasHost();",
+            "const pane = renderStructureCanvas(canvasHost, {"
+          ],
+          "title": "This app also gets a block canvas.",
+          "why": "It mounts in the detail column on desktop, or above the tree on mobile."
+        },
+        {
+          "file": "structureCanvas.js",
+          "symbol": "renderStructureCanvas",
+          "match": [
+            "if (!isSelf && !repoHasAnyData(repo)) return null;",
+            "rebuild();"
+          ],
+          "title": "A canvas needs measured geometry.",
+          "why": "This repo always mounts. Others mount only once they have a stored capture."
+        },
+        {
+          "file": "structureCanvas.js",
+          "symbol": "captureSnapshot",
+          "match": [
+            ": currentViewportKey();",
+            "if (rootReal && keptCount > 0 && keptReal === 0) {",
+            "persistBucket(targetRepo, key);"
+          ],
+          "title": "Snapshots save each region's size.",
+          "why": "They land in the mobile or desktop bucket. A capture where everything measured zero is thrown away."
+        },
+        {
+          "file": "structureCanvas.js",
+          "symbol": "buildLiveViewport",
+          "match": [
+            "scaler.appendChild(overlay);",
+            "paintLiveOverlay();",
+            "}, LIVE_LOAD_TIMEOUT_MS);",
+            "frame.src = url;"
+          ],
+          "title": "Live view loads the deployed page.",
+          "why": "An overlay sits on the iframe and repaints on load. No load in time falls back to the canvas."
+        },
+        {
+          "file": "structureCanvas.js",
+          "symbol": "buildLiveRegionBox",
+          "match": [
+            "el.style.left = box.x + 'px';",
+            "tapLiveRegion(node);"
+          ],
+          "title": "Each region gets a tappable outline.",
+          "why": "Boxes are placed from the region's live rect. A tap or Enter selects it."
+        },
+        {
+          "file": "structureCanvas.js",
+          "symbol": "exitLiveView",
+          "match": [
+            "teardownLive();",
+            "liveDrillPath = [];"
+          ],
+          "title": "Exiting removes the iframe.",
+          "why": "Its listeners and timer go too, and live mode resets, so the next open starts on the canvas."
+        }
+      ]
+    },
+    {
+      "id": "app-lock",
+      "section": "more",
+      "title": "App lock (PIN)",
+      "recap": [
+        {
+          "title": "The digits are never stored",
+          "body": "Only a random salt and a digest of salt plus PIN sit in localStorage."
+        },
+        {
+          "title": "It's a privacy screen",
+          "body": "Not encryption. Your todos stay readable in localStorage either way."
+        },
+        {
+          "title": "Two flags arm it",
+          "body": "The enabled flag and a stored PIN. Either one missing and nothing locks."
+        },
+        {
+          "title": "Idle is measured by a timestamp",
+          "body": "Every tap stamps the time, so a reload or a throttled tab still locks on time."
+        }
+      ],
+      "steps": [
+        {
+          "file": "appLock.js",
+          "symbol": "setAppLockPin",
+          "match": [
+            "if (!isValidPin(pin)) return false;",
+            "const salt = mintSalt();",
+            "salt + ':' + digestPin(pin, salt)"
+          ],
+          "title": "A new PIN is saved as salt plus digest.",
+          "why": "Anything but four digits is refused. What's stored is salt:digest, never the digits themselves."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "mintSalt",
+          "match": [
+            "globalThis.crypto.getRandomValues(bytes);",
+            "Math.random().toString(16)"
+          ],
+          "title": "Each install gets its own random salt.",
+          "why": "Eight random bytes from crypto when available, with a Math.random fallback otherwise."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "digestPin",
+          "match": [
+            "const chains = [0x811c9dc5",
+            "for (let round = 0; round < 256; round++) {",
+            "out += h.toString(16).padStart(8, '0');"
+          ],
+          "title": "The digest runs four chains, 256 rounds each.",
+          "why": "Four seeded hash chains glue into one 128-bit hex string. It's synchronous, so no await is needed."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "verifyAppLockPin",
+          "match": [
+            "const salt = raw.slice(0, sep);",
+            "return digestPin(pin, salt) === stored;"
+          ],
+          "title": "Unlocking re-hashes what you typed.",
+          "why": "The saved salt is split off and reused. A match on the digest is the only way back in."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "onActivity",
+          "parent": "startAppLockWatch",
+          "match": [
+            "if (isAppLocked()) return;",
+            "markAppLockActivity();",
+            "rearmAppLockTimer();"
+          ],
+          "title": "Every tap or key restarts the idle clock.",
+          "why": "It stamps the time and re-arms one timer. Typing into the lock screen itself doesn't count."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "readAppLockTimeoutMinutes",
+          "match": [
+            "const known = APP_LOCK_TIMEOUT_OPTIONS.some(",
+            "return known ? parsed : APP_LOCK_DEFAULT_TIMEOUT_MINUTES;"
+          ],
+          "title": "The idle span must be one of the offered options.",
+          "why": "A hand-edited or unknown value falls back to the 5-minute default instead of breaking the timer."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "isAppLockArmed",
+          "match": [
+            "return isAppLockEnabled() && hasAppLockPin();"
+          ],
+          "title": "The lock is armed only with both flag and PIN.",
+          "why": "The timer and the reload check both ask this first, so a half-set-up lock never fires."
+        },
+        {
+          "file": "appLock.js",
+          "symbol": "clearAppLock",
+          "match": [
+            "localStorage.removeItem(APP_LOCK_PIN_KEY);",
+            "localStorage.removeItem(APP_LOCK_ACTIVITY_KEY);"
+          ],
+          "title": "Turning it off wipes all four keys.",
+          "why": "PIN, enabled flag, timeout and last activity all go, so setting up again starts clean."
+        }
+      ]
+    },
+    {
+      "id": "export-import",
+      "section": "more",
+      "title": "Exporting and importing your data",
+      "recap": [
+        {
+          "title": "An export is a versioned snapshot",
+          "body": "version, exportedAt and every project from listLogic's in-memory copy."
+        },
+        {
+          "title": "Validation lives here, not in listLogic",
+          "body": "Bad JSON, a wrong version or a missing projects field stop before anything changes."
+        },
+        {
+          "title": "The confirm names what you lose",
+          "body": "It counts your current todos and projects before asking to overwrite them."
+        },
+        {
+          "title": "Replace is all or nothing",
+          "body": "replaceAllProjects wipes and rewrites the tree in one pass. No half-imported state."
+        }
+      ],
+      "steps": [
+        {
+          "file": "exportImport.js",
+          "symbol": "buildExportPayload",
+          "match": [
+            "version: EXPORT_VERSION,",
+            "projects: listLogic.snapshotProjects(),"
+          ],
+          "title": "An export is a versioned snapshot.",
+          "why": "A version number, a timestamp, and every project as listLogic holds it in memory."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "attachDragDropImport",
+          "match": [
+            "window.matchMedia('(pointer: coarse)').matches",
+            "importFromFile(file, onAfterReplace);"
+          ],
+          "title": "Drop a .json file anywhere to import it.",
+          "why": "Touch devices skip these listeners entirely. On desktop, a dropped JSON file goes to importFromFile."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "importFromFile",
+          "match": [
+            "const reader = new FileReader();",
+            "importTodosFromString(text, onAfterReplace);"
+          ],
+          "title": "The file is read as plain text.",
+          "why": "FileReader hands the text to the shared import path. A read error shows the same toast as bad JSON."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "parseAndValidateExport",
+          "match": [
+            "parsed = JSON.parse(rawText);",
+            "if (parsed.version !== EXPORT_VERSION) {",
+            "const projects = normaliseProjectsField(parsed.projects);"
+          ],
+          "title": "The text must parse and match the version.",
+          "why": "Then the projects field is normalised. Older object-shaped files are turned into the array shape."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "importTodosFromString",
+          "match": [
+            "if (!opts.silentError) showImportError(result.error);",
+            "handleValidatedImport(result.projects, onAfterReplace, opts.sourceLabel, {"
+          ],
+          "title": "A rejected file stops here with a toast.",
+          "why": "Nothing has changed yet. Only a file that passed validation moves on to the confirm step."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "describeCurrentState",
+          "match": [
+            "const projects = listLogic.listProjectsArray();",
+            "if (item && item.tit) todoCount++;"
+          ],
+          "title": "Your current data is counted first.",
+          "why": "Projects, plus todos that have a title. The always-empty blank row isn't counted as a todo."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "handleValidatedImport",
+          "match": [
+            "const before = describeCurrentState();",
+            "' will be permanently overwritten.'",
+            "onConfirm: applyReplace,"
+          ],
+          "title": "The confirm says exactly what will be lost.",
+          "why": "It names the todo and project counts, with a danger-styled Replace button."
+        },
+        {
+          "file": "exportImport.js",
+          "symbol": "applyReplace",
+          "parent": "handleValidatedImport",
+          "match": [
+            "listLogic.replaceAllProjects(projects, replaceOpts);",
+            "if (typeof onAfterReplace === 'function') onAfterReplace();"
+          ],
+          "title": "Confirming swaps everything in one pass.",
+          "why": "listLogic wipes and rewrites the whole tree, then the caller repaints the screen."
+        }
+      ]
+    },
+    {
+      "id": "onboarding",
+      "section": "more",
+      "title": "Theme and first-run onboarding",
+      "recap": [
+        {
+          "title": "Theme is one attribute",
+          "body": "data-theme on <html>. CSS variables in style.css do the rest."
+        },
+        {
+          "title": "Saved choice beats the OS",
+          "body": "todoapp_theme wins. Without it, a light OS hint picks light, else dark."
+        },
+        {
+          "title": "Two first-run flows, one flag",
+          "body": "A spotlight tour on desktop, a card carousel on phones. Both set todoapp_onboardingComplete."
+        },
+        {
+          "title": "Both need a freshly seeded sample",
+          "body": "So a returning user's real projects never get a first-run tour over them."
+        }
+      ],
+      "steps": [
+        {
+          "file": "theme.js",
+          "symbol": "resolveInitialTheme",
+          "match": [
+            "if (saved) return saved;",
+            "'(prefers-color-scheme: light)'",
+            "return 'dark';"
+          ],
+          "title": "A saved theme wins, then the OS hint.",
+          "why": "With nothing saved, a light OS preference picks light. Everything else falls back to dark."
+        },
+        {
+          "file": "theme.js",
+          "symbol": "applyTheme",
+          "match": [
+            "document.documentElement.setAttribute('data-theme', theme);"
+          ],
+          "title": "The theme is one attribute on <html>.",
+          "why": "CSS variables key off data-theme, so every surface repaints at once."
+        },
+        {
+          "file": "settingsMenu.js",
+          "symbol": "showSettingsMenu",
+          "parent": "createSettingsMenu",
+          "match": [
+            "const next = getCurrentTheme() === 'light' ? 'dark' : 'light';",
+            "applyTheme(next);",
+            "localStorage.setItem(THEME_KEY, next);"
+          ],
+          "title": "The settings menu flips and saves it.",
+          "why": "It flips light and dark on <html> and saves the choice for the next load."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "sampleJustSeeded = listLogic.seedSampleProject();",
+            "if (sampleJustSeeded) {",
+            "maybeStartFirstRunTour();"
+          ],
+          "title": "First run seeds a sample project.",
+          "why": "The tours point at real rows, so they need it. Once rows are painted, the tour runs only if this load seeded."
+        },
+        {
+          "file": "coachmark.js",
+          "symbol": "maybeStartFirstRunTour",
+          "match": [
+            "if (isOnboardingComplete()) return false;",
+            "if (window.innerWidth <= MOBILE_BREAKPOINT) return false;",
+            "startCoachmarkTour();"
+          ],
+          "title": "Desktop gets a spotlight tour.",
+          "why": "Only if onboarding isn't done and the window is wider than 1023px. Phones are left to the carousel."
+        },
+        {
+          "file": "welcomeCarousel.js",
+          "symbol": "maybeStartFirstRunCarousel",
+          "match": [
+            "if (!isMobileCarouselViewport()) return false;",
+            "if (document.getElementById('coachmarkOverlay')) return false;",
+            "if (sampleJustSeeded !== true) return false;"
+          ],
+          "title": "Phones get a swipeable card carousel.",
+          "why": "Narrow touch screens only. It yields if the desktop tour is already up, and needs a fresh sample."
+        },
+        {
+          "file": "coachmark.js",
+          "symbol": "finish",
+          "match": [
+            "if (active.openedSidebar) {",
+            "setOnboardingComplete(true);"
+          ],
+          "title": "Finishing sets the shared done flag.",
+          "why": "The drawer is closed if the tour opened it. The carousel sets the same flag, so neither plays again."
+        }
+      ]
+    },
+    {
+      "id": "focus",
+      "section": "more",
+      "title": "Focus mode, pomodoro and music",
+      "recap": [
+        {
+          "title": "Three controllers, one shape",
+          "body": "Each factory returns a controller with subscribe, and one shared instance is used app-wide."
+        },
+        {
+          "title": "Focus mode shows no clock",
+          "body": "It only drives the existing timer and music, and only listens while it's open."
+        },
+        {
+          "title": "The timer counts to an end time",
+          "body": "endTimestamp survives a reload and doesn't drift in a background tab."
+        },
+        {
+          "title": "Music yields to the bell",
+          "body": "It pauses when a session ends and resumes once you acknowledge it."
+        }
+      ],
+      "steps": [
+        {
+          "file": "focusMode.js",
+          "symbol": "activate",
+          "parent": "createFocusMode",
+          "match": [
+            "if (!supportsDesktopFocusMode()) return;",
+            "doc.body.classList.add('focusModeOpen');"
+          ],
+          "title": "Focus mode is a desktop-only overlay.",
+          "why": "Wide screens with a mouse only. The overlay is built once and covers the whole dashboard."
+        },
+        {
+          "file": "focusMode.js",
+          "symbol": "activate",
+          "parent": "createFocusMode",
+          "match": [
+            "unsubMusic = music.subscribe(syncMusic);",
+            "unsubPom = pom.subscribe(syncPomodoro);"
+          ],
+          "title": "It drives the real timer and music.",
+          "why": "It subscribes to the shared controllers only while open, so it does no work when off."
+        },
+        {
+          "file": "pomodoro.js",
+          "symbol": "start",
+          "parent": "createPomodoro",
+          "match": [
+            "state.status = 'RUNNING';",
+            "state.endTimestamp = Date.now() + remainingMs;",
+            "scheduleTick();"
+          ],
+          "title": "Starting the timer sets an end time.",
+          "why": "Remaining time is always end time minus now, so a reload or a sleepy tab can't make it drift."
+        },
+        {
+          "file": "pomodoro.js",
+          "symbol": "complete",
+          "parent": "createPomodoro",
+          "match": [
+            "state.status = 'COMPLETE_UNACKED';",
+            "fireAlertLayers();",
+            "notify();"
+          ],
+          "title": "At zero the session waits to be acknowledged.",
+          "why": "The alerts fire, then every subscriber hears the new status."
+        },
+        {
+          "file": "music.js",
+          "symbol": "onPomodoroSnap",
+          "parent": "createPomodoroSubscriber",
+          "match": [
+            "music._handlePomodoroAlertStart();",
+            "music._handlePomodoroAlertEnd();"
+          ],
+          "title": "Music listens to the timer.",
+          "why": "It reacts only to entering or leaving the finished state, not to every tick."
+        },
+        {
+          "file": "music.js",
+          "symbol": "_handlePomodoroAlertStart",
+          "parent": "createMusic",
+          "match": [
+            "state.wasPlayingBeforePomodoroAlert = (",
+            "if (state.wasPlayingBeforePomodoroAlert) pause();"
+          ],
+          "title": "Playing music pauses for the bell.",
+          "why": "It remembers it was playing, so acknowledging the alert can resume it."
+        },
+        {
+          "file": "music.js",
+          "symbol": "ensurePlayer",
+          "parent": "createMusic",
+          "match": [
+            "return loadIframeApi(doc).then(function(YT) {",
+            "player = new YT.Player(targetEl, {"
+          ],
+          "title": "The YouTube player is made on first play.",
+          "why": "It waits for YouTube's script, then builds the one player. Later plays reuse it."
+        },
+        {
+          "file": "music.js",
+          "symbol": "loadIframeApi",
+          "match": [
+            "if (_iframeApiPromise) return _iframeApiPromise;",
+            "tag.src = 'https://www.youtube.com/iframe_api';"
+          ],
+          "title": "YouTube's script loads once, on demand.",
+          "why": "Later calls share the same promise, so two quick plays never add a second script tag."
+        }
+      ]
+    },
+    {
+      "id": "ghost",
+      "section": "more",
+      "title": "How the ghost companion talks",
+      "recap": [
+        {
+          "title": "The sprite only signals",
+          "body": "A click emits activate. main.js decides what that opens."
+        },
+        {
+          "title": "The ghost speaks in the Claude sheet",
+          "body": "Activation possesses the sheet, and the sprite perches on the pane."
+        },
+        {
+          "title": "The transcript lives server-side",
+          "body": "The app reads it back each open instead of caching it."
+        },
+        {
+          "title": "Warm replies return, cold ones greet",
+          "body": "Within 10 minutes the last reply is shown. After that, a greeting that's never sent."
+        },
+        {
+          "title": "Errors stay in character",
+          "body": "askGhost never rejects. Failures come back as the ghost's own lines."
+        }
+      ],
+      "steps": [
+        {
+          "file": "companion.js",
+          "symbol": "onHitClick",
+          "parent": "createCompanion",
+          "match": [
+            "freeze();",
+            "emitActivate(spriteApi);"
+          ],
+          "title": "Clicking the ghost freezes it and signals.",
+          "why": "It stops wandering in place and tells every activate listener, passing its sprite controls."
+        },
+        {
+          "file": "companion.js",
+          "symbol": "onCompanionActivate",
+          "match": [
+            "activateHandlers.push(handler);"
+          ],
+          "title": "Listeners outlive the sprite.",
+          "why": "The list is module-level, so toggling the ghost off and on doesn't drop a subscriber."
+        },
+        {
+          "file": "main.js",
+          "symbol": "ensureDesktopGhostPossession",
+          "match": [
+            "onCompanionActivate(function() {",
+            "else openClaudeSheet({ possessed: true });",
+            "companion.dock(document.getElementById('desktopChatPane'));"
+          ],
+          "title": "Activation opens the sheet as the ghost.",
+          "why": "A second click hands the sheet back. While possessed, the sprite perches on the chat pane."
+        },
+        {
+          "file": "ghostTalk.js",
+          "symbol": "fetchGhostHistory",
+          "match": [
+            "if (!isInjectConfigured()) return Promise.resolve([]);",
+            "postToWorker({ ghost: true, history: true })"
+          ],
+          "title": "Opening reads the transcript back.",
+          "why": "The Worker returns the stored ghost conversation. With no Worker set up, no request is made."
+        },
+        {
+          "file": "ghostTalk.js",
+          "symbol": "lastGhostReply",
+          "match": [
+            "for (let i = rows.length - 1; i >= 0; i--) {",
+            "if (rows[i] && rows[i].role === 'ghost' && rows[i].text) return rows[i];"
+          ],
+          "title": "Find the last thing the ghost said.",
+          "why": "It walks back from the newest row and skips your own turns."
+        },
+        {
+          "file": "ghostTalk.js",
+          "symbol": "ghostOpeningLine",
+          "match": [
+            "if (entry && isGhostReplyWarm(entry.createdAt)) return { text: entry.text, greeting: false };",
+            "return { text: pickGhostGreeting(), greeting: true };"
+          ],
+          "title": "A warm reply returns, a cold one greets.",
+          "why": "Under 10 minutes old, the thread picks up. Otherwise a random greeting that is never sent or saved."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "sendGhostTurn",
+          "match": [
+            "appendGhostRow('user', message);",
+            "renderGhostPending(pendingRow);",
+            "return askGhost(message, ghostSurface())"
+          ],
+          "title": "Your whisper shows up right away.",
+          "why": "Your row and blinking dots appear first. The surface is named mobile or desktop by width."
+        },
+        {
+          "file": "ghostTalk.js",
+          "symbol": "askGhost",
+          "match": [
+            "return postToWorker({ ghost: true, message: message, surface: surface })",
+            "return err && err.notConfigured ? GHOST_NO_WIRE : GHOST_WIRE_DEAD;"
+          ],
+          "title": "The question leaves the app.",
+          "why": "The Worker answers in the ghost's voice and keeps the transcript. Failures come back as in-voice lines."
+        }
+      ]
     }
   ]
 }
