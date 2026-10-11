@@ -2245,7 +2245,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 848bd514-dc2d-426c-aa22-03938471346f -->
 
-- [ ] **[MEDIUM]** Add guided code tours to the Structure tab (start-here card, area tours, All tours, stepper)
+- [x] **[MEDIUM]** Add guided code tours to the Structure tab (start-here card, area tours, All tours, stepper)
   - Type: feature
   - Description: The generator now publishes `src-tours.json`: step-by-step tours through real code, each step with a title, a one-line why, its area and an embedded code snippet. Build the surfaces that play them. (1) A START HERE card at the top of the Structure tab pointing at the next unfinished tour, with Continue and All tours. (2) A "Tours in <area>" card row in the Map lens's level 2. (3) An All tours sheet listing every tour by section with progress. (4) The stepper player with Back / Next. Tours make an unfamiliar codebase readable in minutes: they are the main path, and the Map and code viewer are how you step off it. Reference mockups: "Tour stepper — press Play", "Tours C — Start-here card + per-area" and "Tours A — Its own lens" (used as the All tours sheet) from the design review.
   - Behavior:
@@ -2263,4 +2263,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - If the preview has no linked project and shows the Structure empty state, say so in the verdict and rely on the DOM tests.
   - File: `toDoList_main/src/codeTours.js`, `toDoList_main/src/tourPlayer.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`, `toDoList_main/codemap.json`, `toDoList_main/tests/codeTours.test.js`, `toDoList_main/tests/tourPlayer.test.js`, `toDoList_main/tests/structureView.test.js`
   - Verify: 390x844 → / ; click "#mobileTabStructure" ; wait 800, 390x844 → / ; click "#mobileTabStructure" ; click "text=▶ Continue" ; wait 600, 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; click "text=▶ Continue" ; wait 800
+  - Completed: 2026-10-11
   <!-- id: b763fb76-c78f-4dd7-b1af-d166047cf1c1 -->
