@@ -321,8 +321,8 @@
           "body": "saveToStorageSoon waits a moment, so a burst of keys is one write."
         },
         {
-          "title": "dataChanged tells the UI",
-          "body": "Every local save fires it, so badges and counts refresh."
+          "title": "dataChanged has no listeners",
+          "body": "Every local save fires it, but nothing listens yet, so a save alone repaints nothing."
         },
         {
           "title": "Two names for every field",
@@ -365,7 +365,7 @@
             "document.dispatchEvent(new CustomEvent('dataChanged'));"
           ],
           "title": "All projects go to localStorage.",
-          "why": "The whole model is written under one key, then dataChanged tells the UI to refresh."
+          "why": "Everything is written under one key, then dataChanged fires. No listener exists yet, so nothing repaints."
         },
         {
           "file": "listLogic.js",
@@ -701,6 +701,912 @@
           ],
           "title": "Their screen repaints on re-sync.",
           "why": "Not instantly: when the tab becomes visible again, or every 5 minutes."
+        }
+      ]
+    },
+    {
+      "id": "edit-task",
+      "section": "tasks",
+      "title": "Editing a task",
+      "recap": [
+        {
+          "title": "Typing stays local",
+          "body": "Title and description keystrokes change memory and batch a localStorage save."
+        },
+        {
+          "title": "Two exits reach the server",
+          "body": "Enter on a title, or leaving the description, calls editToDoItem."
+        },
+        {
+          "title": "Updates send the whole row",
+          "body": "persistMutation rewrites every column of the todo by id."
+        },
+        {
+          "title": "Escape undoes the description",
+          "body": "It restores the text from when you started, then saves that."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "toDoInput.addEventListener(\"keyup\", function() {",
+            "item.tit = val;",
+            "listLogic.saveToStorageSoon();"
+          ],
+          "title": "Typing a title edits it in memory.",
+          "why": "Each keystroke sets item.tit and asks for a batched local save. Nothing goes to the server yet."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "saveToStorageSoon",
+          "parent": "listLogic",
+          "match": [
+            "if (coalescedSaveTimer !== null) return;",
+            "saveToStorage();"
+          ],
+          "title": "A burst of keys becomes one write.",
+          "why": "While a timer is pending, further calls do nothing. When it fires, one save covers them all."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "const isFirstCommit = !hasBlankPlaceholder;",
+            "listLogic.saveToStorage();",
+            "listLogic.editToDoItem(toDoName, item);"
+          ],
+          "title": "Enter sends the new title to the server.",
+          "why": "On a row that already exists, Enter saves locally at once, then calls editToDoItem."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "descInput.addEventListener(\"keyup\", function() {",
+            "item.desc = descInput.value;",
+            "listLogic.saveToStorageSoon();"
+          ],
+          "title": "Descriptions save locally as you type.",
+          "why": "The panel text goes into item.desc untrimmed, so line breaks and indents survive."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "descInput.addEventListener(\"blur\", function() {",
+            "listLogic.saveToStorage();",
+            "if (toDoName) listLogic.editToDoItem(toDoName, item);"
+          ],
+          "title": "Leaving the description syncs it.",
+          "why": "Blur saves at once and sends the update. Ctrl+Enter and Escape both end in a blur."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "editToDoItem",
+          "parent": "listLogic",
+          "match": [
+            "if (!item.id) return;",
+            "if (!item.tit || item.tit === '') return;",
+            "op: 'update',"
+          ],
+          "title": "editToDoItem asks for an update.",
+          "why": "No id or no title means no write. Otherwise the whole item is mapped to a database row."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "if (op === 'update') {",
+            "title: payload.title,",
+            "noteSelfEcho(payload.id);",
+            ".update(row)"
+          ],
+          "title": "The row is overwritten by id.",
+          "why": "Every column is written, not just the edited one. The echo is noted so realtime skips it."
+        }
+      ]
+    },
+    {
+      "id": "task-status",
+      "section": "tasks",
+      "title": "Changing a task's status",
+      "recap": [
+        {
+          "title": "Status and done are separate",
+          "body": "The badge sets Active, In Progress or Idea. The checkbox sets completed."
+        },
+        {
+          "title": "One write path each",
+          "body": "setToDoStatus and setToDoCompleted save locally, then update the server."
+        },
+        {
+          "title": "Repaint in place",
+          "body": "Only the badge and row class change; the list re-sorts without rebuilding rows."
+        },
+        {
+          "title": "Done sinks to the bottom",
+          "body": "sortCompletedToBottom keeps open tasks above finished ones."
+        }
+      ],
+      "steps": [
+        {
+          "file": "todoStatus.js",
+          "symbol": "wireStatusLabelDelegation",
+          "match": [
+            "container.addEventListener('click', function (event) {",
+            "if (label.getAttribute('data-status') === 'review') {",
+            "showStatusPopover(label, item, projectName, row);"
+          ],
+          "title": "One listener handles every status badge.",
+          "why": "Pipeline badges like Review or Asking open other views. A plain status badge opens the menu."
+        },
+        {
+          "file": "todoStatus.js",
+          "symbol": "showStatusPopover",
+          "match": [
+            "STATUS_ORDER.forEach(function (status) {",
+            "opt.textContent = STATUS_META[status].label;",
+            "document.addEventListener('keydown',     onStatusPopoverKeydown,      true);"
+          ],
+          "title": "The menu offers Active, In Progress, Idea.",
+          "why": "It closes on a choice, an outside click, Escape, resize or scroll."
+        },
+        {
+          "file": "todoStatus.js",
+          "symbol": "showStatusPopover",
+          "match": [
+            "listLogic.setToDoStatus(projectName, item, status);",
+            "refreshTodoStatusUI(toDoChild, item);",
+            "reorderToDoDOM(projectName);"
+          ],
+          "title": "Picking one: save, repaint, re-sort.",
+          "why": "The choice goes through listLogic, the badge repaints, and the list re-sorts and re-filters."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "setToDoStatus",
+          "parent": "listLogic",
+          "match": [
+            "if (TODO_STATUSES.indexOf(status) === -1) return;",
+            "item.status = status;",
+            "saveToStorage();",
+            "op: 'update',"
+          ],
+          "title": "setToDoStatus saves locally, then remotely.",
+          "why": "Unknown or unchanged values are ignored. Committed rows also send an update."
+        },
+        {
+          "file": "todoStatus.js",
+          "symbol": "refreshTodoStatusUI",
+          "match": [
+            "applyTodoStatusClass(toDoChild, status);",
+            "if (label) applyStatusLabelState(label, status, overlay);"
+          ],
+          "title": "Only the badge and row class repaint.",
+          "why": "No full re-render, so anything else in progress on the row is left alone."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "wireCheckbox",
+          "match": [
+            "listLogic.setToDoCompleted(projectName, item, checkToDo.checked);",
+            "toDoChild.classList.add(\"completed\");"
+          ],
+          "title": "Checking a task off is its own path.",
+          "why": "The checkbox sets completed through setToDoCompleted, not the status menu."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "wireCheckbox",
+          "match": [
+            "function commitReorder() {",
+            "listLogic.sortCompletedToBottom(projectName);",
+            "reorderToDoDOM(projectName);"
+          ],
+          "title": "After the animation, the row moves down.",
+          "why": "The data is re-sorted first, then the existing row element moves to its new slot."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "sortCompletedToBottom",
+          "parent": "listLogic",
+          "match": [
+            "if (it.completed) completed.push(it);",
+            "if (unchanged) return;",
+            "persistMutation({"
+          ],
+          "title": "Blank row, open tasks, then done ones.",
+          "why": "If the order already fits, it stops. Otherwise every real task gets a new position on the server."
+        }
+      ]
+    },
+    {
+      "id": "due-date",
+      "section": "tasks",
+      "title": "Setting a due date",
+      "recap": [
+        {
+          "title": "Dates are m-d-y text",
+          "body": "item.due holds a string like 4-24-2026, or empty for none."
+        },
+        {
+          "title": "Picking saves locally",
+          "body": "setItemDue writes localStorage and recolors the row straight away."
+        },
+        {
+          "title": "Closing reaches the server",
+          "body": "Every close commits Repeat, which sends the whole row."
+        },
+        {
+          "title": "Urgency is computed",
+          "body": "Overdue and due-soon come from today’s date, never stored."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "duePill.addEventListener('click', function(event) {",
+            "showDueDatePopover(duePill, item, toDoChild);"
+          ],
+          "title": "The date pill opens a calendar.",
+          "why": "Tapping the pill toggles a date popover anchored to that row."
+        },
+        {
+          "file": "dueDate.js",
+          "symbol": "showDueDatePopover",
+          "match": [
+            "{ label: 'Today',    offset: 0 },",
+            "setRowDateOffset(item, toDoChild, def.offset);",
+            "const repeatSection = buildRepeatSection(item);"
+          ],
+          "title": "Quick dates, a month grid and Repeat.",
+          "why": "Today, Tomorrow and +1w sit above the grid. A Repeat section and Clear sit below."
+        },
+        {
+          "file": "dueDate.js",
+          "symbol": "renderDuePopoverBody",
+          "match": [
+            "for (let i = 0; i < 42; i++) {",
+            "setItemDue(state.item, state.toDoChild,",
+            "hideDueDatePopover();"
+          ],
+          "title": "Six weeks of days, each a button.",
+          "why": "Clicking a day writes that date to the task and closes the popover."
+        },
+        {
+          "file": "dueDate.js",
+          "symbol": "setItemDue",
+          "match": [
+            "item.due = m + '-' + d + '-' + y;",
+            "listLogic.saveToStorage();",
+            "document.dispatchEvent(new CustomEvent('todoDueDateChanged', {"
+          ],
+          "title": "setItemDue stores the date locally.",
+          "why": "The date is saved as m-d-y text, the row recolors, then todoDueDateChanged fires."
+        },
+        {
+          "file": "dueDate.js",
+          "symbol": "applyDueUrgency",
+          "match": [
+            "if (!item || !item.tit || item.completed) return;",
+            "toDoChild.classList.add('due-overdue');",
+            "toDoChild.classList.add('due-soon');"
+          ],
+          "title": "Overdue and soon get their own colors.",
+          "why": "Past due marks the row overdue; three days or less marks it soon. Done tasks get neither."
+        },
+        {
+          "file": "dueDate.js",
+          "symbol": "updateDuePillLabel",
+          "match": [
+            "labelText = 'Set date';",
+            "labelText = Math.abs(days) + 'd overdue';",
+            "labelText = 'Due today';"
+          ],
+          "title": "The pill says it in words.",
+          "why": "No date reads 'Set date'. Otherwise '2d overdue', 'Due today', 'Due in 3d' or the date itself."
+        },
+        {
+          "file": "main.js",
+          "symbol": "@file",
+          "match": [
+            "document.addEventListener('todoDueDateChanged', function onDueChange(evt) {",
+            "if (getTaskSort() !== 'due') return;",
+            "reorderToDoDOM(project);"
+          ],
+          "title": "Sorted by due? The list reorders.",
+          "why": "Only while the Due sort is on. Rows move in place, so open panels come with them."
+        },
+        {
+          "file": "dueDate.js",
+          "symbol": "commitRecurrenceFromPopover",
+          "match": [
+            "const next = state.getValue();",
+            "listLogic.setRecurrence(project, item, next);",
+            "updateRecurringGlyph(popoverState.toDoChild, item);"
+          ],
+          "title": "Closing the popover commits Repeat.",
+          "why": "Every close runs this. setRecurrence sends the whole row, so the new date reaches the server too."
+        }
+      ]
+    },
+    {
+      "id": "delete-task",
+      "section": "tasks",
+      "title": "Deleting a task, and undo",
+      "recap": [
+        {
+          "title": "Two ways to delete",
+          "body": "The × button confirms first. A left swipe deletes and offers undo."
+        },
+        {
+          "title": "Delete by reference",
+          "body": "removeToDoByItem matches the item itself, never its title."
+        },
+        {
+          "title": "Undo is a fresh insert",
+          "body": "insertToDoAt puts the same item back and inserts it again on the server."
+        },
+        {
+          "title": "Five seconds to change your mind",
+          "body": "One toast at a time; a new one replaces the old."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "closeButtonToDo.addEventListener(\"click\", function() {",
+            "showConfirmModal({",
+            "listLogic.removeToDoByItem(toDoName, item);"
+          ],
+          "title": "The × button asks first.",
+          "why": "A confirm modal names the task. Only after you confirm is it removed."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "const deletedIdx = priorRows.indexOf(toDoChild);",
+            "addAllToDo_DOM(listLogic.listItems(toDoName), toDoName);",
+            "target.focus();"
+          ],
+          "title": "The list redraws and focus stays put.",
+          "why": "The row that moves into the deleted slot gets focus, so arrow keys keep their place."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "removeToDoByItem",
+          "parent": "listLogic",
+          "match": [
+            "const idx = arr.indexOf(item);",
+            "arr.splice(idx, 1);",
+            "saveToStorage();",
+            "op: 'delete',"
+          ],
+          "title": "removeToDoByItem removes that exact item.",
+          "why": "Matching the object, not the title, means a duplicate title can't delete the wrong row."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "if (op === 'delete') {",
+            "noteSelfEcho(payload.id);",
+            ".delete()"
+          ],
+          "title": "The server row is deleted by id.",
+          "why": "It's noted as our own echo first, so realtime doesn't apply it a second time here."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onLeft",
+          "parent": "attachToDoDrag",
+          "match": [
+            "const originalIndex = items.indexOf(item);",
+            "listLogic.removeToDoByItem(projectName, item);",
+            "showUndoToast({"
+          ],
+          "title": "Swiping left skips the modal.",
+          "why": "The slot is remembered, the item removed, and an undo toast shown instead of a confirm."
+        },
+        {
+          "file": "undoToast.js",
+          "symbol": "showUndoToast",
+          "match": [
+            "if (activeOnDismiss) {",
+            "undoBtn.textContent = 'UNDO';",
+            "activeTimer = setTimeout(function() {"
+          ],
+          "title": "One toast at a time, for five seconds.",
+          "why": "A new toast replaces the old one. UNDO runs the callback; otherwise the toast goes on its own."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onUndo",
+          "parent": "onLeft",
+          "match": [
+            "listLogic.insertToDoAt(projectName, item, originalIndex);",
+            "addAllToDo_DOM(listLogic.listItems(projectName), projectName);"
+          ],
+          "title": "UNDO puts it back where it was.",
+          "why": "The remembered slot is passed back to listLogic, then the list redraws."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "insertToDoAt",
+          "parent": "listLogic",
+          "match": [
+            "if (arr.indexOf(item) !== -1) return;",
+            "arr.splice(clamped, 0, item);",
+            "op: 'insert',"
+          ],
+          "title": "insertToDoAt inserts it again.",
+          "why": "A double tap can't add it twice. The same item goes back to the server as a new insert."
+        }
+      ]
+    },
+    {
+      "id": "reorder",
+      "section": "tasks",
+      "title": "Reordering by drag and swipe",
+      "recap": [
+        {
+          "title": "One drag helper",
+          "body": "setupRowDrag serves task rows and project rows alike."
+        },
+        {
+          "title": "Mouse and touch share the maths",
+          "body": "Both use computeDropIndex and hand the result to onReorder."
+        },
+        {
+          "title": "Done and open never mix",
+          "body": "A drop is clamped so it stays on its own side of the boundary."
+        },
+        {
+          "title": "Positions sync",
+          "body": "reorderToDo and reorderProject send every new position to the server."
+        }
+      ],
+      "steps": [
+        {
+          "file": "dragDrop.js",
+          "symbol": "setupRowDrag",
+          "match": [
+            "row.addEventListener('dragstart', function(event) {",
+            "if (!cfg.isDraggable()) { event.preventDefault(); return; }",
+            "row.classList.add('dragging');"
+          ],
+          "title": "One helper drags tasks and projects.",
+          "why": "setupRowDrag puts the same native drag events on any row. Rows that can't drag cancel the start."
+        },
+        {
+          "file": "dragDrop.js",
+          "symbol": "setupRowDrag",
+          "match": [
+            "cfg.container.addEventListener('dragover', function(event) {",
+            "showDropIndicator(dragging, cfg.container, cfg.itemSelector, event.clientY);",
+            "autoScrollIfNeeded(cfg.container, event.clientY);"
+          ],
+          "title": "A line shows where the row will land.",
+          "why": "Each dragover moves the indicator and scrolls the list near its edges."
+        },
+        {
+          "file": "dragDrop.js",
+          "symbol": "computeDropIndex",
+          "match": [
+            "if (clientY > rect.top + rect.height / 2) idx++;",
+            "if (idx < uncompletedCount) idx = uncompletedCount;",
+            "if (idx > uncompletedCount) idx = uncompletedCount;"
+          ],
+          "title": "The drop slot is counted by midpoints.",
+          "why": "Each row whose middle is above the pointer adds one. Done and open tasks never swap sides."
+        },
+        {
+          "file": "dragDrop.js",
+          "symbol": "setupRowDrag",
+          "match": [
+            "cfg.container.addEventListener('drop', function(event) {",
+            "const toIdx    = computeDropIndex(dragging, cfg.container, cfg.itemSelector, event.clientY);",
+            "if (fromIdx !== -1 && fromIdx !== toIdx) cfg.onReorder(fromIdx, toIdx);"
+          ],
+          "title": "Dropping hands two indexes to the owner.",
+          "why": "From and to go to onReorder. The drag helper itself never touches the data."
+        },
+        {
+          "file": "dragDrop.js",
+          "symbol": "setupRowDrag",
+          "match": [
+            "row.addEventListener('touchstart', function(event) {",
+            "armTimer: canDrag ? setTimeout(function() { state.armed = true; }, TOUCH_ARM_MS) : null"
+          ],
+          "title": "On touch, a short hold arms the drag.",
+          "why": "Hold 180ms before moving. Moving sooner scrolls, or swipes sideways. Lifting runs the same drop maths."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onReorder",
+          "parent": "attachToDoDrag",
+          "match": [
+            "listLogic.reorderToDo(activeProject, fromIdx, toIdx);",
+            "reorderToDoDOM(activeProject);"
+          ],
+          "title": "Tasks: reorder the data, then the rows.",
+          "why": "The rows follow the model, not where you let go, so a clamped drop still draws correctly."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "reorderToDo",
+          "parent": "listLogic",
+          "match": [
+            "const nonBlank = arr.filter(function(i) { return i.tit !== ''; });",
+            "sortCompletedInPlace(arr);",
+            "it.pos = idx;"
+          ],
+          "title": "reorderToDo saves every new position.",
+          "why": "The blank row is set aside, the move applied, then each real task's position goes to the server."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "reorderProject",
+          "parent": "listLogic",
+          "match": [
+            "const moved = keys.splice(fromIndex, 1)[0];",
+            "saveToStorage();",
+            "table: 'projects',"
+          ],
+          "title": "Projects reorder the same way.",
+          "why": "Sidebar drags call reorderProject, which rebuilds the project order and updates each one's position."
+        }
+      ]
+    },
+    {
+      "id": "create-project",
+      "section": "tasks",
+      "title": "Creating a project",
+      "recap": [
+        {
+          "title": "One create path",
+          "body": "The + button and the picker both end in the same Enter handler."
+        },
+        {
+          "title": "Names are unique keys",
+          "body": "A name already in use turns red and nothing is created."
+        },
+        {
+          "title": "Projects insert first",
+          "body": "Todos written meanwhile wait for the project row to exist."
+        },
+        {
+          "title": "New means selected",
+          "body": "The new project is highlighted and its empty list drawn."
+        }
+      ],
+      "steps": [
+        {
+          "file": "main.js",
+          "symbol": "component",
+          "match": [
+            "projButton.addEventListener(\"click\", function(){",
+            "applyActiveView('projects');",
+            "titleInput.placeholder = \"New Project\";",
+            "sideMaDiv.appendChild(projChild);"
+          ],
+          "title": "The + button adds an empty sidebar row.",
+          "why": "It switches to the projects view and appends a 'New Project' input for you to name."
+        },
+        {
+          "file": "main.js",
+          "symbol": "component",
+          "match": [
+            "if(projectsList[count] === enteredText){",
+            "titleInput.style.color = 'red';"
+          ],
+          "title": "Enter checks the name is new.",
+          "why": "A name that already exists turns red and the handler stops there."
+        },
+        {
+          "file": "main.js",
+          "symbol": "component",
+          "match": [
+            "projectItems = listLogic.addProject(trimmedText);",
+            "selectProject(); // changes selection to element",
+            "addAllToDo_DOM(projectArray, projectName);"
+          ],
+          "title": "A new name goes to addProject.",
+          "why": "The first Enter creates; later ones rename. Then the row is selected and its list drawn."
+        },
+        {
+          "file": "projectCreate.js",
+          "symbol": "createProjectByName",
+          "match": [
+            "projButton.click();",
+            "input.value = trimmed;",
+            "input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));"
+          ],
+          "title": "The picker reuses the same path.",
+          "why": "createProjectByName clicks + and presses Enter for you, so the result is identical."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "addProject",
+          "parent": "listLogic",
+          "match": [
+            "if (projectName.length === 0) {",
+            "const projectId = genId();",
+            "saveToStorage();",
+            "table: 'projects',"
+          ],
+          "title": "addProject stores it with a fresh id.",
+          "why": "Empty names are refused. The project starts with one blank row, saves locally, then inserts."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "const insertPromise = Promise.resolve(supabase.from(table).insert(row));",
+            "_pendingProjectInserts.set(row.id, insertPromise);",
+            "_pendingProjectInserts.delete(row.id);"
+          ],
+          "title": "The insert is remembered while in flight.",
+          "why": "The project's insert promise is kept by id until the database answers."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "const pending = _pendingProjectInserts.get(payload.project_id);",
+            "await pending;"
+          ],
+          "title": "Its todos wait for it.",
+          "why": "A todo written for that project awaits the insert, so it never points at a missing project."
+        },
+        {
+          "file": "projectCreate.js",
+          "symbol": "selectProjectRow",
+          "match": [
+            "projOnChild.classList.remove(\"selectedProject\");",
+            "projChild.classList.add(\"selectedProject\");",
+            "applyProjectAccent(document.getElementById('mainList'), listLogic.getProjectColor(titleInput.value));"
+          ],
+          "title": "selectProjectRow highlights the new row.",
+          "why": "The old selection is cleared and the list takes the project's accent color."
+        }
+      ]
+    },
+    {
+      "id": "filter-sort",
+      "section": "tasks",
+      "title": "Filtering and sorting the list",
+      "recap": [
+        {
+          "title": "Filters hide, never remove",
+          "body": "applyTaskFilter only adds a hidden class to rows."
+        },
+        {
+          "title": "One definition per filter",
+          "body": "Counts and visibility use the same match functions."
+        },
+        {
+          "title": "Sorting is drawing only",
+          "body": "Your manual order is never overwritten by a sort."
+        },
+        {
+          "title": "Both are remembered",
+          "body": "The chosen filter and sort are kept in localStorage."
+        }
+      ],
+      "steps": [
+        {
+          "file": "taskFilter.js",
+          "symbol": "buildTaskFilterBar",
+          "match": [
+            "bar.setAttribute('aria-label', 'Filter tasks');",
+            "bar.addEventListener('click', function (event) {",
+            "if (key && key !== getPhaseFilter()) setPhaseFilter(key);",
+            "applyTaskFilter();"
+          ],
+          "title": "One bar, one click handler.",
+          "why": "Desktop pills and the mobile cycle pill all route through one listener that saves the choice."
+        },
+        {
+          "file": "taskFilter.js",
+          "symbol": "@file",
+          "match": [
+            "const PHASE_FILTERS = [",
+            "{ key: 'all',",
+            "if (phase === 'done') return false;",
+            "return phaseOf(item) === 'done';"
+          ],
+          "title": "Three filters, each a match function.",
+          "why": "All is every open task. In progress and Done also read the pipeline phase. Checked-off tasks match none."
+        },
+        {
+          "file": "taskFilter.js",
+          "symbol": "phaseFilterFor",
+          "match": [
+            "return PHASE_FILTERS.filter(function (f) { return f.key === key; })[0] || PHASE_FILTERS[0];"
+          ],
+          "title": "Unknown keys fall back to All.",
+          "why": "So a stale saved value still gives a working filter."
+        },
+        {
+          "file": "taskFilter.js",
+          "symbol": "applyTaskFilter",
+          "match": [
+            "const activePhaseFilter = phaseFilterFor(phaseKey);",
+            "if (allPhase.match(item)) phaseCounts.all += 1;",
+            "const show = blockedActive ? blocked : activePhaseFilter.match(item);",
+            "setRowHidden(row, !show);"
+          ],
+          "title": "applyTaskFilter hides rows in place.",
+          "why": "Counts and visibility come from the same match functions. Rows just get a hidden class."
+        },
+        {
+          "file": "taskSort.js",
+          "symbol": "showTaskSortMenu",
+          "parent": "createTaskSort",
+          "match": [
+            "TASK_SORT_OPTIONS.forEach(function(opt) {",
+            "applyTaskSortChoice(opt.key);"
+          ],
+          "title": "The sort menu: None, Due date, Status.",
+          "why": "Desktop gets this dropdown, phones a bottom sheet. Both call applyTaskSortChoice."
+        },
+        {
+          "file": "main.js",
+          "symbol": "applyTaskSortChoice",
+          "parent": "component",
+          "match": [
+            "setTaskSort(key);",
+            "rerenderActiveProjectRows();",
+            "applyTaskFilter();"
+          ],
+          "title": "Choosing a sort saves it and redraws.",
+          "why": "The sort is stored, the list rebuilt in the new order, then the filter applied again."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "renderOrderForSort",
+          "match": [
+            "if (mode === 'due') return sortItemsByDueForRender(items);",
+            "if (mode === 'status') return sortItemsByStatusForRender(items);",
+            "return items;"
+          ],
+          "title": "Sorting only changes the drawing order.",
+          "why": "Due and Status return a sorted copy. None returns your manual order, untouched."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "addAllToDo_DOM",
+          "match": [
+            "appendProjectRows(mainListDiv, items, name);",
+            "applyTaskFilter();"
+          ],
+          "title": "Every redraw re-applies the filter.",
+          "why": "Rows are appended in sort order, then applyTaskFilter hides the ones the filter excludes."
+        }
+      ]
+    },
+    {
+      "id": "mobile-add",
+      "section": "tasks",
+      "title": "Adding tasks on mobile",
+      "recap": [
+        {
+          "title": "Chips live on the blank row",
+          "body": "Today, Tomorrow, a calendar and a description toggle."
+        },
+        {
+          "title": "The date lands on commit",
+          "body": "A due chip is only a choice until Enter stamps it."
+        },
+        {
+          "title": "Everything ends in Enter",
+          "body": "Voice and paste both fire a synthetic Enter on the title input."
+        },
+        {
+          "title": "Pastes start in progress",
+          "body": "The whole paste becomes the description; the status is In Progress."
+        }
+      ],
+      "steps": [
+        {
+          "file": "mobileTaskCreate.js",
+          "symbol": "attachMobileCreateChips",
+          "match": [
+            "if (!toDoChild || !item || item.tit) return;",
+            "const todayChip    = makeChip('today',    'Today');",
+            "const calChip      = makeChip('custom',   '');"
+          ],
+          "title": "The blank row grows a strip of chips.",
+          "why": "Only the empty 'Add a task' row gets them: Today, Tomorrow, a calendar and a description toggle."
+        },
+        {
+          "file": "mobileTaskCreate.js",
+          "symbol": "attachMobileCreateChips",
+          "match": [
+            "todayChip.addEventListener('click', function(e) {",
+            "chosenDueChip = 'today';",
+            "showDueDatePopover(calChip, item, toDoChild);"
+          ],
+          "title": "A due chip only records your choice.",
+          "why": "Today and Tomorrow set chosenDueChip. The calendar chip opens the normal date popover."
+        },
+        {
+          "file": "mobileTaskCreate.js",
+          "symbol": "applyChosenDueToItem",
+          "match": [
+            "if (chosenDueChip === 'today') {",
+            "setRowDateOffset(item, row, 0);",
+            "setRowDateOffset(item, row, 1);"
+          ],
+          "title": "Enter stamps the chosen day.",
+          "why": "Committing a dateless task calls this: Today is offset 0, Tomorrow 1. Custom already wrote its date."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildToDoRow",
+          "match": [
+            "? mountMicButton(toDoInput, {",
+            "onFinal: function() {",
+            "toDoInput.dispatchEvent(new KeyboardEvent('keydown', {"
+          ],
+          "title": "The mic presses Enter for you.",
+          "why": "When dictation commits, onFinal fires a synthetic Enter, since iOS can't reopen the keyboard."
+        },
+        {
+          "file": "voiceInput.js",
+          "symbol": "startDictation",
+          "match": [
+            "const Ctor = getSpeechRecognitionCtor();",
+            "input.value = baseValue && trimmed",
+            "runawayTimer = setTimeout(function() {"
+          ],
+          "title": "startDictation streams words into the field.",
+          "why": "Each result rewrites the input live. A watchdog ends a session left running."
+        },
+        {
+          "file": "voiceInput.js",
+          "symbol": "commitDictation",
+          "match": [
+            "if (!recording && !activeRec) { closeOverlay(); return; }",
+            "try { activeRec.stop(); } catch (e) { /* already stopped */ }",
+            "finishSession(activeButton);"
+          ],
+          "title": "Tapping again commits what was heard.",
+          "why": "It stops without cancelling, so finishSession calls onFinal, but only if words were heard."
+        },
+        {
+          "file": "entryParse.js",
+          "symbol": "parsePastedEntry",
+          "match": [
+            "const checkboxLine = lines.find(function(line) {",
+            "if (checkboxLine) title = taskLineTitle(checkboxLine);",
+            "title = firstNonEmpty ? firstNonEmpty.trim() : '';"
+          ],
+          "title": "Pasting: a checkbox line becomes the title.",
+          "why": "With no checkbox line, the first non-empty line is used. The whole paste is the description."
+        },
+        {
+          "file": "mobileTaskCreate.js",
+          "symbol": "commitParsedEntry",
+          "match": [
+            "const parsed = parsePastedEntry(raw);",
+            "item.status = 'in_progress';",
+            "toDoInput.dispatchEvent(new KeyboardEvent('keydown', {"
+          ],
+          "title": "The paste goes through the same Enter.",
+          "why": "Description and an In Progress status are set first, then a synthetic Enter commits it."
         }
       ]
     }
