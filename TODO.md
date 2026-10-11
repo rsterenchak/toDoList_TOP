@@ -2200,7 +2200,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 7343a65d-6c31-43fb-937a-3cf6bf3b5d48 -->
 
-- [ ] **[MEDIUM]** Publish a definitions index (src-symbols.json) for code tracing
+- [x] **[MEDIUM]** Publish a definitions index (src-symbols.json) for code tracing
   - Type: feature
   - Description: Groundwork for tap-to-trace in the Structure tab's code viewer (tap a name, peek its definition with the lines highlighted, keep tracing). Extend `gen-src-manifest.js` web mode to also write `src-symbols.json` beside `src-manifest.json`: every definition per JS file with its start and end lines and its enclosing definition, plus each file's import bindings. It is a separate file because the manifest is already ~560 KB and the PWA will fetch this one lazily, only on the first trace. Also add end lines to the csharp-mode `types` and `members`, so C# repos can highlight whole methods later. No PWA changes in this entry.
   - Behavior:
@@ -2216,4 +2216,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - Run against the real `src/`, it asserts that `listLogic.js` has `getProjectTargetId` at 2392–2396 with `parent: "listLogic"` (or wherever it sits at run time, matched by name and parent rather than hard-coded lines), and that `inject.js` has three `close` defs whose parents are `showInjectTargetSubModal`, `showOnboardModal` and `showInjectSettingsModal`.
     - `src-manifest.json` is byte-for-byte unchanged apart from the csharp-only `end` fields.
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/tests/genSrcManifest.test.js`
+  - Completed: 2026-10-11
   <!-- id: 64b5796d-8d2c-444e-802e-78f17f41fcbf -->
