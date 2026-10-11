@@ -2119,3 +2119,27 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codemap.json`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/genSrcManifest.test.js`
   - Completed: 2026-10-11
   <!-- id: efe44d6a-a970-4432-bbac-01c629ba5aa4 -->
+
+- [ ] **[MEDIUM]** Add the Map lens (area constellation) to the Structure tab
+  - Type: feature
+  - Description: Add a third Structure lens, `Map`, after UI and Code. It draws the manifest's `areas` as a constellation: one circle per area, sized by its total lines of code, joined by lines whose thickness is the number of imports between the two areas. A panel below the map describes the selected area. This is level 1 of the code map; tapping into an area's files is a later entry, so this one has no "Open" button. The `Map` segment only appears when the active repo's manifest has `areas` (currently just this repo); otherwise the toggle stays exactly as it is today.
+  - Behavior:
+    1. New pure module `codeMapModel.js`. `deriveAreaGraph(modules, areas)` returns `{ areas: [{ id, name, purpose, pos, fileCount, lines }], edges: [{ a, b, weight }], totals: { areas, files, lines } }`. Edge weight counts imports in both directions between files in different areas. Files in no area are ignored, and an edge with weight 0 is dropped. `linksFor(graph, id)` returns that area's edges sorted by weight, highest first.
+    2. Layout: a square-ish map box (`width: 100%`, `max-width: 420px`, `aspect-ratio: 0.9`). Each area's `pos` is mapped into the box with a 10% inset so circles never clip. Circle diameter is `36 + sqrt(lines / maxLines) * 44` px, so the smallest is 36px, matching the chip standard. Each circle shows its line count in SpaceMono (e.g. `17.3k`) when its diameter is 46px or more, with the area name centered beneath it. Edges sit on one `aria-hidden` SVG layer behind the circles, with stroke width `1 + weight / 6` capped at 6.
+    3. Selection: tapping a circle selects it, and tapping it again deselects. The selected circle fills `--acc` (#6C5DF5) with a white label. Its edges turn `--acc`. Circles it connects to get a `--acc-muted` (#9D93EE) border. Everything else stays `#2a2c38` for edges and `#333542` for borders, with dimmed labels. Selection is ephemeral, like `selectedHandle`: it is cleared on repo change and lens change. Circles are real `<button>`s with an `aria-label` like "Pipeline, 17.3k lines".
+    4. Panel below the map, styled `#15161d` with a top border and a 16px top radius. With nothing selected it shows the repo totals (`8 areas · 88 files · 69.7k lines`) and "Tap an area to see what it does". With an area selected it shows the area name, `N files · X lines`, its `purpose`, and `Linked to N of M areas · strongest: <name>`.
+    5. The filter box dims circles whose area name and file paths all fail to match the query, and leaves matches at full strength.
+    6. Desktop (>1023px) renders the same map and panel in the tree pane. The detail column shows the code viewer's existing empty state.
+  - Implementation notes:
+    - `prefs.js`: `getStructureLens`/`setStructureLens` currently coerce anything except `'code'` to `'ui'`. Accept `'map'` too, otherwise the lens is lost on reload. If the stored lens is `'map'` but the repo has no `areas`, render the second lens instead and leave the stored value alone.
+    - `structureView.js`: add `['map', 'Map']` to `buildLensToggle`, hidden unless `areas` is present. Make `relabelSecondLensSegment` skip both `'code'` and `'map'`. In `renderLens`, route `lens === 'map'` to a new `renderMapLens` before the running-app branch. Give `'map'` explicit no-op branches in `hydrateActiveLensState`/`persistActiveLensState` so it never falls into the UI fold state.
+    - Build the DOM with `createElement`, matching the rest of the view. Styles go in `style.css` under `.structureMap*`, using the existing tokens and SpaceMono for labels.
+    - Reference mockup: option C from the design review (390×844, Pipeline selected).
+  - Acceptance criteria:
+    - `tests/codeMapModel.test.js` covers edge weights summed across both directions, same-area imports excluded, unassigned files ignored, zero-weight edges dropped, totals, and `linksFor` ordering.
+    - `tests/structureView.test.js` covers: the Map segment is present only with `areas`; selecting and deselecting a circle; the stored `'map'` lens surviving a reload; and fallback when `areas` is absent.
+    - At 390x844 all 8 circles and their labels are fully inside the map box with nothing clipped, and the panel is fully visible below it. At 1300x900 the map sits in the tree pane at no more than 420px wide.
+    - If the preview has no linked project, so the Structure tab shows its empty state, say so in the verdict and rely on the DOM tests rather than failing the run.
+  - File: `toDoList_main/src/codeMapModel.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/codeMapModel.test.js`, `toDoList_main/tests/structureView.test.js`
+  - Verify: 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=map]" ; wait 800, 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=map]" ; wait 800
+  <!-- id: 1d8323b3-a8cc-4903-a2b9-4269719fc63e -->
