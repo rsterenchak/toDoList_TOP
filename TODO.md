@@ -2328,3 +2328,30 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codetour.json`
   - Completed: 2026-10-11
   <!-- id: 0410953c-462b-4498-9520-4ff2f006a130 -->
+
+- [ ] **[MEDIUM]** Write the Chat, Structure and Settings/Focus/Ghost code tours (completes the catalog)
+  - Type: feature
+  - Description: Add the last twelve tours to `toDoList_main/codetour.json`, filling the `chat`, `structure` and `more` sections and completing the 35-tour catalog, so every area of the app has a guided walkthrough. Tours anchor only to `src/`. Where a path depends on the Worker or on deploy-time scripts (the manifest, symbols and tours are produced by `scripts/gen-src-manifest.js` during deploy), end that stretch with one step anchored on the app-side call that loads or sends it, whose `why` states plainly what happened on the other side.
+  - Behavior:
+    1. Same rules as the previous batches: follow the real code where it differs from these outlines; 5–8 steps per tour; `title` ≤ 60 and `why` ≤ 140 characters; one idea per step in the "Adding a task" voice; a 3–5 card `recap`; every claim checked against the lines its `match` highlights.
+    2. `chat` section:
+       1. `chat-send` "Sending a message to Claude": `claudeSheet.js` › `openClaudeSheet` → the composer's send handler (find it in `buildWorkspace`) → the Deep / Fast choice → `inject.js` › `chatWithWorker` (boundary) → the reply rendered into the thread → how the turn is persisted (`chatTurnWasPersisted`).
+       2. `chat-context` "Attaching files and layout context": `filePicker.js` › `createFilePicker` → `loadManifestOnce` / `filesFromManifest` → the attach list sent with the turn → `layoutInspect.js` › `serializeLayout` (`snapshotNode`, `computedStyles`) for the iterate flow.
+       3. `chat-model` "Choosing a model": `modelsPanel.js` › `buildModelRows` → `buildPickerGroups` (plan / OpenCode Go / metered lanes) → `resolveSurfaceChip` → where the choice is saved and read back on the next turn.
+    3. `structure` section:
+       1. `structure-open` "Opening the Structure tab": `structureView.js` › `renderStructureView` (repo from the selected project) → `ensureRegionsLoaded` (boundary: `loadManifest` reads the deploy-built `src-manifest.json`) → `renderLens` → the lens toggle and saved lens.
+       2. `code-map` "How the code map is built": `ensureRegionsLoaded` (boundary: modules and areas were computed at deploy) → `codeMapModel.js` › `deriveAreaGraph` → `structureView.js` › `renderMapLens` → `buildMapLens` (circle size, edge weight) → `buildMapLevel2` (`areaFiles` sorting).
+       3. `code-viewer` "Reading a file in the code viewer": `structureView.js` › `openFileInCodeViewer` (desktop column vs mobile sheet) → `codeViewer.js` › `renderCodeViewer` → `fetchLines` → `loadMore` (windowing for huge files) → `clearCodeViewer`.
+       4. `ui-lens` "The UI view: mapping live screen regions": `structureView.js` › `renderUiLens` → `structureCanvas.js` › `renderStructureCanvas` → `captureSnapshot` → the live view (`buildLiveViewport`, `buildLiveRegionBox`) → `exitLiveView`.
+    4. `more` section:
+       1. `app-lock` "App lock (PIN)": `appLock.js` › `setAppLockPin` (`mintSalt`, `digestPin`) → `verifyAppLockPin` → `markAppLockActivity` / `readAppLockTimeoutMinutes` → `isAppLockArmed` → `clearAppLock`.
+       2. `export-import` "Exporting and importing your data": `exportImport.js` › `buildExportPayload` → `importFromFile` → `parseAndValidateExport` → `describeCurrentState` (the confirm) → `handleValidatedImport`.
+       3. `onboarding` "Theme and first-run onboarding": `theme.js` › `resolveInitialTheme` → `applyTheme` → `createThemeToggleButton` → `coachmark.js` › `maybeStartFirstRunTour` (desktop) → `welcomeCarousel.js` › `maybeStartFirstRunCarousel` (mobile).
+       4. `focus` "Focus mode, pomodoro and music": `focusMode.js` › `createFocusMode` → `pomodoro.js` › `createPomodoro` → `music.js` › `createMusic` → `createPomodoroSubscriber` (music follows the timer) → `loadIframeApi`.
+       5. `ghost` "How the ghost companion talks": `companion.js` › `createCompanion` → `onCompanionActivate` → `ghostTalk.js` › `askGhost` (boundary) → `fetchGhostHistory` / `lastGhostReply` → `ghostOpeningLine`.
+    5. Sections ordered as listed; tours within each section ordered as numbered.
+  - Acceptance criteria:
+    - The real-repo tours test passes with all 35 tours: zero warnings, 3–10 steps each, length limits held.
+    - Each of `chat`, `structure` and `more` has at least one tour, so no section of the All tours sheet is empty.
+  - File: `toDoList_main/codetour.json`
+  <!-- id: 08711118-dc5d-4f49-bb42-e75c324b54b6 -->
