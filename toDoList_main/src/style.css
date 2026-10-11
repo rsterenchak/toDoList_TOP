@@ -5754,6 +5754,81 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   cursor: pointer;
 }
 
+/* The Map lens's desktop middle column and area rail. Both only show in the
+   three-pane layout (#structureView.is-map-lens, ≥1024px); the pane stays hidden
+   and empty on mobile so the single-column stack is unchanged. */
+.structureMapPane { display: none; }
+
+.structureMapRail {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.structureMapRailLabel {
+  padding: 4px 10px 6px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+
+.structureMapRailRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  height: 40px;
+  min-width: 0;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+
+.structureMapRailRow:hover:not(.is-open) {
+  background: var(--bg-hover);
+}
+
+.structureMapRailRow.is-open {
+  background: #221e44;
+  color: #fff;
+}
+
+.structureMapRailRow:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
+}
+
+.structureMapRailRow.is-filtered-out {
+  opacity: 0.3;
+}
+
+.structureMapRailName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.structureMapRailLines {
+  flex-shrink: 0;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.structureMapRailRow.is-open .structureMapRailLines {
+  color: #fff;
+}
+
 .structurePickerLabel {
   font-family: 'SpaceMono', monospace;
   font-size: 11px;
@@ -15892,6 +15967,49 @@ body.row-dragging * { cursor: grabbing !important; }
     flex: 1 1 auto;
     height: auto;
     min-height: 420px;
+  }
+
+  /* Map lens — three panes: a narrow rail (header, filter, area list), a 380px
+     map pane with the level-1/level-2 content, and the code viewer in the rest.
+     The refactor / capture cards and the action toolbar step aside. */
+  #mainBar[data-view="structure"] #structureView.is-map-lens {
+    grid-template-columns: 220px 380px minmax(0, 1fr);
+  }
+  #structureView.is-map-lens > .refactorCard,
+  #structureView.is-map-lens > .captureCard,
+  #structureView.is-map-lens > .structureActionToolbar {
+    display: none;
+  }
+  #structureView.is-map-lens > .structureControlRow { grid-row: 2; }
+  #structureView.is-map-lens > .structureTree { grid-row: 3 / -1; }
+  #structureView.is-map-lens > .structureMapPane {
+    display: block;
+    grid-column: 2;
+    grid-row: 1 / -1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+  #structureView.is-map-lens > .structureCanvasHost {
+    grid-column: 3;
+    grid-row: 1 / -1;
+  }
+  /* At the pane's width a file name is never cut off and its purpose gets two
+     lines; the row showing in the code column wears the accent border. */
+  #structureView.is-map-lens .structureMapFileName {
+    overflow: visible;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+  #structureView.is-map-lens .structureMapFilePurpose {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    white-space: normal;
+  }
+  #structureView.is-map-lens .structureMapFileRow.is-open {
+    border-color: var(--acc);
   }
 
   /* Drop the manual status text from desktop rows, mirroring the ≤1023px mobile
