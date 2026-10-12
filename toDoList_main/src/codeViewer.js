@@ -43,8 +43,17 @@
 // an explicit preference instead — persisted per device, applied at both
 // breakpoints, and driven through one custom property so the gutter and the code
 // can never step apart.
+//
+// TAP-TO-TRACE rides on the same listing. Once the repo's definitions index has
+// loaded (codeTrace.js), names it knows are wrapped in buttons; a tap opens a peek
+// of the definition over the listing (a bottom sheet below 1024px, a card at the
+// foot of the column above), tracing on from inside the peek extends its trail,
+// and Open jumps the viewer to the definition, leaving a trail bar to step back
+// along. The trail is cleared by any open that isn't a step along it.
 
 import { readRepoFile } from './inject.js';
+import { loadSymbols, getLoadedSymbols, isTraceable, tokenizeLine, resolveName, topRanked } from './codeTrace.js';
+import { joinSrcRootPath } from './srcPath.js';
 
 // Lines rendered when a file is opened cold (no jump span).
 const COLD_LINES = 300;
@@ -93,6 +102,18 @@ let explainHandler = null;
 // that opened it stays selected. Returning true claims the click; anything else
 // falls through to the default clear.
 let closeHandler = null;
+
+// The trace trail: the points the user jumped away from, oldest first, each
+// `{ repo, srcRoot, filePath, line, label }`. One trail, like one viewer.
+let trail = [];
+
+// repo → the srcRoot it was last opened with, so an opener that doesn't know it
+// (the refactor card, the hotspot list) still gets tappable names once the
+// Structure view has opened anything from that repo.
+const srcRoots = new Map();
+
+// Rows the peek shows of a definition before summarising the rest.
+const PEEK_ROWS = 14;
 
 // ── Code text size ───────────────────────────────────────────────────────────
 
@@ -210,6 +231,7 @@ export function getOpenCodeViewerFile() {
 export function getOpenCodeViewerRef() {
     if (!active) return null;
     const ref = { repo: active.repo, filePath: active.filePath };
+    if (typeof active.srcRoot === 'string') ref.srcRoot = active.srcRoot;
     if (active.hl) {
         ref.startLine = active.hl.start;
         ref.endLine = active.hl.end;
@@ -226,6 +248,8 @@ export function resetCodeViewer() {
     active = null;
     renderGen = 0;
     panes.clear();
+    trail = [];
+    srcRoots.clear();
     // Re-read rather than reset to the default: the size is a persisted device
     // preference, so a reset viewer must still come back at the stored size.
     codeFontSize = readStoredFontSize();
@@ -413,6 +437,22 @@ function buildPane() {
 
     pane.appendChild(header);
 
+    // The trace trail: Back plus one chip per point jumped away from. Shown only
+    // while there is somewhere to go back to.
+    const trailBar = document.createElement('div');
+    trailBar.className = 'codeViewerTrail';
+    trailBar.hidden = true;
+    const trailBack = document.createElement('button');
+    trailBack.type = 'button';
+    trailBack.className = 'codeViewerTrailBack';
+    trailBack.textContent = '← Back';
+    trailBack.setAttribute('aria-label', 'Back to where you traced from');
+    trailBar.appendChild(trailBack);
+    const trailChips = document.createElement('div');
+    trailChips.className = 'codeViewerTrailChips';
+    trailBar.appendChild(trailChips);
+    pane.appendChild(trailBar);
+
     // The jump banner names the candidate the span came from. Dismissing it drops
     // the highlight and leaves the file open — the point of the jump is to read
     // the code, not to keep the marker.
@@ -509,6 +549,9 @@ function buildPane() {
         lines: lines,
         moreUp: moreUp,
         moreDown: moreDown,
+        trail: trailBar,
+        trailBack: trailBack,
+        trailChips: trailChips,
     };
     // The file the Explain control acts on, set synchronously on open (the read
     // that follows is irrelevant to it) and null while the column is empty.
@@ -539,6 +582,25 @@ function buildPane() {
     bannerDismiss.addEventListener('click', function () {
         dismissBanner(pane);
     });
+    lines.addEventListener('click', function (event) {
+        const btn = event.target && event.target.closest ? event.target.closest('.codeViewerSym') : null;
+        const state = pane._codeViewerState;
+        if (!btn || !state || !state.trace) return;
+        startTrace(pane, btn, {
+            repo: state.repo,
+            srcRoot: state.srcRoot,
+            filePath: state.filePath,
+            fileKey: state.trace.fileKey,
+            symbols: state.trace.symbols,
+        }, true);
+    });
+    trailBack.addEventListener('click', function () {
+        if (trail.length) jumpToTrail(pane, trail.length - 1);
+    });
+    trailChips.addEventListener('click', function (event) {
+        const chip = event.target && event.target.closest ? event.target.closest('.codeViewerTrailChip') : null;
+        if (chip) jumpToTrail(pane, Number(chip.dataset.index));
+    });
     moreUp.addEventListener('click', function () { loadMore(pane, true); });
     moreDown.addEventListener('click', function () { loadMore(pane, false); });
     sizeDown.addEventListener('click', function () { stepFontSize(-CODE_FONT_STEP); });
@@ -554,7 +616,7 @@ function buildPane() {
 // recoloured when a line is in the span, so the gutter's width is byte-identical
 // on highlighted and unhighlighted rows. Colouring a border only on hits would
 // shift every number by 2px as the highlight scrolls past, which reads as broken.
-function buildLine(number, text, hit) {
+function buildLine(number, text, hit, trace) {
     const row = document.createElement('div');
     row.className = 'codeViewerLine' + (hit ? ' codeViewerLine--hit' : '');
     row.dataset.line = String(number);
@@ -567,11 +629,36 @@ function buildLine(number, text, hit) {
 
     const code = document.createElement('span');
     code.className = 'codeViewerCode';
-    // textContent, never innerHTML — this is fetched repo source.
-    code.textContent = text;
+    fillCode(code, text, trace);
     row.appendChild(code);
 
     return row;
+}
+
+// Fill one line's code span. With a trace index, names it knows become buttons;
+// either way every node is a text node or a button whose textContent is set —
+// textContent, never innerHTML, because this is fetched repo source.
+function fillCode(code, text, trace) {
+    if (!trace) {
+        code.textContent = text;
+        return;
+    }
+    clearEl(code);
+    tokenizeLine(text, function (name) {
+        return isTraceable(trace.symbols, trace.fileKey, name);
+    }).forEach(function (seg) {
+        if (!seg.name) {
+            code.appendChild(document.createTextNode(seg.text));
+            return;
+        }
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'codeViewerSym';
+        btn.textContent = seg.text;
+        btn.dataset.name = seg.name;
+        if (seg.qualifier) btn.dataset.qualifier = seg.qualifier;
+        code.appendChild(btn);
+    });
 }
 
 function isHit(state, number) {
@@ -583,7 +670,7 @@ function paintRange(state, from, to, atTop) {
     const refs = state.pane._codeViewerRefs;
     const frag = document.createDocumentFragment();
     for (let n = from; n <= to; n++) {
-        frag.appendChild(buildLine(n, state.lines[n - 1], isHit(state, n)));
+        frag.appendChild(buildLine(n, state.lines[n - 1], isHit(state, n), state.trace));
     }
     if (atTop) refs.lines.insertBefore(frag, refs.lines.firstChild);
     else refs.lines.appendChild(frag);
@@ -649,6 +736,292 @@ function scrollToLine(state, number) {
     try { if (el.scrollIntoView) el.scrollIntoView({ block: 'center' }); } catch (e) { /* jsdom */ }
 }
 
+// ── Trace ────────────────────────────────────────────────────────────────────
+
+// The index key for a repo-relative path: the manifest names files relative to
+// srcRoot, so strip it back off.
+function fileKeyFor(srcRoot, filePath) {
+    const root = String(srcRoot || '').replace(/\/+$/, '');
+    return (root && filePath.indexOf(root + '/') === 0) ? filePath.slice(root.length + 1) : filePath;
+}
+
+function baseName(path) {
+    const s = String(path || '');
+    return s.slice(s.lastIndexOf('/') + 1);
+}
+
+function trailLabel(entry) {
+    return baseName(entry.filePath) + ':' + entry.line + ' › ' + entry.label;
+}
+
+// Re-wrap the names on lines already painted, for an index that arrived after
+// the source did.
+function redecorate(state) {
+    const rows = state.pane._codeViewerRefs.lines.querySelectorAll('.codeViewerLine');
+    Array.prototype.forEach.call(rows, function (row) {
+        const n = Number(row.dataset.line);
+        const code = row.querySelector('.codeViewerCode');
+        if (code && n >= 1 && n <= state.lines.length) fillCode(code, state.lines[n - 1], state.trace);
+    });
+}
+
+function refreshTrail(pane) {
+    const refs = pane._codeViewerRefs;
+    clearEl(refs.trailChips);
+    refs.trail.hidden = trail.length === 0;
+    trail.forEach(function (entry, i) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'codeViewerTrailChip';
+        chip.dataset.index = String(i);
+        chip.textContent = trailLabel(entry);
+        refs.trailChips.appendChild(chip);
+    });
+}
+
+// Go back to trail point `index`, dropping it and everything after it.
+function jumpToTrail(pane, index) {
+    const entry = trail[index];
+    const host = pane.parentElement;
+    if (!entry || !host) return;
+    trail = trail.slice(0, index);
+    renderCodeViewer(host, {
+        target: { repo: entry.repo },
+        filePath: entry.filePath,
+        startLine: entry.line,
+        endLine: entry.line,
+        srcRoot: entry.srcRoot,
+        keepTrail: true,
+    });
+}
+
+let escapeWired = false;
+// Escape closes an open peek before anything else hears it — the mobile code
+// sheet's own Escape listens on document, so this listens a level above.
+function wirePeekEscape() {
+    if (escapeWired || typeof window === 'undefined') return;
+    escapeWired = true;
+    window.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const layer = document.querySelector('.codeTraceLayer');
+        if (!layer) return;
+        event.preventDefault();
+        event.stopPropagation();
+        closePeek(layer.parentElement);
+    }, true);
+}
+
+function closePeek(pane) {
+    if (!pane) return;
+    const layer = pane.querySelector(':scope > .codeTraceLayer');
+    if (layer) layer.remove();
+    pane._codeTracePeek = null;
+}
+
+// A name was tapped — in the listing (`fresh`, which starts a new peek trail) or
+// inside a peek (which extends it). Resolve it and peek or pick.
+function startTrace(pane, btn, from, fresh) {
+    const row = btn.closest('[data-line]');
+    const line = row ? Number(row.dataset.line) : 0;
+    const name = btn.dataset.name;
+    const qualifier = btn.dataset.qualifier || null;
+    const candidates = resolveName(from.symbols, from.fileKey, line, name, qualifier);
+    if (!candidates.length) return;
+    const prev = (!fresh && pane._codeTracePeek) ? pane._codeTracePeek.trail : [];
+    const peek = {
+        repo: from.repo,
+        srcRoot: from.srcRoot,
+        symbols: from.symbols,
+        fromKey: from.fileKey,
+        name: name,
+        binding: qualifier || name,
+        trail: prev.concat([{ repo: from.repo, srcRoot: from.srcRoot, filePath: from.filePath, line: line, label: name }]),
+    };
+    pane._codeTracePeek = peek;
+    const top = topRanked(candidates);
+    if (top.length === 1) showPeek(pane, peek, top[0]);
+    else showPicker(pane, peek, candidates);
+}
+
+// A fresh overlay layer in `pane`, replacing any open one. The layer is the
+// backdrop: a tap that lands on it rather than the card closes the peek.
+function openLayer(pane, label) {
+    wirePeekEscape();
+    const old = pane.querySelector(':scope > .codeTraceLayer');
+    if (old) old.remove();
+    const layer = document.createElement('div');
+    layer.className = 'codeTraceLayer';
+    layer.addEventListener('click', function (event) {
+        if (event.target === layer) closePeek(pane);
+    });
+    const card = document.createElement('div');
+    card.className = 'codeTracePeek';
+    card.setAttribute('role', 'dialog');
+    card.setAttribute('aria-label', label);
+    layer.appendChild(card);
+    pane.appendChild(layer);
+    return { layer: layer, card: card };
+}
+
+function buildCloseButton(pane) {
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'codeTracePeekClose';
+    close.textContent = 'Close';
+    close.addEventListener('click', function () { closePeek(pane); });
+    return close;
+}
+
+function showPeek(pane, peek, cand) {
+    const def = cand.def;
+    const defPath = joinSrcRootPath(peek.srcRoot, cand.file);
+    const ui = openLayer(pane, 'Definition of ' + def.name);
+    const card = ui.card;
+
+    const head = document.createElement('div');
+    head.className = 'codeTracePeekHead';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'codeTracePeekName';
+    nameEl.textContent = def.name;
+    head.appendChild(nameEl);
+    const kind = document.createElement('span');
+    kind.className = 'codeTracePeekKind';
+    kind.textContent = def.kind || '';
+    head.appendChild(kind);
+    card.appendChild(head);
+
+    const via = cand.reason === 'import' ? ('via import ' + peek.binding)
+        : (cand.file === peek.fromKey ? 'same file' : 'name match');
+    const meta = document.createElement('div');
+    meta.className = 'codeTracePeekMeta';
+    meta.textContent = cand.file + ' · lines ' + def.start + '–' + def.end + ' · ' + via;
+    card.appendChild(meta);
+
+    const chips = document.createElement('div');
+    chips.className = 'codeTraceChips';
+    peek.trail.forEach(function (entry) {
+        const chip = document.createElement('span');
+        chip.className = 'codeTraceChip';
+        chip.textContent = trailLabel(entry);
+        chips.appendChild(chip);
+    });
+    card.appendChild(chips);
+
+    const code = document.createElement('div');
+    code.className = 'codeTracePeekCode';
+    const status = document.createElement('div');
+    status.className = 'codeTracePeekStatus';
+    status.textContent = 'Loading…';
+    code.appendChild(status);
+    card.appendChild(code);
+
+    const trace = { symbols: peek.symbols, fileKey: cand.file };
+    code.addEventListener('click', function (event) {
+        const btn = event.target && event.target.closest ? event.target.closest('.codeViewerSym') : null;
+        if (!btn) return;
+        startTrace(pane, btn, {
+            repo: peek.repo,
+            srcRoot: peek.srcRoot,
+            filePath: defPath,
+            fileKey: cand.file,
+            symbols: peek.symbols,
+        }, false);
+    });
+
+    const actions = document.createElement('div');
+    actions.className = 'codeTracePeekActions';
+    const open = document.createElement('button');
+    open.type = 'button';
+    open.className = 'codeTracePeekOpen';
+    open.textContent = 'Open ' + baseName(cand.file) + ' →';
+    open.addEventListener('click', function () {
+        const host = pane.parentElement;
+        if (!host) return;
+        trail = trail.concat(peek.trail);
+        closePeek(pane);
+        renderCodeViewer(host, {
+            target: { repo: peek.repo },
+            filePath: defPath,
+            startLine: def.start,
+            endLine: def.end,
+            srcRoot: peek.srcRoot,
+            keepTrail: true,
+        });
+    });
+    actions.appendChild(open);
+    actions.appendChild(buildCloseButton(pane));
+    card.appendChild(actions);
+
+    fetchLines({ repo: peek.repo }, defPath).then(function (res) {
+        // Replaced or closed while the read was in flight.
+        if (!ui.layer.parentElement) return;
+        if (!res.ok) {
+            status.textContent = 'Couldn’t read this file.';
+            return;
+        }
+        code.removeChild(status);
+        const last = Math.min(def.end, def.start + PEEK_ROWS - 1, res.lines.length);
+        for (let n = def.start; n <= last; n++) {
+            code.appendChild(buildLine(n, res.lines[n - 1], true, trace));
+        }
+        const rest = Math.min(def.end, res.lines.length) - last;
+        if (rest > 0) {
+            const more = document.createElement('div');
+            more.className = 'codeTracePeekMore';
+            more.textContent = '… ' + rest + ' more line' + (rest === 1 ? '' : 's');
+            code.appendChild(more);
+        }
+    });
+}
+
+function showPicker(pane, peek, candidates) {
+    const ui = openLayer(pane, 'Definitions of ' + peek.name);
+    const card = ui.card;
+    card.classList.add('codeTracePicker');
+
+    const head = document.createElement('div');
+    head.className = 'codeTracePeekHead';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'codeTracePeekName';
+    nameEl.textContent = peek.name;
+    head.appendChild(nameEl);
+    const count = document.createElement('span');
+    count.className = 'codeTracePeekKind';
+    count.textContent = candidates.length + ' definitions';
+    head.appendChild(count);
+    card.appendChild(head);
+
+    const list = document.createElement('div');
+    list.className = 'codeTracePickerList';
+    candidates.forEach(function (cand, i) {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'codeTracePickerItem';
+        const where = document.createElement('span');
+        where.className = 'codeTracePickerWhere';
+        where.textContent = (cand.file === peek.fromKey ? '' : cand.file + ' · ') + 'line ' + cand.def.start;
+        item.appendChild(where);
+        const scope = document.createElement('span');
+        scope.className = 'codeTracePickerScope';
+        scope.textContent = cand.def.parent ? ('inside ' + cand.def.parent + '()') : 'top level';
+        item.appendChild(scope);
+        if (i === 0 && cand.reason === 'same scope') {
+            const best = document.createElement('span');
+            best.className = 'codeTracePickerBest';
+            best.textContent = 'BEST MATCH · same scope';
+            item.appendChild(best);
+        }
+        item.addEventListener('click', function () { showPeek(pane, peek, cand); });
+        list.appendChild(item);
+    });
+    card.appendChild(list);
+
+    const actions = document.createElement('div');
+    actions.className = 'codeTracePeekActions';
+    actions.appendChild(buildCloseButton(pane));
+    card.appendChild(actions);
+}
+
 // ── Fetch ────────────────────────────────────────────────────────────────────
 
 function fetchLines(target, filePath) {
@@ -680,6 +1053,11 @@ function fetchLines(target, filePath) {
 //   • startLine / endLine — an optional span to jump to and highlight.
 //   • banner    — text naming where the span came from, shown above the source
 //                 while the highlight is live. Only meaningful with a span.
+//   • srcRoot   — the manifest's source folder, which maps `filePath` to its key
+//                 in the trace index. Remembered per repo once given; without
+//                 one ever given, nothing in the listing is tappable.
+//   • keepTrail — set only by a step along the trace trail; every other open
+//                 clears it.
 // Returns the pane element, or null when the arguments can't address a file.
 export function renderCodeViewer(host, opts) {
     if (!host || !opts) return null;
@@ -692,6 +1070,13 @@ export function renderCodeViewer(host, opts) {
     const shell = ensureShell(host);
     const pane = shell.pane;
     const refs = pane._codeViewerRefs;
+
+    if (typeof opts.srcRoot === 'string') srcRoots.set(target.repo, opts.srcRoot);
+    const srcRoot = srcRoots.get(target.repo);
+    if (!opts.keepTrail) trail = [];
+    closePeek(pane);
+    refreshTrail(pane);
+    if (typeof srcRoot === 'string') loadSymbols(target.repo);
 
     shell.empty.hidden = true;
     pane.hidden = false;
@@ -727,6 +1112,7 @@ export function renderCodeViewer(host, opts) {
         repo: target.repo,
         hl: hl,
         banner: (hl && opts.banner) ? String(opts.banner) : '',
+        srcRoot: srcRoot,
     };
     notifyChange();
 
@@ -751,8 +1137,24 @@ export function renderCodeViewer(host, opts) {
             hl: hl,
             start: 1,
             end: 0,
+            srcRoot: srcRoot,
+            trace: null,
         };
         pane._codeViewerState = state;
+        if (typeof srcRoot === 'string') {
+            const fileKey = fileKeyFor(srcRoot, filePath);
+            const ready = getLoadedSymbols(target.repo);
+            if (ready) {
+                state.trace = { symbols: ready, fileKey: fileKey };
+            } else if (ready === undefined) {
+                // Still loading: paint now, wrap the names once it lands.
+                loadSymbols(target.repo).then(function (symbols) {
+                    if (!symbols || pane._codeViewerState !== state) return;
+                    state.trace = { symbols: symbols, fileKey: fileKey };
+                    redecorate(state);
+                });
+            }
+        }
         const win = computeWindow(total, hl);
         state.start = win.start;
         state.end = win.end;
@@ -778,6 +1180,9 @@ export function clearCodeViewer(host) {
     shell.pane.hidden = true;
     shell.pane._codeViewerState = null;
     shell.pane._codeViewerFile = null;
+    trail = [];
+    closePeek(shell.pane);
+    refreshTrail(shell.pane);
     clearEl(refs.lines);
     refs.explain.disabled = true;
     refs.explain.textContent = EXPLAIN_LABEL;

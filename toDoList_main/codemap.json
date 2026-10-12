@@ -119,6 +119,7 @@
         "structureCanvas.js",
         "structureRemoteCapture.js",
         "codeViewer.js",
+        "codeTrace.js",
         "complexityHotspots.js",
         "refactorCard.js",
         "captureCard.js",

@@ -937,7 +937,8 @@ setCodeViewerCloseHandler(function (host) {
 function openFileInCodeViewer(repo, filePath, highlight) {
     const host = codeViewerHost();
     if (!host) return;
-    const opts = { target: { repo: repo }, filePath: filePath };
+    // srcRoot maps the file to its key in the trace index (tap-to-trace).
+    const opts = { target: { repo: repo }, filePath: filePath, srcRoot: currentSrcRoot || '' };
     if (highlight) {
         opts.startLine = highlight.startLine;
         opts.endLine = highlight.endLine;
