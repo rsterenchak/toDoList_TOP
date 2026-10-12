@@ -2357,7 +2357,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 08711118-dc5d-4f49-bb42-e75c324b54b6 -->
 
-- [ ] **[MEDIUM]** Add tap-to-trace to the code viewer (peek sheet, jump with trail, picker)
+- [x] **[MEDIUM]** Add tap-to-trace to the code viewer (peek sheet, jump with trail, picker)
   - Type: feature
   - Description: Reading code in the Structure tab's code viewer, you can't follow a name to where it's defined. The deploy already publishes `src-symbols.json` (every definition with start/end lines, its enclosing definition, and each file's import bindings). Use it to make names in the viewer tappable. A tap opens a peek sheet with the definition highlighted. You can keep tracing from inside the peek, or press Open to jump to the definition's file, with a trail bar to step back. When a name has several plausible definitions, a picker lists them with the best match marked. Reference mockups: "Trace A — Peek sheet", "Trace C — Jump + trail" and "Trace · several matches" from the design review (A, with Open behaving like C).
   - Behavior:
@@ -2377,4 +2377,5 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - If the preview has no linked project and shows the Structure empty state, say so in the verdict and rely on the DOM tests.
   - File: `toDoList_main/src/codeTrace.js`, `toDoList_main/src/codeViewer.js`, `toDoList_main/src/structureView.js`, `toDoList_main/src/style.css`, `toDoList_main/codemap.json`, `toDoList_main/tests/codeTrace.test.js`, `toDoList_main/tests/structureCodeViewer.test.js`
   - Verify: 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=code]" ; click "text=dispatchDraft.js" ; wait 1200 ; click ".codeViewerSym >> text=getProjectTargetId" ; wait 800, 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=code]" ; click "text=dispatchDraft.js" ; wait 1200 ; click ".codeViewerSym >> text=getProjectTargetId" ; wait 800
+  - Completed: 2026-10-11
   <!-- id: 2fb6bf21-444d-4058-a1bd-84ed48c8346b -->

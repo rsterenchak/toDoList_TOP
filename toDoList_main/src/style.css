@@ -6989,6 +6989,8 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
    toggles declares a `display`, which outranks the UA's `[hidden] { display: none }`,
    so each one carries its own `[hidden]` guard directly beneath its base rule. */
 .codeViewerPane {
+  --acc: #6C5DF5;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -7328,6 +7330,230 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .codeViewerMore--down {
   border-bottom: none;
   border-top: 0.5px solid var(--border-dim);
+}
+
+/* ── TAP-TO-TRACE ─────────────────────────────────────────────────────────────
+   Names the trace index knows are buttons inside the listing. They inherit the
+   code font and sit flush in the line, so a wrapped name never shifts a column;
+   only a dotted underline marks them. */
+.codeViewerSym {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  white-space: pre;
+  text-decoration: underline dotted #6f6a9e;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.codeViewerSym:hover,
+.codeViewerSym:focus-visible { color: #9D93EE; outline: none; }
+
+/* The trail bar under the header: Back plus one chip per point jumped from. */
+.codeViewerTrail {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+.codeViewerTrail[hidden] { display: none !important; }
+
+.codeViewerTrailBack {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--bg-hover);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.codeViewerTrailChips {
+  display: flex;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.codeViewerTrailChip,
+.codeTraceChip {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--border-dim);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  white-space: nowrap;
+}
+.codeViewerTrailChip { cursor: pointer; }
+.codeViewerTrailChip:hover { color: var(--text-primary); }
+
+/* The peek's layer covers the pane and is its backdrop. Below 1024px the card is
+   a bottom sheet about 62% tall over the dimmed listing; the desktop rule in the
+   min-width: 1024px block turns it into a card at the foot of the column. */
+.codeTraceLayer {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.codeTracePeek {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 62%;
+  min-height: 0;
+  padding: 12px 12px 10px;
+  border: 1px solid var(--border-mid);
+  border-bottom: none;
+  border-radius: 12px 12px 0 0;
+  background: var(--bg-surface);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.35);
+}
+
+.codeTracePeekHead {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.codeTracePeekName {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.codeTracePeekKind,
+.codeTracePeekMeta {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.codeTracePeekMeta {
+  flex: 0 0 auto;
+  word-break: break-word;
+}
+
+.codeTraceChips {
+  display: flex;
+  gap: 6px;
+  flex: 0 0 auto;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.codeTraceChips:empty { display: none; }
+
+.codeTracePeekCode {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #0a0b0f;
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+}
+
+.codeTracePeekStatus,
+.codeTracePeekMore {
+  padding: 6px 8px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.codeTracePeekActions {
+  display: flex;
+  gap: 8px;
+  flex: 0 0 auto;
+}
+
+.codeTracePeekOpen,
+.codeTracePeekClose {
+  min-height: 44px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 13px;
+  cursor: pointer;
+}
+.codeTracePeekOpen {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border: 1px solid var(--acc);
+  background: var(--acc);
+  color: #fff;
+}
+.codeTracePeekClose {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-mid);
+  background: transparent;
+  color: var(--text-secondary);
+}
+.codeTracePicker .codeTracePeekClose { flex: 1 1 auto; }
+
+/* The picker: one row per candidate definition, best match tagged. */
+.codeTracePicker { height: auto; max-height: 62%; }
+
+.codeTracePickerList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.codeTracePickerItem {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 10px;
+  min-height: 44px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.codeTracePickerItem:hover { border-color: var(--acc); }
+
+.codeTracePickerScope { color: var(--text-muted); }
+
+.codeTracePickerBest {
+  padding: 1px 6px;
+  border-radius: 4px;
+  background: var(--acc);
+  color: #fff;
+  font-size: 9px;
+  letter-spacing: 0.04em;
 }
 
 /* ── STRUCTURE CODE SHEET (Code lens, ≤1023px) ────────────────────────────────
@@ -16531,6 +16757,21 @@ body.row-dragging * { cursor: grabbing !important; }
   #structureView > .structureCanvasHost > .codeViewerPane {
     flex: 1 1 auto;
     min-height: 0;
+  }
+  /* Tap-to-trace on desktop: the peek is a card floating at the foot of the
+     code column rather than a sheet, and the listing above it stays undimmed. */
+  #structureView > .structureCanvasHost .codeTraceLayer {
+    align-items: center;
+    padding: 0 12px 12px;
+    background: transparent;
+  }
+  #structureView > .structureCanvasHost .codeTracePeek {
+    width: 100%;
+    max-width: 560px;
+    height: auto;
+    max-height: 70%;
+    border-bottom: 1px solid var(--border-mid);
+    border-radius: 10px;
   }
   /* Live mode's viewport absorbs the detail column the same way, so the deployed
      page renders at real column height instead of the mobile dvh proportion. */

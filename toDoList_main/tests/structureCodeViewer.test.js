@@ -16,6 +16,9 @@ const { state } = vi.hoisted(() => ({
         runningRepo: 'rsterenchak/toDoList_TOP',
         manifests: {},
         reads: [],
+        // repo-relative path → source, for the tap-to-trace tests; anything
+        // else reads as the three-line default.
+        sources: {},
     },
 }));
 
@@ -40,7 +43,9 @@ vi.mock('../src/inject.js', () => ({
     chatWithWorker: vi.fn(function () { return Promise.resolve({ reply: 'ok' }); }),
     readRepoFile: vi.fn(function (target, filePath) {
         state.reads.push({ repo: target && target.repo, filePath });
-        return Promise.resolve({ ok: true, content: 'a\nb\nc', sha: 'sha-1' });
+        const content = Object.prototype.hasOwnProperty.call(state.sources, filePath)
+            ? state.sources[filePath] : 'a\nb\nc';
+        return Promise.resolve({ ok: true, content, sha: 'sha-1' });
     }),
     // The NEXT REFACTOR card mounts inside the view; keep it inert here.
     scanRefactor: vi.fn(function () { return Promise.resolve({ ok: true, found: false }); }),
@@ -67,6 +72,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
 import { renderStructureView, resetStructureCodeMemory } from '../src/structureView.js';
 import { getOpenCodeViewerFile, resetCodeViewer } from '../src/codeViewer.js';
 import { readRepoFile, chatWithWorker } from '../src/inject.js';
+import { resetSymbolsCache } from '../src/codeTrace.js';
 import { setStructureLens, STRUCTURE_LENS_KEY } from '../src/prefs.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -110,6 +116,11 @@ beforeEach(async () => {
     setWidth(1280);
     mountDom();
     state.reads = [];
+    state.sources = {};
+    // The trace index is fetched from Pages; no test may reach the network, so
+    // the default is a miss (nothing tappable) unless a test serves one.
+    resetSymbolsCache();
+    globalThis.fetch = vi.fn(() => Promise.resolve({ ok: false }));
     state.manifests = {
         [REPO]: { ok: true, srcRoot: 'toDoList_main/src', files: ['main.js', 'ui/panel.js'] },
     };
@@ -801,5 +812,276 @@ describe('Types lens — an outline row jumps into the code viewer', () => {
         expect(pane.querySelector('.codeViewerBannerText').textContent).toBe('class Greeter');
         expect(hitLines(sheetHost())).toEqual(['2']);
         expect(detailHost().querySelector('.codeViewerPane')).toBeNull();
+    });
+});
+
+describe('Tap-to-trace in the code viewer', () => {
+    const SRC = 'toDoList_main/src/';
+    const SYMBOLS = {
+        version: 1,
+        files: {
+            'dispatchDraft.js': {
+                defs: [{ name: 'draftFor', kind: 'function', start: 3, end: 6, parent: null }],
+                imports: { listLogic: { from: 'listLogic.js', name: 'listLogic' } },
+            },
+            'listLogic.js': {
+                defs: [
+                    { name: 'listLogic', kind: 'iife', start: 1, end: 10, parent: null },
+                    { name: 'getProjectTargetId', kind: 'function', start: 3, end: 5, parent: 'listLogic' },
+                    { name: 'helper', kind: 'function', start: 12, end: 30, parent: null },
+                ],
+                imports: {},
+            },
+            'a.js': { defs: [{ name: 'init', kind: 'function', start: 1, end: 2, parent: null }], imports: {} },
+            'b.js': { defs: [{ name: 'init', kind: 'function', start: 4, end: 6, parent: null }], imports: {} },
+        },
+    };
+    const DISPATCH = [
+        "import { listLogic } from './listLogic.js';",
+        '// listLogic.getProjectTargetId is only mentioned here',
+        'export function draftFor(p) {',
+        '    const id = listLogic.getProjectTargetId(p);',
+        "    return init(id) + 'listLogic';",
+        '}',
+        '// <img src=x onerror="alert(1)"> helper',
+    ].join('\n');
+    const LIST_LOGIC = [
+        'export const listLogic = (function () {',
+        '    const projects = [];',
+        '    function getProjectTargetId(p) {',
+        '        return helper(p);',
+        '    }',
+    ].concat(Array.from({ length: 25 }, (_, i) => '    // filler ' + (i + 6))).join('\n');
+
+    function pane() {
+        return detailHost().querySelector(':scope > .codeViewerPane');
+    }
+    function listingHits() {
+        return Array.from(pane().querySelectorAll('.codeViewerLines .codeViewerLine--hit'))
+            .map((el) => el.dataset.line);
+    }
+    function sym(root, line, name) {
+        const row = root.querySelector('[data-line="' + line + '"]');
+        return Array.from(row.querySelectorAll('.codeViewerSym')).find((b) => b.textContent === name);
+    }
+    function peek() {
+        return pane().querySelector('.codeTraceLayer .codeTracePeek');
+    }
+    function trailChips() {
+        return Array.from(pane().querySelectorAll('.codeViewerTrailChip')).map((c) => c.textContent);
+    }
+
+    beforeEach(() => {
+        state.manifests[REPO] = {
+            ok: true, srcRoot: 'toDoList_main/src',
+            files: ['main.js', 'dispatchDraft.js', 'listLogic.js'],
+        };
+        state.sources = {
+            [SRC + 'dispatchDraft.js']: DISPATCH,
+            [SRC + 'listLogic.js']: LIST_LOGIC,
+            [SRC + 'a.js']: 'export function init() {\n}',
+            [SRC + 'b.js']: '\n\n\nexport function init() {\n  return 1;\n}',
+        };
+        globalThis.fetch = vi.fn((url) => Promise.resolve(
+            url === 'https://rsterenchak.github.io/toDoList_TOP/src-symbols.json'
+                ? { ok: true, json: () => Promise.resolve(SYMBOLS) }
+                : { ok: false }));
+    });
+
+    async function openDispatch() {
+        renderStructureView();
+        await flush();
+        rowFor('dispatchDraft.js').click();
+        await flush(8);
+    }
+
+    it('wraps only known names, and lines still carry no HTML from the source', async () => {
+        await openDispatch();
+        const lines = pane().querySelector('.codeViewerLines');
+        const row4 = Array.from(lines.querySelector('[data-line="4"]').querySelectorAll('.codeViewerSym'))
+            .map((b) => b.textContent);
+        expect(row4).toEqual(['listLogic', 'getProjectTargetId']);
+        // A comment and a string never wrap; `init` is a def elsewhere, so it does.
+        expect(lines.querySelector('[data-line="2"]').querySelectorAll('.codeViewerSym')).toHaveLength(0);
+        expect(Array.from(lines.querySelector('[data-line="5"]').querySelectorAll('.codeViewerSym'))
+            .map((b) => b.textContent)).toEqual(['init']);
+        // The only elements inside a code span are the wrap buttons.
+        lines.querySelectorAll('.codeViewerCode *').forEach((el) => {
+            expect(el.tagName).toBe('BUTTON');
+            expect(el.className).toBe('codeViewerSym');
+        });
+        expect(lines.querySelector('img')).toBeNull();
+        expect(Array.from(lines.querySelectorAll('.codeViewerCode')).map((n) => n.textContent).join('\n'))
+            .toBe(DISPATCH);
+    });
+
+    it('nothing is tappable when the index fails to load', async () => {
+        globalThis.fetch = vi.fn(() => Promise.reject(new Error('offline')));
+        await openDispatch();
+        expect(pane().querySelectorAll('.codeViewerSym')).toHaveLength(0);
+        expect(pane().querySelector('[data-line="4"] .codeViewerCode').textContent)
+            .toBe('    const id = listLogic.getProjectTargetId(p);');
+    });
+
+    it('a tap opens the peek on the definition’s whole range', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+
+        const card = peek();
+        expect(card).toBeTruthy();
+        expect(card.querySelector('.codeTracePeekName').textContent).toBe('getProjectTargetId');
+        expect(card.querySelector('.codeTracePeekKind').textContent).toBe('function');
+        expect(card.querySelector('.codeTracePeekMeta').textContent)
+            .toBe('listLogic.js · lines 3–5 · via import listLogic');
+        const rows = Array.from(card.querySelectorAll('.codeViewerLine'));
+        expect(rows.map((r) => r.dataset.line)).toEqual(['3', '4', '5']);
+        expect(rows.every((r) => r.classList.contains('codeViewerLine--hit'))).toBe(true);
+        expect(card.querySelector('.codeTracePeekOpen').textContent).toBe('Open listLogic.js →');
+        expect(Array.from(card.querySelectorAll('.codeTraceChip')).map((c) => c.textContent))
+            .toEqual(['dispatchDraft.js:4 › getProjectTargetId']);
+        // The listing itself has not moved.
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'dispatchDraft.js');
+    });
+
+    it('tracing inside the peek replaces it and extends the trail', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+        sym(peek(), 4, 'helper').click();
+        await flush();
+
+        const card = peek();
+        expect(pane().querySelectorAll('.codeTraceLayer')).toHaveLength(1);
+        expect(card.querySelector('.codeTracePeekName').textContent).toBe('helper');
+        expect(Array.from(card.querySelectorAll('.codeTraceChip')).map((c) => c.textContent))
+            .toEqual(['dispatchDraft.js:4 › getProjectTargetId', 'listLogic.js:4 › helper']);
+        // 19 lines long: capped at 14 rows plus a summary of the rest.
+        expect(card.querySelectorAll('.codeViewerLine')).toHaveLength(14);
+        expect(card.querySelector('.codeTracePeekMore').textContent).toBe('… 5 more lines');
+    });
+
+    it('Open jumps to the definition with its highlight and shows the trail bar', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+        peek().querySelector('.codeTracePeekOpen').click();
+        await flush(8);
+
+        expect(peek()).toBeNull();
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'listLogic.js');
+        expect(listingHits()).toEqual(['3', '4', '5']);
+        expect(pane().querySelector('.codeViewerTrail').hidden).toBe(false);
+        expect(trailChips()).toEqual(['dispatchDraft.js:4 › getProjectTargetId']);
+        // The jumped-to file is tappable too.
+        expect(sym(pane().querySelector('.codeViewerLines'), 4, 'helper')).toBeTruthy();
+    });
+
+    it('Back restores the previous file with the tapped line highlighted', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+        peek().querySelector('.codeTracePeekOpen').click();
+        await flush(8);
+
+        pane().querySelector('.codeViewerTrailBack').click();
+        await flush(8);
+
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'dispatchDraft.js');
+        expect(listingHits()).toEqual(['4']);
+        expect(pane().querySelector('.codeViewerTrail').hidden).toBe(true);
+    });
+
+    it('a trail chip jumps back to its point and truncates the trail', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+        sym(peek(), 4, 'helper').click();
+        await flush();
+        peek().querySelector('.codeTracePeekOpen').click();
+        await flush(8);
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'listLogic.js');
+        expect(listingHits()[0]).toBe('12');
+        expect(trailChips()).toHaveLength(2);
+
+        pane().querySelectorAll('.codeViewerTrailChip')[0].click();
+        await flush(8);
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'dispatchDraft.js');
+        expect(listingHits()).toEqual(['4']);
+        expect(trailChips()).toEqual([]);
+    });
+
+    it('opening a file any other way clears the trail', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+        peek().querySelector('.codeTracePeekOpen').click();
+        await flush(8);
+        expect(trailChips()).toHaveLength(1);
+
+        rowFor('main.js').click();
+        await flush(8);
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'main.js');
+        expect(pane().querySelector('.codeViewerTrail').hidden).toBe(true);
+        expect(trailChips()).toEqual([]);
+    });
+
+    it('several plausible definitions open a picker, and a pick opens its peek', async () => {
+        await openDispatch();
+        sym(pane().querySelector('.codeViewerLines'), 5, 'init').click();
+        await flush();
+
+        const picker = pane().querySelector('.codeTraceLayer .codeTracePicker');
+        expect(picker).toBeTruthy();
+        const items = Array.from(picker.querySelectorAll('.codeTracePickerItem'));
+        expect(items.map((i) => i.querySelector('.codeTracePickerWhere').textContent))
+            .toEqual(['a.js · line 1', 'b.js · line 4']);
+        expect(items[0].querySelector('.codeTracePickerScope').textContent).toBe('top level');
+
+        items[1].click();
+        await flush();
+        const card = peek();
+        expect(card.classList.contains('codeTracePicker')).toBe(false);
+        expect(card.querySelector('.codeTracePeekMeta').textContent).toBe('b.js · lines 4–6 · name match');
+        expect(Array.from(card.querySelectorAll('.codeViewerLine')).map((r) => r.dataset.line))
+            .toEqual(['4', '5', '6']);
+    });
+
+    it('Escape, the backdrop and Close each close the peek', async () => {
+        await openDispatch();
+        const tap = () => sym(pane().querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+
+        tap();
+        await flush();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(peek()).toBeNull();
+
+        tap();
+        await flush();
+        pane().querySelector('.codeTraceLayer').click();
+        expect(peek()).toBeNull();
+
+        tap();
+        await flush();
+        peek().querySelector('.codeTracePeekClose').click();
+        expect(peek()).toBeNull();
+        expect(getOpenCodeViewerFile()).toBe(SRC + 'dispatchDraft.js');
+    });
+
+    it('below 1024px the peek opens inside the sheet, and Escape closes only the peek', async () => {
+        setWidth(900);
+        renderStructureView();
+        await flush();
+        rowFor('dispatchDraft.js').click();
+        await flush(8);
+
+        const sheetPane = sheetHost().querySelector(':scope > .codeViewerPane');
+        sym(sheetPane.querySelector('.codeViewerLines'), 4, 'getProjectTargetId').click();
+        await flush();
+        expect(sheetPane.querySelector('.codeTraceLayer .codeTracePeek')).toBeTruthy();
+
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(sheetPane.querySelector('.codeTraceLayer')).toBeNull();
+        expect(sheet().hidden).toBe(false);
     });
 });
