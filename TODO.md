@@ -2380,7 +2380,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-10-11
   <!-- id: 2fb6bf21-444d-4058-a1bd-84ed48c8346b -->
 
-- [ ] **[MEDIUM]** Validate tour recaps in the tour compiler
+- [x] **[MEDIUM]** Validate tour recaps in the tour compiler — Completed: 2026-10-14
   - Type: bug
   - Description: `compileTours` in `gen-src-manifest.js` copies each tour's `recap` through unchecked, but `tourPlayer.js` renders recap items as `{ title, body }` cards. A repo that wrote its recap as plain strings (matchingGame-test did) compiled with zero warnings and then showed empty recap cards. Validate recaps at compile time. A string item becomes `{ title: <string>, body: "" }` with a deploy-log warning naming the tour. An item that's neither a string nor an object with a non-empty `title` is dropped with a warning. In `tourPlayer.js`, a recap card with an empty `body` renders only its title (no empty second line).
   - Acceptance criteria:
