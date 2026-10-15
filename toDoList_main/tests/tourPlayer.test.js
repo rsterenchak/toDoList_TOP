@@ -140,6 +140,14 @@ describe('navigation', () => {
         expect(text('.tourPlayerCount')).toBe('Recap');
     });
 
+    test('a recap card without a body renders only its title', () => {
+        openTourPlayer({ tour: makeTour({ recap: [{ title: 'Just a title', body: '' }] }), repo: REPO, startStep: 3 });
+        const card = q('.tourRecapCard');
+        expect(card.querySelector('.tourRecapTitle').textContent).toBe('Just a title');
+        expect(card.querySelector('.tourRecapBody')).toBeNull();
+        expect(card.children).toHaveLength(1);
+    });
+
     test('a start step past the end clamps to the recap', () => {
         openTourPlayer({ tour: makeTour(), repo: REPO, startStep: 99 });
         expect(text('.tourPlayerCount')).toBe('Recap');

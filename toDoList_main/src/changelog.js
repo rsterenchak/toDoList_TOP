@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-14',
+        fixed: [
+            'Code tour recaps written as plain text now show their cards instead of blank ones, and malformed recap cards are left out.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-11',
         added: [
-            'The Structure tab\'s Tasks & projects section now has tours for editing, status, due dates, deleting and undo, reordering, creating projects, filtering and sorting, and adding tasks on mobile, and the How data is saved tour no longer claims a save refreshes the screen.',
             'The Structure tab\'s Pipeline section now has tours for injecting a task into TODO.md, shipping and following a run, the Agent board, A/B/C mockups, generating tasks from a plan, assignment coverage and the TODO.md viewer.',
             'The Structure tab\'s Chat, Structure and Settings, focus & ghost sections now have tours for sending messages, attaching context, choosing models, the Structure tab\'s lenses and code viewer, app lock, export and import, theme and onboarding, focus mode and the ghost, completing the tour catalog.',
             'Names in the Structure tab\'s code viewer can now be tapped to peek at where they are defined, traced further from inside the peek, or opened with a trail bar to step back, with a picker when several definitions match.',
