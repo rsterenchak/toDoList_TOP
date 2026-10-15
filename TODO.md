@@ -2379,3 +2379,12 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 390x844 → / ; click "#mobileTabStructure" ; click ".structureLensBtn[data-lens=code]" ; click "text=dispatchDraft.js" ; wait 1200 ; click ".codeViewerSym >> text=getProjectTargetId" ; wait 800, 1300x900 → / ; click "#viewPillStructure" ; click ".structureLensBtn[data-lens=code]" ; click "text=dispatchDraft.js" ; wait 1200 ; click ".codeViewerSym >> text=getProjectTargetId" ; wait 800
   - Completed: 2026-10-11
   <!-- id: 2fb6bf21-444d-4058-a1bd-84ed48c8346b -->
+
+- [ ] **[MEDIUM]** Validate tour recaps in the tour compiler
+  - Type: bug
+  - Description: `compileTours` in `gen-src-manifest.js` copies each tour's `recap` through unchecked, but `tourPlayer.js` renders recap items as `{ title, body }` cards. A repo that wrote its recap as plain strings (matchingGame-test did) compiled with zero warnings and then showed empty recap cards. Validate recaps at compile time. A string item becomes `{ title: <string>, body: "" }` with a deploy-log warning naming the tour. An item that's neither a string nor an object with a non-empty `title` is dropped with a warning. In `tourPlayer.js`, a recap card with an empty `body` renders only its title (no empty second line).
+  - Acceptance criteria:
+    - `tests/genSrcManifest.test.js` fixtures cover a string recap item (normalized and warned), an invalid item (dropped and warned), and a valid item (unchanged, no warning). The real-repo test additionally asserts zero recap warnings.
+    - `tests/tourPlayer.test.js` covers a body-less recap card rendering just its title.
+  - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/src/tourPlayer.js`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/tests/tourPlayer.test.js`
+  <!-- id: 8a23a1e6-44c3-4f76-8f66-16c420e984ca -->
