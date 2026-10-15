@@ -559,6 +559,33 @@ describe('gen-src-manifest compileTours', () => {
         expect(out.tours[0].steps.map((x) => x.next)).toEqual(['app.js', 'app.js', 'other', null]);
     });
 
+    it('normalizes string recap items, drops invalid ones and keeps valid cards, warning per fix', () => {
+        const warn = vi.fn();
+        const d = doc([
+            st('outer', ['return inner;']),
+            st('other', ['const a']),
+            st('inner', ['return a;'], { parent: 'outer' }),
+        ]);
+        d.tours[0].recap = ['Plain string', 42, { body: 'no title' }, { title: '', body: 'x' }, null, { title: 'Kept', body: 'Body' }];
+        const out = compileTours(d, symbols, sources, areas, warn);
+        expect(out.tours[0].recap).toEqual([{ title: 'Plain string', body: '' }, { title: 'Kept', body: 'Body' }]);
+        const msgs = warn.mock.calls.map((c) => c[0]);
+        expect(msgs).toHaveLength(5);
+        expect(msgs[0]).toMatch(/tour "t1" recap item 1 is a string — normalized to \{ title, body: "" \}/);
+        msgs.slice(1).forEach((m, i) => expect(m).toMatch(new RegExp('tour "t1" recap item ' + (i + 2) + ' .*— item dropped')));
+    });
+
+    it('passes a valid recap through unchanged without warnings', () => {
+        const warn = vi.fn();
+        const out = compileTours(doc([
+            st('outer', ['return inner;']),
+            st('other', ['const a']),
+            st('inner', ['return a;'], { parent: 'outer' }),
+        ]), symbols, sources, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        expect(out.tours[0].recap).toEqual([{ title: 'R', body: 'B' }]);
+    });
+
     it('trims each cluster by its own common indent and keeps relative nesting', () => {
         const out = compileTours(doc([
             st('outer', ['function inner', 'return inner;']),
@@ -621,6 +648,11 @@ describe('gen-src-manifest real codetour.json', () => {
         expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
         expect(tours.tours.length).toBe(doc.tours.length);
         tours.tours.forEach((t, i) => expect(t.steps.length).toBe(doc.tours[i].steps.length));
+    });
+
+    it('compiles every recap with zero recap warnings', () => {
+        expect(warn.mock.calls.map((c) => c[0]).filter((m) => /recap/.test(m))).toEqual([]);
+        tours.tours.forEach((t, i) => expect(t.recap.length).toBe((doc.tours[i].recap || []).length));
     });
 
     it('keeps titles ≤ 60 chars, whys ≤ 140 and 3–10 steps per tour', () => {

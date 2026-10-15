@@ -694,6 +694,25 @@ function buildTourSnippet(lines, hits) {
   return capped;
 }
 
+// The recap cards for `tour` as { title, body } (what tourPlayer renders): a
+// string item becomes a title-only card, anything without a non-empty title
+// is dropped, each with a warning.
+function compileTourRecap(tour, say) {
+  const cards = [];
+  (Array.isArray(tour.recap) ? tour.recap : []).forEach(function (item, i) {
+    const at = 'Warning: codetour.json: tour "' + tour.id + '" recap item ' + (i + 1);
+    if (typeof item === 'string' && item) {
+      say(at + ' is a string — normalized to { title, body: "" }');
+      cards.push({ title: item, body: '' });
+    } else if (item && typeof item === 'object' && typeof item.title === 'string' && item.title) {
+      cards.push(item);
+    } else {
+      say(at + ' has no title — item dropped');
+    }
+  });
+  return cards;
+}
+
 // { version, sections, tours } compiled from a parsed codetour.json.
 // `sources` is the { name, text } list the symbols were built from; `areas`
 // the codemap areas (optional).
@@ -733,7 +752,7 @@ function compileTours(doc, symbols, sources, areas, warn) {
     // A whole-file step is labelled by its file name, not `@file`.
     const label = function (s) { return s.symbol === TOUR_FILE_SYMBOL ? s.file.split('/').pop() : s.symbol; };
     steps.forEach(function (s, i) { s.next = i + 1 < steps.length ? label(steps[i + 1]) : null; });
-    tours.push({ id: tour.id, section: tour.section, title: tour.title, recap: Array.isArray(tour.recap) ? tour.recap : [], steps: steps });
+    tours.push({ id: tour.id, section: tour.section, title: tour.title, recap: compileTourRecap(tour, say), steps: steps });
   });
   return { version: TOURS_VERSION, sections: (doc && Array.isArray(doc.sections)) ? doc.sections : [], tours: tours };
 }
