@@ -466,7 +466,7 @@ export async function injectEntry(options) {
 // turn (per-conversation accumulation) so later turns retain that context.
 //
 // `repo` is the owner/name the conversation's workspace is anchored to. The
-// Worker is multi-repo aware (validates against ALLOWED_TARGETS) and reframes
+// Worker is multi-repo aware (validates against the inject_targets registry) and reframes
 // its system prompt around this repo, so it rides on every turn — not just when
 // files are attached. When attachments are present they come from this same
 // repo, so the Worker knows where to fetch them.

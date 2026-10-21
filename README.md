@@ -78,7 +78,7 @@ Only your original files? onboard's push didn't land — see **Troubleshooting �
 - **Pages → Deploy from a branch:** `web-build` → `gh-pages` / root; every other manifest shape (`web-served`, `console`, `desktop`, `maui`, `sql`, `doc`) → `main` / root; `repo-only` → skip.
 - **Secrets:** `CLAUDE_CODE_OAUTH_TOKEN` (always); `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (the legacy service_role JWT) if the repo runs triage.
 
-**5. Register with the worker.** Add the line onboard printed to `ALLOWED_TARGETS` in `todo-injector-worker/src`, then `wrangler deploy` — the allowlist only takes effect once the worker redeploys. `srcPrefix` is `"src/"` for web, the project subfolder for .NET, and `""` for `sql` / `doc` / `repo-only`.
+**5. Register with the worker.** In the PWA, open Inject settings → **+ Add target** and enter the repo and its `TODO.md` path. That writes an enabled row to the Supabase `inject_targets` registry, which the worker reads live on every request — no `wrangler deploy` needed. `srcPrefix` is `"src/"` for web, the project subfolder for .NET, and `""` for `sql` / `doc` / `repo-only`.
 
 **6. Verify + smoke-test.**
 
@@ -280,7 +280,7 @@ Make it stick across new terminals: `echo 'unset GITHUB_TOKEN' >> ~/.bashrc`. (S
 
 **PR opens but won't auto-merge.** The "Allow GitHub Actions to create and approve pull requests" toggle is off (step 4).
 
-**Inject 403s.** Either the worker PAT lacks access to the repo (step 3), or you updated `ALLOWED_TARGETS` without running `wrangler deploy` (step 5).
+**Inject refused.** A 400 `Target not in allowlist` means the repo has no enabled `inject_targets` row — add one in Inject settings → **+ Add target** (step 5). A 401 `Sign-in required` or 403 `Admin only` means the caller isn't a signed-in admin — sign in to the PWA with an email listed in the worker's `ADMIN_EMAILS` secret. A GitHub 403 from the append itself means the worker PAT lacks access to the repo (step 3).
 
 **OAuth token vs. PAT — two different credentials.** `CLAUDE_CODE_OAUTH_TOKEN` (step 4) authenticates Claude *inside* the run; the PAT access-list entry (step 3) lets the worker *reach* the repo. Setting one does not cover the other.
 

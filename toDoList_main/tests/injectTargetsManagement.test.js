@@ -160,7 +160,7 @@ describe('inject targets — sub-modal shell', () => {
     });
 });
 
-// The save-time ALLOWED_TARGETS gate predated the registry: the `repos`
+// The old save-time allowlist gate predated the registry: the `repos`
 // route now returns the enabled targets, so the gate rejected every new repo
 // and hid the dedupe error on case variants. The Worker's resolveTarget is
 // the real guard, so onSave must go straight from validation to dedupe.
