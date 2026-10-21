@@ -3501,8 +3501,8 @@ function setActiveChatRepo(repo) {
 // Project the workspace repo list from the Inject targets (Supabase
 // `inject_targets`, cached in inject.js) so the chat menu is a clean projection
 // of the targets the user manages in Inject settings — the two never drift. The
-// save-time allowlist guard already keeps every target's repo on the Worker's
-// `ALLOWED_TARGETS`, so the targets list is a safe subset. Each menu item still
+// Worker's `resolveTarget` reads the same registry live, so every enabled
+// target's repo is one the Worker accepts. Each menu item still
 // anchors on the target's `repo` string, so `activeChatRepo`, the chat-turn
 // `repo` payload, and the `repoShortName` display are all unchanged; the menu is
 // simply sourced differently. Duplicate repos (two targets on the same repo)
