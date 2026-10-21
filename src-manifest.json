@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-21T12:52:56.892Z",
-  "sha": "af7379581be817524aabd805371f35ea303234db",
+  "generatedAt": "2026-10-21T13:13:39.290Z",
+  "sha": "8510faa3f5971c6759f94716396a7deec1d15b7a",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -3126,11 +3126,11 @@
       "selector": "#importDropOverlay",
       "label": "Import Drop Overlay",
       "file": "exportImport.js",
-      "line": 223,
+      "line": 222,
       "files": [
         {
           "file": "exportImport.js",
-          "line": 223
+          "line": 222
         },
         {
           "file": "style.css",
@@ -3142,11 +3142,11 @@
       "selector": "#importDropOverlayIcon",
       "label": "Import Drop Overlay Icon",
       "file": "exportImport.js",
-      "line": 236,
+      "line": 235,
       "files": [
         {
           "file": "exportImport.js",
-          "line": 236
+          "line": 235
         },
         {
           "file": "style.css",
@@ -3158,11 +3158,11 @@
       "selector": "#importDropOverlayInner",
       "label": "Import Drop Overlay Inner",
       "file": "exportImport.js",
-      "line": 229,
+      "line": 228,
       "files": [
         {
           "file": "exportImport.js",
-          "line": 229
+          "line": 228
         },
         {
           "file": "style.css",
@@ -3174,11 +3174,11 @@
       "selector": "#importDropOverlayLabel",
       "label": "Import Drop Overlay Label",
       "file": "exportImport.js",
-      "line": 248,
+      "line": 247,
       "files": [
         {
           "file": "exportImport.js",
-          "line": 248
+          "line": 247
         },
         {
           "file": "style.css",
@@ -3190,11 +3190,11 @@
       "selector": "#importDropOverlaySubline",
       "label": "Import Drop Overlay Subline",
       "file": "exportImport.js",
-      "line": 253,
+      "line": 252,
       "files": [
         {
           "file": "exportImport.js",
-          "line": 253
+          "line": 252
         },
         {
           "file": "style.css",
@@ -28057,7 +28057,7 @@
     },
     {
       "path": "exportImport.js",
-      "lines": 308,
+      "lines": 307,
       "imports": [
         "listLogic.js",
         "modals.js"
@@ -28149,7 +28149,7 @@
     },
     {
       "path": "listLogic.js",
-      "lines": 4827,
+      "lines": 4822,
       "imports": [
         "prefs.js",
         "supabaseClient.js",
