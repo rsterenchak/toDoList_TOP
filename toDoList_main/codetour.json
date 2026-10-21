@@ -321,10 +321,6 @@
           "body": "saveToStorageSoon waits a moment, so a burst of keys is one write."
         },
         {
-          "title": "dataChanged has no listeners",
-          "body": "Every local save fires it, but nothing listens yet, so a save alone repaints nothing."
-        },
-        {
           "title": "Two names for every field",
           "body": "toTodoRowPayload maps tit / desc / due to title / description / due_date."
         },
@@ -361,11 +357,10 @@
           "symbol": "saveToStorage",
           "parent": "listLogic",
           "match": [
-            "localStorage.setItem('allProjects', JSON.stringify(allProjects));",
-            "document.dispatchEvent(new CustomEvent('dataChanged'));"
+            "localStorage.setItem('allProjects', JSON.stringify(allProjects));"
           ],
           "title": "All projects go to localStorage.",
-          "why": "Everything is written under one key, then dataChanged fires. No listener exists yet, so nothing repaints."
+          "why": "The whole model is written under one key. Nothing else happens on a save."
         },
         {
           "file": "listLogic.js",

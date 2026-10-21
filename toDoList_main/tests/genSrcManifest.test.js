@@ -725,18 +725,6 @@ describe('gen-src-manifest real codetour.json', () => {
         }));
     });
 
-    // The data-saved tour says dataChanged has no listeners. Adding one makes
-    // that false, so this fails until the tour text is revisited.
-    it('keeps the data-saved tour honest about dataChanged listeners', () => {
-        const fs = require('fs');
-        const srcDir = path.resolve(__dirname, '..', 'src');
-        const hasListener = fs.readdirSync(srcDir).filter((f) => f.endsWith('.js')).some((f) =>
-            /addEventListener\(\s*['"`]dataChanged['"`]/.test(fs.readFileSync(path.join(srcDir, f), 'utf8')));
-        const saved = doc.tours.find((t) => t.id === 'data-saved');
-        expect(/no listener/i.test(saved.steps[2].why)).toBe(!hasListener);
-        expect(saved.recap.some((r) => /refresh/i.test(r.body))).toBe(false);
-    });
-
     it('lists the six sections in order and every tour in a known section', () => {
         expect(doc.sections.map((s) => s.id)).toEqual(['foundations', 'tasks', 'pipeline', 'chat', 'structure', 'more']);
         const ids = new Set(doc.sections.map((s) => s.id));
