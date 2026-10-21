@@ -2389,7 +2389,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/src/tourPlayer.js`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/tests/tourPlayer.test.js`
   <!-- id: 8a23a1e6-44c3-4f76-8f66-16c420e984ca -->
 
-- [ ] **[MEDIUM]** Mount the desktop ghost only while signed in
+- [x] **[MEDIUM]** Mount the desktop ghost only while signed in — Completed: 2026-10-21
   - Type: bug
   - Description: The ghost companion appears on the sign-in screen. `index.js` builds the whole page with `component()` before it checks the session, and `component()` schedules `ensureCompanion()` and `ensureDesktopGhostPossession()` (`main.js` ~2805–2811), so the sprite mounts whether or not anyone is signed in. On a device that still holds the Worker secret, it can be clicked and will talk while signed out. Mount the ghost only once a session exists, and remove it on sign-out. Comment-level hygiene only beyond that: no change to the ghost itself.
   - Behavior:

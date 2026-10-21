@@ -4,7 +4,13 @@ import _, { remove } from 'lodash';
 import './style.css';
 import './manifest.webmanifest';
 import './favicon.svg';
-import { component, restoreFromStorage, notifyUpdateAvailable } from './main.js';
+import {
+    component,
+    restoreFromStorage,
+    notifyUpdateAvailable,
+    ensureGhostForSession,
+    releaseGhostForSignOut,
+} from './main.js';
 import { SW_UPDATE_INITIATOR_KEY } from './modals.js';
 import { listLogic } from './listLogic.js';
 import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
@@ -65,6 +71,10 @@ function reportBootFailure() {
 }
 
 let booted = false;
+// Set once bootApp's first render succeeds. From then on every new session
+// (a sign-out then sign-in on the same tab) remounts the ghost directly, since
+// bootApp itself is latched and won't run again.
+let ghostMountable = false;
 function bootApp(userId) {
     if (booted) return;
     booted = true;
@@ -113,6 +123,11 @@ function bootApp(userId) {
             // gate the desktop coachmark tour uses inside restoreFromStorage, which is
             // where desktop falls through to instead.
             maybeStartFirstRunCarousel(sampleJustSeeded);
+            // Mount the desktop ghost now that a session exists and the
+            // dashboard has rendered — never on the sign-in screen. The mount
+            // itself is deferred a tick so the dashboard is in place.
+            ghostMountable = true;
+            ensureGhostForSession();
         } catch (e) {
             reportBootFailure();
             console.warn('[bootApp] render step failed:', e);
@@ -189,6 +204,7 @@ supabase.auth.onAuthStateChange(function(_event, session) {
     if (session) {
         hideAuthModal();
         bootApp(session.user && session.user.id);
+        if (ghostMountable) ensureGhostForSession();
     } else {
         // Sign-out (or initial-load with no session). Re-render the
         // modal so the chrome behind it stays gated, and let
@@ -196,6 +212,9 @@ supabase.auth.onAuthStateChange(function(_event, session) {
         // its in-memory state so the next user can't see the
         // previous user's data.
         try { listLogic.handleSignOut(); } catch (_) { /* noop */ }
+        // Unmount the ghost (handing the pane back if it was possessed) so it
+        // can't be clicked or talk while signed out.
+        try { releaseGhostForSignOut(); } catch (_) { /* noop */ }
         showAuthModal();
         markAppBooted();               // auth front door is up — stand the watchdog down
     }
