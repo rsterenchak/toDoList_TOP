@@ -177,6 +177,30 @@ describe('rewriteTodoMd — worker rewrite payload', () => {
         expect(res.ok).toBe(false);
         expect(res.reason).toBe('403 Forbidden');
     });
+
+    it('reads the Worker\'s sign-in refusal as "Sign in to use this"', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false, status: 401, json: () => Promise.resolve({ error: 'Sign-in required' }),
+        }));
+        const res = await rewriteTodoMd(target, 'clear_all');
+        expect(res.reason).toBe('Sign in to use this');
+    });
+
+    it('reads the Worker\'s admin refusal as "Your account isn\'t an admin"', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false, status: 403, json: () => Promise.resolve({ error: 'Admin only' }),
+        }));
+        const res = await rewriteTodoMd(target, 'clear_all');
+        expect(res.reason).toBe("Your account isn't an admin");
+    });
+
+    it('keeps the Worker\'s own text for any other 403', async () => {
+        fetchSpy.mockImplementationOnce(() => Promise.resolve({
+            ok: false, status: 403, json: () => Promise.resolve({ error: 'Target not in allowlist' }),
+        }));
+        const res = await rewriteTodoMd(target, 'clear_all');
+        expect(res.reason).toBe('Target not in allowlist (403)');
+    });
 });
 
 // dispatchTriage POSTs the Worker's `{ dispatch_triage: true, project_id,

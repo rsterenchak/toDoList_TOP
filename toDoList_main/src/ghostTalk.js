@@ -31,6 +31,7 @@ import { prefersReducedMotion } from './companion.js';
 // dead. These strings are the whole error surface for this feature.
 export const GHOST_WIRE_DEAD   = "the wire's dead. try again later.";
 export const GHOST_NO_WIRE     = 'no wire to the other side yet.';
+export const GHOST_NOT_ADMIN   = "you're not one of mine. i don't answer you.";
 export const GHOST_QUIET       = '…';
 export const GHOST_PLACEHOLDER = 'whisper something…';
 
@@ -74,7 +75,9 @@ export function askGhost(message, surface) {
         })
         .catch(function (err) {
             console.warn('[ghostTalk] ghost route failed', err);
-            return err && err.notConfigured ? GHOST_NO_WIRE : GHOST_WIRE_DEAD;
+            if (err && err.notConfigured) return GHOST_NO_WIRE;
+            if (err && err.status === 403) return GHOST_NOT_ADMIN;
+            return GHOST_WIRE_DEAD;
         });
 }
 
