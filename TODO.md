@@ -2420,3 +2420,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - `tests/ghostTalk.test.js`: a 403 yields the new in-voice line.
   - File: `toDoList_main/src/inject.js`, `toDoList_main/src/ghostTalk.js`, `toDoList_main/tests/injectAuthHeader.test.js`, `toDoList_main/tests/ghostTalk.test.js`
   <!-- id: 7c7b3e2e-bc4b-4174-ba8f-39fed0161347 -->
+
+- [ ] **[LOW]** Update CLAUDE.md's Worker sections for the inject_targets registry and admin-only auth
+  - Type: feature
+  - Description: `CLAUDE.md` › **Repos and allowlist** describes the Worker's repo allowlist as an `ALLOWED_TARGETS` constant that needs `npm run deploy` to change, and names `ATTACH_REPOS` in `claudeSheet.js` as its client mirror. That's out of date: the registry is the Supabase `inject_targets` table, read live by the Worker's `resolveTarget` (no redeploy), and the PWA adds rows through Inject settings → + Add target. Separately, the Worker now requires caller identity on every PWA route: `postToWorker` in `inject.js` sends the Supabase session as `X-Supabase-Token`, the Worker verifies it with Supabase Auth, and only emails in the Worker's `ADMIN_EMAILS` secret are allowed; CI routes (scan, preflight_result, capture_result, complexity_scan, verify_result) stay on the shared secret alone. Rewrite the Repos section to match the registry model (mirror the wording in the template's "Repos and the inject registry" section) and add a short **Worker auth** subsection under **Worker location and routes** describing the two credentials, the 401 "Sign-in required" / 403 "Admin only" refusals, and how to designate an admin (`wrangler secret put ADMIN_EMAILS`, comma-separated). Documentation only: no source changes.
+  - Acceptance criteria:
+    - `CLAUDE.md` no longer mentions `ALLOWED_TARGETS`; grep for it returns nothing in the repo outside this entry's history.
+    - If `ATTACH_REPOS` no longer exists in `claudeSheet.js`, remove that claim; if it does, describe what it's actually for today.
+    - The existing suite passes unchanged.
+  - File: `CLAUDE.md`
+  <!-- id: 5a4b38d5-0d73-408d-a152-702d7db0d297 -->
