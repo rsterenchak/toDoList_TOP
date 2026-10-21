@@ -2388,3 +2388,20 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - `tests/tourPlayer.test.js` covers a body-less recap card rendering just its title.
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/src/tourPlayer.js`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/tests/tourPlayer.test.js`
   <!-- id: 8a23a1e6-44c3-4f76-8f66-16c420e984ca -->
+
+- [ ] **[MEDIUM]** Mount the desktop ghost only while signed in
+  - Type: bug
+  - Description: The ghost companion appears on the sign-in screen. `index.js` builds the whole page with `component()` before it checks the session, and `component()` schedules `ensureCompanion()` and `ensureDesktopGhostPossession()` (`main.js` ~2805–2811), so the sprite mounts whether or not anyone is signed in. On a device that still holds the Worker secret, it can be clicked and will talk while signed out. Mount the ghost only once a session exists, and remove it on sign-out. Comment-level hygiene only beyond that: no change to the ghost itself.
+  - Behavior:
+    1. Remove the `ensureCompanion` and `ensureDesktopGhostPossession` calls from `component()`. Keep `applyCompanionGhostPreference` there (it only sets a body class).
+    2. In `index.js`, call both from `bootApp` after the first render succeeds (the same place the first-run carousel starts), still deferred with `setTimeout(…, 0)` so `document.body` and the dashboard exist. `bootApp` is guarded by `booted`, so the ghost can't mount twice.
+    3. In the sign-out branch of `onAuthStateChange` (`index.js` ~198), call `destroyCompanion()` before `showAuthModal()`, and release possession if the ghost is in the chat pane (see what `ensureDesktopGhostPossession` keeps for that and reset it). Export anything new that `index.js` needs; keep the no-back-edge rule (`index.js` imports from `main.js`/`companion.js`, never the reverse).
+    4. Because `bootApp` only runs once per page load, a sign-out followed by a sign-in on the same tab must mount the ghost again: `onAuthStateChange`'s session branch already calls `bootApp`, which returns early when `booted` is set, so give the ghost mount its own small `ensureGhostForSession()` that `onAuthStateChange` calls on every new session, and `bootApp` calls once.
+    5. Settings → the ghost toggle keeps working while signed in: toggling on calls `ensureCompanion` as today; nothing changes there.
+  - Acceptance criteria:
+    - `tests/companionAuthGate.test.js` (new): with no session, `component()` leaves no `.companion` element in the DOM; after `bootApp` (or the exported mount helper), it exists; after the sign-out path, it's gone; after sign-out then sign-in on the same tab, it's back exactly once.
+    - Existing companion, possession and coachmark tests pass unchanged.
+    - At 1300x900 with no session, the sign-in modal shows and no ghost sprite is anywhere on the page.
+  - File: `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/src/companion.js`, `toDoList_main/tests/companionAuthGate.test.js`
+  - Verify: 1300x900 → / ; wait 1200
+  <!-- id: f25c23b0-bf65-4c23-816c-e7da43345362 -->
