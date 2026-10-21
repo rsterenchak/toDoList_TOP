@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-15T05:38:53.590Z",
-  "sha": "a8295d15e3f7a331965a5fced14023b87b99b31e",
+  "generatedAt": "2026-10-21T11:14:35.401Z",
+  "sha": "8c824b7e5d17603174ffa68fd8c4ac08e7a8d5d8",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -6386,11 +6386,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3828,
+      "line": 3822,
       "files": [
         {
           "file": "main.js",
-          "line": 3828
+          "line": 3822
         },
         {
           "file": "style.css",
@@ -9466,11 +9466,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 74,
+      "line": 80,
       "files": [
         {
           "file": "changelog.js",
-          "line": 74
+          "line": 80
         },
         {
           "file": "style.css",
@@ -9482,11 +9482,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 43,
+      "line": 49,
       "files": [
         {
           "file": "changelog.js",
-          "line": 43
+          "line": 49
         },
         {
           "file": "style.css",
@@ -9498,11 +9498,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 53,
+      "line": 59,
       "files": [
         {
           "file": "changelog.js",
-          "line": 53
+          "line": 59
         },
         {
           "file": "style.css",
@@ -9514,11 +9514,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 46,
+      "line": 52,
       "files": [
         {
           "file": "changelog.js",
-          "line": 46
+          "line": 52
         },
         {
           "file": "style.css",
@@ -9530,11 +9530,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 49,
+      "line": 55,
       "files": [
         {
           "file": "changelog.js",
-          "line": 49
+          "line": 55
         },
         {
           "file": "style.css",
@@ -9546,11 +9546,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 70,
+      "line": 76,
       "files": [
         {
           "file": "changelog.js",
-          "line": 70
+          "line": 76
         },
         {
           "file": "style.css",
@@ -19654,11 +19654,11 @@
       "selector": ".projQuestionCount",
       "label": "Proj Question Count",
       "file": "main.js",
-      "line": 3261,
+      "line": 3255,
       "files": [
         {
           "file": "main.js",
-          "line": 3261
+          "line": 3255
         },
         {
           "file": "style.css",
@@ -20462,11 +20462,11 @@
       "selector": ".refreshSplashGlyph",
       "label": "Refresh Splash Glyph",
       "file": "main.js",
-      "line": 3730,
+      "line": 3724,
       "files": [
         {
           "file": "main.js",
-          "line": 3730
+          "line": 3724
         },
         {
           "file": "template.html",
@@ -25170,11 +25170,11 @@
       "selector": ".swipeCompleteFlash",
       "label": "Swipe Complete Flash",
       "file": "main.js",
-      "line": 2996,
+      "line": 2990,
       "files": [
         {
           "file": "main.js",
-          "line": 2996
+          "line": 2990
         },
         {
           "file": "style.css",
@@ -25186,11 +25186,11 @@
       "selector": ".swipeCompleteFlashCheck",
       "label": "Swipe Complete Flash Check",
       "file": "main.js",
-      "line": 3001,
+      "line": 2995,
       "files": [
         {
           "file": "main.js",
-          "line": 3001
+          "line": 2995
         },
         {
           "file": "style.css",
@@ -25202,11 +25202,11 @@
       "selector": ".swipeCompleteFlashRipple",
       "label": "Swipe Complete Flash Ripple",
       "file": "main.js",
-      "line": 2999,
+      "line": 2993,
       "files": [
         {
           "file": "main.js",
-          "line": 2999
+          "line": 2993
         },
         {
           "file": "style.css",
@@ -25494,11 +25494,11 @@
       "selector": ".taskRefreshBtnGlyph",
       "label": "Task Refresh Btn Glyph",
       "file": "main.js",
-      "line": 3833,
+      "line": 3827,
       "files": [
         {
           "file": "main.js",
-          "line": 3833
+          "line": 3827
         },
         {
           "file": "style.css",
@@ -27904,7 +27904,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 88,
+      "lines": 94,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -28104,7 +28104,7 @@
     },
     {
       "path": "index.js",
-      "lines": 456,
+      "lines": 475,
       "imports": [
         "addProj_button.svg",
         "auth.js",
@@ -28159,7 +28159,7 @@
     },
     {
       "path": "main.js",
-      "lines": 4119,
+      "lines": 4154,
       "imports": [
         "aboutVersionCue.js",
         "addProj_button.svg",
