@@ -2406,7 +2406,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900 → / ; wait 1200
   <!-- id: f25c23b0-bf65-4c23-816c-e7da43345362 -->
 
-- [ ] **[MEDIUM]** Send the Supabase session token on every Worker call and surface sign-in/admin errors
+- [x] **[MEDIUM]** Send the Supabase session token on every Worker call and surface sign-in/admin errors — Completed: 2026-10-21
   - Type: feature
   - Description: Groundwork for admin-only Worker access. The Worker is about to verify the caller's Supabase session and allow its PWA routes only for designated admin emails; until then it ignores the extra header, so this entry is safe to ship first. `postToWorker` (`inject.js`) is the single funnel every Worker call uses, so attach the session's access token there and make the two new refusals read clearly wherever errors are shown.
   - Behavior:

@@ -9,6 +9,9 @@ export const changelog = [
         fixed: [
             'The ghost companion no longer appears on the sign-in screen, leaves when you sign out and comes back when you sign in again.',
         ],
+        added: [
+            'Assistant, run and ghost requests now carry your sign-in, and a request refused because you are signed out or not an admin says so plainly.',
+        ],
     },
     {
         version: '1.1',
@@ -21,7 +24,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-11',
         added: [
-            'The Structure tab\'s Chat, Structure and Settings, focus & ghost sections now have tours for sending messages, attaching context, choosing models, the Structure tab\'s lenses and code viewer, app lock, export and import, theme and onboarding, focus mode and the ghost, completing the tour catalog.',
             'Names in the Structure tab\'s code viewer can now be tapped to peek at where they are defined, traced further from inside the peek, or opened with a trail bar to step back, with a picker when several definitions match.',
         ],
         changed: [

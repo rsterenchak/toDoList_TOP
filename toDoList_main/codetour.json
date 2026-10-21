@@ -3754,7 +3754,7 @@
           "symbol": "askGhost",
           "match": [
             "return postToWorker({ ghost: true, message: message, surface: surface })",
-            "return err && err.notConfigured ? GHOST_NO_WIRE : GHOST_WIRE_DEAD;"
+            "return GHOST_WIRE_DEAD;"
           ],
           "title": "The question leaves the app.",
           "why": "The Worker answers in the ghost's voice and keeps the transcript. Failures come back as in-voice lines."

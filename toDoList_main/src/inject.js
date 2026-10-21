@@ -125,6 +125,7 @@ export async function postToWorker(payload, opts) {
         e.notConfigured = true;
         throw e;
     }
+    const token = await readSessionToken();
     const timeoutMs = (opts && typeof opts.timeoutMs === 'number' && opts.timeoutMs > 0) ? opts.timeoutMs : 0;
     const controller = timeoutMs ? new AbortController() : null;
     const timer = controller ? setTimeout(function () { controller.abort(); }, timeoutMs) : null;
@@ -138,6 +139,7 @@ export async function postToWorker(payload, opts) {
             },
             body: JSON.stringify(payload),
         };
+        if (token) init.headers['X-Supabase-Token'] = token;
         if (controller) init.signal = controller.signal;
         res = await fetch(cachedUrl, init);
     } catch (networkErr) {
@@ -164,6 +166,20 @@ export async function postToWorker(payload, opts) {
         throw e;
     }
     try { return await res.json(); } catch (e) { return null; }
+}
+
+// The signed-in user's Supabase access token, or '' with no session. The Worker
+// verifies it to gate its routes to admin accounts; the app never decides that
+// itself, so a missing session (or a getSession that throws) just sends the
+// request without the header. getSession refreshes an expiring token itself.
+async function readSessionToken() {
+    try {
+        const result = await supabase.auth.getSession();
+        const session = result && result.data && result.data.session;
+        return (session && typeof session.access_token === 'string') ? session.access_token : '';
+    } catch (e) {
+        return '';
+    }
 }
 
 // Every Worker route answers a failure with `json({ error, ...context }, status)`,
@@ -195,6 +211,9 @@ async function readWorkerError(res) {
 function describeError(e) {
     if (!e) return 'Unknown error';
     if (e.notConfigured) return 'Not configured';
+    // The Worker's session gate: no signed-in user, or one that isn't an admin.
+    if (e.status === 401 && e.workerError === 'Sign-in required') return 'Sign in to use this';
+    if (e.status === 403 && e.workerError === 'Admin only') return "Your account isn't an admin";
     // The Worker's own `error` string leads and the status trails as secondary
     // detail, so a failure reads as its cause rather than as a number. The
     // status-only messages below apply only when the body carried no `error`.

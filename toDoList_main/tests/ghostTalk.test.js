@@ -59,6 +59,7 @@ import {
     GHOST_CONTINUATION_MS,
     GHOST_WIRE_DEAD,
     GHOST_NO_WIRE,
+    GHOST_NOT_ADMIN,
     GHOST_QUIET,
     GHOST_PLACEHOLDER,
 } from '../src/ghostTalk.js';
@@ -147,6 +148,16 @@ describe('ghost plumbing — failures speak in the ghost\'s voice', () => {
     it('reads a notConfigured rejection as the no-wire line rather than a dead wire', async () => {
         state.askRejects = Object.assign(new Error('nope'), { notConfigured: true });
         expect(await askGhost('hello', 'desktop')).toBe(GHOST_NO_WIRE);
+    });
+
+    it('answers the admin refusal in voice rather than as an HTTP code', async () => {
+        state.askRejects = Object.assign(new Error('Admin only'), { status: 403, workerError: 'Admin only' });
+        expect(await askGhost('hello', 'desktop')).toBe(GHOST_NOT_ADMIN);
+    });
+
+    it('keeps the dead-wire line for any other HTTP failure', async () => {
+        state.askRejects = Object.assign(new Error('HTTP 500'), { status: 500 });
+        expect(await askGhost('hello', 'desktop')).toBe(GHOST_WIRE_DEAD);
     });
 
     it('resolves the transcript empty when the readback fails, without surfacing an error', async () => {
