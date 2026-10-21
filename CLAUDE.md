@@ -100,16 +100,15 @@ The app ships with an in-app Claude assistant — a "Claude sheet" the user open
 
 In short: Sonnet plans (Console-billed), the Worker injects and dispatches, Opus builds (Max-plan-billed), and Pages deploys — all without leaving the PWA.
 
-## Repos and allowlist
+## Repos and the inject registry
 
-The Worker is multi-repo aware. `ALLOWED_TARGETS` in the Worker (`todo-injector-worker`) defines the set of repos the system may inject into, dispatch runs against, and read source from — currently `rsterenchak/toDoList_TOP` and `rsterenchak/matchingGame-test`. Every Worker request that names a repo is validated against this allowlist; the client mirrors it as `ATTACH_REPOS` in `toDoList_main/src/claudeSheet.js`. The Worker source itself lives outside this repo, so treat `ALLOWED_TARGETS` as the Worker-side source of truth (see the Worker project, not this repo).
+The Worker is multi-repo aware. The set of repos the system may inject into, dispatch runs against, and read source from is the **inject registry** — the Supabase `inject_targets` table, one row per `{ repo, filePath }` target (plus per-target settings such as `models` and `auto_merge_3p`). The Worker's `resolveTarget` reads the registry live on every request that names a repo and rejects repos with no enabled row, so registering or removing a repo takes effect immediately — no Worker redeploy. In the app, `inject.js` caches the user's rows (`loadInjectTargets` / `getCachedTargets`), and the chat workspace menu in `claudeSheet.js` is a projection of that cache, so it never drifts from the targets the user manages. The Worker's `repos` route (`fetchAllowedRepos` in `inject.js`) returns the enabled targets with their `srcPrefix` and purpose.
 
-To add a third repo to the system:
+To add a repo to the system:
 
-- **(a)** Add a `{ repo, filePath }` entry to `ALLOWED_TARGETS` in the Worker.
-- **(b)** Ensure the GitHub PAT the Worker uses has **Contents: write** and **Actions: read + write** scope on the new repo (Contents for the `TODO.md` append, Actions to dispatch and poll the run workflow).
-- **(c)** Add a `scripts/gen-src-manifest.js` to the new repo plus a deploy.yml step that runs it after the build and before the Pages publish, so the repo publishes its own `src-manifest.json` (the file picker fetches `https://<owner>.github.io/<name>/src-manifest.json` by convention). Use the `.cjs` extension when the repo's `package.json` declares `"type": "module"`, since the manifest script is plain CommonJS.
-- **(d)** Run `npm run deploy` on the Worker to push the updated `ALLOWED_TARGETS`.
+- **(a)** Ensure the GitHub PAT the Worker uses has **Contents: write** and **Actions: read + write** scope on the new repo (Contents for the `TODO.md` append, Actions to dispatch and poll the run workflow).
+- **(b)** Add a `scripts/gen-src-manifest.js` to the new repo plus a deploy.yml step that runs it after the build and before the Pages publish, so the repo publishes its own `src-manifest.json` (the file picker fetches `https://<owner>.github.io/<name>/src-manifest.json` by convention). Use the `.cjs` extension when the repo's `package.json` declares `"type": "module"`, since the manifest script is plain CommonJS.
+- **(c)** Register it from the PWA: Inject settings → **+ Add target**, giving the repo and its `TODO.md` path. The row is written to `inject_targets` and the Worker accepts the repo on its next request.
 
 This repo's own manifest script is `toDoList_main/scripts/gen-src-manifest.js`, wired into `deploy.yml` — copy it as the template for a new repo.
 
@@ -161,6 +160,17 @@ The Worker exposes these routes:
 - `read` — read the target repo's `TODO.md`.
 - `chat` — the Sonnet proxy; accepts `messages`, `entry_id`, `attach_files`, `repo`, and `telemetry` fields.
 - `resolve` — find a merged PR by its `<!-- id: ... -->` marker comment.
+
+### Worker auth
+
+Every PWA route carries two credentials, both attached by `postToWorker` in `inject.js` (the single funnel for Worker calls):
+
+- `Authorization: Bearer <secret>` — the shared Worker secret configured in Inject settings.
+- `X-Supabase-Token: <access_token>` — the signed-in user's Supabase session. The Worker verifies it with Supabase Auth and allows the request only when the user's email is in its `ADMIN_EMAILS` secret.
+
+A request with no valid session is refused with **401 `Sign-in required`**; a signed-in user who isn't an admin gets **403 `Admin only`**. `describeError` maps these to "Sign in to use this" and "Your account isn't an admin", and the ghost answers the 403 with an in-voice line. CI routes (`scan`, `preflight_result`, `capture_result`, `complexity_scan`, `verify_result`) are called from workflows, not the PWA, and stay on the shared secret alone.
+
+To designate admins, set the secret on the Worker as a comma-separated list of emails: `wrangler secret put ADMIN_EMAILS` (e.g. `a@example.com,b@example.com`).
 
 Note that `SYSTEM_PROMPT` and `ITERATE_PREAMBLE` live in the Worker, NOT in this repo — so changes to chat behavior (the conversational planner's instructions, the iterate framing) require editing and redeploying the Worker, not the app.
 
