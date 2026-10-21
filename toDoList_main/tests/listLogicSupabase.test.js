@@ -823,15 +823,16 @@ describe('listLogic — editToDoItem routes title edits of already-committed tod
 });
 
 
-describe('listLogic Phase 5 — saveToStorage dispatches the dataChanged event', () => {
+describe('listLogic — saveToStorage only writes localStorage', () => {
     const body = functionBody(SRC, 'saveToStorage');
 
     it('exists as a declared function', () => {
         expect(body).toBeTruthy();
     });
 
-    it('dispatches the canonical dataChanged CustomEvent', () => {
-        expect(body).toMatch(/['"]dataChanged['"]/);
+    it('writes the whole model under one key and dispatches no event', () => {
+        expect(body).toMatch(/localStorage\.setItem\('allProjects'/);
+        expect(body).not.toMatch(/dispatchEvent/);
     });
 });
 

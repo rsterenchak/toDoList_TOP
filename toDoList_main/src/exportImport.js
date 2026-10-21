@@ -168,8 +168,7 @@ function handleValidatedImport(projects, onAfterReplace, sourceLabel, flowOpts) 
 //
 // `options.fromSync: true` and `options.onBeforeReplace` are threaded
 // through to the confirm handler so reconciliation-initiated callers can
-// run pre-replace bookkeeping before replaceAllProjects fires its
-// dataChanged event.
+// run pre-replace bookkeeping before replaceAllProjects runs.
 export function importTodosFromString(jsonString, onAfterReplace, options) {
     const opts = options || {};
     const result = parseAndValidateExport(jsonString);

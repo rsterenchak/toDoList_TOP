@@ -177,7 +177,7 @@ describe('coalesced keystroke persistence — source wiring', () => {
     it('saveToStorage cancels the coalesced timer so the two paths can not double-write', () => {
         const startIdx = listLogicSrc.indexOf('function saveToStorage(_opts)');
         expect(startIdx).toBeGreaterThan(-1);
-        const body = listLogicSrc.slice(startIdx, listLogicSrc.indexOf('}', listLogicSrc.indexOf('CustomEvent unsupported')));
+        const body = listLogicSrc.slice(startIdx, listLogicSrc.indexOf('function saveToStorageSoon()'));
         const cancelIdx = body.indexOf('cancelCoalescedSave()');
         const writeIdx = body.indexOf('localStorage.setItem');
         expect(cancelIdx).toBeGreaterThan(-1);

@@ -362,11 +362,6 @@ export const listLogic = (function () {
         // a redundant second full-state stringify a moment later.
         cancelCoalescedSave();
         localStorage.setItem('allProjects', JSON.stringify(allProjects));
-        if (typeof document !== 'undefined' && typeof CustomEvent === 'function') {
-            try {
-                document.dispatchEvent(new CustomEvent('dataChanged'));
-            } catch (e) { /* CustomEvent unsupported — listeners refresh on next mutation */ }
-        }
     }
 
     // @category: user-mutation-only
@@ -382,9 +377,9 @@ export const listLogic = (function () {
     // the worst-case staleness is bounded and a long uninterrupted burst can
     // never starve the save the way a resetting debounce would.
     //
-    // Only the localStorage round-trip and its dataChanged fan-out are
-    // deferred — callers mutate the in-memory model synchronously before
-    // calling, so every reader of allProjects still sees the edit at once.
+    // Only the localStorage round-trip is deferred — callers mutate the
+    // in-memory model synchronously before calling, so every reader of
+    // allProjects still sees the edit at once.
     function saveToStorageSoon() {
         if (coalescedSaveTimer !== null) return;
         coalescedSaveTimer = setTimeout(function() {
