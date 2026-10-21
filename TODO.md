@@ -2439,3 +2439,13 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The existing suite passes unchanged.
   - File: `README.md`, `toDoList_main/src/inject.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/injectTargetsManagement.test.js`
   <!-- id: e2a7b91b-d939-4653-9b4c-15cc8ba9dc55 -->
+
+- [ ] **[LOW]** Remove the unused dataChanged event from saveToStorage
+  - Type: bug
+  - Description: `listLogic.js › saveToStorage` dispatches `new CustomEvent('dataChanged')` on every localStorage write (~line 367), and nothing in `src/` listens for it: every surface that needs a repaint is called explicitly at its mutation site. The event is dead code that reads as a live hook. Remove it and everything that refers to it: the dispatch and the `dataChanged` comment near `saveToStorageSoon` (~385); the comment in `exportImport.js` (~172) that says `replaceAllProjects` fires it; the `listLogicSupabase.test.js` block "saveToStorage dispatches the dataChanged event" (~826); and the `genSrcManifest.test.js` guard "keeps the data-saved tour honest about dataChanged listeners" (~730), which only existed to track the dead event. Then update the `data-saved` tour in `codetour.json`: step 3 currently anchors on the dispatch line and says the event fires with no listeners — re-anchor it on the `localStorage.setItem('allProjects', …)` line with a `why` that says the whole model is written under one key and nothing else happens on a save, and drop the "dataChanged has no listeners" recap card. No behaviour changes: no repaint path depends on this event.
+  - Acceptance criteria:
+    - `grep -rn dataChanged toDoList_main/` (excluding `dist/` and `node_modules/`) returns nothing.
+    - The real-repo tours test passes with zero warnings, so the re-anchored step resolves.
+    - The existing suite passes with the one removed test block gone.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/exportImport.js`, `toDoList_main/tests/listLogicSupabase.test.js`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/codetour.json`
+  <!-- id: 42e63592-3f40-4560-aef1-a7cefa4f5bcd -->
