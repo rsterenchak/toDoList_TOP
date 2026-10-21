@@ -2405,3 +2405,18 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/index.js`, `toDoList_main/src/companion.js`, `toDoList_main/tests/companionAuthGate.test.js`
   - Verify: 1300x900 → / ; wait 1200
   <!-- id: f25c23b0-bf65-4c23-816c-e7da43345362 -->
+
+- [ ] **[MEDIUM]** Send the Supabase session token on every Worker call and surface sign-in/admin errors
+  - Type: feature
+  - Description: Groundwork for admin-only Worker access. The Worker is about to verify the caller's Supabase session and allow its PWA routes only for designated admin emails; until then it ignores the extra header, so this entry is safe to ship first. `postToWorker` (`inject.js`) is the single funnel every Worker call uses, so attach the session's access token there and make the two new refusals read clearly wherever errors are shown.
+  - Behavior:
+    1. In `postToWorker`, before building the request, read the current session with `supabase.auth.getSession()` (the client refreshes an expiring token itself). When a session exists, add the header `X-Supabase-Token: <session.access_token>`. With no session, send the request as today without the header: the Worker decides what to do, not the app.
+    2. `describeError` maps the two new Worker refusals: a 401 whose `error` is `Sign-in required` → `Sign in to use this`; a 403 whose `error` is `Admin only` → `Your account isn't an admin`. Other 401/403s keep their current text.
+    3. `ghostTalk.js` already turns failures into in-voice lines; add one for the admin refusal (`e.status === 403`) so the ghost says something short and in character rather than an HTTP code, and keep the existing line for everything else.
+    4. The models panel, chat sheet and inject toast already print `describeError` output, so no further UI changes.
+  - Acceptance criteria:
+    - `tests/injectAuthHeader.test.js` (new): with a mocked session, the fetch carries `X-Supabase-Token` with the access token and the existing `Authorization` bearer unchanged; with no session, the header is absent and the request still goes out; `getSession` throwing never blocks the request.
+    - `tests/inject.test.js` (or the existing describeError coverage): the two new mappings, and an unrelated 403 still reads `403 Forbidden`.
+    - `tests/ghostTalk.test.js`: a 403 yields the new in-voice line.
+  - File: `toDoList_main/src/inject.js`, `toDoList_main/src/ghostTalk.js`, `toDoList_main/tests/injectAuthHeader.test.js`, `toDoList_main/tests/ghostTalk.test.js`
+  <!-- id: 7c7b3e2e-bc4b-4174-ba8f-39fed0161347 -->
