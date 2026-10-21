@@ -2430,3 +2430,12 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
     - The existing suite passes unchanged.
   - File: `CLAUDE.md`
   <!-- id: 5a4b38d5-0d73-408d-a152-702d7db0d297 -->
+
+- [ ] **[LOW]** Remove stale ALLOWED_TARGETS references from README and code comments
+  - Type: bug
+  - Description: `CLAUDE.md` now describes the Worker's repo registry correctly (the Supabase `inject_targets` table, added through Inject settings, no redeploy), but `README.md` still tells people to edit `ALLOWED_TARGETS` in the Worker and redeploy, at onboarding step 5 (~line 81) and the "Inject 403s" troubleshooting tip (~line 283). Code comments repeat it in `toDoList_main/src/inject.js` (~469), `toDoList_main/src/claudeSheet.js` (~3505) and `toDoList_main/tests/injectTargetsManagement.test.js` (~163). Rewrite each to match the registry model: a 400 "Target not in allowlist" means the repo has no enabled `inject_targets` row, fixed by adding one in Inject settings → + Add target; a 401 "Sign-in required" or 403 "Admin only" means the caller isn't a signed-in admin (`ADMIN_EMAILS` on the Worker). Comments and docs only: no code or test logic changes.
+  - Acceptance criteria:
+    - `grep -rn ALLOWED_TARGETS` over the repo (excluding `dist/` and `node_modules/`) returns nothing.
+    - The existing suite passes unchanged.
+  - File: `README.md`, `toDoList_main/src/inject.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/tests/injectTargetsManagement.test.js`
+  <!-- id: e2a7b91b-d939-4653-9b4c-15cc8ba9dc55 -->
