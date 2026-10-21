@@ -2799,22 +2799,16 @@ function component() {
     // working watch it is guarded against double-init and is never torn down.
     startDispatchReconciler();
 
-    // Mount the desktop companion on first boot when the pref allows and
-    // the viewport qualifies. Deferred by a tick so document.body exists
-    // (index.js appends the component right after component() returns).
-    setTimeout(ensureCompanion, 0);
-
-    // Wire sprite clicks to possession — the desktop ghost's only door. The
-    // subscription is module-level, so it survives the companion being toggled
-    // off and back on; on viewports where the companion never runs this is a
-    // no-op and nothing is created.
-    setTimeout(ensureDesktopGhostPossession, 0);
+    // The desktop companion and its possession wiring are NOT mounted here:
+    // component() runs before the session check, so mounting here put the
+    // ghost on the sign-in screen. index.js mounts them through
+    // ensureGhostForSession once a session exists.
 
     // Mirror the desktop companion-enabled flag onto a body class so the
     // mobile empty-state ghost spacer (Today + Projects views) can hide its
     // ghost when the user has turned the floating companion off. Deferred
-    // for the same reason as ensureCompanion above — document.body has to
-    // exist before the class can be toggled.
+    // by a tick so document.body exists (index.js appends the component
+    // right after component() returns).
     setTimeout(applyCompanionGhostPreference, 0);
 
     // Start the persistent, mount-independent agent-working watch once the shell
@@ -2822,7 +2816,7 @@ function component() {
     // slim always-on watch and is guarded against double-init internally, so a
     // second component() call (or a re-evaluated bundle) won't stack a second
     // channel/poller. Deferred a tick so document.body exists, matching the
-    // ensureCompanion / applyCompanionGhostPreference calls above.
+    // applyCompanionGhostPreference call above.
     setTimeout(startAgentWorkingWatch, 0);
 
     // Start the app-lock idle watch. It installs the document-level activity
@@ -4042,6 +4036,9 @@ export function ensureDesktopGhostPossession() {
     });
 
     document.addEventListener(POSSESSION_EVENT, function(event) {
+        // Signed out: the ghost is unmounted and must stay that way, so a
+        // possession flip can't lazily recreate it here.
+        if (ghostSignedOut) return;
         // Null when the user has the floating ghost turned off — there is no
         // sprite to perch, and possession itself is unaffected.
         const companion = ensureCompanion();
@@ -4052,6 +4049,44 @@ export function ensureDesktopGhostPossession() {
     });
 
     return true;
+}
+
+// ── THE GHOST FOLLOWS THE SESSION ──
+// The sprite exists only while someone is signed in. index.js calls
+// ensureGhostForSession once the first render succeeds and again on every new
+// session (so a sign-out then sign-in on the same tab brings it back), and
+// releaseGhostForSignOut on sign-out. Both are idempotent: ensureCompanion
+// returns the existing singleton, and possession wiring is latched.
+let ghostSignedOut = false;
+let ghostMountTimers = [];
+
+function clearGhostMountTimers() {
+    ghostMountTimers.forEach(clearTimeout);
+    ghostMountTimers = [];
+}
+
+// Deferred by a tick so document.body and the dashboard exist. The timers are
+// kept so a sign-out landing inside that tick cancels the pending mount.
+export function ensureGhostForSession() {
+    ghostSignedOut = false;
+    clearGhostMountTimers();
+    ghostMountTimers = [
+        setTimeout(ensureCompanion, 0),
+        // Wire sprite clicks to possession — the desktop ghost's only door.
+        // The subscription is module-level, so it survives the companion being
+        // toggled off and back on; on viewports where the companion never runs
+        // this is a no-op and nothing is created.
+        setTimeout(ensureDesktopGhostPossession, 0),
+    ];
+}
+
+// Hand the pane back first while the sprite still exists, so the possession
+// event releases its perch, then unmount it and keep it unmounted.
+export function releaseGhostForSignOut() {
+    clearGhostMountTimers();
+    if (isSheetPossessed()) togglePossession();
+    ghostSignedOut = true;
+    destroyCompanion();
 }
 
 

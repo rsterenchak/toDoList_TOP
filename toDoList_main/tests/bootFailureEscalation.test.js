@@ -32,6 +32,8 @@ vi.mock('../src/main.js', () => ({
     component: () => document.createElement('div'),
     restoreFromStorage: (...args) => h.restoreFromStorage(...args),
     notifyUpdateAvailable: () => {},
+    ensureGhostForSession: () => {},
+    releaseGhostForSignOut: () => {},
 }));
 vi.mock('../src/modals.js', () => ({ SW_UPDATE_INITIATOR_KEY: 'todoapp_swUpdateInitiator' }));
 vi.mock('../src/listLogic.js', () => ({
