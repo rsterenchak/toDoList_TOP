@@ -126,7 +126,6 @@ import {
     getStructureTreeState,
     getTourProgress,
     setTourProgress,
-    setTourCardHidden,
 } from '../src/prefs.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -3067,8 +3066,6 @@ describe('renderStructureView — code tours', () => {
         Object.defineProperty(window, 'innerWidth', { value: w, configurable: true, writable: true });
     }
     const view = () => document.getElementById('structureView');
-    const card = () => view().querySelector(':scope > .tourStartCard');
-    const chip = () => document.querySelector('.structureTourChip');
     const area = (id) => document.querySelector('.structureMapArea[data-area="' + id + '"]');
     const lensBtn = (id) => document.querySelector('.structureLensBtn[data-lens="' + id + '"]');
 
@@ -3089,96 +3086,28 @@ describe('renderStructureView — code tours', () => {
     });
     afterEach(() => {
         closeTourPlayer();
-        document.querySelectorAll('.tourAllBackdrop').forEach((n) => n.remove());
         setWidth(realInnerWidth);
     });
 
-    it('renders the START HERE card above the header when an unfinished tour exists', async () => {
+    it('renders no START HERE card, tours chip or All tours sheet — those live on the Understanding shelf', async () => {
         state.tours = TOURS;
         await render();
         expect(loadTours).toHaveBeenCalledWith(TOP);
-        expect(view().firstElementChild).toBe(card());
-        expect(card().hidden).toBe(false);
-        expect(view().classList.contains('has-tourStart')).toBe(true);
-        expect(card().querySelector('.tourStartEyebrow').textContent).toBe('START HERE');
-        expect(card().querySelector('.tourStartMeta').textContent).toBe('0 of 2 · ~2 min left');
-        expect(card().querySelector('.tourStartNext').textContent).toBe('Next: Adding a task');
-        expect(card().querySelectorAll('.tourStartDot')).toHaveLength(2);
-        expect(card().querySelector('.tourStartDot').classList.contains('is-current')).toBe(true);
-        expect(chip().hidden).toBe(true);
+        expect(document.querySelector('.tourStartCard')).toBeFalsy();
+        expect(document.querySelector('.understandingTourChip')).toBeFalsy();
+        expect(document.querySelector('.structureTourChip')).toBeFalsy();
+        expect(view().classList.contains('has-tourStart')).toBe(false);
+        expect(document.querySelector('.tourAllSheet')).toBeFalsy();
     });
 
-    it('keeps every tour surface absent when loadTours returns null', async () => {
+    it('keeps the area tour row absent when loadTours returns null', async () => {
         state.tours = null;
         await render();
-        expect(card().hidden).toBe(true);
-        expect(view().classList.contains('has-tourStart')).toBe(false);
-        expect(chip().hidden).toBe(true);
         area('tasks').click();
         document.querySelector('.structureMapOpenBtn').click();
         await flush();
         expect(document.querySelector('.structureMapLevel2')).toBeTruthy();
         expect(document.querySelector('.structureMapTours')).toBeFalsy();
-    });
-
-    it('hides the card once every tour is done and shows the chip instead', async () => {
-        state.tours = TOURS;
-        setTourProgress(TOP, { 'add-task': { step: 4, done: true }, second: { step: 2, done: true } });
-        await render();
-        expect(card().hidden).toBe(true);
-        expect(chip().hidden).toBe(false);
-        expect(chip().textContent).toBe('Tours 2/2');
-    });
-
-    it('Continue resumes the next tour at its saved step', async () => {
-        state.tours = TOURS;
-        setTourProgress(TOP, { 'add-task': { step: 2, done: false } });
-        await render();
-        card().querySelector('.tourStartContinue').click();
-        const player = document.querySelector('.tourPlayer--sheet');
-        expect(player).toBeTruthy();
-        expect(player.querySelector('.tourPlayerCount').textContent).toBe('3 / 4');
-        expect(player.querySelector('.tourPlayerStepTitle').textContent).toBe('postToWorker title');
-        expect(player.querySelector('.tourPlayerArea').textContent).toBe('Pipeline');
-    });
-
-    it('dismissing the card swaps in the chip, which opens All tours', async () => {
-        state.tours = TOURS;
-        setTourProgress(TOP, { 'add-task': { step: 1, done: false }, second: { step: 0, done: true } });
-        await render();
-        card().querySelector('.tourStartHide').click();
-        expect(card().hidden).toBe(true);
-        expect(view().classList.contains('has-tourStart')).toBe(false);
-        expect(chip().hidden).toBe(false);
-        expect(chip().textContent).toBe('Tours 1/2');
-        // The dismissal is remembered for this repo.
-        await render();
-        expect(card().hidden).toBe(true);
-
-        chip().click();
-        const sheet = document.querySelector('.tourAllBackdrop .tourAllSheet');
-        expect(sheet).toBeTruthy();
-        expect(sheet.querySelector('.tourAllTitle').textContent).toBe('Learn this codebase');
-        const sections = sheet.querySelectorAll('.tourAllSection');
-        expect(sections).toHaveLength(1);
-        expect(sections[0].querySelector('.tourAllSectionHead').textContent).toBe('Tasks & projects1 / 2');
-        const rows = sheet.querySelectorAll('.tourAllRow');
-        expect(rows[0].querySelector('.tourGlyph').classList.contains('is-progress')).toBe(true);
-        expect(rows[0].querySelector('.tourAllRowMeta').textContent).toBe('step 2 / 4');
-        expect(rows[1].querySelector('.tourGlyph').classList.contains('is-done')).toBe(true);
-
-        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-        expect(document.querySelector('.tourAllBackdrop')).toBeFalsy();
-    });
-
-    it('an All tours row starts that tour and closes the sheet', async () => {
-        state.tours = TOURS;
-        await render();
-        card().querySelector('.tourStartAll').click();
-        document.querySelectorAll('.tourAllRow')[1].click();
-        expect(document.querySelector('.tourAllBackdrop')).toBeFalsy();
-        expect(document.querySelector('.tourPlayerTourTitle').textContent).toBe('Second tour');
-        expect(getTourProgress(TOP).second).toEqual({ step: 0, done: false });
     });
 
     it('shows the area tour row in level 2 only for areas with tours', async () => {
@@ -3204,12 +3133,31 @@ describe('renderStructureView — code tours', () => {
         expect(document.querySelector('.structureMapTours')).toBeFalsy();
     });
 
+    // Opens level 2 of `id` and starts its first area tour from the TOURS IN row.
+    async function startAreaTour(id) {
+        area(id).click();
+        document.querySelector('.structureMapOpenBtn').click();
+        await flush();
+        document.querySelector('.structureMapTourCard').click();
+    }
+
+    it('a level-2 tour card starts that tour at its saved step', async () => {
+        state.tours = TOURS;
+        setTourProgress(TOP, { 'add-task': { step: 2, done: false } });
+        await render();
+        await startAreaTour('tasks');
+        const player = document.querySelector('.tourPlayer--sheet');
+        expect(player).toBeTruthy();
+        expect(player.querySelector('.tourPlayerCount').textContent).toBe('3 / 4');
+        expect(player.querySelector('.tourPlayerArea').textContent).toBe('Pipeline');
+    });
+
     it('on desktop docks the player in the code column and the map follows each step', async () => {
         state.tours = TOURS;
         setWidth(1300);
         await render();
         expect(view().classList.contains('is-map-lens')).toBe(true);
-        card().querySelector('.tourStartContinue').click();
+        await startAreaTour('tasks');
         const host = view().querySelector(':scope > .structureCanvasHost');
         expect(host.classList.contains('is-touring')).toBe(true);
         expect(host.querySelector('.tourPlayer--docked')).toBeTruthy();
@@ -3234,7 +3182,7 @@ describe('renderStructureView — code tours', () => {
         state.tours = TOURS;
         setWidth(1300);
         await render();
-        card().querySelector('.tourStartContinue').click();
+        await startAreaTour('tasks');
         const host = view().querySelector(':scope > .structureCanvasHost');
         expect(host.classList.contains('is-touring')).toBe(true);
         lensBtn('code').click();
@@ -3243,15 +3191,9 @@ describe('renderStructureView — code tours', () => {
         expect(document.querySelector('.tourPlayer')).toBeFalsy();
     });
 
-    it('lays the card out as a full-width first row on desktop', () => {
+    it('drops the START HERE grid rows from the Structure layout', () => {
         const css = readFileSync(resolvePath(__dirname, '../src/style.css'), 'utf8');
-        expect(css).toMatch(/#structureView\.has-tourStart > \.tourStartCard \{\s*grid-column: 1 \/ -1;\s*grid-row: 1;/);
-    });
-
-    it('hides the card when dismissed for this repo only', async () => {
-        state.tours = TOURS;
-        setTourCardHidden(OTHER, true);
-        await render();
-        expect(card().hidden).toBe(false);
+        expect(css).not.toMatch(/has-tourStart/);
+        expect(css).not.toMatch(/\.structureTourChip/);
     });
 });

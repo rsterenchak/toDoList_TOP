@@ -5035,6 +5035,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .understandingHeader {
   flex: 0 0 auto;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
   min-width: 0;
@@ -5229,6 +5230,323 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   flex: 0 0 auto;
   font-size: 13px;
   color: var(--type-feature);
+}
+
+/* ── UNDERSTANDING TOURS ──
+   The shelf's way into the guided code tours: the START HERE card under the
+   Continue card, the header's tours chip, each chapter's tours nested under its
+   row, and the All tours sheet. A started tour docks in .understandingCodePane
+   beside the shelf on desktop. */
+.understandingShelfBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+.understandingShelfBody > .understandingShelf {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.understandingCodePane.is-touring > :not(.tourPlayer) { display: none; }
+
+.tourStartCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--bg-surface);
+  border: 1px solid rgba(255, 189, 94, 0.35);
+  border-radius: 10px;
+}
+.tourStartCard[hidden] { display: none; }
+
+.tourStartTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tourStartEyebrow {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #ffbd5e;
+}
+
+.tourStartMeta {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tourStartHide {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  margin: -6px -8px -6px 0;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.tourStartNext {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.tourStartDots {
+  display: flex;
+  gap: 4px;
+}
+
+.tourStartDot {
+  flex: 0 1 28px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-bright);
+}
+.tourStartDot.is-done { background: #ffbd5e; }
+.tourStartDot.is-current { background: rgba(255, 189, 94, 0.55); }
+
+.tourStartActions {
+  display: flex;
+  gap: 8px;
+}
+
+.tourStartContinue,
+.tourStartAll {
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tourStartContinue {
+  flex: 1 1 auto;
+  border: none;
+  background: #ffbd5e;
+  color: #1a1306;
+}
+
+.tourStartAll {
+  flex: 0 0 auto;
+  border: 1px solid var(--border-bright);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+}
+
+/* margin-left: auto keeps the chip and the control right-aligned when a narrow
+   header wraps them onto their own row. */
+.understandingTourChip {
+  flex: 0 0 auto;
+  margin-left: auto;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 189, 94, 0.45);
+  border-radius: 999px;
+  background: none;
+  color: #ffbd5e;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.understandingTourChip[hidden] { display: none; }
+
+
+.understandingChapterTours {
+  margin: 0 0 10px;
+  padding: 0 0 0 30px;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.understandingTourRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 10px;
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+.understandingTourRow:hover { border-color: rgba(255, 189, 94, 0.45); }
+
+.understandingTourRowTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.understandingTourRowMeta {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.understandingTourRow.is-done .understandingTourRowTitle { color: var(--text-secondary); }
+
+/* The All tours sheet rides the shared code-sheet chrome — full screen on a
+   phone, a centered 560px panel above (see CODE TOURS — desktop). */
+.understandingToursSheet .structureCodeSheetHost { padding: 0; min-height: 0; }
+.tourAllSheet {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+}
+
+.tourAllHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tourAllTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.tourAllClose {
+  width: 44px;
+  height: 44px;
+  margin-right: -10px;
+  border: none;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.tourAllProgress {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border-bright);
+  overflow: hidden;
+}
+
+.tourAllProgressFill {
+  display: block;
+  height: 100%;
+  background: #ffbd5e;
+}
+
+.tourAllSummary {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tourAllList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tourAllSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tourAllSectionHead {
+  display: flex;
+  justify-content: space-between;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tourAllRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 52px;
+  padding: 0 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tourAllRowTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tourAllRowMeta {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tourGlyph {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  box-sizing: border-box;
+  border: 2px solid var(--border-bright);
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+}
+.tourGlyph.is-progress { border-color: #ffbd5e; }
+.tourGlyph.is-done {
+  border-color: #ffbd5e;
+  background: #ffbd5e;
+  color: #1a1306;
+}
+
+.tourStartHide:focus-visible,
+.tourStartContinue:focus-visible,
+.tourStartAll:focus-visible,
+.understandingTourChip:focus-visible,
+.understandingTourRow:focus-visible,
+.tourAllRow:focus-visible,
+.tourAllClose:focus-visible {
+  outline: 2px solid var(--accent-text);
+  outline-offset: 2px;
 }
 
 /* ── UNDERSTANDING READER ──
@@ -6518,126 +6836,16 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* ── CODE TOURS ──
-   The START HERE card above the lens toggle, the tours chip beside the toggle,
-   the Map lens's "Tours in <area>" row, the All tours sheet and the tour player
-   (a full-screen sheet below 1024px, docked in the code column above). Amber
-   marks the tours' call to action; everything else rides the theme variables. */
-.tourStartCard {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px 14px;
-  background: var(--bg-surface);
-  border: 1px solid rgba(255, 189, 94, 0.35);
-  border-radius: 10px;
-}
-.tourStartCard[hidden] { display: none; }
-
-.tourStartTop {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.tourStartEyebrow {
-  font-family: 'SpaceMono', monospace;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  color: #ffbd5e;
-}
-
-.tourStartMeta {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.tourStartHide {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  margin: -6px -8px -6px 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.tourStartNext {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.tourStartDots {
-  display: flex;
-  gap: 4px;
-}
-
-.tourStartDot {
-  flex: 0 1 28px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-bright);
-}
-.tourStartDot.is-done { background: #ffbd5e; }
-.tourStartDot.is-current { background: rgba(255, 189, 94, 0.55); }
-
-.tourStartActions {
-  display: flex;
-  gap: 8px;
-}
-
-.tourStartContinue,
-.tourStartAll {
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.tourStartContinue {
-  flex: 1 1 auto;
-  border: none;
-  background: #ffbd5e;
-  color: #1a1306;
-}
-
-.tourStartAll {
-  flex: 0 0 auto;
-  border: 1px solid var(--border-bright);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
+   The Map lens's "Tours in <area>" row and the tour player (a full-screen sheet
+   below 1024px, docked in a code column above). The START HERE card, the tours
+   chip and the All tours sheet sit with the Understanding shelf. Amber marks
+   the tours' call to action; everything else rides the theme variables. */
 .structureLensRow {
   display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
-
-.structureTourChip {
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 189, 94, 0.45);
-  border-radius: 999px;
-  background: none;
-  color: #ffbd5e;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.structureTourChip[hidden] { display: none; }
 
 .structureMapTours {
   display: flex;
@@ -6689,152 +6897,10 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 
 .structureMapTourDone { color: var(--type-feature); }
 
-.tourStartHide:focus-visible,
-.tourStartContinue:focus-visible,
-.tourStartAll:focus-visible,
-.structureTourChip:focus-visible,
 .structureMapTourCard:focus-visible,
-.tourAllRow:focus-visible,
-.tourAllClose:focus-visible,
 .tourPlayer button:focus-visible {
   outline: 2px solid var(--accent-text);
   outline-offset: 2px;
-}
-
-/* All tours sheet — full screen on a phone, a centered 560px panel above. */
-.tourAllBackdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 4000;
-  display: flex;
-  background: rgba(0, 0, 0, 0.55);
-}
-
-.tourAllSheet {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  padding: calc(env(safe-area-inset-top, 0px) + 16px) 16px calc(env(safe-area-inset-bottom, 0px) + 16px);
-  background: var(--bg-surface);
-  color: var(--text-primary);
-}
-
-.tourAllHead {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.tourAllTitle {
-  margin: 0;
-  font-size: 18px;
-  font-weight: 700;
-}
-
-.tourAllClose {
-  width: 44px;
-  height: 44px;
-  margin-right: -10px;
-  border: none;
-  background: none;
-  color: var(--text-secondary);
-  font-size: 24px;
-  cursor: pointer;
-}
-
-.tourAllProgress {
-  height: 6px;
-  border-radius: 3px;
-  background: var(--border-bright);
-  overflow: hidden;
-}
-
-.tourAllProgressFill {
-  display: block;
-  height: 100%;
-  background: #ffbd5e;
-}
-
-.tourAllSummary {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.tourAllList {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-.tourAllSection {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.tourAllSectionHead {
-  display: flex;
-  justify-content: space-between;
-  font-family: 'SpaceMono', monospace;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--text-muted);
-}
-
-.tourAllRow {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-height: 52px;
-  padding: 0 12px;
-  border: 1px solid var(--border-bright);
-  border-radius: 10px;
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-  font-family: inherit;
-  font-size: 14px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.tourAllRowTitle {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tourAllRowMeta {
-  flex: 0 0 auto;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.tourGlyph {
-  flex: 0 0 auto;
-  width: 20px;
-  height: 20px;
-  box-sizing: border-box;
-  border: 2px solid var(--border-bright);
-  border-radius: 50%;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-}
-.tourGlyph.is-progress { border-color: #ffbd5e; }
-.tourGlyph.is-done {
-  border-color: #ffbd5e;
-  background: #ffbd5e;
-  color: #1a1306;
 }
 
 /* The player. Below 1024px a full-screen sheet; the docked variant (desktop)
@@ -27601,51 +27667,22 @@ body.appLocked { overflow: hidden; }
   }
 }
 
-/* CODE TOURS — desktop. The All tours sheet becomes a centered panel, the
-   START HERE card takes the Structure grid's first row, and a tour docked in
-   the code column hides what the column showed. */
+/* CODE TOURS — desktop. The All tours sheet becomes a centered panel and a
+   tour docked in the code column hides what the column showed. */
 @media (min-width: 1024px) {
-  .tourAllBackdrop {
+  .structureCodeSheet.understandingToursSheet {
     align-items: center;
     justify-content: center;
     padding: 24px;
   }
-  .tourAllSheet {
+  .understandingToursSheet .structureCodeSheetPanel {
     max-width: 560px;
     max-height: calc(100vh - 48px);
-    padding: 20px;
     border: 1px solid var(--border-bright);
     border-radius: 12px;
+    overflow: hidden;
   }
-
-  /* With the START HERE card showing it becomes a full-width first row and
-     every other child of the Structure grid steps down one row. */
-  #mainBar[data-view="structure"] #structureView.has-tourStart {
-    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto;
-  }
-  #structureView.has-tourStart > .tourStartCard {
-    grid-column: 1 / -1;
-    grid-row: 1;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    column-gap: 16px;
-  }
-  #structureView.has-tourStart > .tourStartCard > .tourStartTop { flex: 1 1 100%; }
-  #structureView.has-tourStart > .tourStartCard > .tourStartNext { flex: 0 1 auto; }
-  #structureView.has-tourStart > .tourStartCard > .tourStartDots { flex: 1 1 120px; }
-  #structureView.has-tourStart > .tourStartCard > .tourStartActions { flex: 0 0 auto; }
-  #structureView.has-tourStart > .structureHeader        { grid-row: 2; }
-  #structureView.has-tourStart > .refactorCard           { grid-row: 3; }
-  #structureView.has-tourStart > .structureControlRow    { grid-row: 4; }
-  #structureView.has-tourStart > .structureTree          { grid-row: 5; }
-  #structureView.has-tourStart > .captureCard            { grid-row: 6; }
-  #structureView.has-tourStart > .structureActionToolbar { grid-row: 2; }
-  #structureView.has-tourStart > .structureCanvasHost    { grid-row: 3 / -1; }
-  #structureView.is-map-lens.has-tourStart > .structureControlRow { grid-row: 3; }
-  #structureView.is-map-lens.has-tourStart > .structureTree { grid-row: 4 / -1; }
-  #structureView.is-map-lens.has-tourStart > .structureMapPane,
-  #structureView.is-map-lens.has-tourStart > .structureCanvasHost { grid-row: 2 / -1; }
+  .tourAllSheet { padding: 20px; }
 
   /* A tour docked in the code column hides whatever the column was showing
      until it closes. */

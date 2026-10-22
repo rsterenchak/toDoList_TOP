@@ -13,6 +13,12 @@
 // (local + Supabase); the reader mode itself is not persisted, so reopening the
 // tab shows the shelf.
 //
+// The shelf is also where the guided code tours start: a START HERE card under
+// the Continue card pointing at the next unfinished tour, each chapter's tours
+// nested under its row, and a `Tours n/m` chip in the header opening the All
+// tours sheet. A tour plays docked in the shelf's code pane on desktop and as a
+// full-screen sheet below; Structure keeps only its per-area map row.
+//
 // Any paragraph can be bookmarked — a ribbon on hover (desktop) or a long-press
 // (touch). Bookmarks live in bookBookmarks.js (local + Supabase); the reader's
 // top bar lists them and the shelf shows them under the chapters.
@@ -33,6 +39,9 @@ import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerClo
 import { createCodeSheet } from './codeSheet.js';
 import { readLocalProgress, recordProgress, flushProgress, loadProgress } from './bookProgress.js';
 import { listBookmarks, isBookmarked, toggleBookmark, removeBookmark, loadBookmarks, anchorBookmarks } from './bookBookmarks.js';
+import { loadTours, orderedTours, nextUnfinished, tourStats } from './codeTours.js';
+import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
+import { getTourProgress, isTourCardHidden, setTourCardHidden } from './prefs.js';
 
 // Probe cadence and limits for a tracked book run, matching the scan tracker's.
 const BOOK_POLL_MS = 5000;
@@ -64,6 +73,14 @@ let renderSeq = 0;
 // The open reader `{ view, repo, book, index, paraIndex, observer, scroll, main,
 // codePane, marksBtn, marksBadge, marksList }`, or null while the shelf shows.
 let reader = null;
+// The loaded tours `{ repo, data, areas }` — `data` null when the repo has none.
+let tourData = null;
+// The painted shelf's tour surfaces `{ repo, body, card, chip, chapters }`, or
+// null while the reader (or an empty state) shows.
+let shelfTours = null;
+// The desktop code pane beside the shelf `{ repo, el }` a tour docks in and
+// opens its code in, or null.
+let shelfPane = null;
 
 function clear(el) {
     while (el.firstChild) el.removeChild(el.firstChild);
@@ -489,6 +506,14 @@ function paintShelf(view, repo, book, progress) {
     statsEl.textContent = stats.chapters + ' CH · ' + stats.minutes + ' MIN';
     header.appendChild(statsEl);
 
+    // Hidden until the tours load, and for good when the repo has none.
+    const tourChip = document.createElement('button');
+    tourChip.type = 'button';
+    tourChip.className = 'understandingTourChip';
+    tourChip.hidden = true;
+    tourChip.addEventListener('click', openAllToursSheet);
+    header.appendChild(tourChip);
+
     const note = document.createElement('div');
     note.className = 'understandingNote';
     note.hidden = true;
@@ -498,9 +523,19 @@ function paintShelf(view, repo, book, progress) {
     view.appendChild(note);
 
     // Everything below the header scrolls on its own, so the header stays fixed.
+    // The desktop code pane, when a tour has opened one, sits beside it.
+    const body = document.createElement('div');
+    body.className = 'understandingShelfBody';
     const shelf = document.createElement('div');
     shelf.className = 'understandingShelf';
-    view.appendChild(shelf);
+    body.appendChild(shelf);
+    view.appendChild(body);
+    shelfTours = { repo: repo, body: body, card: null, chip: tourChip, chapters: null };
+    // A repaint of the same shelf keeps a pane (and a tour docked in it).
+    if (shelfPane && shelfPane.repo === repo) {
+        body.appendChild(shelfPane.el);
+        body.classList.add('has-code');
+    }
 
     const generating = !!(bookRun && bookRun.repo === repo);
     if (!generating && finishedRepo === repo) {
@@ -516,6 +551,7 @@ function paintShelf(view, repo, book, progress) {
             ? 'Generating the book. ' + LAG_NOTE
             : 'Generate writes the book’s chapters from this repo’s source. ' + LAG_NOTE;
         empty.appendChild(hint);
+        paintTourSurfaces();
         return;
     }
 
@@ -527,9 +563,387 @@ function paintShelf(view, repo, book, progress) {
     }
     const pos = positionIn(book, progress);
     shelf.appendChild(buildContinueCard(view, repo, book, stats, pos));
-    shelf.appendChild(buildChapterList(view, repo, book, pos));
+    // START HERE: the next unfinished tour, filled once the tours load.
+    const tourCard = document.createElement('section');
+    tourCard.className = 'tourStartCard';
+    tourCard.setAttribute('aria-label', 'Code tours');
+    tourCard.hidden = true;
+    shelf.appendChild(tourCard);
+    shelfTours.card = tourCard;
+    const chapters = buildChapterList(view, repo, book, pos);
+    shelfTours.chapters = { list: chapters, book: book };
+    shelf.appendChild(chapters);
     const marks = buildBookmarkSection(view, repo, book);
     if (marks) shelf.appendChild(marks);
+    paintTourSurfaces();
+}
+
+// ── tours ──
+
+// The loaded tours for `repo`, or null while loading / when it has none.
+function toursFor(repo) {
+    return tourData && tourData.repo === repo && tourData.data ? tourData.data : null;
+}
+
+function tourAreaName(id) {
+    const areas = tourData && tourData.areas;
+    const a = (areas || []).find(function (x) { return x && x.id === id; });
+    return a && a.name ? a.name : id;
+}
+
+// Fetch `repo`'s tours (and its areas, for the player's chips), then repaint
+// the shelf's tour surfaces — unless a newer render has taken over.
+function loadShelfTours(repo, seq) {
+    return Promise.resolve(loadTours(repo)).then(function (data) {
+        if (seq !== renderSeq) return;
+        const has = !!(data && Array.isArray(data.tours) && data.tours.length);
+        const prevAreas = tourData && tourData.repo === repo ? tourData.areas : null;
+        tourData = { repo: repo, data: has ? data : null, areas: prevAreas };
+        paintTourSurfaces();
+        if (!has || prevAreas) return;
+        return Promise.resolve(loadManifest(repo)).then(function (manifest) {
+            if (tourData && tourData.repo === repo && manifest && Array.isArray(manifest.areas)) {
+                tourData.areas = manifest.areas;
+            }
+        }, function () {});
+    }, function () {});
+}
+
+function tourGlyph(rec, tour) {
+    const g = document.createElement('span');
+    g.setAttribute('aria-hidden', 'true');
+    if (rec && rec.done) {
+        g.className = 'tourGlyph is-done';
+        g.textContent = '✓';
+    } else if (rec && rec.step > 0) {
+        g.className = 'tourGlyph is-progress';
+    } else {
+        g.className = 'tourGlyph';
+    }
+    g.dataset.tour = tour.id;
+    return g;
+}
+
+// `step k / N` for a tour part-way through, else `N steps`.
+function tourMeta(rec, tour) {
+    return rec && !rec.done && rec.step > 0
+        ? 'step ' + Math.min(rec.step + 1, tour.steps.length) + ' / ' + tour.steps.length
+        : tour.steps.length + ' steps';
+}
+
+// The shelf's card, chip and nested chapter rows follow the stored progress and
+// dismissal; called whenever either changes.
+function paintTourSurfaces() {
+    const s = shelfTours;
+    if (!s) return;
+    const data = toursFor(s.repo);
+    const progress = getTourProgress(s.repo);
+    if (s.chip) {
+        const stats = data ? tourStats(data, progress) : null;
+        s.chip.hidden = !stats;
+        if (stats) s.chip.textContent = 'Tours ' + stats.done + '/' + stats.total;
+    }
+    if (s.card) {
+        const next = data ? nextUnfinished(data, progress) : null;
+        const showCard = !!next && !isTourCardHidden(s.repo);
+        clear(s.card);
+        s.card.hidden = !showCard;
+        if (showCard) fillTourStartCard(s.card, s.repo, data, next, progress);
+    }
+    if (s.chapters) paintChapterTours(s.chapters.list, s.chapters.book, data, progress);
+}
+
+function fillTourStartCard(cardEl, repo, data, next, progress) {
+    const stats = tourStats(data, progress);
+
+    const top = document.createElement('div');
+    top.className = 'tourStartTop';
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'tourStartEyebrow';
+    eyebrow.textContent = 'START HERE';
+    top.appendChild(eyebrow);
+    const meta = document.createElement('span');
+    meta.className = 'tourStartMeta';
+    meta.textContent = stats.done + ' of ' + stats.total + ' · ~' + stats.minutesLeft + ' min left';
+    top.appendChild(meta);
+    const hide = document.createElement('button');
+    hide.type = 'button';
+    hide.className = 'tourStartHide';
+    hide.setAttribute('aria-label', 'Hide START HERE');
+    hide.textContent = '×';
+    hide.addEventListener('click', function () {
+        setTourCardHidden(repo, true);
+        paintTourSurfaces();
+    });
+    top.appendChild(hide);
+    cardEl.appendChild(top);
+
+    const nextLine = document.createElement('div');
+    nextLine.className = 'tourStartNext';
+    nextLine.textContent = 'Next: ' + next.title;
+    cardEl.appendChild(nextLine);
+
+    const dots = document.createElement('div');
+    dots.className = 'tourStartDots';
+    dots.setAttribute('aria-hidden', 'true');
+    orderedTours(data).filter(function (t) { return t.section === next.section; })
+        .forEach(function (t) {
+            const dot = document.createElement('span');
+            dot.className = 'tourStartDot';
+            const rec = progress[t.id];
+            if (rec && rec.done) dot.classList.add('is-done');
+            if (t.id === next.id) dot.classList.add('is-current');
+            dots.appendChild(dot);
+        });
+    cardEl.appendChild(dots);
+
+    const actions = document.createElement('div');
+    actions.className = 'tourStartActions';
+    const go = document.createElement('button');
+    go.type = 'button';
+    go.className = 'tourStartContinue';
+    go.textContent = '▶ Continue';
+    go.addEventListener('click', function () {
+        const rec = getTourProgress(repo)[next.id];
+        startShelfTour(next, rec ? rec.step : 0);
+    });
+    actions.appendChild(go);
+    const all = document.createElement('button');
+    all.type = 'button';
+    all.className = 'tourStartAll';
+    all.textContent = 'All tours';
+    all.addEventListener('click', openAllToursSheet);
+    actions.appendChild(all);
+    cardEl.appendChild(actions);
+}
+
+// Under each chapter row, one row per tour its `tours` names that the loaded
+// tours resolve, in that order. A chapter's `tours` holds ids or `{ id }` refs.
+function paintChapterTours(list, book, data, progress) {
+    const byId = new Map();
+    (data ? data.tours : []).forEach(function (t) { byId.set(t.id, t); });
+    const rows = list.querySelectorAll(':scope > .understandingChapterRow');
+    book.chapters.forEach(function (ch, i) {
+        const row = rows[i];
+        if (!row) return;
+        const prior = row.querySelector(':scope > .understandingChapterTours');
+        if (prior) prior.remove();
+        const tours = (Array.isArray(ch.tours) ? ch.tours : []).map(function (ref) {
+            return byId.get(ref && typeof ref === 'object' ? ref.id : ref);
+        }).filter(Boolean);
+        if (!tours.length) return;
+        const nested = document.createElement('ol');
+        nested.className = 'understandingChapterTours';
+        nested.setAttribute('aria-label', 'Tours in ' + (ch.title || ch.id));
+        tours.forEach(function (t) {
+            const rec = progress[t.id];
+            const li = document.createElement('li');
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'understandingTourRow';
+            if (rec && rec.done) btn.classList.add('is-done');
+            btn.dataset.tour = t.id;
+            btn.appendChild(tourGlyph(rec, t));
+            const title = document.createElement('span');
+            title.className = 'understandingTourRowTitle';
+            title.textContent = t.title;
+            btn.appendChild(title);
+            const meta = document.createElement('span');
+            meta.className = 'understandingTourRowMeta';
+            meta.textContent = rec && !rec.done && rec.step > 0 ? tourMeta(rec, t) : t.steps.length + ' STEPS';
+            btn.appendChild(meta);
+            btn.addEventListener('click', function () {
+                startShelfTour(t, rec && !rec.done ? rec.step : 0);
+            });
+            li.appendChild(btn);
+            nested.appendChild(li);
+        });
+        row.appendChild(nested);
+    });
+}
+
+// The desktop pane beside the shelf, created if absent.
+function ensureShelfPane() {
+    const s = shelfTours;
+    if (!s) return null;
+    if (shelfPane && shelfPane.repo === s.repo && shelfPane.el.parentNode === s.body) return shelfPane.el;
+    closeShelfPane();
+    const el = document.createElement('div');
+    el.className = 'understandingCodePane';
+    s.body.appendChild(el);
+    s.body.classList.add('has-code');
+    shelfPane = { repo: s.repo, el: el };
+    return el;
+}
+
+// Close the shelf pane: a tour docked in it, the viewer it shows, the pane.
+function closeShelfPane() {
+    const p = shelfPane;
+    if (!p) return;
+    shelfPane = null;
+    if (p.el.classList.contains('is-touring')) closeTourPlayer();
+    if (p.el.querySelector(':scope > .codeViewerPane')) clearCodeViewer(p.el);
+    if (p.el.parentNode) p.el.parentNode.classList.remove('has-code');
+    p.el.remove();
+}
+
+// Open a tour step's span in the code viewer — the shelf pane on desktop, the
+// code sheet below — joined to the manifest's srcRoot as the reader's refs are.
+function openTourStepInCode(repo, step, span) {
+    return Promise.resolve(loadManifest(repo)).then(function (manifest) {
+        if (reader || !shelfTours || shelfTours.repo !== repo) return;
+        const srcRoot = manifest && typeof manifest.srcRoot === 'string' ? manifest.srcRoot : '';
+        const host = understandingIsDesktop() ? ensureShelfPane() : codeSheet.ensure();
+        if (!host) return;
+        renderCodeViewer(host, {
+            target: { repo: repo },
+            filePath: joinSrcRootPath(srcRoot, step.file),
+            srcRoot: srcRoot,
+            startLine: span.startLine,
+            endLine: span.endLine,
+            banner: step.title,
+        });
+    });
+}
+
+// Play `tour` from `step`: docked in the shelf's code pane on desktop, a
+// full-screen sheet below 1024px. The shelf stays the shelf.
+function startShelfTour(tour, step) {
+    const s = shelfTours;
+    if (!s || !tour) return;
+    const repo = s.repo;
+    const docked = understandingIsDesktop() ? ensureShelfPane() : null;
+    openTourPlayer({
+        tour: tour,
+        repo: repo,
+        startStep: step,
+        host: docked,
+        areaName: tourAreaName,
+        onOpenInCode: function (st, span) { openTourStepInCode(repo, st, span); },
+        onClose: function () {
+            // A pane the tour opened just for itself goes with it.
+            if (docked && shelfPane && shelfPane.el === docked) {
+                const cv = docked.querySelector(':scope > .codeViewerPane');
+                if (!cv || cv.hidden) closeShelfPane();
+            }
+            paintTourSurfaces();
+        },
+    });
+}
+
+// The All tours sheet, on the shared code-sheet chrome.
+const toursSheet = createCodeSheet({
+    id: 'understandingToursSheet',
+    label: 'All tours',
+    className: 'understandingToursSheet',
+});
+
+// The All tours sheet: overall progress, then each section's tours with their
+// state. A row starts (or resumes) that tour and closes the sheet.
+function openAllToursSheet() {
+    const s = shelfTours;
+    const data = s ? toursFor(s.repo) : null;
+    if (!data) return;
+    const host = toursSheet.ensure();
+    if (!host) return;
+    const repo = s.repo;
+    const progress = getTourProgress(repo);
+    const stats = tourStats(data, progress);
+    clear(host);
+
+    const panel = document.createElement('div');
+    panel.className = 'tourAllSheet';
+
+    const head = document.createElement('div');
+    head.className = 'tourAllHead';
+    const h = document.createElement('h2');
+    h.className = 'tourAllTitle';
+    h.textContent = 'Learn this codebase';
+    head.appendChild(h);
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'tourAllClose';
+    closeBtn.setAttribute('aria-label', 'Close');
+    closeBtn.textContent = '×';
+    closeBtn.addEventListener('click', function () { toursSheet.hide(); });
+    head.appendChild(closeBtn);
+    panel.appendChild(head);
+
+    const bar = document.createElement('div');
+    bar.className = 'tourAllProgress';
+    bar.setAttribute('role', 'progressbar');
+    bar.setAttribute('aria-valuemin', '0');
+    bar.setAttribute('aria-valuemax', String(stats.total));
+    bar.setAttribute('aria-valuenow', String(stats.done));
+    const fill = document.createElement('span');
+    fill.className = 'tourAllProgressFill';
+    fill.style.width = (stats.total ? Math.round((stats.done / stats.total) * 100) : 0) + '%';
+    bar.appendChild(fill);
+    panel.appendChild(bar);
+    const summary = document.createElement('div');
+    summary.className = 'tourAllSummary';
+    summary.textContent = stats.done + ' of ' + stats.total + ' tours done';
+    panel.appendChild(summary);
+
+    const list = document.createElement('div');
+    list.className = 'tourAllList';
+    const ordered = orderedTours(data);
+    const sections = (data.sections || []).slice();
+    const known = new Set(sections.map(function (sec) { return sec.id; }));
+    if (ordered.some(function (t) { return !known.has(t.section); })) sections.push({ id: null, title: 'More' });
+
+    sections.forEach(function (sec) {
+        const tours = ordered.filter(function (t) {
+            return sec.id === null ? !known.has(t.section) : t.section === sec.id;
+        });
+        if (!tours.length) return;
+        const block = document.createElement('section');
+        block.className = 'tourAllSection';
+        const st = document.createElement('div');
+        st.className = 'tourAllSectionHead';
+        const name = document.createElement('span');
+        name.textContent = sec.title || sec.id;
+        st.appendChild(name);
+        const cnt = document.createElement('span');
+        cnt.className = 'tourAllSectionCount';
+        cnt.textContent = tours.filter(function (t) { return progress[t.id] && progress[t.id].done; }).length + ' / ' + tours.length;
+        st.appendChild(cnt);
+        block.appendChild(st);
+        tours.forEach(function (t) {
+            const rec = progress[t.id];
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = 'tourAllRow';
+            row.dataset.tour = t.id;
+            row.appendChild(tourGlyph(rec, t));
+            const title = document.createElement('span');
+            title.className = 'tourAllRowTitle';
+            title.textContent = t.title;
+            row.appendChild(title);
+            const meta = document.createElement('span');
+            meta.className = 'tourAllRowMeta';
+            meta.textContent = tourMeta(rec, t);
+            row.appendChild(meta);
+            row.addEventListener('click', function () {
+                toursSheet.hide();
+                startShelfTour(t, rec && !rec.done ? rec.step : 0);
+            });
+            block.appendChild(row);
+        });
+        list.appendChild(block);
+    });
+    panel.appendChild(list);
+    host.appendChild(panel);
+    toursSheet.show();
+    closeBtn.focus();
+}
+
+// Drop the shelf's tour surfaces and its code pane (closing a tour docked in
+// it). A full-screen tour sheet is left to its own close.
+function teardownShelf() {
+    closeShelfPane();
+    toursSheet.hide();
+    shelfTours = null;
 }
 
 // ── reader ──
@@ -557,6 +971,10 @@ setCodeViewerCloseHandler(function (host) {
     }
     if (reader && reader.codePane && host === reader.codePane) {
         closeCodePane();
+        return true;
+    }
+    if (shelfPane && host === shelfPane.el) {
+        closeShelfPane();
         return true;
     }
     return false;
@@ -989,6 +1407,7 @@ function openReader(view, repo, book, index, paraIndex) {
     // A shelf repaint still in flight must not paint over the reader.
     renderSeq++;
     teardownReader();
+    teardownShelf();
     clear(view);
     view.classList.add('is-reading');
 
@@ -1109,6 +1528,7 @@ export function renderUnderstandingView() {
     const view = document.getElementById('understandingView');
     if (!view) return;
     teardownReader();
+    teardownShelf();
     const seq = ++renderSeq;
     clear(view);
 
@@ -1134,6 +1554,9 @@ export function renderUnderstandingView() {
     loading.className = 'understandingLoading';
     loading.textContent = 'Loading the code book…';
     view.appendChild(loading);
+
+    // The tours load beside the book and paint into whichever shelf is up.
+    loadShelfTours(repo, seq);
 
     return Promise.resolve(loadBook(repo)).then(function (book) {
         if (seq !== renderSeq) return;
@@ -1163,6 +1586,7 @@ export function exitUnderstandingView() {
     renderSeq++;
     stopPolling();
     teardownReader();
+    teardownShelf();
 }
 
 // Forget any tracked book run and its finished note. A test seam.

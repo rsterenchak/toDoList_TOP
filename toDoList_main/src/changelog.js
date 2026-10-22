@@ -11,15 +11,15 @@ export const changelog = [
             'Chapters in the Understanding tab now open in a reader with tappable code references, a look-ahead note and previous/next chapter buttons, and your reading place is saved so Continue picks up where you left off on any device.',
             'Paragraphs in the Understanding reader can now be bookmarked with a hover ribbon or a long-press, and your bookmarks are listed from the reader\'s top bar and on the shelf so you can jump straight back to them on any device.',
         ],
+        changed: [
+            'Code tours now start from the Understanding shelf, with the START HERE card under Continue, each chapter\'s tours listed beneath it and a tours chip in the header opening All tours, while Structure keeps its per-area tour row.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-10-21',
         fixed: [
             'The ghost companion no longer appears on the sign-in screen, leaves when you sign out and comes back when you sign in again.',
-        ],
-        added: [
-            'Assistant, run and ghost requests now carry your sign-in, and a request refused because you are signed out or not an admin says so plainly.',
         ],
     },
 ];
