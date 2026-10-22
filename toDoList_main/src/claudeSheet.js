@@ -82,7 +82,8 @@ import {
 import { onQueueChange, getQueueRows, getLoadedProjectName } from './agentQueueStore.js';
 import { parsePastedEntry, commitEntryToActiveProject, taskLineTitle } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
-import { setChatPaneCollapsed, getUsageBudget, setUsageBudget } from './prefs.js';
+import { setChatPaneCollapsed, getUsageBudget, setUsageBudget, getChatBookScope, setChatBookScope } from './prefs.js';
+import { loadSymbols, getLoadedSymbols, isTraceable, resolveName } from './codeTrace.js';
 import { wireModalDismiss } from './modalDismiss.js';
 import { serializeLayout } from './layoutInspect.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
@@ -124,6 +125,8 @@ const GHOST_LISTENING_COPY = 'the ghost is listening';
 // The work composer's prompt. Possession swaps it for GHOST_PLACEHOLDER and
 // swaps it back on the way out, so the placeholder always names who is reading.
 const CHAT_PLACEHOLDER = 'Ask Agent';
+// The composer placeholder while the chat is scoped to an Understanding chapter.
+const BOOK_SCOPE_PLACEHOLDER = 'Ask about this chapter…';
 
 const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
@@ -200,6 +203,18 @@ let activeHandoffRow = null;
 // cleared by "+ New Chat" in the same place the transcript is wiped, and
 // swapped/dropped on a workspace change exactly as the iterate entry is.
 let activeChatTask = null;
+// The Understanding chapter SCOPED to the current conversation — `{ chapter: { id,
+// title, index, total }, prose, refs }` built by the reader's Ask chip — or null.
+// It shares the scope chip with the task scope (one scope at a time: setting
+// either drops the other), rides on every turn as `book_scope`, and is persisted
+// per repo (todoapp_claudeBookScope) and cleared/swapped exactly like
+// activeChatTask. While set, backticked names in replies become code chips.
+let activeBookScope = null;
+// Opens a resolved `{ repo, file, symbol, line, end, label }` code chip from a
+// scoped reply. Registered by main.js (the reader's pane when the Understanding
+// view is active, Structure's viewer otherwise) so this module never imports
+// either view.
+let bookRefOpener = null;
 // Repo-relative source paths attached to the CURRENT conversation. Sent as
 // `attach_files` on every turn (per-conversation accumulation), so the model
 // keeps the source context across follow-ups. Cleared on a fresh mount and by
@@ -579,6 +594,41 @@ export function openChatWithTask(todoId) {
     if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
 }
 
+// Open the chat scoped to an Understanding chapter — the reader's Ask chip.
+// `scope` is `{ repo, chapter: { id, title, index, total }, prose, refs }`.
+// Opens/uncollapses the chat surface like openChatWithTask, frames the
+// conversation on the chapter's repo (the same per-repo swap a project switch
+// does), then scopes it to the chapter in place of any task. Attachment chips
+// from another repo can't come along: the single-repo notice shows and nothing
+// switches, so the chips are never dropped silently.
+export function openChatWithBookScope(scope) {
+    if (!scope || !scope.repo || !scope.chapter || !scope.chapter.id) return;
+    if (window.innerWidth <= MOBILE_MAX_WIDTH) {
+        if (!isClaudeSheetOpen()) openClaudeSheet();
+    } else {
+        document.body.classList.remove('chatPaneCollapsed');
+        setChatPaneCollapsed(false);
+    }
+    setActiveTab('chat');
+    if (attachedFiles.length && attachedRepo && attachedRepo !== scope.repo) {
+        showAttachNotice();
+        return;
+    }
+    if (scope.repo !== activeChatRepo) swapChatWorkspace(scope.repo);
+    attachBookScopeToChat({
+        chapter: scope.chapter,
+        prose: Array.isArray(scope.prose) ? scope.prose.slice() : [],
+        refs: Array.isArray(scope.refs) ? scope.refs.slice() : [],
+    });
+    const input = sheetQuery('#claudeComposerInput');
+    if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
+}
+
+// Register the opener for a scoped reply's code chips (see bookRefOpener).
+export function setBookRefOpener(fn) {
+    bookRefOpener = typeof fn === 'function' ? fn : null;
+}
+
 // Auto-expand / auto-collapse the Claude chat pane when the active project
 // changes. A project "has a repo configured" by the SAME gate the sidebar
 // project-row thunderbolt (⚡) uses — inject is configured globally AND this
@@ -720,7 +770,12 @@ function autoSwapWorkspaceForProject(projectName) {
         if (targets[i] && targets[i].id === targetId && targets[i].enabled !== false) { repo = targets[i].repo; break; }
     }
     if (!repo || repo === activeChatRepo) return;
+    swapChatWorkspace(repo);
+}
 
+// Re-point the chat workspace at `repo`, keeping each repo's session intact.
+// Shared by the project-switch auto-swap and the reader's Ask chip.
+function swapChatWorkspace(repo) {
     // Persist the outgoing repo's thread and iterate entry, switch, then resume
     // the incoming repo's saved thread (empty when none) and its iterate entry
     // (null when none) so each repo carries its own iterate session — an id is
@@ -728,6 +783,7 @@ function autoSwapWorkspaceForProject(projectName) {
     saveChatHistory();
     saveIterateEntry();
     saveChatTask();
+    saveBookScope();
     setActiveChatRepo(repo);
     chatHistory = loadChatHistory(repo);
     activeIterateEntry = loadIterateEntry(repo);
@@ -735,6 +791,9 @@ function autoSwapWorkspaceForProject(projectName) {
     // resume the incoming repo's (null when none), so a scope is never dragged
     // across repos and swapping back restores it.
     activeChatTask = loadChatTask(repo);
+    activeBookScope = loadBookScope(repo);
+    if (activeBookScope) ensureBookSymbols();
+    syncComposerPlaceholder();
     // A workspace swap starts fresh on the incoming repo, so any hand-off link
     // from the outgoing repo's session must not ride a later ship on the new one.
     activeHandoffRow = null;
@@ -1226,7 +1285,24 @@ function renderScopeChip() {
     host.innerHTML = '';
     const chip = document.createElement('span');
     chip.className = 'claudeScopeChipTag';
-    if (todo) {
+    // A chapter scope and a task scope never coexist (attaching either drops the
+    // other), so whichever is set owns the chip.
+    if (activeBookScope) {
+        chip.classList.add('claudeScopeChipTag--scoped', 'claudeScopeChipTag--book');
+        const text = bookScopeLabel(activeBookScope);
+        const label = document.createElement('span');
+        label.className = 'claudeScopeChipLabel';
+        label.textContent = '📖 ' + text;
+        label.title = text;
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'claudeScopeChipRemove';
+        x.setAttribute('aria-label', 'Detach chapter from chat');
+        x.textContent = '✕';
+        x.addEventListener('click', detachBookScope);
+        chip.appendChild(label);
+        chip.appendChild(x);
+    } else if (todo) {
         chip.classList.add('claudeScopeChipTag--scoped');
         const title = (todo.title && todo.title.trim()) ? todo.title.trim() : 'Untitled task';
         const label = document.createElement('span');
@@ -1257,6 +1333,12 @@ function attachTaskToChat(todoId) {
     if (!listLogic.getTodoById(todoId)) return;
     activeChatTask = todoId;
     saveChatTask();
+    // One scope at a time: a task replaces a chapter scope.
+    if (activeBookScope) {
+        activeBookScope = null;
+        saveBookScope();
+        syncComposerPlaceholder();
+    }
     renderScopeChip();
 }
 
@@ -1285,6 +1367,148 @@ function resolveActiveChatTask() {
     return { title: todo.title, description: todo.description };
 }
 
+// ── CHAT BOOK SCOPE (Ask about this chapter) ──
+// The chapter scope is stored per repo through prefs.js (todoapp_claudeBookScope)
+// in lockstep with the task scope above — saved on change and on a workspace
+// swap, loaded on mount and swap, dropped by "+ New Chat" and a reframe.
+
+function saveBookScope() {
+    setChatBookScope(activeChatRepo, activeBookScope);
+}
+
+function loadBookScope(repo) {
+    return getChatBookScope(repo);
+}
+
+// `CH <index> · <title>` — the chip text for a scope.
+function bookScopeLabel(scope) {
+    const ch = scope && scope.chapter ? scope.chapter : {};
+    const title = (typeof ch.title === 'string' && ch.title.trim()) ? ch.title.trim() : ch.id;
+    return 'CH ' + (Number(ch.index) || 0) + ' · ' + title;
+}
+
+// Scope the conversation to a chapter, replacing any task scope (one scope at a
+// time), and start loading the repo's symbols index for the reply code chips.
+function attachBookScopeToChat(scope) {
+    activeBookScope = scope;
+    saveBookScope();
+    if (activeChatTask) {
+        activeChatTask = null;
+        saveChatTask();
+    }
+    renderScopeChip();
+    syncComposerPlaceholder();
+    ensureBookSymbols();
+}
+
+// Detach the chapter: the chip returns to unscoped and `book_scope` stops
+// riding on turns. Replies already on screen repaint without their code chips.
+function detachBookScope() {
+    if (!activeBookScope) return;
+    activeBookScope = null;
+    saveBookScope();
+    renderScopeChip();
+    syncComposerPlaceholder();
+    if (!chatTurnInFlight) replayChatHistory();
+}
+
+// The work composer's placeholder for the current scope. Possession owns the
+// placeholder while it holds, so this leaves the ghost's alone.
+function workPlaceholder() {
+    return activeBookScope ? BOOK_SCOPE_PLACEHOLDER : CHAT_PLACEHOLDER;
+}
+
+function syncComposerPlaceholder() {
+    if (possessed) return;
+    const input = sheetQuery('#claudeComposerInput');
+    if (input) input.placeholder = workPlaceholder();
+}
+
+// Load the active repo's symbols index so a scoped reply's backticked names can
+// resolve. Replies already painted before it landed repaint once it does.
+function ensureBookSymbols() {
+    const repo = activeChatRepo;
+    if (!repo || getLoadedSymbols(repo)) return;
+    Promise.resolve(loadSymbols(repo)).then(function (symbols) {
+        if (!symbols || !activeBookScope || repo !== activeChatRepo || chatTurnInFlight) return;
+        replayChatHistory();
+    });
+}
+
+// The definition a backticked span names, or null. A span is an identifier,
+// optionally qualified (`listLogic.getTodoById`) and/or called (`openRef()`);
+// the last segment is the name. Among a name's definitions, one in a file the
+// chapter references wins, else the resolver's first.
+export function resolveBookRefSpan(symbols, scope, span) {
+    const m = /^([A-Za-z_$][\w$]*(?:\.[A-Za-z_$][\w$]*)*)(?:\(\))?$/.exec(String(span || '').trim());
+    if (!m || !symbols) return null;
+    const parts = m[1].split('.');
+    const name = parts[parts.length - 1];
+    if (!isTraceable(symbols, '', name)) return null;
+    const candidates = resolveName(symbols, '', 0, name, null);
+    if (!candidates.length) return null;
+    const scopedFiles = {};
+    const refs = scope && Array.isArray(scope.refs) ? scope.refs : [];
+    refs.forEach(function (r) { if (r && r.file) scopedFiles[r.file] = true; });
+    let pick = candidates[0];
+    for (let i = 0; i < candidates.length; i++) {
+        if (scopedFiles[candidates[i].file]) { pick = candidates[i]; break; }
+    }
+    return { file: pick.file, symbol: name, line: pick.def.start, end: pick.def.end, label: span.trim() };
+}
+
+// In a chapter-scoped conversation, turn each backticked span in an assistant
+// bubble's prose into a code chip that opens its definition, and every span
+// that doesn't resolve into plain <code>. Fenced blocks and rendered html/svg
+// boxes are left untouched. A no-op when unscoped or the index hasn't loaded,
+// so unscoped chats render exactly as before.
+function decorateBookRefs(bubble) {
+    if (!bubble || !activeBookScope) return;
+    const repo = activeChatRepo;
+    const symbols = getLoadedSymbols(repo);
+    if (!symbols) return;
+    const scope = activeBookScope;
+    const textNodes = [];
+    for (let n = bubble.firstChild; n; n = n.nextSibling) {
+        if (n.nodeType === 3) textNodes.push(n);
+    }
+    textNodes.forEach(function (node) {
+        const text = node.nodeValue || '';
+        if (text.indexOf('`') === -1) return;
+        const frag = document.createDocumentFragment();
+        // Fenced blocks stay verbatim; only the prose between them is scanned.
+        text.split(/(```[\s\S]*?```)/).forEach(function (part, i) {
+            if (!part) return;
+            if (i % 2 === 1) { frag.appendChild(document.createTextNode(part)); return; }
+            const re = /`([^`\n]+)`/g;
+            let last = 0;
+            let m;
+            while ((m = re.exec(part))) {
+                if (m.index > last) frag.appendChild(document.createTextNode(part.slice(last, m.index)));
+                const ref = resolveBookRefSpan(symbols, scope, m[1]);
+                if (ref) {
+                    const chip = document.createElement('button');
+                    chip.type = 'button';
+                    chip.className = 'bookRef claudeMsgBookRef';
+                    chip.textContent = ref.label;
+                    chip.setAttribute('aria-label', 'Open ' + ref.label + ' in code');
+                    chip.addEventListener('click', function () {
+                        if (bookRefOpener) bookRefOpener(Object.assign({ repo: repo }, ref));
+                    });
+                    frag.appendChild(chip);
+                } else {
+                    const code = document.createElement('code');
+                    code.textContent = m[1];
+                    frag.appendChild(code);
+                }
+                last = re.lastIndex;
+            }
+            if (last < part.length) frag.appendChild(document.createTextNode(part.slice(last)));
+        });
+        node.parentNode.replaceChild(frag, node);
+    });
+}
+
 // Clear the chat surface and replay the in-memory chatHistory into it, rendering
 // assistant turns through renderAssistantContent so fenced ```html/```svg replay
 // as rendered markup rather than raw text. Used on mount-hydrate and auto-swap.
@@ -1301,6 +1525,7 @@ function replayChatHistory() {
         if (turn.role === 'assistant' && bubble) {
             renderAssistantContent(bubble, turn.content);
             mountCreateTaskAction(bubble, turn.content);
+            decorateBookRefs(bubble);
         }
     }
     // An empty (per-repo) thread carries a persistent capabilities note at the
@@ -2297,6 +2522,9 @@ function clearChatConversation() {
     // place the thread is wiped so the two reset paths can't drift apart.
     activeChatTask = null;
     deleteChatTask(activeChatRepo);
+    activeBookScope = null;
+    saveBookScope();
+    syncComposerPlaceholder();
     // A fresh chat is no longer the hand-off session, so a subsequent ship must
     // not settle the row the wiped conversation was handed off from.
     activeHandoffRow = null;
@@ -3551,6 +3779,11 @@ export function getActiveChatTask() {
     return activeChatTask;
 }
 
+// The same projection for the conversation's chapter scope (null when none).
+export function getActiveBookScope() {
+    return activeBookScope;
+}
+
 // The app's own repo — the "running app" the UI lens can walk live. The
 // Structure view compares its selected repo against this to decide between the
 // live DOM map and the "no published UI map yet" state.
@@ -3578,6 +3811,9 @@ export function setChatWorkspaceRepo(repo) {
     // Reframing wipes the incoming repo's session, so drop its task scope too.
     activeChatTask = null;
     deleteChatTask(repo);
+    activeBookScope = null;
+    saveBookScope();
+    syncComposerPlaceholder();
     // Reframing on a new repo starts a fresh session, so drop any hand-off link.
     activeHandoffRow = null;
     const surface = sheetQuery('#claudeChatSurface');
@@ -3658,7 +3894,7 @@ function setPossessed(next) {
     ghostSession++;
     if (input) {
         input.value = possessed ? ghostDraft : workDraft;
-        input.placeholder = possessed ? GHOST_PLACEHOLDER : CHAT_PLACEHOLDER;
+        input.placeholder = possessed ? GHOST_PLACEHOLDER : workPlaceholder();
     }
     applyPossessionState();
     if (possessed) hydrateGhostThread();
@@ -4118,7 +4354,9 @@ async function requestAssistantReply(entryId, deep) {
         // re-explanation; resolveActiveChatTask reads its title/description live
         // and self-heals a deleted task to unscoped before the send.
         const attachTask = resolveActiveChatTask();
-        const result = await chatWithWorker(toWorkerTurns(chatHistory), entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask);
+        // The chapter scope (if any) rides on every turn the same way.
+        const chatOpts = activeBookScope ? { bookScope: activeBookScope } : undefined;
+        const result = await chatWithWorker(toWorkerTurns(chatHistory), entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask, chatOpts);
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
         appendChatTurn({ role: 'assistant', content: reply });
@@ -4139,6 +4377,7 @@ async function requestAssistantReply(entryId, deep) {
         if (pending && pending.parentNode) {
             pending.classList.remove('claudeMsg--pending');
             renderAssistantContent(pending, visible);
+            decorateBookRefs(pending);
             // Mount the "Create task" action now that the reply is complete —
             // parse from the raw reply so a fenced ```md entry (or a plain reply)
             // yields the same title/description the paste path would.
@@ -6832,6 +7071,9 @@ export function mountClaudeSheet(parent) {
     // so a reload / PWA relaunch resumes the same scope; renderScopeChip paints it
     // (self-healing to unscoped if the task was deleted while away).
     activeChatTask = loadChatTask(activeChatRepo);
+    activeBookScope = loadBookScope(activeChatRepo);
+    if (activeBookScope) ensureBookSymbols();
+    syncComposerPlaceholder();
     // A fresh mount (reload / PWA relaunch) has no in-flight hand-off — the link
     // is in-memory session state, and once a run ships it rides the persisted run
     // record instead, so a reload mid-hand-off simply drops the (pre-ship) link.

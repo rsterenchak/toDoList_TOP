@@ -2198,7 +2198,7 @@
           "symbol": "chatWithWorker",
           "match": [
             "if (deepThink) payload.deep_think = true;",
-            "const res = await postToWorker(payload, opts);"
+            "const res = await postToWorker(payload, postOpts);"
           ],
           "title": "The prompt leaves the app.",
           "why": "The Worker runs it on a heavier model, since deep_think is set, and returns the reply text."
@@ -2524,7 +2524,7 @@
           "match": [
             "if (deepThink) payload.deep_think = true;",
             "payload.attach_files = attachFiles.slice();",
-            "const res = await postToWorker(payload, opts);"
+            "const res = await postToWorker(payload, postOpts);"
           ],
           "title": "The turn leaves the app.",
           "why": "One POST carries the history, repo, files and Deep flag. The Worker calls the model and sends the reply back."

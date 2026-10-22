@@ -23,6 +23,10 @@
 // (touch). Bookmarks live in bookBookmarks.js (local + Supabase); the reader's
 // top bar lists them and the shelf shows them under the chapters.
 //
+// The reader's Ask chip opens the Claude chat scoped to the open chapter: its
+// identity, its prose and its de-duplicated refs ride as `book_scope` on every
+// turn (see buildBookScope), and a scoped reply's code names open back here.
+//
 // Generating runs through the Worker's book dispatch. The in-flight state lives
 // at module scope (not on the view element), so leaving and re-entering the view
 // — or a project switch — repaints "Generating…" for the same repo unchanged. It
@@ -33,7 +37,7 @@ import { resolveProjectRepo } from './seedTasksModal.js';
 import { loadBook, resetBookCache, bookStats } from './codeBook.js';
 import { getCachedTargets, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured } from './inject.js';
 import { showConfirmModal } from './modals.js';
-import { loadManifest } from './claudeSheet.js';
+import { loadManifest, openChatWithBookScope } from './claudeSheet.js';
 import { joinSrcRootPath } from './srcPath.js';
 import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerCloseHandler } from './codeViewer.js';
 import { createCodeSheet } from './codeSheet.js';
@@ -56,6 +60,11 @@ const LAG_NOTE = 'The published copy lags the commit by a deploy (~1 min).';
 const BOOKMARK_LONG_PRESS_MS = 500;
 // How long a paragraph reached from a bookmark keeps its amber outline.
 const BOOKMARK_PULSE_MS = 1000;
+
+const ASK_GLYPH =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M4 5h16v11H9l-5 4z"/>' +
+    '</svg>';
 
 const RIBBON_GLYPH =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">' +
@@ -1021,6 +1030,63 @@ function openRef(ref) {
     });
 }
 
+// The chat scope for chapter `index` of `book`: `{ repo, chapter: { id, title,
+// index (1-based), total }, prose, refs }`. Each paragraph flattens to plain text
+// with its ref chips read as their labels; refs are the chapter's unique
+// `{ file, symbol, line, end, label }` by file + symbol, in first-seen order.
+export function buildBookScope(repo, book, index) {
+    const chapters = book && Array.isArray(book.chapters) ? book.chapters : [];
+    const ch = chapters[index];
+    if (!ch) return null;
+    const prose = [];
+    const refs = [];
+    const seen = {};
+    (Array.isArray(ch.paragraphs) ? ch.paragraphs : []).forEach(function (segments) {
+        const segs = Array.isArray(segments) ? segments : [{ t: String(segments || '') }];
+        let text = '';
+        segs.forEach(function (seg) {
+            if (seg && seg.ref && typeof seg.ref === 'object') {
+                const ref = seg.ref;
+                text += String(ref.label || ref.symbol || ref.file || '');
+                if (!ref.file) return;
+                const key = ref.file + '\u0000' + (ref.symbol || '');
+                if (seen[key]) return;
+                seen[key] = true;
+                const out = { file: ref.file, symbol: ref.symbol || '', label: String(ref.label || ref.symbol || ref.file) };
+                if (ref.line != null) out.line = ref.line;
+                if (ref.end != null) out.end = ref.end;
+                refs.push(out);
+            } else if (seg && typeof seg.t === 'string') {
+                text += seg.t;
+            }
+        });
+        prose.push(text);
+    });
+    return {
+        repo: repo,
+        chapter: { id: ch.id, title: ch.title || ch.id, index: index + 1, total: chapters.length },
+        prose: prose,
+        refs: refs,
+    };
+}
+
+// Open the chat scoped to the chapter on screen.
+function askAboutChapter() {
+    const r = reader;
+    if (!r) return;
+    const scope = buildBookScope(r.repo, r.book, r.index);
+    if (scope) openChatWithBookScope(scope);
+}
+
+// Open a scoped chat reply's code chip `{ repo, file, symbol, line, end, label }`
+// in the reader's code pane / sheet. Returns false (leaving it to the caller's
+// fallback) unless the Understanding view is showing that repo's reader.
+export function openBookRefInReader(ref) {
+    if (!ref || !reader || !isViewActive() || ref.repo !== reader.repo) return false;
+    openRef(ref);
+    return true;
+}
+
 function buildParagraph(segments, index) {
     const p = document.createElement('p');
     p.className = 'understandingPara';
@@ -1427,6 +1493,14 @@ function openReader(view, repo, book, index, paraIndex) {
     repoChip.className = 'understandingRepoChip';
     repoChip.textContent = repo;
     top.appendChild(repoChip);
+    const askBtn = document.createElement('button');
+    askBtn.type = 'button';
+    askBtn.className = 'understandingAskChip';
+    askBtn.setAttribute('aria-label', 'Ask about this chapter');
+    askBtn.title = 'Ask about this chapter';
+    askBtn.innerHTML = ASK_GLYPH;
+    askBtn.addEventListener('click', askAboutChapter);
+    top.appendChild(askBtn);
     const marksBtn = document.createElement('button');
     marksBtn.type = 'button';
     marksBtn.className = 'understandingMarksChip';

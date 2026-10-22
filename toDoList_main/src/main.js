@@ -63,7 +63,7 @@ import {
 } from './drawerRows.js';
 import { startAppLockWatch } from './appLock.js';
 import { mountClaudeSheet } from './claudeSheet.js';
-import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry } from './claudeSheet.js';
+import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry, setBookRefOpener } from './claudeSheet.js';
 import { openSpendPanel } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
 import { openClaudeSheet, isSheetPossessed, togglePossession, POSSESSION_EVENT } from './claudeSheet.js';
@@ -123,8 +123,8 @@ import {
 // module-load side effect of the (now-severed) Agent board; importing it here is
 // what keeps those subsystems configured in the running app (see agentWiring.js).
 import './agentWiring.js';
-import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport, exitStructureLiveView } from './structureView.js';
-import { renderUnderstandingView, exitUnderstandingView } from './understandingView.js';
+import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport, exitStructureLiveView, openStructureRef } from './structureView.js';
+import { renderUnderstandingView, exitUnderstandingView, openBookRefInReader } from './understandingView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { setAppReloader } from './aboutVersionCue.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -3187,6 +3187,13 @@ setReviewBadgeTapHandler(function(entryId, projectName) {
 // this registered handler with the todo id.
 setDiscussTaskHandler(function(todoId) {
     openChatWithTask(todoId);
+});
+
+// Wire a chapter-scoped chat reply's code chips: the Understanding reader's code
+// pane / sheet when that view is showing the chip's repo, Structure's viewer
+// otherwise. claudeSheet.js imports neither view, so it calls this opener.
+setBookRefOpener(function(ref) {
+    if (!openBookRefInReader(ref)) openStructureRef(ref);
 });
 
 // Wire the todo row's ACCEPT-face "Iterate" action to open the Claude chat in

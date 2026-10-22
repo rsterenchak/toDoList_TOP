@@ -5850,6 +5850,34 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .understandingMarksBadge[hidden] { display: none; }
 
+/* Ask about this chapter — sits between the repo chip and the bookmarks chip,
+   taking over the push to the right edge. */
+.understandingAskChip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.understandingAskChip:hover { border-color: var(--accent); color: var(--accent-text); }
+.understandingAskChip + .understandingMarksChip { margin-left: 0; }
+
+/* A chapter-scoped reply's resolved code names, and the plain <code> left for
+   the ones that don't resolve. */
+.claudeMsg .claudeMsgBookRef { font-size: 12px; }
+.claudeMsg code {
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+}
+
 .understandingMarksPopover {
   position: absolute;
   top: calc(100% + 6px);

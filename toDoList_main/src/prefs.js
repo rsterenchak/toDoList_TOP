@@ -515,6 +515,36 @@ export function setBookBookmarks(repo, list) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── chat book scope (Ask about this chapter) ──
+// Per-repo `{ chapter: { id, title, index, total }, prose, refs }` — the chapter
+// a Claude chat is scoped to, kept in one object keyed by repo like the chat's
+// task scope, so a reload mid-conversation keeps it. claudeSheet.js owns it.
+export const CHAT_BOOK_SCOPE_KEY = 'todoapp_claudeBookScope';
+
+// The repo's stored book scope, or null when none is stored or it is malformed.
+export function getChatBookScope(repo) {
+    if (!repo) return null;
+    const val = readJsonObject(CHAT_BOOK_SCOPE_KEY)[repo];
+    if (!val || typeof val !== 'object' || !val.chapter || typeof val.chapter !== 'object') return null;
+    if (typeof val.chapter.id !== 'string' || !val.chapter.id) return null;
+    return {
+        chapter: val.chapter,
+        prose: Array.isArray(val.prose) ? val.prose : [],
+        refs: Array.isArray(val.refs) ? val.refs : [],
+    };
+}
+
+// Store `scope` for `repo`, or drop the repo's slot when `scope` is null.
+export function setChatBookScope(repo, scope) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(CHAT_BOOK_SCOPE_KEY);
+        if (scope && typeof scope === 'object') store[repo] = scope;
+        else delete store[repo];
+        localStorage.setItem(CHAT_BOOK_SCOPE_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is
