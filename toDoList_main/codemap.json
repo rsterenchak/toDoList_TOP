@@ -129,6 +129,7 @@
         "understandingView.js",
         "codeBook.js",
         "bookProgress.js",
+        "bookBookmarks.js",
         "codeSheet.js"
       ]
     },

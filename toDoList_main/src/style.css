@@ -5328,7 +5328,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .understandingReaderCol {
   max-width: 720px;
   margin: 0 auto;
-  padding: 8px 0 32px;
+  padding: 8px 12px 32px;
 }
 
 .understandingReaderEyebrow {
@@ -5348,10 +5348,52 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 .understandingPara {
-  margin: 0 0 16px;
+  position: relative;
+  /* The block a bookmark paints is always laid out, so marking only changes
+     its background — the text never shifts. The negative margin keeps the
+     text aligned with the title; the right padding clears the ribbon. */
+  margin: 0 -12px 0;
+  padding: 8px 32px 8px 12px;
+  border-radius: 10px;
   font-size: 15px;
   line-height: 1.55;
   color: color-mix(in srgb, var(--text-primary) 86%, var(--bg-base));
+  transition: background-color 0.15s ease, outline-color 0.3s ease;
+  outline: 2px solid transparent;
+  outline-offset: 0;
+}
+.understandingPara.is-bookmarked { background: var(--bg-elevated); }
+/* Reached from a bookmark: a one-second amber outline. */
+.understandingPara.is-pulse { outline-color: #ffbd5e; }
+
+/* The bookmark ribbon at a paragraph's top-right: hidden until hover on a
+   pointer device, filled amber once marked. On touch an unmarked paragraph shows
+   none — a long-press marks it — and a marked one's ribbon is the tap to unmark. */
+.understandingRibbon {
+  position: absolute;
+  top: 6px;
+  right: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+.understandingPara:hover .understandingRibbon,
+.understandingRibbon:focus-visible { opacity: 1; }
+.understandingRibbon:hover { color: #ffbd5e; }
+.understandingPara.is-bookmarked .understandingRibbon { opacity: 1; color: #ffbd5e; }
+.understandingPara.is-bookmarked .understandingRibbon svg { fill: currentColor; }
+@media (hover: none) {
+  .understandingPara { -webkit-touch-callout: none; }
+  .understandingPara:not(.is-bookmarked) .understandingRibbon { visibility: hidden; }
 }
 
 .bookRef {
@@ -5448,6 +5490,178 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-weight: 600;
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The reader's Bookmarks chip — a 36×36 chip at the right of the top bar with an
+   amber count badge (hidden at zero) — and the list it opens: a popover under the
+   chip on desktop, the shared code sheet as a bottom sheet on touch. */
+.understandingReaderTop { position: relative; }
+.understandingMarksChip {
+  position: relative;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  padding: 0;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.understandingMarksChip:hover { border-color: #ffbd5e; color: #ffbd5e; }
+.understandingMarksBadge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background: #ffbd5e;
+  color: #14151b;
+  font-family: 'SpaceMono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 16px;
+  text-align: center;
+}
+.understandingMarksBadge[hidden] { display: none; }
+
+.understandingMarksPopover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  width: 340px;
+  max-height: 420px;
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  background: var(--bg-elevated);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+.structureCodeSheet.understandingBookmarksSheet { align-items: flex-end; }
+.understandingBookmarksSheet .structureCodeSheetPanel {
+  max-height: 70vh;
+  border-radius: 14px 14px 0 0;
+}
+.understandingBookmarksSheet .structureCodeSheetHost { padding: 0; min-height: 0; }
+.understandingMarksHead {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 8px 8px 14px;
+  border-bottom: 1px solid var(--border-mid);
+}
+.understandingMarksTitle,
+.understandingBookmarkHead {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+.understandingMarksClose,
+.understandingBookmarkDelete {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+}
+.understandingMarksClose:hover,
+.understandingBookmarkDelete:hover { color: var(--text-primary); background: var(--bg-hover); }
+.understandingMarksBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 4px 14px 12px;
+}
+.understandingMarksEmpty {
+  padding: 16px 14px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* Bookmark rows — the shelf's BOOKMARKS · n section and the reader's list share
+   them: amber ribbon, label, right-aligned CH n, in the chapter-row style. */
+.understandingBookmarkSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.understandingBookmarkGroup {
+  padding: 12px 0 2px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+}
+.understandingBookmarks {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+.understandingBookmarkRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border-dim);
+}
+.understandingBookmarkRow.is-removed { padding-left: 4px; opacity: 0.7; }
+.understandingBookmarkBtn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 4px;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.understandingBookmarkBtn:hover .understandingBookmarkLabel { color: var(--accent-text); }
+.understandingBookmarkRibbon {
+  flex: 0 0 auto;
+  display: flex;
+  color: #ffbd5e;
+}
+.understandingBookmarkRibbon svg { fill: currentColor; }
+.understandingBookmarkRow.is-removed .understandingBookmarkRibbon { color: var(--text-muted); }
+.understandingBookmarkLabel {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.understandingBookmarkCh {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
   white-space: nowrap;
 }
 

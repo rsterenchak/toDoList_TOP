@@ -54,6 +54,7 @@ vi.mock('../src/codeViewer.js', () => ({
 import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun } from '../src/understandingView.js';
 import { renderCodeViewer, setCodeViewerCloseHandler, clearCodeViewer } from '../src/codeViewer.js';
 import { loadManifest } from '../src/claudeSheet.js';
+import { showConfirmModal } from '../src/modals.js';
 import { getBookProgress } from '../src/prefs.js';
 import { resetBookProgress } from '../src/bookProgress.js';
 
@@ -307,5 +308,175 @@ describe('ref chips open the code viewer', () => {
         expect(view().querySelector('.understandingCodePane')).toBeNull();
         expect(closeHandler(host)).toBe(true);
         expect(sheet.hidden).toBe(true);
+    });
+});
+
+describe('bookmarks', () => {
+    const marks = () => JSON.parse(localStorage.getItem('todoapp_bookBookmarks') || '{}')['owner/repo'] || [];
+    const chip = () => view().querySelector('.understandingMarksChip');
+    const badge = () => chip().querySelector('.understandingMarksBadge');
+
+    test('the ribbon toggles the paragraph class and the store, without moving the position', async () => {
+        await openChapter(0);
+        latestObserver().show([2]);
+        const p = view().querySelectorAll('.understandingPara')[1];
+        const ribbon = p.querySelector('.understandingRibbon');
+        expect(ribbon.getAttribute('aria-pressed')).toBe('false');
+        ribbon.click();
+        expect(p.classList.contains('is-bookmarked')).toBe(true);
+        expect(ribbon.getAttribute('aria-pressed')).toBe('true');
+        expect(marks()).toEqual([expect.objectContaining({ chapterId: 'app-starts', paraIndex: 1, label: 'The worker lives in sw.js.' })]);
+        expect(getBookProgress('owner/repo').paraIndex).toBe(2);
+        ribbon.click();
+        expect(p.classList.contains('is-bookmarked')).toBe(false);
+        expect(marks()).toEqual([]);
+    });
+
+    test('a ~500ms long-press toggles the bookmark on touch', async () => {
+        vi.useFakeTimers();
+        try {
+            setWidth(390);
+            const p0 = renderUnderstandingView();
+            await vi.advanceTimersByTimeAsync(0);
+            await p0;
+            view().querySelectorAll('.understandingChapterBtn')[0].click();
+            const p = view().querySelectorAll('.understandingPara')[2];
+            const touch = (type, x) => {
+                const ev = new Event(type, { bubbles: true, cancelable: true });
+                ev.touches = x === undefined ? [] : [{ clientX: x, clientY: 10 }];
+                p.dispatchEvent(ev);
+                return ev;
+            };
+            touch('touchstart', 10);
+            vi.advanceTimersByTime(300);
+            touch('touchend');
+            expect(p.classList.contains('is-bookmarked')).toBe(false);
+
+            touch('touchstart', 10);
+            vi.advanceTimersByTime(500);
+            expect(p.classList.contains('is-bookmarked')).toBe(true);
+            expect(touch('touchend').defaultPrevented).toBe(true);
+            expect(marks()[0]).toMatchObject({ chapterId: 'app-starts', paraIndex: 2 });
+
+            touch('touchstart', 10);
+            touch('touchmove', 40);
+            vi.advanceTimersByTime(600);
+            expect(p.classList.contains('is-bookmarked')).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test('the top-bar chip counts bookmarks, its badge hidden at zero', async () => {
+        await openChapter(0);
+        expect(badge().hidden).toBe(true);
+        expect(chip().getAttribute('aria-label')).toBe('Bookmarks, 0 saved');
+        view().querySelectorAll('.understandingRibbon')[0].click();
+        view().querySelectorAll('.understandingRibbon')[3].click();
+        expect(badge().hidden).toBe(false);
+        expect(badge().textContent).toBe('2');
+        expect(chip().getAttribute('aria-label')).toBe('Bookmarks, 2 saved');
+    });
+
+    test('a marked paragraph renders marked when its chapter reopens', async () => {
+        await openChapter(1);
+        view().querySelectorAll('.understandingRibbon')[1].click();
+        view().querySelector('.understandingNavPrev').click();
+        view().querySelector('.understandingNavNext').click();
+        expect(view().querySelectorAll('.understandingPara')[1].classList.contains('is-bookmarked')).toBe(true);
+        expect(view().querySelectorAll('.understandingPara')[0].classList.contains('is-bookmarked')).toBe(false);
+    });
+
+    test('the desktop list groups by chapter; a row opens its chapter, scrolls to and pulses the paragraph', async () => {
+        const scrolled = [];
+        const orig = Element.prototype.scrollIntoView;
+        Element.prototype.scrollIntoView = function () { scrolled.push(this); };
+        try {
+            await openChapter(2);
+            view().querySelectorAll('.understandingRibbon')[1].click();
+            view().querySelector('.understandingNavPrev').click();
+            view().querySelectorAll('.understandingRibbon')[1].click();
+            chip().click();
+            const pop = view().querySelector('.understandingMarksPopover');
+            expect(pop).not.toBeNull();
+            expect(chip().getAttribute('aria-expanded')).toBe('true');
+            expect(Array.from(pop.querySelectorAll('.understandingBookmarkGroup')).map((g) => g.textContent))
+                .toEqual(['CH 2 · Where the data lives', 'CH 3 · The pipeline']);
+            const rows = pop.querySelectorAll('.understandingBookmarkBtn');
+            expect(rows[1].querySelector('.understandingBookmarkLabel').textContent).toBe('Pipe two.');
+            expect(rows[1].querySelector('.understandingBookmarkCh').textContent).toBe('CH 3');
+            rows[1].click();
+            expect(view().querySelector('.understandingMarksPopover')).toBeNull();
+            expect(title()).toBe('The pipeline');
+            const target = view().querySelectorAll('.understandingPara')[1];
+            expect(scrolled).toContain(target);
+            expect(target.classList.contains('is-pulse')).toBe(true);
+        } finally {
+            Element.prototype.scrollIntoView = orig;
+        }
+    });
+
+    test('the desktop list closes on its ✕, an outside click and Escape', async () => {
+        await openChapter(0);
+        chip().click();
+        view().querySelector('.understandingMarksClose').click();
+        expect(view().querySelector('.understandingMarksPopover')).toBeNull();
+        chip().click();
+        document.body.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        expect(view().querySelector('.understandingMarksPopover')).toBeNull();
+        chip().click();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(view().querySelector('.understandingMarksPopover')).toBeNull();
+        expect(chip().getAttribute('aria-expanded')).toBe('false');
+    });
+
+    test('on mobile the list opens in the bottom sheet, which closes on its ✕, backdrop and Escape', async () => {
+        setWidth(390);
+        await openChapter(0);
+        view().querySelectorAll('.understandingRibbon')[0].click();
+        chip().click();
+        const sheet = document.getElementById('understandingBookmarksSheet');
+        expect(sheet.classList.contains('understandingBookmarksSheet')).toBe(true);
+        expect(sheet.hidden).toBe(false);
+        expect(sheet.querySelectorAll('.understandingBookmarkRow')).toHaveLength(1);
+        sheet.querySelector('.understandingMarksClose').click();
+        expect(sheet.hidden).toBe(true);
+        chip().click();
+        sheet.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(sheet.hidden).toBe(true);
+        chip().click();
+        expect(sheet.hidden).toBe(false);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(sheet.hidden).toBe(true);
+    });
+
+    test('a bookmark for a removed chapter is listed under REMOVED CHAPTER with a confirmed delete', async () => {
+        localStorage.setItem('todoapp_bookBookmarks', JSON.stringify({
+            'owner/repo': [{ repo: 'owner/repo', chapterId: 'gone', paraIndex: 0, label: 'Old words', createdAt: '' }],
+        }));
+        await openChapter(0);
+        expect(badge().textContent).toBe('1');
+        chip().click();
+        const pop = view().querySelector('.understandingMarksPopover');
+        expect(pop.querySelector('.understandingBookmarkGroup.is-removed').textContent).toBe('REMOVED CHAPTER');
+        expect(pop.querySelector('.understandingBookmarkRow.is-removed .understandingBookmarkLabel').textContent).toBe('Old words');
+        pop.querySelector('.understandingBookmarkDelete').click();
+        expect(showConfirmModal).toHaveBeenCalledTimes(1);
+        expect(marks()).toHaveLength(1);
+        showConfirmModal.mock.calls[0][0].onConfirm();
+        expect(marks()).toEqual([]);
+        expect(badge().hidden).toBe(true);
+    });
+
+    test('a bookmark past its chapter end opens the chapter at the top, no pulse', async () => {
+        localStorage.setItem('todoapp_bookBookmarks', JSON.stringify({
+            'owner/repo': [{ repo: 'owner/repo', chapterId: 'pipeline', paraIndex: 9, label: 'Was here', createdAt: '' }],
+        }));
+        await openChapter(0);
+        chip().click();
+        view().querySelector('.understandingBookmarkBtn').click();
+        expect(title()).toBe('The pipeline');
+        expect(view().querySelector('.understandingPara.is-pulse')).toBeNull();
+        expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'pipeline', paraIndex: 0 });
     });
 });

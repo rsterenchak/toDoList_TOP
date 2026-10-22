@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => ({
     book: null,
     active: false,
     remote: undefined,
+    remoteMarks: undefined,
 }));
 
 vi.mock('../src/seedTasksModal.js', () => ({
@@ -42,6 +43,26 @@ vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(() => Promise.resolve({ ok: true, files: [], srcRoot: 'src' })),
 }));
 
+vi.mock('../src/supabaseClient.js', () => ({
+    supabase: {
+        auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: null } })) },
+        from: vi.fn(),
+    },
+}));
+
+vi.mock('../src/bookBookmarks.js', async () => {
+    const actual = await vi.importActual('../src/bookBookmarks.js');
+    const prefs = await vi.importActual('../src/prefs.js');
+    return {
+        ...actual,
+        // The synced list, stored locally the way the real merge stores it.
+        loadBookmarks: vi.fn((repo) => {
+            if (mocks.remoteMarks !== undefined) prefs.setBookBookmarks(repo, mocks.remoteMarks);
+            return Promise.resolve(actual.listBookmarks(repo));
+        }),
+    };
+});
+
 vi.mock('../src/bookProgress.js', async () => {
     const actual = await vi.importActual('../src/bookProgress.js');
     return {
@@ -55,7 +76,7 @@ import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun }
 import { loadBook, resetBookCache } from '../src/codeBook.js';
 import { fetchActiveRuns, dispatchBook } from '../src/inject.js';
 import { showConfirmModal } from '../src/modals.js';
-import { setBookProgress } from '../src/prefs.js';
+import { setBookProgress, setBookBookmarks } from '../src/prefs.js';
 
 const CLEAN = {
     title: 'Understanding Void',
@@ -90,6 +111,7 @@ beforeEach(() => {
     mocks.book = null;
     mocks.active = false;
     mocks.remote = undefined;
+    mocks.remoteMarks = undefined;
     localStorage.clear();
     vi.clearAllMocks();
     mountShell('Void');
@@ -293,5 +315,57 @@ describe('run settle', () => {
         } finally {
             vi.useRealTimers();
         }
+    });
+});
+
+describe('bookmarks section', () => {
+    const BOOKED = {
+        title: 'Understanding Void',
+        chapters: [
+            { id: 'app-starts', index: 1, title: 'How the app starts', minutes: 4, stale: false,
+                paragraphs: [[{ t: 'One.' }], [{ t: 'Two.' }], [{ t: 'Three.' }]] },
+            { id: 'data', index: 2, title: 'Where the data lives', minutes: 6, stale: false,
+                paragraphs: [[{ t: 'Data one.' }], [{ t: 'Data two.' }]] },
+        ],
+    };
+    const mark = (chapterId, paraIndex, label) => ({ repo: 'owner/repo', chapterId, paraIndex, label, createdAt: '' });
+    const section = () => view().querySelector('.understandingBookmarkSection');
+
+    test('hidden entirely at zero', async () => {
+        mocks.book = BOOKED;
+        await renderUnderstandingView();
+        expect(section()).toBeNull();
+    });
+
+    test('BOOKMARKS · n after the chapter list, one row per bookmark in book order', async () => {
+        mocks.book = BOOKED;
+        setBookBookmarks('owner/repo', [mark('data', 1, 'Data two.'), mark('app-starts', 2, 'Three.')]);
+        await renderUnderstandingView();
+        expect(section().previousElementSibling.classList.contains('understandingChapters')).toBe(true);
+        expect(section().querySelector('.understandingBookmarkHead').textContent).toBe('BOOKMARKS · 2');
+        const rows = section().querySelectorAll('.understandingBookmarkRow');
+        expect(rows).toHaveLength(2);
+        expect(rows[0].querySelector('.understandingBookmarkLabel').textContent).toBe('Three.');
+        expect(rows[0].querySelector('.understandingBookmarkCh').textContent).toBe('CH 1');
+        expect(rows[1].querySelector('.understandingBookmarkCh').textContent).toBe('CH 2');
+        expect(rows[0].querySelector('.understandingBookmarkRibbon')).not.toBeNull();
+    });
+
+    test('a row opens the reader at that paragraph', async () => {
+        mocks.book = BOOKED;
+        setBookBookmarks('owner/repo', [mark('data', 1, 'Data two.')]);
+        await renderUnderstandingView();
+        section().querySelector('.understandingBookmarkBtn').click();
+        expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
+        const para = view().querySelectorAll('.understandingPara')[1];
+        expect(para.classList.contains('is-bookmarked')).toBe(true);
+        expect(para.classList.contains('is-pulse')).toBe(true);
+    });
+
+    test('synced bookmarks that differ repaint the section', async () => {
+        mocks.book = BOOKED;
+        mocks.remoteMarks = [mark('app-starts', 0, 'One.')];
+        await renderUnderstandingView();
+        expect(section().querySelector('.understandingBookmarkHead').textContent).toBe('BOOKMARKS · 1');
     });
 });

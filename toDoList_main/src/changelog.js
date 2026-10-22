@@ -9,6 +9,7 @@ export const changelog = [
         added: [
             'A new Understanding tab, between Stream and Structure, shows the linked repo\'s code book as a shelf of chapters with reading times, stale chapters marked in amber, and a button to generate or refresh the book.',
             'Chapters in the Understanding tab now open in a reader with tappable code references, a look-ahead note and previous/next chapter buttons, and your reading place is saved so Continue picks up where you left off on any device.',
+            'Paragraphs in the Understanding reader can now be bookmarked with a hover ribbon or a long-press, and your bookmarks are listed from the reader\'s top bar and on the shelf so you can jump straight back to them on any device.',
         ],
     },
     {
@@ -19,13 +20,6 @@ export const changelog = [
         ],
         added: [
             'Assistant, run and ghost requests now carry your sign-in, and a request refused because you are signed out or not an admin says so plainly.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-14',
-        fixed: [
-            'Code tour recaps written as plain text now show their cards instead of blank ones, and malformed recap cards are left out.',
         ],
     },
 ];

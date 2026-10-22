@@ -18,7 +18,9 @@ import { clearCodeViewer } from './codeViewer.js';
 //   • id        — the sheet's element id (`structureCodeSheet`, …).
 //   • label     — the dialog's aria-label.
 //   • isDesktop — the breakpoint test; the sheet is never revealed while it holds.
-// Returns `{ ensure, host, hide, reset, sync, isOpen }`.
+//   • className — an extra class on the backdrop, for a sheet that hosts
+//     something other than the viewer (the reader's bookmark list).
+// Returns `{ ensure, host, show, hide, reset, sync, isOpen }`.
 export function createCodeSheet(opts) {
     const o = opts || {};
     const isDesktop = typeof o.isDesktop === 'function' ? o.isDesktop : function () { return false; };
@@ -34,7 +36,7 @@ export function createCodeSheet(opts) {
 
         const backdrop = document.createElement('div');
         backdrop.id = o.id || '';
-        backdrop.className = 'structureCodeSheet';
+        backdrop.className = 'structureCodeSheet' + (o.className ? ' ' + o.className : '');
         backdrop.hidden = true;
 
         const panel = document.createElement('div');
@@ -71,6 +73,12 @@ export function createCodeSheet(opts) {
         if (sheetEl) sheetEl.hidden = true;
     }
 
+    // Reveal the sheet regardless of what its host holds — for a host that isn't
+    // the viewer, which never drives sync().
+    function show() {
+        if (ensure()) sheetEl.hidden = false;
+    }
+
     // Dismiss the sheet AND drop what it was showing — for when the file is no
     // longer addressable from the surface behind it, as opposed to a plain close.
     function reset() {
@@ -93,6 +101,7 @@ export function createCodeSheet(opts) {
     return {
         ensure: ensure,
         host: function () { return sheetHost; },
+        show: show,
         hide: hide,
         reset: reset,
         sync: sync,
