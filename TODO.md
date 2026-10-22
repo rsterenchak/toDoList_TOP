@@ -2511,7 +2511,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 64e7333d-09da-4477-a449-2957eeb01e02 -->
 
-- [ ] **[MEDIUM]** Add bookmarks to the Understanding reader and shelf
+- [x] **[MEDIUM]** Add bookmarks to the Understanding reader and shelf — Completed: 2026-10-22
   - Type: feature
   - Description: Let the reader mark a paragraph and come back to it: each `.understandingPara` gets a ribbon control that toggles a bookmark, the reader's top bar gets a Bookmarks chip with the count that opens a list of this repo's bookmarks, and the shelf gets a `BOOKMARKS · n` section under the chapters. Bookmarks are rows in the `book_bookmarks` Supabase table (already created: `user_id, repo, chapter_id, para_index, label, created_at`, RLS per user) mirrored locally so they render instantly and work signed-out. Follow the reader mockup: a bookmarked paragraph sits on a `#15161d` 10px-radius block with an amber (`#ffbd5e`) filled ribbon at its top-right; an unmarked paragraph shows no ribbon until hover (desktop) and is marked by long-press (mobile). The top-bar chip is the 36×36 `#191a22` chip with a 16px amber badge carrying the count; the shelf rows are ribbon · label · `CH n`. At 390x844 a long-press on a paragraph marks it and the ribbon appears; at 1300x900 hovering a paragraph shows a hollow ribbon and clicking it marks.
   - Behavior:
