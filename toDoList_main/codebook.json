@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "title": "Understanding Void",
+  "chapters": [
+    {
+      "id": "app-starts",
+      "title": "How the app starts and updates itself",
+      "area": "shell",
+      "files": ["index.js", "main.js", "sw.js", "modals.js"],
+      "tours": ["app-starts", "app-updates"],
+      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from, and how it merges with this device's, is the next chapter." },
+      "body": [
+        "Everything begins in `index.js`. Its top-level code runs once when the page loads: it builds the page, checks whether a saved session exists, and registers the service worker. There is no framework underneath it, just plain JavaScript creating DOM nodes and wiring listeners.",
+        "The page is built skeleton first. `component` in `main.js` creates the nav bar, the project sidebar, the task list and the footer, all still empty. Nothing in that step knows about your data yet, which keeps the shape of the screen separate from what fills it.",
+        "The saved session then decides the path. With no session, the sign-in form covers the page. With one, `bootApp` starts the app, and it guards itself so a second auth event can never boot twice. The first thing it does is paint from this device's own copy: `restoreFromStorage` adds one sidebar row per project and draws the selected project's tasks, so the app opens instantly even before the network answers.",
+        "Only after that first paint does `bootSyncPipeline` reach for the cloud: upload any old local data once, pull everything from the database, then listen for live changes. Local first, cloud second is the rhythm the whole app follows.",
+        "The app also keeps itself current. `sw.js` is the service worker: it caches the built files so the app opens offline, while the page itself always tries the network first. When a new build is deployed, the new worker installs in the background and waits rather than taking over mid-session.",
+        "A waiting worker is surfaced as an update cue, on a pill above the mobile nav or on the Version row in About. Both end in `applyPendingUpdate`, which marks the tapping tab as the one that asked and tells the waiting worker to take over. Only that tab reloads; any other open tab is told to reload when it suits you."
+      ]
+    },
+    {
+      "id": "data",
+      "title": "Where your data lives",
+      "area": "data",
+      "files": ["listLogic.js", "supabaseClient.js", "auth.js", "migration.js"],
+      "tours": ["database-connects", "first-sign-in", "data-saved", "devices-sync"],
+      "body": [
+        "Your projects and tasks live in two places at once. The first is memory plus localStorage on this device, which is instant. The second is Supabase, the cloud database, which is what lets another phone or laptop see the same list. `listLogic.js` owns both: it is the only file that changes the data model, and every other file asks it to.",
+        "`supabaseClient.js` makes the single Supabase client that every file imports. The URL and public key are baked in at build time, and when they are missing `buildStubClient` stands in, answering every call with empty data so a local build still opens, signed out. Sign-in uses email codes, not passwords: `sendCode` emails a one-time code and `verifyCode` turns it into a session.",
+        "The first sign-in on a device needs care. `maybeSkipFirstRunForCloudUser` asks the cloud whether this account already has projects; if it does, onboarding is skipped. `maybeMigrateLocalToSupabase` uploads local data only into an empty account, and only once, because cloud data wins whenever it exists. On sign-out, `wipeLocalUserDataOnSignOut` clears this device so the next person sees nothing.",
+        "Saving is memory first, always. An edit changes the item straight away, then `saveToStorageSoon` batches a burst of keystrokes into a single write, and `saveToStorage` writes the whole model under one key. The trip to the server goes through `persistMutation`, the one door every database write passes through. It maps field names with `toTodoRowPayload`, because memory says tit, desc and due while the database says title, description and due_date, and it makes a task wait for its project's insert so a task never points at a missing project.",
+        "Other devices stay in step in two layers. `subscribeToRealtime` listens for every insert, update and delete Supabase pushes, and `handleTodosRealtime` applies them to memory and storage, skipping the echoes of writes this device just sent. Separately, a full re-sync runs when the tab becomes visible, the window regains focus or the network returns, with a five-minute timer as the backstop.",
+        "That re-sync is `hydrateFromSupabase`. Where both sides changed, the newer updated_at wins, and local tasks the server hasn't confirmed yet are kept rather than lost. `rehydrateUnlessEditing` skips a round while you are typing, since repainting would wipe a half-finished edit, and `onHydrate` then rebuilds the sidebar and list while keeping your project open."
+      ]
+    },
+    {
+      "id": "tasks",
+      "title": "The life of a task",
+      "area": "tasks",
+      "files": ["toDoRow.js", "listLogic.js", "todoStatus.js", "dueDate.js", "undoToast.js"],
+      "tours": ["add-task", "edit-task", "task-status", "due-date", "delete-task"],
+      "ahead": { "chapter": "pipeline-ship", "note": "The inject button every row carries belongs to the pipeline, which gets its own chapter." },
+      "body": [
+        "Every row in the task list is built by `buildToDoRow` in `toDoRow.js`. It is a large function because a row does a lot: the title input, the description panel, the due-date pill, the status badge, the checkbox and the delete button are all wired there. The rows only ever ask `listLogic.js` to change data; they never change it themselves.",
+        "Each project keeps one blank row at the bottom, ready for the next task. It is a real item in memory but is never saved to the database. When you type a title and press Enter, the first commit inserts the task and every later edit updates it; `commitBlankPlaceholder` refuses an empty title so the blank row can never slip through, and `appendNewToDoRow` moves the cursor into a fresh blank row so you can keep typing.",
+        "Editing is local until you leave. Each keystroke sets the item's title and asks for a batched local save. Pressing Enter on a title, or leaving the description, calls `editToDoItem`, which sends the whole row to the server, every column, not only the one you touched.",
+        "Status and done are separate ideas. The status badge sets Active, In Progress or Idea through `showStatusPopover` and `setToDoStatus`; the checkbox sets completed. `sortCompletedToBottom` keeps finished tasks under open ones, and `refreshTodoStatusUI` repaints only the badge and the row's class, so anything else in progress on the row is left alone.",
+        "Due dates are stored as m-d-y text. `showDueDatePopover` offers Today, Tomorrow, a week ahead, a calendar grid and a Repeat section. Picking a day calls `setItemDue`, which saves locally and recolors the row, while urgency is never stored: `applyDueUrgency` works out overdue and due-soon from today's date every time it paints.",
+        "There are two ways to delete. The × button asks first, in a confirm modal that names the task. A left swipe deletes straight away and offers an undo instead, through `showUndoToast`. Deleting matches the item itself in `removeToDoByItem`, never its title, so two tasks with the same name can't be confused, and undo is a fresh insert at the remembered slot through `insertToDoAt`."
+      ]
+    },
+    {
+      "id": "projects-and-list",
+      "title": "Projects, order and the list",
+      "area": "tasks",
+      "files": ["dragDrop.js", "projectCreate.js", "taskFilter.js", "taskSort.js", "mobileTaskCreate.js", "listLogic.js"],
+      "tours": ["reorder", "create-project", "filter-sort", "mobile-add"],
+      "body": [
+        "Projects live in the sidebar, and creating one is a single path. The + button switches to the projects view and adds a New Project input; the first Enter creates the project through `addProject` and later ones rename it. A name that's already in use turns red and nothing is created. `createProjectByName` reuses that same path by pressing + and Enter for you, and `selectProjectRow` then highlights the new project and gives the list its accent color.",
+        "Order is something you set by hand. `setupRowDrag` in `dragDrop.js` puts the same native drag events on task rows and project rows alike, and adds touch handling with a short hold before a drag begins, so a quick swipe still scrolls. Mouse and touch share `computeDropIndex`, which also keeps done and open tasks on their own side of the boundary.",
+        "The drag helper never touches the data. It hands from and to over to the caller, and `reorderToDo` or `reorderProject` in listLogic applies the move and sends every new position to the server, so the order survives a reload and reaches your other devices.",
+        "Filtering and sorting only change what you see. `applyTaskFilter` adds a hidden class to rows the filter excludes, using the same match functions that produce the counts, so a count and the visible rows always agree. A sort chosen from `showTaskSortMenu` redraws the list in that order, but `renderOrderForSort` returns a sorted copy, so your manual order is never overwritten. Both choices are remembered across reloads.",
+        "On phones, the blank row grows chips. `attachMobileCreateChips` adds Today, Tomorrow, a calendar and a description toggle, and the chosen date lands only when the task is committed. Voice dictation and pasted entries both end in the same synthetic Enter on the title input, so they reach the database exactly the way typing does."
+      ]
+    },
+    {
+      "id": "pipeline-ship",
+      "title": "From a task to a pull request",
+      "area": "pipeline",
+      "files": ["inject.js", "shipEntry.js", "dispatchDraft.js", "agentView.js"],
+      "tours": ["inject-entry", "ship-run"],
+      "ahead": { "chapter": "pipeline-follow", "note": "How a dispatched run is followed until its PR merges is the next chapter." },
+      "body": [
+        "Void can hand a task to Claude to build. The task's description becomes an entry in a repository's TODO.md, a GitHub Actions run picks that entry up, and a pull request comes back. The app itself never talks to GitHub: every call goes to a Cloudflare Worker you configure, and `postToWorker` in `inject.js` is the single funnel for those calls.",
+        "Injecting is the first half. Each row carries an inject button made by `makeInjectButton`, which disables itself first to stop a double tap. `injectDescription` mints an entry id once and reuses it, so re-injecting the same task never makes a second copy, and that id travels inside the entry as a marker comment. After the Worker appends the entry, `stampTodoEntryId` saves the id with the task so other devices can link it too.",
+        "That id marker is the thread the rest of the pipeline follows. It is how a run finds its entry, how a merged pull request is traced back to the task that asked for it, and later how a shipped change can be reverted or iterated on.",
+        "Shipping is the second half. The Agent board's Dispatch button and the description panel both go through `dispatchDraft`, which picks the repo from the selected project's target and hands the real work to `shipEntryForTodo`. That function injects the entry, waits for its marker to appear in TODO.md, then calls `dispatchRun` with a fresh correlation id in entry mode, which starts the claude-run workflow for exactly that one entry.",
+        "Before it returns, `dispatchDraft` records the change through listLogic and adds a run record, so the run is tracked straight away rather than after a reload. A retry passes the old entry id instead of minting a new one, so a failed attempt never leaves a duplicate entry behind."
+      ]
+    },
+    {
+      "id": "pipeline-follow",
+      "title": "Following runs until they land",
+      "area": "pipeline",
+      "files": ["agentQueueStore.js", "phase.js", "phaseRail.js", "runState.js", "agentView.js", "todoMdViewer.js", "mockupFlow.js", "seedTasksModal.js", "assignmentCoverage.js"],
+      "tours": ["follow-run", "agent-board", "mockups", "generate-tasks", "coverage", "todo-md-viewer"],
+      "body": [
+        "Once a run is dispatched, the app watches it through the agent queue, one row per task in the database. `startAgentQueueSubscription` listens for pushes on that table and triggers a single reload through `reloadAndNotifyQueue`, and every surface repaints from the cached rows rather than fetching on its own.",
+        "Each task has exactly one phase, and `derivePhase` is where it is decided. It combines the queue state with the id markers found in TODO.md: a dispatched or running row shows RUNNING, a checked-off marker means shipped and shows REVIEW until you mark it reviewed, and then DONE. `paintPhaseRail` draws the four nodes IDEA, DRAFT, REVIEW and DONE, folding queue states into DRAFT.",
+        "Run state that more than one surface cares about lives in `runState.js`. `emitChange` fires one DOM event naming the project, so the TODO.md viewer's pill and the chat ship path stay in agreement, and a project only ever runs one thing at a time.",
+        "The Agent board draws one card per queue row with `buildCard`: drafted rows show their entry and a Dispatch button, proposed rows can be accepted, stuck rows explain why and offer a retry, and shipped rows link to the merged PR. Every one of those actions ships through `dispatchDraft`, so there is only one way work leaves the app.",
+        "Around that core sit a few ways to create work. `buildMockupSecondary` asks the Worker for three A/B/C HTML mockups of a task and turns your pick into a TODO.md entry. `openSeedTasksModal` breaks a project plan into a checklist of tasks, each with its own entry. `computeCoverage` measures how much of an assignment's rubric has shipped.",
+        "The TODO.md viewer shows the target repo's file as it really is. `readTodoMdFromWorker` fetches it fresh on each sync and `parseTodoMdChecklist` finds each entry's id, which is what Run and Revert act on. A revert only counts once it merges: `performRevert` then marks the entry so it can't fire twice, and `unshipEntry` rolls the task's bookkeeping back to match the code."
+      ]
+    },
+    {
+      "id": "chat",
+      "title": "Talking to Claude",
+      "area": "chat",
+      "files": ["claudeSheet.js", "inject.js", "filePicker.js", "layoutInspect.js", "modelsPanel.js"],
+      "tours": ["chat-send", "chat-context", "chat-model"],
+      "ahead": { "chapter": "structure", "note": "The source manifest the file picker reads is built at deploy and explored in the Structure chapter." },
+      "body": [
+        "The Claude sheet is the in-app assistant, and `claudeSheet.js` holds it: the chat tab, the Runs tab, iterate sessions and the composer. Opening it with `openClaudeSheet` keeps your chat history and attachments, and refreshes the list of repos you can talk about.",
+        "Sending has one entry point. The Send button and Enter both go through the composer, `sendChatTurn` shows your message before any reply, and `chatWithWorker` posts the history, the active repo, any attached file paths and the Fast or Deep choice in a single request. Everything after that POST, the model call included, happens in the Worker.",
+        "When a reply arrives, `requestAssistantReply` saves it to history first and strips the hidden INSPECT and ASK lines from what you see. `appendChatTurn` writes each turn to this repo's localStorage straight away and to a server row in the background, so a conversation follows you between devices.",
+        "Context comes in two kinds. The 📎 picker made by `createFilePicker` lists the repo's source files, and `addAttachment` turns each pick into a chip; only paths are sent, and the Worker loads the contents for the model. Layout context is measured live: `serializeLayout` captures an element, its parent and its children with the styles the browser actually draws.",
+        "Which model answers is a saved setting, not part of the turn. `openModelsPanel` shows each pipeline workflow's model per repo or globally, grouped by who pays for it, and `saveModelSetting` stores a change in the Worker, which uses it the next time that workflow runs. A chat turn only carries the Deep flag."
+      ]
+    },
+    {
+      "id": "structure",
+      "title": "Seeing the code from inside the app",
+      "area": "structure",
+      "files": ["structureView.js", "codeMapModel.js", "codeViewer.js", "structureCanvas.js"],
+      "tours": ["structure-open", "code-map", "code-viewer", "ui-lens"],
+      "body": [
+        "The Structure tab lets you explore a repo's code without leaving the app. There is no repo picker: the selected project's linked repo is the one that gets mapped, and `renderStructureView` explains what's missing when there isn't one.",
+        "Everything it shows comes from files built at deploy. A script in the repo writes a source manifest listing every file, its lines and imports, and the areas declared in codemap.json; `ensureRegionsLoaded` fetches it once. That same manifest feeds every lens, and switching lenses through `renderLens` only redraws the tree, never the header or toolbars.",
+        "The Map lens draws areas as circles and imports as edges. `deriveAreaGraph` assigns each file to its area, sums lines per area and counts imports that cross between areas, so a bigger circle holds more code and a thicker edge carries more imports. Opening an area lists its files, sorted by how many other files use them.",
+        "Any file can be read in place. `openFileInCodeViewer` picks the detail column on wide screens or a full-screen sheet on phones, and `renderCodeViewer` fetches the source once through the Worker and caches it. Only a window of lines is painted, with more added as you scroll, so very large files stay quick, and a generation counter drops any read that arrives after you've moved on.",
+        "The UI lens maps the running screen itself. For this repo, regions are read live from the page; other repos use regions published in their manifest. `renderStructureCanvas` draws a stored snapshot of each screen size, and the deployed page can be loaded as a live view on request, then removed again when you leave.",
+        "The tours you may have followed alongside this book live here too. They are compiled at deploy from a committed file, with every step anchored to a named definition rather than a line number, so they keep pointing at the right code as the code changes."
+      ]
+    },
+    {
+      "id": "settings-focus-ghost",
+      "title": "Settings, focus and the ghost",
+      "area": null,
+      "files": ["appLock.js", "exportImport.js", "theme.js", "coachmark.js", "focusMode.js", "pomodoro.js", "music.js", "companion.js", "ghostTalk.js"],
+      "tours": ["app-lock", "export-import", "onboarding", "focus", "ghost"],
+      "body": [
+        "The last chapter covers the smaller features around the edges. Each lives in its own file and reaches the rest of the app through a narrow door.",
+        "Theme is one attribute. `applyTheme` sets data-theme on the page root and the CSS variables in the stylesheet repaint every surface at once. A saved choice wins; without one, `resolveInitialTheme` follows a light OS preference and otherwise falls back to dark. A first visit gets a spotlight tour on desktop through `maybeStartFirstRunTour`, or a card carousel on phones, and both set the same onboarding flag so neither plays twice.",
+        "App lock is a privacy screen, not encryption. `setAppLockPin` accepts four digits and stores only a salt and a digest, never the digits themselves, and `verifyAppLockPin` is the only way back in. Idle time is measured from a timestamp stamped on every interaction, so a reload or a throttled background tab still locks on time.",
+        "Export and import move your whole account as one JSON file. `buildExportPayload` writes a versioned snapshot of every project; an import is validated by `parseAndValidateExport` before anything changes, and the confirmation names how many tasks and projects will be replaced. Replace is all or nothing, done in one pass through listLogic.",
+        "Focus mode, the pomodoro timer and music are three controllers with the same shape: each factory returns one shared instance that others subscribe to. The timer always counts towards an end time, so it can't drift, and music pauses for the end-of-session bell and resumes when you acknowledge it.",
+        "The ghost is the app's companion sprite. Clicking it in `companion.js` only signals activation, and main.js decides what that opens: the Claude sheet, possessed by the ghost's voice. `ghostTalk.js` holds the shared plumbing, where `askGhost` posts your line to the Worker, which answers in character and keeps the transcript server-side. Within ten minutes the last reply is shown again; after that, the ghost greets you fresh."
+      ]
+    }
+  ]
+}
