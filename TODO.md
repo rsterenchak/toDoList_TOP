@@ -2489,7 +2489,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 8ae93f4c-025c-4286-9b74-b0bde4218046 -->
 
-- [ ] **[MEDIUM]** Add the chapter reader to the Understanding tab with synced reading position
+- [x] **[MEDIUM]** Add the chapter reader to the Understanding tab with synced reading position — Completed: 2026-10-22
   - Type: feature
   - Description: Make the Understanding shelf's Continue card and chapter rows open a reader inside `#understandingView` that renders one chapter at a time from `src-book.json`: the chapter's paragraphs with every `ref` segment as a tappable chip that opens the code viewer at that definition, the `ahead` forward-reference callout, and a prev/next bar naming the neighbouring chapters. Reading position (chapter + paragraph) is written locally on every scroll and upserted to the new `book_progress` Supabase table, so the shelf's Continue card resumes the same place on any device. Follow the reader mockup (back chip + repo chip in the top bar, 3px progress bar with `CH n OF N · x%` and `~m MIN LEFT`, SpaceMono chapter eyebrow, 24px title, 15px/1.55 body, mono chips on `#191a22`, amber `AHEAD → CH n` callout on `#191a22`, prev/next bar on `#15161d` with the Next chip in `#6C5DF5`). At 390x844 the reader is the full main pane with the prev/next bar pinned above the tab bar and a ref tap opening the full-screen code sheet; at 1300x900 the reader is a centred column (max-width 720px) and a ref tap opens the code viewer in a pane to its right, the reader narrowing to make room.
   - Behavior:
