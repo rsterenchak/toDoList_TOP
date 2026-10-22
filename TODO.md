@@ -2587,7 +2587,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: b63590bd-cf45-401c-a30c-fdaeb7da1b1b -->
 
-- [ ] **[MEDIUM]** Index C# methods named like contextual keywords and resolve overloads in the symbols index
+- [x] **[MEDIUM]** Index C# methods named like contextual keywords and resolve overloads in the symbols index — Completed: 2026-10-22
   - Type: bug
   - Description: The first C# book run couldn't link `CustomerRepository.add` or `AppointmentRepository.add` — the scanner's `CS_KW_NAME` list in `scripts/gen-src-manifest.js` drops any method named `add`, `remove`, `get`, `set` or `init`, which are only keywords inside accessor and event-accessor bodies and are legal method names everywhere else (the method regex already requires a return type and a parameter list, which accessors never have, so the exclusion is redundant and over-broad). Separately, a two-overload member such as `LoginHistory.Record` or `UserLocation.Describe` makes a book reference "ambiguous" because `resolveBookRef` counts hits, so the chapter has to leave it as plain text. Expected: a method named `add` indexes like any other, and a reference to an overloaded member of one type resolves to the first declaration in source order.
   - Behavior:

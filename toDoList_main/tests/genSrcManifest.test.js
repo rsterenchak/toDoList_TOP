@@ -1072,3 +1072,97 @@ describe('gen-src-manifest csharp mode output', () => {
         expect(readCsharpSources({ repoRoot: root, srcRoot: 'Models' }).map((s) => s.name)).toEqual(['Models/Task.cs']);
     });
 });
+
+// Methods named like contextual keywords (add/get/...) index like any other,
+// and an overloaded member of one type resolves to its first declaration.
+describe('gen-src-manifest csharp contextual-keyword methods and overloads', () => {
+    const CS_REPO = [
+        'namespace Demo {',                                         // 1
+        '    public class CustomerRepository {',                    // 2
+        '        public void add(Item i) {',                        // 3
+        '            _items.Add(i);',                               // 4
+        '        }',                                                // 5
+        '        public int get(int id) {',                         // 6
+        '            return id;',                                   // 7
+        '        }',                                                // 8
+        '        public event EventHandler Changed {',              // 9
+        '            add { _changed += value; }',                   // 10
+        '            remove { _changed -= value; }',                // 11
+        '        }',                                                // 12
+        '        public int Count { get; private set; }',           // 13
+        '    }',                                                    // 14
+        '}',                                                        // 15
+    ].join('\n');
+    const CS_HISTORY = [
+        'namespace Demo {',                                         // 1
+        '    public class LoginHistory {',                          // 2
+        '        public void Record(string user) {',                // 3
+        '            Log(user);',                                   // 4
+        '        }',                                                // 5
+        '        public void Record(string user, DateTime at) {',   // 6
+        '            Log(user + at);',                              // 7
+        '        }',                                                // 8
+        '    }',                                                    // 9
+        '}',                                                        // 10
+    ].join('\n');
+    const CS_AUDIT = 'namespace Demo {\n    public class LoginHistory {\n        public void Record(int code) {\n            Log(code);\n        }\n    }\n}\n';
+    const sources = [{ name: 'Data/CustomerRepository.cs', text: CS_REPO }, { name: 'Data/LoginHistory.cs', text: CS_HISTORY }];
+    const symbols = buildCsharpSymbols({ sources });
+    const book = (body, files) => ({ version: 1, title: 'B', chapters: [{ id: 'c', title: 'C', files: files || [], body: [body] }] });
+    const refs = (ch) => ch.paragraphs.flat().filter((s) => s.ref).map((s) => s.ref);
+
+    it('indexes methods named add and get but not event accessors', () => {
+        expect(symbols.files['Data/CustomerRepository.cs'].defs).toEqual([
+            { name: 'CustomerRepository', kind: 'class', start: 2, end: 14, parent: null },
+            { name: 'add', kind: 'method', start: 3, end: 5, parent: 'CustomerRepository' },
+            { name: 'get', kind: 'method', start: 6, end: 8, parent: 'CustomerRepository' },
+            { name: 'Count', kind: 'property', start: 13, end: 13, parent: 'CustomerRepository' },
+        ]);
+    });
+
+    it('links `CustomerRepository.add` in a chapter', () => {
+        const warn = vi.fn();
+        const ch = compileBook(book('See `CustomerRepository.add`.'), symbols, null, null, warn).chapters[0];
+        expect(warn).not.toHaveBeenCalled();
+        expect(refs(ch)).toEqual([{ label: 'CustomerRepository.add', file: 'Data/CustomerRepository.cs', symbol: 'add', parent: 'CustomerRepository', line: 3, end: 5 }]);
+    });
+
+    it('resolves an overloaded member of one type to the first declaration with no warning', () => {
+        const warn = vi.fn();
+        const ch = compileBook(book('`LoginHistory.Record`, `Record` and `Data/LoginHistory.cs:Record`.'), symbols, null, null, warn).chapters[0];
+        expect(warn).not.toHaveBeenCalled();
+        expect(ch.stale).toBe(false);
+        expect(refs(ch).map((r) => [r.label, r.file, r.parent, r.line, r.end])).toEqual([
+            ['LoginHistory.Record', 'Data/LoginHistory.cs', 'LoginHistory', 3, 5],
+            ['Record', 'Data/LoginHistory.cs', 'LoginHistory', 3, 5],
+            ['Data/LoginHistory.cs:Record', 'Data/LoginHistory.cs', 'LoginHistory', 3, 5],
+        ]);
+    });
+
+    it('keeps the same name split across two files ambiguous', () => {
+        const warn = vi.fn();
+        const split = buildCsharpSymbols({ sources: sources.concat([{ name: 'Audit/LoginHistory.cs', text: CS_AUDIT }]) });
+        const ch = compileBook(book('`LoginHistory.Record`.'), split, null, null, warn).chapters[0];
+        expect(refs(ch)).toEqual([]);
+        expect(ch.stale).toBe(true);
+        expect(ch.warnings[0]).toMatch(/ambiguous \(3 defs\)/);
+    });
+
+    it('resolves a tour step on an overloaded member to the first declaration', () => {
+        const warn = vi.fn();
+        const st = (symbol, m) => ({ file: symbol === 'Record' ? 'Data/LoginHistory.cs' : 'Data/CustomerRepository.cs', symbol, match: [m], title: 'T', why: 'W' });
+        const doc = { version: 1, sections: [], tours: [{ id: 'r', section: 's', title: 'R', recap: [],
+            steps: [st('Record', 'Log(user)'), st('add', '_items.Add'), st('get', 'return id')] }] };
+        const tours = compileTours(doc, symbols, sources, null, warn);
+        expect(warn).not.toHaveBeenCalled();
+        expect(tours.tours[0].steps.map((s) => s.line)).toEqual([4, 4, 7]);
+    });
+
+    it('leaves JS resolution unchanged: same name under different parents stays ambiguous', () => {
+        const warn = vi.fn();
+        const js = [src('app.js', 'function outer() {\n    function inner() {}\n}\nfunction other() {\n    function inner() {}\n}\n')];
+        const ch = compileBook(book('`inner`.'), buildSymbols(js), null, null, warn).chapters[0];
+        expect(refs(ch)).toEqual([]);
+        expect(ch.warnings[0]).toMatch(/ambiguous \(2 defs\)/);
+    });
+});
