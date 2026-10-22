@@ -10,23 +10,24 @@ function read(relative) {
 }
 
 // Differential testing isolated the iOS standalone viewport-shrink bug to
-// NON-scrollable shells: an app whose document can scroll never shrinks,
-// because WebKit reveals a focused input by scrolling the page instead of
-// resizing the layout viewport. This probe gives the mobile root the minimum
-// slack that could flip WebKit onto that path — one pixel — without changing
-// the shell: #outerContainer keeps `height: 100dvh; overflow: hidden` exactly
-// as before, and the 1px lives outside it.
+// NON-scrollable shells: an app with a scrollable surface never shrinks,
+// because WebKit reveals a focused input by scrolling instead of resizing the
+// layout viewport. The probe first gave the DOCUMENT 1px of slack, but a
+// scrollable root is the likely trigger for the launch viewport starting short
+// and sliding the tab bar / FAB down. The slack now lives on a child scroller:
+// the document is flat again and #outerContainer carries exactly 1px of travel
+// via an ::after spacer in its final zero-height grid track.
 //
-// The probe cannot assert its own outcome; the installed-app Diagnostics
-// reading after a keyboard cycle is the verdict, and a negative reading means
-// a follow-up removes this block. What the test locks is that the block is
-// present, complete (slack + overscroll guard + unlocked root overflow), and
-// scoped to mobile — a partial probe (slack with the root still clamped, or an
-// unlocked root with no slack) reads as installed while measuring nothing.
+// The probe cannot assert its own outcome; the installed-app launch and the
+// Diagnostics reading after a keyboard cycle are the verdict. What the test
+// locks is that the block is present, complete (slack + overscroll guard +
+// unlocked shell overflow + flat root), and scoped to mobile — a partial probe
+// (slack with the shell still clipping, or a root still scrollable) reads as
+// installed while measuring something else.
 //
 // Verified by source inspection because jsdom does no stylesheet resolution and
 // main.js is too large to instantiate (per CLAUDE.md guidance).
-describe('viewport scroll probe — 1px of root scrollability on mobile', () => {
+describe('viewport scroll probe — 1px of shell scrollability on mobile', () => {
     const css = read('style.css');
 
     // Body text of the `@media (max-width: 1023px)` block that carries the
@@ -50,74 +51,66 @@ describe('viewport scroll probe — 1px of root scrollability on mobile', () => 
         throw new Error('mobile ≤1023px block carrying the canvas rule not found');
     }
 
-    // Rule bodies whose selector list contains `body` as a whole element
-    // selector (so `body::after` and `body:has(...)` are excluded).
-    function bodyRuleBodies(source) {
-        return [...source.matchAll(/(^|[\s},])body\s*\{([\s\S]*?)\}/g)].map(m => m[2]);
+    // Rule bodies whose selector list contains `sel` as a whole selector (so
+    // `body::after` / `#outerContainer::after` are excluded).
+    function ruleBodies(source, sel) {
+        return [...source.matchAll(new RegExp(`(^|[\\s},])${sel}\\s*\\{([\\s\\S]*?)\\}`, 'g'))]
+            .map(m => m[2]);
     }
 
-    it('(a) the mobile block extends the document exactly 1px past the viewport', () => {
+    function mobileGridRows() {
+        const shell = ruleBodies(mobileBlock(), '#outerContainer')
+            .find(b => /grid-template-rows/.test(b));
+        expect(shell).toBeTruthy();
+        return shell.match(/grid-template-rows:\s*([^;]+);/)[1].trim().split(/\s+(?![^(]*\))/);
+    }
+
+    it('(a) the shell carries exactly 1px of slack in its final zero-height track', () => {
+        const spacer = mobileBlock().match(/#outerContainer::after\s*\{([\s\S]*?)\}/);
+        expect(spacer).toBeTruthy();
+        expect(spacer[1]).toMatch(/content:\s*''/);
+        expect(spacer[1]).toMatch(/display:\s*block/);
+        expect(spacer[1]).toMatch(/height:\s*1px/);
+        const rows = mobileGridRows();
+        const row = Number(spacer[1].match(/grid-row:\s*(\d+)/)[1]);
+        // The last explicit track, and a fixed zero — so no track resizes.
+        expect(row).toBe(rows.length);
+        expect(rows[row - 1]).toBe('0');
+    });
+
+    it('(b) the shell scrolls vertically, stays clipped horizontally, and does not rubber-band', () => {
+        const shell = ruleBodies(mobileBlock(), '#outerContainer')
+            .find(b => /height:\s*100dvh/.test(b));
+        expect(shell).toBeTruthy();
+        expect(shell).toMatch(/overflow-y:\s*auto/);
+        expect(shell).toMatch(/overflow-x:\s*hidden/);
+        expect(shell).toMatch(/overscroll-behavior-y:\s*none/);
+        expect(shell).toMatch(/scrollbar-width:\s*none/);
+        expect(mobileBlock()).toMatch(/#outerContainer::-webkit-scrollbar\s*\{\s*display:\s*none;?\s*\}/);
+    });
+
+    it('(c) the document itself is flat again — no root slack or root scroll rules', () => {
         const block = mobileBlock();
-        const spacer = block.match(/body::after\s*\{([\s\S]*?)\}/);
-        const calcSlack = bodyRuleBodies(block)
-            .some(b => /min-height:\s*calc\(\s*100dvh\s*\+\s*1px\s*\)/.test(b));
-        // Either shape satisfies the probe; the shipped one is the spacer, so
-        // the canvas rule above keeps its own `min-height: 100dvh`.
-        expect(Boolean(spacer) || calcSlack).toBe(true);
-        if (spacer) {
-            expect(spacer[1]).toMatch(/content:\s*''/);
-            expect(spacer[1]).toMatch(/display:\s*block/);
-            // Exactly one pixel — the probe is about nominal scrollability,
-            // not about giving the page somewhere to go.
-            expect(spacer[1]).toMatch(/height:\s*1px/);
-        }
+        expect(block).not.toMatch(/body::after\s*\{/);
+        expect(ruleBodies(block, 'body').some(b => /overflow-y:\s*auto/.test(b))).toBe(false);
+        expect(ruleBodies(block, 'body').some(b => /overflow-y:\s*hidden/.test(b))).toBe(true);
+        expect(block).not.toMatch(/(html|body)::-webkit-scrollbar/);
+        expect(ruleBodies(block, 'body').some(b => /min-height:\s*calc\(\s*100dvh\s*\+\s*1px/.test(b))).toBe(false);
     });
 
-    it('(b) the mobile block unlocks vertical overflow on the root scroller', () => {
-        const block = mobileBlock();
-        // html's overflow stays `visible`, so body's value is what propagates
-        // to the viewport. Without this the 1px of slack is simply clipped and
-        // the document is still unscrollable.
-        expect(bodyRuleBodies(block).some(b => /overflow-y:\s*auto/.test(b))).toBe(true);
-    });
-
-    it('(c) the newly-scrollable root carries the overscroll guard', () => {
-        const block = mobileBlock();
-        const guarded = [...block.matchAll(/(^|[\s},])(html|body|html,\s*\n?\s*body)\s*\{([\s\S]*?)\}/g)]
-            .some(m => /overscroll-behavior-y:\s*none/.test(m[3]));
-        expect(guarded).toBe(true);
-    });
-
-    it('(d) the app shell is untouched — still 100dvh and still clipping', () => {
-        // The probe must not change the shell; if it did, a negative device
-        // verdict could not be undone by deleting one block.
-        const shells = [...css.matchAll(/(^|[\s},])#outerContainer\s*\{([\s\S]*?)\}/g)]
-            .map(m => m[2]);
-        expect(shells.some(b => /height:\s*100dvh/.test(b))).toBe(true);
-        expect(shells.some(b => /overflow:\s*hidden/.test(b))).toBe(true);
-        // No mobile override reopens the shell's own overflow.
-        expect(bodyRuleBodies(mobileBlock())).toBeTruthy();
-        const mobileShell = [...mobileBlock().matchAll(/(^|[\s},])#outerContainer\s*\{([\s\S]*?)\}/g)]
-            .map(m => m[2]);
-        expect(mobileShell.some(b => /overflow/.test(b))).toBe(false);
-    });
-
-    it('(e) desktop keeps the flat, unscrollable document', () => {
-        // The base `body { overflow: hidden }` outside any media query is what
-        // desktop still resolves to; the probe only ever overrides the y axis
-        // inside the ≤1023px block.
-        const base = bodyRuleBodies(css.slice(0, css.indexOf('@media')))
+    it('(d) desktop keeps the flat, clipping shell and document', () => {
+        const base = ruleBodies(css.slice(0, css.indexOf('@media')), 'body')
             .filter(b => /padding:\s*16px/.test(b))[0];
         expect(base).toBeTruthy();
         expect(base).toMatch(/overflow:\s*hidden/);
-        expect(base).not.toMatch(/overflow-y:\s*auto/);
+        const baseShell = ruleBodies(css.slice(0, css.indexOf('@media')), '#outerContainer')[0];
+        expect(baseShell).toMatch(/overflow:\s*hidden/);
+        expect(baseShell).not.toMatch(/overflow-y:\s*auto/);
     });
 
-    it('(f) the block documents itself as a removable probe', () => {
-        // A future reader must be able to tell this is an experiment awaiting a
-        // device verdict, not a load-bearing layout rule.
+    it('(e) the block documents itself as a removable probe', () => {
         const block = mobileBlock();
-        const idx = block.search(/body::after\s*\{|min-height:\s*calc\(\s*100dvh\s*\+\s*1px/);
+        const idx = block.search(/#outerContainer::after\s*\{/);
         expect(idx).toBeGreaterThan(-1);
         const preamble = block.slice(0, idx);
         expect(preamble).toMatch(/probe/i);
