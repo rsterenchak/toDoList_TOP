@@ -18,6 +18,7 @@ import { supabase } from './supabaseClient.js';
 import { showAuthModal, hideAuthModal } from './auth.js';
 import { maybeMigrateLocalToSupabase, maybeSkipFirstRunForCloudUser } from './migration.js';
 import { initViewportHeal } from './viewportHeal.js';
+import { initViewportSettle } from './viewportSettle.js';
 import { enforceAppLockIdle } from './appLock.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
@@ -37,6 +38,12 @@ enforceAppLockIdle();
 // mode and on a measurably shrunken viewport, so this is a no-op in Safari,
 // on desktop, and in any session that never opens the software keyboard.
 initViewportHeal();
+
+// Hide the mobile tab bar and FAB while an iOS standalone launch's viewport is
+// still growing to full height, so they appear once at their final position
+// instead of sliding down. No-op outside standalone, on desktop, and on any
+// launch that is already full height.
+initViewportSettle();
 
 // ── AUTH GATE ──
 // Phase 4: render the magic-link sign-in modal as a hard front door
