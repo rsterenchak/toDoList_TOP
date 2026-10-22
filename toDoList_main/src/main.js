@@ -2855,12 +2855,13 @@ function component() {
     setTimeout(startAgentWorkingWatch, 0);
 
     // Start the app-lock idle watch. It installs the document-level activity
-    // listeners that stamp last-activity and re-arm the single idle timer, and
-    // on boot mounts the lock overlay straight away when the app already sat
-    // idle past the configured span (a reload after the tab was closed). A
-    // no-op when the user never turned the lock on, and guarded against
-    // double-init internally. Deferred a tick so document.body exists, like
-    // the companion / agent-watch starts above.
+    // listeners that stamp last-activity and re-arm the single idle timer. The
+    // boot-time lock (mounting the overlay when the app already sat idle past
+    // the configured span) happens synchronously in index.js right after the
+    // shell attaches, so no unlocked frame paints; this watch's own idle check
+    // then short-circuits on the already-locked app, so the overlay is never
+    // mounted twice. A no-op when the user never turned the lock on, and
+    // guarded against double-init internally.
     setTimeout(startAppLockWatch, 0);
 
     // Window-level drag-and-drop import. Dropping a .json file anywhere on

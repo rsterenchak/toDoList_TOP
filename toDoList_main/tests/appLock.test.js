@@ -14,6 +14,9 @@
 //     locks on boot, since a setTimeout alone cannot span a reload.
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
     APP_LOCK_ACTIVITY_KEY,
@@ -296,6 +299,20 @@ describe('appLock — idle watch', () => {
         expect(isAppLocked()).toBe(true);
     });
 
+    it('mounts the overlay synchronously on boot, and a later watch start leaves exactly one', () => {
+        vi.useFakeTimers();
+        armLock('5150', 5);
+        localStorage.setItem(APP_LOCK_ACTIVITY_KEY, String(Date.now() - 6 * 60000));
+        // No timer or microtask runs between this call and the assertion —
+        // the boot path in index.js relies on the overlay landing in the same
+        // task that attached the shell, before the browser can paint.
+        expect(enforceAppLockIdle()).toBe(true);
+        expect(document.querySelectorAll('#appLockOverlay')).toHaveLength(1);
+        startAppLockWatch();
+        vi.runOnlyPendingTimers();
+        expect(document.querySelectorAll('#appLockOverlay')).toHaveLength(1);
+    });
+
     it('does not lock on boot inside the configured span', () => {
         vi.useFakeTimers();
         armLock('5150', 5);
@@ -383,5 +400,30 @@ describe('appLock — idle watch', () => {
         expect(afterFirst).toBe(1);
         expect(addSpy.mock.calls.filter((c) => c[0] === 'pointerdown')).toHaveLength(1);
         addSpy.mockRestore();
+    });
+});
+
+// The boot entry must mount the overlay in the same task that attaches the
+// shell. Deferring it behind component()'s setTimeout(…, 0) queue let the
+// browser paint the unlocked dashboard for a frame on every locked relaunch.
+describe('appLock — boot ordering in index.js', () => {
+    const here = dirname(fileURLToPath(import.meta.url));
+    const index = readFileSync(resolve(here, '../src/index.js'), 'utf8');
+
+    it('imports enforceAppLockIdle from appLock.js', () => {
+        expect(index).toMatch(/import\s*\{[^}]*\benforceAppLockIdle\b[^}]*\}\s*from\s*'\.\/appLock\.js'/);
+    });
+
+    it('calls enforceAppLockIdle() synchronously right after the shell attaches', () => {
+        const attach = index.indexOf('document.body.appendChild(component());');
+        expect(attach).toBeGreaterThan(-1);
+        const rest = index.slice(attach);
+        const call = rest.search(/^enforceAppLockIdle\(\);/m);
+        expect(call).toBeGreaterThan(-1);
+        // Nothing but comments and blank lines between the two statements.
+        const between = rest.slice(rest.indexOf('\n') + 1, call)
+            .split('\n')
+            .filter((line) => line.trim() && !line.trim().startsWith('//'));
+        expect(between).toEqual([]);
     });
 });

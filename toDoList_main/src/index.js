@@ -18,10 +18,19 @@ import { supabase } from './supabaseClient.js';
 import { showAuthModal, hideAuthModal } from './auth.js';
 import { maybeMigrateLocalToSupabase, maybeSkipFirstRunForCloudUser } from './migration.js';
 import { initViewportHeal } from './viewportHeal.js';
+import { enforceAppLockIdle } from './appLock.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
 document.body.appendChild(component()); // build and attach DOM
+
+// Mount the app-lock overlay in the same task that attached the shell, when
+// the lock is armed and the idle span already elapsed (a relaunch after the
+// app sat closed). Pure synchronous localStorage reads, so no frame can paint
+// the unlocked shell before the overlay lands. main.js's deferred
+// startAppLockWatch still installs the activity listeners and idle timer; its
+// own idle check short-circuits once the app is locked.
+enforceAppLockIdle();
 
 // Arm the iOS standalone viewport heal now that #outerContainer exists — it
 // reads that element when a heal runs. Self-gating on the standalone display
