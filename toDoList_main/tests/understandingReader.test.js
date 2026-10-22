@@ -35,6 +35,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({ pagesUrlFor: vi.fn(() => ''
 
 vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(() => Promise.resolve({ ok: true, files: [], srcRoot: 'toDoList_main/src' })),
+    openChatWithBookScope: vi.fn(),
 }));
 
 vi.mock('../src/supabaseClient.js', () => ({
@@ -51,9 +52,9 @@ vi.mock('../src/codeViewer.js', () => ({
     setCodeViewerCloseHandler: vi.fn(),
 }));
 
-import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun } from '../src/understandingView.js';
+import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, openBookRefInReader } from '../src/understandingView.js';
 import { renderCodeViewer, setCodeViewerCloseHandler, clearCodeViewer } from '../src/codeViewer.js';
-import { loadManifest } from '../src/claudeSheet.js';
+import { loadManifest, openChatWithBookScope } from '../src/claudeSheet.js';
 import { showConfirmModal } from '../src/modals.js';
 import { getBookProgress } from '../src/prefs.js';
 import { resetBookProgress } from '../src/bookProgress.js';
@@ -478,5 +479,47 @@ describe('bookmarks', () => {
         expect(title()).toBe('The pipeline');
         expect(view().querySelector('.understandingPara.is-pulse')).toBeNull();
         expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'pipeline', paraIndex: 0 });
+    });
+});
+
+describe('ask about this chapter', () => {
+    test('the Ask chip sits between the repo chip and the bookmarks chip', async () => {
+        await openChapter(0);
+        const ask = view().querySelector('.understandingReaderTop .understandingAskChip');
+        expect(ask).not.toBeNull();
+        expect(ask.getAttribute('aria-label')).toBe('Ask about this chapter');
+        expect(ask.previousElementSibling.classList.contains('understandingRepoChip')).toBe(true);
+        expect(ask.nextElementSibling.classList.contains('understandingMarksChip')).toBe(true);
+    });
+
+    test('tapping it opens the chat scoped to the chapter on screen', async () => {
+        await openChapter(0);
+        view().querySelector('.understandingNavNext').click();
+        view().querySelector('.understandingAskChip').click();
+        expect(openChatWithBookScope).toHaveBeenCalledTimes(1);
+        const scope = openChatWithBookScope.mock.calls[0][0];
+        expect(scope.repo).toBe('owner/repo');
+        expect(scope.chapter).toEqual({ id: 'data', title: 'Where the data lives', index: 2, total: 3 });
+        expect(scope.prose).toEqual(['Data one.', 'Data two.']);
+    });
+
+    test('a scoped reply chip opens in the reader pane while the reader shows its repo', async () => {
+        await openChapter(0);
+        const handled = openBookRefInReader({ repo: 'owner/repo', file: 'index.js', symbol: 'bootApp', line: 40, end: 72, label: 'bootApp' });
+        expect(handled).toBe(true);
+        await flush();
+        expect(renderCodeViewer).toHaveBeenCalledTimes(1);
+        const opts = renderCodeViewer.mock.calls[0][1];
+        expect(opts.filePath).toBe('toDoList_main/src/index.js');
+        expect(opts.startLine).toBe(40);
+        expect(opts.endLine).toBe(72);
+        expect(view().querySelector('.understandingCodePane')).not.toBeNull();
+    });
+
+    test('a chip for another repo, or with no reader open, falls back to the caller', async () => {
+        expect(openBookRefInReader({ repo: 'owner/repo', file: 'index.js', symbol: 'x', line: 1, end: 2 })).toBe(false);
+        await openChapter(0);
+        expect(openBookRefInReader({ repo: 'other/repo', file: 'index.js', symbol: 'x', line: 1, end: 2 })).toBe(false);
+        expect(renderCodeViewer).not.toHaveBeenCalled();
     });
 });

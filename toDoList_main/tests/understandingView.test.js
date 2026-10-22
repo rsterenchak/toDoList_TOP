@@ -42,6 +42,7 @@ vi.mock('../src/modals.js', () => ({
 
 vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(() => Promise.resolve({ ok: true, files: [], srcRoot: 'src' })),
+    openChatWithBookScope: vi.fn(),
 }));
 
 // The tours loader would fetch src-tours.json from Pages; feed it from
@@ -90,7 +91,7 @@ vi.mock('../src/bookProgress.js', async () => {
     };
 });
 
-import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun } from '../src/understandingView.js';
+import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, buildBookScope } from '../src/understandingView.js';
 import { loadBook, resetBookCache } from '../src/codeBook.js';
 import { fetchActiveRuns, dispatchBook } from '../src/inject.js';
 import { showConfirmModal } from '../src/modals.js';
@@ -573,5 +574,51 @@ describe('tours on the shelf', () => {
         expect(chip().textContent).toBe('Tours 1/2');
         const done = view().querySelectorAll('.understandingChapterRow')[2].querySelector('.understandingTourRow');
         expect(done.classList.contains('is-done')).toBe(true);
+    });
+});
+
+describe('ask scope payload', () => {
+    const A = { label: 'bootApp', file: 'index.js', symbol: 'bootApp', line: 40, end: 72 };
+    const A2 = { label: 'bootApp()', file: 'index.js', symbol: 'bootApp', line: 40, end: 72 };
+    const B = { label: 'sw.js', file: 'sw.js', symbol: null, line: 1, end: null };
+    const SCOPE_BOOK = {
+        chapters: [
+            { id: 'one', title: 'First', paragraphs: [[{ t: 'x' }]] },
+            {
+                id: 'life', title: 'The life of a task',
+                paragraphs: [
+                    [{ t: 'It starts in ' }, { ref: A }, { t: ' and caches in ' }, { ref: B }, { t: '.' }],
+                    [{ t: 'Later ' }, { ref: A2 }, { t: ' runs again.' }],
+                ],
+            },
+            { id: 'three', title: 'Third', paragraphs: [] },
+        ],
+    };
+
+    test('carries the chapter identity with a 1-based index and the total', () => {
+        const scope = buildBookScope('o/r', SCOPE_BOOK, 1);
+        expect(scope.repo).toBe('o/r');
+        expect(scope.chapter).toEqual({ id: 'life', title: 'The life of a task', index: 2, total: 3 });
+    });
+
+    test('flattens each paragraph to plain text, reading ref chips as their labels', () => {
+        const scope = buildBookScope('o/r', SCOPE_BOOK, 1);
+        expect(scope.prose).toEqual([
+            'It starts in bootApp and caches in sw.js.',
+            'Later bootApp() runs again.',
+        ]);
+    });
+
+    test('de-duplicates refs by file + symbol, keeping first-seen order', () => {
+        const scope = buildBookScope('o/r', SCOPE_BOOK, 1);
+        expect(scope.refs).toEqual([
+            { file: 'index.js', symbol: 'bootApp', line: 40, end: 72, label: 'bootApp' },
+            { file: 'sw.js', symbol: '', line: 1, label: 'sw.js' },
+        ]);
+    });
+
+    test('is null for a chapter that does not exist', () => {
+        expect(buildBookScope('o/r', SCOPE_BOOK, 7)).toBeNull();
+        expect(buildBookScope('o/r', null, 0)).toBeNull();
     });
 });

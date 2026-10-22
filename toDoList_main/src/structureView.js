@@ -874,6 +874,21 @@ function openFileInCodeViewer(repo, filePath, highlight) {
     renderCodeViewer(host, opts);
 }
 
+// Open a chapter-scoped chat reply's code chip `{ repo, file, symbol, line, end,
+// label }` — `file` manifest-relative — through the same opener, for when the
+// Understanding reader isn't showing.
+export function openStructureRef(ref) {
+    if (!ref || !ref.repo || !ref.file) return Promise.resolve();
+    return Promise.resolve(loadManifest(ref.repo)).then(function (manifest) {
+        const srcRoot = manifest && typeof manifest.srcRoot === 'string' ? manifest.srcRoot : '';
+        openFileInCodeViewer(ref.repo, joinSrcRootPath(srcRoot, ref.file), {
+            startLine: ref.line,
+            endLine: ref.end,
+            banner: ref.label,
+        });
+    });
+}
+
 // Render a single file row. Depth drives the left indent so nested files line up
 // under their folder. Explaining a file is no longer a per-row action — it is one
 // control in the viewer, acting on whatever the row opened — so the row carries

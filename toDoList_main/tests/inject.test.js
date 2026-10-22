@@ -129,6 +129,51 @@ describe('chatWithWorker — attach_task (task scope)', () => {
     });
 });
 
+// The Understanding chapter scope rides as `book_scope`, lifted off the trailing
+// opts so it never reaches postToWorker's transport options.
+describe('chatWithWorker — book_scope (chapter scope)', () => {
+    const SCOPE = {
+        chapter: { id: 'life', title: 'The life of a task', index: 3, total: 9 },
+        prose: ['It starts in bootApp.'],
+        refs: [{ file: 'index.js', symbol: 'bootApp', line: 40, end: 72, label: 'bootApp' }],
+    };
+
+    it('sends book_scope verbatim when opts carries a bookScope', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined, null,
+            { bookScope: SCOPE },
+        );
+        const body = lastChatBody();
+        expect(body.book_scope).toEqual(SCOPE);
+        expect(body.repo).toBe('owner/repo');
+        expect('bookScope' in body).toBe(false);
+    });
+
+    it('omits book_scope when no scope is passed', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined, null,
+            { bookScope: null },
+        );
+        expect('book_scope' in lastChatBody()).toBe(false);
+        await chatWithWorker([{ role: 'user', content: 'hi' }], undefined, undefined, 'owner/repo');
+        expect('book_scope' in lastChatBody()).toBe(false);
+    });
+
+    it('rides alongside a task scope and keeps the other transport opts', async () => {
+        await chatWithWorker(
+            [{ role: 'user', content: 'hi' }],
+            undefined, undefined, 'owner/repo', undefined, undefined,
+            { title: 'T', description: 'D' },
+            { bookScope: SCOPE, timeoutMs: 60000 },
+        );
+        const body = lastChatBody();
+        expect(body.book_scope).toEqual(SCOPE);
+        expect(body.attach_task).toEqual({ title: 'T', description: 'D' });
+    });
+});
+
 // rewriteTodoMd POSTs the Worker's `{ rewrite: true, op, id, repo, filePath }`
 // branch through the same transport every other helper uses, and routes the
 // project's resolved inject target so the correct repo's TODO.md is mutated.

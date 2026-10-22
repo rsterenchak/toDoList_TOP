@@ -486,7 +486,10 @@ export async function injectEntry(options) {
 //
 // `opts` is an optional trailing object handed straight to postToWorker — e.g.
 // `{ timeoutMs }` bounds the request so a stalled turn rejects with a
-// "Timed out after <N>s" reason instead of never settling.
+// "Timed out after <N>s" reason instead of never settling. Its `bookScope` (the
+// Understanding chapter the conversation is scoped to — `{ chapter, prose,
+// refs }`) is lifted off first and rides as `book_scope` in the same
+// turn-variable tail as `attach_task`; the rest is handed on.
 //
 // Returns `{ reply, suggestedFiles }`: `reply` is the assistant's text, and
 // `suggestedFiles` is the array of paths the Worker proposed attaching this
@@ -518,7 +521,13 @@ export async function chatWithWorker(messages, entryId, attachFiles, repo, sugge
                 description: attachTask.description || '',
             };
         }
-        const res = await postToWorker(payload, opts);
+        let postOpts = opts;
+        if (opts && typeof opts === 'object' && Object.prototype.hasOwnProperty.call(opts, 'bookScope')) {
+            postOpts = Object.assign({}, opts);
+            delete postOpts.bookScope;
+            if (opts.bookScope && typeof opts.bookScope === 'object') payload.book_scope = opts.bookScope;
+        }
+        const res = await postToWorker(payload, postOpts);
         const suggestedFiles = res && Array.isArray(res.suggested_files)
             ? res.suggested_files.slice()
             : [];
