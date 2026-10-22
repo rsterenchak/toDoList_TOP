@@ -731,3 +731,202 @@ describe('gen-src-manifest real codetour.json', () => {
         doc.tours.forEach((t) => expect(ids.has(t.section)).toBe(true));
     });
 });
+
+const { compileBook, buildWebBook, writeWebBook } = gen;
+
+describe('gen-src-manifest compileBook', () => {
+    const sources = [
+        src('a.js', 'function shared() {\n    return 1;\n}\nfunction onlyA() {\n    return 2;\n}\n'),
+        src('b.js', 'function shared() {\n    return 3;\n}\nfunction outer() {\n    function inner() {}\n    return inner;\n}\n'),
+        src('c.js', 'function shared() {\n    return 4;\n}\n'),
+    ];
+    const symbols = buildSymbols(sources);
+    const tours = { tours: [{ id: 't1', title: 'Tour one', steps: [{}, {}, {}] }] };
+    const areas = [{ id: 'core', files: ['a.js', 'b.js', 'c.js'] }];
+    const chapter = (extra) => Object.assign({ id: 'c1', title: 'One', area: 'core', files: ['a.js'], tours: ['t1'], body: ['Plain.'] }, extra);
+    const book = (chapters) => ({ version: 1, title: 'Book', chapters });
+    const refs = (ch) => ch.paragraphs.flat().filter((s) => s.ref).map((s) => s.ref);
+
+    it('compiles chapters with index, resolved tours, minutes and no warnings', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([chapter(), chapter({ id: 'c2', title: 'Two', tours: [] })]), symbols, tours, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        expect(out.version).toBe(1);
+        expect(out.title).toBe('Book');
+        expect(out.chapters.map((c) => c.index)).toEqual([1, 2]);
+        expect(out.chapters[0]).toMatchObject({ id: 'c1', area: 'core', files: ['a.js'], tours: [{ id: 't1', title: 'Tour one', steps: 3 }], ahead: null, minutes: 1, stale: false, warnings: [] });
+        expect(out.chapters[0].paragraphs).toEqual([[{ t: 'Plain.' }]]);
+    });
+
+    it('resolves names in the chapter files first, then the whole index, and keeps unknown spans as text', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([chapter({ body: ['Call `shared` then `inner` and `nothingHere` in `b.js`.'] })]), symbols, tours, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        const p = out.chapters[0].paragraphs[0];
+        expect(p).toEqual([
+            { t: 'Call ' },
+            { ref: { label: 'shared', file: 'a.js', symbol: 'shared', parent: null, line: 1, end: 3 } },
+            { t: ' then ' },
+            { ref: { label: 'inner', file: 'b.js', symbol: 'inner', parent: 'outer', line: 5, end: 5 } },
+            { t: ' and `nothingHere` in ' },
+            { ref: { label: 'b.js', file: 'b.js', symbol: null, parent: null, line: 1, end: null } },
+            { t: '.' },
+        ]);
+    });
+
+    it('pins a file with `file.js:name` and a parent with `Parent.name`', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([chapter({ body: ['`c.js:shared` and `outer.inner`.'] })]), symbols, tours, areas, warn);
+        expect(warn).not.toHaveBeenCalled();
+        expect(refs(out.chapters[0]).map((r) => [r.label, r.file, r.line])).toEqual([['c.js:shared', 'c.js', 1], ['outer.inner', 'b.js', 5]]);
+    });
+
+    it('flags an ambiguous name and a missing pinned file as stale and keeps them as text', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([chapter({ files: [], body: ['`shared` and `gone.js:shared` and `gone.js`.'] })]), symbols, tours, areas, warn);
+        const ch = out.chapters[0];
+        expect(refs(ch)).toEqual([]);
+        expect(ch.paragraphs[0]).toEqual([{ t: '`shared` and `gone.js:shared` and `gone.js`.' }]);
+        expect(ch.stale).toBe(true);
+        expect(ch.warnings).toHaveLength(3);
+        expect(ch.warnings[0]).toMatch(/ambiguous \(3 defs\)/);
+        expect(ch.warnings[1]).toMatch(/pinned file "gone\.js"/);
+        expect(warn).toHaveBeenCalledTimes(3);
+    });
+
+    it('flags a missing file, tour or area and drops them', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([chapter({ files: ['a.js', 'nope.js'], tours: ['t1', 'nope'], area: 'nope' })]), symbols, tours, areas, warn);
+        const ch = out.chapters[0];
+        expect(ch.files).toEqual(['a.js']);
+        expect(ch.tours.map((t) => t.id)).toEqual(['t1']);
+        expect(ch.area).toBeNull();
+        expect(ch.stale).toBe(true);
+        expect(ch.warnings).toHaveLength(3);
+    });
+
+    it('resolves ahead to the target title and drops an unknown one with a warning', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([
+            chapter({ ahead: { chapter: 'c2', note: 'Later.' } }),
+            chapter({ id: 'c2', title: 'Two', ahead: { chapter: 'missing', note: 'x' } }),
+        ]), symbols, tours, areas, warn);
+        expect(out.chapters[0].ahead).toEqual({ chapter: 'c2', title: 'Two', note: 'Later.' });
+        expect(out.chapters[0].stale).toBe(false);
+        expect(out.chapters[1].ahead).toBeNull();
+        expect(out.chapters[1].stale).toBe(true);
+        expect(warn).toHaveBeenCalledTimes(1);
+    });
+
+    it('drops a chapter with no paragraphs, and any ahead link to it', () => {
+        const warn = vi.fn();
+        const out = compileBook(book([
+            chapter({ ahead: { chapter: 'empty', note: 'x' } }),
+            chapter({ id: 'empty', body: [] }),
+        ]), symbols, tours, areas, warn);
+        expect(out.chapters.map((c) => c.id)).toEqual(['c1']);
+        expect(out.chapters[0].ahead).toBeNull();
+        expect(out.chapters[0].stale).toBe(true);
+        expect(warn).toHaveBeenCalledTimes(2);
+    });
+
+    it('counts minutes at 200 words a minute, minimum 1', () => {
+        const words = (n) => Array(n).fill('word').join(' ');
+        const out = compileBook(book([chapter({ body: [words(300), words(300)] })]), symbols, tours, areas, vi.fn());
+        expect(out.chapters[0].minutes).toBe(3);
+    });
+
+    it('is deterministic: same input, byte-identical output', () => {
+        const doc = book([chapter({ body: ['`shared` and `outer.inner`.'], ahead: { chapter: 'c1', note: 'x' } })]);
+        const a = JSON.stringify(compileBook(doc, symbols, tours, areas, vi.fn()));
+        const b = JSON.stringify(compileBook(doc, symbols, tours, areas, vi.fn()));
+        expect(a).toBe(b);
+        expect(a).not.toMatch(/"generatedAt"|"sha"/);
+    });
+});
+
+describe('gen-src-manifest writeWebBook', () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    let root;
+    beforeEach(() => {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'gsb-'));
+        fs.mkdirSync(path.join(root, 'src'));
+        fs.mkdirSync(path.join(root, 'out'));
+        fs.writeFileSync(path.join(root, 'src', 'a.js'), 'function a() {\n    one();\n    two();\n    three();\n}\n');
+    });
+    afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+
+    it('writes nothing when codebook.json is absent', () => {
+        const opts = { srcDir: path.join(root, 'src'), outDir: path.join(root, 'out'), warn: vi.fn() };
+        expect(buildWebBook(opts)).toBeNull();
+        expect(writeWebBook(opts)).toBeNull();
+        expect(fs.existsSync(path.join(root, 'out', 'src-book.json'))).toBe(false);
+    });
+
+    it('writes a deterministic src-book.json with tours from the same run', () => {
+        const step = (m) => ({ file: 'a.js', symbol: 'a', match: [m], title: 'T', why: 'W' });
+        fs.writeFileSync(path.join(root, 'codetour.json'), JSON.stringify({ version: 1, sections: [], tours: [{ id: 'x', section: 's', title: 'X', recap: [], steps: [step('one'), step('two'), step('three')] }] }));
+        fs.writeFileSync(path.join(root, 'codebook.json'), JSON.stringify({ version: 1, title: 'B', chapters: [{ id: 'c', title: 'C', area: null, files: ['a.js'], tours: ['x'], body: ['See `a`.'] }] }));
+        const opts = { srcDir: path.join(root, 'src'), outDir: path.join(root, 'out'), warn: vi.fn() };
+        writeWebBook(opts);
+        const first = fs.readFileSync(path.join(root, 'out', 'src-book.json'), 'utf8');
+        writeWebBook(opts);
+        expect(fs.readFileSync(path.join(root, 'out', 'src-book.json'), 'utf8')).toBe(first);
+        const parsed = JSON.parse(first);
+        expect(parsed.chapters[0].tours).toEqual([{ id: 'x', title: 'X', steps: 3 }]);
+        expect(parsed.chapters[0].paragraphs[0][1].ref).toMatchObject({ file: 'a.js', symbol: 'a', line: 1, end: 5 });
+        expect(opts.warn).not.toHaveBeenCalled();
+    });
+});
+
+// Keeps the real book fresh: a change that breaks a reference must update
+// codebook.json in the same PR.
+describe('gen-src-manifest real codebook.json', () => {
+    const path = require('path');
+    const warn = vi.fn();
+    const doc = require('../codebook.json');
+    const tourDoc = require('../codetour.json');
+    const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+
+    it('compiles every chapter with zero warnings', () => {
+        expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
+        expect(book.chapters.length).toBe(doc.chapters.length);
+        book.chapters.forEach((c) => {
+            expect(c.stale).toBe(false);
+            expect(c.paragraphs.flat().some((s) => s.ref)).toBe(true);
+        });
+    });
+
+    it('has 8–10 chapters, titles ≤ 60 chars and 3–8 paragraphs each', () => {
+        expect(doc.chapters.length).toBeGreaterThanOrEqual(8);
+        expect(doc.chapters.length).toBeLessThanOrEqual(10);
+        doc.chapters.forEach((c) => {
+            expect(c.title.length).toBeLessThanOrEqual(60);
+            expect(c.body.length).toBeGreaterThanOrEqual(3);
+            expect(c.body.length).toBeLessThanOrEqual(8);
+        });
+    });
+
+    it('names files and tours that exist, and areas from codemap.json', () => {
+        const symbols = buildWebSymbols({ srcDir: path.resolve(__dirname, '..', 'src') });
+        const tourIds = new Set(tourDoc.tours.map((t) => t.id));
+        const areaIds = new Set(require('../codemap.json').areas.map((a) => a.id));
+        doc.chapters.forEach((c) => {
+            c.files.forEach((f) => expect(symbols.files).toHaveProperty([f]));
+            c.tours.forEach((t) => expect(tourIds.has(t)).toBe(true));
+            if (c.area !== null) expect(areaIds.has(c.area)).toBe(true);
+        });
+    });
+
+    it('follows the six tour sections top-down and covers every tour once', () => {
+        const order = tourDoc.sections.map((s) => s.id);
+        const sectionOf = {};
+        tourDoc.tours.forEach((t) => { sectionOf[t.id] = order.indexOf(t.section); });
+        const seq = doc.chapters.flatMap((c) => c.tours.map((t) => sectionOf[t]));
+        expect(seq).toEqual([...seq].sort((a, b) => a - b));
+        expect(doc.chapters[0].files.slice(0, 2)).toEqual(['index.js', 'main.js']);
+        expect(doc.chapters.flatMap((c) => c.tours).sort()).toEqual(tourDoc.tours.map((t) => t.id).sort());
+    });
+});
