@@ -17680,68 +17680,65 @@ body.row-dragging * { cursor: grabbing !important; }
     background: var(--bg-base);
   }
 
-  /* ── PROBE: nominal root scrollability vs. the iOS standalone
-     keyboard-shrink bug ──
+  /* ── PROBE: nominal scrollability vs. the iOS standalone keyboard-shrink
+     bug, carried by a child scroller ──
      Differential testing isolated that bug to NON-scrollable shells: an app
-     whose document can scroll never shrinks, because WebKit reveals a focused
-     input by scrolling the page instead of resizing the layout viewport. Three
-     things lock this document flat today — the global `body { overflow:
-     hidden }`, `html, body { height: 100% }`, and the `min-height: 100dvh`
-     above — so the root has exactly zero scrollable slack and WebKit is left
-     with only the resize path.
+     with a scrollable surface never shrinks, because WebKit reveals a focused
+     input by scrolling instead of resizing the layout viewport. An earlier
+     probe gave the DOCUMENT that surface (1px of root slack via body
+     `overflow-y: auto` + a `body::after` spacer), but a scrollable root is the
+     likely trigger for iOS standalone starting the layout viewport ~53px short
+     at launch and growing it over ~2s — the tab bar / FAB slide that
+     viewportSettle.js masks.
 
-     This block hands the root the smallest slack that could flip that
-     decision: one pixel. `overflow-y: auto` on body propagates to the viewport
-     (the html element's overflow is `visible`, so body's value is the one that
-     propagates) and the `body::after` spacer extends the document exactly 1px
-     past the dynamic viewport. Only the y axis is unlocked — the base rule's
-     `overflow-x: hidden` survives, so no surface gains a horizontal scroll.
-     `overscroll-behavior-y: none` keeps the newly-scrollable root from
-     rubber-banding, and the root scrollbar is suppressed so the 1px of travel
-     never paints a 4px gutter on classic-scrollbar platforms (touch devices
-     use overlay bars and were never affected).
+     So the slack moves off the root onto #outerContainer (Apple Developer
+     Forums thread 799216): the document is flat again — body keeps
+     `overflow-y: hidden` here, with no spacer and no root scrollbar rules —
+     and the shell rule below switches from `overflow: hidden` to
+     `overflow-y: auto` with exactly 1px of travel. That pixel comes from an
+     `#outerContainer::after` spacer placed in the final zero-height grid
+     track: the track stays `0`, so no track size changes, and the 1px spacer
+     simply overflows the 100dvh box. `overflow-x` stays hidden,
+     `overscroll-behavior-y: none` keeps the shell from rubber-banding, and
+     its scrollbar is suppressed so the 1px never paints a gutter.
 
-     #outerContainer is deliberately untouched: it keeps `height: 100dvh;
-     overflow: hidden`, so the shell still owns its own clipping and the 1px
-     lives entirely outside it. Reading the touch-gesture modules confirms the
-     slack cannot steal a gesture — #mainList is its own `overflow-y: auto`
+     The same reading of the touch-gesture modules that cleared the root
+     probe clears the child — #mainList is its own `overflow-y: auto`
      scroller and consumes vertical touches first, the swipe-on-title handler
      (#mobileProjTitleRow, `touch-action: pan-y`) abandons the gesture the
      moment it reads vertical dominance, and the sheet swipe-down handlers ride
      fixed-position overlays. No `touch-action` change was needed.
 
-     This is a PROBE, not a fix: the verdict is the installed-app Diagnostics
-     reading after a keyboard cycle, and a negative reading means this block
-     (plus the `body::after` spacer) is removed again in one piece. */
-  html,
+     This is a PROBE, not a fix: the verdict is the installed-app launch (no
+     tab bar / FAB slide, viewportSettle never engaging) and the Diagnostics
+     reading after a keyboard cycle; a negative reading means this block, the
+     spacer and the shell's overflow override are reverted in one piece. */
   body {
-    overscroll-behavior-y: none;
-    scrollbar-width: none;
+    overflow-y: hidden;
   }
 
-  html::-webkit-scrollbar,
-  body::-webkit-scrollbar {
-    display: none;
-  }
-
-  body {
-    overflow-y: auto;
-  }
-
-  /* The 1px of document slack. A spacer rather than folding `+ 1px` into the
-     canvas rule's `min-height: 100dvh` above, so that declaration and the
-     rationale governing it stay exactly as they are and this probe stays
-     removable on its own. */
-  body::after {
+  /* The 1px of shell slack, in the last (fixed `0`) grid track so it
+     overflows #outerContainer without resizing any track. */
+  #outerContainer::after {
     content: '';
     display: block;
+    grid-row: 4;
+    grid-column: 1;
     height: 1px;
+  }
+
+  #outerContainer::-webkit-scrollbar {
+    display: none;
   }
 
   #outerContainer {
     border-radius: 0;
     border: none;
     height: 100dvh;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: none;
+    scrollbar-width: none;
     /* Mobile collapses the nav and footer grid tracks entirely so the
        middle track owns the full viewport. The persistent #mobileTabBar
        anchors to the bottom edge (bottom: 0) and absorbs the home-indicator
