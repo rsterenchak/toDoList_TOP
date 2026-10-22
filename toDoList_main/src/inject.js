@@ -1106,6 +1106,32 @@ export async function dispatchDerive(projectId, correlationId, target) {
 }
 
 
+// Dispatch a code-book run through the same Worker the other dispatch flows use
+// (same URL + Bearer secret). POSTs
+// `{ dispatch_book: true, scope, correlation_id, repo, filePath }` so the Worker
+// fires the book workflow against the project's linked repo, rewriting every
+// chapter (`scope: 'all'`) or only the stale ones (`scope: 'stale'`). Like the
+// scan this is a fire-and-forget batch — the Understanding view tracks the run
+// through the book-scoped active_runs probe and re-reads src-book.json when it
+// settles. Mirrors dispatchDerive's shape: the Worker payload
+// (`{ dispatched, book, scope }`) is spread onto `{ ok: true }` on success; on any
+// failure it returns `{ ok: false, reason }` via describeError.
+export async function dispatchBook(scope, correlationId, target) {
+    try {
+        const res = await postToWorker({
+            dispatch_book: true,
+            scope: scope,
+            correlation_id: correlationId,
+            repo: target ? target.repo : undefined,
+            filePath: target ? target.file_path : undefined,
+        });
+        return Object.assign({ ok: true }, res || {});
+    } catch (e) {
+        return { ok: false, reason: describeError(e) };
+    }
+}
+
+
 // Dispatch a "scan" run through the same Worker the dispatch, triage, and derive
 // flows already use (same URL + Bearer secret). POSTs
 // `{ dispatch_scan: true, correlation_id, repo, filePath }` so the Worker fires
@@ -1296,6 +1322,7 @@ export async function pollRunStatus(options) {
 // in-flight state. When `workflow` is passed (e.g. `'triage'`), it is included
 // in the body so the Worker scopes the probe to that workflow's runs
 // (`claude-triage.yml`) rather than the default ship workflow (`claude-run.yml`);
+// `'book'` scopes it to the code-book run the Understanding view dispatches;
 // existing callers pass just `target`, so the field is omitted and behavior is
 // unchanged. The parsed response — `{ active, count, newest }` — is spread onto
 // an `{ ok: true }` envelope, mirroring pollRunStatus. Returns

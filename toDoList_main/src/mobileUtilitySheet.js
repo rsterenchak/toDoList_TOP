@@ -43,7 +43,7 @@ export function createMobileUtilitySheet(deps) {
     } = deps;
 
     // ── Persistent bottom tab bar (mobile only) ──
-    // Two destinations — Stream and Structure — pinned to the
+    // Three destinations — Stream, Understanding and Structure — pinned to the
     // bottom of the viewport at ≤1023px. Tapping a tab routes through
     // applyActiveView() so the same code path drives mobile tabs and the
     // desktop pill switcher; the active tab class is set in
@@ -109,7 +109,15 @@ export function createMobileUtilitySheet(deps) {
         '<path d="M4 16.5 L12 20.5 L20 16.5"/>' +
         '</svg>';
 
-    // Two destinations — Stream and Structure. The AGENT tab was retired: the
+    // Understanding — an open-book glyph for the repo's code book, path
+    // primitives like the others (no icon library).
+    const ICON_BOOK =
+        '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">' +
+        '<path d="M3 5.5 C6 4.5 9 4.5 12 6.5 L12 19.5 C9 17.5 6 17.5 3 18.5 Z"/>' +
+        '<path d="M21 5.5 C18 4.5 15 4.5 12 6.5 L12 19.5 C15 17.5 18 17.5 21 18.5 Z"/>' +
+        '</svg>';
+
+    // Three destinations — Stream, Understanding and Structure. The AGENT tab was retired: the
     // Agent board's blocked-on-you states (DRAFTED / STUCK / MOCKUP) now reach
     // the task row's phase badge, so the board is a routed destination reached
     // by tapping those badges rather than a tab. The Agent view stays mounted
@@ -117,9 +125,18 @@ export function createMobileUtilitySheet(deps) {
     // aria-label / selectors keyed off it) stay put; only the visible label
     // changes to "Stream".
     const mobileTabProjects = buildMobileTab('projects', 'Projects', ICON_LIST, 'Stream');
+    const mobileTabUnderstanding = buildMobileTab('understanding', 'Understanding', ICON_BOOK);
     const mobileTabStructure = buildMobileTab('structure', 'Structure', ICON_STRUCTURE);
     mobileTabProjects.id = 'mobileTabProjects';
+    mobileTabUnderstanding.id = 'mobileTabUnderstanding';
     mobileTabStructure.id = 'mobileTabStructure';
+
+    // The book needs a routed repo too, so UNDERSTANDING carries the same
+    // hollow no-repo marker as STRUCTURE below.
+    const mobileTabUnderstandingMarker = document.createElement('span');
+    mobileTabUnderstandingMarker.className = 'agentNoRepoMarker';
+    mobileTabUnderstandingMarker.setAttribute('aria-hidden', 'true');
+    mobileTabUnderstanding.appendChild(mobileTabUnderstandingMarker);
 
     // Same hollow "no-repo" marker on the STRUCTURE tab — a repo-less project
     // can't be mapped, so the tab stays tappable (it opens the unlinked-repo
@@ -140,6 +157,7 @@ export function createMobileUtilitySheet(deps) {
     mobileTabProjects.appendChild(mobileTabProjectsWorkingDot);
 
     mobileTabBar.appendChild(mobileTabProjects);
+    mobileTabBar.appendChild(mobileTabUnderstanding);
     mobileTabBar.appendChild(mobileTabStructure);
     base.appendChild(mobileTabBar);
 

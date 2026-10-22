@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-22',
+        added: [
+            'A new Understanding tab, between Stream and Structure, shows the linked repo\'s code book as a shelf of chapters with reading times, stale chapters marked in amber, and a button to generate or refresh the book.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-21',
         fixed: [
             'The ghost companion no longer appears on the sign-in screen, leaves when you sign out and comes back when you sign in again.',
@@ -23,9 +30,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-10-11',
-        added: [
-            'Names in the Structure tab\'s code viewer can now be tapped to peek at where they are defined, traced further from inside the peek, or opened with a trail bar to step back, with a picker when several definitions match.',
-        ],
         changed: [
             'On desktop, the Structure tab\'s Map view now spreads across three columns, with a list of areas on the left, the map and file list in the middle, and the open file\'s code on the right.',
         ],

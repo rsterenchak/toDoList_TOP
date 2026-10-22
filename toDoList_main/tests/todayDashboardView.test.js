@@ -104,12 +104,12 @@ describe('Stream / Structure view switcher', () => {
             expect(main).toMatch(/viewPillStructure\.addEventListener\('click'[\s\S]{0,200}applyActiveView\(\s*['"]structure['"]/);
         });
 
-        it('appends pills in STREAM, STRUCTURE order', () => {
-            // Visual order in the top bar: STREAM first, then STRUCTURE.
-            // Pinned so a future refactor can't silently re-shuffle the
-            // pill sequence.
+        it('appends pills in STREAM, UNDERSTANDING, STRUCTURE order', () => {
+            // Visual order in the top bar: STREAM first, then UNDERSTANDING,
+            // then STRUCTURE. Pinned so a future refactor can't silently
+            // re-shuffle the pill sequence.
             expect(main).toMatch(
-                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillStructure\s*\)/
+                /viewSwitcher\.appendChild\(\s*viewPillProjects\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillUnderstanding\s*\)\s*;\s*\n\s*viewSwitcher\.appendChild\(\s*viewPillStructure\s*\)/
             );
         });
     });

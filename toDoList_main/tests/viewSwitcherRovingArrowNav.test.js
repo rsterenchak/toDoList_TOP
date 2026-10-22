@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
+import { createViewSwitcher } from '../src/viewSwitcher.js';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const srcDir = resolve(here, '../src');
@@ -62,7 +63,17 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
         // AGENT pill was retired, so the switcher is STREAM + STRUCTURE.
         expect(main).toMatch(/viewPillProjects\.addEventListener\(\s*['"]keydown['"]\s*,\s*viewSwitcherArrowNav/);
         expect(main).toMatch(/viewPillStructure\.addEventListener\(\s*['"]keydown['"]\s*,\s*viewSwitcherArrowNav/);
+        expect(main).toMatch(/viewPillUnderstanding\.addEventListener\(\s*['"]keydown['"]\s*,\s*viewSwitcherArrowNav/);
         expect(main).not.toMatch(/viewPillAgent\.addEventListener/);
+    });
+
+    it('orders the three pills STREAM · UNDERSTANDING · STRUCTURE in the roving set', () => {
+        expect(main).toMatch(/const viewSwitcherPills = \[viewPillProjects, viewPillUnderstanding, viewPillStructure\]/);
+        expect(main).toMatch(/viewPillUnderstanding\.textContent = 'UNDERSTANDING'/);
+        const order = ['viewSwitcher.appendChild(viewPillProjects)', 'viewSwitcher.appendChild(viewPillUnderstanding)', 'viewSwitcher.appendChild(viewPillStructure)']
+            .map((sig) => main.indexOf(sig));
+        expect(order.every((i) => i > -1)).toBe(true);
+        expect(order).toEqual([...order].sort((a, b) => a - b));
     });
 
     it('the arrow-nav handler only acts on unmodified Left/Right and bails on modal/popover', () => {
@@ -123,6 +134,7 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
         // the roving marker the nav walk also uses to enter the group.
         expect(body).toMatch(/pillProjects\.setAttribute\(\s*['"]tabindex['"]\s*,\s*safe === 'projects' \? '0' : '-1'\s*\)/);
         expect(body).toMatch(/pillStructure\.setAttribute\(\s*['"]tabindex['"]\s*,\s*safe === 'structure' \? '0' : '-1'\s*\)/);
+        expect(body).toMatch(/pillUnderstanding\.setAttribute\(\s*['"]tabindex['"]\s*,\s*safe === 'understanding' \? '0' : '-1'\s*\)/);
         expect(body).not.toMatch(/pillAgent\.setAttribute/);
     });
 
@@ -134,5 +146,49 @@ describe('view-switcher roving-tabindex arrow-key navigation', () => {
         // stop pinned to Task View.
         expect(body).toMatch(/#viewSwitcher \.viewPill\[tabindex="0"\]/);
         expect(body).toMatch(/nextBtn === viewPillProjects/);
+    });
+});
+
+// Behavioural check of the arrow walk across three pills: Right from the last
+// wraps to the first, Left from the first wraps to the last, and the middle pill
+// is reachable in both directions.
+describe('view-switcher arrow walk across three pills', () => {
+    let pills;
+    let nav;
+    beforeEach(() => {
+        document.body.innerHTML = '';
+        pills = ['viewPillProjects', 'viewPillUnderstanding', 'viewPillStructure'].map((id, i) => {
+            const b = document.createElement('button');
+            b.id = id;
+            b.setAttribute('tabindex', i === 0 ? '0' : '-1');
+            document.body.appendChild(b);
+            return b;
+        });
+        nav = createViewSwitcher({ viewSwitcherPills: pills }).viewSwitcherArrowNav;
+        pills.forEach((p) => p.addEventListener('keydown', nav));
+    });
+
+    function press(el, key) {
+        el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+    }
+
+    it('ArrowRight walks STREAM → UNDERSTANDING → STRUCTURE → STREAM', () => {
+        pills[0].focus();
+        press(pills[0], 'ArrowRight');
+        expect(document.activeElement).toBe(pills[1]);
+        press(pills[1], 'ArrowRight');
+        expect(document.activeElement).toBe(pills[2]);
+        press(pills[2], 'ArrowRight');
+        expect(document.activeElement).toBe(pills[0]);
+        expect(pills.map((p) => p.getAttribute('tabindex'))).toEqual(['0', '-1', '-1']);
+    });
+
+    it('ArrowLeft from STREAM wraps to STRUCTURE, then lands on UNDERSTANDING', () => {
+        pills[0].focus();
+        press(pills[0], 'ArrowLeft');
+        expect(document.activeElement).toBe(pills[2]);
+        press(pills[2], 'ArrowLeft');
+        expect(document.activeElement).toBe(pills[1]);
+        expect(pills.map((p) => p.getAttribute('tabindex'))).toEqual(['-1', '0', '-1']);
     });
 });

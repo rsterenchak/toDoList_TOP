@@ -2468,7 +2468,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codebook.json`, `toDoList_main/tests/genSrcManifest.test.js`, `CLAUDE.md`
   <!-- id: 3d0124e9-baa3-4686-9785-a01828f07a0b -->
 
-- [ ] **[MEDIUM]** Add the Understanding tab with a chapter shelf read from src-book.json
+- [x] **[MEDIUM]** Add the Understanding tab with a chapter shelf read from src-book.json — Completed: 2026-10-22
   - Type: feature
   - Description: Add a third top-level view, Understanding, between Stream and Structure, that renders the repo's code book — the chapters `scripts/gen-src-manifest.js` compiles from `codebook.json` into the published `src-book.json` — as a shelf: a header with chapter count, total reading time and a generate/stale control, a continue card for the first chapter, then the ordered chapter list. This entry is the tab and the shelf only; chapter rows and the continue card render inert, and the reader that opens them is the next entry. Follow the shelf mockup (header chips, continue card, numbered rows with minutes, amber STALE tag) in Void tokens. At 1300x900 the view pill bar reads STREAM · UNDERSTANDING · STRUCTURE and the shelf fills the main pane like Structure does; at 390x844 the bottom tab bar shows three tabs with Understanding active and the shelf scrolls under a fixed header.
   - Behavior:
