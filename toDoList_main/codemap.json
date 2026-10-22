@@ -80,6 +80,7 @@
         "desktopHeaderPlacement.js",
         "viewport.js",
         "viewportHeal.js",
+        "viewportSettle.js",
         "theme.js",
         "coachmark.js",
         "welcomeCarousel.js",

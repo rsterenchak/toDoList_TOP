@@ -27716,3 +27716,29 @@ body.appLocked { overflow: hidden; }
      until it closes. */
   #structureView > .structureCanvasHost.is-touring > :not(.tourPlayer) { display: none; }
 }
+
+/* LAUNCH VIEWPORT SETTLE — mobile. In iOS standalone the layout viewport
+   starts short at launch and grows to full height after first paint, so the
+   bottom-anchored tab bar and FAB would slide down with it. viewportSettle.js
+   holds `viewportSettling` on the body until the viewport settles; both stay
+   transparent (opacity only — the hidden-by-* display classes keep working)
+   and fade in at their final position. */
+@media (max-width: 1023px) {
+  #mobileTabBar {
+    transition: opacity 0.18s ease;
+  }
+  #claudeLauncher {
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease, opacity 0.18s ease;
+  }
+  body.viewportSettling #mobileTabBar,
+  body.viewportSettling #claudeLauncher {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+@media (max-width: 1023px) and (prefers-reduced-motion: reduce) {
+  #mobileTabBar { transition: none; }
+  #claudeLauncher {
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
+  }
+}
