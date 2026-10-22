@@ -446,6 +446,37 @@ export function setTourCardHidden(repo, hidden) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Understanding tab reading position ──
+// Per-repo `{ chapterId, paraIndex, pct, updatedAt }`, kept in one object keyed
+// by repo like TOUR_PROGRESS_KEY. bookProgress.js owns the record and mirrors it
+// to Supabase; this is only the local copy.
+export const BOOK_PROGRESS_KEY = 'todoapp_bookProgress';
+
+// The repo's reading record, or null when none is stored or it is malformed.
+export function getBookProgress(repo) {
+    if (!repo) return null;
+    const val = readJsonObject(BOOK_PROGRESS_KEY)[repo];
+    if (!val || typeof val !== 'object' || typeof val.chapterId !== 'string' || !val.chapterId) return null;
+    const para = Number(val.paraIndex);
+    const pct = Number(val.pct);
+    return {
+        chapterId: val.chapterId,
+        paraIndex: Number.isFinite(para) && para > 0 ? Math.floor(para) : 0,
+        pct: Number.isFinite(pct) ? Math.min(1, Math.max(0, pct)) : 0,
+        updatedAt: typeof val.updatedAt === 'string' ? val.updatedAt : '',
+    };
+}
+
+export function setBookProgress(repo, record) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(BOOK_PROGRESS_KEY);
+        if (record && typeof record === 'object') store[repo] = record;
+        else delete store[repo];
+        localStorage.setItem(BOOK_PROGRESS_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is

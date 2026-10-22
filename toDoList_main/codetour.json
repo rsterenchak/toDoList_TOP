@@ -3035,16 +3035,16 @@
           "file": "structureView.js",
           "symbol": "codeViewerHost",
           "match": [
-            "return structureIsDesktop() ? currentCanvasHost : ensureCodeSheet();"
+            "return structureIsDesktop() ? currentCanvasHost : codeSheet.ensure();"
           ],
           "title": "Desktop column or mobile sheet.",
           "why": "Wider than 1023px, the file opens in the detail column. Narrower, in a full-screen sheet."
         },
         {
-          "file": "structureView.js",
-          "symbol": "ensureCodeSheet",
+          "file": "codeSheet.js",
+          "symbol": "createCodeSheet",
           "match": [
-            "if (event.target === backdrop) hideCodeSheet();",
+            "if (event.target === backdrop) hide();",
             "if (event.key !== 'Escape') return;"
           ],
           "title": "The sheet closes on backdrop or Escape.",

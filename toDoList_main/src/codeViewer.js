@@ -96,12 +96,13 @@ const changeListeners = new Set();
 // whether an explainer exists.
 let explainHandler = null;
 
-// An optional veto on the header's close button, registered by whoever hosts the
+// Optional vetoes on the header's close button, registered by whoever hosts the
 // viewer somewhere that closing means more than emptying the column — the mobile
 // sheet dismisses itself and deliberately KEEPS the file open, so the tree row
-// that opened it stays selected. Returning true claims the click; anything else
-// falls through to the default clear.
-let closeHandler = null;
+// that opened it stays selected. Each view registers its own and answers only for
+// its own hosts; the first to return true claims the click, and when none does
+// the default clear runs.
+const closeHandlers = [];
 
 // The trace trail: the points the user jumped away from, oldest first, each
 // `{ repo, srcRoot, filePath, line, label }`. One trail, like one viewer.
@@ -202,9 +203,14 @@ export function setCodeViewerExplainHandler(fn) {
 
 // Register a close interceptor. It is called with the host element the pane sits
 // in; returning true means the host handled the close and the viewer must NOT be
-// cleared. Passing a non-function unregisters.
+// cleared. Returns a function that unregisters it.
 export function setCodeViewerCloseHandler(fn) {
-    closeHandler = typeof fn === 'function' ? fn : null;
+    if (typeof fn !== 'function') return function () {};
+    closeHandlers.push(fn);
+    return function () {
+        const i = closeHandlers.indexOf(fn);
+        if (i !== -1) closeHandlers.splice(i, 1);
+    };
 }
 
 // Subscribe to open/close transitions. Returns an unsubscribe function.
@@ -566,7 +572,9 @@ function buildPane() {
     close.addEventListener('click', function () {
         const host = pane.parentElement;
         if (!host) return;
-        if (closeHandler && closeHandler(host) === true) return;
+        for (let i = 0; i < closeHandlers.length; i++) {
+            if (closeHandlers[i](host) === true) return;
+        }
         clearCodeViewer(host);
     });
     explain.addEventListener('click', function () {
@@ -1064,6 +1072,11 @@ export function renderCodeViewer(host, opts) {
     const target = opts.target;
     const filePath = String(opts.filePath || '');
     if (!target || !target.repo || !filePath) return null;
+
+    // One viewer at a time: opening into a different host (another view's column
+    // or sheet) empties the one that was showing, so no surface keeps reporting
+    // a file it has stopped being the home of.
+    if (active && active.host !== host) clearCodeViewer(active.host);
 
     const hl = normalizeSpan(opts.startLine, opts.endLine);
     const gen = ++renderGen;

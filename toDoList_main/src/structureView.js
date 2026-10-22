@@ -71,6 +71,7 @@ import {
     setCodeViewerCloseHandler,
 } from './codeViewer.js';
 import { joinSrcRootPath } from './srcPath.js';
+import { createCodeSheet } from './codeSheet.js';
 import { buildComplexityChip, setComplexityScans } from './complexityHotspots.js';
 import { listLogic } from './listLogic.js';
 import { deriveAreaGraph, linksFor, formatLines, areaFiles } from './codeMapModel.js';
@@ -168,90 +169,17 @@ function resolveCanvasHost() {
 }
 
 // ── CODE VIEWER HOST ────────────────────────────────────────────────────────
-// The code viewer takes its host as an argument, so giving it a mobile home is a
-// matter of mounting a second container rather than teaching the module about
-// breakpoints: desktop keeps the detail column, and below 1024px — where there is
-// no detail column — the same pane fills a full-screen sheet over the tab.
-//
-// The sheet is built once and left in the document, hidden, so the pane it hosts
-// (and the viewer state pointing at it) survives a close. That is what lets the
-// sheet's close return to the tree with the tapped row STILL selected: dismissing
-// the sheet doesn't clear the viewer, it only stops showing it.
-let codeSheetEl = null;
-let codeSheetHost = null;
-
-function ensureCodeSheet() {
-    // Rebuild when the node has been detached (a test harness resetting the body);
-    // the module-scoped guards below make the extra key listener a no-op.
-    if (codeSheetEl && codeSheetEl.parentNode) return codeSheetHost;
-    if (typeof document === 'undefined' || !document.body) return null;
-
-    const backdrop = document.createElement('div');
-    backdrop.id = 'structureCodeSheet';
-    backdrop.className = 'structureCodeSheet';
-    backdrop.hidden = true;
-
-    const panel = document.createElement('div');
-    panel.className = 'structureCodeSheetPanel';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-modal', 'true');
-    panel.setAttribute('aria-label', 'File source');
-
-    const host = document.createElement('div');
-    host.className = 'structureCodeSheetHost';
-    panel.appendChild(host);
-    backdrop.appendChild(panel);
-
-    // Close affordances: the pane's own ✕ (claimed through the close handler
-    // registered below), the backdrop, and Escape.
-    backdrop.addEventListener('click', function (event) {
-        if (event.target === backdrop) hideCodeSheet();
-    });
-    document.addEventListener('keydown', function (event) {
-        if (event.key !== 'Escape') return;
-        if (!codeSheetEl || codeSheetEl.hidden) return;
-        event.preventDefault();
-        event.stopPropagation();
-        hideCodeSheet();
-    }, true);
-
-    document.body.appendChild(backdrop);
-    codeSheetEl = backdrop;
-    codeSheetHost = host;
-    return host;
-}
-
-function hideCodeSheet() {
-    if (codeSheetEl) codeSheetEl.hidden = true;
-}
-
-// Dismiss the sheet AND drop what it was showing. Used where the file itself is
-// no longer addressable from the surface behind it — a lens repaint or a resize
-// onto desktop — as opposed to a plain close, which keeps the file open.
-function resetCodeSheet() {
-    // Skip a detached sheet: clearing it would rebuild the viewer's shell inside
-    // an element nothing can see.
-    if (codeSheetHost && codeSheetEl && codeSheetEl.parentNode) clearCodeViewer(codeSheetHost);
-    hideCodeSheet();
-}
-
-// Reveal or hide the sheet from what its host is actually showing, so every
-// opener — a row tap here, the refactor card's jump chip — reveals it just by
-// rendering into the host, and none of them needs to know how it is shown.
-// Desktop is gated here rather than in CSS: it is the one place that can reveal
-// the sheet, so refusing above 1023px is enough to guarantee a full-screen overlay
-// never lands on the two-column layout.
-function syncCodeSheetVisibility() {
-    if (!codeSheetEl || !codeSheetHost) return;
-    const pane = codeSheetHost.querySelector(':scope > .codeViewerPane');
-    if (pane && !pane.hidden && !structureIsDesktop()) codeSheetEl.hidden = false;
-    else hideCodeSheet();
-}
+// Desktop keeps the detail column; below 1024px — where there is no detail
+// column — the same pane fills the shared full-screen sheet (codeSheet.js). A
+// sheet close keeps the file open, so the tree row that opened it is STILL
+// selected when the sheet goes away. Every opener — a row tap here, the refactor
+// card's jump chip — reveals it just by rendering into its host.
+const codeSheet = createCodeSheet({ id: 'structureCodeSheet', label: 'File source', isDesktop: structureIsDesktop });
 
 // Where the code viewer lives at the current viewport, or null when there is
 // nowhere to put it (the detail column hasn't been mounted yet).
 function codeViewerHost() {
-    return structureIsDesktop() ? currentCanvasHost : ensureCodeSheet();
+    return structureIsDesktop() ? currentCanvasHost : codeSheet.ensure();
 }
 
 // The active repo's manifest-declared second lens and its type outline:
@@ -836,7 +764,7 @@ function applyFileRowSelection() {
 // One module-level subscription: the viewer outlives any single tree paint, and
 // openers other than a row tap must still move the selection.
 onCodeViewerChange(applyFileRowSelection);
-onCodeViewerChange(syncCodeSheetVisibility);
+onCodeViewerChange(codeSheet.sync);
 
 // The viewer supplies the Explain button; the explaining is still done here,
 // because the cache is keyed by the manifest SHA this module owns. Registered
@@ -917,11 +845,13 @@ export function resetStructureCodeMemory() {
 // selected when the sheet goes away. Every other host keeps the default clear,
 // and that clear is an explicit close: the file is forgotten with it.
 setCodeViewerCloseHandler(function (host) {
-    if (!codeSheetHost || host !== codeSheetHost) {
+    if (!codeSheet.host() || host !== codeSheet.host()) {
+        // Another view's host (the Understanding reader's) is its own to close.
+        if (host.closest && !host.closest('#structureView')) return false;
         forgetOpenCodeFile();
         return false;
     }
-    hideCodeSheet();
+    codeSheet.hide();
     return true;
 });
 
@@ -2811,7 +2741,7 @@ function renderLens(repo, treeEl) {
     // The mobile sheet's file is addressed from the tree this repaint is about to
     // rebuild, so it goes with it — otherwise a lens switch would leave a sheet
     // hanging over rows that no longer exist.
-    resetCodeSheet();
+    codeSheet.reset();
     // A tour docked in the code column goes with it; close it properly so its
     // progress and the column's hidden contents are restored first.
     if (currentCanvasHost && currentCanvasHost.classList.contains('is-touring')) closeTourPlayer();
@@ -4547,7 +4477,7 @@ export function syncStructureCanvasForViewport() {
     // The code sheet has no desktop counterpart — above 1024px the detail column
     // is where a file opens — so a resize past the breakpoint dismisses it rather
     // than leaving a full-screen overlay stranded over the two-column layout.
-    if (structureIsDesktop()) resetCodeSheet();
+    if (structureIsDesktop()) codeSheet.reset();
     if (lens !== 'map' && currentLens !== 'ui') return;
     if (structureIsDesktop() === canvasHostDesktop) return;
     renderLens(selectedRepo, currentTreeEl);

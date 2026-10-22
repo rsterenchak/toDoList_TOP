@@ -5182,13 +5182,25 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 .understandingChapterRow {
+  border-bottom: 1px solid var(--border-dim);
+}
+
+/* The whole row is one button that opens the chapter in the reader. */
+.understandingChapterBtn {
   display: flex;
   align-items: baseline;
   gap: 12px;
+  width: 100%;
   min-height: 44px;
   padding: 12px 4px;
-  border-bottom: 1px solid var(--border-dim);
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
 }
+.understandingChapterBtn:hover .understandingChapterTitle { color: var(--accent-text); }
 
 .understandingChapterNum {
   flex: 0 0 auto;
@@ -5213,6 +5225,241 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .understandingChapterMinutes { color: var(--text-secondary); }
 .understandingChapterStale { color: var(--text-warning); font-weight: 700; letter-spacing: 0.08em; }
+.understandingChapterDone {
+  flex: 0 0 auto;
+  font-size: 13px;
+  color: var(--type-feature);
+}
+
+/* ── UNDERSTANDING READER ──
+   One chapter at a time: a top bar (back chip + repo chip), a 3px whole-book
+   progress bar with its position and minutes left, the reading column, and a
+   prev/next bar under it. On desktop a ref tap adds .understandingCodePane to the
+   right of the column and the column narrows to make room; on mobile it opens the
+   shared full-screen code sheet. The column is the only thing that scrolls. */
+#understandingView.is-reading {
+  padding-bottom: 0;
+}
+
+.understandingReader {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.understandingReaderTop {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.understandingBackChip {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: 999px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+.understandingBackChip:hover { border-color: var(--accent); }
+
+.understandingReaderProgress {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.understandingReaderBar {
+  height: 3px;
+  border-radius: 2px;
+  background: var(--border-bright);
+  overflow: hidden;
+}
+.understandingReaderBarFill {
+  width: 0;
+  height: 100%;
+  background: #6C5DF5;
+}
+
+.understandingReaderMeta {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.understandingReaderBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  gap: 16px;
+}
+
+.understandingReaderMain {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.understandingReaderScroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.understandingReaderCol {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 8px 0 32px;
+}
+
+.understandingReaderEyebrow {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+}
+
+.understandingReaderTitle {
+  margin: 6px 0 18px;
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--text-primary);
+}
+
+.understandingPara {
+  margin: 0 0 16px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: color-mix(in srgb, var(--text-primary) 86%, var(--bg-base));
+}
+
+.bookRef {
+  display: inline;
+  padding: 1px 6px;
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  cursor: pointer;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+.bookRef:hover { border-color: var(--accent); color: var(--accent-text); }
+
+.understandingAhead {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-mid);
+  border-left: 3px solid var(--text-warning);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.understandingAheadEyebrow {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-warning);
+}
+.understandingAheadNote {
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.understandingReaderNav {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--border-mid);
+  background: var(--bg-elevated);
+}
+
+.understandingNavPrev,
+.understandingNavNext {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  max-width: 48%;
+  min-height: 44px;
+  padding: 6px 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: 8px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  cursor: pointer;
+}
+.understandingNavPrev { text-align: left; }
+.understandingNavPrev[hidden] { display: none; }
+.understandingNavNext {
+  margin-left: auto;
+  align-items: flex-end;
+  justify-content: center;
+  text-align: right;
+  border-color: #6C5DF5;
+  background: #6C5DF5;
+  color: #fff;
+}
+.understandingNavEyebrow {
+  font-family: 'SpaceMono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+}
+.understandingNavTitle {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The desktop code pane beside the reading column. */
+.understandingCodePane {
+  flex: 0 0 min(52%, 760px);
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 12px;
+}
 
 /* The detail-column canvas host — a flat child of #structureView, in mobile source
    order after the tree. On mobile it stays empty (the block canvas mounts inline
@@ -7823,6 +8070,11 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   padding: 10px 12px 12px;
 }
 .structureCodeSheetHost > .codeViewerPane {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+/* The Understanding reader's desktop code pane absorbs its height the same way. */
+.understandingCodePane > .codeViewerPane {
   flex: 1 1 auto;
   min-height: 0;
 }
@@ -17920,6 +18172,11 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Understanding is the topmost chrome on this breakpoint for the same reason. */
   #understandingView {
     padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
+  }
+  /* The reader's prev/next bar is pinned above the floating tab bar. */
+  .understandingReaderNav {
+    margin: 0 -24px calc(var(--mobile-tab-h, 56px) + var(--mobile-bottom-inset, 0px));
+    padding: 10px 24px;
   }
 
   /* ── STACK mobile project header ──
