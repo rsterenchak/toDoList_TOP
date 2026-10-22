@@ -124,6 +124,7 @@ import {
 // what keeps those subsystems configured in the running app (see agentWiring.js).
 import './agentWiring.js';
 import { renderStructureView, captureStructureSnapshot, syncStructureCanvasForViewport, exitStructureLiveView } from './structureView.js';
+import { renderUnderstandingView, exitUnderstandingView } from './understandingView.js';
 import { setLocateTabSwitch } from './structureCanvas.js';
 import { setAppReloader } from './aboutVersionCue.js';
 import { attachDragDropImport } from './exportImport.js';
@@ -1019,7 +1020,7 @@ function component() {
     // STUCK / MOCKUP / REVIEW) now surface on the task row's phase badge and its
     // controls mount in the row's description panel (desktop) or the description-
     // editor modal (touch), so there is no AGENT tab to navigate to. The bar
-    // collapses to STREAM + STRUCTURE. The Agent view is no longer reachable —
+    // collapses to STREAM + UNDERSTANDING + STRUCTURE. The Agent view is no longer reachable —
     // main.js mounts no container for it and the view switch no longer accepts
     // 'agent'.
 
@@ -1037,11 +1038,30 @@ function component() {
     viewPillStructureMarker.setAttribute('aria-hidden', 'true');
     viewPillStructure.appendChild(viewPillStructureMarker);
 
+    // UNDERSTANDING — the repo's code book, read as a shelf of chapters. Sits
+    // between the two existing pills and carries the same no-repo marker as
+    // STRUCTURE, since the book needs a routed repo too.
+    const viewPillUnderstanding = document.createElement('button');
+    viewPillUnderstanding.id = 'viewPillUnderstanding';
+    viewPillUnderstanding.type = 'button';
+    viewPillUnderstanding.className = 'viewPill';
+    viewPillUnderstanding.setAttribute('role', 'tab');
+    viewPillUnderstanding.setAttribute('aria-pressed', 'false');
+    viewPillUnderstanding.textContent = 'UNDERSTANDING';
+    const viewPillUnderstandingMarker = document.createElement('span');
+    viewPillUnderstandingMarker.className = 'agentNoRepoMarker';
+    viewPillUnderstandingMarker.setAttribute('aria-hidden', 'true');
+    viewPillUnderstanding.appendChild(viewPillUnderstandingMarker);
+
     viewSwitcher.appendChild(viewPillProjects);
+    viewSwitcher.appendChild(viewPillUnderstanding);
     viewSwitcher.appendChild(viewPillStructure);
 
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
+    });
+    viewPillUnderstanding.addEventListener('click', function() {
+        applyActiveView('understanding');
     });
     viewPillStructure.addEventListener('click', function() {
         applyActiveView('structure');
@@ -1052,7 +1072,7 @@ function component() {
     // first project row transition for the content directly beneath the pills.
     viewPillProjects.addEventListener('keydown', dropFocusIntoMainView);
 
-    // Roving-tabindex ArrowLeft/ArrowRight navigation across the two view
+    // Roving-tabindex ArrowLeft/ArrowRight navigation across the three view
     // pills. The switcher is an ARIA tablist, so exactly one pill is in the Tab
     // order at a time (tabindex 0) while the others are tabindex -1; ArrowLeft /
     // ArrowRight move focus among them and hand the roving 0 to the newly-focused
@@ -1069,11 +1089,13 @@ function component() {
     // those keys. The nav walk still enters the switcher as one group via
     // viewSwitcherEntryPill(), so from the header chrome the switcher reads as a
     // single, internally-navigable stop rather than one fixed tab stop.
-    const viewSwitcherPills = [viewPillProjects, viewPillStructure];
+    const viewSwitcherPills = [viewPillProjects, viewPillUnderstanding, viewPillStructure];
     viewPillProjects.setAttribute('tabindex', '0');
+    viewPillUnderstanding.setAttribute('tabindex', '-1');
     viewPillStructure.setAttribute('tabindex', '-1');
     const { viewSwitcherArrowNav } = createViewSwitcher({ viewSwitcherPills });
     viewPillProjects.addEventListener('keydown', viewSwitcherArrowNav);
+    viewPillUnderstanding.addEventListener('keydown', viewSwitcherArrowNav);
     viewPillStructure.addEventListener('keydown', viewSwitcherArrowNav);
 
     // Empty container the structureView module owns at runtime —
@@ -1083,6 +1105,12 @@ function component() {
     // switching views never re-renders the others.
     const structureView = document.createElement('div');
     structureView.id = 'structureView';
+
+    // Empty container the understandingView module owns at runtime —
+    // renderUnderstandingView() fills it with the selected project's code-book
+    // shelf. Toggled via #mainBar's data-view like the Structure container.
+    const understandingView = document.createElement('div');
+    understandingView.id = 'understandingView';
 
     // The view tabs ride inside the top header row (#navBar), seated between
     // the workspace pill and the pomodoro/music/settings chip cluster. Insert
@@ -1096,6 +1124,7 @@ function component() {
     const taskFilterBar = buildTaskFilterBar();
 
     main2.appendChild(structureView);
+    main2.appendChild(understandingView);
     main2.appendChild(mobileProjHeader);
     // Status filter pills (ALL / Active / Ideas) sit above the list — below the
     // mobile project header, above the compose row inside #mainList. Built once
@@ -2385,7 +2414,10 @@ function component() {
                     // selected project's repo (handled below once the selection
                     // resolves).
                     const stayOnStructure = getActiveView() === 'structure';
-                    if (!stayOnStructure) {
+                    // UNDERSTANDING is the same kind of lens — the selected
+                    // project's code book — so it stays put the same way.
+                    const stayOnUnderstanding = getActiveView() === 'understanding';
+                    if (!stayOnStructure && !stayOnUnderstanding) {
                         applyActiveView('projects');
                     }
 
@@ -2431,6 +2463,9 @@ function component() {
                         // newly selected project (its resolved repo + map).
                         if (stayOnStructure) {
                             renderStructureView();
+                        }
+                        if (stayOnUnderstanding) {
+                            renderUnderstandingView();
                         }
 
                         return;
@@ -3920,7 +3955,7 @@ function setupQueueResizeHandle(handle) {
     handle.addEventListener('pointercancel', endDrag);
 }
 
-// Apply the top-level Projects / Structure view. Module-scope so both the
+// Apply the top-level Projects / Understanding / Structure view. Module-scope so both the
 // in-component pill click handlers and the restoreFromStorage auto-init
 // path can route through one entry point. Writes the chosen view to
 // localStorage, flips #mainBar's data-view attribute (the CSS show/hide
@@ -3936,6 +3971,7 @@ function applyActiveView(view) {
 
     let safe = 'projects';
     if (view === 'structure') safe = 'structure';
+    if (view === 'understanding') safe = 'understanding';
     setActiveView(safe);
 
     const mainBar = document.getElementById('mainBar');
@@ -3958,15 +3994,26 @@ function applyActiveView(view) {
         pillStructure.setAttribute('aria-pressed', safe === 'structure' ? 'true' : 'false');
         pillStructure.setAttribute('tabindex', safe === 'structure' ? '0' : '-1');
     }
+    const pillUnderstanding = document.getElementById('viewPillUnderstanding');
+    if (pillUnderstanding) {
+        pillUnderstanding.classList.toggle('active', safe === 'understanding');
+        pillUnderstanding.setAttribute('aria-pressed', safe === 'understanding' ? 'true' : 'false');
+        pillUnderstanding.setAttribute('tabindex', safe === 'understanding' ? '0' : '-1');
+    }
 
     // Mirror the active state on the mobile bottom tab bar so the same
     // applyActiveView call keeps both navigators in sync — desktop pills
     // and mobile tabs cannot drift.
     const tabProjects = document.getElementById('mobileTabProjects');
+    const tabUnderstanding = document.getElementById('mobileTabUnderstanding');
     const tabStructure = document.getElementById('mobileTabStructure');
     if (tabProjects) {
         tabProjects.classList.toggle('active', safe === 'projects');
         tabProjects.setAttribute('aria-pressed', safe === 'projects' ? 'true' : 'false');
+    }
+    if (tabUnderstanding) {
+        tabUnderstanding.classList.toggle('active', safe === 'understanding');
+        tabUnderstanding.setAttribute('aria-pressed', safe === 'understanding' ? 'true' : 'false');
     }
     if (tabStructure) {
         tabStructure.classList.toggle('active', safe === 'structure');
@@ -3980,7 +4027,8 @@ function applyActiveView(view) {
     // beats the pane's own display:flex); #descSibling stays mounted inside so
     // returning to Stream restores the open task without re-opening it.
     const detailPane = document.getElementById('descDetailPane');
-    if (detailPane) detailPane.hidden = (safe === 'structure');
+    // Understanding fills the full pane the same way.
+    if (detailPane) detailPane.hidden = (safe === 'structure') || (safe === 'understanding');
 
     if (safe === 'structure') {
         // The Structure view maps the selected project's linked repo, so it
@@ -3992,6 +4040,15 @@ function applyActiveView(view) {
         // / service worker) running in an off-screen iframe. A no-op when the live
         // view isn't mounted, which is the common case.
         exitStructureLiveView();
+    }
+
+    if (safe === 'understanding') {
+        // The shelf reads the selected project's repo, so it renders fresh on
+        // each switch, like Structure.
+        renderUnderstandingView();
+    } else {
+        // Leaving Understanding stops its book-run probe timer.
+        exitUnderstandingView();
     }
 
 }

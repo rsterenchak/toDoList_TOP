@@ -4917,6 +4917,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .agentNoRepoMarker {
   display: none;
 }
+body.agentUnavailable #viewPillUnderstanding .agentNoRepoMarker,
 body.agentUnavailable #viewPillStructure .agentNoRepoMarker {
   display: inline-block;
   width: 6px;
@@ -4986,6 +4987,232 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 #mainBar[data-view="structure"] #todoMdViewerStrip {
   display: none;
 }
+
+/* ── UNDERSTANDING VIEW ──
+   The repo's code book as a shelf: header (repo chip, chapter count + minutes,
+   generate/stale control), a continue card for chapter 1, then the numbered
+   chapter list. renderUnderstandingView() fills #understandingView at runtime;
+   it shows and hides on #mainBar's data-view exactly like #structureView and
+   hides the same Stream chrome. */
+#understandingView {
+  grid-row: 1 / -1;
+  grid-column: 1;
+  display: none;
+  flex-direction: column;
+  gap: 12px;
+  padding: 24px 24px 0;
+  background: var(--bg-base);
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+/* The header stays put; only the shelf below it scrolls. */
+.understandingShelf {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding-bottom: 96px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+#mainBar[data-view="understanding"] #understandingView {
+  display: flex;
+}
+
+#mainBar[data-view="understanding"] #mainList,
+#mainBar[data-view="understanding"] #mobileProjHeader,
+#mainBar[data-view="understanding"] #taskFilterBar,
+#mainBar[data-view="understanding"] #bulkDescActions,
+#mainBar[data-view="understanding"] #todoMdViewerStrip {
+  display: none;
+}
+
+.understandingHeader {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.understandingRepoChip {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--border-bright);
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.understandingStats {
+  flex: 1 1 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.understandingControl {
+  flex: 0 0 auto;
+  min-height: 32px;
+  padding: 0 12px;
+  border-radius: 999px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.understandingControl:disabled { cursor: default; opacity: 0.6; }
+.understandingControl.is-generate {
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent-text);
+}
+.understandingControl.is-stale {
+  border: 1px solid var(--text-warning);
+  background: none;
+  color: var(--text-warning);
+}
+.understandingControl.is-regenerate,
+.understandingControl.is-generating {
+  border: 1px solid var(--border-bright);
+  background: none;
+  color: var(--text-muted);
+}
+
+.understandingNote,
+.understandingEmptyHint,
+.understandingLoading {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.understandingNote[hidden] { display: none; }
+
+.understandingBookTitle {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.understandingContinue {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+}
+
+.understandingContinueEyebrow {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--accent-text);
+}
+
+.understandingContinueTitle {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.understandingProgress {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-bright);
+  overflow: hidden;
+}
+.understandingProgressFill {
+  width: 0;
+  height: 100%;
+  background: var(--accent);
+}
+
+.understandingContinueFoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.understandingContinueMinutes {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.understandingReadBtn {
+  min-height: 44px;
+  padding: 0 20px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.understandingChapters {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+}
+
+.understandingChapterRow {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-height: 44px;
+  padding: 12px 4px;
+  border-bottom: 1px solid var(--border-dim);
+}
+
+.understandingChapterNum {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.understandingChapterTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--text-primary);
+}
+
+.understandingChapterMinutes,
+.understandingChapterStale {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+.understandingChapterMinutes { color: var(--text-secondary); }
+.understandingChapterStale { color: var(--text-warning); font-weight: 700; letter-spacing: 0.08em; }
 
 /* The detail-column canvas host — a flat child of #structureView, in mobile source
    order after the tree. On mobile it stays empty (the block canvas mounts inline
@@ -16686,6 +16913,7 @@ body.row-dragging * { cursor: grabbing !important; }
      <body> in lockstep with #mainBar, so the two can't disagree. The [hidden]
      attribute (set in applyActiveView) plus this display:none guard beats the
      pane's own display:flex above; #descSibling stays mounted inside it. */
+  body[data-view="understanding"] #mainSec,
   body[data-view="structure"] #mainSec {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -17687,6 +17915,10 @@ body.row-dragging * { cursor: grabbing !important; }
      #structureView is itself the scroll container, so scrolled content
      slides under the transparent inset region — matching the todo list. */
   #structureView {
+    padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
+  }
+  /* Understanding is the topmost chrome on this breakpoint for the same reason. */
+  #understandingView {
     padding-top: calc(max(env(safe-area-inset-top, 0px), 24px) + 24px);
   }
 
@@ -22881,6 +23113,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      state) but shows the same small hollow ring as the desktop pill. The tab is a
      vertical icon/label stack, so the marker is pinned to the top-right corner
      rather than placed inline. */
+  body.agentUnavailable #mobileTabUnderstanding .agentNoRepoMarker,
   body.agentUnavailable #mobileTabStructure .agentNoRepoMarker {
     display: block;
     position: absolute;

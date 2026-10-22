@@ -134,7 +134,7 @@ describe('mobile utility sheet — bottom sheet gated off, tab bar kept', () => 
     });
 
     describe('#mobileTabBar is unaffected', () => {
-        it('mounts the bar into base with both destinations', async () => {
+        it('mounts the bar into base with all three destinations', async () => {
             const api = mount();
             await flushTimers();
             const bar = base.querySelector('#mobileTabBar');
@@ -142,9 +142,10 @@ describe('mobile utility sheet — bottom sheet gated off, tab bar kept', () => 
             expect(bar).toBe(api.mobileTabBar);
             expect(bar.getAttribute('role')).toBe('tablist');
             const tabs = Array.from(bar.querySelectorAll('.mobileTab'));
-            expect(tabs.map((t) => t.dataset.view)).toEqual(['projects', 'structure']);
+            expect(tabs.map((t) => t.dataset.view)).toEqual(['projects', 'understanding', 'structure']);
             expect(tabs.map((t) => t.getAttribute('aria-label')))
-                .toEqual(['Projects', 'Structure']);
+                .toEqual(['Projects', 'Understanding', 'Structure']);
+            expect(tabs[1].id).toBe('mobileTabUnderstanding');
             expect(tabs[0].querySelector('.mobileTabLabel').textContent).toBe('Stream');
         });
 
@@ -159,12 +160,21 @@ describe('mobile utility sheet — bottom sheet gated off, tab bar kept', () => 
             ).not.toBeNull();
         });
 
+        it('gives the UNDERSTANDING tab the same no-repo marker as STRUCTURE', async () => {
+            mount();
+            await flushTimers();
+            expect(
+                document.querySelector('#mobileTabUnderstanding .agentNoRepoMarker')
+            ).not.toBeNull();
+        });
+
         it('routes a tab tap through applyActiveView', async () => {
             mount();
             await flushTimers();
             document.querySelector('#mobileTabStructure').click();
+            document.querySelector('#mobileTabUnderstanding').click();
             document.querySelector('#mobileTabProjects').click();
-            expect(routedViews).toEqual(['structure', 'projects']);
+            expect(routedViews).toEqual(['structure', 'understanding', 'projects']);
         });
 
         it('hides on the NO PROJECTS empty state and reveals again when it clears', async () => {

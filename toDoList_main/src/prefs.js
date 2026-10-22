@@ -94,9 +94,9 @@ export function hasQueueWidthPref() {
     }
 }
 
-// ── active top-level view (projects vs. structure) ──
-// The main panel hosts two top-level views: the project view and the
-// Structure tab. The pill bar in the top nav switches between them;
+// ── active top-level view (projects / understanding / structure) ──
+// The main panel hosts three top-level views: the project view, the
+// Understanding tab and the Structure tab. The pill bar in the top nav switches between them;
 // this pref restores the active view across reloads. Default is 'projects'
 // so first-time users (or anyone whose storage was cleared) land on the
 // project list; any stored value other than the known tokens also falls
@@ -110,6 +110,7 @@ export function getActiveView() {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
         if (v === 'projects') return 'projects';
         if (v === 'structure') return 'structure';
+        if (v === 'understanding') return 'understanding';
         return 'projects';
     } catch (e) {
         return 'projects';
@@ -120,6 +121,7 @@ export function setActiveView(view) {
     try {
         let stored = 'projects';
         if (view === 'structure') stored = 'structure';
+        if (view === 'understanding') stored = 'understanding';
         localStorage.setItem(ACTIVE_VIEW_KEY, stored);
     } catch (e) { /* ignore quota/private-mode */ }
 }

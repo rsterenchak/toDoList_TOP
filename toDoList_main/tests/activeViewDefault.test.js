@@ -66,3 +66,15 @@ describe('getActiveView — default landing view', () => {
         expect(getActiveView()).toBe('projects');
     });
 });
+
+describe("getActiveView — the 'understanding' view", () => {
+    beforeEach(() => {
+        localStorage.clear();
+    });
+
+    it("persists and restores 'understanding'", () => {
+        setActiveView('understanding');
+        expect(localStorage.getItem(ACTIVE_VIEW_KEY)).toBe('understanding');
+        expect(getActiveView()).toBe('understanding');
+    });
+});
