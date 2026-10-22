@@ -2586,3 +2586,16 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: `manifest-dotnet.yml`, `onboard.sh`, `claude-book.yml` for .NET (template), any XAML-aware scanning, a C# import graph for chapter ordering.
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: b63590bd-cf45-401c-a30c-fdaeb7da1b1b -->
+
+- [ ] **[MEDIUM]** Index C# methods named like contextual keywords and resolve overloads in the symbols index
+  - Type: bug
+  - Description: The first C# book run couldn't link `CustomerRepository.add` or `AppointmentRepository.add` — the scanner's `CS_KW_NAME` list in `scripts/gen-src-manifest.js` drops any method named `add`, `remove`, `get`, `set` or `init`, which are only keywords inside accessor and event-accessor bodies and are legal method names everywhere else (the method regex already requires a return type and a parameter list, which accessors never have, so the exclusion is redundant and over-broad). Separately, a two-overload member such as `LoginHistory.Record` or `UserLocation.Describe` makes a book reference "ambiguous" because `resolveBookRef` counts hits, so the chapter has to leave it as plain text. Expected: a method named `add` indexes like any other, and a reference to an overloaded member of one type resolves to the first declaration in source order.
+  - Behavior:
+    1. Remove `add`, `remove`, `get`, `set` and `init` from `CS_KW_NAME` (keep the control-flow and LINQ query words — `if`, `for`, `using`, `where`, `select`, `from`, … — which can precede a parenthesis). Accessor and event-accessor bodies still don't match `CS_METHOD_RE` because they carry no return type, so property and event scanning is unchanged.
+    2. In `resolveBookRef` (and the equivalent tour-step resolution in `resolveTourStep`), when every candidate shares the same `file` and `parent`, treat them as one overloaded member: resolve to the candidate with the lowest `start` and emit no warning. Candidates across different files or parents stay ambiguous with the existing "pin it as `file.js:name`" message.
+    3. Deterministic output; existing JS behavior unchanged — JS has no overloads, so the rule only ever collapses C# hits.
+  - Implementation notes:
+    - `CS_KW_NAME` is at ~line 999; the method pass that consults it at ~1120–1135. `resolveBookRef` at ~803–845, `resolveTourStep` at ~625–660.
+    - Tests in `tests/genSrcManifest.test.js`: a C# fixture with `public void add(Item i)`, `public int get(int id)` and an event with `add { … } remove { … }` accessors — assert the two methods index and the accessors don't; a type with two `Record` overloads — assert `` `LoginHistory.Record` `` resolves to the first with no warning and that the same name split across two files is still ambiguous; a JS fixture asserting nothing changed.
+  - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/tests/genSrcManifest.test.js`
+  <!-- id: 3bb45206-fcfb-4e15-b6af-7fb4aff43432 -->
