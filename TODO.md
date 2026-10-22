@@ -2450,7 +2450,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/exportImport.js`, `toDoList_main/tests/listLogicSupabase.test.js`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/codetour.json`
   <!-- id: 42e63592-3f40-4560-aef1-a7cefa4f5bcd -->
 
-- [ ] **[MEDIUM]** Add codebook.json and compile it to src-book.json beside the manifest
+- [x] **[MEDIUM]** Add codebook.json and compile it to src-book.json beside the manifest — Completed: 2026-10-21
   - Type: feature
   - Description: The Structure tab's tours are driven by a committed `codetour.json` that `scripts/gen-src-manifest.js` compiles into `src-tours.json` with symbol validation. Add a sibling authoring file, `codebook.json` — the codebase told as an ordered book of chapters that reads front-to-back once — and compile it the same way into `src-book.json`, published beside the manifest at the Pages URL. Every inline code reference in chapter prose is resolved against the symbols index built in the same run, so a chapter whose references stop resolving is flagged stale rather than silently wrong. Also author the first `codebook.json` for this repo, grounded in the real source and the existing tours. No workflow change: `deploy.yml` already runs the generator and publishes `dist/`.
   - Behavior:
