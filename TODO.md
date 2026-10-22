@@ -2552,7 +2552,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: d0991260-290e-4722-9e4a-e17ebf883d46 -->
 
-- [ ] **[MEDIUM]** Add Ask-about-this-chapter from the Understanding reader
+- [x] **[MEDIUM]** Add Ask-about-this-chapter from the Understanding reader — Completed: 2026-10-22
   - Type: feature
   - Description: Give the reader an Ask chip that opens the Claude sheet scoped to the chapter on screen, so a question is answered from that chapter's code rather than from a blank workspace. The scope travels as `body.book_scope` on every turn of the conversation (the Worker route is live): the chapter's identity, its paragraphs as plain text, and the unique `ref` segments from `src-book.json` with their `file`/`symbol`/`line`/`end`, which the Worker slices into context. It renders as the sheet's scope chip (`📖 CH 3 · The life of a task`, removable), the same slot the task scope uses — one scope at a time. Replies name code in backticks; in a scoped conversation those names become tappable chips that open the definition in the reader's code pane or sheet. At 390x844 the Ask chip sits in the reader's top bar between the repo chip and the bookmarks chip and tapping it opens the sheet with the scope chip showing and the composer placeholder reading "Ask about this chapter…"; at 1300x900 it uncollapses the chat pane beside the reader with the same chip.
   - Behavior:
