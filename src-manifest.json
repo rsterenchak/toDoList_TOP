@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-22T17:53:25.894Z",
-  "sha": "b93b9914a6b708a7b0df4f5d1b5621beb832d5d7",
+  "generatedAt": "2026-10-22T18:31:43.217Z",
+  "sha": "908d95adf5ca794d01931a088c88ae831f7941b8",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -98,6 +98,7 @@
     "viewSwitcher.js",
     "viewport.js",
     "viewportHeal.js",
+    "viewportSettle.js",
     "voiceInput.js",
     "welcomeCarousel.js"
   ],
@@ -29344,7 +29345,7 @@
     },
     {
       "path": "index.js",
-      "lines": 484,
+      "lines": 491,
       "imports": [
         "addProj_button.svg",
         "appLock.js",
@@ -29356,6 +29357,7 @@
         "modals.js",
         "supabaseClient.js",
         "viewportHeal.js",
+        "viewportSettle.js",
         "welcomeCarousel.js"
       ],
       "purpose": "App bootstrap entry point: builds the DOM structure and attaches it to the page."
@@ -30001,6 +30003,12 @@
       "purpose": "── iOS STANDALONE VIEWPORT HEAL ── In an installed iOS PWA the layout viewport shrinks by ~59px the first time the software keyboard opens,"
     },
     {
+      "path": "viewportSettle.js",
+      "lines": 82,
+      "imports": [],
+      "purpose": "Hides the mobile tab bar and Claude FAB while an iOS standalone launch's viewport is still growing to full height."
+    },
+    {
       "path": "voiceInput.js",
       "lines": 403,
       "imports": [],
@@ -30095,6 +30103,7 @@
         "desktopHeaderPlacement.js",
         "viewport.js",
         "viewportHeal.js",
+        "viewportSettle.js",
         "theme.js",
         "coachmark.js",
         "welcomeCarousel.js",
