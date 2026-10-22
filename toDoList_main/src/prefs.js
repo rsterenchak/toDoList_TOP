@@ -477,6 +477,44 @@ export function setBookProgress(repo, record) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Understanding tab bookmarks ──
+// Per-repo arrays of `{ repo, chapterId, paraIndex, label, createdAt, synced?,
+// deleted? }`, kept in one object keyed by repo. bookBookmarks.js owns the
+// records and mirrors them to Supabase; this is only the local copy.
+export const BOOK_BOOKMARKS_KEY = 'todoapp_bookBookmarks';
+
+// The repo's stored bookmark records (malformed ones dropped), or [].
+export function getBookBookmarks(repo) {
+    if (!repo) return [];
+    const val = readJsonObject(BOOK_BOOKMARKS_KEY)[repo];
+    if (!Array.isArray(val)) return [];
+    return val.filter(function (b) {
+        return b && typeof b === 'object' && typeof b.chapterId === 'string' && b.chapterId &&
+            Number.isFinite(Number(b.paraIndex));
+    }).map(function (b) {
+        const rec = {
+            repo: repo,
+            chapterId: b.chapterId,
+            paraIndex: Math.max(0, Math.floor(Number(b.paraIndex))),
+            label: typeof b.label === 'string' ? b.label : '',
+            createdAt: typeof b.createdAt === 'string' ? b.createdAt : '',
+        };
+        if (b.synced === true) rec.synced = true;
+        if (b.deleted === true) rec.deleted = true;
+        return rec;
+    });
+}
+
+export function setBookBookmarks(repo, list) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(BOOK_BOOKMARKS_KEY);
+        if (Array.isArray(list) && list.length) store[repo] = list;
+        else delete store[repo];
+        localStorage.setItem(BOOK_BOOKMARKS_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is
