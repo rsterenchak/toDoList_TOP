@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-22',
         added: [
-            'Paragraphs in the Understanding reader can now be bookmarked with a hover ribbon or a long-press, and your bookmarks are listed from the reader\'s top bar and on the shelf so you can jump straight back to them on any device.',
             'An Ask chip in the Understanding reader opens the Claude chat scoped to the chapter you\'re reading, so answers draw on that chapter\'s code, and code names in the replies open their definitions.',
             'C# repos now get the code book, code tours and tappable code references, with classes and their methods and properties traceable like JavaScript ones.',
         ],
@@ -16,6 +15,7 @@ export const changelog = [
         ],
         fixed: [
             'Code book references in C# repos now link methods named like add or get, and a reference to an overloaded method opens its first declaration instead of staying plain text.',
+            'Relaunching the app with the PIN lock due now shows the lock screen straight away, without the unlocked dashboard flashing first.',
         ],
     },
 ];
