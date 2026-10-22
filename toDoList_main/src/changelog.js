@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-10-22',
         added: [
             'A new Understanding tab, between Stream and Structure, shows the linked repo\'s code book as a shelf of chapters with reading times, stale chapters marked in amber, and a button to generate or refresh the book.',
+            'Chapters in the Understanding tab now open in a reader with tappable code references, a look-ahead note and previous/next chapter buttons, and your reading place is saved so Continue picks up where you left off on any device.',
         ],
     },
     {
@@ -25,13 +26,6 @@ export const changelog = [
         date: '2026-10-14',
         fixed: [
             'Code tour recaps written as plain text now show their cards instead of blank ones, and malformed recap cards are left out.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-11',
-        changed: [
-            'On desktop, the Structure tab\'s Map view now spreads across three columns, with a list of areas on the left, the map and file list in the middle, and the open file\'s code on the right.',
         ],
     },
 ];

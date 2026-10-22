@@ -127,7 +127,9 @@
         "codeTours.js",
         "tourPlayer.js",
         "understandingView.js",
-        "codeBook.js"
+        "codeBook.js",
+        "bookProgress.js",
+        "codeSheet.js"
       ]
     },
     {

@@ -42,6 +42,7 @@ import {
     getOpenCodeViewerRef,
     onCodeViewerChange,
     resetCodeViewer,
+    setCodeViewerCloseHandler,
 } from '../src/codeViewer.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -603,5 +604,50 @@ describe('onCodeViewerChange', () => {
         renderCodeViewer(host(), { target: TARGET, filePath: 'a.js' });
         await flush();
         expect(seen).toEqual(['a.js', null]);
+    });
+});
+
+// Two views host the viewer (the Structure tab and the Understanding reader), so
+// each registers its own close interceptor and the viewer only ever shows in one.
+describe('several hosts', () => {
+    it('opening into a second host empties the first', async () => {
+        document.body.innerHTML = '<div id="col"></div><div id="other"></div>';
+        const other = document.getElementById('other');
+        state.files['a.js'] = { content: fileOf(3) };
+        state.files['b.js'] = { content: fileOf(3) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'a.js' });
+        await flush();
+        renderCodeViewer(other, { target: TARGET, filePath: 'b.js' });
+        await flush();
+        expect(host().querySelector('.codeViewerPane').hidden).toBe(true);
+        expect(host().querySelector('.codeViewerEmpty').hidden).toBe(false);
+        expect(other.querySelector('.codeViewerPane').hidden).toBe(false);
+        expect(getOpenCodeViewerFile()).toBe('b.js');
+    });
+
+    it('close handlers each answer for their own host; unclaimed closes clear', async () => {
+        document.body.innerHTML = '<div id="col"></div><div id="other"></div>';
+        const other = document.getElementById('other');
+        state.files['a.js'] = { content: fileOf(3) };
+        const seen = [];
+        const offA = setCodeViewerCloseHandler((h) => { seen.push('a'); return h === other; });
+        const offB = setCodeViewerCloseHandler((h) => { seen.push('b'); return false; });
+        try {
+            renderCodeViewer(other, { target: TARGET, filePath: 'a.js' });
+            await flush();
+            other.querySelector('.codeViewerClose').click();
+            expect(seen).toEqual(['a']);
+            expect(getOpenCodeViewerFile()).toBe('a.js');
+
+            renderCodeViewer(host(), { target: TARGET, filePath: 'a.js' });
+            await flush();
+            seen.length = 0;
+            host().querySelector('.codeViewerClose').click();
+            expect(seen).toEqual(['a', 'b']);
+            expect(getOpenCodeViewerFile()).toBeNull();
+        } finally {
+            offA();
+            offB();
+        }
     });
 });
