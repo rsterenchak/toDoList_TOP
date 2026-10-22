@@ -42,8 +42,6 @@ import {
     getStructureTreeState,
     setStructureTreeState,
     getTourProgress,
-    isTourCardHidden,
-    setTourCardHidden,
 } from './prefs.js';
 import {
     SELF_REPO,
@@ -75,9 +73,8 @@ import { createCodeSheet } from './codeSheet.js';
 import { buildComplexityChip, setComplexityScans } from './complexityHotspots.js';
 import { listLogic } from './listLogic.js';
 import { deriveAreaGraph, linksFor, formatLines, areaFiles } from './codeMapModel.js';
-import { loadTours, tourArea, orderedTours, nextUnfinished, tourStats } from './codeTours.js';
+import { loadTours, tourArea, orderedTours } from './codeTours.js';
 import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
-import { wireModalDismiss } from './modalDismiss.js';
 
 // The repo currently shown. Held at module scope so a re-render (view switch,
 // manifest refresh) preserves the user's selection. Null until first resolved
@@ -3783,16 +3780,12 @@ function buildCollapseToolbar() {
 
 // ── CODE TOURS ──────────────────────────────────────────────────────────────
 // Guided tours through real code (codeTours.js loads them, tourPlayer.js plays
-// one). They surface in three places: the START HERE card above the lens toggle,
-// pointing at the next unfinished tour; a "Tours in <area>" row in the Map lens's
-// level 2; and the All tours sheet, reached from the card or, once the card is
-// hidden, from a small chip in the header. A repo with no `src-tours.json` gets
-// none of them.
+// one). Here they surface only as a "Tours in <area>" row in the Map lens's
+// level 2; the START HERE card and the All tours sheet live on the Understanding
+// shelf. A repo with no `src-tours.json` gets no row.
 
 // The active repo's tours, or null while loading / when it has none.
 let currentTourData = null;
-let tourCardEl = null;
-let tourChipEl = null;
 
 function hasTours() {
     return !!(currentTourData && currentTourData.tours.length);
@@ -3801,105 +3794,6 @@ function hasTours() {
 function tourAreaName(id) {
     const a = (currentAreas || []).find(function (x) { return x && x.id === id; });
     return a && a.name ? a.name : id;
-}
-
-function tourGlyph(rec, tour) {
-    const g = document.createElement('span');
-    g.setAttribute('aria-hidden', 'true');
-    if (rec && rec.done) {
-        g.className = 'tourGlyph is-done';
-        g.textContent = '✓';
-    } else if (rec && rec.step > 0) {
-        g.className = 'tourGlyph is-progress';
-    } else {
-        g.className = 'tourGlyph';
-    }
-    g.dataset.tour = tour.id;
-    return g;
-}
-
-// The view's copy of the card and chip follow the stored progress and
-// dismissal; called whenever either changes.
-function paintTourSurfaces() {
-    if (!tourCardEl) return;
-    const view = tourCardEl.parentNode;
-    const repo = selectedRepo;
-    const progress = getTourProgress(repo);
-    const next = hasTours() ? nextUnfinished(currentTourData, progress) : null;
-    const showCard = !!next && !isTourCardHidden(repo);
-    clear(tourCardEl);
-    tourCardEl.hidden = !showCard;
-    if (view) view.classList.toggle('has-tourStart', showCard);
-    if (tourChipEl) {
-        const stats = hasTours() ? tourStats(currentTourData, progress) : null;
-        tourChipEl.hidden = !stats || showCard;
-        if (stats) tourChipEl.textContent = 'Tours ' + stats.done + '/' + stats.total;
-    }
-    if (showCard) fillTourStartCard(repo, next, progress);
-}
-
-function fillTourStartCard(repo, next, progress) {
-    const stats = tourStats(currentTourData, progress);
-
-    const top = document.createElement('div');
-    top.className = 'tourStartTop';
-    const eyebrow = document.createElement('span');
-    eyebrow.className = 'tourStartEyebrow';
-    eyebrow.textContent = 'START HERE';
-    top.appendChild(eyebrow);
-    const meta = document.createElement('span');
-    meta.className = 'tourStartMeta';
-    meta.textContent = stats.done + ' of ' + stats.total + ' · ~' + stats.minutesLeft + ' min left';
-    top.appendChild(meta);
-    const hide = document.createElement('button');
-    hide.type = 'button';
-    hide.className = 'tourStartHide';
-    hide.setAttribute('aria-label', 'Hide START HERE');
-    hide.textContent = '×';
-    hide.addEventListener('click', function () {
-        setTourCardHidden(repo, true);
-        paintTourSurfaces();
-    });
-    top.appendChild(hide);
-    tourCardEl.appendChild(top);
-
-    const nextLine = document.createElement('div');
-    nextLine.className = 'tourStartNext';
-    nextLine.textContent = 'Next: ' + next.title;
-    tourCardEl.appendChild(nextLine);
-
-    const dots = document.createElement('div');
-    dots.className = 'tourStartDots';
-    dots.setAttribute('aria-hidden', 'true');
-    orderedTours(currentTourData).filter(function (t) { return t.section === next.section; })
-        .forEach(function (t) {
-            const dot = document.createElement('span');
-            dot.className = 'tourStartDot';
-            const rec = progress[t.id];
-            if (rec && rec.done) dot.classList.add('is-done');
-            if (t.id === next.id) dot.classList.add('is-current');
-            dots.appendChild(dot);
-        });
-    tourCardEl.appendChild(dots);
-
-    const actions = document.createElement('div');
-    actions.className = 'tourStartActions';
-    const go = document.createElement('button');
-    go.type = 'button';
-    go.className = 'tourStartContinue';
-    go.textContent = '▶ Continue';
-    go.addEventListener('click', function () {
-        const rec = getTourProgress(repo)[next.id];
-        startTour(next, rec ? rec.step : 0);
-    });
-    actions.appendChild(go);
-    const all = document.createElement('button');
-    all.type = 'button';
-    all.className = 'tourStartAll';
-    all.textContent = 'All tours';
-    all.addEventListener('click', openAllToursSheet);
-    actions.appendChild(all);
-    tourCardEl.appendChild(actions);
 }
 
 // Play `tour` from `step`: docked in the code column on desktop, a full-screen
@@ -3925,7 +3819,6 @@ function startTour(tour, step) {
         },
         onClose: function () {
             if (repo !== selectedRepo) return;
-            paintTourSurfaces();
             if (lens === 'map' && openArea && mapCtx && mapCtx.repo === repo) repaintMapLens();
         },
     });
@@ -3986,116 +3879,12 @@ function buildMapTourRow(area) {
     return section;
 }
 
-// The All tours sheet: overall progress, then each section's tours with their
-// state. A row starts (or resumes) that tour.
-function openAllToursSheet() {
-    if (!hasTours()) return;
-    const repo = selectedRepo;
-    const progress = getTourProgress(repo);
-    const stats = tourStats(currentTourData, progress);
-
-    const backdrop = document.createElement('div');
-    backdrop.className = 'tourAllBackdrop';
-    const panel = document.createElement('div');
-    panel.className = 'tourAllSheet';
-    panel.setAttribute('role', 'dialog');
-    panel.setAttribute('aria-modal', 'true');
-    panel.setAttribute('aria-label', 'All tours');
-
-    const head = document.createElement('div');
-    head.className = 'tourAllHead';
-    const h = document.createElement('h2');
-    h.className = 'tourAllTitle';
-    h.textContent = 'Learn this codebase';
-    head.appendChild(h);
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'tourAllClose';
-    closeBtn.setAttribute('aria-label', 'Close');
-    closeBtn.textContent = '×';
-    head.appendChild(closeBtn);
-    panel.appendChild(head);
-
-    const bar = document.createElement('div');
-    bar.className = 'tourAllProgress';
-    bar.setAttribute('role', 'progressbar');
-    bar.setAttribute('aria-valuemin', '0');
-    bar.setAttribute('aria-valuemax', String(stats.total));
-    bar.setAttribute('aria-valuenow', String(stats.done));
-    const fill = document.createElement('span');
-    fill.className = 'tourAllProgressFill';
-    fill.style.width = (stats.total ? Math.round((stats.done / stats.total) * 100) : 0) + '%';
-    bar.appendChild(fill);
-    panel.appendChild(bar);
-    const summary = document.createElement('div');
-    summary.className = 'tourAllSummary';
-    summary.textContent = stats.done + ' of ' + stats.total + ' tours done';
-    panel.appendChild(summary);
-
-    const list = document.createElement('div');
-    list.className = 'tourAllList';
-    const ordered = orderedTours(currentTourData);
-    const sections = (currentTourData.sections || []).slice();
-    const known = new Set(sections.map(function (s) { return s.id; }));
-    if (ordered.some(function (t) { return !known.has(t.section); })) sections.push({ id: null, title: 'More' });
-
-    let close = null;
-    sections.forEach(function (sec) {
-        const tours = ordered.filter(function (t) {
-            return sec.id === null ? !known.has(t.section) : t.section === sec.id;
-        });
-        if (!tours.length) return;
-        const block = document.createElement('section');
-        block.className = 'tourAllSection';
-        const st = document.createElement('div');
-        st.className = 'tourAllSectionHead';
-        const name = document.createElement('span');
-        name.textContent = sec.title || sec.id;
-        st.appendChild(name);
-        const cnt = document.createElement('span');
-        cnt.className = 'tourAllSectionCount';
-        cnt.textContent = tours.filter(function (t) { return progress[t.id] && progress[t.id].done; }).length + ' / ' + tours.length;
-        st.appendChild(cnt);
-        block.appendChild(st);
-        tours.forEach(function (t) {
-            const rec = progress[t.id];
-            const row = document.createElement('button');
-            row.type = 'button';
-            row.className = 'tourAllRow';
-            row.dataset.tour = t.id;
-            row.appendChild(tourGlyph(rec, t));
-            const title = document.createElement('span');
-            title.className = 'tourAllRowTitle';
-            title.textContent = t.title;
-            row.appendChild(title);
-            const meta = document.createElement('span');
-            meta.className = 'tourAllRowMeta';
-            meta.textContent = rec && !rec.done && rec.step > 0
-                ? 'step ' + Math.min(rec.step + 1, t.steps.length) + ' / ' + t.steps.length
-                : t.steps.length + ' steps';
-            row.appendChild(meta);
-            row.addEventListener('click', function () {
-                if (close) close();
-                startTour(t, rec && !rec.done ? rec.step : 0);
-            });
-            block.appendChild(row);
-        });
-        list.appendChild(block);
-    });
-    panel.appendChild(list);
-    backdrop.appendChild(panel);
-    document.body.appendChild(backdrop);
-    close = wireModalDismiss({ backdrop: backdrop, closeButtons: [closeBtn] });
-    closeBtn.focus();
-}
-
-// Fetch the repo's tours and paint the tour surfaces once they arrive, unless
+// Fetch the repo's tours and repaint an open level 2 once they arrive, unless
 // the view has moved on to another repo (or been rebuilt) in the meantime.
-function loadTourSurfaces(repo, cardEl) {
+function loadTourSurfaces(repo, treeEl) {
     return loadTours(repo).then(function (data) {
-        if (repo !== selectedRepo || cardEl !== tourCardEl) return;
+        if (repo !== selectedRepo || treeEl !== currentTreeEl) return;
         currentTourData = data && data.tours && data.tours.length ? data : null;
-        paintTourSurfaces();
         if (currentTourData && lens === 'map' && openArea && mapCtx && mapCtx.repo === repo) repaintMapLens();
     });
 }
@@ -4221,9 +4010,6 @@ export function renderStructureView() {
     if (currentCanvasHost && currentCanvasHost.classList.contains('is-touring')) closeTourPlayer();
     clear(view);
     view.classList.remove('is-map-lens');
-    view.classList.remove('has-tourStart');
-    tourCardEl = null;
-    tourChipEl = null;
     currentMapPane = null;
     mapRailRows = null;
 
@@ -4285,16 +4071,6 @@ export function renderStructureView() {
         currentTourData = null;
     }
     selectedRepo = repo;
-
-    // START HERE card: the next unfinished code tour. A persistent sibling above
-    // the header (so above the lens toggle), filled once the tours load and
-    // hidden until then — or for good when the repo has none.
-    const tourCard = document.createElement('section');
-    tourCard.className = 'tourStartCard';
-    tourCard.setAttribute('aria-label', 'Code tours');
-    tourCard.hidden = true;
-    tourCardEl = tourCard;
-    view.appendChild(tourCard);
 
     // Header: a read-only repo label (the repo string with the project name as a
     // quiet hint) plus the Code/UI lens toggle beside it — a label, not a control.
@@ -4379,22 +4155,12 @@ export function renderStructureView() {
             refreshActionToolbar();
         });
     });
-    // The toggle shares its row with the tours chip, which stands in for the
-    // START HERE card once that is hidden and opens All tours.
     const lensRow = document.createElement('div');
     lensRow.className = 'structureLensRow';
     lensRow.appendChild(toggle);
-    const tourChip = document.createElement('button');
-    tourChip.type = 'button';
-    tourChip.className = 'structureTourChip';
-    tourChip.hidden = true;
-    tourChip.addEventListener('click', openAllToursSheet);
-    tourChipEl = tourChip;
-    lensRow.appendChild(tourChip);
     header.appendChild(lensRow);
     view.appendChild(header);
-    paintTourSurfaces();
-    loadTourSurfaces(repo, tourCard);
+    loadTourSurfaces(repo, tree);
 
     // NEXT REFACTOR card: the single cheapest extraction-refactor candidate for
     // this repo, sourced from the Worker's scan route. Mounted here as a
