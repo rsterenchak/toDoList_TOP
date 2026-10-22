@@ -930,3 +930,145 @@ describe('gen-src-manifest real codebook.json', () => {
         expect(doc.chapters.flatMap((c) => c.tours).sort()).toEqual(tourDoc.tours.map((t) => t.id).sort());
     });
 });
+
+// csharp mode builds the same symbols index from the type outline, keyed by
+// repo-root-relative .cs path, so tours and the book resolve against C# too.
+const { buildCsharpSymbols, readCsharpSources } = gen;
+const CS_STORE = [
+    'using System;',                                        // 1
+    'namespace Demo.Services {',                            // 2
+    '    public class TaskStore {',                         // 3
+    '        public TaskStore(string path) {',              // 4
+    '            _path = path;',                            // 5
+    '        }',                                            // 6
+    '        public enum Mode { Fast, Safe }',              // 7
+    '        public void Save(Task t) {',                   // 8
+    '            Validate(t);',                             // 9
+    '            Write(t);',                                // 10
+    '            Flush();',                                 // 11
+    '        }',                                            // 12
+    '        public int Count { get; set; }',               // 13
+    '        private string Load(int id) {',                // 14
+    '            return id.ToString();',                    // 15
+    '        }',                                            // 16
+    '    }',                                                // 17
+    '    public interface IStore {',                        // 18
+    '        Task Find(int id);',                           // 19
+    '    }',                                                // 20
+    '}',                                                    // 21
+].join('\n');
+const CS_TASK = 'namespace Demo.Models {\n    public class Task {\n        public string Title { get; set; }\n    }\n}\n';
+
+describe('gen-src-manifest buildCsharpSymbols', () => {
+    const symbols = buildCsharpSymbols({ sources: [{ name: 'Services/TaskStore.cs', text: CS_STORE }, { name: 'Models/Task.cs', text: CS_TASK }] });
+
+    it('emits the web index shape keyed by repo-root-relative path', () => {
+        expect(symbols.version).toBe(1);
+        expect(Object.keys(symbols.files)).toEqual(['Models/Task.cs', 'Services/TaskStore.cs']);
+        expect(symbols.files['Services/TaskStore.cs'].imports).toEqual({});
+    });
+
+    it('emits one def per type and member with parent, start and end', () => {
+        expect(symbols.files['Services/TaskStore.cs'].defs).toEqual([
+            { name: 'TaskStore', kind: 'class', start: 3, end: 17, parent: null },
+            { name: 'constructor', kind: 'constructor', start: 4, end: 6, parent: 'TaskStore' },
+            { name: 'Mode', kind: 'enum', start: 7, end: 7, parent: 'TaskStore' },
+            { name: 'Save', kind: 'method', start: 8, end: 12, parent: 'TaskStore' },
+            { name: 'Count', kind: 'property', start: 13, end: 13, parent: 'TaskStore' },
+            { name: 'Load', kind: 'method', start: 14, end: 16, parent: 'TaskStore' },
+            { name: 'IStore', kind: 'interface', start: 18, end: 20, parent: null },
+            { name: 'Find', kind: 'method', start: 19, end: 19, parent: 'IStore' },
+        ]);
+        expect(symbols.files['Models/Task.cs'].defs).toEqual([
+            { name: 'Task', kind: 'class', start: 2, end: 4, parent: null },
+            { name: 'Title', kind: 'property', start: 3, end: 3, parent: 'Task' },
+        ]);
+    });
+
+    it('resolves a codetour.json step anchored to Class.Method into a snippet', () => {
+        const sources = [{ name: 'Services/TaskStore.cs', text: CS_STORE }];
+        const step = (m) => ({ file: 'Services/TaskStore.cs', symbol: 'Save', parent: 'TaskStore', match: [m], title: 'T', why: 'W' });
+        const doc = { version: 1, sections: [], tours: [{ id: 'save', section: 's', title: 'Save', recap: [], steps: [step('Validate'), step('Write'), step('Flush')] }] };
+        const warn = vi.fn();
+        const tours = compileTours(doc, buildCsharpSymbols({ sources }), sources, null, warn);
+        expect(warn).not.toHaveBeenCalled();
+        expect(tours.tours[0].steps.map((s) => s.line)).toEqual([9, 10, 11]);
+        expect(tours.tours[0].steps[0].snippet.find((r) => r.hi)).toMatchObject({ n: 9, t: '    Validate(t);' });
+    });
+
+    it('resolves .cs file, Type.Member and pinned references in a codebook.json chapter', () => {
+        const warn = vi.fn();
+        const doc = { version: 1, title: 'B', chapters: [{ id: 'c', title: 'C', files: ['Services/TaskStore.cs', 'Models/Task.cs'],
+            body: ['`Models/Task.cs` is saved by `TaskStore.Save` in `Services/TaskStore.cs:Save`.'] }] };
+        const ch = compileBook(doc, symbols, null, null, warn).chapters[0];
+        expect(warn).not.toHaveBeenCalled();
+        expect(ch.stale).toBe(false);
+        expect(ch.paragraphs[0].filter((s) => s.ref).map((s) => s.ref)).toEqual([
+            { label: 'Models/Task.cs', file: 'Models/Task.cs', symbol: null, parent: null, line: 1, end: null },
+            { label: 'TaskStore.Save', file: 'Services/TaskStore.cs', symbol: 'Save', parent: 'TaskStore', line: 8, end: 12 },
+            { label: 'Services/TaskStore.cs:Save', file: 'Services/TaskStore.cs', symbol: 'Save', parent: 'TaskStore', line: 8, end: 12 },
+        ]);
+    });
+
+    it('marks a chapter stale for a .cs file reference not in the index', () => {
+        const warn = vi.fn();
+        const doc = { version: 1, title: 'B', chapters: [{ id: 'c', title: 'C', files: [], body: ['See `Views/MainForm.xaml.cs`.'] }] };
+        const ch = compileBook(doc, symbols, null, null, warn).chapters[0];
+        expect(ch.stale).toBe(true);
+        expect(ch.warnings[0]).toMatch(/Views\/MainForm\.xaml\.cs/);
+        expect(ch.paragraphs[0]).toEqual([{ t: 'See `Views/MainForm.xaml.cs`.' }]);
+    });
+});
+
+describe('gen-src-manifest csharp mode output', () => {
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const { execFileSync } = require('child_process');
+    let root;
+    beforeEach(() => {
+        root = fs.mkdtempSync(path.join(os.tmpdir(), 'gcs-'));
+        fs.mkdirSync(path.join(root, 'scripts'));
+        fs.copyFileSync(path.resolve(__dirname, '..', 'scripts', 'gen-src-manifest.js'), path.join(root, 'scripts', 'gen-src-manifest.js'));
+        fs.mkdirSync(path.join(root, 'Services'));
+        fs.mkdirSync(path.join(root, 'Models'));
+        fs.mkdirSync(path.join(root, 'db'));
+        fs.writeFileSync(path.join(root, 'Services', 'TaskStore.cs'), CS_STORE);
+        fs.writeFileSync(path.join(root, 'Models', 'Task.cs'), CS_TASK);
+        fs.writeFileSync(path.join(root, 'db', 'schema.sql'), 'CREATE TABLE tasks (\n    id int PRIMARY KEY\n);\n');
+        const step = (m) => ({ file: 'Services/TaskStore.cs', symbol: 'Save', parent: 'TaskStore', match: [m], title: 'T', why: 'W' });
+        fs.writeFileSync(path.join(root, 'codetour.json'), JSON.stringify({ version: 1, sections: [], tours: [{ id: 'save', section: 's', title: 'Save', recap: [], steps: [step('Validate'), step('Write'), step('Flush')] }] }));
+        fs.writeFileSync(path.join(root, 'codebook.json'), JSON.stringify({ version: 1, title: 'B', chapters: [{ id: 'c', title: 'C', files: ['Services/TaskStore.cs'], tours: ['save'], body: ['See `TaskStore.Save`.'] }] }));
+    });
+    afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+
+    const run = (lang, out) => execFileSync(process.execPath, [path.join(root, 'scripts', 'gen-src-manifest.js')], {
+        cwd: root, encoding: 'utf8', env: { ...process.env, MANIFEST_LANG: lang, MANIFEST_OUT_DIR: out, MANIFEST_DETERMINISTIC: 'true', MANIFEST_SRC_ROOT: '' },
+    });
+
+    it('writes symbols, tours and book in csharp mode with the same log lines', () => {
+        const log = run('csharp', 'out');
+        const out = path.join(root, 'out');
+        expect(log).toMatch(/src-symbols\.json written to out\/ — \d+ defs,/);
+        expect(log).toMatch(/src-tours\.json written to out\/ — 1 tours, 3 steps/);
+        expect(log).toMatch(/src-book\.json written to out\/ — 1 chapters, 1 references, 0 stale/);
+        const symbols = JSON.parse(fs.readFileSync(path.join(out, 'src-symbols.json'), 'utf8'));
+        expect(Object.keys(symbols.files)).toEqual(['Models/Task.cs', 'Services/TaskStore.cs']);
+        const book = JSON.parse(fs.readFileSync(path.join(out, 'src-book.json'), 'utf8'));
+        expect(book.chapters[0].tours).toEqual([{ id: 'save', title: 'Save', steps: 3 }]);
+        const first = fs.readFileSync(path.join(out, 'src-symbols.json'), 'utf8');
+        run('csharp', 'out');
+        expect(fs.readFileSync(path.join(out, 'src-symbols.json'), 'utf8')).toBe(first);
+    });
+
+    it('writes none of them in sql mode', () => {
+        run('sql', 'out');
+        const out = path.join(root, 'out');
+        expect(fs.existsSync(path.join(out, 'src-manifest.json'))).toBe(true);
+        ['src-symbols.json', 'src-tours.json', 'src-book.json'].forEach((f) => expect(fs.existsSync(path.join(out, f))).toBe(false));
+    });
+
+    it('reads the .cs set scoped by srcRoot, paths repo-root-relative', () => {
+        expect(readCsharpSources({ repoRoot: root, srcRoot: 'Models' }).map((s) => s.name)).toEqual(['Models/Task.cs']);
+    });
+});

@@ -7,10 +7,10 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-22',
         added: [
-            'A new Understanding tab, between Stream and Structure, shows the linked repo\'s code book as a shelf of chapters with reading times, stale chapters marked in amber, and a button to generate or refresh the book.',
             'Chapters in the Understanding tab now open in a reader with tappable code references, a look-ahead note and previous/next chapter buttons, and your reading place is saved so Continue picks up where you left off on any device.',
             'Paragraphs in the Understanding reader can now be bookmarked with a hover ribbon or a long-press, and your bookmarks are listed from the reader\'s top bar and on the shelf so you can jump straight back to them on any device.',
             'An Ask chip in the Understanding reader opens the Claude chat scoped to the chapter you\'re reading, so answers draw on that chapter\'s code, and code names in the replies open their definitions.',
+            'C# repos now get the code book, code tours and tappable code references, with classes and their methods and properties traceable like JavaScript ones.',
         ],
         changed: [
             'Code tours now start from the Understanding shelf, with the START HERE card under Continue, each chapter\'s tours listed beneath it and a tours chip in the header opening All tours, while Structure keeps its per-area tour row.',

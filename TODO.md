@@ -2570,7 +2570,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 544d4bcb-7b30-4f2d-914d-c52fa7be1a0a -->
 
-- [ ] **[MEDIUM]** Build the symbols index, tours and book in csharp manifest mode
+- [x] **[MEDIUM]** Build the symbols index, tours and book in csharp manifest mode — Completed: 2026-10-22
   - Type: feature
   - Description: The code book and tours depend on `src-symbols.json`, which `scripts/gen-src-manifest.js` writes only in web mode, so a C# repo (Degree Dossier, the WinForms projects) gets a types outline but no Understanding content. Add a csharp symbols builder that reshapes `scanCsharpTypes` output into the same `{ version, files: { path: { defs, imports } } }` index the web builder produces, and run the symbols, tours and book writers in csharp mode as well as web. Paths in the index are the manifest's repo-root-relative `.cs` paths (csharp mode emits no `srcRoot`), so a `codetour.json` or `codebook.json` in a C# repo references `Services/TaskStore.cs:Save` and `Models/Task.cs`, and the PWA's trace/peek, reader chips and chapter chat work unchanged because they key on the index.
   - Behavior:
