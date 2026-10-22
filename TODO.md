@@ -2530,7 +2530,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 79d7b54b-e750-44d2-bd03-9eaf68ef72e1 -->
 
-- [ ] **[MEDIUM]** Move the tours START HERE card and All tours sheet into the Understanding tab
+- [x] **[MEDIUM]** Move the tours START HERE card and All tours sheet into the Understanding tab — Completed: 2026-10-22
   - Type: feature
   - Description: Tours are the "go deeper" layer of the book, so their entry points belong on the shelf, not in Structure: move the START HERE card (next unfinished tour, Continue and dismiss), the `Tours n/m` header chip and the All tours sheet from `structureView.js` into the Understanding shelf, and list each chapter's tours as nested rows under that chapter. Structure keeps only the `TOURS IN <AREA>` rows in Map level 2 and its docked player. The player (`tourPlayer.js`), tour loading and progress (`codeTours.js`, `prefs.js`) are unchanged; what changes is who mounts the surfaces and which hooks the player gets. At 390x844 the shelf shows the START HERE card under the Continue card, tour rows indented under chapters 1 and 3, and a `Tours 0/35` chip left of the Generate control; at 1300x900 the same, with a started tour docking into the Understanding code pane column.
   - Behavior:
