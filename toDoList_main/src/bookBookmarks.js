@@ -26,17 +26,21 @@ function stamp(t) {
     return Number.isFinite(n) ? n : 0;
 }
 
-// A paragraph's plain text — text segments as written, ref chips flattened to
-// the label the chip shows — cut to BOOKMARK_LABEL_MAX characters at a word
-// boundary with an ellipsis.
+// A paragraph's plain text — text segments as written, rationale sentences read
+// through, ref chips flattened to the label the chip shows — cut to
+// BOOKMARK_LABEL_MAX characters at a word boundary with an ellipsis.
 export function bookmarkLabel(segments) {
     const segs = Array.isArray(segments) ? segments : [{ t: String(segments || '') }];
-    const text = segs.map(function (seg) {
+    const flat = function (seg) {
+        if (seg && seg.why && typeof seg.why === 'object') {
+            return (Array.isArray(seg.why.segs) ? seg.why.segs : []).map(flat).join('');
+        }
         if (seg && seg.ref && typeof seg.ref === 'object') {
             return String(seg.ref.label || seg.ref.symbol || seg.ref.file || '');
         }
         return seg && typeof seg.t === 'string' ? seg.t : '';
-    }).join('').replace(/\s+/g, ' ').trim();
+    };
+    const text = segs.map(flat).join('').replace(/\s+/g, ' ').trim();
     if (text.length <= BOOKMARK_LABEL_MAX) return text;
     let cut = text.slice(0, BOOKMARK_LABEL_MAX);
     // Cutting inside a word drops back to the last space before it.

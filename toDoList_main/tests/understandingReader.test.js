@@ -631,3 +631,103 @@ describe('map chapter', () => {
         expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'map', paraIndex: 1 });
     });
 });
+
+describe('cited versus inferred rationale', () => {
+    const SRC_CITE = { type: 'src', file: 'listLogic.js', line: 59, text: '// mapping from the in-memory shorthand', label: 'listLogic.js:59' };
+    const RULE_CITE = { type: 'rule', file: 'CLAUDE.md', line: 12, text: 'All mutations to the data model go through here', label: 'CLAUDE.md' };
+    const COMMIT_CITE = { type: 'commit', file: null, line: null, text: 'abc1234def', label: 'abc1234' };
+    const WHY_BOOK = {
+        title: 'Understanding Void',
+        chapters: [
+            {
+                id: 'data', index: 1, title: 'Where the data lives', minutes: 3, stale: false,
+                rationale: { cited: 2, unverified: 1, inferred: 1 },
+                paragraphs: [
+                    [{ t: 'Saving is local. ' }, { why: { kind: 'cited', cite: SRC_CITE, segs: [{ t: 'It maps names because the columns differ.' }] } }],
+                    [{ why: { kind: 'inferred', cite: null, segs: [{ ref: REF }, { t: ' is long, likely because rows do a lot.' }] } }],
+                    [{ why: { kind: 'cited', cite: RULE_CITE, segs: [{ t: 'Mutations go through one file so that nothing drifts.' }] } }, { t: ' ' },
+                        { why: { kind: 'unverified', cite: COMMIT_CITE, segs: [{ t: 'It changed because of a bug.' }] } }],
+                ],
+                ahead: null,
+            },
+            {
+                id: 'plain', index: 2, title: 'Plain', minutes: 1, stale: false,
+                rationale: { cited: 0, unverified: 0, inferred: 0 },
+                paragraphs: [[{ t: 'No reasons.' }]],
+                ahead: null,
+            },
+        ],
+    };
+    beforeEach(() => { mocks.book = WHY_BOOK; });
+
+    test('a cited sentence renders with a § chip that opens the commented line', async () => {
+        await openChapter(0);
+        const why = view().querySelector('.understandingPara .why--cited');
+        expect(why.textContent).toBe('It maps names because the columns differ. § listLogic.js:59');
+        const chip = why.querySelector('.bookCite');
+        expect(chip.tagName).toBe('BUTTON');
+        chip.click();
+        await flush();
+        expect(renderCodeViewer).toHaveBeenCalledTimes(1);
+        const opts = renderCodeViewer.mock.calls[0][1];
+        expect(opts.filePath).toBe('toDoList_main/src/listLogic.js');
+        expect(opts.startLine).toBe(59);
+        expect(opts.endLine).toBe(59);
+        expect(opts.banner).toBe('listLogic.js:59');
+    });
+
+    test('an inferred sentence is muted with a title and no chip, its refs still chips', async () => {
+        await openChapter(0);
+        const why = view().querySelectorAll('.understandingPara')[1].querySelector('.why');
+        expect(why.className).toBe('why why--inferred');
+        expect(why.title).toBe('Inferred — not backed by a comment, rule or requirement');
+        expect(why.querySelector('.bookCite')).toBeNull();
+        expect(why.querySelector('.bookRef').textContent).toBe('bootApp');
+    });
+
+    test('a rule chip opens the citation sheet with the quoted fragment, and closes', async () => {
+        await openChapter(0);
+        const chip = view().querySelectorAll('.understandingPara')[2].querySelector('.why--cited .bookCite');
+        expect(chip.textContent).toBe('§ CLAUDE.md');
+        chip.click();
+        const sheet = document.getElementById('understandingCiteSheet');
+        expect(sheet.hidden).toBe(false);
+        expect(sheet.querySelector('.understandingCiteQuote').textContent).toBe('All mutations to the data model go through here');
+        expect(renderCodeViewer).not.toHaveBeenCalled();
+        sheet.querySelector('.understandingMarksClose').click();
+        expect(sheet.hidden).toBe(true);
+    });
+
+    test('a commit chip is inert with an unverified tooltip', async () => {
+        await openChapter(0);
+        const why = view().querySelector('.why--unverified');
+        const chip = why.querySelector('.bookCite');
+        expect(chip.tagName).toBe('SPAN');
+        expect(chip.textContent).toBe('§ abc1234');
+        expect(chip.title).toMatch(/^Unverified/);
+    });
+
+    test('the header shows cited and inferred counts only when either is non-zero', async () => {
+        await openChapter(0);
+        expect(view().querySelector('.understandingReaderWhy').textContent).toBe('2 cited · 1 inferred');
+        view().querySelector('.understandingNavNext').click();
+        expect(view().querySelector('.understandingReaderWhy')).toBeNull();
+    });
+
+    test('scoped chat prose reads rationale through and tags inferred sentences', async () => {
+        await openChapter(0);
+        view().querySelector('.understandingAskChip').click();
+        const scope = openChatWithBookScope.mock.calls[0][0];
+        expect(scope.prose).toEqual([
+            'Saving is local. It maps names because the columns differ.',
+            'bootApp is long, likely because rows do a lot. [inferred]',
+            'Mutations go through one file so that nothing drifts. It changed because of a bug.',
+        ]);
+        expect(scope.refs.map((r) => r.symbol)).toEqual(['bootApp']);
+    });
+
+    test('a bookmark label reads rationale sentences through', async () => {
+        const { bookmarkLabel } = await import('../src/bookBookmarks.js');
+        expect(bookmarkLabel(WHY_BOOK.chapters[0].paragraphs[1])).toBe('bootApp is long, likely because rows do a lot.');
+    });
+});
