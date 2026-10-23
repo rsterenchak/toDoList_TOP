@@ -10,16 +10,10 @@ export const changelog = [
             'The code book now opens with a map chapter introducing its most-used names, each a tappable code reference beside a one-line role.',
             'Code book chapters now show which explanations of why the code works the way it does are backed by a source comment, project rule or requirement, with a tappable citation, and set inferred ones apart in muted text, and map entries for files with a banner comment now show a full purpose sentence.',
             'A code book chapter\'s look-ahead note now lists the names the later chapter covers as chips, each jumping straight to the paragraph that explains it, and the back chip returns you to where you were reading.',
+            'Code book chapters whose code has changed since they were written are now flagged DRIFT on the shelf, and the chapter header lists the names that changed.',
         ],
         fixed: [
             'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-22',
-        fixed: [
-            'Launching the installed iPhone app no longer shows the bottom tab bar and Claude button sliding down into place; they appear once at their final position.',
         ],
     },
 ];

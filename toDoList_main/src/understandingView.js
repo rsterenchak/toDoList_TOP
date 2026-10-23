@@ -270,6 +270,22 @@ function chapterNum(book, i) {
     return isMapChapter(book.chapters[0]) ? i : i + 1;
 }
 
+// A stale chapter's tag: DRIFT when the only thing wrong is that the code it
+// describes changed under it (every warning a `drift:` one), else STALE.
+function staleTag(ch) {
+    const drift = Array.isArray(ch.drift) ? ch.drift : [];
+    const warnings = Array.isArray(ch.warnings) ? ch.warnings : [];
+    const onlyDrift = drift.length > 0 && warnings.every(function (w) { return String(w).indexOf('drift: ') === 0; });
+    return onlyDrift ? 'DRIFT' : 'STALE';
+}
+
+// The symbol a drift entry's `file:symbol` (or bare file) key names.
+function driftLabel(entry) {
+    const key = String((entry && entry.ref) || '');
+    const colon = key.indexOf(':');
+    return colon === -1 ? key.split('/').pop() : key.slice(colon + 1);
+}
+
 // ── reading position ──
 
 // Where `progress` puts the reader in `book`: `{ index, paraIndex, pct }` with a
@@ -376,7 +392,7 @@ function buildChapterList(view, repo, book, pos) {
         const meta = document.createElement('span');
         if (ch.stale === true) {
             meta.className = 'understandingChapterStale';
-            meta.textContent = 'STALE';
+            meta.textContent = staleTag(ch);
         } else if (pos && i < pos.index) {
             meta.className = 'understandingChapterDone';
             meta.textContent = '✓';
@@ -1681,6 +1697,24 @@ function showChapter(index, paraIndex) {
     title.className = 'understandingReaderTitle';
     title.textContent = ch.title || ch.id;
     r.column.appendChild(title);
+
+    // A stale chapter says so, and names the symbols whose code drifted.
+    if (ch.stale === true) {
+        const flag = document.createElement('div');
+        flag.className = 'understandingReaderStale';
+        const tag = document.createElement('span');
+        tag.className = 'understandingReaderStaleTag';
+        tag.textContent = staleTag(ch);
+        flag.appendChild(tag);
+        (Array.isArray(ch.drift) ? ch.drift : []).forEach(function (d) {
+            const chip = document.createElement('span');
+            chip.className = 'understandingDriftChip';
+            chip.textContent = driftLabel(d);
+            chip.title = d.ref + ' — ' + (d.reason === 'both' ? 'body and importers' : d.reason) + ' changed';
+            flag.appendChild(chip);
+        });
+        r.column.appendChild(flag);
+    }
 
     // How much of the chapter's rationale the book can back up.
     const why = ch.rationale && typeof ch.rationale === 'object' ? ch.rationale : null;

@@ -732,7 +732,7 @@ describe('gen-src-manifest real codetour.json', () => {
     });
 });
 
-const { compileBook, buildWebBook, writeWebBook } = gen;
+const { compileBook, buildWebBook, writeWebBook, writeBookFingerprints } = gen;
 
 describe('gen-src-manifest compileBook', () => {
     const sources = [
@@ -1120,6 +1120,155 @@ describe('gen-src-manifest writeWebBook', () => {
     });
 });
 
+// Drift: a chapter whose code changed under it while every reference still
+// resolves. The fingerprint stored by writeBookFingerprints is compared on
+// every compile, per reference, as body and importers halves.
+describe('gen-src-manifest book drift fingerprints', () => {
+    const A = 'export function save(x) {\n    return x + 1;\n}\nexport function load() {\n    return 0;\n}\n';
+    const B = "import { save } from './a.js';\nexport function run() {\n    return save(2);\n}\n";
+    const C = "export function idle() {\n    return 1;\n}\n";
+    const sourcesOf = (a, b, c) => [src('a.js', a), src('b.js', b), src('c.js', c)];
+    const chapter = (extra) => Object.assign({ id: 'c1', title: 'One', area: null, files: ['a.js'], tours: [], body: ['Calls `save` from `run`.'] }, extra);
+    const compile = (sources, ch) => {
+        const warn = vi.fn();
+        const out = compileBook({ version: 1, title: 'B', chapters: [ch] }, buildSymbols(sources), null, null, warn, sources);
+        return { warn, ch: out.chapters[0], fingerprints: out.fingerprints };
+    };
+    const stored = compile(sourcesOf(A, B, C), chapter()).fingerprints.c1;
+
+    it('fingerprints every distinct reference, stably across identical runs', () => {
+        expect(Object.keys(stored)).toEqual(['a.js:save', 'b.js:run']);
+        Object.values(stored).forEach((v) => expect(v).toMatch(/^[0-9a-f]{16}\.[0-9a-f]{16}$/));
+        expect(compile(sourcesOf(A, B, C), chapter()).fingerprints.c1).toEqual(stored);
+    });
+
+    it('keeps the fingerprint out of src-book.json', () => {
+        expect(JSON.parse(JSON.stringify(compileBook({ version: 1, title: 'B', chapters: [chapter()] }, buildSymbols(sourcesOf(A, B, C)), null, null, vi.fn(), sourcesOf(A, B, C))))).not.toHaveProperty('fingerprints');
+    });
+
+    it('is not stale with a matching fingerprint, nor with none stored (first generation)', () => {
+        const same = compile(sourcesOf(A, B, C), chapter({ fingerprint: stored }));
+        expect(same.ch).toMatchObject({ stale: false, warnings: [], drift: [] });
+        const edited = A.replace('x + 1', 'x + 2');
+        const first = compile(sourcesOf(edited, B, C), chapter());
+        expect(first.ch).toMatchObject({ stale: false, drift: [] });
+    });
+
+    it('ignores re-indentation of a body', () => {
+        const out = compile(sourcesOf(A.replace('    return x + 1;', '  return   x + 1;'), B, C), chapter({ fingerprint: stored }));
+        expect(out.ch.drift).toEqual([]);
+    });
+
+    it('flags a changed def body as `body` drift naming the symbol', () => {
+        const out = compile(sourcesOf(A.replace('x + 1', 'x * 2'), B, C), chapter({ fingerprint: stored }));
+        expect(out.ch.drift).toEqual([{ ref: 'a.js:save', reason: 'body' }]);
+        expect(out.ch.stale).toBe(true);
+        expect(out.ch.warnings).toEqual(['drift: save body changed']);
+        expect(out.warn).toHaveBeenCalledWith('Warning: codebook.json: chapter "c1": drift: save body changed');
+    });
+
+    it('flags a new importer as `importers` drift, and both together as `both`', () => {
+        const importer = "import { save } from './a.js';\nexport function idle() {\n    return save(1);\n}\n";
+        const out = compile(sourcesOf(A, B, importer), chapter({ fingerprint: stored }));
+        expect(out.ch.drift).toEqual([{ ref: 'a.js:save', reason: 'importers' }]);
+        expect(out.ch.warnings).toEqual(['drift: save importers changed']);
+        const both = compile(sourcesOf(A.replace('x + 1', 'x * 2'), B, importer), chapter({ fingerprint: stored }));
+        expect(both.ch.drift).toEqual([{ ref: 'a.js:save', reason: 'both' }]);
+    });
+
+    it('ignores a new reference with no stored key and a stored key no longer referenced', () => {
+        const ch = chapter({ body: ['Calls `save` and `load`.'], fingerprint: Object.assign({ 'z.js:gone': '0000000000000000.0000000000000000' }, stored) });
+        const out = compile(sourcesOf(A, B, C), ch);
+        expect(out.ch).toMatchObject({ stale: false, drift: [] });
+        expect(Object.keys(out.fingerprints.c1)).toEqual(['a.js:load', 'a.js:save']);
+    });
+
+    it('fingerprints promises and file chips; a file chip hashes its purpose line', () => {
+        const withPurpose = '// Saves things.\n' + A;
+        const doc = (fp) => ({ version: 1, title: 'B', chapters: [
+            chapter({ body: ['See `a.js`.'], ahead: { chapter: 'c2', note: 'Next.', promises: ['run'] }, fingerprint: fp }),
+            chapter({ id: 'c2', files: ['b.js'], body: ['Then `run`.'] }),
+        ] });
+        const base = sourcesOf(withPurpose, B, C);
+        const first = compileBook(doc(undefined), buildSymbols(base), null, null, vi.fn(), base);
+        expect(Object.keys(first.fingerprints.c1)).toEqual(['a.js', 'b.js:run']);
+        const changed = sourcesOf(withPurpose.replace('Saves things.', 'Stores things.'), B, C);
+        const out = compileBook(doc(first.fingerprints.c1), buildSymbols(changed), null, null, vi.fn(), changed);
+        expect(out.chapters[0].drift).toEqual([{ ref: 'a.js', reason: 'body' }]);
+        expect(out.chapters[0].warnings).toEqual(['drift: a.js body changed']);
+    });
+
+    it('csharp: importers are files naming the symbol as a whole word', () => {
+        const rules = 'public class AppointmentRules {\n    public bool CheckOverlap(int a) {\n        return a > 0;\n    }\n}\n';
+        const svc = 'public class Booking {\n    public void Book() {\n        var ok = 1;\n    }\n}\n';
+        const ch = chapter({ files: ['Rules.cs'], body: ['See `AppointmentRules.CheckOverlap`.'] });
+        const run = (sources, fp) => {
+            const out = compileBook({ version: 1, title: 'B', chapters: [Object.assign({}, ch, { fingerprint: fp })] }, buildCsharpSymbols({ sources }), null, null, vi.fn(), sources);
+            return out;
+        };
+        const base = [{ name: 'Rules.cs', text: rules }, { name: 'Booking.cs', text: svc }];
+        const first = run(base);
+        expect(Object.keys(first.fingerprints.c1)).toEqual(['Rules.cs:AppointmentRules.CheckOverlap']);
+        const caller = [{ name: 'Rules.cs', text: rules }, { name: 'Booking.cs', text: svc.replace('var ok = 1;', 'var ok = CheckOverlap(1);') }];
+        const out = run(caller, first.fingerprints.c1);
+        expect(out.chapters[0].drift).toEqual([{ ref: 'Rules.cs:AppointmentRules.CheckOverlap', reason: 'importers' }]);
+        expect(out.chapters[0].warnings).toEqual(['drift: AppointmentRules.CheckOverlap importers changed']);
+    });
+
+    describe('writeBookFingerprints', () => {
+        const fs = require('fs');
+        const os = require('os');
+        const path = require('path');
+        let root;
+        const BOOK = '{\n  "version": 1,\n  "title": "B",\n  "chapters": [\n    {\n      "id": "c1",\n      "title": "One",\n      "files": ["a.js"],\n      "tours": [],\n      "body": [\n        "Calls `save`."\n      ]\n    },\n    { "id": "c2", "title": "Two", "files": [], "tours": [], "body": ["Plain."] }\n  ]\n}\n';
+        beforeEach(() => {
+            root = fs.mkdtempSync(path.join(os.tmpdir(), 'gsf-'));
+            fs.mkdirSync(path.join(root, 'src'));
+            fs.writeFileSync(path.join(root, 'src', 'a.js'), A);
+            fs.writeFileSync(path.join(root, 'src', 'b.js'), B);
+            fs.writeFileSync(path.join(root, 'codebook.json'), BOOK);
+        });
+        afterEach(() => { fs.rmSync(root, { recursive: true, force: true }); });
+        const read = () => fs.readFileSync(path.join(root, 'codebook.json'), 'utf8');
+        const write = () => writeBookFingerprints({ srcDir: path.join(root, 'src') });
+
+        it('adds only the fingerprint keys, keeping every other byte, and a no-change rewrite is byte-identical', () => {
+            expect(write()).toBe(true);
+            const once = read();
+            const parsed = JSON.parse(once);
+            expect(Object.keys(parsed.chapters[0].fingerprint)).toEqual(['a.js:save']);
+            expect(parsed.chapters[1].fingerprint).toEqual({});
+            // Strip the two inserted keys and the original text is back.
+            const stripped = once.replace(/,\n\s*"fingerprint": \{[^}]*\}/g, '');
+            expect(stripped).toBe(BOOK);
+            expect(once).toContain('"files": ["a.js"],');
+            expect(write()).toBe(false);
+            expect(read()).toBe(once);
+        });
+
+        it('replaces a stale fingerprint in place, and the next compile reports no drift', () => {
+            write();
+            fs.writeFileSync(path.join(root, 'src', 'a.js'), A.replace('x + 1', 'x * 2'));
+            const drifted = buildWebBook({ srcDir: path.join(root, 'src'), warn: vi.fn() });
+            expect(drifted.chapters[0].drift).toEqual([{ ref: 'a.js:save', reason: 'body' }]);
+            const before = read();
+            expect(write()).toBe(true);
+            const after = read();
+            expect(after.split('\n').length).toBe(before.split('\n').length);
+            const warn = vi.fn();
+            const book = buildWebBook({ srcDir: path.join(root, 'src'), warn });
+            expect(warn).not.toHaveBeenCalled();
+            expect(book.chapters[0]).toMatchObject({ stale: false, drift: [] });
+        });
+
+        it('does nothing without a codebook.json', () => {
+            fs.rmSync(path.join(root, 'codebook.json'));
+            expect(write()).toBe(false);
+            expect(fs.existsSync(path.join(root, 'codebook.json'))).toBe(false);
+        });
+    });
+});
+
 // Keeps the real book fresh: a change that breaks a reference must update
 // codebook.json in the same PR.
 describe('gen-src-manifest real codebook.json', () => {
@@ -1129,12 +1278,30 @@ describe('gen-src-manifest real codebook.json', () => {
     const tourDoc = require('../codetour.json');
     const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
 
-    it('compiles every chapter with zero warnings', () => {
-        expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
+    // Drift is the stale book run's job, not a reason to fail a code PR: a
+    // change to described code flags its chapter for the book to catch up.
+    it('compiles every chapter with zero warnings other than drift', () => {
+        expect(warn.mock.calls.map((c) => c[0]).filter((m) => !/": drift: /.test(m))).toEqual([]);
         expect(book.chapters.length).toBe(doc.chapters.length);
         book.chapters.forEach((c) => {
-            expect(c.stale).toBe(false);
+            expect(c.warnings.filter((w) => !w.startsWith('drift: '))).toEqual([]);
+            expect(c.stale).toBe(c.drift.length > 0);
             expect(c.paragraphs.flat().some((s) => s.ref)).toBe(true);
+        });
+    });
+
+    it('stores a fingerprint on every chapter, and a fresh one reports zero drift', () => {
+        doc.chapters.forEach((c) => expect(typeof c.fingerprint).toBe('object'));
+        const fresh = JSON.parse(JSON.stringify(doc));
+        fresh.chapters.forEach((c) => { c.fingerprint = book.fingerprints[c.id]; });
+        const tmp = require('fs').mkdtempSync(path.join(require('os').tmpdir(), 'gsr-'));
+        const bookPath = path.join(tmp, 'codebook.json');
+        require('fs').writeFileSync(bookPath, JSON.stringify(fresh));
+        const again = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), bookPath, warn: vi.fn() });
+        require('fs').rmSync(tmp, { recursive: true, force: true });
+        again.chapters.forEach((c) => {
+            expect(c.drift).toEqual([]);
+            expect(c.stale).toBe(false);
         });
     });
 

@@ -64,6 +64,10 @@
 // `[src: file:line]`, `[rule: …]` (CLAUDE.md), `[req: id]` (assignment.md),
 // `[commit: hash]` — or be hedged as inference; it compiles to a `why` segment
 // tagged cited / unverified / inferred, and an unbacked one is stale.
+// `--write-fingerprints` (or MANIFEST_WRITE_FINGERPRINTS=1) stores each
+// chapter's code fingerprint in codebook.json — a hash of every referenced
+// def's body and importers; a later compile whose code no longer matches marks
+// the chapter stale with `drift` naming the changed refs.
 // A first chapter of `kind: "map"` is generated instead (rankMapSymbols): the
 // code map's areas, each area's front-door files with their purpose lines, and
 // each file's most-used names beside their authored roles, emitted as
@@ -1435,7 +1439,113 @@ function compileBook(doc, symbols, tours, areas, warn, sources, modules, docs) {
     c.warnings.push(msg);
     c.stale = true;
   });
-  return { version: BOOK_VERSION, title: (doc && doc.title) || '', chapters: chapters };
+  // Drift: each chapter's code fingerprint against the one stored at the last
+  // --write-fingerprints run. Needs the source text, so only with `sources`.
+  const fingerprints = {};
+  const fp = Array.isArray(sources) ? bookFingerprintContext(index, sources) : null;
+  chapters.forEach(function (c) {
+    c.drift = [];
+    if (!fp) return;
+    const current = bookChapterFingerprint(c, fp);
+    fingerprints[c.id] = current;
+    const src = raw.find(function (r) { return r.id === c.id; });
+    const stored = src && src.fingerprint && typeof src.fingerprint === 'object' ? src.fingerprint : null;
+    if (!stored) return;
+    Object.keys(current).forEach(function (key) {
+      if (typeof stored[key] !== 'string' || stored[key] === current[key]) return;
+      const was = stored[key].split('.'), now = current[key].split('.');
+      const body = was.length !== 2 || was[0] !== now[0];
+      const importers = was.length !== 2 || was[1] !== now[1];
+      const reason = body && importers ? 'both' : (body ? 'body' : 'importers');
+      c.drift.push({ ref: key, reason: reason });
+      const msg = 'drift: ' + bookFingerprintLabel(key) + ' ' + BOOK_DRIFT_TEXT[reason];
+      say('Warning: codebook.json: chapter "' + c.id + '": ' + msg);
+      c.warnings.push(msg);
+      c.stale = true;
+    });
+  });
+  const book = { version: BOOK_VERSION, title: (doc && doc.title) || '', chapters: chapters };
+  // Not serialized into src-book.json — read by writeBookFingerprints.
+  Object.defineProperty(book, 'fingerprints', { value: fingerprints, enumerable: false });
+  return book;
+}
+
+// ── drift: a chapter's code fingerprint ──
+// A chapter keeps resolving while the code it describes is rewritten, so each
+// one also stores `fingerprint: { key: "<body hash>.<importers hash>" }` over
+// its distinct references (paragraph chips and kept promises). The key is
+// `file:symbol` (`file:Parent.symbol` under a parent) or the bare file for a
+// file chip. The body is the def's lines (a file chip: its purpose line),
+// whitespace-normalised; importers are the other files whose imports bind the
+// name (web) or that name it as a whole word (csharp). Each half is the first
+// 16 hex chars of a sha1, so a mismatch says which of the two changed.
+const BOOK_DRIFT_TEXT = { body: 'body changed', importers: 'importers changed', both: 'body and importers changed' };
+
+function bookHash(text) {
+  return require('crypto').createHash('sha1').update(text).digest('hex').slice(0, 16);
+}
+
+function bookFingerprintLabel(key) {
+  const colon = key.indexOf(':');
+  return colon === -1 ? key : key.slice(colon + 1);
+}
+
+// The source lines and identifier sets a chapter fingerprint reads, built once.
+function bookFingerprintContext(symbols, sources) {
+  const text = {};
+  sources.forEach(function (s) { if (s && s.name) text[s.name] = String(s.text || ''); });
+  const lines = {}, words = {};
+  return {
+    symbols: symbols,
+    files: Object.keys(symbols.files).sort(),
+    text: function (f) { return Object.prototype.hasOwnProperty.call(text, f) ? text[f] : ''; },
+    lines: function (f) { return lines[f] || (lines[f] = this.text(f).split(/\r?\n/)); },
+    words: function (f) { return words[f] || (words[f] = new Set(this.text(f).match(/[A-Za-z_$][\w$]*/g) || [])); },
+  };
+}
+
+// { key: hash } over chapter `c`'s distinct references, keys sorted.
+function bookChapterFingerprint(c, ctx) {
+  const refs = [];
+  (c.paragraphs || []).forEach(function (segs) { refs.push.apply(refs, bookParagraphRefs(segs)); });
+  ((c.ahead && c.ahead.promises) || []).forEach(function (p) { if (p && p.ref) refs.push(p.ref); });
+  const out = {};
+  refs.forEach(function (r) {
+    const key = r.symbol ? r.file + ':' + (r.parent ? r.parent + '.' : '') + r.symbol : r.file;
+    if (!(key in out)) out[key] = bookRefHash(r, ctx);
+  });
+  const sorted = {};
+  Object.keys(out).sort().forEach(function (k) { sorted[k] = out[k]; });
+  return sorted;
+}
+
+function bookRefHash(r, ctx) {
+  const cs = /\.cs$/.test(r.file);
+  let body, name;
+  if (r.symbol) {
+    body = ctx.lines(r.file).slice(r.line - 1, r.end || r.line).join('\n');
+    // A member is bound through its parent in web imports; a C# constructor
+    // is named by its type.
+    name = cs ? (r.symbol === 'constructor' ? r.parent : r.symbol) : (r.parent || r.symbol);
+  } else if (cs) {
+    const entry = ctx.symbols.files[r.file];
+    const primary = csharpPrimaryDef(entry ? entry.defs : [], r.file);
+    body = primary ? csharpPurpose(ctx.text(r.file), primary.start) || '' : '';
+    name = primary ? primary.name : null;
+  } else {
+    body = extractPurpose(ctx.text(r.file)) || '';
+    name = null;
+  }
+  const importers = ctx.files.filter(function (g) {
+    if (g === r.file) return false;
+    if (cs) return !!name && ctx.words(g).has(name);
+    const imports = ctx.symbols.files[g].imports || {};
+    return Object.keys(imports).some(function (k) {
+      const b = imports[k];
+      return b.from === r.file && (name === null || b.name === name || b.name === '*');
+    });
+  });
+  return bookHash(String(body).replace(/\s+/g, ' ').trim()) + '.' + bookHash(importers.join('\n'));
 }
 
 // The `ref` segments of a compiled paragraph, rationale wraps included.
@@ -1512,6 +1622,81 @@ function bookDocRoot(start) {
     dir = up;
   }
   return start;
+}
+
+// Rewrites every chapter's `fingerprint` in codebook.json from the current
+// source, splicing only that key's text so every other byte stays as
+// committed (its hand-kept inline arrays included); returns true when the
+// file changed. Nothing happens without a codebook.json.
+function writeBookFingerprints(opts) {
+  const o = opts || {};
+  const root = o.srcDir || srcDir;
+  const bookPath = o.bookPath || path.resolve(root, '..', 'codebook.json');
+  const before = readTextFile(bookPath);
+  if (before === null) return false;
+  const book = buildWebBook(Object.assign({}, o, { bookPath: bookPath, warn: function () {} }));
+  const top = jsonSpans(before, skipJsonWs(before, 0));
+  const list = top.members && top.members.find(function (m) { return m.key === 'chapters'; });
+  if (!book || !list || !list.value.items) return false;
+  let after = before;
+  // Back to front, so earlier offsets stay valid as later text changes length.
+  list.value.items.slice().reverse().forEach(function (ch) {
+    const idMember = ch.members && ch.members.find(function (m) { return m.key === 'id'; });
+    const id = idMember ? JSON.parse(before.slice(idMember.value.start, idMember.value.end)) : null;
+    if (!ch.members.length || !Object.prototype.hasOwnProperty.call(book.fingerprints, id)) return;
+    const first = ch.members[0];
+    const indent = /[ \t]*$/.exec(before.slice(0, first.start))[0];
+    const keys = Object.keys(book.fingerprints[id]);
+    const value = keys.length
+      ? '{\n' + keys.map(function (k) { return indent + '  ' + JSON.stringify(k) + ': ' + JSON.stringify(book.fingerprints[id][k]); }).join(',\n') + '\n' + indent + '}'
+      : '{}';
+    const own = ch.members.find(function (m) { return m.key === 'fingerprint'; });
+    if (own) after = after.slice(0, own.value.start) + value + after.slice(own.value.end);
+    else {
+      const last = ch.members[ch.members.length - 1];
+      after = after.slice(0, last.value.end) + ',\n' + indent + '"fingerprint": ' + value + after.slice(last.value.end);
+    }
+  });
+  if (after === before) return false;
+  fs.writeFileSync(bookPath, after);
+  return true;
+}
+
+function skipJsonWs(text, i) { while (i < text.length && /\s/.test(text[i])) i++; return i; }
+
+// The JSON value starting at `i` as { start, end } offsets, with `members:
+// [{ key, start, value }]` for an object and `items` for an array — enough to
+// splice one key without re-serialising its neighbours. Assumes valid JSON.
+function jsonSpans(text, i) {
+  const c = text[i];
+  if (c === '"') {
+    let k = i + 1;
+    while (text[k] !== '"') k += text[k] === '\\' ? 2 : 1;
+    return { start: i, end: k + 1 };
+  }
+  if (c === '{' || c === '[') {
+    const node = { start: i };
+    if (c === '{') node.members = []; else node.items = [];
+    let k = skipJsonWs(text, i + 1);
+    while (text[k] !== (c === '{' ? '}' : ']')) {
+      if (c === '{') {
+        const key = jsonSpans(text, k);
+        const value = jsonSpans(text, skipJsonWs(text, skipJsonWs(text, key.end) + 1));
+        node.members.push({ key: JSON.parse(text.slice(key.start, key.end)), start: key.start, value: value });
+        k = value.end;
+      } else {
+        const item = jsonSpans(text, k);
+        node.items.push(item);
+        k = item.end;
+      }
+      k = skipJsonWs(text, k);
+      if (text[k] === ',') k = skipJsonWs(text, k + 1);
+    }
+    node.end = k + 1;
+    return node;
+  }
+  const lit = /^-?[\w.+-]+/.exec(text.slice(i));
+  return { start: i, end: i + lit[0].length };
 }
 
 // Writes src-book.json into `outDir` when codebook.json exists; returns the
@@ -1958,7 +2143,7 @@ function buildManifest() {
   return finalize(base);
 }
 
-module.exports = { scanRegions: scanRegions, parseImports: parseImports, extractPurpose: extractPurpose, buildModules: buildModules, codemapWarnings: codemapWarnings, buildWebManifest: buildWebManifest, scanJsDefs: scanJsDefs, parseImportBindings: parseImportBindings, buildSymbols: buildSymbols, buildWebSymbols: buildWebSymbols, compileTours: compileTours, buildWebTours: buildWebTours, writeWebTours: writeWebTours, compileBook: compileBook, validateBookPromises: validateBookPromises, detectRationale: detectRationale, resolveWhyMarker: resolveWhyMarker, rankMapSymbols: rankMapSymbols, buildWebBook: buildWebBook, writeWebBook: writeWebBook, scanCsharpTypes: scanCsharpTypes, readCsharpSources: readCsharpSources, buildCsharpSymbols: buildCsharpSymbols, prettify: prettify, buildManifest: buildManifest, walkCs: walkCs, walkSql: walkSql, walkDoc: walkDoc };
+module.exports = { scanRegions: scanRegions, parseImports: parseImports, extractPurpose: extractPurpose, buildModules: buildModules, codemapWarnings: codemapWarnings, buildWebManifest: buildWebManifest, scanJsDefs: scanJsDefs, parseImportBindings: parseImportBindings, buildSymbols: buildSymbols, buildWebSymbols: buildWebSymbols, compileTours: compileTours, buildWebTours: buildWebTours, writeWebTours: writeWebTours, compileBook: compileBook, validateBookPromises: validateBookPromises, detectRationale: detectRationale, resolveWhyMarker: resolveWhyMarker, rankMapSymbols: rankMapSymbols, buildWebBook: buildWebBook, writeWebBook: writeWebBook, writeBookFingerprints: writeBookFingerprints, scanCsharpTypes: scanCsharpTypes, readCsharpSources: readCsharpSources, buildCsharpSymbols: buildCsharpSymbols, prettify: prettify, buildManifest: buildManifest, walkCs: walkCs, walkSql: walkSql, walkDoc: walkDoc };
 
 if (require.main === module) {
   const manifest = buildManifest();
@@ -1989,13 +2174,20 @@ if (require.main === module) {
       const stepCount = tours.tours.reduce(function (n, t) { return n + t.steps.length; }, 0);
       console.log('src-tours.json written to ' + outDirName + '/ —', tours.tours.length, 'tours,', stepCount, 'steps');
     }
+    // The book routine's last step: store each chapter's code fingerprint so
+    // the next compile can tell when that code drifts. Never on a normal run.
+    if (process.argv.indexOf('--write-fingerprints') !== -1 || process.env.MANIFEST_WRITE_FINGERPRINTS === '1') {
+      const changed = writeBookFingerprints({ symbols: symbols, tours: tours, sources: sources, modules: manifest.modules });
+      console.log('codebook.json fingerprints ' + (changed ? 'written' : 'unchanged'));
+    }
     const book = writeWebBook({ symbols: symbols, tours: tours, sources: sources, modules: manifest.modules });
     if (book) {
       const refCount = book.chapters.reduce(function (n, c) {
         return n + c.paragraphs.reduce(function (k, p) { return k + p.filter(function (s) { return s.ref; }).length; }, 0);
       }, 0);
       const staleCount = book.chapters.filter(function (c) { return c.stale; }).length;
-      console.log('src-book.json written to ' + outDirName + '/ —', book.chapters.length, 'chapters,', refCount, 'references,', staleCount, 'stale');
+      const driftCount = book.chapters.filter(function (c) { return c.drift.length; }).length;
+      console.log('src-book.json written to ' + outDirName + '/ —', book.chapters.length, 'chapters,', refCount, 'references,', staleCount, 'stale,', driftCount, 'drift');
     }
     // The map hierarchy a map chapter needs roles for, on stderr: each area,
     // its front-door files with fan-in / fan-out, and their ranked symbols

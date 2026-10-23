@@ -68,6 +68,89 @@
         "renderGhostPending": "Shows the ghost's waiting dots while a reply is coming, or a still ellipsis under reduced motion.",
         "fetchGhostHistory": "Loads the ghost conversation so far, quietly returning nothing on any failure.",
         "ghostOpeningLine": "What the ghost says first: its last reply if you spoke recently, otherwise a fresh greeting."
+      },
+      "fingerprint": {
+        "agentQueueStore.js": "36a561e094533fe3.299ab1b98d5f5f1d",
+        "agentQueueStore.js:fireTriageSweep": "cbb150cee5588551.6fdcb1da7f0b4298",
+        "agentQueueStore.js:onQueueChange": "32385b81d3433f28.2072238c5f330088",
+        "agentQueueStore.js:stuckReasonText": "82f3d58b0d7510fc.f400b445aaa71d7c",
+        "appLock.js": "4a4496f57f226f3d.bba9e0f5e760a27f",
+        "appLock.js:isAppLockArmed": "151e4295e1a681b3.e2412d735f38095a",
+        "appLock.js:startAppLockWatch": "a6d7eba0326ac75b.c4a4248f7568c9e4",
+        "appLock.js:writeAppLockTimeoutMinutes": "c02756881600beda.211da56a234d8f15",
+        "claudeSheet.js": "288ff13920b5290d.335453940f650c56",
+        "claudeSheet.js:loadManifest": "c2e56d4e40ab1a73.9b11d71ce9451ea0",
+        "claudeSheet.js:openChatWithSeed": "fe4d3ecabe6d21af.4905e3a1d3c8a748",
+        "claudeSheet.js:syncClaudeSheetForProject": "224730da7fb0672c.c4a4248f7568c9e4",
+        "codeViewer.js": "8bd90fa4d4f6cbeb.287a50fe686bd738",
+        "codeViewer.js:clearCodeViewer": "7123a08bf7d58ed3.c2898ae86af56395",
+        "codeViewer.js:renderCodeViewer": "c288eb2f25400f43.0fb49271f21d293b",
+        "codeViewer.js:setCodeViewerCloseHandler": "204238810711caf4.af17595d2c06d647",
+        "companion.js": "5511bf28f9407a55.333cc314af2b6f92",
+        "companion.js:ensureCompanion": "bdabb4c6d276a51f.333b14fb4e4833b1",
+        "companion.js:prefersReducedMotion": "fa7332667b0fecf9.0459a228d960df88",
+        "companion.js:setCompanionEnabled": "8652c5addbac7212.e37db15949f55089",
+        "dispatchDraft.js": "d9aa58653387e4bf.ab560ff9abb3a6ff",
+        "dispatchDraft.js:dispatchDraft": "167f30af36d2a203.62c88aa457ee1fcf",
+        "dispatchDraft.js:resolveDispatchTarget": "f2e20b0f4760c115.c036690563cee42b",
+        "dispatchDraft.js:revertConfirmMessage": "94f78ad1b12a6f42.0c612d75a602ee49",
+        "emptyState.js": "88cfbfbe12268097.66f62a7982ac814c",
+        "emptyState.js:sizeMainListGhostSpacer": "5029dfddab8f6feb.8ae5bcbd992f59b9",
+        "emptyState.js:updateCompletedSection": "989e9c359e12b65b.66337feed668476b",
+        "emptyState.js:updateEmptyState": "d2e7fb3da3652cae.cdd8900dd68f9423",
+        "ghostTalk.js": "469ab3380a7584a4.504147a3a4fc6f99",
+        "ghostTalk.js:fetchGhostHistory": "d05207bfc6a03e84.504147a3a4fc6f99",
+        "ghostTalk.js:ghostOpeningLine": "b84dea5659cb20f8.504147a3a4fc6f99",
+        "ghostTalk.js:renderGhostPending": "88dde0c550dd7335.504147a3a4fc6f99",
+        "inject.js": "eba14f2e2366013a.a56762cac6166e54",
+        "inject.js:findTargetById": "7249fc1e17d96744.3f4ffbea41d8d467",
+        "inject.js:isInjectConfigured": "e6366b0c3d26a200.abee6707bfb395a6",
+        "inject.js:showInjectToast": "dc3d7457dc9cd688.96cb8a59224111dd",
+        "listLogic.js": "3da570150344d322.4a3fba20d918612c",
+        "listLogic.js:listLogic": "d8d1db9daaadbdeb.4a3fba20d918612c",
+        "listLogic.js:sortItemsByDueForRender": "f9a073f9ed76ce3f.97cee0727a66f7ef",
+        "listLogic.js:sortItemsByStatusForRender": "c9543c65468d1449.97cee0727a66f7ef",
+        "modalDismiss.js": "72f8ba6b02de976f.c177cd554f608f40",
+        "modalDismiss.js:wireModalDismiss": "4039e1222017350f.c177cd554f608f40",
+        "modals.js": "38447b1f68929796.0aeed889e94c11b4",
+        "modals.js:applyPendingUpdate": "895775e1a371e73d.496eaf50e99c72fc",
+        "modals.js:hasPendingUpdate": "b39e677d47799785.496eaf50e99c72fc",
+        "modals.js:showConfirmModal": "e7529a05702e4815.ddf13f94c5ff02ee",
+        "modelsPanel.js": "05a9dfe175041b23.e2b5fbae3af17409",
+        "modelsPanel.js:openModelsPanel": "1cc9f26080c8504c.4cba82907f447dd3",
+        "modelsPanel.js:providerForModel": "3f1072b8ba41e083.504147a3a4fc6f99",
+        "modelsPanel.js:resolveSurfaceChip": "17e91ce292331514.504147a3a4fc6f99",
+        "music.js": "6096673c8cfe66d0.001856f83ffccfd3",
+        "music.js:createPomodoroSubscriber": "50cc7bfdeec68d2f.c4a4248f7568c9e4",
+        "music.js:ensureMusic": "fadf4324a4e4c960.aec608d1ba1ae582",
+        "music.js:parseYouTubeUrl": "48931a1dfb552f8c.b8b0508ed9a67a1e",
+        "pomodoro.js": "a4fdb4b3d096d89e.001856f83ffccfd3",
+        "pomodoro.js:createPomodoroUI": "83b1235084b92e22.c4a4248f7568c9e4",
+        "pomodoro.js:ensurePomodoro": "cb08defb5736ecd4.aec608d1ba1ae582",
+        "pomodoro.js:nextSuggestedMode": "f7da4206bfdaec72.b8b0508ed9a67a1e",
+        "popoverNav.js": "17ee2dd01654b730.6e0988b3c0d5cc69",
+        "popoverNav.js:isFocusInTextInput": "fb789cb6c740f78f.6e0988b3c0d5cc69",
+        "popoverNav.js:popoverArrowNav": "064991d29e5b52ae.ab614371e0b98dcd",
+        "prefs.js": "ba8487c8e88f87d5.062881b3fa9c08eb",
+        "prefs.js:isCompletedSectionOpen": "c159e0b2d2be67ac.08cc79734469357d",
+        "prefs.js:isOnboardingComplete": "cfee36f937e9c9ba.dec65494922aaef0",
+        "prefs.js:setCompletedSectionOpen": "797cc1539a3b9602.08cc79734469357d",
+        "srcPath.js": "7c4f198ee3f2bc12.ebff7636884ca672",
+        "srcPath.js:joinSrcRootPath": "f862bb1489a95f26.ebff7636884ca672",
+        "structureRemoteCapture.js": "34662154c2336975.e3534cb2e0468797",
+        "structureRemoteCapture.js:captureRemote": "e8e654d5c188fb60.7b82e55669ffbf2e",
+        "structureRemoteCapture.js:pagesUrlFor": "4ab696981a7b0301.e3534cb2e0468797",
+        "supabaseClient.js": "c64ac68133da9301.73255b6358ea568f",
+        "toDoRow.js": "ed5e5d25a01db63c.34bc6323b2f181f5",
+        "toDoRow.js:addAllToDo_DOM": "ccaf7fa12881f638.2a418fc6e11775ee",
+        "toDoRow.js:addToDos_restore": "968bc35fdad24989.2a418fc6e11775ee",
+        "toDoRow.js:reorderToDoDOM": "773f153772d4c629.d3f51f381de8cb62",
+        "viewport.js": "395cd42a4d599a64.04d4f49dd124a802",
+        "viewport.js:isMobileViewport": "2c2932546fb02173.04d4f49dd124a802",
+        "voiceInput.js": "a20656abbbf6d60b.bac745fbd5c6a997",
+        "voiceInput.js:isDictating": "d3145afa7f54cd40.540de3fc74634dd1",
+        "voiceInput.js:mountMicButton": "327db94fc08d7f13.bac745fbd5c6a997",
+        "voiceInput.js:stopDictation": "dbe024a941e41f00.eda4fab1408a7fae"
       }
     },
     {
@@ -84,7 +167,19 @@
         "Only after that first paint does `bootSyncPipeline` reach for the cloud: upload any old local data once, pull everything from the database, then listen for live changes. Local first, cloud second is the rhythm the whole app follows.",
         "The app also keeps itself current. `sw.js` is the service worker: it caches the built files so the app opens offline, while the page itself always tries the network first. When a new build is deployed, the new worker installs in the background and waits rather than taking over mid-session.",
         "A waiting worker is surfaced as an update cue, on a pill above the mobile nav or on the Version row in About. Both end in `applyPendingUpdate`, which marks the tapping tab as the one that asked and tells the waiting worker to take over. Only that tab reloads; any other open tab is told to reload when it suits you."
-      ]
+      ],
+      "fingerprint": {
+        "index.js": "84eb72e509410b35.da39a3ee5e6b4b0d",
+        "index.js:bootApp": "e42f5e278ddfbecf.da39a3ee5e6b4b0d",
+        "index.js:bootSyncPipeline": "adf66a4968a12cc9.da39a3ee5e6b4b0d",
+        "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.4a3fba20d918612c",
+        "main.js": "a1aacda74687c942.6eae4807b0f1ccfc",
+        "main.js:component": "65a4c14ff248a75f.a77b15c0d64cf611",
+        "main.js:restoreFromStorage": "7734ab5e1f8d2df0.a77b15c0d64cf611",
+        "migration.js:maybeMigrateLocalToSupabase": "6f1e10efa2d06321.a77b15c0d64cf611",
+        "modals.js:applyPendingUpdate": "895775e1a371e73d.496eaf50e99c72fc",
+        "sw.js": "20bf16e2fd0055d5.da39a3ee5e6b4b0d"
+      }
     },
     {
       "id": "data",
@@ -99,7 +194,26 @@
         "Saving is memory first, always. An edit changes the item straight away, then `saveToStorageSoon` batches a burst of keystrokes into a single write, and `saveToStorage` writes the whole model under one key. The trip to the server goes through `persistMutation`, the one door every database write passes through. It maps field names with `toTodoRowPayload`, because memory says tit, desc and due while the database says title, description and due_date [src: listLogic.js:59]. It makes a task wait for its project's insert so a task never points at a missing project.",
         "Other devices stay in step in two layers. `subscribeToRealtime` listens for every insert, update and delete Supabase pushes, and `handleTodosRealtime` applies them to memory and storage, skipping the echoes of writes this device just sent. Separately, a full re-sync runs when the tab becomes visible, the window regains focus or the network returns, with a five-minute timer as the backstop.",
         "That re-sync is `hydrateFromSupabase`. Where both sides changed, the newer updated_at wins, and local tasks the server hasn't confirmed yet are kept rather than lost. `rehydrateUnlessEditing` skips a round while you are typing, since repainting would wipe a half-finished edit, and `onHydrate` then rebuilds the sidebar and list while keeping your project open."
-      ]
+      ],
+      "fingerprint": {
+        "auth.js:sendCode": "5980fd6c09c4398c.da39a3ee5e6b4b0d",
+        "auth.js:verifyCode": "c1b4e353a694a3a5.da39a3ee5e6b4b0d",
+        "index.js:rehydrateUnlessEditing": "06119726c66d8c4d.da39a3ee5e6b4b0d",
+        "listLogic.js": "3da570150344d322.4a3fba20d918612c",
+        "listLogic.js:listLogic.handleTodosRealtime": "f852170e4b3b4bd1.4a3fba20d918612c",
+        "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.4a3fba20d918612c",
+        "listLogic.js:listLogic.persistMutation": "328d998641c8b08d.4a3fba20d918612c",
+        "listLogic.js:listLogic.saveToStorage": "ca6e342f32bc46f8.4a3fba20d918612c",
+        "listLogic.js:listLogic.saveToStorageSoon": "ec77f1e94ed67813.4a3fba20d918612c",
+        "listLogic.js:listLogic.subscribeToRealtime": "a37414493fba4260.4a3fba20d918612c",
+        "listLogic.js:toTodoRowPayload": "b58d6849cb984d58.da39a3ee5e6b4b0d",
+        "main.js:onHydrate": "6c387cf6a1c5ee91.da39a3ee5e6b4b0d",
+        "migration.js:maybeMigrateLocalToSupabase": "6f1e10efa2d06321.a77b15c0d64cf611",
+        "migration.js:maybeSkipFirstRunForCloudUser": "d4678780a3abd4ad.a77b15c0d64cf611",
+        "migration.js:wipeLocalUserDataOnSignOut": "b1106bc33ebc79b0.4cba82907f447dd3",
+        "supabaseClient.js": "c64ac68133da9301.73255b6358ea568f",
+        "supabaseClient.js:buildStubClient": "7af20a7023514378.da39a3ee5e6b4b0d"
+      }
     },
     {
       "id": "tasks",
@@ -115,7 +229,27 @@
         "Status and done are separate ideas. The status badge sets Active, In Progress or Idea through `showStatusPopover` and `setToDoStatus`; the checkbox sets completed. `sortCompletedToBottom` keeps finished tasks under open ones, and `refreshTodoStatusUI` repaints only the badge and the row's class, so anything else in progress on the row is left alone.",
         "Due dates are stored as m-d-y text. `showDueDatePopover` offers Today, Tomorrow, a week ahead, a calendar grid and a Repeat section. Picking a day calls `setItemDue`, which saves locally and recolors the row, while urgency is never stored: `applyDueUrgency` works out overdue and due-soon from today's date every time it paints.",
         "There are two ways to delete. The × button asks first, in a confirm modal that names the task. A left swipe deletes straight away and offers an undo instead, through `showUndoToast`. Deleting matches the item itself in `removeToDoByItem`, never its title, so two tasks with the same name can't be confused, and undo is a fresh insert at the remembered slot through `insertToDoAt`."
-      ]
+      ],
+      "fingerprint": {
+        "dueDate.js:applyDueUrgency": "d596beaa1d908ec1.32ca9191eedf53bc",
+        "dueDate.js:setItemDue": "c98ca30f2d3471d5.da39a3ee5e6b4b0d",
+        "dueDate.js:showDueDatePopover": "55cb9b4a1c2e5e80.8b283184eba9371b",
+        "inject.js:dispatchRun": "7d8cb8e806800c4a.059b16c03f090744",
+        "inject.js:makeInjectButton": "cf89b4ba111093a0.529989ddedef22c1",
+        "listLogic.js": "3da570150344d322.4a3fba20d918612c",
+        "listLogic.js:listLogic.commitBlankPlaceholder": "5e701e879be2df7e.4a3fba20d918612c",
+        "listLogic.js:listLogic.editToDoItem": "98c8283921ecacd6.4a3fba20d918612c",
+        "listLogic.js:listLogic.insertToDoAt": "d27b66cea81b781d.4a3fba20d918612c",
+        "listLogic.js:listLogic.removeToDoByItem": "bb1d49c066a81635.4a3fba20d918612c",
+        "listLogic.js:listLogic.setToDoStatus": "7a1fd1845f8c2f26.4a3fba20d918612c",
+        "listLogic.js:listLogic.sortCompletedToBottom": "bd427edc3426885c.4a3fba20d918612c",
+        "toDoRow.js": "ed5e5d25a01db63c.34bc6323b2f181f5",
+        "toDoRow.js:appendNewToDoRow": "52a79c2b8f4fd3c9.da39a3ee5e6b4b0d",
+        "toDoRow.js:buildToDoRow": "5f7902d794cccf80.da39a3ee5e6b4b0d",
+        "todoStatus.js:refreshTodoStatusUI": "28c92420dcc01b6d.97cee0727a66f7ef",
+        "todoStatus.js:showStatusPopover": "a2068bbf6496955d.da39a3ee5e6b4b0d",
+        "undoToast.js:showUndoToast": "fbacb6aa814702aa.97cee0727a66f7ef"
+      }
     },
     {
       "id": "projects-and-list",
@@ -129,7 +263,21 @@
         "The drag helper never touches the data. It hands from and to over to the caller, and `reorderToDo` or `reorderProject` in listLogic applies the move and sends every new position to the server, so the order survives a reload and reaches your other devices.",
         "Filtering and sorting only change what you see. `applyTaskFilter` adds a hidden class to rows the filter excludes, using the same match functions that produce the counts, so a count and the visible rows always agree. A sort chosen from `showTaskSortMenu` redraws the list in that order, but `renderOrderForSort` returns a sorted copy, so your manual order is never overwritten. Both choices are remembered across reloads.",
         "On phones, the blank row grows chips. `attachMobileCreateChips` adds Today, Tomorrow, a calendar and a description toggle, and the chosen date lands only when the task is committed. Voice dictation and pasted entries both end in the same synthetic Enter on the title input, so they reach the database exactly the way typing does."
-      ]
+      ],
+      "fingerprint": {
+        "dragDrop.js": "fc4872acdda9837e.90dcca30e76a9f3c",
+        "dragDrop.js:computeDropIndex": "0bcfe138a2f42870.da39a3ee5e6b4b0d",
+        "dragDrop.js:setupRowDrag": "f7b6e7a6c2081a54.c4fd51d828fe790a",
+        "listLogic.js:listLogic.addProject": "54f8cd4a302634a6.4a3fba20d918612c",
+        "listLogic.js:listLogic.reorderProject": "cb82e5da052fde17.4a3fba20d918612c",
+        "listLogic.js:listLogic.reorderToDo": "acbcabf1ee0a8d73.4a3fba20d918612c",
+        "mobileTaskCreate.js:attachMobileCreateChips": "d6fdf461a5464ebb.97cee0727a66f7ef",
+        "projectCreate.js:createProjectByName": "41adbd90e675f243.c4a4248f7568c9e4",
+        "projectCreate.js:selectProjectRow": "efa5ed1ce7841131.c4a4248f7568c9e4",
+        "taskFilter.js:applyTaskFilter": "dc62012325b9e51a.32ca9191eedf53bc",
+        "taskSort.js:createTaskSort.showTaskSortMenu": "ee7396722ff20b66.c4a4248f7568c9e4",
+        "toDoRow.js:renderOrderForSort": "2dcdbcb861d2b874.da39a3ee5e6b4b0d"
+      }
     },
     {
       "id": "pipeline-ship",
@@ -144,7 +292,19 @@
         "That id marker is the thread the rest of the pipeline follows. It is how a run finds its entry, how a merged pull request is traced back to the task that asked for it, and later how a shipped change can be reverted or iterated on.",
         "Shipping is the second half. The Agent board's Dispatch button and the description panel both go through `dispatchDraft`, which picks the repo from the selected project's target and hands the real work to `shipEntryForTodo`. That function injects the entry, waits for its marker to appear in TODO.md, then calls `dispatchRun` with a fresh correlation id in entry mode, which starts the claude-run workflow for exactly that one entry.",
         "Before it returns, `dispatchDraft` records the change through listLogic and adds a run record, so the run is tracked straight away rather than after a reload. A retry passes the old entry id instead of minting a new one, so a failed attempt never leaves a duplicate entry behind."
-      ]
+      ],
+      "fingerprint": {
+        "agentQueueStore.js:startAgentQueueSubscription": "886402eb1acdefb2.4d1f988ecd123e57",
+        "dispatchDraft.js:dispatchDraft": "167f30af36d2a203.62c88aa457ee1fcf",
+        "inject.js": "eba14f2e2366013a.a56762cac6166e54",
+        "inject.js:dispatchRun": "7d8cb8e806800c4a.059b16c03f090744",
+        "inject.js:injectDescription": "f5c1af837c5b352e.da39a3ee5e6b4b0d",
+        "inject.js:makeInjectButton": "cf89b4ba111093a0.529989ddedef22c1",
+        "inject.js:postToWorker": "8b52cb77eed7e6dc.0459a228d960df88",
+        "listLogic.js:listLogic.stampTodoEntryId": "1c003040f8d8a085.4a3fba20d918612c",
+        "phase.js:derivePhase": "16b8d67aded8810f.15dd79678516ef46",
+        "shipEntry.js:shipEntryForTodo": "ad8b7129666e156f.9f8129dc1e9c7dfa"
+      }
     },
     {
       "id": "pipeline-follow",
@@ -159,7 +319,24 @@
         "The Agent board draws one card per queue row with `buildCard`: drafted rows show their entry and a Dispatch button, proposed rows can be accepted, stuck rows explain why and offer a retry, and shipped rows link to the merged PR. Every one of those actions ships through `dispatchDraft`, so there is only one way work leaves the app.",
         "Around that core sit a few ways to create work. `buildMockupSecondary` asks the Worker for three A/B/C HTML mockups of a task and turns your pick into a TODO.md entry. `openSeedTasksModal` breaks a project plan into a checklist of tasks, each with its own entry. `computeCoverage` measures how much of an assignment's rubric has shipped.",
         "The TODO.md viewer shows the target repo's file as it really is. `readTodoMdFromWorker` fetches it fresh on each sync and `parseTodoMdChecklist` finds each entry's id, which is what Run and Revert act on. A revert only counts once it merges: `performRevert` then marks the entry so it can't fire twice, and `unshipEntry` rolls the task's bookkeeping back to match the code."
-      ]
+      ],
+      "fingerprint": {
+        "agentQueueStore.js:reloadAndNotifyQueue": "d677304d44d58c7a.da39a3ee5e6b4b0d",
+        "agentQueueStore.js:startAgentQueueSubscription": "886402eb1acdefb2.4d1f988ecd123e57",
+        "agentView.js:buildCard": "930dfe3610caeb20.da39a3ee5e6b4b0d",
+        "assignmentCoverage.js:computeCoverage": "6c7d4460f2950ffb.da39a3ee5e6b4b0d",
+        "dispatchDraft.js:dispatchDraft": "167f30af36d2a203.62c88aa457ee1fcf",
+        "dispatchDraft.js:unshipEntry": "ed71f0be4be796ac.0c612d75a602ee49",
+        "inject.js:readTodoMdFromWorker": "b750cdb3b9a82795.c365cfa1104215f8",
+        "mockupFlow.js:buildMockupSecondary": "6f448a840ca0b2db.f1007c1ba6ac4ebc",
+        "phase.js:derivePhase": "16b8d67aded8810f.15dd79678516ef46",
+        "phaseRail.js:paintPhaseRail": "4a23e59dab0a5fac.529989ddedef22c1",
+        "runState.js": "006e44d30d1171f0.34f1d777697dae4a",
+        "runState.js:emitChange": "15642cf5cdd08f83.da39a3ee5e6b4b0d",
+        "seedTasksModal.js:openSeedTasksModal": "f7bebd347bb86e1b.da39a3ee5e6b4b0d",
+        "todoMdViewer.js:buildTodoMdViewerCard.performRevert": "efe6aa191902fa70.da39a3ee5e6b4b0d",
+        "todoMdViewer.js:parseTodoMdChecklist": "6eeb00008652061d.da39a3ee5e6b4b0d"
+      }
     },
     {
       "id": "chat",
@@ -174,7 +351,22 @@
         "When a reply arrives, `requestAssistantReply` saves it to history first and strips the hidden INSPECT and ASK lines from what you see. `appendChatTurn` writes each turn to this repo's localStorage straight away and to a server row in the background, so a conversation follows you between devices.",
         "Context comes in two kinds. The 📎 picker made by `createFilePicker` lists the repo's source files, and `addAttachment` turns each pick into a chip; only paths are sent, and the Worker loads the contents for the model. Layout context is measured live: `serializeLayout` captures an element, its parent and its children with the styles the browser actually draws.",
         "Which model answers is a saved setting, not part of the turn. `openModelsPanel` shows each pipeline workflow's model per repo or globally, grouped by who pays for it, and `saveModelSetting` stores a change in the Worker, which uses it the next time that workflow runs. A chat turn only carries the Deep flag."
-      ]
+      ],
+      "fingerprint": {
+        "claudeSheet.js": "288ff13920b5290d.335453940f650c56",
+        "claudeSheet.js:addAttachment": "fb09abdb33266cb0.da39a3ee5e6b4b0d",
+        "claudeSheet.js:appendChatTurn": "8a14dbb4b845d4bd.da39a3ee5e6b4b0d",
+        "claudeSheet.js:openClaudeSheet": "3a6d5d40296444c0.c4a4248f7568c9e4",
+        "claudeSheet.js:requestAssistantReply": "999a9c93126f19c6.da39a3ee5e6b4b0d",
+        "claudeSheet.js:sendChatTurn": "3d19a9698358c98b.da39a3ee5e6b4b0d",
+        "filePicker.js:createFilePicker": "b0505874ef7128a8.529989ddedef22c1",
+        "inject.js:chatWithWorker": "8f2f9945c78196b6.7e33e69da177e4fe",
+        "inject.js:saveModelSetting": "10879cdd2f76fdfe.70531517e6a9577e",
+        "layoutInspect.js:serializeLayout": "c1c0cbeb52969f14.504147a3a4fc6f99",
+        "modelsPanel.js:openModelsPanel": "1cc9f26080c8504c.4cba82907f447dd3",
+        "structureView.js:ensureRegionsLoaded": "ef9a95cecfeeb1a5.da39a3ee5e6b4b0d",
+        "structureView.js:renderStructureView": "8600344ae2d7202d.c4a4248f7568c9e4"
+      }
     },
     {
       "id": "structure",
@@ -189,7 +381,16 @@
         "Any file can be read in place. `openFileInCodeViewer` picks the detail column on wide screens or a full-screen sheet on phones, and `renderCodeViewer` fetches the source once through the Worker and caches it. Only a window of lines is painted, with more added as you scroll, so very large files stay quick, and a generation counter drops any read that arrives after you've moved on.",
         "The UI lens maps the running screen itself. For this repo, regions are read live from the page; other repos use regions published in their manifest. `renderStructureCanvas` draws a stored snapshot of each screen size, and the deployed page can be loaded as a live view on request, then removed again when you leave.",
         "The tours you may have followed alongside this book live here too. They are compiled at deploy from a committed file, with every step anchored to a named definition rather than a line number, so they keep pointing at the right code as the code changes."
-      ]
+      ],
+      "fingerprint": {
+        "codeMapModel.js:deriveAreaGraph": "c35ac083f7f17217.7b82e55669ffbf2e",
+        "codeViewer.js:renderCodeViewer": "c288eb2f25400f43.0fb49271f21d293b",
+        "structureCanvas.js:renderStructureCanvas": "6ac54f62ddb0da36.7b82e55669ffbf2e",
+        "structureView.js:ensureRegionsLoaded": "ef9a95cecfeeb1a5.da39a3ee5e6b4b0d",
+        "structureView.js:openFileInCodeViewer": "9307c7491390686d.da39a3ee5e6b4b0d",
+        "structureView.js:renderLens": "848d6985840bc5d7.da39a3ee5e6b4b0d",
+        "structureView.js:renderStructureView": "8600344ae2d7202d.c4a4248f7568c9e4"
+      }
     },
     {
       "id": "settings-focus-ghost",
@@ -204,7 +405,19 @@
         "Export and import move your whole account as one JSON file. `buildExportPayload` writes a versioned snapshot of every project; an import is validated by `parseAndValidateExport` before anything changes, and the confirmation names how many tasks and projects will be replaced. Replace is all or nothing, done in one pass through listLogic.",
         "Focus mode, the pomodoro timer and music are three controllers with the same shape: each factory returns one shared instance that others subscribe to. The timer always counts towards an end time, so it can't drift, and music pauses for the end-of-session bell and resumes when you acknowledge it.",
         "The ghost is the app's companion sprite. Clicking it in `companion.js` only signals activation, and main.js decides what that opens: the Claude sheet, possessed by the ghost's voice. `ghostTalk.js` holds the shared plumbing, where `askGhost` posts your line to the Worker, which answers in character and keeps the transcript server-side. Within ten minutes the last reply is shown again; after that, the ghost greets you fresh."
-      ]
+      ],
+      "fingerprint": {
+        "appLock.js:setAppLockPin": "8c4d9502d257ef94.211da56a234d8f15",
+        "appLock.js:verifyAppLockPin": "15c4bf1d215a8353.da39a3ee5e6b4b0d",
+        "coachmark.js:maybeStartFirstRunTour": "0ac36e25e3581692.c4a4248f7568c9e4",
+        "companion.js": "5511bf28f9407a55.333cc314af2b6f92",
+        "exportImport.js:buildExportPayload": "7199fdc004e942d2.da39a3ee5e6b4b0d",
+        "exportImport.js:parseAndValidateExport": "18fee81a45b22328.da39a3ee5e6b4b0d",
+        "ghostTalk.js": "469ab3380a7584a4.504147a3a4fc6f99",
+        "ghostTalk.js:askGhost": "59981aac37589d09.504147a3a4fc6f99",
+        "theme.js:applyTheme": "817969419c2f91cb.e37db15949f55089",
+        "theme.js:resolveInitialTheme": "117f0f379e6f9404.c4a4248f7568c9e4"
+      }
     }
   ]
 }

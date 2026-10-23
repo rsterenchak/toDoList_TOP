@@ -188,6 +188,48 @@ describe('shelf', () => {
         expect(rows[1].querySelector('.understandingChapterMinutes')).toBeNull();
     });
 
+    test('a chapter stale only from drift shows DRIFT; any other warning keeps STALE', async () => {
+        mocks.book = {
+            title: 'Understanding Void',
+            chapters: [
+                { id: 'app-starts', index: 1, title: 'How the app starts', minutes: 4, stale: true,
+                    warnings: ['drift: bootApp body changed'], drift: [{ ref: 'index.js:bootApp', reason: 'body' }] },
+                { id: 'data', index: 2, title: 'Where the data lives', minutes: 6, stale: true,
+                    warnings: ['drift: save body changed', 'reference "gone" names no definition'], drift: [{ ref: 'a.js:save', reason: 'body' }] },
+                { id: 'pipeline', index: 3, title: 'The pipeline', minutes: 5, stale: false, warnings: [], drift: [] },
+            ],
+        };
+        await renderUnderstandingView();
+        const rows = view().querySelectorAll('.understandingChapterRow');
+        expect(rows[0].querySelector('.understandingChapterStale').textContent).toBe('DRIFT');
+        expect(rows[1].querySelector('.understandingChapterStale').textContent).toBe('STALE');
+        expect(rows[2].querySelector('.understandingChapterStale')).toBeNull();
+        // Drift chapters still count toward the stale control.
+        expect(view().querySelector('.understandingControl').textContent).toBe('2 STALE');
+    });
+
+    test('the reader header tags a drifted chapter DRIFT with a chip per changed symbol', async () => {
+        mocks.book = {
+            title: 'Understanding Void',
+            chapters: [
+                { id: 'app-starts', index: 1, title: 'How the app starts', minutes: 4, stale: true, paragraphs: [[{ t: 'One.' }]],
+                    warnings: ['drift: bootApp body changed', 'drift: listLogic.addItem importers changed', 'drift: sw.js body changed'],
+                    drift: [{ ref: 'index.js:bootApp', reason: 'body' }, { ref: 'listLogic.js:listLogic.addItem', reason: 'importers' }, { ref: 'sw.js', reason: 'body' }] },
+                { id: 'data', index: 2, title: 'Where the data lives', minutes: 6, stale: false, paragraphs: [[{ t: 'Two.' }]], warnings: [], drift: [] },
+            ],
+        };
+        await renderUnderstandingView();
+        view().querySelectorAll('.understandingChapterBtn')[0].click();
+        expect(view().querySelector('.understandingReaderStaleTag').textContent).toBe('DRIFT');
+        const chips = Array.from(view().querySelectorAll('.understandingDriftChip'));
+        expect(chips.map((c) => c.textContent)).toEqual(['bootApp', 'listLogic.addItem', 'sw.js']);
+        expect(chips[1].title).toBe('listLogic.js:listLogic.addItem — importers changed');
+        // A clean chapter carries no flag.
+        view().querySelector('.understandingReaderNav button:last-child').click();
+        expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
+        expect(view().querySelector('.understandingReaderStale')).toBeNull();
+    });
+
     test('a chapter row and the Read button open the reader', async () => {
         mocks.book = CLEAN;
         await renderUnderstandingView();
