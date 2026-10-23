@@ -547,6 +547,56 @@ describe('map chapter', () => {
         expect(view().querySelector('.understandingRibbon')).toBeNull();
     });
 
+    test('a hierarchical map renders area headers, file rows and symbol rows at three levels, and no <p>', async () => {
+        const fileRef = (f) => ({ label: f, file: f, symbol: null, parent: null, line: 1, end: null });
+        const saveAll = { label: 'saveAll', file: 'listLogic.js', symbol: 'saveAll', parent: null, line: 9, end: 20 };
+        const tree = Object.assign({}, MAP, {
+            paragraphs: [
+                [{ ref: fileRef('index.js') }, { t: ' — Builds the page.' }],
+                [{ ref: REF }, { t: ' — Builds the page once on load.' }],
+                [{ ref: fileRef('listLogic.js') }, { t: ' — The data model.' }],
+                [{ ref: saveAll }, { t: ' — Writes every project.' }],
+                [{ ref: fileRef('undoToast.js') }],
+            ],
+            sections: [
+                { area: { id: 'shell', name: 'Shell', purpose: 'The app frame.' }, files: [
+                    { ref: fileRef('index.js'), purpose: 'Builds the page.', symbols: [{ ref: REF, role: 'Builds the page once on load.' }] },
+                ] },
+                { area: { id: 'tasks', name: 'Tasks', purpose: null }, files: [
+                    { ref: fileRef('listLogic.js'), purpose: 'The data model.', symbols: [{ ref: saveAll, role: 'Writes every project.' }] },
+                    { ref: fileRef('undoToast.js'), purpose: null, symbols: [] },
+                ] },
+            ],
+        });
+        mocks.book = { title: BOOK.title, chapters: [tree].concat(BOOK.chapters) };
+        await openChapter(0);
+        expect(view().querySelectorAll('.understandingReaderCol p')).toHaveLength(0);
+        const areas = view().querySelectorAll('.understandingMapTree > section.understandingMapArea');
+        expect(Array.from(areas).map((a) => a.querySelector('h3.understandingMapAreaName').textContent)).toEqual(['Shell', 'Tasks']);
+        expect(areas[0].querySelector('.understandingMapAreaPurpose').textContent).toBe('The app frame.');
+        expect(areas[1].querySelector('.understandingMapAreaPurpose')).toBeNull();
+        const files = areas[1].querySelectorAll(':scope > ol.understandingMapFiles > li.understandingMapFile');
+        expect(files).toHaveLength(2);
+        const fileRow = files[0].querySelector(':scope > .understandingMapFileRow');
+        expect(fileRow.querySelector('.understandingMapName button.bookRef').textContent).toBe('listLogic.js');
+        expect(fileRow.querySelector('.understandingMapRole').textContent).toBe('The data model.');
+        const sym = files[0].querySelector(':scope > ol.understandingMapSymbols > li.understandingMapSymbolRow');
+        expect(sym.querySelector('.bookRef').textContent).toBe('saveAll');
+        expect(sym.querySelector('.understandingMapRole').textContent).toBe('Writes every project.');
+        expect(files[1].querySelector('.understandingMapRole')).toBeNull();
+        expect(files[1].querySelector('.understandingMapSymbols')).toBeNull();
+        // Rows carry the flat paragraph order: each file, then its names.
+        const order = Array.from(view().querySelectorAll('.understandingMapTree [data-para-index]'))
+            .map((el) => [el.dataset.paraIndex, el.querySelector('.bookRef').textContent]);
+        expect(order).toEqual([['0', 'index.js'], ['1', 'bootApp'], ['2', 'listLogic.js'], ['3', 'saveAll'], ['4', 'undoToast.js']]);
+        expect(view().querySelector('.understandingMap')).toBeNull();
+        latestObserver().show([3]);
+        expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'map', paraIndex: 3 });
+        sym.querySelector('.bookRef').click();
+        await flush();
+        expect(renderCodeViewer.mock.calls[0][1]).toMatchObject({ startLine: 9, endLine: 20, banner: 'saveAll' });
+    });
+
     test('a map chip opens the code viewer like a paragraph chip', async () => {
         mocks.book = withMap();
         await openChapter(0);

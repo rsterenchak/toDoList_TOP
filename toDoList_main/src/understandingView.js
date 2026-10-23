@@ -4,8 +4,9 @@
 // then the ordered chapter list. The Continue card's Read button and every
 // chapter row open the reader: one chapter at a time, its references as chips
 // that open the code viewer at that definition, a forward-reference callout, and
-// a prev/next bar. A `map` chapter (the book's names-and-roles list) opens the
-// book as chapter 00 and reads as chip · role rows instead of paragraphs.
+// a prev/next bar. A `map` chapter (the book's table of contents for the code)
+// opens the book as chapter 00 and reads as a tree instead of paragraphs: each
+// area, its front-door files with their purposes, and their names with roles.
 //
 // The book is the `src-book.json` the generator compiles from `codebook.json` and
 // publishes beside the source manifest (loaded through codeBook.js). The repo is
@@ -1145,6 +1146,73 @@ function buildMapRow(segments, index) {
     return row;
 }
 
+// One chip · text row of a hierarchical map, as a `tag` element.
+function buildMapEntry(tag, className, ref, text, index) {
+    const row = document.createElement(tag);
+    row.className = 'understandingMapRow ' + className;
+    row.dataset.paraIndex = String(index);
+    const name = document.createElement('span');
+    name.className = 'understandingMapName';
+    if (ref && typeof ref === 'object') name.appendChild(buildRefChip(ref));
+    row.appendChild(name);
+    if (text) {
+        const role = document.createElement('span');
+        role.className = 'understandingMapRole';
+        role.textContent = String(text);
+        row.appendChild(role);
+    }
+    return row;
+}
+
+// A hierarchical map chapter (its compiled `sections`): each area as a header
+// over its purpose, its front-door files as chip · purpose rows, and each
+// file's names as chip · role rows indented beneath. Rows are numbered — and
+// pushed onto `rows` — in the compiler's paragraph order, each file then its
+// names, so the reading position tracks them like paragraphs.
+function buildMapTree(sections, rows) {
+    const tree = document.createElement('div');
+    tree.className = 'understandingMapTree';
+    sections.forEach(function (sec) {
+        const area = sec && sec.area && typeof sec.area === 'object' ? sec.area : {};
+        const block = document.createElement('section');
+        block.className = 'understandingMapArea';
+        const head = document.createElement('h3');
+        head.className = 'understandingMapAreaName';
+        head.textContent = area.name || area.id || '';
+        block.appendChild(head);
+        if (area.purpose) {
+            const purpose = document.createElement('div');
+            purpose.className = 'understandingMapAreaPurpose';
+            purpose.textContent = area.purpose;
+            block.appendChild(purpose);
+        }
+        const files = document.createElement('ol');
+        files.className = 'understandingMapFiles';
+        (Array.isArray(sec.files) ? sec.files : []).forEach(function (fr) {
+            const item = document.createElement('li');
+            item.className = 'understandingMapFile';
+            const fileRow = buildMapEntry('div', 'understandingMapFileRow', fr.ref, fr.purpose, rows.length);
+            rows.push(fileRow);
+            item.appendChild(fileRow);
+            const syms = Array.isArray(fr.symbols) ? fr.symbols : [];
+            if (syms.length) {
+                const list = document.createElement('ol');
+                list.className = 'understandingMapSymbols';
+                syms.forEach(function (sym) {
+                    const symRow = buildMapEntry('li', 'understandingMapSymbolRow', sym.ref, sym.role, rows.length);
+                    rows.push(symRow);
+                    list.appendChild(symRow);
+                });
+                item.appendChild(list);
+            }
+            files.appendChild(item);
+        });
+        block.appendChild(files);
+        tree.appendChild(block);
+    });
+    return tree;
+}
+
 // Reflect a paragraph's bookmark state on it and its ribbon.
 function paintParaMark(p, marked) {
     p.classList.toggle('is-bookmarked', marked);
@@ -1468,8 +1536,12 @@ function showChapter(index, paraIndex) {
     const ahead = ch.ahead && typeof ch.ahead === 'object' ? buildAhead(r.book, ch.ahead) : null;
     const aheadAfter = paragraphs.length >= 3 ? 1 : paragraphs.length - 1;
     const paraEls = [];
-    if (isMapChapter(ch)) {
-        // Names and roles read as a two-column list rather than prose.
+    if (isMapChapter(ch) && Array.isArray(ch.sections) && ch.sections.length) {
+        // Areas, their front-door files and those files' names, as a tree.
+        r.column.appendChild(buildMapTree(ch.sections, paraEls));
+        if (ahead) r.column.appendChild(ahead);
+    } else if (isMapChapter(ch)) {
+        // A flat map (an older book) reads as a two-column list.
         const list = document.createElement('ol');
         list.className = 'understandingMap';
         paragraphs.forEach(function (segs, i) {

@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             'The code book now opens with a map chapter introducing its most-used names, each a tappable code reference beside a one-line role.',
         ],
+        fixed: [
+            'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-10-22',
-        changed: [
-            'Code tours now start from the Understanding shelf, with the START HERE card under Continue, each chapter\'s tours listed beneath it and a tours chip in the header opening All tours, while Structure keeps its per-area tour row.',
-        ],
         fixed: [
             'Code book references in C# repos now link methods named like add or get, and a reference to an overloaded method opens its first declaration instead of staying plain text.',
             'Relaunching the app with the PIN lock due now shows the lock screen straight away, without the unlocked dashboard flashing first.',

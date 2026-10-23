@@ -5759,6 +5759,53 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   .understandingMapRow { display: flex; flex-direction: column; gap: 4px; }
 }
 
+/* A hierarchical map: an area header over its purpose, its front-door files
+   indented once, and each file's names indented once more. */
+.understandingMapTree { margin: 0 0 16px; }
+.understandingMapArea { margin: 0 0 22px; }
+.understandingMapAreaName {
+  margin: 0;
+  font-family: 'SpaceMono', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.understandingMapAreaPurpose {
+  margin: 4px 0 6px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text-primary) 86%, var(--bg-base));
+}
+.understandingMapFiles,
+.understandingMapSymbols {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.understandingMapFiles { padding-left: 16px; }
+.understandingMapSymbols { padding-left: 20px; }
+.understandingMapTree .understandingMapRow {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 12px;
+  row-gap: 4px;
+  align-items: baseline;
+  padding: 6px 0;
+  border-bottom: none;
+}
+.understandingMapTree .understandingMapName { flex: 0 0 auto; }
+.understandingMapTree .understandingMapRole { flex: 1 1 240px; min-width: 0; }
+.understandingMapFile { border-top: 1px solid var(--border-mid); }
+.understandingMapSymbolRow .understandingMapRole { font-size: 14px; }
+@media (max-width: 640px) {
+  .understandingMapFiles { padding-left: 10px; }
+  .understandingMapSymbols { padding-left: 14px; }
+  .understandingMapTree .understandingMapRow { flex-direction: column; }
+  .understandingMapTree .understandingMapRole { flex: none; }
+}
+
 .understandingAhead {
   display: flex;
   flex-direction: column;

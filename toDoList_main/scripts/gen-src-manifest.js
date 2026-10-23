@@ -60,10 +60,11 @@
 // resolve to definitions in the same symbols index, with each chapter's tours
 // resolved from the compiled tours. Deterministic; a chapter with a reference,
 // file, tour or ahead link that no longer resolves is warned and marked stale.
-// A first chapter of `kind: "map"` is generated instead: the top-ranked names
-// of the symbols index (rankMapSymbols), each a chip beside its authored role.
-// `--print-map-candidates` (or MANIFEST_PRINT_MAP=1) prints that ranked set,
-// with scores, to stderr.
+// A first chapter of `kind: "map"` is generated instead (rankMapSymbols): the
+// code map's areas, each area's front-door files with their purpose lines, and
+// each file's most-used names beside their authored roles, emitted as
+// `sections` beside the flat paragraphs. `--print-map-candidates` (or
+// MANIFEST_PRINT_MAP=1) prints that hierarchy to stderr.
 // ─────────────────────────────────────────────────────────────────
 
 const fs = require('fs');
@@ -897,108 +898,249 @@ function compileBookParagraph(text, chapterFiles, symbols, note) {
 }
 
 // ── the map chapter (kind: "map") ──
-// The book's names-and-roles chapter: the most load-bearing symbols, ranked
-// Aider-style, each introduced once with an authored one-line role.
-const BOOK_MAP_LIMIT = 20;
-const BOOK_MAP_MANY_FILES = 5;
+// The book's table of contents for the code: the codemap areas in book order,
+// under each its front-door files (most imported first) with the module's own
+// purpose, and under each file the few names other files use most, each with
+// an authored one-line role.
+const BOOK_MAP_FILES_PER_AREA = 3;
+const BOOK_MAP_SYMBOLS_PER_FILE = 3;
+const BOOK_MAP_IDENT_RE = /[A-Za-z_$][\w$]*/g;
 
-// A long camelCase / snake_case / kebab-case name says what it does.
-function isDescriptiveName(name) {
-  return name.length >= 8 && /[a-z][A-Z]|[A-Za-z0-9][_-][A-Za-z0-9]/.test(name);
+function positiveInt(n, fallback) {
+  return Number.isInteger(n) && n > 0 ? n : fallback;
 }
 
-// The symbols index ranked for the map: [{ key, name, parent, file, def,
-// refs, defFiles, score }], best first, at most `opts.limit` (default 20).
-// `key` is `Parent.name` for a def with a parent. `refs` is how many other
-// files reference the name — files whose imports bind it in web mode, files
-// whose text holds it as a whole word in csharp mode (`opts.mode`, else
-// inferred from .cs keys), read from `sources`. A descriptive name scores ×10,
-// a `_` prefix or a name defined in more than five files ×0.1; unreferenced
-// names never rank. Ties break by key.
+// The map's areas as [{ id, name, purpose, files }]: codemap areas in the
+// order `chapters` first name them, then the rest in codemap order. Without a
+// codemap, one area per top-level folder below the files' common directory,
+// alphabetical, labelled by its path and with no purpose.
+function mapAreas(files, areas, chapters) {
+  if (Array.isArray(areas)) {
+    const byId = new Map();
+    areas.forEach(function (a) { if (a && a.id && !byId.has(a.id)) byId.set(a.id, a); });
+    const order = [];
+    (Array.isArray(chapters) ? chapters : []).forEach(function (ch) {
+      if (ch && byId.has(ch.area) && order.indexOf(ch.area) === -1) order.push(ch.area);
+    });
+    byId.forEach(function (a, id) { if (order.indexOf(id) === -1) order.push(id); });
+    return order.map(function (id) {
+      const a = byId.get(id);
+      return { id: id, name: a.name || id, purpose: a.purpose || null, files: Array.isArray(a.files) ? a.files : [] };
+    });
+  }
+  const dirs = files.map(function (f) { return f.split('/').slice(0, -1); });
+  let common = dirs.length ? dirs[0].slice() : [];
+  dirs.forEach(function (d) {
+    let k = 0;
+    while (k < common.length && k < d.length && common[k] === d[k]) k++;
+    common = common.slice(0, k);
+  });
+  const groups = new Map();
+  files.forEach(function (f, i) {
+    const d = dirs[i];
+    const key = d.slice(0, Math.min(d.length, common.length + 1)).join('/') || '.';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(f);
+  });
+  return Array.from(groups.keys()).sort().map(function (key) {
+    return { id: key, name: key, purpose: null, files: groups.get(key) };
+  });
+}
+
+// A csharp file's primary type: the top-level type named like the file, else
+// its first top-level def.
+function csharpPrimaryDef(defs, file) {
+  const top = defs.filter(function (d) { return d.parent === null || d.parent === undefined; });
+  const base = file.split('/').pop().replace(/\.cs$/i, '');
+  return top.find(function (d) { return d.name === base; }) ||
+    top.slice().sort(function (a, b) { return a.start - b.start; })[0] || null;
+}
+
+// The first `///` or `//` comment line above `line` (1-based), attributes
+// skipped and doc tags stripped, or null.
+function csharpPurpose(text, line) {
+  const lines = String(text || '').split(/\r?\n/);
+  let i = line - 2;
+  while (i >= 0 && /^\s*\[/.test(lines[i])) i--;
+  let top = -1;
+  for (; i >= 0 && /^\s*\/\//.test(lines[i]); i--) top = i;
+  if (top === -1) return null;
+  for (let k = top; k < line - 1; k++) {
+    const t = lines[k].replace(/^\s*\/\/\/?/, '').replace(/<[^>]*>/g, '').trim();
+    if (t) return t.length > MODULE_PURPOSE_MAX ? t.slice(0, MODULE_PURPOSE_MAX).trimEnd() : t;
+  }
+  return null;
+}
+
+// The map hierarchy for the symbols index: [{ area: { id, name, purpose },
+// files: [{ file, purpose, fanIn, fanOut, symbols: [{ key, name, parent, file,
+// def, refs }] }] }], areas with no indexed file dropped.
+//   - areas: mapAreas over `opts.areas` (codemap) and `opts.chapters`.
+//   - files: an area's files by fan-in (other files importing it — web
+//     `opts.modules` imports, else built from `sources`; csharp: files naming its
+//     primary type as a whole word), then fan-out, then path; top
+//     `opts.filesPerArea` (default 3). `purpose` is the module's purpose line
+//     (web) or the comment above its first type (csharp), else null.
+//   - symbols: a file's top-level defs — in web mode only those another file
+//     imports from it — `_` names excluded, by how many other files name them
+//     as a whole word, then longer name, then name; top
+//     `opts.symbolsPerFile` (default 3); unreferenced names never rank. `key` is
+//     the name, or `file:name` when two ranked files share it.
+// `opts.mode` is 'web' | 'csharp', else inferred from .cs keys.
 function rankMapSymbols(symbols, sources, opts) {
   const o = opts || {};
-  const files = Object.keys((symbols && symbols.files) || {}).sort();
-  const limit = Number.isInteger(o.limit) && o.limit > 0 ? o.limit : BOOK_MAP_LIMIT;
+  const index = (symbols && symbols.files) || {};
+  const files = Object.keys(index).sort();
+  const perArea = positiveInt(o.filesPerArea, BOOK_MAP_FILES_PER_AREA);
+  const perFile = positiveInt(o.symbolsPerFile, BOOK_MAP_SYMBOLS_PER_FILE);
   const mode = o.mode || (files.length && files.every(function (f) { return /\.cs$/.test(f); }) ? 'csharp' : 'web');
-  const byKey = new Map();
-  files.forEach(function (f) {
-    symbols.files[f].defs.forEach(function (d) {
-      if (d.kind === 'constructor' || d.kind === 'iife') return;
-      const parent = d.parent === undefined ? null : d.parent;
-      const key = parent ? parent + '.' + d.name : d.name;
-      let c = byKey.get(key);
-      if (!c) { c = { key: key, name: d.name, parent: parent, defs: [] }; byKey.set(key, c); }
-      c.defs.push({ file: f, def: d });
+  const texts = {};
+  const idents = {};
+  (Array.isArray(sources) ? sources : []).forEach(function (s) {
+    if (!s || !(s.name in index)) return;
+    texts[s.name] = String(s.text || '');
+    idents[s.name] = new Set(texts[s.name].match(BOOK_MAP_IDENT_RE) || []);
+  });
+  // Other indexed files that name `name` as a whole word.
+  const namedBy = function (name, self) {
+    return files.filter(function (g) { return g !== self && idents[g] && idents[g].has(name); });
+  };
+
+  // The names other files import from `file` (web).
+  const importedNames = function (file) {
+    const out = new Set();
+    files.forEach(function (g) {
+      const imports = index[g].imports || {};
+      Object.keys(imports).forEach(function (k) { if (g !== file && imports[k].from === file) out.add(imports[k].name); });
+    });
+    return out;
+  };
+
+  const fanIn = {};
+  const fanOut = {};
+  const purpose = {};
+  files.forEach(function (f) { fanIn[f] = 0; fanOut[f] = 0; purpose[f] = null; });
+  if (mode === 'csharp') {
+    files.forEach(function (f) {
+      const primary = csharpPrimaryDef(index[f].defs, f);
+      if (!primary) return;
+      purpose[f] = csharpPurpose(texts[f], primary.start);
+      namedBy(primary.name, f).forEach(function (g) { fanIn[f]++; fanOut[g]++; });
+    });
+  } else {
+    const modules = Array.isArray(o.modules) ? o.modules : buildModules(Array.isArray(sources) ? sources : []);
+    modules.forEach(function (m) {
+      if (!(m.path in index)) return;
+      purpose[m.path] = m.purpose || null;
+      (m.imports || []).forEach(function (to) {
+        if (to === m.path || !(to in index)) return;
+        fanIn[to]++;
+        fanOut[m.path]++;
+      });
+    });
+  }
+
+  const sections = [];
+  mapAreas(files, o.areas, o.chapters).forEach(function (area) {
+    const own = area.files.filter(function (f, i, all) { return f in index && all.indexOf(f) === i; });
+    if (!own.length) return;
+    own.sort(function (a, b) { return fanIn[b] - fanIn[a] || fanOut[b] - fanOut[a] || (a < b ? -1 : (a > b ? 1 : 0)); });
+    sections.push({
+      area: { id: area.id, name: area.name, purpose: area.purpose },
+      files: own.slice(0, perArea).map(function (f) {
+        const byName = new Map();
+        const exported = mode === 'csharp' ? null : importedNames(f);
+        index[f].defs.forEach(function (d) {
+          if ((d.parent !== null && d.parent !== undefined) || d.kind === 'constructor' || d.name[0] === '_') return;
+          if (exported && !exported.has(d.name)) return;
+          if (!byName.has(d.name)) byName.set(d.name, []);
+          byName.get(d.name).push(d);
+        });
+        const ranked = [];
+        byName.forEach(function (defs, name) {
+          const refs = namedBy(name, f).length;
+          if (refs) ranked.push({ key: name, name: name, parent: null, file: f, def: firstOverload(defs) || defs[0], refs: refs });
+        });
+        ranked.sort(function (a, b) {
+          return b.refs - a.refs || b.name.length - a.name.length || (a.name < b.name ? -1 : (a.name > b.name ? 1 : 0));
+        });
+        return { file: f, purpose: purpose[f], fanIn: fanIn[f], fanOut: fanOut[f], symbols: ranked.slice(0, perFile) };
+      }),
     });
   });
-  const texts = {};
-  (Array.isArray(sources) ? sources : []).forEach(function (s) { if (s && s.name in symbols.files) texts[s.name] = String(s.text || ''); });
-  const ranked = [];
-  byKey.forEach(function (c) {
-    const defFiles = new Set(c.defs.map(function (h) { return h.file; }));
-    // The file the chip opens: the most-imported definition (web), else the first.
-    const importedFrom = {};
-    let home = c.defs[0].file;
-    let refs = 0;
-    if (mode === 'csharp') {
-      const word = new RegExp('(^|[^\\w$])' + c.name.replace(/\$/g, '\\$') + '(?![\\w$])');
-      files.forEach(function (f) { if (!defFiles.has(f) && word.test(texts[f] || '')) refs++; });
-    } else if (c.parent === null) {
-      files.forEach(function (f) {
-        if (defFiles.has(f)) return;
-        const imports = symbols.files[f].imports || {};
-        const hit = Object.keys(imports).find(function (k) { return defFiles.has(imports[k].from) && imports[k].name === c.name; });
-        if (hit === undefined) return;
-        refs++;
-        importedFrom[imports[hit].from] = (importedFrom[imports[hit].from] || 0) + 1;
-      });
-      Array.from(defFiles).forEach(function (f) { if ((importedFrom[f] || 0) > (importedFrom[home] || 0)) home = f; });
-    }
-    if (!refs) return;
-    let mul = 1;
-    if (isDescriptiveName(c.name)) mul *= 10;
-    if (c.name[0] === '_') mul *= 0.1;
-    if (defFiles.size > BOOK_MAP_MANY_FILES) mul *= 0.1;
-    const first = c.defs.filter(function (h) { return h.file === home; });
-    ranked.push({ key: c.key, name: c.name, parent: c.parent, file: home,
-      def: firstOverload(first.map(function (h) { return h.def; })) || first[0].def,
-      refs: refs, defFiles: defFiles.size, score: Math.round(refs * mul * 1000) / 1000 });
-  });
-  ranked.sort(function (a, b) { return b.score - a.score || (a.key < b.key ? -1 : (a.key > b.key ? 1 : 0)); });
-  return ranked.slice(0, limit);
+
+  const homes = {};
+  sections.forEach(function (s) { s.files.forEach(function (fr) { fr.symbols.forEach(function (r) { (homes[r.name] = homes[r.name] || new Set()).add(r.file); }); }); });
+  sections.forEach(function (s) { s.files.forEach(function (fr) { fr.symbols.forEach(function (r) { if (homes[r.name].size > 1) r.key = r.file + ':' + r.name; }); }); });
+  return sections;
 }
 
-// A map chapter's paragraphs — one `[{ ref }, { t: ' — ' + role }]` per ranked
-// symbol that has a role — and the role words, noting every ranked symbol
-// without a role and every role for a symbol outside the ranked set.
-function compileBookMap(ch, symbols, sources, note) {
+function countWords(text) {
+  return String(text || '').split(/\s+/).filter(Boolean).length;
+}
+
+// A map chapter's hierarchy and its flat paragraphs — one per file row
+// (`[{ ref }, { t: ' — ' + purpose }]`, or just the chip) and one per symbol row
+// (`[{ ref }, { t: ' — ' + role }]`), in reading order — plus the words of the
+// area purposes, file purposes and roles. A file with no purpose line takes its
+// role (keyed by path) when given. Every ranked symbol without a role and every
+// role the map doesn't use is noted. `ctx` carries the codemap areas, the raw
+// chapters, the web modules and the warn sink.
+function compileBookMap(ch, symbols, sources, note, ctx) {
+  const c = ctx || {};
   const roles = ch.roles && typeof ch.roles === 'object' ? ch.roles : {};
-  const ranked = rankMapSymbols(symbols, sources, { limit: ch.limit });
-  const keys = new Set(ranked.map(function (r) { return r.key; }));
+  const roleOf = function (k) { return typeof roles[k] === 'string' ? roles[k].trim() : ''; };
+  if (ch.limit !== undefined && c.say) {
+    c.say('Warning: codebook.json: chapter "' + ch.id + '": `limit` is ignored — use filesPerArea and symbolsPerFile');
+  }
+  const ranked = rankMapSymbols(symbols, sources, {
+    areas: c.areas, chapters: c.chapters, modules: c.modules,
+    filesPerArea: ch.filesPerArea, symbolsPerFile: ch.symbolsPerFile,
+  });
+  const used = new Set();
   const paragraphs = [];
   let words = 0;
-  ranked.forEach(function (r) {
-    const role = typeof roles[r.key] === 'string' ? roles[r.key].trim() : '';
-    if (!role) { note('map symbol "' + r.key + '" has no role'); return; }
-    words += role.split(/\s+/).filter(Boolean).length;
-    paragraphs.push([
-      { ref: { label: r.key, file: r.file, symbol: r.name, parent: r.parent, line: r.def.start, end: r.def.end } },
-      { t: ' — ' + role },
-    ]);
+  const sections = ranked.map(function (sec) {
+    words += countWords(sec.area.purpose);
+    return {
+      area: sec.area,
+      files: sec.files.map(function (fr) {
+        let purpose = fr.purpose;
+        if (!purpose && roleOf(fr.file)) {
+          purpose = roleOf(fr.file);
+          used.add(fr.file);
+        }
+        words += countWords(purpose);
+        const ref = { label: fr.file.split('/').pop(), file: fr.file, symbol: null, parent: null, line: 1, end: null };
+        paragraphs.push(purpose ? [{ ref: ref }, { t: ' — ' + purpose }] : [{ ref: ref }]);
+        const syms = [];
+        fr.symbols.forEach(function (r) {
+          const role = roleOf(r.key);
+          if (!role) { note('map symbol "' + r.key + '" has no role'); return; }
+          used.add(r.key);
+          words += countWords(role);
+          const sref = { label: r.name, file: r.file, symbol: r.name, parent: null, line: r.def.start, end: r.def.end };
+          paragraphs.push([{ ref: sref }, { t: ' — ' + role }]);
+          syms.push({ ref: sref, role: role });
+        });
+        return { ref: ref, purpose: purpose || null, symbols: syms };
+      }),
+    };
   });
   Object.keys(roles).forEach(function (k) {
-    if (!keys.has(k)) note('map role "' + k + '" is not in the ranked set — dropped');
+    if (!used.has(k)) note('map role "' + k + '" is not in the ranked set — dropped');
   });
-  return { paragraphs: paragraphs, words: words };
+  return { paragraphs: paragraphs, sections: sections, words: words };
 }
 
 // { version, title, chapters } compiled from a parsed codebook.json. `tours`
 // is the compiled src-tours output of the same run (or null); `areas` the
-// codemap areas (optional); `sources` the { name, text } list a csharp map
-// chapter ranks against (optional). A chapter is `kind: "prose"` (its `body`)
-// or `kind: "map"` (its `roles`, compiled by compileBookMap), and only the
-// first chapter may be the map.
-function compileBook(doc, symbols, tours, areas, warn, sources) {
+// codemap areas (optional); `sources` the { name, text } list a map chapter
+// ranks against and `modules` the web manifest's modules (both optional). A
+// chapter is `kind: "prose"` (its `body`) or `kind: "map"` (its `roles`,
+// compiled by compileBookMap into `sections` as well as paragraphs), and only
+// the first chapter may be the map.
+function compileBook(doc, symbols, tours, areas, warn, sources, modules) {
   const say = warn || console.warn;
   const index = symbols && symbols.files ? symbols : { files: {} };
   const tourById = {};
@@ -1039,11 +1181,12 @@ function compileBook(doc, symbols, tours, areas, warn, sources) {
       else note('ahead chapter "' + ch.ahead.chapter + '" does not exist — dropped');
     }
     const kind = ch.kind === 'map' ? 'map' : 'prose';
-    let paragraphs, words;
+    let paragraphs, words, sections;
     if (kind === 'map') {
       if (ch !== raw[0]) note('the map chapter must be the first chapter');
-      const map = compileBookMap(ch, index, sources, note);
+      const map = compileBookMap(ch, index, sources, note, { areas: areas, chapters: raw, modules: modules, say: say });
       paragraphs = map.paragraphs;
+      sections = map.sections;
       words = map.words;
     } else {
       const body = (Array.isArray(ch.body) ? ch.body : []).filter(function (p) { return typeof p === 'string' && p.trim(); });
@@ -1054,7 +1197,7 @@ function compileBook(doc, symbols, tours, areas, warn, sources) {
       say('Warning: codebook.json: chapter "' + ch.id + '" has no paragraphs — chapter dropped');
       return;
     }
-    chapters.push({
+    const chapter = {
       id: ch.id,
       index: chapters.length + 1,
       kind: kind,
@@ -1067,7 +1210,9 @@ function compileBook(doc, symbols, tours, areas, warn, sources) {
       minutes: Math.max(1, Math.round(words / BOOK_WORDS_PER_MINUTE)),
       stale: warnings.length > 0,
       warnings: warnings,
-    });
+    };
+    if (sections) chapter.sections = sections;
+    chapters.push(chapter);
   });
   // An ahead link to a chapter dropped for having no paragraphs goes too.
   chapters.forEach(function (c) {
@@ -1089,10 +1234,13 @@ function buildWebBook(opts) {
   const root = o.srcDir || srcDir;
   const doc = readJsonFile(o.bookPath || path.resolve(root, '..', 'codebook.json'));
   if (!doc) return null;
-  const symbols = o.symbols || buildWebSymbols({ srcDir: root });
-  const tours = o.tours !== undefined ? o.tours : buildWebTours(Object.assign({}, o, { symbols: symbols }));
+  // `sources` overrides the src/ read — csharp mode passes its .cs list.
+  const sources = o.sources || readWebSources(root).sources;
+  const symbols = o.symbols || buildSymbols(sources);
+  const tours = o.tours !== undefined ? o.tours : buildWebTours(Object.assign({}, o, { symbols: symbols, sources: sources }));
   const areas = readCodemapAreas(o.codemapPath || path.resolve(root, '..', 'codemap.json'));
-  return compileBook(doc, symbols, tours, areas, o.warn, o.sources);
+  const modules = o.modules || (o.sources ? undefined : buildModules(sources));
+  return compileBook(doc, symbols, tours, areas, o.warn, sources, modules);
 }
 
 // Writes src-book.json into `outDir` when codebook.json exists; returns the
@@ -1570,7 +1718,7 @@ if (require.main === module) {
       const stepCount = tours.tours.reduce(function (n, t) { return n + t.steps.length; }, 0);
       console.log('src-tours.json written to ' + outDirName + '/ —', tours.tours.length, 'tours,', stepCount, 'steps');
     }
-    const book = writeWebBook({ symbols: symbols, tours: tours, sources: sources });
+    const book = writeWebBook({ symbols: symbols, tours: tours, sources: sources, modules: manifest.modules });
     if (book) {
       const refCount = book.chapters.reduce(function (n, c) {
         return n + c.paragraphs.reduce(function (k, p) { return k + p.filter(function (s) { return s.ref; }).length; }, 0);
@@ -1578,14 +1726,25 @@ if (require.main === module) {
       const staleCount = book.chapters.filter(function (c) { return c.stale; }).length;
       console.log('src-book.json written to ' + outDirName + '/ —', book.chapters.length, 'chapters,', refCount, 'references,', staleCount, 'stale');
     }
-    // The ranked set a map chapter needs roles for, with scores, on stderr.
+    // The map hierarchy a map chapter needs roles for, on stderr: each area,
+    // its front-door files with fan-in / fan-out, and their ranked symbols
+    // keyed as `roles` must key them.
     if (process.argv.indexOf('--print-map-candidates') !== -1 || process.env.MANIFEST_PRINT_MAP === '1') {
       const doc = readJsonFile(path.resolve(srcDir, '..', 'codebook.json'));
-      const mapCh = doc && Array.isArray(doc.chapters) ? doc.chapters.find(function (c) { return c && c.kind === 'map'; }) : null;
-      const ranked = rankMapSymbols(symbols, mode === 'csharp' ? sources : readWebSources(srcDir).sources, { limit: mapCh ? mapCh.limit : undefined });
-      console.error('Map candidates (' + ranked.length + '), best first — key  score  refs  defFiles  file:');
-      ranked.forEach(function (r, i) {
-        console.error(String(i + 1).padStart(2) + '. ' + r.key + '  ' + r.score + '  ' + r.refs + '  ' + r.defFiles + '  ' + r.file);
+      const chapters = doc && Array.isArray(doc.chapters) ? doc.chapters : [];
+      const mapCh = chapters.find(function (c) { return c && c.kind === 'map'; }) || {};
+      const sections = rankMapSymbols(symbols, mode === 'csharp' ? sources : readWebSources(srcDir).sources, {
+        areas: readCodemapAreas(path.resolve(srcDir, '..', 'codemap.json')), chapters: chapters, modules: manifest.modules,
+        filesPerArea: mapCh.filesPerArea, symbolsPerFile: mapCh.symbolsPerFile,
+      });
+      const symbolCount = sections.reduce(function (n, s) { return n + s.files.reduce(function (k, f) { return k + f.symbols.length; }, 0); }, 0);
+      console.error('Map candidates (' + symbolCount + ' symbols in ' + sections.length + ' areas) — area, file  fanIn  fanOut  [purpose], key  refs:');
+      sections.forEach(function (s) {
+        console.error(s.area.name + (s.area.purpose ? ' — ' + s.area.purpose : ''));
+        s.files.forEach(function (f) {
+          console.error('  ' + f.file + '  ' + f.fanIn + '  ' + f.fanOut + (f.purpose ? '  ' + f.purpose : '  (no purpose — role keyed by path)'));
+          f.symbols.forEach(function (r) { console.error('    ' + r.key + '  ' + r.refs); });
+        });
       });
     }
   }
