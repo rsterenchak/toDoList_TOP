@@ -515,6 +515,88 @@ export function setBookBookmarks(repo, list) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Understanding tab reader flags ──
+// Per-repo arrays of `{ repo, chapterId, paraIndex, excerpt, refs, kind, note,
+// bookSha, createdAt, resolvedAt, synced?, dirty?, deleted? }`, kept in one
+// object keyed by repo. bookFlags.js owns the records and mirrors them to
+// Supabase; this is only the local copy.
+export const BOOK_FLAGS_KEY = 'todoapp_bookFlags';
+
+// The repo's stored flag records (malformed ones dropped), or [].
+export function getBookFlags(repo) {
+    if (!repo) return [];
+    const val = readJsonObject(BOOK_FLAGS_KEY)[repo];
+    if (!Array.isArray(val)) return [];
+    return val.filter(function (f) {
+        return f && typeof f === 'object' && typeof f.chapterId === 'string' && f.chapterId &&
+            Number.isFinite(Number(f.paraIndex));
+    }).map(function (f) {
+        const rec = {
+            repo: repo,
+            chapterId: f.chapterId,
+            paraIndex: Math.max(0, Math.floor(Number(f.paraIndex))),
+            excerpt: typeof f.excerpt === 'string' ? f.excerpt : '',
+            refs: Array.isArray(f.refs) ? f.refs.filter(function (r) { return r && typeof r === 'object'; }) : [],
+            kind: typeof f.kind === 'string' ? f.kind : '',
+            note: typeof f.note === 'string' ? f.note : '',
+            bookSha: typeof f.bookSha === 'string' ? f.bookSha : '',
+            createdAt: typeof f.createdAt === 'string' ? f.createdAt : '',
+            resolvedAt: typeof f.resolvedAt === 'string' && f.resolvedAt ? f.resolvedAt : null,
+        };
+        if (f.synced === true) rec.synced = true;
+        if (f.dirty === true) rec.dirty = true;
+        if (f.deleted === true) rec.deleted = true;
+        return rec;
+    });
+}
+
+export function setBookFlags(repo, list) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(BOOK_FLAGS_KEY);
+        if (Array.isArray(list) && list.length) store[repo] = list;
+        else delete store[repo];
+        localStorage.setItem(BOOK_FLAGS_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+// ── Understanding tab abandoned chapters ──
+// Per-repo `{ [chapterId]: { chapter_id, para_index, pct } }` — the chapters the
+// reader left part-read and didn't come back to in that session. bookProgress.js
+// owns the rule; local only, never synced.
+export const BOOK_ABANDON_KEY = 'todoapp_bookAbandon';
+
+// The repo's abandoned chapters by id (malformed entries dropped), or {}.
+export function getBookAbandon(repo) {
+    if (!repo) return {};
+    const val = readJsonObject(BOOK_ABANDON_KEY)[repo];
+    if (!val || typeof val !== 'object' || Array.isArray(val)) return {};
+    const out = {};
+    Object.keys(val).forEach(function (id) {
+        const e = val[id];
+        if (!e || typeof e !== 'object' || !id) return;
+        const para = Number(e.para_index);
+        const pct = Number(e.pct);
+        out[id] = {
+            chapter_id: id,
+            para_index: Number.isFinite(para) && para > 0 ? Math.floor(para) : 0,
+            pct: Number.isFinite(pct) ? Math.min(1, Math.max(0, pct)) : 0,
+        };
+    });
+    return out;
+}
+
+// Store `map` for `repo`, or drop the repo's slot when it is empty.
+export function setBookAbandon(repo, map) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(BOOK_ABANDON_KEY);
+        if (map && typeof map === 'object' && Object.keys(map).length) store[repo] = map;
+        else delete store[repo];
+        localStorage.setItem(BOOK_ABANDON_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── chat book scope (Ask about this chapter) ──
 // Per-repo `{ chapter: { id, title, index, total }, prose, refs }` — the chapter
 // a Claude chat is scoped to, kept in one object keyed by repo like the chat's

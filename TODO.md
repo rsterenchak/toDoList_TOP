@@ -2704,7 +2704,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 9cfd0c90-9250-4286-ba9f-0519228e062c -->
 
-- [ ] **[MEDIUM]** Add reader flags to the Understanding reader for paragraphs that don't land
+- [x] **[MEDIUM]** Add reader flags to the Understanding reader for paragraphs that don't land — Completed: 2026-10-23
   - Type: feature
   - Description: The book improves by one reader saying where it lost them. Add a flag control beside the bookmark ribbon on every reader paragraph that opens a small sheet: four kind chips — Unclear, Out of order, Doesn't match the code, Why? — and an optional one-line note. A flag writes a `book_flags` row (table exists: `user_id, repo, chapter_id, para_index, excerpt, refs, kind, note, book_sha, created_at, resolved_at`, RLS per user) mirrored locally like bookmarks, capturing the paragraph's first 160 characters and its resolved refs at flag time so the flag stays readable after a regeneration. Flagged paragraphs show a small amber-outlined flag glyph at the top-right (the bookmark ribbon sits beside it when both are set). The shelf gets a `FLAGS · n` section listing open flags by chapter with their kind and note, each row opening the paragraph, with a resolve control; a Copy button on the section copies all open flags as a markdown list (chapter, paragraph, kind, note, refs) for pasting into chat. Chapter-abandonment is recorded alongside: when the reader leaves a chapter with `pct < 0.8` and does not return to it within the session, write `{ chapter_id, para_index, pct }` to the local `todoapp_bookAbandon` map (no Supabase), shown on the shelf as a muted `left at ¶n` beside that chapter's minutes.
   - Behavior:

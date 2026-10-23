@@ -5705,9 +5705,10 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   position: relative;
   /* The block a bookmark paints is always laid out, so marking only changes
      its background — the text never shifts. The negative margin keeps the
-     text aligned with the title; the right padding clears the ribbon. */
+     text aligned with the title; the right padding clears the ribbon and the
+     flag button beside it. */
   margin: 0 -12px 0;
-  padding: 8px 32px 8px 12px;
+  padding: 8px 58px 8px 12px;
   border-radius: 10px;
   font-size: 15px;
   line-height: 1.55;
@@ -5748,7 +5749,144 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 @media (hover: none) {
   .understandingPara { -webkit-touch-callout: none; }
   .understandingPara:not(.is-bookmarked) .understandingRibbon { visibility: hidden; }
+  .understandingPara:not(.is-flagged) .understandingFlagBtn { visibility: hidden; }
 }
+
+/* The flag button, left of the ribbon: hidden until hover like it, and once
+   the paragraph is flagged an amber-outlined glyph that reopens the flag. */
+.understandingFlagBtn {
+  position: absolute;
+  top: 6px;
+  right: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  opacity: 0;
+}
+.understandingPara:hover .understandingFlagBtn,
+.understandingFlagBtn:focus-visible { opacity: 1; }
+.understandingFlagBtn:hover { color: #ffbd5e; }
+.understandingPara.is-flagged .understandingFlagBtn { opacity: 1; color: #ffbd5e; }
+
+/* `n flags` under the chapter title. */
+.understandingReaderFlags {
+  margin: -12px 0 16px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: #ffbd5e;
+}
+.understandingReaderFlags[hidden] { display: none; }
+
+/* The touch long-press sheet's two actions. */
+.understandingParaActions {
+  display: flex;
+  flex-direction: column;
+  padding: 6px 8px 12px;
+}
+.understandingParaAction {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  padding: 0 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+.understandingParaAction:hover { background: var(--bg-hover); }
+.understandingParaAction svg { flex: 0 0 auto; color: #ffbd5e; }
+
+/* The flag sheet: the paragraph's opening, four kind chips, a note, actions. */
+.understandingFlagForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 14px 16px;
+  overflow-y: auto;
+}
+.understandingFlagExcerpt {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-mid);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--text-secondary);
+}
+.understandingFlagKinds {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.understandingFlagKind {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.understandingFlagKind:hover { border-color: #ffbd5e; color: var(--text-primary); }
+.understandingFlagKind[aria-pressed="true"] {
+  border-color: #ffbd5e;
+  background: color-mix(in srgb, #ffbd5e 16%, var(--bg-surface));
+  color: var(--text-primary);
+}
+.understandingFlagNote {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+}
+.understandingFlagNote:focus { outline: none; border-color: var(--accent); }
+.understandingFlagActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.understandingFlagAction {
+  min-height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+.understandingFlagAction:hover { color: var(--text-primary); background: var(--bg-hover); }
+.understandingFlagAction.is-delete { margin-right: auto; color: var(--text-warning); }
+.understandingFlagAction.is-save {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--bg-base);
+}
+.understandingFlagAction.is-save:hover { background: var(--accent); color: var(--bg-base); filter: brightness(1.1); }
 
 .bookRef {
   display: inline;
@@ -6122,7 +6260,8 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 
 /* Bookmark rows — the shelf's BOOKMARKS · n section and the reader's list share
    them: amber ribbon, label, right-aligned CH n, in the chapter-row style. */
-.understandingBookmarkSection {
+.understandingBookmarkSection,
+.understandingFlagSection {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -6186,6 +6325,61 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-family: 'SpaceMono', monospace;
   font-size: 11px;
   color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+/* The shelf's FLAGS · n section: the bookmark rows with a kind badge in place
+   of the ribbon, a resolve control per row, and Copy in the header. */
+.understandingFlagHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.understandingFlagCopy {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  cursor: pointer;
+}
+.understandingFlagCopy:hover { border-color: #ffbd5e; color: #ffbd5e; }
+.understandingFlagBadge {
+  flex: 0 0 auto;
+  padding: 1px 6px;
+  border: 1px solid #ffbd5e;
+  border-radius: 4px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #ffbd5e;
+}
+.understandingBookmarkLabel.is-excerpt { color: var(--text-secondary); }
+span.understandingFlagBtnRow { cursor: default; }
+.understandingFlagResolve {
+  flex: 0 0 auto;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 8px;
+  background: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+}
+.understandingFlagResolve:hover { color: var(--type-feature); background: var(--bg-hover); }
+
+/* `left at ¶n` on a chapter row the reader left part-read. */
+.understandingChapterLeft {
+  flex: 0 0 auto;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
