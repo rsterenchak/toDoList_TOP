@@ -27,6 +27,14 @@
 // (touch). Bookmarks live in bookBookmarks.js (local + Supabase); the reader's
 // top bar lists them and the shelf shows them under the chapters.
 //
+// Any paragraph can also be flagged as one that didn't land — a flag button
+// beside the ribbon on hover (desktop), or Flag in the long-press sheet (touch),
+// opens a sheet of four kinds and a note. Flags live in bookFlags.js (local +
+// Supabase); the shelf lists the open ones after the bookmarks, with a Copy that
+// puts them on the clipboard as markdown for a chat. A chapter left part-read
+// and not returned to that session shows `left at ¶n` on its shelf row (the rule
+// lives in bookProgress.js).
+//
 // The reader's Ask chip opens the Claude chat scoped to the open chapter: its
 // identity, its prose and its de-duplicated refs ride as `book_scope` on every
 // turn (see buildBookScope), and a scoped reply's code names open back here.
@@ -39,14 +47,15 @@
 
 import { resolveProjectRepo } from './seedTasksModal.js';
 import { loadBook, resetBookCache, bookStats } from './codeBook.js';
-import { getCachedTargets, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured } from './inject.js';
+import { getCachedTargets, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured, showInjectToast } from './inject.js';
 import { showConfirmModal } from './modals.js';
 import { loadManifest, openChatWithBookScope } from './claudeSheet.js';
 import { joinSrcRootPath } from './srcPath.js';
 import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerCloseHandler } from './codeViewer.js';
 import { createCodeSheet } from './codeSheet.js';
-import { readLocalProgress, recordProgress, flushProgress, loadProgress } from './bookProgress.js';
+import { readLocalProgress, recordProgress, flushProgress, loadProgress, noteChapterLeft, noteChapterOpened, noteChapterReached, readAbandoned } from './bookProgress.js';
 import { listBookmarks, isBookmarked, toggleBookmark, removeBookmark, loadBookmarks, anchorBookmarks } from './bookBookmarks.js';
+import { FLAG_KINDS, DEFAULT_FLAG_KIND, flagBadge, flagExcerpt, chapterBookSha, openFlags, openFlagFor, saveFlag, resolveFlag, deleteFlag, loadFlags, anchorFlags, flagsMarkdown } from './bookFlags.js';
 import { loadTours, orderedTours, nextUnfinished, tourStats } from './codeTours.js';
 import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
 import { getTourProgress, isTourCardHidden, setTourCardHidden } from './prefs.js';
@@ -60,7 +69,7 @@ const BOOK_HARD_CAP_MS = 15 * 60 * 1000;
 
 const LAG_NOTE = 'The published copy lags the commit by a deploy (~1 min).';
 
-// How long a touch must rest on a paragraph to toggle its bookmark.
+// How long a touch must rest on a paragraph to open its Bookmark / Flag sheet.
 const BOOKMARK_LONG_PRESS_MS = 500;
 // How long a paragraph reached from a bookmark keeps its amber outline.
 const BOOKMARK_PULSE_MS = 1000;
@@ -73,6 +82,11 @@ const ASK_GLYPH =
 const RIBBON_GLYPH =
     '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">' +
     '<path d="M6 3h12v18l-6-4.5L6 21z"/>' +
+    '</svg>';
+
+const FLAG_GLYPH =
+    '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 21V4h11l-2 4 2 4H5"/>' +
     '</svg>';
 
 // The tracked book run: `{ repo, seenActive, graceDeadline, hardDeadline }`, or
@@ -368,6 +382,7 @@ function buildContinueCard(view, repo, book, stats, pos) {
 }
 
 function buildChapterList(view, repo, book, pos) {
+    const abandoned = readAbandoned(repo);
     const list = document.createElement('ol');
     list.className = 'understandingChapters';
     book.chapters.forEach(function (ch, i) {
@@ -400,6 +415,14 @@ function buildChapterList(view, repo, book, pos) {
         } else {
             meta.className = 'understandingChapterMinutes';
             meta.textContent = (Number(ch.minutes) || 0) + ' MIN';
+        }
+        // A chapter left part-read in an earlier session says where.
+        const left = Object.prototype.hasOwnProperty.call(abandoned, ch.id) ? abandoned[ch.id] : null;
+        if (left) {
+            const at = document.createElement('span');
+            at.className = 'understandingChapterLeft';
+            at.textContent = 'left at ¶' + (left.para_index + 1);
+            btn.appendChild(at);
         }
         btn.appendChild(meta);
         btn.addEventListener('click', function () {
@@ -525,6 +548,126 @@ function buildBookmarkSection(view, repo, book) {
     return section;
 }
 
+// ── flags ──
+
+// A flag's kind badge.
+function flagBadgeEl(kind) {
+    const el = document.createElement('span');
+    el.className = 'understandingFlagBadge';
+    el.textContent = flagBadge(kind);
+    return el;
+}
+
+// The shelf's FLAGS · n section, or null when the repo has no open flags: a
+// header with Copy, then the open flags grouped by chapter in book order — kind
+// badge, note (or excerpt), `CH n ¶m` — each opening its paragraph, each with a
+// resolve control. Flags whose chapter is gone follow under REMOVED CHAPTER.
+function buildFlagSection(view, repo, book) {
+    const flags = openFlags(repo);
+    if (!flags.length) return null;
+    const section = document.createElement('section');
+    section.className = 'understandingFlagSection';
+    section.setAttribute('aria-label', 'Flags');
+    const head = document.createElement('div');
+    head.className = 'understandingFlagHead';
+    const title = document.createElement('span');
+    title.className = 'understandingBookmarkHead';
+    title.textContent = 'FLAGS · ' + flags.length;
+    head.appendChild(title);
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'understandingFlagCopy';
+    copy.textContent = 'Copy';
+    copy.setAttribute('aria-label', 'Copy open flags as markdown');
+    copy.addEventListener('click', function () {
+        copyFlags(flagsMarkdown(book, openFlags(repo), function (i) { return chapterNum(book, i); }));
+    });
+    head.appendChild(copy);
+    section.appendChild(head);
+
+    const anchored = anchorFlags(book, flags);
+    const onResolved = function () { renderUnderstandingView(); };
+    function addRows(list, items, chLabelOf, onOpen) {
+        items.forEach(function (item) {
+            const f = item.flag;
+            const row = document.createElement('li');
+            row.className = 'understandingBookmarkRow understandingFlagRow';
+            const text = f.note || f.excerpt;
+            const btn = document.createElement(onOpen ? 'button' : 'span');
+            if (onOpen) btn.type = 'button';
+            btn.className = 'understandingBookmarkBtn understandingFlagBtnRow';
+            btn.appendChild(flagBadgeEl(f.kind));
+            const label = document.createElement('span');
+            label.className = 'understandingBookmarkLabel' + (f.note ? '' : ' is-excerpt');
+            label.textContent = text;
+            btn.appendChild(label);
+            const ch = document.createElement('span');
+            ch.className = 'understandingBookmarkCh';
+            ch.textContent = chLabelOf + ' ¶' + (f.paraIndex + 1);
+            btn.appendChild(ch);
+            if (onOpen) btn.addEventListener('click', function () { onOpen(item); });
+            row.appendChild(btn);
+            const resolve = document.createElement('button');
+            resolve.type = 'button';
+            resolve.className = 'understandingFlagResolve';
+            resolve.textContent = '✓';
+            resolve.setAttribute('aria-label', 'Resolve flag: ' + text);
+            resolve.addEventListener('click', function () {
+                resolveFlag(repo, f);
+                onResolved();
+            });
+            row.appendChild(resolve);
+            list.appendChild(row);
+        });
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'understandingBookmarkGroups';
+    anchored.groups.forEach(function (group) {
+        const gh = document.createElement('div');
+        gh.className = 'understandingBookmarkGroup';
+        gh.textContent = 'CH ' + chapterNum(book, group.index) + ' · ' + (group.chapter.title || group.chapter.id);
+        wrap.appendChild(gh);
+        const list = document.createElement('ol');
+        list.className = 'understandingBookmarks';
+        addRows(list, group.items, 'CH ' + chapterNum(book, group.index), function (item) {
+            openReader(view, repo, book, group.index, item.paraIndex);
+            if (item.inRange) pulseParagraph(item.paraIndex);
+        });
+        wrap.appendChild(list);
+    });
+    if (anchored.removed.length) {
+        const gh = document.createElement('div');
+        gh.className = 'understandingBookmarkGroup is-removed';
+        gh.textContent = 'REMOVED CHAPTER';
+        wrap.appendChild(gh);
+        const list = document.createElement('ol');
+        list.className = 'understandingBookmarks is-removed';
+        addRows(list, anchored.removed.map(function (f) { return { flag: f }; }), 'CH ?', null);
+        wrap.appendChild(list);
+    }
+    section.appendChild(wrap);
+    return section;
+}
+
+// Put `text` on the clipboard and say so in a toast.
+function copyFlags(text) {
+    const done = function () { showInjectToast('Copied'); };
+    const fail = function () { showInjectToast('Couldn’t copy', 'error'); };
+    try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            Promise.resolve(navigator.clipboard.writeText(text)).then(done, fail);
+            return;
+        }
+    } catch (e) { /* fall through */ }
+    fail();
+}
+
+function flagSignature(list) {
+    return (list || []).map(function (f) {
+        return f.chapterId + '#' + f.paraIndex + '#' + f.createdAt + '#' + f.kind + '#' + f.note + '#' + (f.resolvedAt || '');
+    }).sort().join('|');
+}
+
 function bookmarkSignature(list) {
     return (list || []).map(function (b) { return b.chapterId + '#' + b.paraIndex + '#' + b.label; }).sort().join('|');
 }
@@ -615,6 +758,8 @@ function paintShelf(view, repo, book, progress) {
     shelf.appendChild(chapters);
     const marks = buildBookmarkSection(view, repo, book);
     if (marks) shelf.appendChild(marks);
+    const flags = buildFlagSection(view, repo, book);
+    if (flags) shelf.appendChild(flags);
     paintTourSurfaces();
 }
 
@@ -1338,10 +1483,32 @@ function toggleParaMark(p, segments, index) {
     paintMarksChip();
 }
 
-// Give paragraph `p` its ribbon (hover-revealed on desktop, a tap target once
-// marked) and the ~500ms long-press that toggles it on touch.
+// Reflect a paragraph's flag state on it and its flag button.
+function paintParaFlag(p, flagged) {
+    p.classList.toggle('is-flagged', flagged);
+    const btn = p.querySelector(':scope > .understandingFlagBtn');
+    if (btn) {
+        btn.setAttribute('aria-pressed', flagged ? 'true' : 'false');
+        btn.setAttribute('aria-label', flagged ? 'Edit flag' : 'Flag this paragraph');
+    }
+}
+
+// Give paragraph `p` its ribbon and flag button (hover-revealed on desktop, a
+// tap target once set) and the ~500ms long-press that opens its Bookmark / Flag
+// sheet on touch.
 function wireParaMark(p, segments, index) {
     const r = reader;
+    const chapterId = r.book.chapters[r.index].id;
+    const flagBtn = document.createElement('button');
+    flagBtn.type = 'button';
+    flagBtn.className = 'understandingFlagBtn';
+    flagBtn.innerHTML = FLAG_GLYPH;
+    flagBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        openFlagSheet(p, segments, index);
+    });
+    p.appendChild(flagBtn);
+    paintParaFlag(p, !!openFlagFor(r.repo, chapterId, index));
     const ribbon = document.createElement('button');
     ribbon.type = 'button';
     ribbon.className = 'understandingRibbon';
@@ -1351,7 +1518,7 @@ function wireParaMark(p, segments, index) {
         toggleParaMark(p, segments, index);
     });
     p.appendChild(ribbon);
-    paintParaMark(p, isBookmarked(r.repo, r.book.chapters[r.index].id, index));
+    paintParaMark(p, isBookmarked(r.repo, chapterId, index));
 
     let lpTimer = null;
     let lpStartX = 0;
@@ -1370,7 +1537,7 @@ function wireParaMark(p, segments, index) {
         lpTimer = setTimeout(function () {
             lpTimer = null;
             lpFired = true;
-            toggleParaMark(p, segments, index);
+            openParaActions(p, segments, index);
         }, BOOKMARK_LONG_PRESS_MS);
     }, { passive: true });
     p.addEventListener('touchmove', function (event) {
@@ -1381,13 +1548,198 @@ function wireParaMark(p, segments, index) {
     p.addEventListener('touchend', function (event) {
         cancel();
         if (lpFired) {
-            // The long-press toggled — swallow the tap that would follow (a chip
-            // opening, or the ribbon toggling straight back).
+            // The long-press opened the sheet — swallow the tap that would follow
+            // (a chip opening, or the sheet's backdrop closing it straight away).
             event.preventDefault();
             lpFired = false;
         }
     });
     p.addEventListener('touchcancel', cancel);
+}
+
+// ── paragraph actions and the flag sheet ──
+
+// The touch long-press sheet: Bookmark and Flag for one paragraph.
+const paraSheet = createCodeSheet({
+    id: 'understandingParaSheet',
+    label: 'Paragraph actions',
+    className: 'understandingBookmarksSheet understandingParaSheet',
+});
+
+// The flag sheet: four kinds, a note, and Save / Cancel (plus Resolve and
+// Delete when the paragraph already carries an open flag).
+const flagSheet = createCodeSheet({
+    id: 'understandingFlagSheet',
+    label: 'Flag paragraph',
+    className: 'understandingBookmarksSheet understandingFlagSheet',
+});
+
+// A sheet header: `titleText` and a ✕ that runs `onClose`.
+function sheetHead(titleText, closeLabel, onClose) {
+    const head = document.createElement('div');
+    head.className = 'understandingMarksHead';
+    const title = document.createElement('span');
+    title.className = 'understandingMarksTitle';
+    title.textContent = titleText;
+    head.appendChild(title);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'understandingMarksClose';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', closeLabel);
+    close.addEventListener('click', onClose);
+    head.appendChild(close);
+    return head;
+}
+
+function paraLabel(index) {
+    const r = reader;
+    return 'CH ' + chapterNum(r.book, r.index) + ' ¶' + (index + 1);
+}
+
+// Open paragraph `index`'s action sheet: Bookmark (one tap toggles it) and Flag.
+function openParaActions(p, segments, index) {
+    const r = reader;
+    if (!r) return;
+    const host = paraSheet.ensure();
+    if (!host) return;
+    clear(host);
+    const chapterId = r.book.chapters[r.index].id;
+    host.appendChild(sheetHead(paraLabel(index), 'Close', function () { paraSheet.hide(); }));
+    const actions = document.createElement('div');
+    actions.className = 'understandingParaActions';
+    const marked = isBookmarked(r.repo, chapterId, index);
+    const mark = document.createElement('button');
+    mark.type = 'button';
+    mark.className = 'understandingParaAction';
+    mark.innerHTML = RIBBON_GLYPH;
+    mark.appendChild(document.createTextNode(marked ? 'Remove bookmark' : 'Bookmark'));
+    mark.addEventListener('click', function () {
+        paraSheet.hide();
+        toggleParaMark(p, segments, index);
+    });
+    actions.appendChild(mark);
+    const flagged = !!openFlagFor(r.repo, chapterId, index);
+    const flag = document.createElement('button');
+    flag.type = 'button';
+    flag.className = 'understandingParaAction';
+    flag.innerHTML = FLAG_GLYPH;
+    flag.appendChild(document.createTextNode(flagged ? 'Edit flag' : 'Flag'));
+    flag.addEventListener('click', function () {
+        paraSheet.hide();
+        openFlagSheet(p, segments, index);
+    });
+    actions.appendChild(flag);
+    host.appendChild(actions);
+    paraSheet.show();
+}
+
+// After a flag changes: the paragraph, the chapter's flag count.
+function afterFlagChange(p, index) {
+    const r = reader;
+    if (!r) return;
+    paintParaFlag(p, !!openFlagFor(r.repo, r.book.chapters[r.index].id, index));
+    paintChapterFlags();
+}
+
+// Open the flag sheet for paragraph `index`, pre-filled from its open flag.
+function openFlagSheet(p, segments, index) {
+    const r = reader;
+    if (!r) return;
+    const host = flagSheet.ensure();
+    if (!host) return;
+    clear(host);
+    const ch = r.book.chapters[r.index];
+    const existing = openFlagFor(r.repo, ch.id, index);
+    const hide = function () { flagSheet.hide(); };
+    host.appendChild(sheetHead('FLAG · ' + paraLabel(index), 'Close flag', hide));
+
+    const body = document.createElement('div');
+    body.className = 'understandingFlagForm';
+    const quote = document.createElement('div');
+    quote.className = 'understandingFlagExcerpt';
+    quote.textContent = existing ? existing.excerpt : flagExcerpt(segments);
+    body.appendChild(quote);
+
+    let kind = existing ? existing.kind : DEFAULT_FLAG_KIND;
+    const kinds = document.createElement('div');
+    kinds.className = 'understandingFlagKinds';
+    kinds.setAttribute('role', 'group');
+    kinds.setAttribute('aria-label', 'What went wrong');
+    const chips = FLAG_KINDS.map(function (k) {
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'understandingFlagKind';
+        chip.dataset.kind = k.id;
+        chip.textContent = k.label;
+        chip.addEventListener('click', function () {
+            kind = k.id;
+            chips.forEach(function (c) { c.setAttribute('aria-pressed', c.dataset.kind === kind ? 'true' : 'false'); });
+        });
+        chip.setAttribute('aria-pressed', k.id === kind ? 'true' : 'false');
+        kinds.appendChild(chip);
+        return chip;
+    });
+    body.appendChild(kinds);
+
+    const note = document.createElement('input');
+    note.type = 'text';
+    note.className = 'understandingFlagNote';
+    note.placeholder = 'What did you expect here?';
+    note.setAttribute('aria-label', 'Note');
+    note.maxLength = 200;
+    note.value = existing ? existing.note : '';
+    body.appendChild(note);
+
+    const actions = document.createElement('div');
+    actions.className = 'understandingFlagActions';
+    function action(label, className, fn) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'understandingFlagAction ' + className;
+        btn.textContent = label;
+        btn.addEventListener('click', fn);
+        actions.appendChild(btn);
+        return btn;
+    }
+    if (existing) {
+        action('Delete', 'is-delete', function () {
+            showConfirmModal({
+                message: 'Delete this flag? Its kind and note will be lost.',
+                confirmLabel: 'Delete',
+                danger: true,
+                onConfirm: function () {
+                    deleteFlag(r.repo, existing);
+                    hide();
+                    afterFlagChange(p, index);
+                },
+            });
+        });
+        action('Resolve', 'is-resolve', function () {
+            resolveFlag(r.repo, existing);
+            hide();
+            afterFlagChange(p, index);
+        });
+    }
+    action('Cancel', 'is-cancel', hide);
+    action('Save', 'is-save', function () {
+        saveFlag(r.repo, ch.id, index, segments, { kind: kind, note: note.value, bookSha: chapterBookSha(ch) });
+        hide();
+        afterFlagChange(p, index);
+    });
+    body.appendChild(actions);
+    host.appendChild(body);
+    flagSheet.show();
+}
+
+// The chapter header's `n flags`, amber, hidden when the chapter has none open.
+function paintChapterFlags() {
+    const r = reader;
+    if (!r || !r.flagsEl) return;
+    const id = r.book.chapters[r.index].id;
+    const n = openFlags(r.repo).filter(function (f) { return f.chapterId === id; }).length;
+    r.flagsEl.textContent = n === 1 ? '1 flag' : n + ' flags';
+    r.flagsEl.hidden = n === 0;
 }
 
 // Outline paragraph `paraIndex` of the open chapter in amber for a second.
@@ -1655,7 +2007,35 @@ function setPosition(paraIndex) {
     const paras = Array.isArray(ch.paragraphs) ? ch.paragraphs.length : 0;
     r.paraIndex = paraIndex;
     recordProgress(r.repo, { chapterId: ch.id, paraIndex: paraIndex, pct: paras ? paraIndex / paras : 0 });
+    noteReached(paraIndex);
     paintReaderProgress();
+}
+
+// How much of the open chapter the reader has seen: up to paragraph `i`.
+function readShare(i) {
+    const r = reader;
+    const ch = r.book.chapters[r.index];
+    const paras = Array.isArray(ch.paragraphs) ? ch.paragraphs.length : 0;
+    return paras ? Math.min(1, (i + 1) / paras) : 1;
+}
+
+// The reader has seen paragraph `i` of the open chapter; reading far enough
+// clears the chapter's stored abandonment.
+function noteReached(i) {
+    const r = reader;
+    if (!r || !(i > r.reached)) return;
+    r.reached = i;
+    noteChapterReached(r.repo, r.book.chapters[r.index].id, readShare(i));
+}
+
+// The reader is leaving the chapter it shows (a chapter switch or the reader
+// closing): stage it as abandoned when too little of it was seen.
+function departChapter() {
+    const r = reader;
+    if (!r || r.shownIndex < 0) return;
+    const ch = r.book.chapters[r.shownIndex];
+    noteChapterLeft(r.repo, ch.id, r.paraIndex, readShare(Math.max(0, r.reached)));
+    r.shownIndex = -1;
 }
 
 // Track the topmost paragraph at least half visible in the reader's scroller.
@@ -1674,6 +2054,7 @@ function observeParagraphs(paras) {
         if (!visible.size) return;
         const top = Math.min.apply(null, Array.from(visible));
         if (top !== r.paraIndex) setPosition(top);
+        noteReached(Math.max.apply(null, Array.from(visible)));
     }, { root: r.scroll, threshold: [0, 0.5, 1] });
     paras.forEach(function (p) { r.observer.observe(p); });
 }
@@ -1685,7 +2066,13 @@ function showChapter(index, paraIndex) {
     const chapters = r.book.chapters;
     const ch = chapters[index];
     const paragraphs = Array.isArray(ch.paragraphs) ? ch.paragraphs : [];
+    if (r.shownIndex !== index) {
+        departChapter();
+        noteChapterOpened(r.repo, ch.id);
+        r.reached = -1;
+    }
     r.index = index;
+    r.shownIndex = index;
     clear(r.column);
 
     const eyebrow = document.createElement('div');
@@ -1697,6 +2084,13 @@ function showChapter(index, paraIndex) {
     title.className = 'understandingReaderTitle';
     title.textContent = ch.title || ch.id;
     r.column.appendChild(title);
+
+    // `n flags` while the chapter has open ones.
+    const flagsEl = document.createElement('div');
+    flagsEl.className = 'understandingReaderFlags';
+    r.column.appendChild(flagsEl);
+    r.flagsEl = flagsEl;
+    paintChapterFlags();
 
     // A stale chapter says so, and names the symbols whose code drifted.
     if (ch.stale === true) {
@@ -1771,6 +2165,8 @@ function showChapter(index, paraIndex) {
         ? buildNavButton('Next', '', 'Back to shelf')
         : buildNavButton('Next', 'CH ' + chapterNum(r.book, index + 1) + ' ›', chapters[index + 1].title || chapters[index + 1].id);
     next.addEventListener('click', function () {
+        // Reading on past the end counts as having read the chapter through.
+        noteReached(paragraphs.length - 1);
         if (last) leaveReader();
         else showChapter(index + 1, 0);
     });
@@ -1887,6 +2283,11 @@ function openReader(view, repo, book, index, paraIndex) {
         marksBtn: marksBtn,
         marksBadge: marksBadge,
         marksList: null,
+        flagsEl: null,
+        // The chapter on screen (-1 before the first) and the furthest paragraph
+        // of it seen, for the abandonment rule.
+        shownIndex: -1,
+        reached: -1,
         backBtn: back,
         // Where each followed ahead link came from; the back chip pops it.
         backStack: [],
@@ -1900,10 +2301,13 @@ function openReader(view, repo, book, index, paraIndex) {
 // DOM is left to whoever paints next.
 function teardownReader() {
     if (!reader) return;
+    departChapter();
     flushProgress();
     if (reader.observer) reader.observer.disconnect();
     closeMarksList();
     citeSheet.hide();
+    paraSheet.hide();
+    flagSheet.hide();
     closeCodePane();
     if (codeSheet.isOpen()) codeSheet.reset();
     reader.view.classList.remove('is-reading');
@@ -1957,17 +2361,19 @@ export function renderUnderstandingView() {
         if (seq !== renderSeq) return;
         const local = readLocalProgress(repo);
         const localMarks = bookmarkSignature(listBookmarks(repo));
+        const localFlags = flagSignature(openFlags(repo));
         clear(view);
         paintShelf(view, repo, book, local);
         if (!book || !book.chapters.length) return;
         // The synced record may be newer (another device) and the synced bookmarks
-        // may differ; repaint when either does.
-        return Promise.all([loadProgress(repo), loadBookmarks(repo)]).then(function (res) {
+        // and flags may differ; repaint when any does.
+        return Promise.all([loadProgress(repo), loadBookmarks(repo), loadFlags(repo)]).then(function (res) {
             const merged = res[0];
             if (seq !== renderSeq || reader) return;
             const sameProgress = merged === local ||
                 (merged && local && merged.updatedAt === local.updatedAt && merged.chapterId === local.chapterId);
-            if (sameProgress && bookmarkSignature(res[1]) === localMarks) return;
+            if (sameProgress && bookmarkSignature(res[1]) === localMarks &&
+                flagSignature(openFlags(repo)) === localFlags) return;
             clear(view);
             paintShelf(view, repo, book, merged);
         });

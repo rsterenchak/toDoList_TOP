@@ -27,6 +27,7 @@ vi.mock('../src/inject.js', () => ({
     dispatchBook: vi.fn(),
     mintEntryId: vi.fn(() => 'cid-1'),
     isInjectConfigured: vi.fn(() => false),
+    showInjectToast: vi.fn(),
 }));
 
 vi.mock('../src/modals.js', () => ({ showConfirmModal: vi.fn() }));
@@ -412,7 +413,7 @@ describe('bookmarks', () => {
         expect(marks()).toEqual([]);
     });
 
-    test('a ~500ms long-press toggles the bookmark on touch', async () => {
+    test('a ~500ms long-press opens the Bookmark / Flag sheet; Bookmark marks in one tap', async () => {
         vi.useFakeTimers();
         try {
             setWidth(390);
@@ -427,20 +428,34 @@ describe('bookmarks', () => {
                 p.dispatchEvent(ev);
                 return ev;
             };
+            const sheet = () => document.getElementById('understandingParaSheet');
             touch('touchstart', 10);
             vi.advanceTimersByTime(300);
             touch('touchend');
-            expect(p.classList.contains('is-bookmarked')).toBe(false);
+            expect(sheet()).toBeNull();
 
             touch('touchstart', 10);
             vi.advanceTimersByTime(500);
-            expect(p.classList.contains('is-bookmarked')).toBe(true);
+            expect(sheet().hidden).toBe(false);
             expect(touch('touchend').defaultPrevented).toBe(true);
+            const actions = Array.from(sheet().querySelectorAll('.understandingParaAction'));
+            expect(actions.map((a) => a.textContent)).toEqual(['Bookmark', 'Flag']);
+            expect(p.classList.contains('is-bookmarked')).toBe(false);
+            actions[0].click();
+            expect(sheet().hidden).toBe(true);
+            expect(p.classList.contains('is-bookmarked')).toBe(true);
             expect(marks()[0]).toMatchObject({ chapterId: 'app-starts', paraIndex: 2 });
+
+            touch('touchstart', 10);
+            vi.advanceTimersByTime(500);
+            expect(sheet().querySelector('.understandingParaAction').textContent).toBe('Remove bookmark');
+            sheet().querySelector('.understandingMarksClose').click();
+            expect(sheet().hidden).toBe(true);
 
             touch('touchstart', 10);
             touch('touchmove', 40);
             vi.advanceTimersByTime(600);
+            expect(sheet().hidden).toBe(true);
             expect(p.classList.contains('is-bookmarked')).toBe(true);
         } finally {
             vi.useRealTimers();
@@ -558,6 +573,167 @@ describe('bookmarks', () => {
         expect(title()).toBe('The pipeline');
         expect(view().querySelector('.understandingPara.is-pulse')).toBeNull();
         expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'pipeline', paraIndex: 0 });
+    });
+});
+
+describe('flags', () => {
+    const flags = () => JSON.parse(localStorage.getItem('todoapp_bookFlags') || '{}')['owner/repo'] || [];
+    const sheet = () => document.getElementById('understandingFlagSheet');
+    const header = () => view().querySelector('.understandingReaderFlags');
+
+    test('the flag button opens the sheet with four single-select kinds, Unclear by default, and a 16px note', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[1];
+        const btn = p.querySelector('.understandingFlagBtn');
+        expect(btn.getAttribute('aria-label')).toBe('Flag this paragraph');
+        expect(btn.nextElementSibling.classList.contains('understandingRibbon')).toBe(true);
+        btn.click();
+        expect(sheet().hidden).toBe(false);
+        const kinds = Array.from(sheet().querySelectorAll('.understandingFlagKind'));
+        expect(kinds.map((k) => k.textContent)).toEqual(['Unclear', 'Out of order', 'Doesn’t match the code', 'Why?']);
+        expect(kinds.map((k) => k.getAttribute('aria-pressed'))).toEqual(['true', 'false', 'false', 'false']);
+        kinds[2].click();
+        expect(kinds.map((k) => k.getAttribute('aria-pressed'))).toEqual(['false', 'false', 'true', 'false']);
+        const note = sheet().querySelector('.understandingFlagNote');
+        expect(note.placeholder).toBe('What did you expect here?');
+        expect(Array.from(sheet().querySelectorAll('.understandingFlagAction')).map((a) => a.textContent)).toEqual(['Cancel', 'Save']);
+    });
+
+    test('Save writes the record, marks the paragraph and counts it in the chapter header', async () => {
+        await openChapter(0);
+        expect(header().hidden).toBe(true);
+        const p = view().querySelectorAll('.understandingPara')[0];
+        p.querySelector('.understandingFlagBtn').click();
+        sheet().querySelectorAll('.understandingFlagKind')[3].click();
+        sheet().querySelector('.understandingFlagNote').value = '  Why here?  ';
+        sheet().querySelector('.understandingFlagAction.is-save').click();
+        expect(sheet().hidden).toBe(true);
+        expect(p.classList.contains('is-flagged')).toBe(true);
+        expect(p.querySelector('.understandingFlagBtn').getAttribute('aria-pressed')).toBe('true');
+        expect(header().hidden).toBe(false);
+        expect(header().textContent).toBe('1 flag');
+        expect(flags()).toEqual([expect.objectContaining({
+            chapterId: 'app-starts', paraIndex: 0, kind: 'why', note: 'Why here?', resolvedAt: null,
+            excerpt: 'Everything begins in bootApp when the page loads.',
+            refs: [{ label: 'bootApp', file: 'index.js', symbol: 'bootApp', line: 40 }],
+        })]);
+    });
+
+    test('Cancel and the ✕ close without writing', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[0];
+        p.querySelector('.understandingFlagBtn').click();
+        sheet().querySelector('.understandingFlagAction.is-cancel').click();
+        expect(sheet().hidden).toBe(true);
+        p.querySelector('.understandingFlagBtn').click();
+        sheet().querySelector('.understandingMarksClose').click();
+        expect(sheet().hidden).toBe(true);
+        expect(flags()).toEqual([]);
+    });
+
+    test('a flagged paragraph reopens the sheet pre-filled, with Resolve and Delete', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[2];
+        p.querySelector('.understandingFlagBtn').click();
+        sheet().querySelectorAll('.understandingFlagKind')[1].click();
+        sheet().querySelector('.understandingFlagNote').value = 'Comes too early';
+        sheet().querySelector('.understandingFlagAction.is-save').click();
+
+        p.querySelector('.understandingFlagBtn').click();
+        expect(sheet().querySelectorAll('.understandingFlagKind')[1].getAttribute('aria-pressed')).toBe('true');
+        expect(sheet().querySelector('.understandingFlagNote').value).toBe('Comes too early');
+        expect(Array.from(sheet().querySelectorAll('.understandingFlagAction')).map((a) => a.textContent))
+            .toEqual(['Delete', 'Resolve', 'Cancel', 'Save']);
+        sheet().querySelector('.understandingFlagAction.is-resolve').click();
+        expect(p.classList.contains('is-flagged')).toBe(false);
+        expect(header().hidden).toBe(true);
+        expect(flags()[0].resolvedAt).toEqual(expect.any(String));
+    });
+
+    test('Delete asks first, then removes the flag', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[1];
+        p.querySelector('.understandingFlagBtn').click();
+        sheet().querySelector('.understandingFlagAction.is-save').click();
+        p.querySelector('.understandingFlagBtn').click();
+        sheet().querySelector('.understandingFlagAction.is-delete').click();
+        expect(showConfirmModal).toHaveBeenCalledTimes(1);
+        expect(flags()).toHaveLength(1);
+        showConfirmModal.mock.calls[0][0].onConfirm();
+        expect(flags()).toEqual([]);
+        expect(p.classList.contains('is-flagged')).toBe(false);
+    });
+
+    test('the long-press sheet offers Flag, which opens the flag sheet', async () => {
+        vi.useFakeTimers();
+        try {
+            setWidth(390);
+            const p0 = renderUnderstandingView();
+            await vi.advanceTimersByTimeAsync(0);
+            await p0;
+            view().querySelectorAll('.understandingChapterBtn')[0].click();
+            const p = view().querySelectorAll('.understandingPara')[1];
+            const ev = new Event('touchstart', { bubbles: true, cancelable: true });
+            ev.touches = [{ clientX: 5, clientY: 5 }];
+            p.dispatchEvent(ev);
+            vi.advanceTimersByTime(500);
+            const actions = document.getElementById('understandingParaSheet').querySelectorAll('.understandingParaAction');
+            actions[1].click();
+            expect(document.getElementById('understandingParaSheet').hidden).toBe(true);
+            expect(sheet().hidden).toBe(false);
+            sheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(p.classList.contains('is-flagged')).toBe(true);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test('the flag sheet closes on its backdrop and Escape', async () => {
+        await openChapter(0);
+        const btn = view().querySelectorAll('.understandingFlagBtn')[0];
+        btn.click();
+        sheet().dispatchEvent(new MouseEvent('click', { bubbles: true }));
+        expect(sheet().hidden).toBe(true);
+        btn.click();
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(sheet().hidden).toBe(true);
+    });
+});
+
+describe('abandoned chapters', () => {
+    const abandoned = () => JSON.parse(localStorage.getItem('todoapp_bookAbandon') || '{}')['owner/repo'];
+
+    test('leaving a chapter under 80% read stages it; the session ending writes it', async () => {
+        await openChapter(0);
+        latestObserver().show([1]);
+        view().querySelector('.understandingBackChip').click();
+        expect(abandoned()).toBeUndefined();
+        window.dispatchEvent(new Event('pagehide'));
+        expect(abandoned()).toEqual({ 'app-starts': { chapter_id: 'app-starts', para_index: 1, pct: 0.5 } });
+    });
+
+    test('coming back to the chapter in the same session unstages it', async () => {
+        await openChapter(0);
+        view().querySelector('.understandingNavNext').click();
+        view().querySelector('.understandingNavPrev').click();
+        view().querySelector('.understandingNavNext').click();
+        latestObserver().show([0]);
+        view().querySelector('.understandingNavPrev').click();
+        window.dispatchEvent(new Event('pagehide'));
+        // Chapter 2 was left at its first paragraph (half of two); chapter 1 was
+        // read through by Next and is open again.
+        expect(Object.keys(abandoned())).toEqual(['data']);
+    });
+
+    test('reading a chapter past 80% clears its stored abandonment', async () => {
+        localStorage.setItem('todoapp_bookAbandon', JSON.stringify({
+            'owner/repo': { 'app-starts': { chapter_id: 'app-starts', para_index: 0, pct: 0.25 } },
+        }));
+        await openChapter(0);
+        latestObserver().show([2]);
+        expect(abandoned()).toEqual({ 'app-starts': { chapter_id: 'app-starts', para_index: 0, pct: 0.25 } });
+        latestObserver().show([3]);
+        expect(abandoned()).toBeUndefined();
     });
 });
 

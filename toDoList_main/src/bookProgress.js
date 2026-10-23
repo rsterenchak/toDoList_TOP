@@ -8,13 +8,23 @@
 // shelf render, where the newer `updatedAt` wins (local wins a tie). Signed out
 // or offline, every Supabase call is skipped or swallowed — a sync miss must
 // never block or break the reader.
+//
+// It also keeps the chapters the reader gave up on. Leaving a chapter (a chapter
+// switch or the reader closing) under ABANDON_PCT read stages it; coming back to
+// it in the same session unstages it; the session ending (the page hidden or
+// unloaded) writes what is still staged to the local `todoapp_bookAbandon` map,
+// where it stays until that chapter is next read past ABANDON_PCT. Local only.
 
 import { supabase } from './supabaseClient.js';
-import { getBookProgress, setBookProgress } from './prefs.js';
+import { getBookProgress, setBookProgress, getBookAbandon, setBookAbandon } from './prefs.js';
 
 const TABLE = 'book_progress';
 // How long position changes settle before they are upserted.
 export const BOOK_PROGRESS_DEBOUNCE_MS = 2000;
+
+// How far through a chapter a reader must get for leaving it not to count as
+// abandoning it.
+export const ABANDON_PCT = 0.8;
 
 // The pending upsert: `{ repo, record }`, or null when nothing is waiting.
 let pending = null;
@@ -133,8 +143,78 @@ export async function loadProgress(repo) {
     }
 }
 
-// Drop any pending upsert and its timer. A test seam.
+// ── abandoned chapters ──
+
+// Chapters left part-read this session: `repo` → Map(chapterId → entry).
+const staged = new Map();
+let sessionHooked = false;
+
+function stagedFor(repo) {
+    if (!staged.has(repo)) staged.set(repo, new Map());
+    return staged.get(repo);
+}
+
+// Write the session's staged chapters at its end — the page hidden or unloaded.
+function hookSessionEnd() {
+    if (sessionHooked || typeof document === 'undefined') return;
+    sessionHooked = true;
+    document.addEventListener('visibilitychange', function () {
+        if (document.visibilityState === 'hidden') commitAbandoned();
+    });
+    if (typeof window !== 'undefined') window.addEventListener('pagehide', commitAbandoned);
+}
+
+// The reader left `chapterId` having read `pct` of it, last at `paraIndex`: under
+// ABANDON_PCT it is staged, otherwise anything staged for it is dropped.
+export function noteChapterLeft(repo, chapterId, paraIndex, pct) {
+    if (!repo || typeof chapterId !== 'string' || !chapterId) return;
+    const share = Math.min(1, Math.max(0, Number(pct) || 0));
+    const map = stagedFor(repo);
+    if (share >= ABANDON_PCT) { map.delete(chapterId); return; }
+    map.set(chapterId, {
+        chapter_id: chapterId,
+        para_index: Math.max(0, Math.floor(Number(paraIndex) || 0)),
+        pct: share,
+    });
+    hookSessionEnd();
+}
+
+// The reader is back in `chapterId` this session: it is no longer staged.
+export function noteChapterOpened(repo, chapterId) {
+    if (!repo || !staged.has(repo)) return;
+    staged.get(repo).delete(chapterId);
+}
+
+// The reader has read `pct` of `chapterId`; past ABANDON_PCT its stored
+// abandonment, if any, is cleared.
+export function noteChapterReached(repo, chapterId, pct) {
+    if (!repo || !chapterId || !(Number(pct) >= ABANDON_PCT)) return;
+    const stored = getBookAbandon(repo);
+    if (!Object.prototype.hasOwnProperty.call(stored, chapterId)) return;
+    delete stored[chapterId];
+    setBookAbandon(repo, stored);
+}
+
+// End the session: write every staged chapter to the local map and unstage it.
+export function commitAbandoned() {
+    staged.forEach(function (map, repo) {
+        if (!map.size) return;
+        const stored = getBookAbandon(repo);
+        map.forEach(function (entry, id) { stored[id] = entry; });
+        setBookAbandon(repo, stored);
+    });
+    staged.clear();
+}
+
+// The repo's abandoned chapters by id: `{ [chapterId]: { chapter_id,
+// para_index, pct } }`.
+export function readAbandoned(repo) {
+    return getBookAbandon(repo);
+}
+
+// Drop any pending upsert and its timer, and the staged chapters. A test seam.
 export function resetBookProgress() {
     if (timer) { clearTimeout(timer); timer = null; }
     pending = null;
+    staged.clear();
 }

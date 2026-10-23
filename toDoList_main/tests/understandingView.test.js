@@ -34,6 +34,7 @@ vi.mock('../src/inject.js', () => ({
     dispatchBook: vi.fn(() => Promise.resolve({ ok: true, dispatched: true, book: true })),
     mintEntryId: vi.fn(() => 'cid-1'),
     isInjectConfigured: vi.fn(() => true),
+    showInjectToast: vi.fn(),
 }));
 
 vi.mock('../src/modals.js', () => ({
@@ -93,9 +94,9 @@ vi.mock('../src/bookProgress.js', async () => {
 
 import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, buildBookScope } from '../src/understandingView.js';
 import { loadBook, resetBookCache } from '../src/codeBook.js';
-import { fetchActiveRuns, dispatchBook } from '../src/inject.js';
+import { fetchActiveRuns, dispatchBook, showInjectToast } from '../src/inject.js';
 import { showConfirmModal } from '../src/modals.js';
-import { setBookProgress, setBookBookmarks, getTourProgress, setTourProgress, isTourCardHidden } from '../src/prefs.js';
+import { setBookProgress, setBookBookmarks, setBookFlags, getBookFlags, setBookAbandon, getTourProgress, setTourProgress, isTourCardHidden } from '../src/prefs.js';
 import { loadTours } from '../src/codeTours.js';
 import { openTourPlayer, closeTourPlayer } from '../src/tourPlayer.js';
 import { renderCodeViewer } from '../src/codeViewer.js';
@@ -432,6 +433,101 @@ describe('bookmarks section', () => {
         mocks.remoteMarks = [mark('app-starts', 0, 'One.')];
         await renderUnderstandingView();
         expect(section().querySelector('.understandingBookmarkHead').textContent).toBe('BOOKMARKS · 1');
+    });
+});
+
+describe('flags section', () => {
+    const FLAGGED = {
+        title: 'Understanding Void',
+        chapters: [
+            { id: 'app-starts', index: 1, title: 'How the app starts', minutes: 4, stale: false,
+                paragraphs: [[{ t: 'One.' }], [{ t: 'Two.' }], [{ t: 'Three.' }]] },
+            { id: 'data', index: 2, title: 'Where the data lives', minutes: 6, stale: false,
+                paragraphs: [[{ t: 'Data one.' }], [{ t: 'Data two.' }]] },
+        ],
+    };
+    const flag = (chapterId, paraIndex, kind, note, extra) => Object.assign({
+        repo: 'owner/repo', chapterId, paraIndex, excerpt: 'Excerpt of ' + chapterId, refs: [], kind, note,
+        bookSha: '', createdAt: '2026-10-0' + (paraIndex + 1) + 'T00:00:00.000Z', resolvedAt: null,
+    }, extra);
+    const section = () => view().querySelector('.understandingFlagSection');
+
+    test('hidden at zero open flags (resolved ones do not count)', async () => {
+        mocks.book = FLAGGED;
+        setBookFlags('owner/repo', [flag('data', 0, 'why', 'x', { resolvedAt: '2026-10-10T00:00:00.000Z' })]);
+        await renderUnderstandingView();
+        expect(section()).toBeNull();
+    });
+
+    test('FLAGS · n after the bookmarks, grouped by chapter in book order with badge, note or excerpt and CH n ¶m', async () => {
+        mocks.book = FLAGGED;
+        setBookBookmarks('owner/repo', [{ repo: 'owner/repo', chapterId: 'data', paraIndex: 0, label: 'Data one.', createdAt: '' }]);
+        setBookFlags('owner/repo', [flag('data', 1, 'wrong', 'Says sync, code is async'), flag('app-starts', 2, 'order', '')]);
+        await renderUnderstandingView();
+        expect(section().previousElementSibling.classList.contains('understandingBookmarkSection')).toBe(true);
+        expect(section().querySelector('.understandingBookmarkHead').textContent).toBe('FLAGS · 2');
+        expect(Array.from(section().querySelectorAll('.understandingBookmarkGroup')).map((g) => g.textContent))
+            .toEqual(['CH 1 · How the app starts', 'CH 2 · Where the data lives']);
+        const rows = section().querySelectorAll('.understandingFlagRow');
+        expect(rows[0].querySelector('.understandingFlagBadge').textContent).toBe('ORDER');
+        expect(rows[0].querySelector('.understandingBookmarkLabel').textContent).toBe('Excerpt of app-starts');
+        expect(rows[0].querySelector('.understandingBookmarkCh').textContent).toBe('CH 1 ¶3');
+        expect(rows[1].querySelector('.understandingFlagBadge').textContent).toBe('WRONG');
+        expect(rows[1].querySelector('.understandingBookmarkLabel').textContent).toBe('Says sync, code is async');
+        expect(rows[1].querySelector('.understandingBookmarkCh').textContent).toBe('CH 2 ¶2');
+    });
+
+    test('a row opens the reader at its paragraph with the pulse; the glyph shows there', async () => {
+        mocks.book = FLAGGED;
+        setBookFlags('owner/repo', [flag('data', 1, 'unclear', 'huh')]);
+        await renderUnderstandingView();
+        section().querySelector('.understandingFlagBtnRow').click();
+        expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
+        const para = view().querySelectorAll('.understandingPara')[1];
+        expect(para.classList.contains('is-flagged')).toBe(true);
+        expect(para.classList.contains('is-pulse')).toBe(true);
+    });
+
+    test('the resolve control resolves the flag and the section goes', async () => {
+        mocks.book = FLAGGED;
+        setBookFlags('owner/repo', [flag('data', 1, 'unclear', 'huh')]);
+        await renderUnderstandingView();
+        section().querySelector('.understandingFlagResolve').click();
+        await flush();
+        await flush();
+        expect(getBookFlags('owner/repo')[0].resolvedAt).toEqual(expect.any(String));
+        expect(section()).toBeNull();
+    });
+
+    test('Copy puts the open flags on the clipboard as markdown and toasts', async () => {
+        mocks.book = FLAGGED;
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+        setBookFlags('owner/repo', [
+            flag('data', 1, 'wrong', 'Says sync', { refs: [{ label: 'loadBook', file: 'codeBook.js', symbol: 'loadBook', line: 3 }] }),
+            flag('app-starts', 0, 'why', ''),
+        ]);
+        await renderUnderstandingView();
+        section().querySelector('.understandingFlagCopy').click();
+        await flush();
+        expect(writeText).toHaveBeenCalledWith(
+            '- CH 1 ¶1 · WHY · "Excerpt of app-starts"\n' +
+            '- CH 2 ¶2 · WRONG · "Says sync" · refs: loadBook'
+        );
+        expect(showInjectToast).toHaveBeenCalledWith('Copied');
+    });
+});
+
+describe('abandoned chapters', () => {
+    test('a chapter left part-read shows a muted `left at ¶n` beside its minutes', async () => {
+        mocks.book = CLEAN;
+        setBookAbandon('owner/repo', { data: { chapter_id: 'data', para_index: 2, pct: 0.3 } });
+        await renderUnderstandingView();
+        const rows = view().querySelectorAll('.understandingChapterRow');
+        expect(rows[0].querySelector('.understandingChapterLeft')).toBeNull();
+        const left = rows[1].querySelector('.understandingChapterLeft');
+        expect(left.textContent).toBe('left at ¶3');
+        expect(left.nextElementSibling.textContent).toBe('6 MIN');
     });
 });
 

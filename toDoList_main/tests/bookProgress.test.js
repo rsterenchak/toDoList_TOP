@@ -26,6 +26,11 @@ import {
     loadProgress,
     resetBookProgress,
     BOOK_PROGRESS_DEBOUNCE_MS,
+    noteChapterLeft,
+    noteChapterOpened,
+    noteChapterReached,
+    commitAbandoned,
+    readAbandoned,
 } from '../src/bookProgress.js';
 import { getBookProgress, setBookProgress, BOOK_PROGRESS_KEY } from '../src/prefs.js';
 import { supabase } from '../src/supabaseClient.js';
@@ -140,6 +145,64 @@ describe('loadProgress', () => {
         setBookProgress('owner/repo', { chapterId: 'a', paraIndex: 1, pct: 0.2, updatedAt: '2026-10-01T00:00:00.000Z' });
         const rec = await loadProgress('owner/repo');
         expect(rec.chapterId).toBe('a');
+        expect(supabase.from).not.toHaveBeenCalled();
+    });
+});
+
+describe('abandoned chapters', () => {
+    const stored = () => JSON.parse(localStorage.getItem('todoapp_bookAbandon') || '{}')['owner/repo'];
+
+    test('leaving under 80% stages the chapter; nothing is written until the session ends', () => {
+        noteChapterLeft('owner/repo', 'data', 2, 0.5);
+        expect(stored()).toBeUndefined();
+        commitAbandoned();
+        expect(stored()).toEqual({ data: { chapter_id: 'data', para_index: 2, pct: 0.5 } });
+        expect(readAbandoned('owner/repo').data.para_index).toBe(2);
+    });
+
+    test('leaving at 80% or more stages nothing, and drops an earlier staging', () => {
+        noteChapterLeft('owner/repo', 'data', 1, 0.4);
+        noteChapterLeft('owner/repo', 'data', 4, 0.8);
+        commitAbandoned();
+        expect(stored()).toBeUndefined();
+    });
+
+    test('returning to the chapter in the same session unstages it', () => {
+        noteChapterLeft('owner/repo', 'data', 1, 0.25);
+        noteChapterLeft('owner/repo', 'pipeline', 0, 0.1);
+        noteChapterOpened('owner/repo', 'data');
+        commitAbandoned();
+        expect(Object.keys(stored())).toEqual(['pipeline']);
+    });
+
+    test('the page hiding or unloading ends the session', () => {
+        noteChapterLeft('owner/repo', 'data', 1, 0.25);
+        Object.defineProperty(document, 'visibilityState', { configurable: true, value: 'hidden' });
+        try {
+            document.dispatchEvent(new Event('visibilitychange'));
+        } finally {
+            delete document.visibilityState;
+        }
+        expect(stored()).toEqual({ data: { chapter_id: 'data', para_index: 1, pct: 0.25 } });
+        localStorage.clear();
+        noteChapterLeft('owner/repo', 'pipeline', 0, 0.1);
+        window.dispatchEvent(new Event('pagehide'));
+        expect(Object.keys(stored())).toEqual(['pipeline']);
+    });
+
+    test('a stored abandonment stays until the chapter is next read past 80%', () => {
+        noteChapterLeft('owner/repo', 'data', 1, 0.25);
+        commitAbandoned();
+        noteChapterReached('owner/repo', 'data', 0.75);
+        expect(stored()).toEqual({ data: { chapter_id: 'data', para_index: 1, pct: 0.25 } });
+        noteChapterReached('owner/repo', 'data', 0.8);
+        expect(stored()).toBeUndefined();
+    });
+
+    test('never touches Supabase', () => {
+        mocks.session = { user: { id: 'user-1' } };
+        noteChapterLeft('owner/repo', 'data', 1, 0.25);
+        commitAbandoned();
         expect(supabase.from).not.toHaveBeenCalled();
     });
 });
