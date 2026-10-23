@@ -17,6 +17,8 @@ vi.mock('../src/codeBook.js', async () => {
     return {
         bookStats: actual.bookStats,
         loadBook: vi.fn(() => Promise.resolve(mocks.book)),
+        revalidateBook: vi.fn(() => Promise.resolve({ book: mocks.book, changed: false })),
+        isBookCached: vi.fn(() => false),
         resetBookCache: vi.fn(),
     };
 });

@@ -7,7 +7,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-23',
         added: [
-            'Code book chapters whose code has changed since they were written are now flagged DRIFT on the shelf, and the chapter header lists the names that changed.',
             'Any code book paragraph can now be flagged as unclear, out of order, not matching the code or needing a why, with an optional note, and the shelf lists open flags with a resolve control and a Copy button for pasting them into chat, and marks chapters you left part-read with where you stopped.',
         ],
         changed: [
@@ -16,6 +15,7 @@ export const changelog = [
         fixed: [
             'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',
             'Switching tabs, waking your phone or a background sync no longer throws you out of the code book chapter you were reading and back to the shelf.',
+            'The code book shelf now picks up a newly published book without a reload, checking when you open the tab, come back from a chapter or a book run finishes, and tapping the repo name checks on demand.',
         ],
     },
 ];

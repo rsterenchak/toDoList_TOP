@@ -5056,6 +5056,25 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The shelf's repo chip re-checks the published book on tap. */
+.understandingRepoChip.is-refresh {
+  cursor: pointer;
+  text-align: left;
+}
+.understandingRepoChip.is-refresh:hover { border-color: var(--accent); }
+.understandingRepoChip.is-checking { cursor: progress; }
+.understandingRepoChip.is-checking::before {
+  content: '';
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  margin-right: 6px;
+  vertical-align: -1px;
+  border: 1.5px solid var(--text-secondary);
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
 
 .understandingStats {
   flex: 1 1 auto;
@@ -5484,6 +5503,16 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   cursor: pointer;
 }
 .understandingBackChip:hover { border-color: var(--accent); }
+/* A newer book was published while reading; it applies on the way back. */
+.understandingBackDot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-left: 6px;
+  vertical-align: 1px;
+  border-radius: 50%;
+  background: var(--text-warning);
+}
 
 .understandingReaderProgress {
   flex: 0 0 auto;
