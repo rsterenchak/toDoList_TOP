@@ -2738,7 +2738,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/main.js`, `toDoList_main/src/understandingView.js`, `toDoList_main/src/structureView.js`, `toDoList_main/tests/understandingActiveView.test.js`, `toDoList_main/tests/understandingReader.test.js`
   <!-- id: 50ecafb4-bac6-4bc2-90af-ccc3d0aae8e3 -->
 
-- [ ] **[MEDIUM]** Move tours out of the Understanding shelf into a Go deeper block at each chapter's end
+- [x] **[MEDIUM]** Move tours out of the Understanding shelf into a Go deeper block at each chapter's end — Completed: 2026-10-23
   - Type: feature
   - Description: The shelf's amber START HERE card and the tour rows nested under every chapter pull attention from reading, which is the tab's job. Remove both from the shelf so it lists chapters only (Continue card, numbered rows, Bookmarks, Flags), and offer tours where they're useful: a `GO DEEPER · n TOURS` block at the end of each chapter in the reader, between the last paragraph and the prev/next bar, listing that chapter's tours (`chapter.tours` from `src-book.json`) with their progress glyph, title and `N STEPS`; tapping one starts the tour exactly as the shelf rows do today. The header's `Tours n/m` chip is removed from the shelf; All tours moves into the reader's top bar as a muted chip next to Bookmarks (hidden for repos with no tours). Tour progress, the player, and Structure's Map-lens rows are untouched. At 390x844 and 1300x900 the shelf shows no amber card and no tour rows, and the reader on a chapter with tours shows the Go deeper block above the prev/next bar.
   - Behavior:
