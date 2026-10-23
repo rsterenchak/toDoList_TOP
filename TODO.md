@@ -2753,3 +2753,19 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/understandingView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/understandingView.test.js`, `toDoList_main/tests/understandingReader.test.js`
   - Verify: 1300x900, 390x844 → /
   <!-- id: dcc1ee1d-ace3-4cf3-b679-b79ec4e9b34d -->
+
+- [ ] **[MEDIUM]** Refresh the Understanding shelf when the published book changes
+  - Type: bug
+  - Description: After a book run commits and republishes, the shelf keeps showing the old chapters until a full reload — and because the Pages CDN caches `src-book.json` for up to ten minutes, even a reload can show the stale copy. `loadBook` in `codeBook.js` caches once per repo per session, and the sync/wake no-op fix means nothing re-renders the shelf. Expected: entering the Understanding tab, returning to the shelf from the reader, or a book run settling re-checks the published book cheaply and swaps in the new one when it differs, with a one-line notice; the reader is never interrupted.
+  - Behavior:
+    1. `loadBook(repo, { revalidate: true })` performs a conditional fetch (`If-None-Match` with the stored ETag, falling back to comparing a hash of the body) and resolves to `{ book, changed }`; the cache keeps `{ book, etag, hash }`. The plain `loadBook(repo)` stays cache-first for the reader.
+    2. Revalidate on: shelf render when entering the tab (not on the no-op re-apply), returning to the shelf from the reader, and when the book-run poller sees the run settle — in that case poll `src-book.json` every 30s for up to 10 minutes until the fingerprint set differs from the pre-run copy, then stop (covers the deploy + CDN lag without the user reloading).
+    3. When `changed` while the shelf is showing: re-render the shelf and show a toast "Book updated". When `changed` while the reader is open: leave the reader alone, set a small amber dot on the reader's back chip, and apply the new book when the user returns to the shelf; if the open chapter id no longer exists in the new book, the back chip's label reads "Book updated" and the shelf opens on return.
+    4. A manual Refresh affordance: pull-to-refresh is out of scope; instead the repo chip on the shelf becomes a button that revalidates on tap (spinner for the request, same toast on change, "Up to date" toast otherwise).
+    5. Fetch with `cache: 'no-cache'` as today so the browser revalidates with the CDN; the CDN's own TTL is outside our control — the polling in (2) is what absorbs it.
+  - Implementation notes:
+    - `codeBook.js` holds the cache (`loadBook`, `resetBookCache`); add `revalidateBook(repo)` beside them. The run poller is in `understandingView.js` (`ensurePolling` / `pollOnce` / `resetUnderstandingRun`); the shelf render path is `paintShelf`.
+    - Tests: `tests/codeBook.test.js` — revalidate returns `changed:false` on a 304 / identical hash and `changed:true` with the new book otherwise; `tests/understandingView.test.js` — shelf re-renders and toasts on change, reader untouched with the dot set, chip tap revalidates; poller stops after the fingerprint set changes or after the cap.
+  - Out of scope: pull-to-refresh, realtime notification of book commits, changing the Pages CDN TTL.
+  - File: `toDoList_main/src/codeBook.js`, `toDoList_main/src/understandingView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/codeBook.test.js`, `toDoList_main/tests/understandingView.test.js`
+  <!-- id: 50c58a6f-dbdf-478d-9963-0b93befb5297 -->
