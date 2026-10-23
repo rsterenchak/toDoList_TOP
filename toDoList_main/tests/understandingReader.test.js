@@ -6,7 +6,7 @@ import { vi } from 'vitest';
 // real view renders against mocked repo resolution, book loading, manifest and
 // code viewer; the progress store is real, with Supabase stubbed out.
 
-const mocks = vi.hoisted(() => ({ book: null, observers: [] }));
+const mocks = vi.hoisted(() => ({ book: null, observers: [], tours: null }));
 
 vi.mock('../src/seedTasksModal.js', () => ({
     resolveProjectRepo: vi.fn(() => 'owner/repo'),
@@ -46,6 +46,18 @@ vi.mock('../src/supabaseClient.js', () => ({
     },
 }));
 
+// The tours loader would fetch src-tours.json from Pages; feed it from
+// `mocks.tours` instead, keeping the real pure helpers.
+vi.mock('../src/codeTours.js', async (importOriginal) => {
+    const actual = await importOriginal();
+    return { ...actual, loadTours: vi.fn(() => Promise.resolve(mocks.tours)) };
+});
+
+vi.mock('../src/tourPlayer.js', async (importOriginal) => {
+    const actual = await importOriginal();
+    return { ...actual, openTourPlayer: vi.fn(actual.openTourPlayer) };
+});
+
 vi.mock('../src/codeViewer.js', () => ({
     renderCodeViewer: vi.fn(),
     clearCodeViewer: vi.fn(),
@@ -57,7 +69,8 @@ import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, 
 import { renderCodeViewer, setCodeViewerCloseHandler, clearCodeViewer } from '../src/codeViewer.js';
 import { loadManifest, openChatWithBookScope } from '../src/claudeSheet.js';
 import { showConfirmModal } from '../src/modals.js';
-import { getBookProgress } from '../src/prefs.js';
+import { getBookProgress, getTourProgress, setTourProgress } from '../src/prefs.js';
+import { openTourPlayer, closeTourPlayer } from '../src/tourPlayer.js';
 import { resetBookProgress } from '../src/bookProgress.js';
 
 // Captured at import, before any clearAllMocks.
@@ -126,6 +139,7 @@ async function openChapter(i) {
 
 beforeEach(() => {
     mocks.book = BOOK;
+    mocks.tours = null;
     mocks.observers = [];
     vi.stubGlobal('IntersectionObserver', FakeObserver);
     localStorage.clear();
@@ -137,6 +151,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    closeTourPlayer();
     exitUnderstandingView();
     resetUnderstandingRun();
     resetBookProgress();
@@ -1013,5 +1028,157 @@ describe('re-render while reading', () => {
         await renderUnderstandingView();
         await renderUnderstandingView();
         expect(view().querySelector('.understandingShelf')).not.toBeNull();
+    });
+});
+
+describe('go deeper tours', () => {
+    const tstep = (file, symbol, line, area) => ({
+        file, symbol, line, area, next: null, title: symbol + ' title', why: symbol + ' why',
+        snippet: [{ n: line, t: symbol + '()', hi: true }],
+    });
+    const TOURS = {
+        sections: [{ id: 'tasks', title: 'Tasks & projects' }],
+        tours: [
+            {
+                id: 'add-task', section: 'tasks', title: 'Adding a task', recap: [{ title: 'R', body: 'r' }],
+                steps: [
+                    tstep('listLogic.js', 'addToDo', 10, 'tasks'),
+                    tstep('toDoRow.js', 'buildToDoRow', 20, 'tasks'),
+                    tstep('inject.js', 'postToWorker', 30, 'pipeline'),
+                    tstep('listLogic.js', 'persistMutation', 40, 'tasks'),
+                ],
+            },
+            {
+                id: 'second', section: 'tasks', title: 'Second tour', recap: [],
+                steps: [tstep('listLogic.js', 'a', 1, 'tasks'), tstep('listLogic.js', 'b', 2, 'tasks'), tstep('listLogic.js', 'c', 3, 'tasks')],
+            },
+        ],
+    };
+    // The compiled book carries `{ id, title, steps }` refs; ids alone resolve too.
+    const TOURED = {
+        title: 'Understanding Void',
+        chapters: [
+            { ...BOOK.chapters[0], tours: [{ id: 'add-task', title: 'Adding a task', steps: 4 }, 'gone-tour', 'second'] },
+            { ...BOOK.chapters[1], tours: [] },
+            { ...BOOK.chapters[2], tours: ['second'] },
+        ],
+    };
+    const deeper = () => view().querySelector('.understandingGoDeeper');
+    const toursChip = () => view().querySelector('.understandingReaderToursChip');
+    const sheet = () => document.getElementById('understandingToursSheet');
+
+    async function openToured(i) {
+        await openChapter(i);
+        await flush();
+        await flush();
+    }
+
+    beforeEach(() => {
+        mocks.book = TOURED;
+        mocks.tours = TOURS;
+    });
+    afterEach(() => {
+        if (sheet()) sheet().hidden = true;
+    });
+
+    test("the block lists the chapter's tours in order with their state, after the last paragraph", async () => {
+        setTourProgress('owner/repo', { 'add-task': { step: 1, done: false }, second: { step: 2, done: true } });
+        await openToured(0);
+        const block = deeper();
+        expect(block.parentElement.classList.contains('understandingReaderCol')).toBe(true);
+        expect(block.parentElement.lastElementChild).toBe(block);
+        expect(block.previousElementSibling.dataset.paraIndex).toBe('3');
+        expect(block.querySelector('.understandingGoDeeperEyebrow').textContent).toBe('GO DEEPER · 2 TOURS');
+        const rows = block.querySelectorAll('.understandingTourRow');
+        expect(rows).toHaveLength(2);
+        expect(rows[0].querySelector('.understandingTourRowTitle').textContent).toBe('Adding a task');
+        expect(rows[0].querySelector('.understandingTourRowMeta').textContent).toBe('step 2 / 4');
+        expect(rows[0].querySelector('.tourGlyph').classList.contains('is-progress')).toBe(true);
+        expect(rows[1].classList.contains('is-done')).toBe(true);
+        expect(rows[1].querySelector('.understandingTourRowMeta').textContent).toBe('3 STEPS');
+        expect(rows[1].querySelector('.tourGlyph').classList.contains('is-done')).toBe(true);
+    });
+
+    test('a chapter with no tours has no block, and a repo with no tours no chip', async () => {
+        await openToured(1);
+        expect(deeper()).toBeNull();
+        expect(view().querySelector('.understandingTourRow')).toBeNull();
+        expect(toursChip()).not.toBeNull();
+        exitUnderstandingView();
+
+        mocks.tours = null;
+        await openToured(0);
+        expect(deeper()).toBeNull();
+        expect(toursChip()).toBeNull();
+    });
+
+    test('a row resumes its tour at the saved step, docked in the reader code pane with its open-in-code hook', async () => {
+        setTourProgress('owner/repo', { 'add-task': { step: 2, done: false } });
+        await openToured(0);
+        deeper().querySelector('.understandingTourRow').click();
+        const opts = openTourPlayer.mock.calls[0][0];
+        const pane = view().querySelector('.understandingReaderBody > .understandingCodePane');
+        expect(pane).not.toBeNull();
+        expect(opts.host).toBe(pane);
+        expect(opts.startStep).toBe(2);
+        expect(typeof opts.onOpenInCode).toBe('function');
+        expect(pane.querySelector('.tourPlayer--docked .tourPlayerCount').textContent).toBe('3 / 4');
+        // The reader stays on its chapter.
+        expect(title()).toBe('How the app starts');
+
+        // Open in code viewer closes the tour and renders the step's span in the reader pane.
+        document.querySelector('.tourPlayerOpenCode').click();
+        await flush();
+        expect(pane.classList.contains('is-touring')).toBe(false);
+        const call = renderCodeViewer.mock.calls[renderCodeViewer.mock.calls.length - 1];
+        expect(call[0]).toBe(view().querySelector('.understandingReaderBody > .understandingCodePane'));
+        expect(call[1]).toMatchObject({
+            target: { repo: 'owner/repo' },
+            filePath: 'toDoList_main/src/inject.js',
+            startLine: 30,
+            endLine: 30,
+            banner: 'postToWorker title',
+        });
+    });
+
+    test('on mobile the tour is a sheet; finishing it repaints the glyphs without re-rendering the chapter', async () => {
+        setWidth(390);
+        await openToured(2);
+        const para = view().querySelector('.understandingReaderCol [data-para-index="0"]');
+        deeper().querySelector('.understandingTourRow').click();
+        expect(openTourPlayer.mock.calls[0][0].host).toBeNull();
+        expect(view().querySelector('.understandingCodePane')).toBeNull();
+        const next = () => document.querySelector('.tourPlayerNext');
+        next().click();
+        next().click();
+        next().click(); // Done on the last step marks the tour done.
+        expect(document.querySelector('.tourPlayer')).toBeFalsy();
+        expect(getTourProgress('owner/repo').second.done).toBe(true);
+        const row = deeper().querySelector('.understandingTourRow');
+        expect(row.classList.contains('is-done')).toBe(true);
+        expect(view().querySelector('.understandingReaderCol [data-para-index="0"]')).toBe(para);
+        expect(toursChip().getAttribute('aria-label')).toBe('All tours, 1 of 2 done');
+    });
+
+    test('the top bar All tours chip sits left of Bookmarks and opens the sheet, whose row starts a tour', async () => {
+        setTourProgress('owner/repo', { 'add-task': { step: 1, done: false } });
+        await openToured(0);
+        expect(toursChip().previousElementSibling.classList.contains('understandingAskChip')).toBe(true);
+        expect(toursChip().nextElementSibling.classList.contains('understandingMarksChip')).toBe(true);
+        expect(toursChip().getAttribute('aria-label')).toBe('All tours, 0 of 2 done');
+
+        toursChip().click();
+        expect(sheet().hidden).toBe(false);
+        expect(sheet().querySelector('.tourAllTitle').textContent).toBe('Learn this codebase');
+        const rows = sheet().querySelectorAll('.tourAllRow');
+        expect(rows[0].querySelector('.tourAllRowMeta').textContent).toBe('step 2 / 4');
+        sheet().querySelector('.tourAllClose').click();
+        expect(sheet().hidden).toBe(true);
+
+        toursChip().click();
+        sheet().querySelectorAll('.tourAllRow')[1].click();
+        expect(sheet().hidden).toBe(true);
+        expect(document.querySelector('.tourPlayerTourTitle').textContent).toBe('Second tour');
+        expect(title()).toBe('How the app starts');
     });
 });
