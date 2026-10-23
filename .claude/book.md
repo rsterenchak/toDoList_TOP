@@ -96,6 +96,9 @@ viewer; the book points at them, it does not replace them.
   that jumps to the paragraph covering it.
 - `body` — 3–8 paragraph strings, each ≤ ~90 words. Plain prose. No headings,
   no bullet markup, no code blocks.
+- `fingerprint` — written by the generator's `--write-fingerprints` run (see
+  "Validate before you finish"), never by hand: a hash of the code each
+  reference names, so a later change to that code flags the chapter `drift`.
 
 ### The map chapter
 
@@ -236,7 +239,11 @@ by design (see CLAUDE.md, "Placeholder text").
 - `stale` (default): run the generator into `/tmp/book-in` and read
   `/tmp/book-in/src-book.json`. Rewrite ONLY chapters whose `stale` is `true`,
   fixing exactly what their `warnings` name (a renamed symbol, a moved file, a
-  dropped tour) and re-reading that code so the prose is still true. Every
+  dropped tour) and re-reading that code so the prose is still true. A
+  `drift: <symbol> body changed` (or `importers changed`) warning means that
+  symbol's code changed while its name still resolves: re-read it and its
+  callers, and rewrite whatever the chapter says about it that is no longer
+  true. Every
   other chapter must come out byte-for-byte identical — do not touch its text,
   its order, or its id. If nothing is stale, change nothing and say so.
   If there is no `codebook.json` at all, `stale` behaves as `all`.
@@ -251,8 +258,15 @@ Run the generator into a scratch directory and read its stderr:
     grep 'Warning: codebook.json' /tmp/book-out.err
 
 Every warning names a chapter and the reference, file, tour or `ahead` that
-failed. Fix the prose or the reference and run again until there are no
-codebook warnings and the `src-book.json written` line reports `0 stale`. If
+failed. Fix the prose or the reference and run again until the only codebook
+warnings left are `drift:` ones on chapters you have re-read and rewritten.
+Then store the fresh code fingerprints — the generator writes each chapter's
+`fingerprint` into `codebook.json` itself; never hand-edit that key:
+
+    MANIFEST_OUT_DIR=/tmp/book-out MANIFEST_DETERMINISTIC=true node scripts/$MANIFEST_VARIANT --write-fingerprints 2>/tmp/book-out.err
+
+and run the validation once more: there must be no codebook warnings and the
+`src-book.json written` line must report `0 stale`. If
 `tests/genSrcManifest.test.js` exists and `node_modules` is installed, also run
 `npx vitest run tests/genSrcManifest.test.js` and make it pass — it asserts the
 committed book's order, sizes and resolution. Never edit the generator or the

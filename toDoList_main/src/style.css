@@ -5673,6 +5673,34 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: #8b8da0;
 }
 
+/* A stale chapter's tag, plus a chip per symbol whose code drifted. */
+.understandingReaderStale {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: -8px 0 16px;
+}
+.understandingReaderStaleTag {
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-warning);
+}
+.understandingDriftChip {
+  max-width: 100%;
+  padding: 1px 6px;
+  border: 1px solid var(--text-warning);
+  border-radius: 4px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-warning);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .understandingPara {
   position: relative;
   /* The block a bookmark paints is always laid out, so marking only changes
