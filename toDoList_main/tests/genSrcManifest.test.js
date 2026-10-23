@@ -811,7 +811,7 @@ describe('gen-src-manifest compileBook', () => {
             chapter({ ahead: { chapter: 'c2', note: 'Later.' } }),
             chapter({ id: 'c2', title: 'Two', ahead: { chapter: 'missing', note: 'x' } }),
         ]), symbols, tours, areas, warn);
-        expect(out.chapters[0].ahead).toEqual({ chapter: 'c2', title: 'Two', note: 'Later.' });
+        expect(out.chapters[0].ahead).toEqual({ chapter: 'c2', title: 'Two', note: 'Later.', promises: [] });
         expect(out.chapters[0].stale).toBe(false);
         expect(out.chapters[1].ahead).toBeNull();
         expect(out.chapters[1].stale).toBe(true);
@@ -828,6 +828,69 @@ describe('gen-src-manifest compileBook', () => {
         expect(out.chapters[0].ahead).toBeNull();
         expect(out.chapters[0].stale).toBe(true);
         expect(warn).toHaveBeenCalledTimes(2);
+    });
+
+    describe('ahead promises', () => {
+        const promising = (promises, targetBody) => book([
+            chapter({ ahead: { chapter: 'c2', note: 'Later.', promises } }),
+            chapter({ id: 'c2', title: 'Two', files: ['b.js'], body: targetBody || ['Plain.', 'Then `outer` and `shared`.', 'Also `outer`.'] }),
+        ]);
+
+        it('keeps a promise the target references, with the first paragraph that does', () => {
+            const warn = vi.fn();
+            const out = compileBook(promising(['outer']), symbols, tours, areas, warn);
+            expect(warn).not.toHaveBeenCalled();
+            expect(out.chapters[0].stale).toBe(false);
+            expect(out.chapters[0].ahead.promises).toEqual([
+                { ref: { label: 'outer', file: 'b.js', symbol: 'outer', parent: null, line: 4, end: 7 }, paraIndex: 1 },
+            ]);
+        });
+
+        it('resolves against the target chapter\'s files before the whole index', () => {
+            const out = compileBook(promising(['shared']), symbols, tours, areas, vi.fn());
+            expect(out.chapters[0].ahead.promises[0].ref.file).toBe('b.js');
+            expect(out.chapters[0].ahead.promises[0].paraIndex).toBe(1);
+        });
+
+        it('warns and marks the source stale when the target never references a promise', () => {
+            const warn = vi.fn();
+            const out = compileBook(promising(['onlyA']), symbols, tours, areas, warn);
+            expect(out.chapters[0].ahead.promises).toEqual([]);
+            expect(out.chapters[0].stale).toBe(true);
+            expect(out.chapters[0].warnings).toEqual(['ahead promises "onlyA" but chapter "c2" never references it']);
+            expect(out.chapters[1].stale).toBe(false);
+            expect(warn).toHaveBeenCalledTimes(1);
+        });
+
+        it('warns and marks the source stale when a promise does not resolve', () => {
+            const out = compileBook(promising(['nowhere', 'outer']), symbols, tours, areas, vi.fn());
+            expect(out.chapters[0].ahead.promises.map((p) => p.ref.symbol)).toEqual(['outer']);
+            expect(out.chapters[0].stale).toBe(true);
+            expect(out.chapters[0].warnings).toEqual(['ahead promises "nowhere" which does not resolve']);
+        });
+
+        it('accepts the file-pinned syntax, matching on file as well as name', () => {
+            const pinned = compileBook(promising(['b.js:shared']), symbols, tours, areas, vi.fn());
+            expect(pinned.chapters[0].ahead.promises.map((p) => [p.ref.file, p.paraIndex])).toEqual([['b.js', 1]]);
+            const other = compileBook(promising(['c.js:shared']), symbols, tours, areas, vi.fn());
+            expect(other.chapters[0].ahead.promises).toEqual([]);
+            expect(other.chapters[0].warnings).toEqual(['ahead promises "c.js:shared" but chapter "c2" never references it']);
+        });
+
+        it('finds a reference inside a rationale sentence', () => {
+            const out = compileBook(promising(['outer'], ['Plain.', 'It calls `outer` because the tests probably need it.']), symbols, tours, areas, vi.fn());
+            expect(out.chapters[1].paragraphs[1].some((s) => s.why)).toBe(true);
+            expect(out.chapters[0].ahead.promises.map((p) => p.paraIndex)).toEqual([1]);
+        });
+
+        it('validateBookPromises is exported for direct use', () => {
+            const out = compileBook(promising([]), symbols, tours, areas, vi.fn());
+            out.chapters[0].ahead.promises = ['outer'];
+            const note = vi.fn();
+            gen.validateBookPromises(out.chapters, symbols, note);
+            expect(note).not.toHaveBeenCalled();
+            expect(out.chapters[0].ahead.promises[0].paraIndex).toBe(1);
+        });
     });
 
     it('counts minutes at 200 words a minute, minimum 1', () => {
@@ -1076,6 +1139,17 @@ describe('gen-src-manifest real codebook.json', () => {
     });
 
     const prose = doc.chapters.filter((c) => c.kind !== 'map');
+
+    it('names promises on every ahead, each kept with its paragraph', () => {
+        const aheads = doc.chapters.filter((c) => c.ahead);
+        expect(aheads.length).toBeGreaterThan(0);
+        aheads.forEach((c) => {
+            expect(c.ahead.promises.length).toBeGreaterThan(0);
+            const compiled = book.chapters.find((o) => o.id === c.id).ahead;
+            expect(compiled.promises).toHaveLength(c.ahead.promises.length);
+            compiled.promises.forEach((p) => expect(p.paraIndex).toBeGreaterThanOrEqual(0));
+        });
+    });
 
     it('opens with a hierarchical map chapter whose roles cover exactly the ranked symbols', () => {
         expect(doc.chapters[0].kind).toBe('map');

@@ -3,8 +3,9 @@
 // generate/stale control, a continue card resuming the saved reading position,
 // then the ordered chapter list. The Continue card's Read button and every
 // chapter row open the reader: one chapter at a time, its references as chips
-// that open the code viewer at that definition, a forward-reference callout, and
-// a prev/next bar. Rationale sentences show whether the book can back them: a
+// that open the code viewer at that definition, a forward-reference callout
+// (whose promised-symbol chips jump to where the later chapter covers each, the
+// back chip returning to where the reader left), and a prev/next bar. Rationale sentences show whether the book can back them: a
 // cited one ends in a `§` chip opening its source, an inferred one is muted. A `map` chapter (the book's table of contents for the code)
 // opens the book as chapter 00 and reads as a tree instead of paragraphs: each
 // area, its front-door files with their purposes, and their names with roles.
@@ -1517,21 +1518,84 @@ function chapterIndexById(book, id) {
     return -1;
 }
 
+// Follow a forward reference: remember where the reader is so the back chip
+// can return there, then open chapter `index` at `paraIndex`.
+function followAhead(index, paraIndex) {
+    const r = reader;
+    if (!r) return;
+    r.backStack.push({ index: r.index, paraIndex: r.paraIndex });
+    showChapter(index, paraIndex);
+    if (paraIndex > 0) pulseParagraph(paraIndex);
+}
+
+// The top bar's back chip: back to the chapter an ahead link was followed from
+// while there is one, otherwise back to the shelf.
+function paintBackChip() {
+    const r = reader;
+    if (!r || !r.backBtn) return;
+    const from = r.backStack[r.backStack.length - 1];
+    if (from) {
+        r.backBtn.textContent = '‹ CH ' + chapterNum(r.book, from.index);
+        r.backBtn.setAttribute('aria-label', 'Back to chapter ' + chapterNum(r.book, from.index));
+    } else {
+        r.backBtn.textContent = '‹ Shelf';
+        r.backBtn.setAttribute('aria-label', 'Back to the shelf');
+    }
+}
+
+function goBack() {
+    const r = reader;
+    if (!r) return;
+    const from = r.backStack.pop();
+    if (!from) { leaveReader(); return; }
+    showChapter(from.index, from.paraIndex);
+}
+
+// The AHEAD callout: eyebrow and note jump to the target chapter's top; each
+// promised symbol below is a chip that jumps to the target's first paragraph
+// referencing it.
 function buildAhead(book, ahead) {
     const target = chapterIndexById(book, ahead.chapter);
     if (target < 0) return null;
-    const box = document.createElement('button');
-    box.type = 'button';
+    const promises = (Array.isArray(ahead.promises) ? ahead.promises : []).filter(function (p) {
+        return p && p.ref && typeof p.ref === 'object';
+    });
+    const box = document.createElement(promises.length ? 'div' : 'button');
     box.className = 'understandingAhead';
+    let link = box;
+    if (promises.length) {
+        link = document.createElement('button');
+        link.className = 'understandingAheadLink';
+        box.appendChild(link);
+    }
+    link.type = 'button';
     const eyebrow = document.createElement('span');
     eyebrow.className = 'understandingAheadEyebrow';
     eyebrow.textContent = 'AHEAD → CH ' + chapterNum(book, target);
-    box.appendChild(eyebrow);
+    link.appendChild(eyebrow);
     const note = document.createElement('span');
     note.className = 'understandingAheadNote';
     note.textContent = ahead.note || '';
-    box.appendChild(note);
-    box.addEventListener('click', function () { showChapter(target, 0); });
+    link.appendChild(note);
+    box.addEventListener('click', function () { followAhead(target, 0); });
+    if (promises.length) {
+        const row = document.createElement('div');
+        row.className = 'understandingAheadPromises';
+        promises.forEach(function (p) {
+            const label = p.ref.label || p.ref.symbol || p.ref.file;
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'understandingAheadPromise';
+            chip.textContent = label;
+            chip.setAttribute('aria-label', 'Read about ' + label + ' in chapter ' + chapterNum(book, target));
+            chip.addEventListener('click', function (event) {
+                event.stopPropagation();
+                followAhead(target, Math.max(0, Number(p.paraIndex) || 0));
+            });
+            row.appendChild(chip);
+        });
+        box.appendChild(row);
+    }
     return box;
 }
 
@@ -1685,6 +1749,7 @@ function showChapter(index, paraIndex) {
     }
     setPosition(at);
     observeParagraphs(paraEls);
+    paintBackChip();
 }
 
 // Swap the shelf for the reader on chapter `index`, resuming at `paraIndex`.
@@ -1704,9 +1769,7 @@ function openReader(view, repo, book, index, paraIndex) {
     const back = document.createElement('button');
     back.type = 'button';
     back.className = 'understandingBackChip';
-    back.textContent = '‹ Shelf';
-    back.setAttribute('aria-label', 'Back to the shelf');
-    back.addEventListener('click', function () { leaveReader(); });
+    back.addEventListener('click', goBack);
     top.appendChild(back);
     const repoChip = document.createElement('span');
     repoChip.className = 'understandingRepoChip';
@@ -1790,8 +1853,12 @@ function openReader(view, repo, book, index, paraIndex) {
         marksBtn: marksBtn,
         marksBadge: marksBadge,
         marksList: null,
+        backBtn: back,
+        // Where each followed ahead link came from; the back chip pops it.
+        backStack: [],
     };
     paintMarksChip();
+    paintBackChip();
     showChapter(index, paraIndex);
 }
 

@@ -66,7 +66,7 @@ viewer; the book points at them, it does not replace them.
       "area": "shell",
       "files": ["index.js", "main.js", "sw.js"],
       "tours": ["app-starts", "app-updates"],
-      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from is the next chapter." },
+      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from is the next chapter.", "promises": ["hydrateFromSupabase"] },
       "body": [
         "Everything begins in `index.js`. Its top-level code runs once …",
         "…"
@@ -89,7 +89,11 @@ viewer; the book points at them, it does not replace them.
 - `ahead` — optional. A forward reference to a later chapter, used when this
   chapter has to mention something that chapter explains. `chapter` must be a
   later chapter's id; `note` is one sentence telling the reader what to expect
-  there. Never point backwards.
+  there. Never point backwards. `ahead.promises` lists the symbols the note
+  defers, in the same reference syntax as prose (`name`, `parent.name`,
+  `file.js:name`); every promise must be a chip in that later chapter, or the
+  build warns and marks this chapter stale. The reader shows each as a chip
+  that jumps to the paragraph covering it.
 - `body` — 3–8 paragraph strings, each ≤ ~90 words. Plain prose. No headings,
   no bullet markup, no code blocks.
 
