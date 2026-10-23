@@ -7,9 +7,11 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-23',
         added: [
-            'A code book chapter\'s look-ahead note now lists the names the later chapter covers as chips, each jumping straight to the paragraph that explains it, and the back chip returns you to where you were reading.',
             'Code book chapters whose code has changed since they were written are now flagged DRIFT on the shelf, and the chapter header lists the names that changed.',
             'Any code book paragraph can now be flagged as unclear, out of order, not matching the code or needing a why, with an optional note, and the shelf lists open flags with a resolve control and a Copy button for pasting them into chat, and marks chapters you left part-read with where you stopped.',
+        ],
+        changed: [
+            'Code tours now appear in a Go deeper list at the end of each code book chapter, with All tours in the reader\'s top bar, so the shelf lists chapters only.',
         ],
         fixed: [
             'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',

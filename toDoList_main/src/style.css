@@ -5233,10 +5233,9 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 
 /* ── UNDERSTANDING TOURS ──
-   The shelf's way into the guided code tours: the START HERE card under the
-   Continue card, the header's tours chip, each chapter's tours nested under its
-   row, and the All tours sheet. A started tour docks in .understandingCodePane
-   beside the shelf on desktop. */
+   The reader's way into the guided code tours: the GO DEEPER block at the end
+   of each chapter, the top bar's All tours chip, and the All tours sheet. A
+   started tour docks in the reader's .understandingCodePane on desktop. */
 .understandingShelfBody {
   flex: 1 1 auto;
   min-height: 0;
@@ -5249,124 +5248,24 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .understandingCodePane.is-touring > :not(.tourPlayer) { display: none; }
 
-.tourStartCard {
+.understandingGoDeeper {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding: 12px 14px;
-  background: var(--bg-surface);
-  border: 1px solid rgba(255, 189, 94, 0.35);
-  border-radius: 10px;
-}
-.tourStartCard[hidden] { display: none; }
-
-.tourStartTop {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+  margin: 24px 0 8px;
 }
 
-.tourStartEyebrow {
+.understandingGoDeeperEyebrow {
   font-family: 'SpaceMono', monospace;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #ffbd5e;
+  color: #8b8da0;
 }
 
-.tourStartMeta {
-  flex: 1 1 auto;
-  min-width: 0;
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.tourStartHide {
-  flex: 0 0 auto;
-  width: 32px;
-  height: 32px;
-  margin: -6px -8px -6px 0;
-  border: none;
-  background: none;
-  color: var(--text-muted);
-  font-size: 20px;
-  line-height: 1;
-  cursor: pointer;
-}
-
-.tourStartNext {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.tourStartDots {
-  display: flex;
-  gap: 4px;
-}
-
-.tourStartDot {
-  flex: 0 1 28px;
-  height: 4px;
-  border-radius: 2px;
-  background: var(--border-bright);
-}
-.tourStartDot.is-done { background: #ffbd5e; }
-.tourStartDot.is-current { background: rgba(255, 189, 94, 0.55); }
-
-.tourStartActions {
-  display: flex;
-  gap: 8px;
-}
-
-.tourStartContinue,
-.tourStartAll {
-  min-height: 44px;
-  padding: 0 16px;
-  border-radius: 8px;
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.tourStartContinue {
-  flex: 1 1 auto;
-  border: none;
-  background: #ffbd5e;
-  color: #1a1306;
-}
-
-.tourStartAll {
-  flex: 0 0 auto;
-  border: 1px solid var(--border-bright);
-  background: var(--bg-elevated);
-  color: var(--text-primary);
-}
-
-/* margin-left: auto keeps the chip and the control right-aligned when a narrow
-   header wraps them onto their own row. */
-.understandingTourChip {
-  flex: 0 0 auto;
-  margin-left: auto;
-  min-height: 32px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 189, 94, 0.45);
-  border-radius: 999px;
-  background: none;
-  color: #ffbd5e;
-  font-family: inherit;
-  font-size: 12px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-}
-.understandingTourChip[hidden] { display: none; }
-
-
-.understandingChapterTours {
-  margin: 0 0 10px;
-  padding: 0 0 0 30px;
+.understandingGoDeeperList {
+  margin: 0;
+  padding: 0;
   list-style: none;
   display: flex;
   flex-direction: column;
@@ -5538,10 +5437,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   color: #1a1306;
 }
 
-.tourStartHide:focus-visible,
-.tourStartContinue:focus-visible,
-.tourStartAll:focus-visible,
-.understandingTourChip:focus-visible,
+.understandingReaderToursChip:focus-visible,
 .understandingTourRow:focus-visible,
 .tourAllRow:focus-visible,
 .tourAllClose:focus-visible {
@@ -6185,6 +6081,25 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .understandingAskChip:hover { border-color: var(--accent); color: var(--accent-text); }
 .understandingAskChip + .understandingMarksChip { margin-left: 0; }
+
+/* All tours — a muted chip between Ask and Bookmarks, absent for a repo with no
+   tours. */
+.understandingReaderToursChip {
+  flex: 0 0 auto;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.understandingReaderToursChip:hover { border-color: #ffbd5e; color: #ffbd5e; }
+.understandingReaderToursChip + .understandingMarksChip { margin-left: 0; }
 
 /* A chapter-scoped reply's resolved code names, and the plain <code> left for
    the ones that don't resolve. */
