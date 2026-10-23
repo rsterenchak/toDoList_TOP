@@ -241,13 +241,13 @@ describe('shelf', () => {
         expect(view().querySelector('.understandingShelf')).toBeNull();
 
         // Opening chapter 2 recorded it, so the shelf's Read resumes there.
-        await renderUnderstandingView();
+        await renderUnderstandingView({ force: true });
         expect(view().querySelector('.understandingContinueEyebrow').textContent).toBe('CONTINUE · CH 2 OF 3');
         view().querySelector('.understandingReadBtn').click();
         expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
 
         localStorage.clear();
-        await renderUnderstandingView();
+        await renderUnderstandingView({ force: true });
         view().querySelector('.understandingReadBtn').click();
         expect(view().querySelector('.understandingReaderTitle').textContent).toBe('How the app starts');
         expect(dispatchBook).not.toHaveBeenCalled();

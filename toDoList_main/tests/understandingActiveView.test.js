@@ -30,12 +30,27 @@ function extractFunction(name) {
 
 const HOOKS = ['captureStructureSnapshot', 'renderStructureView', 'exitStructureLiveView', 'renderUnderstandingView', 'exitUnderstandingView'];
 
+// The module-scope re-apply state applyActiveView reads lives beside it in
+// main.js; the factory declares it fresh per build, as a page load would.
 function buildApplyActiveView(hooks) {
     const factory = new Function(
         'getActiveView', 'setActiveView', ...HOOKS,
+        'let lastAppliedView = null;\nlet lastAppliedProject = null;\n' +
+        extractFunction('selectedProjectForView') + '\n' +
         extractFunction('applyActiveView') + '\nreturn applyActiveView;'
     );
     return factory(getActiveView, setActiveView, ...HOOKS.map((h) => hooks[h]));
+}
+
+function selectProject(name) {
+    let row = document.querySelector('.selectedProject');
+    if (!row) {
+        row = document.createElement('div');
+        row.className = 'selectedProject';
+        row.innerHTML = '<input id="projInput">';
+        document.body.appendChild(row);
+    }
+    row.querySelector('#projInput').value = name;
 }
 
 function mountShell() {
@@ -107,5 +122,68 @@ describe("applyActiveView('understanding')", () => {
         expect(hooks.exitUnderstandingView).toHaveBeenCalledTimes(1);
         expect(hooks.renderStructureView).toHaveBeenCalledTimes(1);
         expect(document.body.getAttribute('data-view')).toBe('structure');
+    });
+});
+
+describe('re-applying the active view', () => {
+    let hooks;
+    let applyActiveView;
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.removeAttribute('data-view');
+        mountShell();
+        selectProject('Void');
+        hooks = Object.fromEntries(HOOKS.map((h) => [h, vi.fn()]));
+        applyActiveView = buildApplyActiveView(hooks);
+    });
+
+    it('is a no-op for Understanding when the view and project are unchanged', () => {
+        applyActiveView('understanding');
+        expect(hooks.renderUnderstandingView).toHaveBeenCalledTimes(1);
+        // A sync re-hydrate / wake / realtime push re-applies the same view.
+        applyActiveView('understanding');
+        applyActiveView('understanding');
+        expect(hooks.renderUnderstandingView).toHaveBeenCalledTimes(1);
+        expect(hooks.exitUnderstandingView).not.toHaveBeenCalled();
+        // The idempotent pill / data-view sync still runs.
+        expect(document.body.getAttribute('data-view')).toBe('understanding');
+        expect(document.getElementById('viewPillUnderstanding').classList.contains('active')).toBe(true);
+    });
+
+    it('is a no-op for Structure when the view and project are unchanged', () => {
+        applyActiveView('structure');
+        applyActiveView('structure');
+        expect(hooks.renderStructureView).toHaveBeenCalledTimes(1);
+        expect(hooks.exitStructureLiveView).not.toHaveBeenCalled();
+    });
+
+    it('renders fresh after switching away and back', () => {
+        applyActiveView('understanding');
+        applyActiveView('projects');
+        applyActiveView('understanding');
+        expect(hooks.renderUnderstandingView).toHaveBeenCalledTimes(2);
+        applyActiveView('structure');
+        applyActiveView('projects');
+        applyActiveView('structure');
+        expect(hooks.renderStructureView).toHaveBeenCalledTimes(2);
+    });
+
+    it('renders fresh when applied for a different project', () => {
+        applyActiveView('understanding');
+        selectProject('Other');
+        applyActiveView('understanding');
+        expect(hooks.renderUnderstandingView).toHaveBeenCalledTimes(2);
+        applyActiveView('understanding');
+        expect(hooks.renderUnderstandingView).toHaveBeenCalledTimes(2);
+    });
+});
+
+describe('main.js wiring', () => {
+    it('the stay-on-Understanding project switch forces a fresh shelf and records the project', () => {
+        const at = main.indexOf('if (stayOnUnderstanding) {');
+        expect(at).toBeGreaterThan(-1);
+        const block = main.slice(at, at + 400);
+        expect(block).toContain('renderUnderstandingView({ force: true })');
+        expect(block).toContain('lastAppliedProject = selectedProjectForView()');
     });
 });

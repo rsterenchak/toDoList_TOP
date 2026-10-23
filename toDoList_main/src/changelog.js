@@ -7,13 +7,13 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-23',
         added: [
-            'Code book chapters now show which explanations of why the code works the way it does are backed by a source comment, project rule or requirement, with a tappable citation, and set inferred ones apart in muted text, and map entries for files with a banner comment now show a full purpose sentence.',
             'A code book chapter\'s look-ahead note now lists the names the later chapter covers as chips, each jumping straight to the paragraph that explains it, and the back chip returns you to where you were reading.',
             'Code book chapters whose code has changed since they were written are now flagged DRIFT on the shelf, and the chapter header lists the names that changed.',
             'Any code book paragraph can now be flagged as unclear, out of order, not matching the code or needing a why, with an optional note, and the shelf lists open flags with a resolve control and a Copy button for pasting them into chat, and marks chapters you left part-read with where you stopped.',
         ],
         fixed: [
             'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',
+            'Switching tabs, waking your phone or a background sync no longer throws you out of the code book chapter you were reading and back to the shelf.',
         ],
     },
 ];
