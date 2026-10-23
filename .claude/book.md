@@ -42,6 +42,9 @@ viewer; the book points at them, it does not replace them.
    imports, purpose }]` and `/tmp/book-in/src-symbols.json` → `files: { path:
    { defs: [{ name, kind, start, end, parent }], imports } }`. `defs` is the
    complete list of names a reference may resolve to.
+   Add `--print-map-candidates` (or set `MANIFEST_PRINT_MAP=1`) to that run to
+   print the map chapter's ranked names, best first, with their scores, to
+   stderr — these are exactly the names the map's `roles` must cover.
 5. The existing `codebook.json`, when there is one — the chapters you keep
    byte-for-byte under `stale` scope, and the voice to match under `all`.
 6. The source files themselves, as you write each chapter. Every sentence
@@ -88,6 +91,33 @@ viewer; the book points at them, it does not replace them.
 - `body` — 3–8 paragraph strings, each ≤ ~90 words. Plain prose. No headings,
   no bullet markup, no code blocks.
 
+### The map chapter
+
+The first chapter is always the map — the main names introduced once, up front,
+so every later mention is a name the reader has already met:
+
+```json
+{
+  "id": "map",
+  "kind": "map",
+  "title": "The names you will meet",
+  "area": null,
+  "files": [],
+  "tours": [],
+  "roles": { "bootApp": "Builds the page once on load and decides which screen shows first." }
+}
+```
+
+It has no `body`. The generator ranks the symbols index (descriptive names
+referenced from many files rank high; `_`-prefixed names and names defined in
+more than five files sink), keeps the top 20 (`limit` overrides), and compiles
+one row per name — its chip, then its role. Write `roles` for exactly the
+ranked set `--print-map-candidates` reports, keyed as printed (`Parent.name` for
+a member): a ranked name without a role, or a role for a name outside the set,
+is a warning and marks the map stale. Each role is one line (≤ ~20 words)
+saying what the name is for, read from its code. When the ranked set changes,
+the map goes stale and its roles are rewritten for the new set.
+
 ### References
 
 A backticked span inside a paragraph is a reference the generator resolves into
@@ -114,6 +144,8 @@ to commit stale chapters. Prefer fewer, correct references over many.
 
 The book is read top-down, following execution, not bottom-up by dependency:
 
+0. The map chapter comes first (see "The map chapter"). Once it introduces a
+   name, a later chapter that mentions it needs no `ahead` note for it.
 1. Chapter 1 is always how the app starts — the entry point and what it builds
    first. Readers are most lost here and every other chapter hangs off it.
 2. Then the main flows in the order a user meets them, which is the order
@@ -123,7 +155,7 @@ The book is read top-down, following execution, not bottom-up by dependency:
 3. Shared utilities and anything with high fan-in (many importers, few
    imports) come last — readers need to know they exist, not understand them
    before the app.
-4. 8–12 chapters. Below 8 the areas are being crushed together; above 12 the
+4. 8–12 chapters, not counting the map. Below 8 the areas are being crushed together; above 12 the
    read stops being one sitting.
 
 Use `modules[].imports` to check: for each chapter, list the files its `files`

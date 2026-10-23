@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-10-22',
+        date: '2026-10-23',
         added: [
-            'C# repos now get the code book, code tours and tappable code references, with classes and their methods and properties traceable like JavaScript ones.',
+            'The code book now opens with a map chapter introducing its most-used names, each a tappable code reference beside a one-line role.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-10-22',
         changed: [
             'Code tours now start from the Understanding shelf, with the START HERE card under Continue, each chapter\'s tours listed beneath it and a tours chip in the header opening All tours, while Structure keeps its per-area tour row.',
         ],

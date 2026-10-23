@@ -523,3 +523,61 @@ describe('ask about this chapter', () => {
         expect(renderCodeViewer).not.toHaveBeenCalled();
     });
 });
+
+describe('map chapter', () => {
+    const MAP = {
+        id: 'map', index: 1, kind: 'map', title: 'The names you will meet', minutes: 1, stale: false, ahead: null,
+        paragraphs: [
+            [{ ref: REF }, { t: ' — Builds the page once on load.' }],
+            [{ ref: { label: 'saveAll', file: 'listLogic.js', symbol: 'saveAll', parent: null, line: 9, end: 20 } }, { t: ' — Writes every project.' }],
+        ],
+    };
+    const withMap = () => ({ title: BOOK.title, chapters: [MAP].concat(BOOK.chapters) });
+
+    test('renders chip · role rows and no <p> paragraphs', async () => {
+        mocks.book = withMap();
+        await openChapter(0);
+        expect(view().querySelector('.understandingReaderEyebrow').textContent).toBe('MAP · 1 MIN');
+        expect(view().querySelectorAll('.understandingReaderCol p')).toHaveLength(0);
+        const rows = view().querySelectorAll('.understandingMap > li.understandingMapRow');
+        expect(rows).toHaveLength(2);
+        expect(rows[0].querySelector('.understandingMapName button.bookRef').textContent).toBe('bootApp');
+        expect(rows[0].querySelector('.understandingMapRole').textContent).toBe('Builds the page once on load.');
+        expect(rows[1].dataset.paraIndex).toBe('1');
+        expect(view().querySelector('.understandingRibbon')).toBeNull();
+    });
+
+    test('a map chip opens the code viewer like a paragraph chip', async () => {
+        mocks.book = withMap();
+        await openChapter(0);
+        view().querySelector('.understandingMapRow .bookRef').click();
+        await flush();
+        expect(renderCodeViewer.mock.calls[0][1]).toMatchObject({ filePath: 'toDoList_main/src/index.js', startLine: 40, endLine: 72, banner: 'bootApp' });
+    });
+
+    test('the shelf numbers the map 00 and the prose chapters from 01', async () => {
+        mocks.book = withMap();
+        await renderUnderstandingView();
+        const nums = Array.from(view().querySelectorAll('.understandingChapterNum')).map((n) => n.textContent);
+        expect(nums).toEqual(['00', '01', '02', '03']);
+        expect(view().querySelector('.understandingContinueEyebrow').textContent).toBe('START · CH 0 OF 3');
+    });
+
+    test('the reader keeps prose chapter numbers after the map', async () => {
+        mocks.book = withMap();
+        await openChapter(1);
+        expect(view().querySelector('.understandingReaderEyebrow').textContent).toBe('CHAPTER 1 · 4 MIN');
+        expect(view().querySelector('.understandingReaderPos').textContent).toMatch(/^CH 1 OF 3 · /);
+        expect(view().querySelector('.understandingAheadEyebrow').textContent).toBe('AHEAD → CH 3');
+        expect(view().querySelector('.understandingNavPrev').textContent).toBe('‹ CH 0The names you will meet');
+        expect(view().querySelector('.understandingNavNext').textContent).toBe('CH 2 ›Where the data lives');
+    });
+
+    test('the reading position follows map rows as they scroll by', async () => {
+        mocks.book = withMap();
+        await openChapter(0);
+        latestObserver().show([1]);
+        expect(view().querySelector('.understandingReaderPos').textContent).toMatch(/^CH 0 OF 3 · /);
+        expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'map', paraIndex: 1 });
+    });
+});

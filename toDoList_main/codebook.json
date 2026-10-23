@@ -3,6 +3,36 @@
   "title": "Understanding Void",
   "chapters": [
     {
+      "id": "map",
+      "kind": "map",
+      "title": "The names you will meet",
+      "area": null,
+      "files": [],
+      "tours": [],
+      "roles": {
+        "findTargetById": "Looks up one of your inject targets by id in the cached list, so a project's linked repo resolves without refetching.",
+        "mintEntryId": "Stamps every new TODO entry with the stable id that later traces it to the pull request that shipped it.",
+        "showConfirmModal": "The themed confirm dialog every destructive action waits on before it deletes anything.",
+        "isInjectConfigured": "Says whether a Worker URL and secret are saved; pipeline buttons stay disabled until it does.",
+        "showInjectToast": "The single toast the pipeline uses to report what just happened, replacing any toast already showing.",
+        "getCachedTargets": "A copy of the cached inject targets, the one list the chat workspace menu and settings both read.",
+        "onQueueChange": "Subscribes a view to the agent queue so it repaints when a realtime push reloads the rows.",
+        "fetchActiveRuns": "Asks the Worker whether a run is in flight for a repo, a quiet background probe that never raises an error.",
+        "isMobileViewport": "The one test for phone layout, true below 1024 pixels wide.",
+        "chatWithWorker": "Sends a chat turn and its context through the Worker and returns the reply plus any files it suggests attaching.",
+        "wireModalDismiss": "Gives a modal its three ways out, the close button, the backdrop and Escape, behind one guarded close.",
+        "activeProjectNameForViewer": "The selected project's name as read from the sidebar, shared so every run surface agrees on which project is active.",
+        "addAllToDo_DOM": "Renders every saved task of a project into the main list in one pass.",
+        "addToDos_restore": "Rebuilds a project's list when it becomes active, sorting completed tasks to the bottom first.",
+        "buildMockupSecondary": "Builds the mockup step for a task that needs a design first: generate three previews, pick one, and it becomes the entry.",
+        "ensureCompanion": "Creates the desktop companion on first use, or returns nothing when it is switched off or the screen is not a desktop.",
+        "isOnboardingComplete": "Whether the first-run welcome tour has already been shown on this device.",
+        "joinSrcRootPath": "Joins a manifest's source root to a file name to give the repo-relative path every code link uses.",
+        "loadQueueRows": "Loads the agent queue for a project, ignoring answers that arrive after you have switched away.",
+        "pagesUrlFor": "The published site address for a repo, where its manifest, tours and book are fetched from."
+      }
+    },
+    {
       "id": "app-starts",
       "title": "How the app starts and updates itself",
       "area": "shell",

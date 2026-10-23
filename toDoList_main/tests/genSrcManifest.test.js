@@ -845,6 +845,106 @@ describe('gen-src-manifest compileBook', () => {
     });
 });
 
+// The map chapter: the symbols index ranked Aider-style, one chip · role row per
+// ranked name, compiled from `kind: "map"` + `roles`.
+const { rankMapSymbols } = gen;
+
+describe('gen-src-manifest rankMapSymbols and the map chapter', () => {
+    const imp = (names, from) => 'import { ' + names.join(', ') + " } from './" + from + "';\n";
+    const sources = [
+        src('a.js', imp(['_hiddenHelperFn'], 'c.js') + 'export function buildDescriptiveThing() {}\nexport function go() {}\n'),
+        src('b.js', imp(['buildDescriptiveThing'], 'a.js') + imp(['go'], 'a.js') + imp(['_hiddenHelperFn'], 'c.js') + 'export function renderEverything() {}\n'),
+        src('c.js', imp(['buildDescriptiveThing', 'go'], 'a.js') + 'export function _hiddenHelperFn() {}\nfunction unusedLongName() {}\n'),
+        src('d.js', imp(['buildDescriptiveThing'], 'a.js') + imp(['_hiddenHelperFn'], 'c.js') + imp(['renderEverything'], 'b.js') + 'export function go() {}\n'),
+    ];
+    const symbols = buildSymbols(sources);
+    const keys = (ranked) => ranked.map((r) => r.key);
+    const mapDoc = (roles, extra) => ({ version: 1, title: 'B', chapters: [
+        Object.assign({ id: 'map', kind: 'map', title: 'Names', area: null, files: [], tours: [], roles }, extra),
+        { id: 'c1', title: 'One', files: ['a.js'], tours: [], body: ['See `go`.'] },
+    ] });
+    const ROLES = {
+        buildDescriptiveThing: 'Builds the thing.',
+        renderEverything: 'Paints it all.',
+        _hiddenHelperFn: 'Helps quietly.',
+        go: 'Starts it.',
+    };
+
+    it('ranks descriptive multi-file names above short ones, sinks _ prefixes and drops unreferenced names', () => {
+        const ranked = rankMapSymbols(symbols, sources);
+        expect(keys(ranked)).toEqual(['buildDescriptiveThing', 'renderEverything', '_hiddenHelperFn', 'go']);
+        expect(ranked.map((r) => r.score)).toEqual([30, 10, 3, 2]);
+        expect(ranked[0]).toMatchObject({ file: 'a.js', refs: 3, defFiles: 1 });
+        // `go` is defined in a.js and d.js; the chip opens the one that is imported.
+        expect(ranked[3]).toMatchObject({ file: 'a.js', refs: 2, defFiles: 2 });
+    });
+
+    it('sinks a name defined in more than five files', () => {
+        const many = ['f1', 'f2', 'f3', 'f4', 'f5', 'f6'].map((f) => src(f + '.js', 'export function sharedHandlerFn() {}\n'));
+        const users = [src('u1.js', imp(['sharedHandlerFn'], 'f1.js')), src('u2.js', imp(['sharedHandlerFn'], 'f2.js')),
+            src('u3.js', imp(['oneRef'], 'v.js') + imp(['sharedHandlerFn'], 'f3.js')), src('v.js', 'export function oneRef() {}\n')];
+        const all = many.concat(users);
+        const ranked = rankMapSymbols(buildSymbols(all), all);
+        expect(keys(ranked)).toEqual(['sharedHandlerFn', 'oneRef']);
+        expect(ranked[0].score).toBe(3);
+        expect(ranked[0].defFiles).toBe(6);
+    });
+
+    it('respects limit and breaks ties by name', () => {
+        expect(keys(rankMapSymbols(symbols, sources, { limit: 2 }))).toEqual(['buildDescriptiveThing', 'renderEverything']);
+        const tie = [src('x.js', 'export function zeta() {}\nexport function alpha() {}\n'), src('y.js', imp(['zeta', 'alpha'], 'x.js'))];
+        expect(keys(rankMapSymbols(buildSymbols(tie), tie))).toEqual(['alpha', 'zeta']);
+    });
+
+    it('ranks csharp by the number of other files naming the identifier as a whole word', () => {
+        const cs = [
+            { name: 'Services/TaskStore.cs', text: 'public class TaskStore {\n    public void Save() {\n    }\n}\n' },
+            { name: 'Views/MainForm.cs', text: 'public class MainForm {\n    void Go() { var s = new TaskStore(); s.Save(); }\n}\n' },
+            { name: 'Views/Other.cs', text: 'public class Other {\n    TaskStore store; // SaveAll only\n}\n' },
+        ];
+        const ranked = rankMapSymbols(buildCsharpSymbols({ sources: cs }), cs);
+        expect(ranked.map((r) => [r.key, r.refs])).toEqual([['TaskStore', 2], ['TaskStore.Save', 1]]);
+        expect(ranked[1]).toMatchObject({ file: 'Services/TaskStore.cs', name: 'Save', parent: 'TaskStore' });
+    });
+
+    it('compiles a map chapter into chip · role rows with kind, and prose chapters as kind prose', () => {
+        const warn = vi.fn();
+        const out = compileBook(mapDoc(ROLES), symbols, null, null, warn);
+        expect(warn).not.toHaveBeenCalled();
+        const [map, prose] = out.chapters;
+        expect(map).toMatchObject({ id: 'map', index: 1, kind: 'map', stale: false, minutes: 1, warnings: [] });
+        expect(prose.kind).toBe('prose');
+        expect(map.paragraphs).toHaveLength(4);
+        expect(map.paragraphs[0]).toEqual([
+            { ref: { label: 'buildDescriptiveThing', file: 'a.js', symbol: 'buildDescriptiveThing', parent: null, line: 2, end: 2 } },
+            { t: ' — Builds the thing.' },
+        ]);
+    });
+
+    it('warns and goes stale for a missing role, a role outside the ranked set, or a map that is not first', () => {
+        const warn = vi.fn();
+        const roles = Object.assign({}, ROLES, { unusedLongName: 'Never ranked.' });
+        delete roles.go;
+        const map = compileBook(mapDoc(roles), symbols, null, null, warn).chapters[0];
+        expect(map.stale).toBe(true);
+        expect(map.warnings).toEqual(['map symbol "go" has no role', 'map role "unusedLongName" is not in the ranked set — dropped']);
+        expect(map.paragraphs).toHaveLength(3);
+        expect(warn.mock.calls.every((c) => /^Warning: codebook\.json: chapter "map": /.test(c[0]))).toBe(true);
+
+        const doc = mapDoc(ROLES);
+        doc.chapters.reverse();
+        const late = compileBook(doc, symbols, null, null, vi.fn()).chapters[1];
+        expect(late.warnings).toEqual(['the map chapter must be the first chapter']);
+    });
+
+    it('applies the chapter limit to the ranked set the roles must cover', () => {
+        const warn = vi.fn();
+        const map = compileBook(mapDoc({ buildDescriptiveThing: 'Builds the thing.' }, { limit: 1 }), symbols, null, null, warn).chapters[0];
+        expect(warn).not.toHaveBeenCalled();
+        expect(map.paragraphs).toHaveLength(1);
+    });
+});
+
 describe('gen-src-manifest writeWebBook', () => {
     const fs = require('fs');
     const os = require('os');
@@ -899,10 +999,21 @@ describe('gen-src-manifest real codebook.json', () => {
         });
     });
 
-    it('has 8–10 chapters, titles ≤ 60 chars and 3–8 paragraphs each', () => {
-        expect(doc.chapters.length).toBeGreaterThanOrEqual(8);
-        expect(doc.chapters.length).toBeLessThanOrEqual(10);
-        doc.chapters.forEach((c) => {
+    const prose = doc.chapters.filter((c) => c.kind !== 'map');
+
+    it('opens with a map chapter whose roles cover exactly the ranked set', () => {
+        expect(doc.chapters[0].kind).toBe('map');
+        expect(book.chapters[0].kind).toBe('map');
+        const ranked = rankMapSymbols(buildWebSymbols({ srcDir: path.resolve(__dirname, '..', 'src') }), [], { limit: doc.chapters[0].limit });
+        expect(Object.keys(doc.chapters[0].roles).sort()).toEqual(ranked.map((r) => r.key).sort());
+        expect(book.chapters[0].paragraphs.map((p) => p[0].ref.label)).toEqual(ranked.map((r) => r.key));
+    });
+
+    it('has 8–10 prose chapters, titles ≤ 60 chars and 3–8 paragraphs each', () => {
+        expect(prose.length).toBeGreaterThanOrEqual(8);
+        expect(prose.length).toBeLessThanOrEqual(10);
+        doc.chapters.forEach((c) => expect(c.title.length).toBeLessThanOrEqual(60));
+        prose.forEach((c) => {
             expect(c.title.length).toBeLessThanOrEqual(60);
             expect(c.body.length).toBeGreaterThanOrEqual(3);
             expect(c.body.length).toBeLessThanOrEqual(8);
@@ -926,7 +1037,7 @@ describe('gen-src-manifest real codebook.json', () => {
         tourDoc.tours.forEach((t) => { sectionOf[t.id] = order.indexOf(t.section); });
         const seq = doc.chapters.flatMap((c) => c.tours.map((t) => sectionOf[t]));
         expect(seq).toEqual([...seq].sort((a, b) => a - b));
-        expect(doc.chapters[0].files.slice(0, 2)).toEqual(['index.js', 'main.js']);
+        expect(prose[0].files.slice(0, 2)).toEqual(['index.js', 'main.js']);
         expect(doc.chapters.flatMap((c) => c.tours).sort()).toEqual(tourDoc.tours.map((t) => t.id).sort());
     });
 });
@@ -1066,6 +1177,18 @@ describe('gen-src-manifest csharp mode output', () => {
         const out = path.join(root, 'out');
         expect(fs.existsSync(path.join(out, 'src-manifest.json'))).toBe(true);
         ['src-symbols.json', 'src-tours.json', 'src-book.json'].forEach((f) => expect(fs.existsSync(path.join(out, f))).toBe(false));
+    });
+
+    it('prints the ranked map candidates to stderr behind --print-map-candidates or MANIFEST_PRINT_MAP=1', () => {
+        const { spawnSync } = require('child_process');
+        const env = { ...process.env, MANIFEST_LANG: 'csharp', MANIFEST_OUT_DIR: 'out', MANIFEST_DETERMINISTIC: 'true', MANIFEST_SRC_ROOT: '' };
+        const script = path.join(root, 'scripts', 'gen-src-manifest.js');
+        const viaFlag = spawnSync(process.execPath, [script, '--print-map-candidates'], { cwd: root, encoding: 'utf8', env });
+        expect(viaFlag.stderr).toMatch(/Map candidates \(1\)/);
+        expect(viaFlag.stderr).toMatch(/ 1\. Task {2}1 {2}1 {2}1 {2}Models\/Task\.cs/);
+        const viaEnv = spawnSync(process.execPath, [script], { cwd: root, encoding: 'utf8', env: { ...env, MANIFEST_PRINT_MAP: '1' } });
+        expect(viaEnv.stderr).toBe(viaFlag.stderr);
+        expect(spawnSync(process.execPath, [script], { cwd: root, encoding: 'utf8', env }).stderr).not.toMatch(/Map candidates/);
     });
 
     it('reads the .cs set scoped by srcRoot, paths repo-root-relative', () => {
