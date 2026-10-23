@@ -2666,3 +2666,20 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codebook.json`, `toDoList_main/src/understandingView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/tests/understandingReader.test.js`
   - Verify: 1300x900, 390x844 → /
   <!-- id: 84e6b847-92f9-4c47-b696-cbbc1d523326 -->
+
+- [ ] **[MEDIUM]** Validate forward references in the code book as promises the target chapter keeps
+  - Type: feature
+  - Description: A chapter's `ahead` note tells the reader "the next chapter explains X" — but nothing checks that it does. Make `ahead` a validated promise in `scripts/gen-src-manifest.js`: it must name a later chapter (already enforced) and may name the symbols it is deferring; the compiler then requires each promised symbol to resolve as a reference inside the target chapter's own paragraphs, warning (and marking the source chapter stale) when the target no longer mentions it. The reader renders the callout as a chip row — the note, then one chip per promised symbol — where tapping a symbol chip jumps to the target chapter and scrolls to the first paragraph that references it, so a forward reference is a link the reader can follow and come back from, not just a sentence.
+  - Behavior:
+    1. `codebook.json` `ahead` gains an optional `promises: ["<symbol>", "<file.js:name>", …]` array using the same reference syntax as prose. Each entry resolves with `resolveBookRef` against the *target* chapter's `files` (then the whole index); unresolved → warning `ahead promises "<x>" which does not resolve`. A resolved promise must appear as a `ref` segment somewhere in the target chapter's compiled `paragraphs` (match on `file` + `symbol` + `parent`); absent → warning `ahead promises "<x>" but chapter "<id>" never references it`. Both warnings mark the *source* chapter stale, since its note is what became untrue.
+    2. Compiled `ahead` becomes `{ chapter, title, note, promises: [{ ref, paraIndex }] }`, `paraIndex` being the first paragraph in the target that references the symbol, so the reader needs no search.
+    3. Reader: the `AHEAD → CH n` callout keeps its eyebrow and note and adds a chip row beneath; the whole callout still jumps to the chapter top, a promise chip jumps to that chapter and scrolls `paraIndex` into view with the same one-second amber pulse the bookmark list uses, and the reader's back chip returns to the source chapter at its previous position (push the position onto a small in-memory stack; back pops it, Shelf clears it).
+    4. `.claude/book.md`: `ahead.promises` lists the symbols the note defers; every promise must be a chip in that later chapter. Update this repo's `codebook.json` so each existing `ahead` names its promises.
+  - Implementation notes:
+    - Chapters compile in order, so promise checking is a second pass after all chapters' `paragraphs` exist (`compileBook` ~1345; the current `ahead` validation is in its tail). Keep it in `validateBookPromises(chapters, symbols, note)` for tests.
+    - Reader: the `ahead` builder is `buildAhead` in `understandingView.js` (~501 in the pre-tours layout; grep `AHEAD →`); the scroll-and-pulse helper already exists for bookmarks — reuse it.
+    - Tests in `tests/genSrcManifest.test.js`: promise resolves and is referenced → no warning, `paraIndex` correct; resolves but target never references it → warning + source stale; unresolvable → warning; promise syntax with file pin; real `codebook.json` compiles with zero warnings. `tests/understandingReader.test.js`: chip row renders, chip tap opens the target chapter at `paraIndex`, back returns to the source position.
+  - Out of scope: auto-generating promises from the note text; cross-book links.
+  - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codebook.json`, `toDoList_main/src/understandingView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/tests/understandingReader.test.js`
+  - Verify: 1300x900, 390x844 → /
+  <!-- id: 4bf0c2d2-0dbc-44c1-8038-47d746adc5e5 -->
