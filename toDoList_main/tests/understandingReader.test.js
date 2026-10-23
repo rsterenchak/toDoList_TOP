@@ -986,3 +986,32 @@ describe('cited versus inferred rationale', () => {
         expect(bookmarkLabel(WHY_BOOK.chapters[0].paragraphs[1])).toBe('bootApp is long, likely because rows do a lot.');
     });
 });
+
+describe('re-render while reading', () => {
+    test('a plain re-render keeps the open reader on its chapter', async () => {
+        await openChapter(2);
+        expect(title()).toBe('The pipeline');
+        const scroll = view().querySelector('.understandingReaderScroll');
+        await renderUnderstandingView();
+        await flush();
+        expect(view().querySelector('.understandingShelf')).toBeNull();
+        expect(title()).toBe('The pipeline');
+        expect(view().querySelector('.understandingReaderScroll')).toBe(scroll);
+        expect(view().classList.contains('is-reading')).toBe(true);
+    });
+
+    test('{ force: true } closes the reader and paints the shelf', async () => {
+        await openChapter(2);
+        await renderUnderstandingView({ force: true });
+        await flush();
+        expect(view().querySelector('.understandingReaderScroll')).toBeNull();
+        expect(view().querySelector('.understandingShelf')).not.toBeNull();
+        expect(view().classList.contains('is-reading')).toBe(false);
+    });
+
+    test('the shelf still renders normally when no reader is open', async () => {
+        await renderUnderstandingView();
+        await renderUnderstandingView();
+        expect(view().querySelector('.understandingShelf')).not.toBeNull();
+    });
+});

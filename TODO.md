@@ -2723,7 +2723,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: d48d0337-c987-41b9-8881-94fd52b5fbe5 -->
 
-- [ ] **[HIGH]** Stop the Understanding reader resetting to the shelf on sync and wake
+- [x] **[HIGH]** Stop the Understanding reader resetting to the shelf on sync and wake — Completed: 2026-10-23
   - Type: bug
   - Description: Reading a chapter, then switching tabs or waking the phone, throws the reader away and lands on the shelf. Cause: `visibilitychange` → `rehydrateUnlessEditing()` → `listLogic.hydrateFromSupabase()` dispatches `listLogicHydrated`, whose listener in `main.js` (~2957) calls `restoreFromStorage({ fromSync: true })`, whose tail (~3679) calls `applyActiveView(getActiveView())`; `applyActiveView` (~3973) then calls `renderUnderstandingView()` unconditionally for `'understanding'`, and that function tears down the reader and rebuilds the shelf. The same path fires on every realtime push and on `online`. Expected: re-applying the view that is already active, for the project that is already selected, is a no-op for Understanding (and Structure); the reader keeps its chapter and scroll position. A genuine view switch or project switch still renders fresh.
   - Behavior:

@@ -2322,10 +2322,12 @@ function leaveReader() {
 }
 
 // Render the UNDERSTANDING view's shelf. Safe to call before component() has
-// built the shell (a missing #understandingView short-circuits).
-export function renderUnderstandingView() {
+// built the shell (a missing #understandingView short-circuits). An open reader
+// is left alone unless `{ force: true }` asks for a fresh shelf (a project switch).
+export function renderUnderstandingView(opts) {
     const view = document.getElementById('understandingView');
     if (!view) return;
+    if (reader && !(opts && opts.force)) return;
     teardownReader();
     teardownShelf();
     const seq = ++renderSeq;

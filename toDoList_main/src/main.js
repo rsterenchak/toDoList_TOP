@@ -2465,8 +2465,11 @@ function component() {
                             renderStructureView();
                         }
                         if (stayOnUnderstanding) {
-                            renderUnderstandingView();
+                            renderUnderstandingView({ force: true });
                         }
+                        // The views now show this project, so a later re-apply
+                        // (sync, wake) for it is a no-op.
+                        lastAppliedProject = selectedProjectForView();
 
                         return;
                     }
@@ -3963,6 +3966,20 @@ function setupQueueResizeHandle(handle) {
     handle.addEventListener('pointercancel', endDrag);
 }
 
+// The view and selected project the last applyActiveView call applied, so a
+// re-apply of the view already showing for the project already selected (a sync
+// re-hydrate, wake, realtime push, `online`) leaves Understanding's open reader
+// and Structure's map in place instead of rebuilding them.
+let lastAppliedView = null;
+let lastAppliedProject = null;
+
+// The selected project's name from the sidebar, '' when none is selected.
+function selectedProjectForView() {
+    const selected = document.querySelector('.selectedProject');
+    const input = selected ? selected.querySelector('#projInput') : null;
+    return input ? (input.value || '').trim() : '';
+}
+
 // Apply the top-level Projects / Understanding / Structure view. Module-scope so both the
 // in-component pill click handlers and the restoreFromStorage auto-init
 // path can route through one entry point. Writes the chosen view to
@@ -4038,10 +4055,18 @@ function applyActiveView(view) {
     // Understanding fills the full pane the same way.
     if (detailPane) detailPane.hidden = (safe === 'structure') || (safe === 'understanding');
 
+    // The writes above are idempotent and run every call; the renders below skip
+    // a re-apply.
+    const project = selectedProjectForView();
+    const reapplied = safe === lastAppliedView && project === lastAppliedProject;
+    lastAppliedView = safe;
+    lastAppliedProject = project;
+
     if (safe === 'structure') {
         // The Structure view maps the selected project's linked repo, so it
-        // renders fresh on each switch (resolving the repo from the selection).
-        renderStructureView();
+        // renders fresh on each switch (resolving the repo from the selection) —
+        // but not on a re-apply of the same view for the same project.
+        if (!reapplied) renderStructureView();
     } else {
         // Leaving Structure: the tab is only hidden, never unmounted, so tear down
         // the UI lens's live view rather than leave a deployed page (and its timers
@@ -4052,8 +4077,8 @@ function applyActiveView(view) {
 
     if (safe === 'understanding') {
         // The shelf reads the selected project's repo, so it renders fresh on
-        // each switch, like Structure.
-        renderUnderstandingView();
+        // each switch, like Structure; a re-apply keeps the open reader.
+        if (!reapplied) renderUnderstandingView();
     } else {
         // Leaving Understanding stops its book-run probe timer.
         exitUnderstandingView();

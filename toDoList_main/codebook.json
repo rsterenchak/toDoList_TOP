@@ -174,7 +174,7 @@
         "index.js:bootSyncPipeline": "adf66a4968a12cc9.da39a3ee5e6b4b0d",
         "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.4a3fba20d918612c",
         "main.js": "a1aacda74687c942.6eae4807b0f1ccfc",
-        "main.js:component": "65a4c14ff248a75f.a77b15c0d64cf611",
+        "main.js:component": "63124bc357ed7c51.a77b15c0d64cf611",
         "main.js:restoreFromStorage": "7734ab5e1f8d2df0.a77b15c0d64cf611",
         "migration.js:maybeMigrateLocalToSupabase": "6f1e10efa2d06321.a77b15c0d64cf611",
         "modals.js:applyPendingUpdate": "895775e1a371e73d.496eaf50e99c72fc",
