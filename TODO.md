@@ -2613,7 +2613,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 390x844 → /
   <!-- id: 1698ee48-9c5f-4784-bb21-647bb6cd862a -->
 
-- [ ] **[MEDIUM]** Add a generated names-and-roles map chapter to the code book
+- [x] **[MEDIUM]** Add a generated names-and-roles map chapter to the code book — Completed: 2026-10-23
   - Type: feature
   - Description: Readers build a model faster when the main names are introduced once up front (the pre-training effect), and it turns every later forward reference into a back-reference. Add a `map` chapter kind to the book compiler in `scripts/gen-src-manifest.js`: when `codebook.json` declares `{ "id": "map", "kind": "map", "title": "…", "roles": { "<symbol>": "<one-line role>" } }` as its first chapter, the compiler ranks the symbols index and emits a chapter whose paragraphs are one entry per symbol — a resolved ref chip followed by the authored role — instead of prose. Ranking is Aider-style: a symbol scores on name length and descriptiveness, the number of distinct files that reference it, and is penalised for underscore prefixes and for being defined in more than five files; the top 20 (configurable `limit`) are kept in rank order, and a role string is required for each kept symbol or the chapter warns and goes stale. `.claude/book.md` gains the rule that the first chapter is the map and that `roles` are written for the ranked set the generator reports.
   - Behavior:

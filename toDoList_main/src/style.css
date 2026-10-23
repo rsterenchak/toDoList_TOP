@@ -5730,6 +5730,35 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .bookRef:hover { border-color: var(--accent); color: var(--accent-text); }
 
+/* A map chapter: one row per name — the chip in a column sized to the longest
+   name, its role beside it. Narrow screens stack the role under the chip. */
+.understandingMap {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  margin: 0 0 16px;
+  padding: 0;
+  list-style: none;
+}
+.understandingMapRow {
+  display: grid;
+  grid-column: 1 / -1;
+  grid-template-columns: subgrid;
+  column-gap: 14px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-mid);
+}
+.understandingMapRow:last-child { border-bottom: none; }
+.understandingMapRole {
+  font-size: 15px;
+  line-height: 1.5;
+  color: color-mix(in srgb, var(--text-primary) 86%, var(--bg-base));
+}
+@media (max-width: 640px) {
+  .understandingMap { display: block; }
+  .understandingMapRow { display: flex; flex-direction: column; gap: 4px; }
+}
+
 .understandingAhead {
   display: flex;
   flex-direction: column;

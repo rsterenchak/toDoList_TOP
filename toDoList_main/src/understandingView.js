@@ -4,7 +4,8 @@
 // then the ordered chapter list. The Continue card's Read button and every
 // chapter row open the reader: one chapter at a time, its references as chips
 // that open the code viewer at that definition, a forward-reference callout, and
-// a prev/next bar.
+// a prev/next bar. A `map` chapter (the book's names-and-roles list) opens the
+// book as chapter 00 and reads as chip · role rows instead of paragraphs.
 //
 // The book is the `src-book.json` the generator compiles from `codebook.json` and
 // publishes beside the source manifest (loaded through codeBook.js). The repo is
@@ -255,6 +256,17 @@ function pad2(n) {
     return n < 10 ? '0' + n : String(n);
 }
 
+// A map chapter (the generated names-and-roles list) opens the book as
+// chapter 0, so the prose chapters keep their 1-based numbers after it.
+function isMapChapter(ch) {
+    return !!ch && ch.kind === 'map';
+}
+
+// The number chapter `i` of `book` is shown as.
+function chapterNum(book, i) {
+    return isMapChapter(book.chapters[0]) ? i : i + 1;
+}
+
 // ── reading position ──
 
 // Where `progress` puts the reader in `book`: `{ index, paraIndex, pct }` with a
@@ -304,7 +316,7 @@ function buildContinueCard(view, repo, book, stats, pos) {
 
     const eyebrow = document.createElement('div');
     eyebrow.className = 'understandingContinueEyebrow';
-    eyebrow.textContent = (pos ? 'CONTINUE' : 'START') + ' · CH ' + (at + 1) + ' OF ' + stats.chapters;
+    eyebrow.textContent = (pos ? 'CONTINUE' : 'START') + ' · CH ' + chapterNum(book, at) + ' OF ' + chapterNum(book, stats.chapters - 1);
     card.appendChild(eyebrow);
 
     const title = document.createElement('div');
@@ -350,7 +362,7 @@ function buildChapterList(view, repo, book, pos) {
 
         const num = document.createElement('span');
         num.className = 'understandingChapterNum';
-        num.textContent = pad2(i + 1);
+        num.textContent = pad2(chapterNum(book, i));
         btn.appendChild(num);
 
         const title = document.createElement('span');
@@ -413,7 +425,7 @@ function buildBookmarkList(repo, book, bookmarks, grouped, onOpen, onDeleted) {
         if (grouped) {
             const head = document.createElement('div');
             head.className = 'understandingBookmarkGroup';
-            head.textContent = 'CH ' + (group.index + 1) + ' · ' + (group.chapter.title || group.chapter.id);
+            head.textContent = 'CH ' + chapterNum(book, group.index) + ' · ' + (group.chapter.title || group.chapter.id);
             wrap.appendChild(head);
             list = null;
         }
@@ -430,7 +442,7 @@ function buildBookmarkList(repo, book, bookmarks, grouped, onOpen, onDeleted) {
             btn.appendChild(label);
             const ch = document.createElement('span');
             ch.className = 'understandingBookmarkCh';
-            ch.textContent = 'CH ' + (group.index + 1);
+            ch.textContent = 'CH ' + chapterNum(book, group.index);
             btn.appendChild(ch);
             btn.addEventListener('click', function () { onOpen(group.index, item.paraIndex, item.inRange); });
             row.appendChild(btn);
@@ -1087,6 +1099,17 @@ export function openBookRefInReader(ref) {
     return true;
 }
 
+function buildRefChip(ref) {
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'bookRef';
+    const label = String(ref.label || ref.symbol || ref.file || '');
+    chip.textContent = label;
+    chip.setAttribute('aria-label', 'Open ' + label + ' in code');
+    chip.addEventListener('click', function () { openRef(ref); });
+    return chip;
+}
+
 function buildParagraph(segments, index) {
     const p = document.createElement('p');
     p.className = 'understandingPara';
@@ -1094,19 +1117,32 @@ function buildParagraph(segments, index) {
     const segs = Array.isArray(segments) ? segments : [{ t: String(segments || '') }];
     segs.forEach(function (seg) {
         if (seg && seg.ref && typeof seg.ref === 'object') {
-            const chip = document.createElement('button');
-            chip.type = 'button';
-            chip.className = 'bookRef';
-            const label = String(seg.ref.label || seg.ref.symbol || seg.ref.file || '');
-            chip.textContent = label;
-            chip.setAttribute('aria-label', 'Open ' + label + ' in code');
-            chip.addEventListener('click', function () { openRef(seg.ref); });
-            p.appendChild(chip);
+            p.appendChild(buildRefChip(seg.ref));
         } else if (seg && typeof seg.t === 'string') {
             p.appendChild(document.createTextNode(seg.t));
         }
     });
     return p;
+}
+
+// One row of a map chapter: its symbol's chip beside the authored role. The
+// compiler emits each entry as `[{ ref }, { t: ' — ' + role }]`.
+function buildMapRow(segments, index) {
+    const row = document.createElement('li');
+    row.className = 'understandingMapRow';
+    row.dataset.paraIndex = String(index);
+    const segs = Array.isArray(segments) ? segments : [];
+    const ref = segs.find(function (seg) { return seg && seg.ref && typeof seg.ref === 'object'; });
+    const name = document.createElement('span');
+    name.className = 'understandingMapName';
+    if (ref) name.appendChild(buildRefChip(ref.ref));
+    row.appendChild(name);
+    const role = document.createElement('span');
+    role.className = 'understandingMapRole';
+    role.textContent = segs.filter(function (seg) { return seg && typeof seg.t === 'string'; })
+        .map(function (seg) { return seg.t; }).join('').replace(/^\s*—\s*/, '');
+    row.appendChild(role);
+    return row;
 }
 
 // Reflect a paragraph's bookmark state on it and its ribbon.
@@ -1334,7 +1370,7 @@ function buildAhead(book, ahead) {
     box.className = 'understandingAhead';
     const eyebrow = document.createElement('span');
     eyebrow.className = 'understandingAheadEyebrow';
-    eyebrow.textContent = 'AHEAD → CH ' + (target + 1);
+    eyebrow.textContent = 'AHEAD → CH ' + chapterNum(book, target);
     box.appendChild(eyebrow);
     const note = document.createElement('span');
     note.className = 'understandingAheadNote';
@@ -1372,7 +1408,7 @@ function paintReaderProgress() {
     const whole = Math.round(((r.index + pct) / chapters.length) * 100);
     r.barFill.style.width = whole + '%';
     r.bar.setAttribute('aria-valuenow', String(whole));
-    r.posEl.textContent = 'CH ' + (r.index + 1) + ' OF ' + chapters.length + ' · ' + whole + '%';
+    r.posEl.textContent = 'CH ' + chapterNum(r.book, r.index) + ' OF ' + chapterNum(r.book, chapters.length - 1) + ' · ' + whole + '%';
     r.leftEl.textContent = '~' + minutesLeft(r.book, r.index, pct) + ' MIN LEFT';
 }
 
@@ -1419,7 +1455,7 @@ function showChapter(index, paraIndex) {
 
     const eyebrow = document.createElement('div');
     eyebrow.className = 'understandingReaderEyebrow';
-    eyebrow.textContent = 'CHAPTER ' + (index + 1) + ' · ' + (Number(ch.minutes) || 0) + ' MIN';
+    eyebrow.textContent = (isMapChapter(ch) ? 'MAP' : 'CHAPTER ' + chapterNum(r.book, index)) + ' · ' + (Number(ch.minutes) || 0) + ' MIN';
     r.column.appendChild(eyebrow);
 
     const title = document.createElement('h2');
@@ -1432,19 +1468,32 @@ function showChapter(index, paraIndex) {
     const ahead = ch.ahead && typeof ch.ahead === 'object' ? buildAhead(r.book, ch.ahead) : null;
     const aheadAfter = paragraphs.length >= 3 ? 1 : paragraphs.length - 1;
     const paraEls = [];
-    paragraphs.forEach(function (segs, i) {
-        const p = buildParagraph(segs, i);
-        wireParaMark(p, segs, i);
-        paraEls.push(p);
-        r.column.appendChild(p);
-        if (ahead && i === aheadAfter) r.column.appendChild(ahead);
-    });
-    if (ahead && !paragraphs.length) r.column.appendChild(ahead);
+    if (isMapChapter(ch)) {
+        // Names and roles read as a two-column list rather than prose.
+        const list = document.createElement('ol');
+        list.className = 'understandingMap';
+        paragraphs.forEach(function (segs, i) {
+            const row = buildMapRow(segs, i);
+            paraEls.push(row);
+            list.appendChild(row);
+        });
+        r.column.appendChild(list);
+        if (ahead) r.column.appendChild(ahead);
+    } else {
+        paragraphs.forEach(function (segs, i) {
+            const p = buildParagraph(segs, i);
+            wireParaMark(p, segs, i);
+            paraEls.push(p);
+            r.column.appendChild(p);
+            if (ahead && i === aheadAfter) r.column.appendChild(ahead);
+        });
+        if (ahead && !paragraphs.length) r.column.appendChild(ahead);
+    }
 
     // Prev / next.
     clear(r.nav);
     const prev = index > 0
-        ? buildNavButton('Prev', '‹ CH ' + index, chapters[index - 1].title || chapters[index - 1].id)
+        ? buildNavButton('Prev', '‹ CH ' + chapterNum(r.book, index - 1), chapters[index - 1].title || chapters[index - 1].id)
         : buildNavButton('Prev', '', '');
     prev.hidden = index === 0;
     prev.addEventListener('click', function () { showChapter(index - 1, 0); });
@@ -1452,7 +1501,7 @@ function showChapter(index, paraIndex) {
     const last = index === chapters.length - 1;
     const next = last
         ? buildNavButton('Next', '', 'Back to shelf')
-        : buildNavButton('Next', 'CH ' + (index + 2) + ' ›', chapters[index + 1].title || chapters[index + 1].id);
+        : buildNavButton('Next', 'CH ' + chapterNum(r.book, index + 1) + ' ›', chapters[index + 1].title || chapters[index + 1].id);
     next.addEventListener('click', function () {
         if (last) leaveReader();
         else showChapter(index + 1, 0);
