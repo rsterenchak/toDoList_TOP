@@ -2612,3 +2612,20 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/viewportSettle.js`, `toDoList_main/src/index.js`, `toDoList_main/src/style.css`, `toDoList_main/codemap.json`, `toDoList_main/tests/viewportSettle.test.js`
   - Verify: 390x844 → /
   <!-- id: 1698ee48-9c5f-4784-bb21-647bb6cd862a -->
+
+- [ ] **[MEDIUM]** Add a generated names-and-roles map chapter to the code book
+  - Type: feature
+  - Description: Readers build a model faster when the main names are introduced once up front (the pre-training effect), and it turns every later forward reference into a back-reference. Add a `map` chapter kind to the book compiler in `scripts/gen-src-manifest.js`: when `codebook.json` declares `{ "id": "map", "kind": "map", "title": "…", "roles": { "<symbol>": "<one-line role>" } }` as its first chapter, the compiler ranks the symbols index and emits a chapter whose paragraphs are one entry per symbol — a resolved ref chip followed by the authored role — instead of prose. Ranking is Aider-style: a symbol scores on name length and descriptiveness, the number of distinct files that reference it, and is penalised for underscore prefixes and for being defined in more than five files; the top 20 (configurable `limit`) are kept in rank order, and a role string is required for each kept symbol or the chapter warns and goes stale. `.claude/book.md` gains the rule that the first chapter is the map and that `roles` are written for the ranked set the generator reports.
+  - Behavior:
+    1. `compileBook` recognises `kind: "map"`: it computes the ranked symbol list from `symbols` (defs with a `parent` score as `Parent.name`), takes `limit` (default 20), and compiles one paragraph per symbol as `[{ ref }, { t: " — " + role }]`. Missing roles for ranked symbols, or roles for symbols not in the ranked set, are warnings on the chapter. `minutes` counts the roles' words.
+    2. Ranking inputs: for web mode use `symbols.files[*].imports` (which files bind which names) as the reference signal; for csharp mode, where imports are `{}`, use a count of files whose text contains the identifier as a whole word (the generator already holds every source's text). Deterministic tie-break by name.
+    3. A `--print-map-candidates` flag (or `MANIFEST_PRINT_MAP=1`) prints the ranked list with scores to stderr so the routine can write roles for exactly those names; document the flag in `book.md`'s inputs section.
+    4. `src-book.json` carries `kind` per chapter; chapters without it are `"prose"`. The reader renders a `map` chapter as a two-column list (chip · role) rather than paragraphs, with the same chip tap behaviour; the shelf shows it as `00 · <title>` above chapter 1.
+  - Implementation notes:
+    - The compiler lives at ~803–960 in the generator (`BOOK_FILE_RE` … `writeWebBook`); `compileBook` at ~872. Keep the ranking in its own function (`rankMapSymbols(symbols, sources, opts)`) so tests can call it directly.
+    - Author a `map` chapter for this repo's `codebook.json` with roles for its ranked set, and re-point existing `ahead` notes that now have an earlier home.
+    - Tests in `tests/genSrcManifest.test.js`: ranking order on a fixture (descriptive multi-file names outrank short single-file ones; underscore-prefixed sink), missing-role → warning + stale, `limit` respected, csharp mode ranks by whole-word file count, real `codebook.json` map compiles with zero warnings. Reader test in `tests/understandingReader.test.js`: a `kind: "map"` chapter renders chip·role rows and no `<p>` paragraphs.
+    - Update the template's `.claude/book.md` after this lands (template port), so generated books on other repos get a map chapter from the routine itself.
+  - File: `toDoList_main/scripts/gen-src-manifest.js`, `toDoList_main/codebook.json`, `toDoList_main/src/understandingView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/genSrcManifest.test.js`, `toDoList_main/tests/understandingReader.test.js`
+  - Verify: 1300x900, 390x844 → /
+  <!-- id: 577adc2a-037a-4d1d-9aa2-d3513a2da7ba -->
