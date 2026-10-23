@@ -76,7 +76,7 @@
       "area": "shell",
       "files": ["index.js", "main.js", "sw.js", "modals.js"],
       "tours": ["app-starts", "app-updates"],
-      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from, and how it merges with this device's, is the next chapter." },
+      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from, and how it merges with this device's, is the next chapter.", "promises": ["hydrateFromSupabase", "maybeMigrateLocalToSupabase"] },
       "body": [
         "Everything begins in `index.js`. Its top-level code runs once when the page loads: it builds the page, checks whether a saved session exists, and registers the service worker. There is no framework underneath it, just plain JavaScript creating DOM nodes and wiring listeners.",
         "The page is built skeleton first. `component` in `main.js` creates the nav bar, the project sidebar, the task list and the footer, all still empty. Nothing in that step knows about your data yet, which keeps the shape of the screen separate from what fills it.",
@@ -107,7 +107,7 @@
       "area": "tasks",
       "files": ["toDoRow.js", "listLogic.js", "todoStatus.js", "dueDate.js", "undoToast.js"],
       "tours": ["add-task", "edit-task", "task-status", "due-date", "delete-task"],
-      "ahead": { "chapter": "pipeline-ship", "note": "The inject button every row carries belongs to the pipeline, which gets its own chapter." },
+      "ahead": { "chapter": "pipeline-ship", "note": "The inject button every row carries belongs to the pipeline, which gets its own chapter.", "promises": ["makeInjectButton", "dispatchRun"] },
       "body": [
         "Every row in the task list is built by `buildToDoRow` in `toDoRow.js`. It is a large function, presumably because a row does a lot: the title input, the description panel, the due-date pill, the status badge, the checkbox and the delete button are all wired there. The rows only ever ask `listLogic.js` to change data; they never change it themselves.",
         "Each project keeps one blank row at the bottom, ready for the next task. It is a real item in memory but is never saved to the database. When you type a title and press Enter, the first commit inserts the task and every later edit updates it; `commitBlankPlaceholder` refuses an empty title so the blank row can never slip through, and `appendNewToDoRow` moves the cursor into a fresh blank row so you can keep typing.",
@@ -137,7 +137,7 @@
       "area": "pipeline",
       "files": ["inject.js", "shipEntry.js", "dispatchDraft.js", "agentView.js"],
       "tours": ["inject-entry", "ship-run"],
-      "ahead": { "chapter": "pipeline-follow", "note": "How a dispatched run is followed until its PR merges is the next chapter." },
+      "ahead": { "chapter": "pipeline-follow", "note": "How a dispatched run is followed until its PR merges is the next chapter.", "promises": ["startAgentQueueSubscription", "derivePhase"] },
       "body": [
         "Void can hand a task to Claude to build. The task's description becomes an entry in a repository's TODO.md, a GitHub Actions run picks that entry up, and a pull request comes back. The app itself never talks to GitHub: every call goes to a Cloudflare Worker you configure, and `postToWorker` in `inject.js` is the single funnel for those calls.",
         "Injecting is the first half. Each row carries an inject button made by `makeInjectButton`, which disables itself first to stop a double tap. `injectDescription` mints an entry id once and reuses it, so re-injecting the same task never makes a second copy, and that id travels inside the entry as a marker comment. After the Worker appends the entry, `stampTodoEntryId` saves the id with the task so other devices can link it too.",
@@ -167,7 +167,7 @@
       "area": "chat",
       "files": ["claudeSheet.js", "inject.js", "filePicker.js", "layoutInspect.js", "modelsPanel.js"],
       "tours": ["chat-send", "chat-context", "chat-model"],
-      "ahead": { "chapter": "structure", "note": "The source manifest the file picker reads is built at deploy and explored in the Structure chapter." },
+      "ahead": { "chapter": "structure", "note": "The source manifest the file picker reads is built at deploy and explored in the Structure chapter.", "promises": ["renderStructureView", "ensureRegionsLoaded"] },
       "body": [
         "The Claude sheet is the in-app assistant, and `claudeSheet.js` holds it: the chat tab, the Runs tab, iterate sessions and the composer. Opening it with `openClaudeSheet` keeps your chat history and attachments, and refreshes the list of repos you can talk about.",
         "Sending has one entry point. The Send button and Enter both go through the composer, `sendChatTurn` shows your message before any reply, and `chatWithWorker` posts the history, the active repo, any attached file paths and the Fast or Deep choice in a single request. Everything after that POST, the model call included, happens in the Worker.",

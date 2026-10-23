@@ -184,6 +184,85 @@ describe('ahead callout', () => {
     });
 });
 
+describe('ahead promises', () => {
+    const PROMISED = {
+        title: 'Book',
+        chapters: [
+            Object.assign({}, BOOK.chapters[0], {
+                ahead: {
+                    chapter: 'pipeline', title: 'The pipeline', note: 'Runs are the third chapter.',
+                    promises: [{ ref: REF, paraIndex: 1 }, { ref: FILE_REF, paraIndex: 0 }],
+                },
+            }),
+            BOOK.chapters[1],
+            Object.assign({}, BOOK.chapters[2], {
+                paragraphs: [[{ t: 'Pipe one.' }], [{ t: 'Pipe ' }, { ref: REF }, { t: ' two.' }], [{ t: 'Pipe three.' }]],
+            }),
+        ],
+    };
+    const back = () => view().querySelector('.understandingBackChip');
+
+    beforeEach(() => {
+        mocks.book = PROMISED;
+        Element.prototype.scrollIntoView = vi.fn();
+    });
+
+    test('render as a chip row beneath the note', async () => {
+        await openChapter(0);
+        const ahead = view().querySelector('.understandingAhead');
+        expect(ahead.querySelector('.understandingAheadEyebrow').textContent).toBe('AHEAD → CH 3');
+        expect(ahead.querySelector('.understandingAheadNote').textContent).toBe('Runs are the third chapter.');
+        const chips = ahead.querySelectorAll('.understandingAheadPromises button.understandingAheadPromise');
+        expect(Array.from(chips).map((c) => c.textContent)).toEqual(['bootApp', 'sw.js']);
+        expect(chips[0].getAttribute('aria-label')).toBe('Read about bootApp in chapter 3');
+        expect(ahead.querySelector('button button')).toBeNull();
+    });
+
+    test('a chip opens the target chapter at its paragraph and pulses it', async () => {
+        await openChapter(0);
+        view().querySelector('.understandingAheadPromise').click();
+        expect(title()).toBe('The pipeline');
+        const p = view().querySelector('.understandingPara[data-para-index="1"]');
+        expect(p.scrollIntoView).toHaveBeenCalledWith({ block: 'start' });
+        expect(p.classList.contains('is-pulse')).toBe(true);
+        expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'pipeline', paraIndex: 1 });
+    });
+
+    test('the back chip returns to the source chapter at its position, then reads Shelf', async () => {
+        await openChapter(0);
+        latestObserver().show([2]);
+        expect(back().textContent).toBe('‹ Shelf');
+        view().querySelector('.understandingAheadPromise').click();
+        expect(back().textContent).toBe('‹ CH 1');
+        expect(back().getAttribute('aria-label')).toBe('Back to chapter 1');
+        back().click();
+        expect(title()).toBe('How the app starts');
+        expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'app-starts', paraIndex: 2 });
+        expect(back().textContent).toBe('‹ Shelf');
+        back().click();
+        expect(view().querySelector('.understandingReader')).toBeNull();
+    });
+
+    test('the whole callout still jumps to the chapter top and can be come back from', async () => {
+        await openChapter(0);
+        view().querySelector('.understandingAheadNote').click();
+        expect(title()).toBe('The pipeline');
+        expect(getBookProgress('owner/repo')).toMatchObject({ chapterId: 'pipeline', paraIndex: 0 });
+        back().click();
+        expect(title()).toBe('How the app starts');
+    });
+
+    test('leaving for the shelf clears the stack', async () => {
+        await openChapter(0);
+        view().querySelector('.understandingAheadPromise').click();
+        view().querySelector('.understandingNavNext').click();
+        expect(view().querySelector('.understandingReader')).toBeNull();
+        await flush();
+        view().querySelectorAll('.understandingChapterBtn')[2].click();
+        expect(back().textContent).toBe('‹ Shelf');
+    });
+});
+
 describe('prev / next', () => {
     test('chapter 1 hides prev and names the next chapter', async () => {
         await openChapter(0);

@@ -1380,7 +1380,7 @@ function compileBook(doc, symbols, tours, areas, warn, sources, modules, docs) {
     let ahead = null;
     if (ch.ahead && typeof ch.ahead === 'object') {
       const target = raw.find(function (c) { return c.id === ch.ahead.chapter; });
-      if (target) ahead = { chapter: target.id, title: target.title, note: ch.ahead.note || '' };
+      if (target) ahead = { chapter: target.id, title: target.title, note: ch.ahead.note || '', promises: Array.isArray(ch.ahead.promises) ? ch.ahead.promises.filter(function (p) { return typeof p === 'string' && p.trim(); }) : [] };
       else note('ahead chapter "' + ch.ahead.chapter + '" does not exist — dropped');
     }
     const kind = ch.kind === 'map' ? 'map' : 'prose';
@@ -1430,7 +1430,48 @@ function compileBook(doc, symbols, tours, areas, warn, sources, modules, docs) {
       c.ahead = null;
     }
   });
+  validateBookPromises(chapters, index, function (c, msg) {
+    say('Warning: codebook.json: chapter "' + c.id + '": ' + msg);
+    c.warnings.push(msg);
+    c.stale = true;
+  });
   return { version: BOOK_VERSION, title: (doc && doc.title) || '', chapters: chapters };
+}
+
+// The `ref` segments of a compiled paragraph, rationale wraps included.
+function bookParagraphRefs(segs) {
+  const out = [];
+  segs.forEach(function (s) {
+    if (s.ref) out.push(s.ref);
+    else if (s.why) out.push.apply(out, bookParagraphRefs(s.why.segs));
+  });
+  return out;
+}
+
+// Second pass over the compiled chapters: each `ahead.promises` string
+// resolves against the target chapter's files (then the whole index) and must
+// be a chip somewhere in the target's paragraphs. Kept promises become
+// { ref, paraIndex }, the first target paragraph that references the symbol;
+// a broken one is dropped and `note(chapter, msg)` flags the source chapter,
+// since its note is what became untrue.
+function validateBookPromises(chapters, symbols, note) {
+  const same = function (a, b) { return a.file === b.file && a.symbol === b.symbol && a.parent === b.parent; };
+  chapters.forEach(function (c) {
+    if (!c.ahead) return;
+    const target = chapters.find(function (o) { return o.id === c.ahead.chapter; });
+    const promises = [];
+    (c.ahead.promises || []).forEach(function (p) {
+      if (typeof p !== 'string') return;
+      const r = resolveBookRef(p, target.files, symbols);
+      if (!r.ref) { note(c, 'ahead promises "' + p + '" which does not resolve'); return; }
+      const paraIndex = target.paragraphs.findIndex(function (segs) {
+        return bookParagraphRefs(segs).some(function (ref) { return same(ref, r.ref); });
+      });
+      if (paraIndex === -1) { note(c, 'ahead promises "' + p + '" but chapter "' + target.id + '" never references it'); return; }
+      promises.push({ ref: r.ref, paraIndex: paraIndex });
+    });
+    c.ahead.promises = promises;
+  });
 }
 
 // The compiled book for the web source under `srcDir`, or null when
@@ -1917,7 +1958,7 @@ function buildManifest() {
   return finalize(base);
 }
 
-module.exports = { scanRegions: scanRegions, parseImports: parseImports, extractPurpose: extractPurpose, buildModules: buildModules, codemapWarnings: codemapWarnings, buildWebManifest: buildWebManifest, scanJsDefs: scanJsDefs, parseImportBindings: parseImportBindings, buildSymbols: buildSymbols, buildWebSymbols: buildWebSymbols, compileTours: compileTours, buildWebTours: buildWebTours, writeWebTours: writeWebTours, compileBook: compileBook, detectRationale: detectRationale, resolveWhyMarker: resolveWhyMarker, rankMapSymbols: rankMapSymbols, buildWebBook: buildWebBook, writeWebBook: writeWebBook, scanCsharpTypes: scanCsharpTypes, readCsharpSources: readCsharpSources, buildCsharpSymbols: buildCsharpSymbols, prettify: prettify, buildManifest: buildManifest, walkCs: walkCs, walkSql: walkSql, walkDoc: walkDoc };
+module.exports = { scanRegions: scanRegions, parseImports: parseImports, extractPurpose: extractPurpose, buildModules: buildModules, codemapWarnings: codemapWarnings, buildWebManifest: buildWebManifest, scanJsDefs: scanJsDefs, parseImportBindings: parseImportBindings, buildSymbols: buildSymbols, buildWebSymbols: buildWebSymbols, compileTours: compileTours, buildWebTours: buildWebTours, writeWebTours: writeWebTours, compileBook: compileBook, validateBookPromises: validateBookPromises, detectRationale: detectRationale, resolveWhyMarker: resolveWhyMarker, rankMapSymbols: rankMapSymbols, buildWebBook: buildWebBook, writeWebBook: writeWebBook, scanCsharpTypes: scanCsharpTypes, readCsharpSources: readCsharpSources, buildCsharpSymbols: buildCsharpSymbols, prettify: prettify, buildManifest: buildManifest, walkCs: walkCs, walkSql: walkSql, walkDoc: walkDoc };
 
 if (require.main === module) {
   const manifest = buildManifest();

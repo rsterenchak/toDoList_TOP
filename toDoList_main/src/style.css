@@ -5876,6 +5876,37 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-size: 14px;
   line-height: 1.5;
 }
+/* With promised symbols the callout is a box: the eyebrow and note stay one
+   button to the chapter top, the chips beneath jump to where each is covered. */
+.understandingAheadLink {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.understandingAheadPromises {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.understandingAheadPromise {
+  min-height: 28px;
+  padding: 2px 8px;
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+}
+.understandingAheadPromise:hover { border-color: var(--text-warning); color: var(--text-warning); }
 
 .understandingReaderNav {
   flex: 0 0 auto;

@@ -2667,7 +2667,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 84e6b847-92f9-4c47-b696-cbbc1d523326 -->
 
-- [ ] **[MEDIUM]** Validate forward references in the code book as promises the target chapter keeps
+- [x] **[MEDIUM]** Validate forward references in the code book as promises the target chapter keeps — Completed: 2026-10-23
   - Type: feature
   - Description: A chapter's `ahead` note tells the reader "the next chapter explains X" — but nothing checks that it does. Make `ahead` a validated promise in `scripts/gen-src-manifest.js`: it must name a later chapter (already enforced) and may name the symbols it is deferring; the compiler then requires each promised symbol to resolve as a reference inside the target chapter's own paragraphs, warning (and marking the source chapter stale) when the target no longer mentions it. The reader renders the callout as a chip row — the note, then one chip per promised symbol — where tapping a symbol chip jumps to the target chapter and scrolls to the first paragraph that references it, so a forward reference is a link the reader can follow and come back from, not just a sentence.
   - Behavior:
