@@ -2630,7 +2630,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 577adc2a-037a-4d1d-9aa2-d3513a2da7ba -->
 
-- [ ] **[MEDIUM]** Make the map chapter hierarchical: areas, then front-door files, then key symbols
+- [x] **[MEDIUM]** Make the map chapter hierarchical: areas, then front-door files, then key symbols — Completed: 2026-10-23
   - Type: bug
   - Description: The map chapter ranks symbols by how many files import them, which surfaces shared helpers (`showConfirmModal`, `isMobileViewport`, `wireModalDismiss`) rather than the names that orient a newcomer, and reads as a flat leaderboard. Rebuild `rankMapSymbols` and the map compile as a three-level hierarchy: the `codemap.json` areas in book order, each with its purpose; under each area its two or three front-door files chosen by fan-in within the manifest's import graph, each with the module's own purpose line (every module already has one); under each file at most three symbols chosen by export/fan-in, each with the authored role. The result is a table of contents for the code — "here are the eight parts, here is where each starts, here are the names you'll see" — rather than a popularity list. Repos without a `codemap.json` (SE2) fall back to grouping by top-level folder with the folder name as the area label and no area purpose.
   - Behavior:

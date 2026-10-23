@@ -43,8 +43,10 @@ viewer; the book points at them, it does not replace them.
    { defs: [{ name, kind, start, end, parent }], imports } }`. `defs` is the
    complete list of names a reference may resolve to.
    Add `--print-map-candidates` (or set `MANIFEST_PRINT_MAP=1`) to that run to
-   print the map chapter's ranked names, best first, with their scores, to
-   stderr — these are exactly the names the map's `roles` must cover.
+   print the map chapter's hierarchy to stderr — each area, its front-door
+   files with fan-in / fan-out and purpose, and each file's ranked names keyed
+   as `roles` must key them — these are exactly the names the map's `roles`
+   must cover.
 5. The existing `codebook.json`, when there is one — the chapters you keep
    byte-for-byte under `stale` scope, and the voice to match under `all`.
 6. The source files themselves, as you write each chapter. Every sentence
@@ -93,7 +95,8 @@ viewer; the book points at them, it does not replace them.
 
 ### The map chapter
 
-The first chapter is always the map — the main names introduced once, up front,
+The first chapter is always the map — a table of contents for the code: the
+parts, where each starts, and the names you will see, introduced once up front
 so every later mention is a name the reader has already met:
 
 ```json
@@ -108,15 +111,27 @@ so every later mention is a name the reader has already met:
 }
 ```
 
-It has no `body`. The generator ranks the symbols index (descriptive names
-referenced from many files rank high; `_`-prefixed names and names defined in
-more than five files sink), keeps the top 20 (`limit` overrides), and compiles
-one row per name — its chip, then its role. Write `roles` for exactly the
-ranked set `--print-map-candidates` reports, keyed as printed (`Parent.name` for
-a member): a ranked name without a role, or a role for a name outside the set,
-is a warning and marks the map stale. Each role is one line (≤ ~20 words)
-saying what the name is for, read from its code. When the ranked set changes,
-the map goes stale and its roles are rewritten for the new set.
+It has no `body`. The generator builds it as three levels:
+
+- **Areas** — the `codemap.json` areas in the order chapters first name them
+  (a chapter's `area`), then the rest in codemap order, each with its purpose.
+  Without a codemap, one area per top-level folder.
+- **Front-door files** — each area's files ranked by fan-in (how many other
+  files import it; in csharp, how many name its primary type), then fan-out;
+  the top 3 (`filesPerArea` overrides). Each shows the module's own purpose
+  line (csharp: the comment above its first type).
+- **Names** — each file's top-level names that other files import (any
+  top-level name in csharp), `_`-prefixed ones excluded, ranked by how many
+  other files mention them; the top 3 (`symbolsPerFile` overrides), each a chip
+  beside its role.
+
+Write `roles` for exactly the names `--print-map-candidates` reports, keyed as
+printed (a bare name, or `file:name` when two files' names collide). A file
+printed with "no purpose" may take a role keyed by its path. A ranked name
+without a role, or a role the map doesn't use, is a warning and marks the map
+stale. Each role is one line (≤ ~20 words) saying what the name is for, read
+from its code. When the ranked set changes, the map goes stale and its roles
+are rewritten for the new set. A legacy `limit` is ignored with a warning.
 
 ### References
 
