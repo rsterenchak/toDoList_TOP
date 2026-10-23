@@ -13,6 +13,8 @@ const mocks = vi.hoisted(() => ({
     remote: undefined,
     remoteMarks: undefined,
     tours: null,
+    cached: false,
+    fresh: undefined,
 }));
 
 vi.mock('../src/seedTasksModal.js', () => ({
@@ -24,6 +26,15 @@ vi.mock('../src/codeBook.js', async () => {
     return {
         bookStats: actual.bookStats,
         loadBook: vi.fn(() => Promise.resolve(mocks.book)),
+        // `mocks.fresh` stands for the published copy: unset means unchanged; a
+        // book (or null) is swapped in as the cached book and reads as changed.
+        revalidateBook: vi.fn(() => {
+            if (mocks.fresh === undefined) return Promise.resolve({ book: mocks.book, changed: false });
+            mocks.book = mocks.fresh;
+            mocks.fresh = undefined;
+            return Promise.resolve({ book: mocks.book, changed: true });
+        }),
+        isBookCached: vi.fn(() => mocks.cached),
         resetBookCache: vi.fn(),
     };
 });
@@ -93,7 +104,7 @@ vi.mock('../src/bookProgress.js', async () => {
 });
 
 import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, buildBookScope } from '../src/understandingView.js';
-import { loadBook, resetBookCache } from '../src/codeBook.js';
+import { loadBook, revalidateBook, isBookCached } from '../src/codeBook.js';
 import { fetchActiveRuns, dispatchBook, showInjectToast } from '../src/inject.js';
 import { showConfirmModal } from '../src/modals.js';
 import { setBookProgress, setBookBookmarks, setBookFlags, getBookFlags, setBookAbandon, getTourProgress, setTourProgress, isTourCardHidden } from '../src/prefs.js';
@@ -136,6 +147,8 @@ beforeEach(() => {
     mocks.remote = undefined;
     mocks.remoteMarks = undefined;
     mocks.tours = null;
+    mocks.cached = false;
+    mocks.fresh = undefined;
     localStorage.clear();
     vi.clearAllMocks();
     mountShell('Void');
@@ -356,7 +369,7 @@ describe('header control — four states', () => {
 });
 
 describe('run settle', () => {
-    test('when the book run finishes the cache is reset and the shelf re-renders', async () => {
+    test('when the book run finishes the published book is re-checked and the shelf re-renders', async () => {
         vi.useFakeTimers();
         try {
             mocks.book = null;
@@ -372,15 +385,193 @@ describe('run settle', () => {
             expect(control().textContent).toBe('Generating…');
 
             mocks.active = false;
-            mocks.book = CLEAN;
             await vi.advanceTimersByTimeAsync(5000);
-            expect(resetBookCache).toHaveBeenCalled();
-            expect(control().textContent).toBe('Regenerate');
+            expect(revalidateBook).toHaveBeenCalledWith('owner/repo');
+            expect(control().textContent).toBe('Generate');
             expect(view().querySelector('.understandingNote').textContent).toMatch(/~1 min/);
+
+            // The published copy lands after the deploy: the next 30s check swaps it in.
+            mocks.fresh = CLEAN;
+            await vi.advanceTimersByTimeAsync(30000);
+            expect(control().textContent).toBe('Regenerate');
             expect(view().querySelectorAll('.understandingChapterRow')).toHaveLength(3);
+            expect(showInjectToast).toHaveBeenCalledWith('Book updated');
+            expect(view().querySelector('.understandingNote').hidden).toBe(true);
+
+            // Found it — the re-check stops.
+            const calls = revalidateBook.mock.calls.length;
+            await vi.advanceTimersByTimeAsync(120000);
+            expect(revalidateBook.mock.calls.length).toBe(calls);
         } finally {
             vi.useRealTimers();
         }
+    });
+
+    test('the post-run re-check gives up after ten minutes', async () => {
+        vi.useFakeTimers();
+        try {
+            mocks.book = CLEAN;
+            mocks.active = true;
+            const p = renderUnderstandingView();
+            await vi.advanceTimersByTimeAsync(0);
+            await p;
+            expect(control().textContent).toBe('Generating…');
+            mocks.active = false;
+            await vi.advanceTimersByTimeAsync(5000);
+            expect(control().textContent).toBe('Regenerate');
+            await vi.advanceTimersByTimeAsync(10 * 60 * 1000);
+            const calls = revalidateBook.mock.calls.length;
+            expect(calls).toBeGreaterThan(1);
+            expect(calls).toBeLessThanOrEqual(22);
+            await vi.advanceTimersByTimeAsync(5 * 60 * 1000);
+            expect(revalidateBook.mock.calls.length).toBe(calls);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test('a book that lands while reading leaves the reader alone and dots the back chip', async () => {
+        vi.useFakeTimers();
+        try {
+            mocks.book = CLEAN;
+            mocks.active = true;
+            const p = renderUnderstandingView();
+            await vi.advanceTimersByTimeAsync(0);
+            await p;
+            view().querySelectorAll('.understandingChapterBtn')[1].click();
+            await vi.advanceTimersByTimeAsync(0);
+
+            mocks.active = false;
+            mocks.fresh = STALE;
+            await vi.advanceTimersByTimeAsync(5000);
+            expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
+            const back = view().querySelector('.understandingBackChip');
+            expect(back.classList.contains('has-update')).toBe(true);
+            expect(back.querySelector('.understandingBackDot')).not.toBeNull();
+            expect(back.textContent).toContain('Shelf');
+            expect(showInjectToast).not.toHaveBeenCalled();
+
+            back.click();
+            await vi.advanceTimersByTimeAsync(0);
+            expect(view().querySelector('.understandingReader')).toBeNull();
+            expect(control().textContent).toBe('2 STALE');
+            expect(showInjectToast).toHaveBeenCalledWith('Book updated');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test('when the open chapter is gone from the new book the back chip reads Book updated and returns to the shelf', async () => {
+        vi.useFakeTimers();
+        try {
+            mocks.book = CLEAN;
+            mocks.active = true;
+            const p = renderUnderstandingView();
+            await vi.advanceTimersByTimeAsync(0);
+            await p;
+            view().querySelectorAll('.understandingChapterBtn')[2].click();
+            await vi.advanceTimersByTimeAsync(0);
+
+            mocks.active = false;
+            mocks.fresh = { title: 'Understanding Void', chapters: CLEAN.chapters.slice(0, 2) };
+            await vi.advanceTimersByTimeAsync(5000);
+            const back = view().querySelector('.understandingBackChip');
+            expect(back.textContent).toContain('Book updated');
+            back.click();
+            await vi.advanceTimersByTimeAsync(0);
+            expect(view().querySelector('.understandingReader')).toBeNull();
+            expect(view().querySelectorAll('.understandingChapterRow')).toHaveLength(2);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});
+
+describe('re-checking the published book', () => {
+    test('entering the tab with a cached book re-checks it; a change re-renders the shelf and toasts', async () => {
+        mocks.book = STALE;
+        mocks.cached = true;
+        mocks.fresh = CLEAN;
+        await renderUnderstandingView();
+        await flush();
+        expect(revalidateBook).toHaveBeenCalledWith('owner/repo');
+        expect(control().textContent).toBe('Regenerate');
+        expect(showInjectToast).toHaveBeenCalledWith('Book updated');
+    });
+
+    test('an unchanged book re-renders nothing and stays quiet', async () => {
+        mocks.book = CLEAN;
+        mocks.cached = true;
+        await renderUnderstandingView();
+        await flush();
+        expect(revalidateBook).toHaveBeenCalledTimes(1);
+        expect(showInjectToast).not.toHaveBeenCalled();
+    });
+
+    test('a first load does not re-check, nor does a re-render without leaving the tab', async () => {
+        mocks.book = CLEAN;
+        await renderUnderstandingView();
+        await flush();
+        expect(revalidateBook).not.toHaveBeenCalled();
+        mocks.cached = true;
+        await renderUnderstandingView();
+        await flush();
+        expect(revalidateBook).not.toHaveBeenCalled();
+        exitUnderstandingView();
+        await renderUnderstandingView();
+        await flush();
+        expect(revalidateBook).toHaveBeenCalledTimes(1);
+    });
+
+    test('returning to the shelf from the reader re-checks the book', async () => {
+        mocks.book = CLEAN;
+        await renderUnderstandingView();
+        await flush();
+        mocks.cached = true;
+        view().querySelector('.understandingChapterBtn').click();
+        await flush();
+        expect(revalidateBook).not.toHaveBeenCalled();
+        mocks.fresh = STALE;
+        view().querySelector('.understandingBackChip').click();
+        await flush();
+        await flush();
+        expect(revalidateBook).toHaveBeenCalledTimes(1);
+        expect(control().textContent).toBe('2 STALE');
+        expect(showInjectToast).toHaveBeenCalledWith('Book updated');
+    });
+
+    test('the repo chip is a button that re-checks on tap: Up to date when unchanged', async () => {
+        mocks.book = CLEAN;
+        await renderUnderstandingView();
+        const chip = view().querySelector('.understandingRepoChip');
+        expect(chip.tagName).toBe('BUTTON');
+        chip.click();
+        expect(chip.classList.contains('is-checking')).toBe(true);
+        expect(chip.disabled).toBe(true);
+        await flush();
+        expect(revalidateBook).toHaveBeenCalledWith('owner/repo');
+        expect(chip.classList.contains('is-checking')).toBe(false);
+        expect(showInjectToast).toHaveBeenCalledWith('Up to date');
+    });
+
+    test('the repo chip re-renders the shelf and toasts when the book changed', async () => {
+        mocks.book = null;
+        await renderUnderstandingView();
+        mocks.fresh = CLEAN;
+        view().querySelector('.understandingRepoChip').click();
+        await flush();
+        await flush();
+        expect(view().querySelectorAll('.understandingChapterRow')).toHaveLength(3);
+        expect(showInjectToast).toHaveBeenCalledWith('Book updated');
+    });
+
+    test('a failed check says so instead of Up to date', async () => {
+        mocks.book = CLEAN;
+        await renderUnderstandingView();
+        revalidateBook.mockImplementationOnce(() => Promise.resolve({ book: CLEAN, changed: false, failed: true }));
+        view().querySelector('.understandingRepoChip').click();
+        await flush();
+        expect(showInjectToast).toHaveBeenCalledWith('Couldn’t check the book', 'error');
     });
 });
 

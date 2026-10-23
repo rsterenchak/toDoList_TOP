@@ -42,11 +42,17 @@
 // Generating runs through the Worker's book dispatch. The in-flight state lives
 // at module scope (not on the view element), so leaving and re-entering the view
 // — or a project switch — repaints "Generating…" for the same repo unchanged. It
-// is driven by the book-scoped active_runs probe; when the run settles the book
-// cache is dropped and the shelf re-renders from the freshly published copy.
+// is driven by the book-scoped active_runs probe. When the run settles, the
+// published book is re-checked every 30s (up to 10 min, absorbing the deploy and
+// the Pages CDN lag) until it differs from the pre-run copy, then swapped in.
+//
+// The shelf also re-checks the published book on entering the tab and on
+// returning from the reader, and its repo chip re-checks on tap. A changed book
+// re-renders the shelf with a "Book updated" toast; an open reader is never
+// interrupted — its back chip gets a dot and the new book applies on return.
 
 import { resolveProjectRepo } from './seedTasksModal.js';
-import { loadBook, resetBookCache, bookStats } from './codeBook.js';
+import { loadBook, revalidateBook, isBookCached, bookStats } from './codeBook.js';
 import { getCachedTargets, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured, showInjectToast } from './inject.js';
 import { showConfirmModal } from './modals.js';
 import { loadManifest, openChatWithBookScope } from './claudeSheet.js';
@@ -67,6 +73,9 @@ const BOOK_GRACE_MS = 30 * 1000;
 // A book rewrites every chapter, so it outlasts a scan; give up after this.
 const BOOK_HARD_CAP_MS = 15 * 60 * 1000;
 
+// After a run settles, re-check the published book this often, for this long.
+const BOOK_WATCH_MS = 30 * 1000;
+const BOOK_WATCH_CAP_MS = 10 * 60 * 1000;
 const LAG_NOTE = 'The published copy lags the commit by a deploy (~1 min).';
 
 // How long a touch must rest on a paragraph to open its Bookmark / Flag sheet.
@@ -97,6 +106,13 @@ let poller = null;
 let finishedRepo = null;
 // Bumped on every render so a late book load can't paint over a newer render.
 let renderSeq = 0;
+// The post-run re-check `{ repo, deadline }` and its interval, or null.
+let bookWatch = null;
+let watcher = null;
+// The repo the painted shelf shows, or null when the shelf isn't showing.
+let shelfRepo = null;
+// Set on leaving the tab or the reader: the next shelf render re-checks the book.
+let revalidateNext = true;
 // The open reader `{ view, repo, book, index, paraIndex, observer, scroll, main,
 // codePane, marksBtn, marksBadge, marksList }`, or null while the shelf shows.
 let reader = null;
@@ -169,8 +185,77 @@ function settleRun() {
     bookRun = null;
     stopPolling();
     finishedRepo = repo;
-    resetBookCache();
     if (isViewActive() && !reader) renderUnderstandingView();
+    if (repo) startBookWatch(repo);
+}
+
+// ── published-book re-check ──
+
+function stopBookWatch() {
+    if (watcher) { clearInterval(watcher); watcher = null; }
+}
+
+function endBookWatch() {
+    stopBookWatch();
+    bookWatch = null;
+}
+
+function watchOnce() {
+    const watch = bookWatch;
+    if (!watch) { stopBookWatch(); return; }
+    if (Date.now() >= watch.deadline) { endBookWatch(); return; }
+    revalidateBook(watch.repo).then(function (res) {
+        if (bookWatch !== watch || !res || !res.changed) return;
+        endBookWatch();
+        if (finishedRepo === watch.repo) finishedRepo = null;
+        applyBookChange(watch.repo, res.book);
+    });
+}
+
+function ensureBookWatch() {
+    if (!watcher && bookWatch) watcher = setInterval(watchOnce, BOOK_WATCH_MS);
+}
+
+// Re-check `repo`'s published book now and every 30s until it differs from the
+// cached (pre-run) copy or the cap runs out.
+function startBookWatch(repo) {
+    endBookWatch();
+    bookWatch = { repo: repo, deadline: Date.now() + BOOK_WATCH_CAP_MS };
+    watchOnce();
+    ensureBookWatch();
+}
+
+// The cache now holds a changed `book` for `repo`: repaint the shelf showing it
+// with a toast, or flag an open reader without interrupting it.
+function applyBookChange(repo, book) {
+    if (reader) {
+        if (reader.repo === repo) markReaderUpdated(book);
+        return;
+    }
+    if (!isViewActive() || shelfRepo !== repo) return;
+    renderUnderstandingView();
+    showInjectToast('Book updated');
+}
+
+// The shelf repo chip's tap: re-check the published book, spinning meanwhile.
+function checkBookNow(repo, chip) {
+    if (chip.disabled) return;
+    chip.disabled = true;
+    chip.classList.add('is-checking');
+    chip.setAttribute('aria-busy', 'true');
+    revalidateBook(repo).then(function (res) {
+        chip.disabled = false;
+        chip.classList.remove('is-checking');
+        chip.removeAttribute('aria-busy');
+        if (res && res.changed) {
+            if (finishedRepo === repo) finishedRepo = null;
+            applyBookChange(repo, res.book);
+        } else if (res && res.failed) {
+            showInjectToast('Couldn’t check the book', 'error');
+        } else {
+            showInjectToast('Up to date');
+        }
+    });
 }
 
 function pollOnce() {
@@ -673,9 +758,13 @@ function paintShelf(view, repo, book, progress) {
     const header = document.createElement('div');
     header.className = 'understandingHeader';
 
-    const repoChip = document.createElement('span');
-    repoChip.className = 'understandingRepoChip';
+    const repoChip = document.createElement('button');
+    repoChip.type = 'button';
+    repoChip.className = 'understandingRepoChip is-refresh';
     repoChip.textContent = repo;
+    repoChip.title = 'Check for an updated book';
+    repoChip.setAttribute('aria-label', repo + ' — check for an updated book');
+    repoChip.addEventListener('click', function () { checkBookNow(repo, repoChip); });
     header.appendChild(repoChip);
 
     const statsEl = document.createElement('span');
@@ -1776,18 +1865,41 @@ function paintBackChip() {
     const r = reader;
     if (!r || !r.backBtn) return;
     const from = r.backStack[r.backStack.length - 1];
-    if (from) {
+    if (r.chapterGone) {
+        r.backBtn.textContent = '‹ Book updated';
+        r.backBtn.setAttribute('aria-label', 'Book updated — back to the shelf');
+    } else if (from) {
         r.backBtn.textContent = '‹ CH ' + chapterNum(r.book, from.index);
         r.backBtn.setAttribute('aria-label', 'Back to chapter ' + chapterNum(r.book, from.index));
     } else {
         r.backBtn.textContent = '‹ Shelf';
         r.backBtn.setAttribute('aria-label', 'Back to the shelf');
     }
+    r.backBtn.classList.toggle('has-update', !!r.bookUpdated);
+    if (r.bookUpdated) {
+        const dot = document.createElement('span');
+        dot.className = 'understandingBackDot';
+        dot.setAttribute('aria-hidden', 'true');
+        r.backBtn.appendChild(dot);
+        if (!r.chapterGone) r.backBtn.setAttribute('aria-label', r.backBtn.getAttribute('aria-label') + ' — book updated');
+    }
+}
+
+// A newer book landed while reading: leave the chapter on screen, dot the back
+// chip, and send it straight to the shelf when the open chapter is gone.
+function markReaderUpdated(book) {
+    const r = reader;
+    if (!r) return;
+    r.bookUpdated = true;
+    const id = r.book.chapters[r.index] && r.book.chapters[r.index].id;
+    r.chapterGone = !book || chapterIndexById(book, id) < 0;
+    paintBackChip();
 }
 
 function goBack() {
     const r = reader;
     if (!r) return;
+    if (r.chapterGone) { leaveReader(); return; }
     const from = r.backStack.pop();
     if (!from) { leaveReader(); return; }
     showChapter(from.index, from.paraIndex);
@@ -2067,6 +2179,7 @@ function showChapter(index, paraIndex) {
 function openReader(view, repo, book, index, paraIndex) {
     // A shelf repaint still in flight must not paint over the reader.
     renderSeq++;
+    shelfRepo = null;
     teardownReader();
     teardownShelf();
     clear(view);
@@ -2182,6 +2295,10 @@ function openReader(view, repo, book, index, paraIndex) {
         backBtn: back,
         // Where each followed ahead link came from; the back chip pops it.
         backStack: [],
+        // A newer book was published while reading; and the open chapter is
+        // missing from it (the back chip then returns to the shelf).
+        bookUpdated: false,
+        chapterGone: false,
     };
     paintMarksChip();
     paintBackChip();
@@ -2206,11 +2323,15 @@ function teardownReader() {
     reader = null;
 }
 
-// Back to the shelf, re-rendered so its progress marks are current.
+// Back to the shelf, re-rendered so its progress marks are current, and with the
+// published book re-checked. A newer book that landed while reading applies now.
 function leaveReader() {
     if (!reader) return;
+    const updated = reader.bookUpdated;
     teardownReader();
+    revalidateNext = !updated;
     renderUnderstandingView();
+    if (updated) showInjectToast('Book updated');
 }
 
 // Render the UNDERSTANDING view's shelf. Safe to call before component() has
@@ -2223,6 +2344,7 @@ export function renderUnderstandingView(opts) {
     teardownReader();
     teardownShelf();
     const seq = ++renderSeq;
+    shelfRepo = null;
     clear(view);
 
     const projectName = getSelectedProjectName();
@@ -2242,6 +2364,12 @@ export function renderUnderstandingView(opts) {
 
     if (bookRun && bookRun.repo === repo) ensurePolling();
     else probeForRun(repo);
+    if (bookWatch && bookWatch.repo === repo) ensureBookWatch();
+
+    // Entering the tab or returning from the reader re-checks a book already
+    // loaded this session; a first load is fresh anyway.
+    const revalidate = revalidateNext && isBookCached(repo);
+    revalidateNext = false;
 
     const loading = document.createElement('div');
     loading.className = 'understandingLoading';
@@ -2258,6 +2386,12 @@ export function renderUnderstandingView(opts) {
         const localFlags = flagSignature(openFlags(repo));
         clear(view);
         paintShelf(view, repo, book, local);
+        shelfRepo = repo;
+        if (revalidate) {
+            revalidateBook(repo).then(function (res) {
+                if (res && res.changed) applyBookChange(repo, res.book);
+            });
+        }
         if (!book || !book.chapters.length) return;
         // The synced record may be newer (another device) and the synced bookmarks
         // and flags may differ; repaint when any does.
@@ -2279,14 +2413,20 @@ export function renderUnderstandingView(opts) {
 // open reader is closed and its position sent; the tab reopens on the shelf.
 export function exitUnderstandingView() {
     renderSeq++;
+    shelfRepo = null;
+    revalidateNext = true;
     stopPolling();
+    stopBookWatch();
     teardownReader();
     teardownShelf();
 }
 
-// Forget any tracked book run and its finished note. A test seam.
+// Forget any tracked book run, its finished note and the post-run re-check. A
+// test seam.
 export function resetUnderstandingRun() {
     stopPolling();
+    endBookWatch();
     bookRun = null;
     finishedRepo = null;
+    revalidateNext = true;
 }

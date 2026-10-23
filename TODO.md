@@ -2754,7 +2754,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: dcc1ee1d-ace3-4cf3-b679-b79ec4e9b34d -->
 
-- [ ] **[MEDIUM]** Refresh the Understanding shelf when the published book changes
+- [x] **[MEDIUM]** Refresh the Understanding shelf when the published book changes
   - Type: bug
   - Description: After a book run commits and republishes, the shelf keeps showing the old chapters until a full reload — and because the Pages CDN caches `src-book.json` for up to ten minutes, even a reload can show the stale copy. `loadBook` in `codeBook.js` caches once per repo per session, and the sync/wake no-op fix means nothing re-renders the shelf. Expected: entering the Understanding tab, returning to the shelf from the reader, or a book run settling re-checks the published book cheaply and swaps in the new one when it differs, with a one-line notice; the reader is never interrupted.
   - Behavior:
