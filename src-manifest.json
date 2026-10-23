@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-23T10:24:16.320Z",
-  "sha": "be772cb40dcd8f708ad254a9691e6343c288c14d",
+  "generatedAt": "2026-10-23T11:21:17.309Z",
+  "sha": "148b778b797e71cecfdc8570bead40d05ee84e91",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -6421,11 +6421,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3865,
+      "line": 3868,
       "files": [
         {
           "file": "main.js",
-          "line": 3865
+          "line": 3868
         },
         {
           "file": "style.css",
@@ -19865,11 +19865,11 @@
       "selector": ".projQuestionCount",
       "label": "Proj Question Count",
       "file": "main.js",
-      "line": 3298,
+      "line": 3301,
       "files": [
         {
           "file": "main.js",
-          "line": 3298
+          "line": 3301
         },
         {
           "file": "style.css",
@@ -20673,11 +20673,11 @@
       "selector": ".refreshSplashGlyph",
       "label": "Refresh Splash Glyph",
       "file": "main.js",
-      "line": 3767,
+      "line": 3770,
       "files": [
         {
           "file": "main.js",
-          "line": 3767
+          "line": 3770
         },
         {
           "file": "template.html",
@@ -25373,11 +25373,11 @@
       "selector": ".swipeCompleteFlash",
       "label": "Swipe Complete Flash",
       "file": "main.js",
-      "line": 3026,
+      "line": 3029,
       "files": [
         {
           "file": "main.js",
-          "line": 3026
+          "line": 3029
         },
         {
           "file": "style.css",
@@ -25389,11 +25389,11 @@
       "selector": ".swipeCompleteFlashCheck",
       "label": "Swipe Complete Flash Check",
       "file": "main.js",
-      "line": 3031,
+      "line": 3034,
       "files": [
         {
           "file": "main.js",
-          "line": 3031
+          "line": 3034
         },
         {
           "file": "style.css",
@@ -25405,11 +25405,11 @@
       "selector": ".swipeCompleteFlashRipple",
       "label": "Swipe Complete Flash Ripple",
       "file": "main.js",
-      "line": 3029,
+      "line": 3032,
       "files": [
         {
           "file": "main.js",
-          "line": 3029
+          "line": 3032
         },
         {
           "file": "style.css",
@@ -25697,11 +25697,11 @@
       "selector": ".taskRefreshBtnGlyph",
       "label": "Task Refresh Btn Glyph",
       "file": "main.js",
-      "line": 3870,
+      "line": 3873,
       "files": [
         {
           "file": "main.js",
-          "line": 3870
+          "line": 3873
         },
         {
           "file": "style.css",
@@ -28077,11 +28077,11 @@
       "selector": ".understandingLoading",
       "label": "Understanding Loading",
       "file": "understandingView.js",
-      "line": 2353,
+      "line": 2355,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2353
+          "line": 2355
         },
         {
           "file": "style.css",
@@ -30100,7 +30100,7 @@
     },
     {
       "path": "main.js",
-      "lines": 4219,
+      "lines": 4244,
       "imports": [
         "aboutVersionCue.js",
         "addProj_button.svg",
@@ -30646,7 +30646,7 @@
     },
     {
       "path": "understandingView.js",
-      "lines": 2398,
+      "lines": 2400,
       "imports": [
         "bookBookmarks.js",
         "bookFlags.js",
