@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-10-23',
         added: [
             'The code book now opens with a map chapter introducing its most-used names, each a tappable code reference beside a one-line role.',
+            'Code book chapters now show which explanations of why the code works the way it does are backed by a source comment, project rule or requirement, with a tappable citation, and set inferred ones apart in muted text, and map entries for files with a banner comment now show a full purpose sentence.',
         ],
         fixed: [
             'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',
@@ -17,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-22',
         fixed: [
-            'Code book references in C# repos now link methods named like add or get, and a reference to an overloaded method opens its first declaration instead of staying plain text.',
             'Relaunching the app with the PIN lock due now shows the lock screen straight away, without the unlocked dashboard flashing first.',
             'Launching the installed iPhone app no longer shows the bottom tab bar and Claude button sliding down into place; they appear once at their final position.',
         ],

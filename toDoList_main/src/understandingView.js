@@ -4,7 +4,8 @@
 // then the ordered chapter list. The Continue card's Read button and every
 // chapter row open the reader: one chapter at a time, its references as chips
 // that open the code viewer at that definition, a forward-reference callout, and
-// a prev/next bar. A `map` chapter (the book's table of contents for the code)
+// a prev/next bar. Rationale sentences show whether the book can back them: a
+// cited one ends in a `§` chip opening its source, an inferred one is muted. A `map` chapter (the book's table of contents for the code)
 // opens the book as chapter 00 and reads as a tree instead of paragraphs: each
 // area, its front-door files with their purposes, and their names with roles.
 //
@@ -1033,8 +1034,9 @@ function openRef(ref) {
         const host = understandingIsDesktop() ? ensureCodePane() : codeSheet.ensure();
         if (!host) return;
         const opts = { target: { repo: r.repo }, filePath: joinSrcRootPath(srcRoot, ref.file), srcRoot: srcRoot };
-        // A file ref (no symbol) opens the file cold, with no span.
-        if (ref.symbol) {
+        // A file ref (no symbol) opens the file cold, with no span; a citation
+        // opens at its line.
+        if (ref.symbol || ref.cite) {
             opts.startLine = ref.line;
             opts.endLine = ref.end;
             opts.banner = ref.label;
@@ -1045,7 +1047,8 @@ function openRef(ref) {
 
 // The chat scope for chapter `index` of `book`: `{ repo, chapter: { id, title,
 // index (1-based), total }, prose, refs }`. Each paragraph flattens to plain text
-// with its ref chips read as their labels; refs are the chapter's unique
+// with its ref chips read as their labels and an inferred rationale sentence
+// tagged ` [inferred]`; refs are the chapter's unique
 // `{ file, symbol, line, end, label }` by file + symbol, in first-seen order.
 export function buildBookScope(repo, book, index) {
     const chapters = book && Array.isArray(book.chapters) ? book.chapters : [];
@@ -1057,8 +1060,11 @@ export function buildBookScope(repo, book, index) {
     (Array.isArray(ch.paragraphs) ? ch.paragraphs : []).forEach(function (segments) {
         const segs = Array.isArray(segments) ? segments : [{ t: String(segments || '') }];
         let text = '';
-        segs.forEach(function (seg) {
-            if (seg && seg.ref && typeof seg.ref === 'object') {
+        segs.forEach(function addSeg(seg) {
+            if (seg && seg.why && typeof seg.why === 'object') {
+                (Array.isArray(seg.why.segs) ? seg.why.segs : []).forEach(addSeg);
+                if (seg.why.kind === 'inferred') text += ' [inferred]';
+            } else if (seg && seg.ref && typeof seg.ref === 'object') {
                 const ref = seg.ref;
                 text += String(ref.label || ref.symbol || ref.file || '');
                 if (!ref.file) return;
@@ -1111,18 +1117,99 @@ function buildRefChip(ref) {
     return chip;
 }
 
+// The sheet a `rule` / `req` citation opens on: the quoted fragment and its
+// source document.
+const citeSheet = createCodeSheet({
+    id: 'understandingCiteSheet',
+    label: 'Citation',
+    className: 'understandingBookmarksSheet understandingCiteSheet',
+});
+
+function openCiteSheet(cite) {
+    const host = citeSheet.ensure();
+    if (!host) return;
+    clear(host);
+    const head = document.createElement('div');
+    head.className = 'understandingMarksHead';
+    const title = document.createElement('span');
+    title.className = 'understandingMarksTitle';
+    title.textContent = cite.type === 'req'
+        ? 'REQUIREMENT · ' + String(cite.label || '')
+        : String(cite.file || 'CLAUDE.md') + (cite.line ? ' · LINE ' + cite.line : '');
+    head.appendChild(title);
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'understandingMarksClose';
+    close.textContent = '✕';
+    close.setAttribute('aria-label', 'Close citation');
+    close.addEventListener('click', function () { citeSheet.hide(); });
+    head.appendChild(close);
+    host.appendChild(head);
+    const quote = document.createElement('blockquote');
+    quote.className = 'understandingCiteQuote';
+    quote.textContent = String(cite.text || '');
+    host.appendChild(quote);
+    citeSheet.show();
+}
+
+const CITE_KIND_LABEL = { src: 'code comment', rule: 'CLAUDE.md rule', req: 'requirement', commit: 'commit' };
+
+// The `§ label` chip after a cited sentence: a `src` chip opens the commented
+// line in the code pane / sheet, a `rule` / `req` chip the citation sheet, and
+// a `commit` chip is inert — the generator cannot check a hash.
+function buildCiteChip(cite) {
+    const label = String(cite.label || cite.file || cite.text || '');
+    if (cite.type === 'commit') {
+        const chip = document.createElement('span');
+        chip.className = 'bookCite is-unverified';
+        chip.textContent = '§ ' + label;
+        chip.title = 'Unverified — commit ' + String(cite.text || label) + ' is not checked';
+        return chip;
+    }
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'bookCite';
+    chip.textContent = '§ ' + label;
+    chip.setAttribute('aria-label', 'Open citation: ' + (CITE_KIND_LABEL[cite.type] || 'source') + ' ' + label);
+    chip.addEventListener('click', function () {
+        if (cite.type === 'src') openRef({ label: label, file: cite.file, symbol: null, line: cite.line, end: cite.line, cite: true });
+        else openCiteSheet(cite);
+    });
+    return chip;
+}
+
+function appendSegments(el, segs) {
+    (Array.isArray(segs) ? segs : []).forEach(function (seg) {
+        if (seg && seg.why && typeof seg.why === 'object') {
+            el.appendChild(buildWhy(seg.why));
+        } else if (seg && seg.ref && typeof seg.ref === 'object') {
+            el.appendChild(buildRefChip(seg.ref));
+        } else if (seg && typeof seg.t === 'string') {
+            el.appendChild(document.createTextNode(seg.t));
+        }
+    });
+}
+
+// A rationale sentence: cited ones carry a citation chip, inferred ones are set
+// muted with a dotted underline and say so on hover.
+function buildWhy(why) {
+    const kind = why.kind === 'cited' || why.kind === 'unverified' ? why.kind : 'inferred';
+    const span = document.createElement('span');
+    span.className = 'why why--' + kind;
+    if (kind === 'inferred') span.title = 'Inferred — not backed by a comment, rule or requirement';
+    appendSegments(span, why.segs);
+    if (kind !== 'inferred' && why.cite && typeof why.cite === 'object') {
+        span.appendChild(document.createTextNode(' '));
+        span.appendChild(buildCiteChip(why.cite));
+    }
+    return span;
+}
+
 function buildParagraph(segments, index) {
     const p = document.createElement('p');
     p.className = 'understandingPara';
     p.dataset.paraIndex = String(index);
-    const segs = Array.isArray(segments) ? segments : [{ t: String(segments || '') }];
-    segs.forEach(function (seg) {
-        if (seg && seg.ref && typeof seg.ref === 'object') {
-            p.appendChild(buildRefChip(seg.ref));
-        } else if (seg && typeof seg.t === 'string') {
-            p.appendChild(document.createTextNode(seg.t));
-        }
-    });
+    appendSegments(p, Array.isArray(segments) ? segments : [{ t: String(segments || '') }]);
     return p;
 }
 
@@ -1531,6 +1618,17 @@ function showChapter(index, paraIndex) {
     title.textContent = ch.title || ch.id;
     r.column.appendChild(title);
 
+    // How much of the chapter's rationale the book can back up.
+    const why = ch.rationale && typeof ch.rationale === 'object' ? ch.rationale : null;
+    const cited = why ? Number(why.cited) || 0 : 0;
+    const inferred = why ? Number(why.inferred) || 0 : 0;
+    if (cited || inferred) {
+        const counts = document.createElement('div');
+        counts.className = 'understandingReaderWhy';
+        counts.textContent = cited + ' cited · ' + inferred + ' inferred';
+        r.column.appendChild(counts);
+    }
+
     // The forward reference sits after the second paragraph, or at the end of a
     // chapter too short for that to leave text on both sides.
     const ahead = ch.ahead && typeof ch.ahead === 'object' ? buildAhead(r.book, ch.ahead) : null;
@@ -1704,6 +1802,7 @@ function teardownReader() {
     flushProgress();
     if (reader.observer) reader.observer.disconnect();
     closeMarksList();
+    citeSheet.hide();
     closeCodePane();
     if (codeSheet.isOpen()) codeSheet.reset();
     reader.view.classList.remove('is-reading');

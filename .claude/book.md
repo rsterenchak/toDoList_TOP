@@ -155,6 +155,34 @@ table name) is harmless. A span that LOOKS like a file or identifier and does
 not resolve is a warning and marks the chapter stale, and the workflow refuses
 to commit stale chapters. Prefer fewer, correct references over many.
 
+### Rationale — cite it or hedge it
+
+A sentence that says *why* the code is the way it is — one containing
+`because`, `so that`, `in order to`, `the reason` or `which is why` — is the
+sentence a reader trusts most and the one easiest to get fluently wrong. Every
+such sentence must either end with a citation marker or read as inference:
+
+- `[src: file.js:LINE]` — a code comment that states the reason. The line must
+  be a comment line (`//`, `/*`, a leading `*` or `#`; `//`, `///`, `/*` in C#)
+  in a file in the symbols index. Point at the line that says it.
+- `[rule: fragment]` — a fragment of at least 12 characters quoted verbatim
+  from the repo's `CLAUDE.md` ("Source file organization" and "Persistence"
+  carry most architectural whys).
+- `[req: ID]` — a requirement id that appears as a heading or list item in
+  `assignment.md` (only when the repo has one).
+- `[commit: HASH]` — 7–40 hex characters. Accepted but shown as unverified;
+  prefer a comment or rule when one exists.
+- Or a hedge: `appears to`, `seems to`, `presumably`, `likely`, `probably`.
+  Use it when the reason is your reading of the code, not something written
+  down. Never hedge a reason you can cite, and never cite a line that does not
+  say what the sentence claims.
+
+Put the marker at the end of the sentence, before or after its full stop:
+`… because cloud data wins [src: migration.js:185].` The marker is stripped from
+the displayed text; the reader shows a `§` chip for cited reasons and mutes
+inferred ones. A rationale sentence with neither a resolving marker nor a hedge
+is a warning and marks the chapter stale.
+
 ## Chapter order
 
 The book is read top-down, following execution, not bottom-up by dependency:

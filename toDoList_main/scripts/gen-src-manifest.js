@@ -60,6 +60,10 @@
 // resolve to definitions in the same symbols index, with each chapter's tours
 // resolved from the compiled tours. Deterministic; a chapter with a reference,
 // file, tour or ahead link that no longer resolves is warned and marked stale.
+// A rationale sentence (one giving a reason) must end in a citation marker —
+// `[src: file:line]`, `[rule: …]` (CLAUDE.md), `[req: id]` (assignment.md),
+// `[commit: hash]` — or be hedged as inference; it compiles to a `why` segment
+// tagged cited / unverified / inferred, and an unbacked one is stale.
 // A first chapter of `kind: "map"` is generated instead (rankMapSymbols): the
 // code map's areas, each area's front-door files with their purpose lines, and
 // each file's most-used names beside their authored roles, emitted as
@@ -253,8 +257,12 @@ function parseImports(text, fromPath, knownFiles) {
   return Array.from(out).sort();
 }
 
+// A comment line that is only a `── TITLE ──` banner, not prose.
+const PURPOSE_BANNER_RE = /^[─—=\-\s]*[A-Z0-9 _/()+&.,'-]+[─—=\-\s]*$/;
+
 // First sentence of the file's leading `//` or `/* */` comment block, trimmed
-// to MODULE_PURPOSE_MAX chars, or null when the file opens with code.
+// to MODULE_PURPOSE_MAX chars at a word boundary, or null when the file opens
+// with code. A banner first line (and blank comment lines after it) is skipped.
 function extractPurpose(text) {
   const lines = String(text || '').replace(/^﻿/, '').replace(/^#!.*\n/, '').split(/\r?\n/);
   let i = 0;
@@ -273,11 +281,19 @@ function extractPurpose(text) {
   } else {
     return null;
   }
+  if (parts.length && parts[0].trim() && PURPOSE_BANNER_RE.test(parts[0].trim())) {
+    parts.shift();
+    while (parts.length && !parts[0].trim()) parts.shift();
+  }
   const joined = parts.join(' ').replace(/\s+/g, ' ').trim();
   if (!joined) return null;
   const sentence = /^(.*?[.!?])(?=\s|$)/.exec(joined);
   const first = sentence ? sentence[1] : joined;
-  return first.length > MODULE_PURPOSE_MAX ? first.slice(0, MODULE_PURPOSE_MAX).trimEnd() : first;
+  if (first.length <= MODULE_PURPOSE_MAX) return first;
+  // Cut at the last word boundary that leaves room for the ellipsis.
+  const cut = first.slice(0, MODULE_PURPOSE_MAX);
+  const space = cut.lastIndexOf(' ');
+  return (space > 0 ? cut.slice(0, space) : cut.slice(0, MODULE_PURPOSE_MAX - 1)).replace(/[\s,;:—–-]+$/, '') + '…';
 }
 
 function countLines(text) {
@@ -876,25 +892,209 @@ function resolveBookRef(span, chapterFiles, symbols) {
 }
 
 // A paragraph as segments: { t } runs of text and { ref } chips. A span that
-// doesn't resolve stays in the text, backticks and all.
-function compileBookParagraph(text, chapterFiles, symbols, note) {
+// doesn't resolve stays in the text, backticks and all. A rationale sentence
+// (see detectRationale) is wrapped as { why: { kind, cite, segs } } instead,
+// its citation marker stripped from the text; `why` carries the marker
+// context and the chapter's { cited, unverified, inferred } counts.
+function compileBookParagraph(text, chapterFiles, symbols, note, why) {
   const segs = [];
-  const pushText = function (t) {
+  const pushText = function (list, t) {
     if (!t) return;
-    const last = segs[segs.length - 1];
-    if (last && last.t !== undefined) last.t += t; else segs.push({ t: t });
+    const last = list[list.length - 1];
+    if (last && last.t !== undefined) last.t += t; else list.push({ t: t });
   };
-  let at = 0, m;
-  BOOK_REF_RE.lastIndex = 0;
-  while ((m = BOOK_REF_RE.exec(text))) {
-    pushText(text.slice(at, m.index));
-    const r = resolveBookRef(m[1], chapterFiles, symbols);
-    if (r.error) note('reference ' + r.error + ' — kept as text');
-    if (r.ref) segs.push({ ref: r.ref }); else pushText(m[0]);
-    at = m.index + m[0].length;
+  const pushRefs = function (list, s) {
+    let at = 0, m;
+    BOOK_REF_RE.lastIndex = 0;
+    while ((m = BOOK_REF_RE.exec(s))) {
+      pushText(list, s.slice(at, m.index));
+      const r = resolveBookRef(m[1], chapterFiles, symbols);
+      if (r.error) note('reference ' + r.error + ' — kept as text');
+      if (r.ref) list.push({ ref: r.ref }); else pushText(list, m[0]);
+      at = m.index + m[0].length;
+    }
+    pushText(list, s.slice(at));
+  };
+  if (!why) {
+    pushRefs(segs, text);
+    return segs;
   }
-  pushText(text.slice(at));
+  detectRationale(text).forEach(function (s) {
+    if (!s.rationale) { pushRefs(segs, s.raw); return; }
+    let kind = 'inferred', cite = null;
+    if (s.marker) {
+      const r = resolveWhyMarker(s.marker, why);
+      if (r.error) note('rationale ' + r.error + ': "' + whyExcerpt(s.text) + '"');
+      else { kind = r.kind; cite = r.cite; }
+    } else if (!s.hedged) {
+      note('rationale has no citation marker or hedge: "' + whyExcerpt(s.text) + '"');
+    }
+    why.counts[kind]++;
+    pushText(segs, s.lead);
+    const inner = [];
+    pushRefs(inner, s.text);
+    segs.push({ why: { kind: kind, cite: cite, segs: inner } });
+  });
   return segs;
+}
+
+// ── rationale: cited versus inferred "why" sentences ──
+// A sentence that states a reason must end with a citation marker — `[src:
+// file:line]` (a code comment), `[rule: fragment]` (a CLAUDE.md line), `[req:
+// id]` (an assignment.md requirement), `[commit: hash]` — or read as inference
+// with a hedge. Cited and inferred rationale render differently, so a reader
+// can see which "why" the book can back up.
+const WHY_CONNECTIVE_RE = /\b(?:because|so that|in order to|the reason|which is why)\b/i;
+const WHY_HEDGE_RE = /\b(?:appears to|seems to|presumably|likely|probably)\b/i;
+const WHY_MARKER_OPEN_RE = /^\[(?:src|rule|req|commit):/;
+const WHY_MARKER_LEAD_RE = /^\s*\[(?:src|rule|req|commit):[^\]]*\]/;
+const WHY_MARKER_TAIL_RE = /([.!?]?)\s*\[(src|rule|req|commit):\s*([^\]]*?)\s*\]\s*([.!?]?)\s*$/;
+const WHY_RULE_MIN = 12;
+const WHY_EXCERPT_MAX = 60;
+
+function whyExcerpt(text) {
+  const s = String(text || '').trim();
+  return s.length > WHY_EXCERPT_MAX ? s.slice(0, WHY_EXCERPT_MAX).trimEnd() + '…' : s;
+}
+
+// `text` cut into sentences on `.`, `?` or `!` before a space or the end,
+// ignoring stops inside backticks and markers. The pieces join back into
+// `text` exactly; a marker written after a sentence's stop moves back onto it.
+function splitSentences(text) {
+  const s = String(text || '');
+  const out = [];
+  let start = 0, inTick = false, inMarker = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (inMarker) { if (c === ']') inMarker = false; continue; }
+    if (c === '`') { inTick = !inTick; continue; }
+    if (inTick) continue;
+    if (c === '[' && WHY_MARKER_OPEN_RE.test(s.slice(i, i + 8))) { inMarker = true; continue; }
+    if ((c === '.' || c === '?' || c === '!') && (i + 1 === s.length || /\s/.test(s[i + 1]))) {
+      out.push(s.slice(start, i + 1));
+      start = i + 1;
+    }
+  }
+  if (start < s.length) out.push(s.slice(start));
+  for (let k = 1; k < out.length; k++) {
+    const m = WHY_MARKER_LEAD_RE.exec(out[k]);
+    if (!m) continue;
+    out[k - 1] += m[0];
+    out[k] = out[k].slice(m[0].length);
+  }
+  return out.filter(function (p) { return p !== ''; });
+}
+
+// Each sentence of `text` as { raw, lead, text, rationale, hedged, marker }:
+// `raw` the sentence as written, `lead` its leading whitespace, `text` the
+// rest with a trailing citation marker stripped, and `marker` that marker as
+// { type, value } (or null). A sentence is rationale when, outside backticks,
+// it carries one of the connectives as whole words.
+function detectRationale(text) {
+  return splitSentences(text).map(function (raw) {
+    const lead = /^\s*/.exec(raw)[0];
+    let body = raw.slice(lead.length).replace(/\s+$/, '');
+    const trail = raw.slice(lead.length + body.length);
+    let marker = null;
+    const m = WHY_MARKER_TAIL_RE.exec(body);
+    if (m) {
+      marker = { type: m[2], value: m[3] };
+      body = body.slice(0, m.index) + (m[1] || m[4]);
+    }
+    const plain = body.replace(/`[^`\n]*`/g, ' ');
+    return {
+      raw: raw,
+      lead: lead,
+      text: body + trail,
+      rationale: WHY_CONNECTIVE_RE.test(plain),
+      hedged: WHY_HEDGE_RE.test(plain),
+      marker: marker,
+    };
+  });
+}
+
+function escapeRegExp(s) {
+  return String(s).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Whether source line `line` of `file` holds a comment token: `//`, `/*`, a
+// leading `*` or `#` in web source; `//` (and `///`) or `/*` in C#.
+function isCommentLine(file, line) {
+  if (/\.cs$/i.test(file)) return /\/\/|\/\*/.test(line);
+  return /\/\/|\/\*/.test(line) || /^\s*[*#]/.test(line);
+}
+
+// { kind: "cited" | "unverified", cite: { type, file, line, text, label } } for
+// a marker that resolves, or { error }. `ctx` holds the symbols index,
+// sourceText(file), claudeMd() and assignment() (each text or null).
+function resolveWhyMarker(marker, ctx) {
+  const c = ctx || {};
+  const type = marker && marker.type;
+  const value = String((marker && marker.value) || '').trim();
+  const lineOf = function (text, idx) { return text.slice(0, idx).split('\n').length; };
+  if (type === 'src') {
+    const colon = value.lastIndexOf(':');
+    const file = colon === -1 ? value : value.slice(0, colon);
+    const line = colon === -1 ? NaN : Number(value.slice(colon + 1));
+    if (!Number.isInteger(line) || line < 1) return { error: 'citation "' + value + '" needs file:line' };
+    if (!c.symbols || !c.symbols.files || !c.symbols.files[file]) return { error: 'citation file "' + file + '" is not in the symbols index' };
+    const src = c.sourceText ? c.sourceText(file) : null;
+    const lines = src === null || src === undefined ? [] : String(src).split(/\r?\n/);
+    if (line > lines.length) return { error: 'citation "' + value + '" is past the end of the file' };
+    if (!isCommentLine(file, lines[line - 1])) return { error: 'citation "' + value + '" does not point at a comment' };
+    return { kind: 'cited', cite: { type: 'src', file: file, line: line, text: lines[line - 1].trim(), label: file.split('/').pop() + ':' + line } };
+  }
+  if (type === 'rule') {
+    const fragment = value.replace(/^["'“”‘’]+|["'“”‘’]+$/g, '').replace(/\s+/g, ' ').trim();
+    if (fragment.length < WHY_RULE_MIN) return { error: 'rule fragment "' + fragment + '" is shorter than ' + WHY_RULE_MIN + ' characters' };
+    const doc = c.claudeMd ? c.claudeMd() : null;
+    if (doc === null || doc === undefined) return { error: 'rule citation needs a CLAUDE.md' };
+    const flat = String(doc).replace(/\s+/g, ' ');
+    if (flat.indexOf(fragment) === -1) return { error: 'rule fragment "' + fragment + '" is not in CLAUDE.md' };
+    const exact = String(doc).indexOf(fragment);
+    return { kind: 'cited', cite: { type: 'rule', file: 'CLAUDE.md', line: exact === -1 ? null : lineOf(String(doc), exact), text: fragment, label: 'CLAUDE.md' } };
+  }
+  if (type === 'req') {
+    if (!value) return { error: 'requirement citation has no id' };
+    const doc = c.assignment ? c.assignment() : null;
+    if (doc === null || doc === undefined) return { error: 'requirement "' + value + '" cited but there is no assignment.md' };
+    const token = new RegExp('(^|[^\\w])' + escapeRegExp(value) + '(?![\\w])');
+    const lines = String(doc).split(/\r?\n/);
+    for (let i = 0; i < lines.length; i++) {
+      const l = lines[i];
+      if (/^\s*(?:#{1,6}|[-*+]|\d+[.)])\s/.test(l) && token.test(l)) {
+        return { kind: 'cited', cite: { type: 'req', file: 'assignment.md', line: i + 1, text: l.replace(/^\s*(?:#{1,6}|[-*+]|\d+[.)])\s+/, '').trim(), label: value } };
+      }
+    }
+    return { error: 'requirement "' + value + '" is not a heading or list item in assignment.md' };
+  }
+  if (type === 'commit') {
+    if (!/^[0-9a-f]{7,40}$/i.test(value)) return { error: 'commit "' + value + '" is not a 7–40 character hex hash' };
+    return { kind: 'unverified', cite: { type: 'commit', file: null, line: null, text: value, label: value.slice(0, 7) } };
+  }
+  return { error: 'unknown citation marker "' + type + '"' };
+}
+
+// The marker context for one compile: lazy, memoised readers for source text
+// and the two citable docs. `docs` values are text, null, or a function
+// returning either.
+function bookWhyContext(symbols, sources, docs) {
+  const d = docs || {};
+  const byName = {};
+  (Array.isArray(sources) ? sources : []).forEach(function (s) { if (s && s.name) byName[s.name] = s.text; });
+  const lazy = function (v) {
+    let done = false, val = null;
+    return function () {
+      if (!done) { done = true; val = typeof v === 'function' ? v() : v; if (val === undefined) val = null; }
+      return val;
+    };
+  };
+  return {
+    symbols: symbols,
+    sourceText: function (f) { return Object.prototype.hasOwnProperty.call(byName, f) ? byName[f] : null; },
+    claudeMd: lazy(d.claudeMd),
+    assignment: lazy(d.assignment),
+  };
 }
 
 // ── the map chapter (kind: "map") ──
@@ -1139,10 +1339,13 @@ function compileBookMap(ch, symbols, sources, note, ctx) {
 // ranks against and `modules` the web manifest's modules (both optional). A
 // chapter is `kind: "prose"` (its `body`) or `kind: "map"` (its `roles`,
 // compiled by compileBookMap into `sections` as well as paragraphs), and only
-// the first chapter may be the map.
-function compileBook(doc, symbols, tours, areas, warn, sources, modules) {
+// the first chapter may be the map. `docs` is { claudeMd, assignment } — each
+// text, null, or a function returning either, read only when a rationale
+// marker cites it. Each chapter counts its rationale as `rationale`.
+function compileBook(doc, symbols, tours, areas, warn, sources, modules, docs) {
   const say = warn || console.warn;
   const index = symbols && symbols.files ? symbols : { files: {} };
+  const whyCtx = bookWhyContext(index, sources, docs);
   const tourById = {};
   ((tours && Array.isArray(tours.tours)) ? tours.tours : []).forEach(function (t) { tourById[t.id] = t; });
   const areaIds = Array.isArray(areas) ? new Set(areas.map(function (a) { return a && a.id; })) : null;
@@ -1181,6 +1384,7 @@ function compileBook(doc, symbols, tours, areas, warn, sources, modules) {
       else note('ahead chapter "' + ch.ahead.chapter + '" does not exist — dropped');
     }
     const kind = ch.kind === 'map' ? 'map' : 'prose';
+    const counts = { cited: 0, unverified: 0, inferred: 0 };
     let paragraphs, words, sections;
     if (kind === 'map') {
       if (ch !== raw[0]) note('the map chapter must be the first chapter');
@@ -1190,7 +1394,8 @@ function compileBook(doc, symbols, tours, areas, warn, sources, modules) {
       words = map.words;
     } else {
       const body = (Array.isArray(ch.body) ? ch.body : []).filter(function (p) { return typeof p === 'string' && p.trim(); });
-      paragraphs = body.map(function (p) { return compileBookParagraph(p, files, index, note); });
+      const why = Object.assign({ counts: counts }, whyCtx);
+      paragraphs = body.map(function (p) { return compileBookParagraph(p, files, index, note, why); });
       words = body.reduce(function (n, p) { return n + p.split(/\s+/).filter(Boolean).length; }, 0);
     }
     if (!paragraphs.length) {
@@ -1208,6 +1413,7 @@ function compileBook(doc, symbols, tours, areas, warn, sources, modules) {
       paragraphs: paragraphs,
       ahead: ahead,
       minutes: Math.max(1, Math.round(words / BOOK_WORDS_PER_MINUTE)),
+      rationale: counts,
       stale: warnings.length > 0,
       warnings: warnings,
     };
@@ -1240,7 +1446,31 @@ function buildWebBook(opts) {
   const tours = o.tours !== undefined ? o.tours : buildWebTours(Object.assign({}, o, { symbols: symbols, sources: sources }));
   const areas = readCodemapAreas(o.codemapPath || path.resolve(root, '..', 'codemap.json'));
   const modules = o.modules || (o.sources ? undefined : buildModules(sources));
-  return compileBook(doc, symbols, tours, areas, o.warn, sources, modules);
+  const docRoot = o.docRoot || bookDocRoot(path.resolve(root, '..'));
+  const docs = o.docs || {
+    claudeMd: function () { return readTextFile(path.join(docRoot, 'CLAUDE.md')); },
+    assignment: function () { return readTextFile(path.join(docRoot, 'assignment.md')); },
+  };
+  return compileBook(doc, symbols, tours, areas, o.warn, sources, modules, docs);
+}
+
+function readTextFile(file) {
+  try { return fs.readFileSync(file, 'utf8'); } catch (e) { return null; }
+}
+
+// The folder a rationale marker's CLAUDE.md and assignment.md are read from:
+// `start` (the project folder) or the nearest ancestor holding a CLAUDE.md,
+// stopping at the git root — a web project often sits a level below it.
+function bookDocRoot(start) {
+  let dir = start;
+  for (let k = 0; k < 3; k++) {
+    if (fs.existsSync(path.join(dir, 'CLAUDE.md'))) return dir;
+    if (fs.existsSync(path.join(dir, '.git'))) break;
+    const up = path.dirname(dir);
+    if (up === dir) break;
+    dir = up;
+  }
+  return start;
 }
 
 // Writes src-book.json into `outDir` when codebook.json exists; returns the
@@ -1687,7 +1917,7 @@ function buildManifest() {
   return finalize(base);
 }
 
-module.exports = { scanRegions: scanRegions, parseImports: parseImports, extractPurpose: extractPurpose, buildModules: buildModules, codemapWarnings: codemapWarnings, buildWebManifest: buildWebManifest, scanJsDefs: scanJsDefs, parseImportBindings: parseImportBindings, buildSymbols: buildSymbols, buildWebSymbols: buildWebSymbols, compileTours: compileTours, buildWebTours: buildWebTours, writeWebTours: writeWebTours, compileBook: compileBook, rankMapSymbols: rankMapSymbols, buildWebBook: buildWebBook, writeWebBook: writeWebBook, scanCsharpTypes: scanCsharpTypes, readCsharpSources: readCsharpSources, buildCsharpSymbols: buildCsharpSymbols, prettify: prettify, buildManifest: buildManifest, walkCs: walkCs, walkSql: walkSql, walkDoc: walkDoc };
+module.exports = { scanRegions: scanRegions, parseImports: parseImports, extractPurpose: extractPurpose, buildModules: buildModules, codemapWarnings: codemapWarnings, buildWebManifest: buildWebManifest, scanJsDefs: scanJsDefs, parseImportBindings: parseImportBindings, buildSymbols: buildSymbols, buildWebSymbols: buildWebSymbols, compileTours: compileTours, buildWebTours: buildWebTours, writeWebTours: writeWebTours, compileBook: compileBook, detectRationale: detectRationale, resolveWhyMarker: resolveWhyMarker, rankMapSymbols: rankMapSymbols, buildWebBook: buildWebBook, writeWebBook: writeWebBook, scanCsharpTypes: scanCsharpTypes, readCsharpSources: readCsharpSources, buildCsharpSymbols: buildCsharpSymbols, prettify: prettify, buildManifest: buildManifest, walkCs: walkCs, walkSql: walkSql, walkDoc: walkDoc };
 
 if (require.main === module) {
   const manifest = buildManifest();

@@ -5664,6 +5664,14 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   line-height: 1.25;
   color: var(--text-primary);
 }
+/* `n cited · m inferred` under the title, tucked into its bottom margin. */
+.understandingReaderWhy {
+  margin: -12px 0 16px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: #8b8da0;
+}
 
 .understandingPara {
   position: relative;
@@ -5729,6 +5737,41 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   box-decoration-break: clone;
 }
 .bookRef:hover { border-color: var(--accent); color: var(--accent-text); }
+
+/* Rationale: a cited sentence ends in a `§` chip styled like a ref chip but
+   muted; an inferred one is set muted with a dotted underline. */
+.bookCite {
+  display: inline;
+  padding: 1px 5px;
+  border: 1px solid var(--border-mid);
+  border-radius: 4px;
+  background: var(--bg-surface);
+  color: #8b8da0;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.bookCite:hover { border-color: var(--accent); color: var(--accent-text); }
+.bookCite.is-unverified { border-style: dashed; cursor: help; }
+.bookCite.is-unverified:hover { border-color: var(--border-mid); color: #8b8da0; }
+.why--inferred {
+  color: #9a9bb0;
+  text-decoration: underline dotted;
+  text-decoration-color: color-mix(in srgb, #9a9bb0 60%, transparent);
+  text-underline-offset: 3px;
+  cursor: help;
+}
+.understandingCiteQuote {
+  margin: 0;
+  padding: 14px 16px 20px;
+  font-size: 15px;
+  line-height: 1.55;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 
 /* A map chapter: one row per name — the chip in a column sized to the longest
    name, its role beside it. Narrow screens stack the role under the chip. */

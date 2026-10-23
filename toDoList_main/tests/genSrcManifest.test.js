@@ -1377,3 +1377,152 @@ describe('gen-src-manifest csharp contextual-keyword methods and overloads', () 
         expect(ch.warnings[0]).toMatch(/ambiguous \(2 defs\)/);
     });
 });
+
+// Rationale sentences in prose chapters: cited by a marker, or hedged as
+// inference — anything else is a warning that marks the chapter stale.
+describe('gen-src-manifest cited versus inferred rationale', () => {
+    const { detectRationale, resolveWhyMarker } = gen;
+    const sources = [
+        src('a.js', '// Saves locally first so offline edits survive.\nfunction save() {\n    return 1; // keep it cheap\n}\n'),
+        src('b.cs', '// Rule holder.\npublic class Rules {\n    /// Ten minute grid.\n    public int Slot() { return 10; }\n}\n', false),
+    ];
+    const symbols = gen.buildSymbols(sources);
+    symbols.files['b.cs'] = { defs: [], imports: {} };
+    const CLAUDE = '# CLAUDE.md\n\nAll mutations to the data model go through here.\nState must survive page reloads.\n';
+    const ASSIGN = '# Assignment\n\n## A3a Booking rules\n- B1: Slots are ten minutes.\nA4 is mentioned in prose only.\n';
+    const ctx = { symbols, sourceText: (f) => (sources.find((s) => s.name === f) || {}).text || null, claudeMd: () => CLAUDE, assignment: () => ASSIGN };
+    const docs = { claudeMd: CLAUDE, assignment: ASSIGN };
+    const compile = (body, d) => {
+        const warn = vi.fn();
+        const out = compileBook({ chapters: [{ id: 'c1', title: 'One', files: ['a.js'], tours: [], body }] }, symbols, null, null, warn, sources, undefined, d === undefined ? docs : d);
+        return { ch: out.chapters[0], warn };
+    };
+
+    it('detects each connective, case-insensitively, as whole words', () => {
+        ['because', 'so that', 'in order to', 'the reason', 'which is why'].forEach((c) => {
+            expect(detectRationale('It saves ' + c + ' X.')[0].rationale).toBe(true);
+            expect(detectRationale('It saves ' + c.toUpperCase() + ' X.')[0].rationale).toBe(true);
+        });
+        expect(detectRationale('Becauseless text. So thatched.').some((s) => s.rationale)).toBe(false);
+        expect(detectRationale('It reads `because` as a name.')[0].rationale).toBe(false);
+    });
+
+    it('splits sentences, ignoring stops inside backticks and markers', () => {
+        const s = detectRationale('Call `a. b` first. It saves because X [rule: Do it. Then this]. Done!');
+        expect(s.map((x) => x.raw).join('')).toBe('Call `a. b` first. It saves because X [rule: Do it. Then this]. Done!');
+        expect(s.length).toBe(3);
+        expect(s[1]).toMatchObject({ rationale: true, marker: { type: 'rule', value: 'Do it. Then this' }, text: 'It saves because X.' });
+    });
+
+    it('moves a marker written after the full stop back onto its sentence', () => {
+        const s = detectRationale('It saves because X. [src: a.js:1] Next one.');
+        expect(s[0]).toMatchObject({ text: 'It saves because X.', marker: { type: 'src', value: 'a.js:1' } });
+        expect(s[1].text).toBe('Next one.');
+    });
+
+    it('resolves a src marker only onto a comment line', () => {
+        expect(resolveWhyMarker({ type: 'src', value: 'a.js:1' }, ctx)).toEqual({ kind: 'cited', cite: { type: 'src', file: 'a.js', line: 1, text: '// Saves locally first so offline edits survive.', label: 'a.js:1' } });
+        expect(resolveWhyMarker({ type: 'src', value: 'a.js:3' }, ctx).kind).toBe('cited');
+        expect(resolveWhyMarker({ type: 'src', value: 'b.cs:3' }, ctx).kind).toBe('cited');
+        expect(resolveWhyMarker({ type: 'src', value: 'a.js:2' }, ctx).error).toMatch(/does not point at a comment/);
+        expect(resolveWhyMarker({ type: 'src', value: 'a.js:99' }, ctx).error).toMatch(/past the end/);
+        expect(resolveWhyMarker({ type: 'src', value: 'nope.js:1' }, ctx).error).toMatch(/not in the symbols index/);
+    });
+
+    it('resolves a rule fragment only when it is in CLAUDE.md and long enough', () => {
+        expect(resolveWhyMarker({ type: 'rule', value: '"State must survive page reloads"' }, ctx))
+            .toEqual({ kind: 'cited', cite: { type: 'rule', file: 'CLAUDE.md', line: 4, text: 'State must survive page reloads', label: 'CLAUDE.md' } });
+        expect(resolveWhyMarker({ type: 'rule', value: 'State must survive a crash' }, ctx).error).toMatch(/not in CLAUDE.md/);
+        expect(resolveWhyMarker({ type: 'rule', value: 'reloads' }, ctx).error).toMatch(/shorter than 12/);
+        expect(resolveWhyMarker({ type: 'rule', value: 'State must survive page reloads' }, Object.assign({}, ctx, { claudeMd: () => null })).error).toMatch(/needs a CLAUDE.md/);
+    });
+
+    it('resolves a req id only as a heading or list item in assignment.md', () => {
+        expect(resolveWhyMarker({ type: 'req', value: 'A3a' }, ctx)).toEqual({ kind: 'cited', cite: { type: 'req', file: 'assignment.md', line: 3, text: 'A3a Booking rules', label: 'A3a' } });
+        expect(resolveWhyMarker({ type: 'req', value: 'B1' }, ctx).cite.line).toBe(4);
+        expect(resolveWhyMarker({ type: 'req', value: 'A4' }, ctx).error).toMatch(/not a heading or list item/);
+        expect(resolveWhyMarker({ type: 'req', value: 'A3' }, ctx).error).toMatch(/not a heading or list item/);
+        expect(resolveWhyMarker({ type: 'req', value: 'A3a' }, Object.assign({}, ctx, { assignment: () => null })).error).toMatch(/no assignment.md/);
+    });
+
+    it('accepts a 7–40 hex commit hash as unverified and rejects anything else', () => {
+        expect(resolveWhyMarker({ type: 'commit', value: 'abc1234' }, ctx)).toEqual({ kind: 'unverified', cite: { type: 'commit', file: null, line: null, text: 'abc1234', label: 'abc1234' } });
+        expect(resolveWhyMarker({ type: 'commit', value: 'abc12' }, ctx).error).toMatch(/hex hash/);
+        expect(resolveWhyMarker({ type: 'commit', value: 'xyz1234' }, ctx).error).toMatch(/hex hash/);
+    });
+
+    it('wraps rationale sentences, strips markers and counts them per chapter', () => {
+        const { ch, warn } = compile([
+            'Plain start. `save` writes first because offline edits matter [src: a.js:1]. It likely retries so that nothing is lost. Undone because of abc [commit: abc1234def].',
+        ]);
+        expect(warn).not.toHaveBeenCalled();
+        expect(ch.stale).toBe(false);
+        expect(ch.rationale).toEqual({ cited: 1, unverified: 1, inferred: 1 });
+        const p = ch.paragraphs[0];
+        expect(p[0]).toEqual({ t: 'Plain start. ' });
+        expect(p[1].why.kind).toBe('cited');
+        expect(p[1].why.cite).toMatchObject({ type: 'src', file: 'a.js', line: 1 });
+        expect(p[1].why.segs[0].ref).toMatchObject({ file: 'a.js', symbol: 'save' });
+        expect(p[1].why.segs[1]).toEqual({ t: ' writes first because offline edits matter.' });
+        expect(p[2]).toEqual({ t: ' ' });
+        expect(p[3]).toEqual({ why: { kind: 'inferred', cite: null, segs: [{ t: 'It likely retries so that nothing is lost.' }] } });
+        expect(p[5].why).toMatchObject({ kind: 'unverified', segs: [{ t: 'Undone because of abc.' }] });
+        expect(p.length).toBe(6);
+        expect(JSON.stringify(p)).not.toMatch(/\[(src|commit):/);
+    });
+
+    it('leaves a paragraph with no rationale exactly as before', () => {
+        const { ch } = compile(['Call `save` here. Then stop.']);
+        expect(ch.paragraphs[0]).toEqual([{ t: 'Call ' }, { ref: expect.objectContaining({ symbol: 'save' }) }, { t: ' here. Then stop.' }]);
+        expect(ch.rationale).toEqual({ cited: 0, unverified: 0, inferred: 0 });
+    });
+
+    it('warns and marks stale an unmarked, unhedged rationale sentence or a failing marker', () => {
+        const bare = compile(['It saves because it must.']);
+        expect(bare.ch.stale).toBe(true);
+        expect(bare.warn.mock.calls[0][0]).toMatch(/rationale has no citation marker or hedge: "It saves because it must."/);
+        expect(bare.ch.paragraphs[0][0].why.kind).toBe('inferred');
+        const broken = compile(['It saves because it must [src: a.js:2].']);
+        expect(broken.ch.stale).toBe(true);
+        expect(broken.warn.mock.calls[0][0]).toMatch(/does not point at a comment/);
+        const noDoc = compile(['It saves because it must [rule: All mutations to the data model].'], { claudeMd: null });
+        expect(noDoc.warn.mock.calls[0][0]).toMatch(/needs a CLAUDE.md/);
+    });
+
+    it('reads CLAUDE.md lazily, only when a rule marker cites it', () => {
+        const claudeMd = vi.fn(() => CLAUDE);
+        compile(['No reasons here.', 'It likely saves because of X.'], { claudeMd });
+        expect(claudeMd).not.toHaveBeenCalled();
+        compile(['It saves because of X [rule: All mutations to the data model]. Again because Y [rule: State must survive page reloads].'], { claudeMd });
+        expect(claudeMd).toHaveBeenCalledTimes(1);
+    });
+
+    it('skips a banner first line when taking a module purpose, and never cuts mid-word', () => {
+        expect(extractPurpose('// ── SHARED MODAL DISMISS WIRING ──\n// The modals close three ways. More.\nexport {}')).toBe('The modals close three ways.');
+        expect(extractPurpose('// ── APP LOCK (PIN) ──\n//\n// A client-side privacy lock. When enabled.\n')).toBe('A client-side privacy lock.');
+        expect(extractPurpose('/* ==== STORE ==== */\n/* not reached */')).toBeNull();
+        expect(extractPurpose('// Light/dark theme module.\n')).toBe('Light/dark theme module.');
+        const long = extractPurpose('// ' + 'abcdefghij '.repeat(20) + 'end.');
+        expect(long.length).toBeLessThanOrEqual(140);
+        expect(long).toMatch(/^(abcdefghij )*abcdefghij…$/);
+    });
+
+    it('takes real banner-headed modules past their banner', () => {
+        const fs = require('fs');
+        const path = require('path');
+        const read = (f) => fs.readFileSync(path.resolve(__dirname, '..', 'src', f), 'utf8');
+        expect(extractPurpose(read('appLock.js'))).toBe('A client-side privacy lock.');
+        expect(extractPurpose(read('modalDismiss.js'))).toMatch(/^The dismissible modals across the app/);
+        expect(extractPurpose(read('modalDismiss.js'))).not.toMatch(/──/);
+    });
+
+    it('the real codebook.json cites or hedges every rationale sentence', () => {
+        const path = require('path');
+        const warn = vi.fn();
+        const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+        expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
+        const total = book.chapters.reduce((n, c) => n + c.rationale.cited + c.rationale.inferred, 0);
+        expect(total).toBeGreaterThan(0);
+        expect(book.chapters.some((c) => c.rationale.cited > 0)).toBe(true);
+    });
+});
