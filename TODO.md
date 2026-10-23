@@ -2684,7 +2684,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 4bf0c2d2-0dbc-44c1-8038-47d746adc5e5 -->
 
-- [ ] **[MEDIUM]** Flag a code book chapter stale when the code it references changes, not only when a name disappears
+- [x] **[MEDIUM]** Flag a code book chapter stale when the code it references changes, not only when a name disappears — Completed: 2026-10-23
   - Type: feature
   - Description: Staleness today means "a reference stopped resolving". A chapter whose referenced function is rewritten, gains or loses callers, or moves to different lines keeps resolving and keeps reading as current while its prose drifts from the code. Add a per-chapter fingerprint to the book compile in `scripts/gen-src-manifest.js` — a hash over each referenced definition's body text and its set of importing files — persisted in `codebook.json` at generation time and compared on every compile. A mismatch marks the chapter `stale` with a `drift` reason naming the symbols that changed, so the shelf's STALE chip and the `stale` book run pick it up. Chapter prose itself never triggers drift; only the code it describes does.
   - Behavior:
