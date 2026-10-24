@@ -2822,7 +2822,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 8bc04315-0418-4e99-95f4-92795ace24a7 -->
 
-- [ ] **[MEDIUM]** Let chapter chat answer "who calls this" with the symbol's referrers
+- [x] **[MEDIUM]** Let chapter chat answer "who calls this" with the symbol's referrers — Completed: 2026-10-24
   - Type: feature
   - Description: Chapter-scoped chat sends only the chapter's own definitions, so the most common follow-up — "where else is `IsLogOut` read?", "who calls `dispatchRun`?" — is answered by guessing or by "attach the file". Add referrers to the scope: for each ref, the PWA computes the files that use the symbol outside its defining file (web: the symbols index's `imports` bindings; csharp: files whose text contains the name as a whole word, using the sources the manifest's Code lens already fetches lazily, capped) and sends `referrers: [{ file, lines: [n, …] }]` on the scope; the Worker fetches each referrer file once and slices a few lines around each use into a `WHO USES THESE` section after the definitions, so the model can cite call sites by file and line. The user can also widen a single name mid-conversation: a question that names a symbol not in the chapter (backticked, or matching a known definition) makes the Worker pull that one definition from the symbols index's file and include it, marked as outside the chapter. Replies naming call sites render them as the same tappable chips.
   - Behavior:
