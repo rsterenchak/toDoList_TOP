@@ -56,6 +56,7 @@ vi.mock('../src/modals.js', () => ({
 
 vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(() => Promise.resolve({ ok: true, files: [], srcRoot: 'src' })),
+    getCachedManifest: vi.fn(() => null),
     openChatWithBookScope: vi.fn(),
 }));
 
@@ -70,6 +71,12 @@ vi.mock('../src/tourPlayer.js', async (importOriginal) => {
     const actual = await importOriginal();
     return { ...actual, openTourPlayer: vi.fn(actual.openTourPlayer) };
 });
+
+// The symbols index would load from Pages; nothing is loaded unless a test says so.
+vi.mock('../src/codeTrace.js', () => ({
+    loadSymbols: vi.fn(() => Promise.resolve(null)),
+    getLoadedSymbols: vi.fn(() => undefined),
+}));
 
 vi.mock('../src/codeViewer.js', async (importOriginal) => {
     const actual = await importOriginal();
@@ -881,5 +888,133 @@ describe('ask scope payload', () => {
     test('is null for a chapter that does not exist', () => {
         expect(buildBookScope('o/r', SCOPE_BOOK, 7)).toBeNull();
         expect(buildBookScope('o/r', null, 0)).toBeNull();
+    });
+    test('without a context there are no referrers and no widen index', () => {
+        const scope = buildBookScope('o/r', SCOPE_BOOK, 1);
+        expect(scope.index).toBeUndefined();
+        scope.refs.forEach((r) => expect(r.referrers).toBeUndefined());
+    });
+});
+
+describe('ask scope referrers and widen index', () => {
+    const ref = (file, symbol, line, end) => ({ ref: { label: symbol, file, symbol, line, end } });
+    const BOOK = {
+        chapters: [
+            {
+                id: 'map', kind: 'map', title: 'Map',
+                paragraphs: [[ref('inject.js', 'dispatchRun', 10, 30)], [ref('index.js', 'bootApp', 40, 72)]],
+            },
+            {
+                id: 'life', title: 'Life',
+                paragraphs: [[{ t: 'It starts in ' }, ref('index.js', 'bootApp', 40, 72), { t: ' and ' }, ref('sw.js', 'cacheAll', 3, 9)]],
+            },
+        ],
+    };
+    const SYMBOLS = {
+        files: {
+            'index.js': {
+                defs: [
+                    { name: 'bootApp', kind: 'function', start: 40, end: 72, parent: null },
+                    { name: 'inner', kind: 'function', start: 50, end: 60, parent: 'bootApp' },
+                    { name: '_private', kind: 'function', start: 80, end: 82, parent: null },
+                ],
+                imports: {},
+            },
+            'sw.js': { defs: [{ name: 'cacheAll', kind: 'function', start: 3, end: 9, parent: null }], imports: {} },
+            'inject.js': { defs: [{ name: 'dispatchRun', kind: 'function', start: 10, end: 30, parent: null }], imports: {} },
+            'a.js': { defs: [{ name: 'helperA', kind: 'function', start: 1, end: 2, parent: null }], imports: { bootApp: { from: 'index.js', name: 'bootApp' } } },
+            'b.js': {
+                defs: [{ name: 'helperB', kind: 'function', start: 1, end: 2, parent: null }],
+                imports: { start: { from: 'index.js', name: 'bootApp' }, helperA: { from: 'a.js', name: 'helperA' } },
+            },
+            'c.js': { defs: [], imports: { bootApp: { from: 'other.js', name: 'bootApp' } } },
+        },
+    };
+    const TEXTS = {
+        'a.js': ["import { bootApp } from './index.js';", 'bootApp();'],
+        'b.js': ["import { bootApp as start } from './index.js';", 'start();', 'const x = 1;', 'start(x);', 'if (y) start();', 'start();'],
+    };
+    const ctx = (texts) => ({ symbols: SYMBOLS, files: Object.keys(SYMBOLS.files), getLines: (f) => (texts[f] || null) });
+
+    test('web: referrers come from import bindings, with use lines from cached text, most uses first', () => {
+        const scope = buildBookScope('o/r', BOOK, 1, ctx(TEXTS));
+        const boot = scope.refs.find((r) => r.symbol === 'bootApp');
+        // b.js aliases the import; c.js imports a different bootApp and is excluded.
+        expect(boot.referrers).toEqual([
+            { file: 'b.js', lines: [2, 4, 5] },
+            { file: 'a.js', lines: [2] },
+        ]);
+        // Nobody imports cacheAll, so the ref carries no referrers key.
+        expect(scope.refs.find((r) => r.symbol === 'cacheAll').referrers).toBeUndefined();
+    });
+
+    test('web: line numbers are omitted for files the viewer has not cached', () => {
+        const scope = buildBookScope('o/r', BOOK, 1, ctx({}));
+        expect(scope.refs.find((r) => r.symbol === 'bootApp').referrers).toEqual([{ file: 'a.js' }, { file: 'b.js' }]);
+    });
+
+    test('caps referrers at 8 per ref and 30 per scope', () => {
+        const files = {};
+        const refsP = [];
+        for (let k = 0; k < 5; k++) {
+            files['def' + k + '.js'] = { defs: [{ name: 'f' + k, kind: 'function', start: 1, end: 2, parent: null }], imports: {} };
+            refsP.push(ref('def' + k + '.js', 'f' + k, 1, 2));
+        }
+        for (let i = 0; i < 12; i++) {
+            const imports = {};
+            for (let k = 0; k < 5; k++) imports['f' + k] = { from: 'def' + k + '.js', name: 'f' + k };
+            files['use' + i + '.js'] = { defs: [], imports };
+        }
+        const book = { chapters: [{ id: 'c', title: 'C', paragraphs: [refsP] }] };
+        const scope = buildBookScope('o/r', book, 0, { symbols: { files }, files: [], getLines: () => null });
+        const counts = scope.refs.map((r) => (r.referrers || []).length);
+        expect(counts).toEqual([8, 8, 8, 6, 0]);
+    });
+
+    test('csharp: referrers are cached files naming the symbol as a whole word', () => {
+        const cs = {
+            files: {
+                'Login.cs': { defs: [{ name: 'IsLogOut', kind: 'property', start: 5, end: 5, parent: null }] },
+                'Main.cs': { defs: [] },
+                'Other.cs': { defs: [] },
+                'Far.cs': { defs: [] },
+            },
+        };
+        const texts = {
+            'Main.cs': ['class Main {', '  if (form.IsLogOut) return;', '  IsLogOutX = 1;', '}'],
+            'Other.cs': ['var y = IsLogOutNot;'],
+        };
+        const book = { chapters: [{ id: 'c', title: 'C', paragraphs: [[ref('Login.cs', 'IsLogOut', 5, 5)]] }] };
+        const scope = buildBookScope('o/r', book, 0, { symbols: cs, files: Object.keys(cs.files), getLines: (f) => texts[f] || null });
+        expect(scope.refs[0].referrers).toEqual([{ file: 'Main.cs', lines: [2] }]);
+    });
+
+    test('csharp: with nothing cached, files are matched by name and sent without lines', () => {
+        const cs = { files: { 'LoginForm.cs': { defs: [] }, 'LoginForm.Designer.cs': { defs: [] }, 'Main.cs': { defs: [] } } };
+        const book = { chapters: [{ id: 'c', title: 'C', paragraphs: [[ref('LoginForm.cs', 'LoginForm', 1, 40)]] }] };
+        const scope = buildBookScope('o/r', book, 0, { symbols: cs, files: [], getLines: () => null });
+        expect(scope.refs[0].referrers).toEqual([{ file: 'LoginForm.Designer.cs' }]);
+    });
+
+    test('the widen index lists top-level definitions outside the chapter, map picks first', () => {
+        const scope = buildBookScope('o/r', BOOK, 1, ctx(TEXTS));
+        expect(scope.index[0]).toEqual({ file: 'inject.js', symbol: 'dispatchRun', line: 10, end: 30 });
+        const names = scope.index.map((e) => e.symbol);
+        // Chapter refs, nested defs and `_` names are never in it.
+        expect(names).not.toContain('bootApp');
+        expect(names).not.toContain('cacheAll');
+        expect(names).not.toContain('inner');
+        expect(names).not.toContain('_private');
+        // helperA is imported by b.js, so it ranks ahead of the unimported helperB.
+        expect(names.slice(1)).toEqual(['helperA', 'helperB']);
+        expect(scope.index[1]).toEqual({ file: 'a.js', symbol: 'helperA', line: 1, end: 2 });
+    });
+
+    test('the widen index is capped at 40', () => {
+        const defs = [];
+        for (let i = 0; i < 60; i++) defs.push({ name: 'n' + i, kind: 'function', start: i + 1, end: i + 1, parent: null });
+        const book = { chapters: [{ id: 'c', title: 'C', paragraphs: [[{ t: 'x' }]] }] };
+        const scope = buildBookScope('o/r', book, 0, { symbols: { files: { 'big.js': { defs, imports: {} } } }, files: [], getLines: () => null });
+        expect(scope.index).toHaveLength(40);
     });
 });

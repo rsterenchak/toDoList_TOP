@@ -38,6 +38,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({ pagesUrlFor: vi.fn(() => ''
 
 vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(() => Promise.resolve({ ok: true, files: [], srcRoot: 'toDoList_main/src' })),
+    getCachedManifest: vi.fn(() => null),
     openChatWithBookScope: vi.fn(),
 }));
 
@@ -60,6 +61,12 @@ vi.mock('../src/tourPlayer.js', async (importOriginal) => {
     return { ...actual, openTourPlayer: vi.fn(actual.openTourPlayer) };
 });
 
+// The symbols index would load from Pages; nothing is loaded unless a test says so.
+vi.mock('../src/codeTrace.js', () => ({
+    loadSymbols: vi.fn(() => Promise.resolve(null)),
+    getLoadedSymbols: vi.fn(() => undefined),
+}));
+
 vi.mock('../src/codeViewer.js', () => ({
     renderCodeViewer: vi.fn(),
     clearCodeViewer: vi.fn(),
@@ -71,11 +78,14 @@ vi.mock('../src/codeViewer.js', () => ({
     clearBanner: vi.fn(),
     getOpenCodeViewerFile: vi.fn(() => null),
     getOpenCodeViewerRef: vi.fn(() => null),
+    getCachedLines: vi.fn(() => null),
 }));
 
 import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, openBookRefInReader } from '../src/understandingView.js';
 import { renderCodeViewer, setCodeViewerCloseHandler, clearCodeViewer, setBanner } from '../src/codeViewer.js';
-import { loadManifest, openChatWithBookScope } from '../src/claudeSheet.js';
+import { loadManifest, getCachedManifest, openChatWithBookScope } from '../src/claudeSheet.js';
+import { loadSymbols, getLoadedSymbols } from '../src/codeTrace.js';
+import { getCachedLines } from '../src/codeViewer.js';
 import { showConfirmModal } from '../src/modals.js';
 import { getBookProgress, getTourProgress, setTourProgress } from '../src/prefs.js';
 import { openTourPlayer, closeTourPlayer } from '../src/tourPlayer.js';
@@ -779,6 +789,27 @@ describe('ask about this chapter', () => {
         expect(scope.repo).toBe('owner/repo');
         expect(scope.chapter).toEqual({ id: 'data', title: 'Where the data lives', index: 2, total: 3 });
         expect(scope.prose).toEqual(['Data one.', 'Data two.']);
+    });
+
+    test('the tap carries referrers and the widen index from the loaded symbols and cached source', async () => {
+        await openChapter(0);
+        // Mounting the Ask chip warms the symbols index.
+        expect(loadSymbols).toHaveBeenCalledWith('owner/repo');
+        getCachedManifest.mockReturnValueOnce({ ok: true, files: ['index.js', 'main.js'], srcRoot: 'toDoList_main/src' });
+        getLoadedSymbols.mockReturnValueOnce({
+            files: {
+                'index.js': { defs: [{ name: 'bootApp', kind: 'function', start: 40, end: 72, parent: null }], imports: {} },
+                'main.js': { defs: [{ name: 'wire', kind: 'function', start: 1, end: 5, parent: null }], imports: { bootApp: { from: 'index.js', name: 'bootApp' } } },
+            },
+        });
+        getCachedLines.mockImplementation((repo, path) => (path === 'toDoList_main/src/main.js'
+            ? ["import { bootApp } from './index.js';", '', 'bootApp();'] : null));
+        view().querySelector('.understandingAskChip').click();
+        const scope = openChatWithBookScope.mock.calls[0][0];
+        expect(scope.refs.find((r) => r.symbol === 'bootApp').referrers).toEqual([{ file: 'main.js', lines: [3] }]);
+        expect(scope.index).toEqual([{ file: 'main.js', symbol: 'wire', line: 1, end: 5 }]);
+        expect(getCachedLines).toHaveBeenCalledWith('owner/repo', 'toDoList_main/src/main.js');
+        getCachedLines.mockImplementation(() => null);
     });
 
     test('a scoped reply chip opens in the reader pane while the reader shows its repo', async () => {

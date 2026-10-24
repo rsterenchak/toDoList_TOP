@@ -246,6 +246,15 @@ export function getOpenCodeViewerRef() {
     return ref;
 }
 
+// The cached lines of REPO-RELATIVE `filePath` in `repo` (a copy), or null when
+// the viewer has not read that file this session. Read-only and never fetches —
+// the chapter chat scope uses it to find a symbol's uses only in files already
+// paid for.
+export function getCachedLines(repo, filePath) {
+    const hit = cache.get(repo + '\u0000' + filePath);
+    return hit ? hit.lines.slice() : null;
+}
+
 // Drop the cached source and the open-viewer state. A test seam — nothing in the
 // app calls it, since the cache is keyed by repo + path and never goes stale
 // within a session.
