@@ -53,7 +53,7 @@
 
 import { resolveProjectRepo } from './seedTasksModal.js';
 import { loadBook, revalidateBook, isBookCached, bookStats } from './codeBook.js';
-import { getCachedTargets, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured, showInjectToast } from './inject.js';
+import { getCachedTargets, targetsLoaded, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured, showInjectToast } from './inject.js';
 import { showConfirmModal } from './modals.js';
 import { loadManifest, openChatWithBookScope } from './claudeSheet.js';
 import { joinSrcRootPath } from './srcPath.js';
@@ -64,7 +64,7 @@ import { listBookmarks, isBookmarked, toggleBookmark, removeBookmark, loadBookma
 import { FLAG_KINDS, DEFAULT_FLAG_KIND, flagBadge, flagExcerpt, chapterBookSha, openFlags, openFlagFor, saveFlag, resolveFlag, deleteFlag, loadFlags, anchorFlags, flagsMarkdown } from './bookFlags.js';
 import { loadTours, orderedTours, tourStats } from './codeTours.js';
 import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
-import { getTourProgress } from './prefs.js';
+import { getTourProgress, getActiveView } from './prefs.js';
 
 // Probe cadence and limits for a tracked book run, matching the scan tracker's.
 const BOOK_POLL_MS = 5000;
@@ -116,6 +116,9 @@ let revalidateNext = true;
 // The open reader `{ view, repo, book, index, paraIndex, observer, scroll, main,
 // codePane, marksBtn, marksBadge, marksList }`, or null while the shelf shows.
 let reader = null;
+// Set while the view shows the targets-not-loaded loading state or the no-repo
+// state — the only states a targets event may re-render.
+let awaitingRepo = false;
 // The loaded tours `{ repo, data, areas }` — `data` null when the repo has none.
 let tourData = null;
 
@@ -2345,6 +2348,7 @@ export function renderUnderstandingView(opts) {
     teardownShelf();
     const seq = ++renderSeq;
     shelfRepo = null;
+    awaitingRepo = false;
     clear(view);
 
     const projectName = getSelectedProjectName();
@@ -2354,6 +2358,16 @@ export function renderUnderstandingView(opts) {
     }
     const repo = resolveProjectRepo(projectName);
     if (!repo) {
+        // An empty targets cache on a cold start means "not loaded yet", not
+        // "not linked" — wait for the targets events below to re-render.
+        awaitingRepo = true;
+        if (!targetsLoaded()) {
+            const pending = document.createElement('div');
+            pending.className = 'understandingLoading';
+            pending.textContent = 'Loading…';
+            view.appendChild(pending);
+            return;
+        }
         appendEmptyState(
             view,
             projectName + ' isn’t linked to a repo — link one in its inject target to read its code book.',
@@ -2406,6 +2420,20 @@ export function renderUnderstandingView(opts) {
             paintShelf(view, repo, book, merged);
         });
     });
+}
+
+// The targets cache landing (boot warm-up) or changing (a target linked mid-
+// session) re-renders a loading or no-repo state so the shelf appears without a
+// tab switch. A populated shelf or an open reader is never touched, nor a hidden
+// view (it re-renders on entry anyway).
+function onTargetsSettled() {
+    if (!awaitingRepo || reader) return;
+    if (getActiveView() !== 'understanding') return;
+    renderUnderstandingView();
+}
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('injectTargetsLoaded', onTargetsSettled);
+    document.addEventListener('injectTargetsChanged', onTargetsSettled);
 }
 
 // Leaving the view: stop the probe timer (the tracked run itself is kept, so

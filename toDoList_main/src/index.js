@@ -20,6 +20,7 @@ import { maybeMigrateLocalToSupabase, maybeSkipFirstRunForCloudUser } from './mi
 import { initViewportHeal } from './viewportHeal.js';
 import { initViewportSettle } from './viewportSettle.js';
 import { enforceAppLockIdle } from './appLock.js';
+import { initInjectTargets } from './inject.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
@@ -86,6 +87,22 @@ function reportBootFailure() {
     } catch (_) { /* noop */ }
 }
 
+// How long the first render waits on the inject-targets warm-up. Rendering
+// before it lands paints Understanding/Structure's loading state on a cold start
+// there; they re-render on `injectTargetsLoaded`, so this only saves a flash —
+// a slow Supabase or Worker must never hold the shell back longer than this.
+const BOOT_TARGETS_WAIT_MS = 2500;
+
+// Warm the inject-targets cache (purposes first, then rows) before the first
+// render so a view that resolves its project's repo gets it right the first
+// time. Never rejects, and resolves at the bound even if the warm-up hangs.
+function warmTargetsForBoot() {
+    return new Promise(function(resolve) {
+        setTimeout(resolve, BOOT_TARGETS_WAIT_MS);
+        Promise.resolve().then(initInjectTargets).then(resolve, resolve);
+    });
+}
+
 let booted = false;
 // Set once bootApp's first render succeeds. From then on every new session
 // (a sign-out then sign-in on the same tab) remounts the ghost directly, since
@@ -118,7 +135,11 @@ function bootApp(userId) {
     // left on an empty shell — a boot failure, not a console line.
     let rendered = false;
 
-    maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {
+    Promise.all([
+        maybeSkipFirstRunForCloudUser(userId),
+        userId ? warmTargetsForBoot() : null,
+    ]).then(function(results) {
+        const cloudHasData = results[0];
         // The render step gets its own try/catch: a throw here means the user is
         // looking at an empty shell, which is a boot failure the watchdog has to
         // hear about — not a line in the console. Reported and then returned

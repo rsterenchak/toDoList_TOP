@@ -1896,7 +1896,24 @@ function stampTargetPurposes() {
     });
 }
 
+// Whether a loadInjectTargets call has settled yet (success or failure). Until
+// then an empty cache means "not loaded", not "no targets" — the Understanding
+// and Structure views read this to show a loading state rather than claiming a
+// linked project isn't linked. Never resets: a later load only refreshes rows.
+let targetsLoadSettled = false;
+export function targetsLoaded() {
+    return targetsLoadSettled;
+}
+
 export async function loadInjectTargets() {
+    try {
+        return await loadInjectTargetRows();
+    } finally {
+        targetsLoadSettled = true;
+    }
+}
+
+async function loadInjectTargetRows() {
     try {
         const res = await supabase
             .from('inject_targets')

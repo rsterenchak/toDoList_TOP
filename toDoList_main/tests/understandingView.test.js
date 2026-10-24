@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
     tours: null,
     cached: false,
     fresh: undefined,
+    loaded: true,
 }));
 
 vi.mock('../src/seedTasksModal.js', () => ({
@@ -41,6 +42,7 @@ vi.mock('../src/codeBook.js', async () => {
 
 vi.mock('../src/inject.js', () => ({
     getCachedTargets: vi.fn(() => [{ repo: 'owner/repo', file_path: 'TODO.md' }]),
+    targetsLoaded: vi.fn(() => mocks.loaded),
     fetchActiveRuns: vi.fn(() => Promise.resolve({ ok: true, active: mocks.active })),
     dispatchBook: vi.fn(() => Promise.resolve({ ok: true, dispatched: true, book: true })),
     mintEntryId: vi.fn(() => 'cid-1'),
@@ -149,6 +151,7 @@ beforeEach(() => {
     mocks.tours = null;
     mocks.cached = false;
     mocks.fresh = undefined;
+    mocks.loaded = true;
     localStorage.clear();
     vi.clearAllMocks();
     mountShell('Void');
@@ -171,6 +174,84 @@ describe('empty states', () => {
         mocks.repo = null;
         await renderUnderstandingView();
         expect(view().querySelector('.structureEmptyState').textContent).toMatch(/isn’t linked to a repo/);
+        expect(loadBook).not.toHaveBeenCalled();
+    });
+});
+
+// A cold start on this view renders before the inject-targets cache has loaded,
+// so an unresolved repo there means "not loaded yet", not "not linked".
+describe('targets not loaded yet', () => {
+    beforeEach(() => {
+        localStorage.setItem('todoapp_active_view', 'understanding');
+    });
+
+    test('shows a loading state, then the shelf once the targets land', async () => {
+        mocks.repo = null;
+        mocks.loaded = false;
+        mocks.book = CLEAN;
+        await renderUnderstandingView();
+        expect(view().querySelector('.structureEmptyState')).toBeNull();
+        expect(view().querySelector('.understandingLoading').textContent).toBe('Loading…');
+        expect(loadBook).not.toHaveBeenCalled();
+
+        mocks.repo = 'owner/repo';
+        mocks.loaded = true;
+        document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+        await flush();
+        expect(loadBook).toHaveBeenCalledWith('owner/repo');
+        expect(view().querySelectorAll('.understandingChapterRow')).toHaveLength(3);
+    });
+
+    test('loaded targets with no link for the project show the no-repo state', async () => {
+        mocks.repo = null;
+        mocks.loaded = false;
+        await renderUnderstandingView();
+        mocks.loaded = true;
+        document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+        await flush();
+        expect(view().querySelector('.structureEmptyState').textContent).toMatch(/isn’t linked to a repo/);
+    });
+
+    test('a target linked mid-session resolves the no-repo state', async () => {
+        mocks.repo = null;
+        await renderUnderstandingView();
+        expect(view().querySelector('.structureEmptyState')).not.toBeNull();
+        mocks.repo = 'owner/repo';
+        mocks.book = CLEAN;
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        await flush();
+        expect(view().querySelector('.structureEmptyState')).toBeNull();
+        expect(view().querySelectorAll('.understandingChapterRow')).toHaveLength(3);
+    });
+
+    test('an open reader or a populated shelf survives both events', async () => {
+        mocks.book = CLEAN;
+        await renderUnderstandingView();
+        const shelf = view().querySelector('.understandingShelf');
+        document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        await flush();
+        expect(view().querySelector('.understandingShelf')).toBe(shelf);
+
+        view().querySelectorAll('.understandingChapterBtn')[1].click();
+        loadBook.mockClear();
+        document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+        document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+        await flush();
+        expect(view().classList.contains('is-reading')).toBe(true);
+        expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
+        expect(loadBook).not.toHaveBeenCalled();
+    });
+
+    test('a hidden view is not re-rendered by the events', async () => {
+        mocks.repo = null;
+        mocks.loaded = false;
+        await renderUnderstandingView();
+        localStorage.setItem('todoapp_active_view', 'projects');
+        mocks.repo = 'owner/repo';
+        mocks.loaded = true;
+        document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+        await flush();
         expect(loadBook).not.toHaveBeenCalled();
     });
 });
