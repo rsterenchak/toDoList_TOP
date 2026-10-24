@@ -94,6 +94,8 @@ import {
     revertToastMessage,
 } from './dispatchDraft.js';
 import DOMPurify from 'dompurify';
+import { renderMarkdown } from './chatMarkdown.js';
+import { createCodeSheet } from './codeSheet.js';
 
 const MOBILE_MAX_WIDTH = 1023;
 // Swipe-down-to-dismiss commit thresholds. A deliberate dismiss is either a
@@ -1457,55 +1459,30 @@ export function resolveBookRefSpan(symbols, scope, span) {
     return { file: pick.file, symbol: name, line: pick.def.start, end: pick.def.end, label: span.trim() };
 }
 
-// In a chapter-scoped conversation, turn each backticked span in an assistant
-// bubble's prose into a code chip that opens its definition, and every span
-// that doesn't resolve into plain <code>. Fenced blocks and rendered html/svg
-// boxes are left untouched. A no-op when unscoped or the index hasn't loaded,
-// so unscoped chats render exactly as before.
+// In a chapter-scoped conversation, turn each inline <code> span the markdown
+// renderer produced in an assistant bubble's prose into a code chip that opens
+// its definition; spans that don't resolve stay <code>. Fenced blocks and
+// rendered html/svg boxes are left untouched. A no-op when unscoped or the index
+// hasn't loaded, so unscoped chats render exactly as before.
 function decorateBookRefs(bubble) {
     if (!bubble || !activeBookScope) return;
     const repo = activeChatRepo;
     const symbols = getLoadedSymbols(repo);
     if (!symbols) return;
     const scope = activeBookScope;
-    const textNodes = [];
-    for (let n = bubble.firstChild; n; n = n.nextSibling) {
-        if (n.nodeType === 3) textNodes.push(n);
-    }
-    textNodes.forEach(function (node) {
-        const text = node.nodeValue || '';
-        if (text.indexOf('`') === -1) return;
-        const frag = document.createDocumentFragment();
-        // Fenced blocks stay verbatim; only the prose between them is scanned.
-        text.split(/(```[\s\S]*?```)/).forEach(function (part, i) {
-            if (!part) return;
-            if (i % 2 === 1) { frag.appendChild(document.createTextNode(part)); return; }
-            const re = /`([^`\n]+)`/g;
-            let last = 0;
-            let m;
-            while ((m = re.exec(part))) {
-                if (m.index > last) frag.appendChild(document.createTextNode(part.slice(last, m.index)));
-                const ref = resolveBookRefSpan(symbols, scope, m[1]);
-                if (ref) {
-                    const chip = document.createElement('button');
-                    chip.type = 'button';
-                    chip.className = 'bookRef claudeMsgBookRef';
-                    chip.textContent = ref.label;
-                    chip.setAttribute('aria-label', 'Open ' + ref.label + ' in code');
-                    chip.addEventListener('click', function () {
-                        if (bookRefOpener) bookRefOpener(Object.assign({ repo: repo }, ref));
-                    });
-                    frag.appendChild(chip);
-                } else {
-                    const code = document.createElement('code');
-                    code.textContent = m[1];
-                    frag.appendChild(code);
-                }
-                last = re.lastIndex;
-            }
-            if (last < part.length) frag.appendChild(document.createTextNode(part.slice(last)));
+    Array.prototype.forEach.call(bubble.querySelectorAll('code'), function (code) {
+        if (code.closest('pre, .claudeMsgRendered')) return;
+        const ref = resolveBookRefSpan(symbols, scope, code.textContent);
+        if (!ref) return;
+        const chip = document.createElement('button');
+        chip.type = 'button';
+        chip.className = 'bookRef claudeMsgBookRef';
+        chip.textContent = ref.label;
+        chip.setAttribute('aria-label', 'Open ' + ref.label + ' in code');
+        chip.addEventListener('click', function () {
+            if (bookRefOpener) bookRefOpener(Object.assign({ repo: repo }, ref));
         });
-        node.parentNode.replaceChild(frag, node);
+        code.parentNode.replaceChild(chip, code);
     });
 }
 
@@ -1526,6 +1503,7 @@ function replayChatHistory() {
             renderAssistantContent(bubble, turn.content);
             mountCreateTaskAction(bubble, turn.content);
             decorateBookRefs(bubble);
+            mountReaderChip(bubble, turn);
         }
     }
     // An empty (per-repo) thread carries a persistent capabilities note at the
@@ -4159,20 +4137,16 @@ function sanitizeSvgBlock(svg) {
 }
 
 // Render an assistant reply into a bubble, turning fenced ```html and ```svg
-// blocks into live (sanitized) inline markup while keeping the surrounding prose
-// as plain text. When the reply carries no renderable block this is identical to
-// `bubble.textContent = text`, preserving the prior behavior exactly.
+// blocks into live (sanitized) inline markup and rendering the prose around them
+// as markdown (chatMarkdown.js — built from text nodes, never parsed as HTML).
 export function renderAssistantContent(bubble, text) {
     if (!bubble) return bubble;
     const segments = splitRenderableBlocks(text);
-    if (segments.length === 1 && segments[0].type === 'text') {
-        bubble.textContent = segments[0].value;
-        return bubble;
-    }
     bubble.textContent = '';
+    bubble.classList.add('claudeMd');
     for (const seg of segments) {
         if (seg.type === 'text') {
-            if (seg.value) bubble.appendChild(document.createTextNode(seg.value));
+            if (seg.value) bubble.appendChild(renderMarkdown(seg.value));
             continue;
         }
         const box = document.createElement('div');
@@ -4234,6 +4208,155 @@ function mountCreateTaskAction(bubble, rawText) {
     });
     actions.appendChild(btn);
     bubble.appendChild(actions);
+}
+
+// ── REPLY READER ──
+// A `⤢` chip on each completed assistant bubble opens the reply in a reading
+// sheet at reader type size, built on the codeSheet chrome (backdrop, Escape).
+// The sheet pages through the conversation's assistant turns in place; each
+// bubble remembers its turn so the index reads off chatHistory, not the DOM.
+const readerTurnOf = new WeakMap();
+let readerSheet = null;
+let readerIndex = 0;
+let readerOpener = null;
+
+function readerTurns() {
+    return chatHistory.filter(function (t) { return t && t.role === 'assistant'; });
+}
+
+// The prose a reply's bubble shows: its directive lines stripped, as the live
+// render does.
+function readerVisibleText(content) {
+    let visible = String(content == null ? '' : content);
+    if (extractInspectDirective(visible)) visible = stripInspectDirective(visible);
+    const ask = extractAskDirective(visible);
+    if (ask) visible = stripAskDirective(visible, ask);
+    return visible;
+}
+
+function ensureReaderSheet() {
+    if (!readerSheet) {
+        readerSheet = createCodeSheet({
+            id: 'claudeReaderSheet',
+            label: 'Reply reader',
+            className: 'claudeReaderSheet',
+            onHide: function () {
+                const opener = readerOpener;
+                readerOpener = null;
+                if (opener && opener.isConnected) {
+                    try { opener.focus(); } catch (e) { /* defensive */ }
+                }
+            },
+        });
+    }
+    const host = readerSheet.ensure();
+    if (host && !host.querySelector('.claudeReader')) {
+        const reader = document.createElement('div');
+        reader.className = 'claudeReader';
+
+        const head = document.createElement('div');
+        head.className = 'claudeReaderHead';
+        const title = document.createElement('span');
+        title.className = 'claudeReaderTitle';
+        const copy = document.createElement('button');
+        copy.type = 'button';
+        copy.className = 'claudeReaderCopy';
+        copy.textContent = 'Copy';
+        copy.setAttribute('aria-label', 'Copy reply');
+        copy.addEventListener('click', function () {
+            const turn = readerTurns()[readerIndex];
+            const raw = turn ? String(turn.content || '') : '';
+            try {
+                navigator.clipboard.writeText(raw).then(function () { showInjectToast('Copied'); }).catch(function () {});
+            } catch (e) { /* clipboard unavailable */ }
+        });
+        const close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'claudeReaderClose';
+        close.textContent = '✕';
+        close.setAttribute('aria-label', 'Close reader');
+        close.addEventListener('click', function () { readerSheet.hide(); });
+        head.appendChild(title);
+        head.appendChild(copy);
+        head.appendChild(close);
+
+        const body = document.createElement('div');
+        body.className = 'claudeReaderBody';
+
+        const foot = document.createElement('div');
+        foot.className = 'claudeReaderFoot';
+        const prev = document.createElement('button');
+        prev.type = 'button';
+        prev.className = 'claudeReaderPrev';
+        prev.textContent = '‹ Prev';
+        prev.setAttribute('aria-label', 'Previous reply');
+        prev.addEventListener('click', function () { renderReader(readerIndex - 1); });
+        const next = document.createElement('button');
+        next.type = 'button';
+        next.className = 'claudeReaderNext';
+        next.textContent = 'Next ›';
+        next.setAttribute('aria-label', 'Next reply');
+        next.addEventListener('click', function () { renderReader(readerIndex + 1); });
+        foot.appendChild(prev);
+        foot.appendChild(next);
+
+        reader.appendChild(head);
+        reader.appendChild(body);
+        reader.appendChild(foot);
+        host.appendChild(reader);
+    }
+    return host;
+}
+
+// Render assistant turn `index` into the open reader, clamped to the thread.
+function renderReader(index) {
+    const host = ensureReaderSheet();
+    if (!host) return;
+    const turns = readerTurns();
+    if (!turns.length) return;
+    readerIndex = Math.max(0, Math.min(turns.length - 1, index));
+    host.querySelector('.claudeReaderTitle').textContent =
+        'REPLY · ' + (readerIndex + 1) + ' OF ' + turns.length;
+    const body = host.querySelector('.claudeReaderBody');
+    renderAssistantContent(body, readerVisibleText(turns[readerIndex].content));
+    decorateBookRefs(body);
+    body.scrollTop = 0;
+    host.querySelector('.claudeReaderPrev').disabled = readerIndex === 0;
+    host.querySelector('.claudeReaderNext').disabled = readerIndex === turns.length - 1;
+}
+
+function openReplyReader(turn, opener) {
+    const turns = readerTurns();
+    if (!turns.length) return;
+    let index = turns.indexOf(turn);
+    if (index === -1 && turn && turn.id) {
+        index = turns.findIndex(function (t) { return t.id === turn.id; });
+    }
+    if (index === -1) index = turns.length - 1;
+    readerOpener = opener || null;
+    renderReader(index);
+    readerSheet.show();
+    const close = readerSheet.host() && readerSheet.host().querySelector('.claudeReaderClose');
+    if (close) {
+        try { close.focus(); } catch (e) { /* defensive */ }
+    }
+}
+
+// Mount the `⤢` chip on a COMPLETED assistant bubble — never a note or a
+// pending bubble. Idempotent so a replay can't double-mount.
+function mountReaderChip(bubble, turn) {
+    if (!bubble || !turn || bubble.querySelector('.claudeMsgReaderChip')) return;
+    readerTurnOf.set(bubble, turn);
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    // The ⤢ glyph is drawn by CSS so the bubble's text stays the reply's own.
+    chip.className = 'claudeMsgReaderChip';
+    chip.setAttribute('aria-label', 'Open reply in reader');
+    chip.addEventListener('click', function () {
+        openReplyReader(readerTurnOf.get(bubble), chip);
+    });
+    bubble.classList.add('has-readerChip');
+    bubble.insertBefore(chip, bubble.firstChild);
 }
 
 // Detect an `INSPECT: <selector>` directive line the Worker emits in iterate
@@ -4359,7 +4482,7 @@ async function requestAssistantReply(entryId, deep) {
         const result = await chatWithWorker(toWorkerTurns(chatHistory), entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask, chatOpts);
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
-        appendChatTurn({ role: 'assistant', content: reply });
+        const replyTurn = appendChatTurn({ role: 'assistant', content: reply });
         // The seed (or any follow-up carrying an id) landed: establish/refresh
         // the active repo's iterate session so later turns keep the diff.
         if (entryId) {
@@ -4382,6 +4505,7 @@ async function requestAssistantReply(entryId, deep) {
             // parse from the raw reply so a fenced ```md entry (or a plain reply)
             // yields the same title/description the paste path would.
             mountCreateTaskAction(pending, reply);
+            mountReaderChip(pending, replyTurn);
         }
         if (inspectSelector) renderAttachLayoutButton(inspectSelector);
         if (ask) renderAskChips(ask);

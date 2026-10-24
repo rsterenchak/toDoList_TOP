@@ -4894,11 +4894,12 @@ describe('Inline html/svg rendering in the chat surface', () => {
         expect(bubble.querySelector('rect')).toBeTruthy();
     });
 
-    it('falls back to plain text content when the reply has no fenced blocks', () => {
+    it('renders a reply with no fenced blocks as a markdown paragraph', () => {
         const bubble = document.createElement('div');
         renderAssistantContent(bubble, 'plain reply');
         expect(bubble.textContent).toBe('plain reply');
-        expect(bubble.children).toHaveLength(0);
+        expect(bubble.children).toHaveLength(1);
+        expect(bubble.firstElementChild.tagName).toBe('P');
     });
 
     it('promotes an un-fenced <svg>…</svg> in a reply to an svg segment', () => {

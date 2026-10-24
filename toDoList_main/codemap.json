@@ -103,7 +103,8 @@
         "modelsPanel.js",
         "layoutInspect.js",
         "filePicker.js",
-        "voiceInput.js"
+        "voiceInput.js",
+        "chatMarkdown.js"
       ]
     },
     {

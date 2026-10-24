@@ -243,13 +243,12 @@ describe('claudeSheet — chapter scope', () => {
         setBookRefOpener(null);
     });
 
-    it('leaves an unscoped reply exactly as text', async () => {
+    it('leaves an unscoped reply\'s code spans as plain code, never chips', async () => {
         state.reply = 'It starts in `openChatWithTask`.';
         await sendTurn('where?');
         const bubble = Array.from(document.querySelectorAll('.claudeMsg--assistant')).pop();
         expect(bubble.querySelector('.claudeMsgBookRef')).toBe(null);
-        expect(bubble.querySelector('code')).toBe(null);
-        expect(bubble.textContent).toContain('`openChatWithTask`');
+        expect(bubble.querySelector('code').textContent).toBe('openChatWithTask');
     });
 
     it('leaves fenced blocks verbatim in a scoped reply', async () => {

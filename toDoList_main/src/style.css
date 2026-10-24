@@ -28058,3 +28058,209 @@ body.appLocked { overflow: hidden; }
     transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
   }
 }
+
+/* CHAT MARKDOWN — an assistant reply rendered as markdown (chatMarkdown.js) in
+   its bubble and, at reader size, in the reply reader. Blocks sit 10px apart;
+   theme tokens throughout so the light theme follows. */
+.claudeMd {
+  white-space: normal;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.claudeMd p,
+.claudeMd ul,
+.claudeMd ol,
+.claudeMd blockquote,
+.claudeMd h3,
+.claudeMd h4,
+.claudeMd h5,
+.claudeMd .claudeMdCode {
+  margin: 0 0 10px;
+}
+.claudeMd hr {
+  margin: 0 0 10px;
+  border: none;
+  border-top: 1px solid var(--border-bright);
+}
+.claudeMd > :last-child { margin-bottom: 0; }
+.claudeMd ul,
+.claudeMd ol { padding-left: 18px; }
+.claudeMd li > ul,
+.claudeMd li > ol,
+.claudeMd li > .claudeMdCode { margin: 4px 0 0; }
+.claudeMd h3,
+.claudeMd h4 {
+  color: var(--text-primary);
+  font-weight: 700;
+  line-height: 1.3;
+}
+.claudeMd h3 { font-size: 1.2em; }
+.claudeMd h4 { font-size: 1.05em; }
+.claudeMd h5 {
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.claudeMd :not(pre) > code {
+  padding: 1px 5px;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+}
+.claudeMd blockquote {
+  padding-left: 10px;
+  border-left: 2px solid var(--border-bright);
+  color: var(--text-secondary);
+}
+.claudeMd a { color: var(--accent-text); }
+.claudeMdCode {
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  background: var(--bg-base);
+  overflow: hidden;
+}
+.claudeMdCodeHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 6px 3px 10px;
+  border-bottom: 0.5px solid var(--border-bright);
+}
+.claudeMdCodeLang {
+  color: var(--text-muted);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+}
+.claudeMdCodeCopy {
+  padding: 2px 8px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+.claudeMdCodeCopy:hover { color: var(--text-primary); }
+.claudeMdCode pre {
+  margin: 0;
+  padding: 8px 10px;
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+}
+.claudeMdCode code {
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+}
+
+/* The `⤢` chip that opens a reply in the reader — top-right of the bubble,
+   28px on desktop and 36px under a coarse pointer. */
+.claudeMsg--assistant.has-readerChip {
+  position: relative;
+  padding-right: 34px;
+}
+.claudeMsgReaderChip {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+.claudeMsgReaderChip::before { content: '\2922'; }
+.claudeMsgReaderChip:hover,
+.claudeMsgReaderChip:focus-visible { color: var(--text-primary); background: var(--bg-hover); }
+.claudeMsg--note .claudeMsgReaderChip,
+.claudeMsg--pending .claudeMsgReaderChip { display: none; }
+@media (pointer: coarse) {
+  .claudeMsg--assistant.has-readerChip { padding-right: 40px; }
+  .claudeMsgReaderChip { width: 36px; height: 36px; top: 0; right: 0; }
+}
+
+/* The reply reader: full screen on mobile, a centred 720px column over the
+   dimmed backdrop on desktop. */
+.claudeReaderSheet .structureCodeSheetHost { padding: 0; }
+.claudeReader {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.claudeReaderHead,
+.claudeReaderFoot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  flex: 0 0 auto;
+}
+.claudeReaderHead { border-bottom: 0.5px solid var(--border-bright); }
+.claudeReaderFoot {
+  justify-content: space-between;
+  border-top: 0.5px solid var(--border-bright);
+}
+.claudeReaderTitle {
+  flex: 1 1 auto;
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+.claudeReaderCopy,
+.claudeReaderClose,
+.claudeReaderPrev,
+.claudeReaderNext {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 0.5px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.claudeReaderCopy:hover,
+.claudeReaderClose:hover,
+.claudeReaderPrev:hover:not(:disabled),
+.claudeReaderNext:hover:not(:disabled) { color: var(--text-primary); }
+.claudeReaderPrev:disabled,
+.claudeReaderNext:disabled { opacity: 0.4; cursor: default; }
+.claudeReaderBody {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 16px 18px 24px;
+  color: var(--text-primary);
+  font-size: 15px;
+  line-height: 1.65;
+  word-break: break-word;
+}
+@media (min-width: 1024px) {
+  .structureCodeSheet.claudeReaderSheet {
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  .claudeReaderSheet .structureCodeSheetPanel {
+    max-width: 720px;
+    height: calc(100vh - 48px);
+    border: 1px solid var(--border-bright);
+    border-radius: 12px;
+    overflow: hidden;
+  }
+}
