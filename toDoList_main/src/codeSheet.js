@@ -20,6 +20,7 @@ import { clearCodeViewer } from './codeViewer.js';
 //   • isDesktop — the breakpoint test; the sheet is never revealed while it holds.
 //   • className — an extra class on the backdrop, for a sheet that hosts
 //     something other than the viewer (the reader's bookmark list).
+//   • onHide    — called each time an open sheet closes, by any affordance.
 // Returns `{ ensure, host, show, hide, reset, sync, isOpen }`.
 export function createCodeSheet(opts) {
     const o = opts || {};
@@ -70,7 +71,9 @@ export function createCodeSheet(opts) {
     }
 
     function hide() {
+        const wasOpen = !!sheetEl && !sheetEl.hidden;
         if (sheetEl) sheetEl.hidden = true;
+        if (wasOpen && typeof o.onHide === 'function') o.onHide();
     }
 
     // Reveal the sheet regardless of what its host holds — for a host that isn't

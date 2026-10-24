@@ -5,10 +5,14 @@
 export const changelog = [
     {
         version: '1.1',
-        date: '2026-10-23',
-        changed: [
-            'Code tours now appear in a Go deeper list at the end of each code book chapter, with All tours in the reader\'s top bar, so the shelf lists chapters only.',
+        date: '2026-10-24',
+        added: [
+            'Assistant replies in the Claude chat now show real formatting, with bold, headings, nested bullets, links and code blocks you can copy, and a ⤢ button opens any reply in a full reading view you can page through.',
         ],
+    },
+    {
+        version: '1.1',
+        date: '2026-10-23',
         fixed: [
             'The code book\'s map chapter now reads as a table of contents for the code, listing each area, the files where it starts and the names you will meet in them, instead of a flat list of shared helpers.',
             'Switching tabs, waking your phone or a background sync no longer throws you out of the code book chapter you were reading and back to the shelf.',
