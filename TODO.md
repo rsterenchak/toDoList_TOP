@@ -2770,7 +2770,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/codeBook.js`, `toDoList_main/src/understandingView.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/codeBook.test.js`, `toDoList_main/tests/understandingView.test.js`
   <!-- id: 50c58a6f-dbdf-478d-9963-0b93befb5297 -->
 
-- [ ] **[HIGH]** Fix Understanding and Structure showing "isn't linked to a repo" on cold start
+- [x] **[HIGH]** Fix Understanding and Structure showing "isn't linked to a repo" on cold start — Completed: 2026-10-23
   - Type: bug
   - Description: Opening the app on a view other than Stream — on the phone especially — shows "<project> isn't linked to a repo" for a project that is linked, and it stays until the user switches tabs. Cause: `bootApp` → `restoreFromStorage()` → `applyActiveView(getActiveView())` renders the Understanding (or Structure) view before `loadInjectTargets()` has filled the targets cache — it is fired fire-and-forget from the Claude sheet's mount and is still in flight — so `resolveProjectRepo()` → `findTargetById()` returns null and the view paints its no-repo empty state. Nothing re-renders when the targets arrive: neither view listens for a targets event, and the sync/wake no-op rule (correctly) stops `applyActiveView` from re-rendering the same view. Expected: a view that can't resolve the repo because targets have not loaded yet shows a neutral loading state, and renders normally the moment they land; the real "no repo linked" state appears only once targets are known and the project has none.
   - Behavior:

@@ -36,6 +36,8 @@ const { state } = vi.hoisted(() => ({
         lastChatCall: null,
         // What the tour loader resolves for any repo (null = no src-tours.json).
         tours: null,
+        // Whether the inject-targets cache has loaded (targetsLoaded()).
+        targetsLoaded: true,
     },
 }));
 
@@ -66,6 +68,7 @@ vi.mock('../src/seedTasksModal.js', () => ({
 }));
 
 vi.mock('../src/inject.js', () => ({
+    targetsLoaded: vi.fn(function () { return state.targetsLoaded; }),
     chatWithWorker: vi.fn(function (messages, entryId, attach, repo, suggested, deep) {
         state.lastChatCall = { messages, entryId, attach, repo, suggested, deep };
         if (state.explainError) return Promise.reject(state.explainError);
@@ -160,6 +163,7 @@ beforeEach(() => {
     state.explainError = null;
     state.lastChatCall = null;
     state.tours = null;
+    state.targetsLoaded = true;
     chatWithWorker.mockClear();
     setChatWorkspaceRepo.mockClear();
     insertReference.mockClear();
@@ -413,6 +417,71 @@ describe('renderStructureView — project-derived repo', () => {
         expect(glyph).toBeTruthy();
         expect(glyph.getAttribute('aria-hidden')).toBe('true');
         expect(glyph.querySelector('svg')).toBeTruthy();
+    });
+
+    // A cold start on Structure renders before the inject-targets cache has
+    // loaded, so an unresolved repo there means "not loaded yet", not "not linked".
+    describe('targets not loaded yet', () => {
+        beforeEach(() => {
+            localStorage.setItem('todoapp_active_view', 'structure');
+        });
+        afterEach(() => {
+            localStorage.removeItem('todoapp_active_view');
+        });
+
+        it('shows a loading state, then the repo once the targets land', async () => {
+            state.projectRepos['Cold'] = null;
+            state.targetsLoaded = false;
+            mountDom('Cold');
+            renderStructureView();
+            await flush();
+            expect(document.querySelector('.structureEmptyState')).toBeFalsy();
+            expect(document.querySelector('#structureView .structureTreeLoading').textContent).toBe('Loading…');
+
+            state.projectRepos['Cold'] = 'rsterenchak/toDoList_TOP';
+            state.targetsLoaded = true;
+            document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+            await flush();
+            expect(document.querySelector('.structureEmptyState')).toBeFalsy();
+            expect(document.querySelector('.structureLensToggle')).toBeTruthy();
+        });
+
+        it('loaded targets with no link for the project show the no-repo state', async () => {
+            state.projectRepos['Cold'] = null;
+            state.targetsLoaded = false;
+            mountDom('Cold');
+            renderStructureView();
+            state.targetsLoaded = true;
+            document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+            await flush();
+            expect(document.querySelector('.structureEmptyState').textContent)
+                .toMatch(/link one in its inject target/i);
+        });
+
+        it('a target linked mid-session resolves the no-repo state', async () => {
+            state.projectRepos['Unlinked'] = null;
+            mountDom('Unlinked');
+            renderStructureView();
+            await flush();
+            expect(document.querySelector('.structureEmptyState')).toBeTruthy();
+            state.projectRepos['Unlinked'] = 'rsterenchak/toDoList_TOP';
+            document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+            await flush();
+            expect(document.querySelector('.structureEmptyState')).toBeFalsy();
+            expect(document.querySelector('.structureLensToggle')).toBeTruthy();
+        });
+
+        it('a populated view survives both events', async () => {
+            mountDom('My Project');
+            renderStructureView();
+            await flush();
+            const header = document.querySelector('.structureHeader');
+            expect(header).toBeTruthy();
+            document.dispatchEvent(new CustomEvent('injectTargetsLoaded'));
+            document.dispatchEvent(new CustomEvent('injectTargetsChanged'));
+            await flush();
+            expect(document.querySelector('.structureHeader')).toBe(header);
+        });
     });
 
     it('does NOT reframe the chat workspace on render or project switch', async () => {

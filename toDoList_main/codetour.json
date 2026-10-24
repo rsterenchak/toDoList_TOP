@@ -245,7 +245,7 @@
           "file": "index.js",
           "symbol": "bootApp",
           "match": [
-            "maybeSkipFirstRunForCloudUser(userId).then(function(cloudHasData) {",
+            "maybeSkipFirstRunForCloudUser(userId),",
             "return bootSyncPipeline(userId, cloudHasData);"
           ],
           "title": "Boot first asks: do you already have data?",

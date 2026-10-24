@@ -66,3 +66,58 @@ describe('injectTargetsLoaded', () => {
         expect(events.length).toBe(0);
     });
 });
+
+// Until the first load settles an empty cache means "not loaded", not "no
+// targets" — the Understanding and Structure views read this flag to show a
+// loading state instead of claiming a linked project isn't linked.
+describe('targetsLoaded', () => {
+    let selectError;
+
+    beforeEach(() => {
+        selectError = false;
+        vi.resetModules();
+        vi.doMock('../src/supabaseClient.js', () => ({
+            supabase: {
+                from: () => ({
+                    select: () => ({
+                        order: () => selectError
+                            ? Promise.reject(new Error('offline'))
+                            : Promise.resolve({ data: targetRows, error: null }),
+                    }),
+                }),
+            },
+        }));
+    });
+
+    afterEach(() => {
+        vi.doUnmock('../src/supabaseClient.js');
+    });
+
+    it('is false until the first load settles, then stays true', async () => {
+        const inject = await import('../src/inject.js');
+        expect(inject.targetsLoaded()).toBe(false);
+        const pending = inject.loadInjectTargets();
+        expect(inject.targetsLoaded()).toBe(false);
+        await pending;
+        expect(inject.targetsLoaded()).toBe(true);
+        expect(inject.getCachedTargets()).toHaveLength(1);
+    });
+
+    it('turns true when the first load fails too', async () => {
+        selectError = true;
+        const inject = await import('../src/inject.js');
+        await inject.loadInjectTargets();
+        expect(inject.targetsLoaded()).toBe(true);
+        expect(inject.getCachedTargets()).toEqual([]);
+    });
+
+    it('is true by the time the warm-up announces injectTargetsLoaded', async () => {
+        const inject = await import('../src/inject.js');
+        let seen = null;
+        const onLoaded = function () { seen = inject.targetsLoaded(); };
+        document.addEventListener('injectTargetsLoaded', onLoaded);
+        await inject.initInjectTargets();
+        document.removeEventListener('injectTargetsLoaded', onLoaded);
+        expect(seen).toBe(true);
+    });
+});

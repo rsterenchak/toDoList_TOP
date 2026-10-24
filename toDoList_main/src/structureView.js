@@ -26,7 +26,7 @@
 // are reused from claudeSheet.js, and the project→repo resolution from
 // seedTasksModal.js, so the surfaces never drift.
 
-import { chatWithWorker, findTargetById } from './inject.js';
+import { chatWithWorker, findTargetById, targetsLoaded } from './inject.js';
 import {
     loadManifest,
     getRunningAppRepo,
@@ -42,6 +42,7 @@ import {
     getStructureTreeState,
     setStructureTreeState,
     getTourProgress,
+    getActiveView,
 } from './prefs.js';
 import {
     SELF_REPO,
@@ -80,6 +81,9 @@ import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
 // manifest refresh) preserves the user's selection. Null until first resolved
 // against the live allowlist.
 let selectedRepo = null;
+// Set while the view shows the targets-not-loaded loading state or the no-repo
+// state — the only states a targets event may re-render.
+let awaitingRepo = false;
 
 // The active lens, 'code', 'map', or the adaptive second slot ('ui' / 'types' /
 // 'sql'). Hydrated from prefs on each render so the
@@ -4005,6 +4009,20 @@ function buildLensToggle(onChange) {
     return group;
 }
 
+// The targets cache landing (boot warm-up) or changing (a target linked mid-
+// session) re-renders a loading or no-repo state so the map appears without a
+// tab switch. A populated view is never touched, nor a hidden one (it re-renders
+// on entry anyway).
+function onTargetsSettled() {
+    if (!awaitingRepo) return;
+    if (getActiveView() !== 'structure') return;
+    renderStructureView();
+}
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener('injectTargetsLoaded', onTargetsSettled);
+    document.addEventListener('injectTargetsChanged', onTargetsSettled);
+}
+
 // Render the STRUCTURE view. Safe to call before component() has built the shell
 // (a missing #structureView short-circuits). Resolves the repo from the selected
 // project (no picker); with no project selected or a project not linked to a
@@ -4027,6 +4045,7 @@ export function renderStructureView() {
     view.classList.remove('is-map-lens');
     currentMapPane = null;
     mapRailRows = null;
+    awaitingRepo = false;
 
     const projectName = getSelectedProjectName();
     if (!projectName) {
@@ -4054,6 +4073,16 @@ export function renderStructureView() {
         collapseAllBtn = null;
         actionToolbarEl = null;
         selectedHandle = null;
+        // An empty targets cache on a cold start means "not loaded yet", not
+        // "not linked" — wait for the targets events below to re-render.
+        awaitingRepo = true;
+        if (!targetsLoaded()) {
+            const pending = document.createElement('div');
+            pending.className = 'structureTreeLoading';
+            pending.textContent = 'Loading…';
+            view.appendChild(pending);
+            return;
+        }
         appendEmptyState(
             view,
             projectName + ' isn’t linked to a repo — link one in its inject target to map its structure.',

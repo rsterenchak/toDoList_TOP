@@ -102,7 +102,7 @@
         "ghostTalk.js:fetchGhostHistory": "d05207bfc6a03e84.504147a3a4fc6f99",
         "ghostTalk.js:ghostOpeningLine": "b84dea5659cb20f8.504147a3a4fc6f99",
         "ghostTalk.js:renderGhostPending": "88dde0c550dd7335.504147a3a4fc6f99",
-        "inject.js": "eba14f2e2366013a.a56762cac6166e54",
+        "inject.js": "eba14f2e2366013a.52eddb131e97ca19",
         "inject.js:findTargetById": "7249fc1e17d96744.3f4ffbea41d8d467",
         "inject.js:isInjectConfigured": "e6366b0c3d26a200.abee6707bfb395a6",
         "inject.js:showInjectToast": "dc3d7457dc9cd688.5da100afe9b5b5a8",
@@ -170,7 +170,7 @@
       ],
       "fingerprint": {
         "index.js": "84eb72e509410b35.da39a3ee5e6b4b0d",
-        "index.js:bootApp": "e42f5e278ddfbecf.da39a3ee5e6b4b0d",
+        "index.js:bootApp": "fa2d6224e159de91.da39a3ee5e6b4b0d",
         "index.js:bootSyncPipeline": "adf66a4968a12cc9.da39a3ee5e6b4b0d",
         "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.4a3fba20d918612c",
         "main.js": "a1aacda74687c942.6eae4807b0f1ccfc",
@@ -296,7 +296,7 @@
       "fingerprint": {
         "agentQueueStore.js:startAgentQueueSubscription": "886402eb1acdefb2.4d1f988ecd123e57",
         "dispatchDraft.js:dispatchDraft": "167f30af36d2a203.62c88aa457ee1fcf",
-        "inject.js": "eba14f2e2366013a.a56762cac6166e54",
+        "inject.js": "eba14f2e2366013a.52eddb131e97ca19",
         "inject.js:dispatchRun": "7d8cb8e806800c4a.059b16c03f090744",
         "inject.js:injectDescription": "f5c1af837c5b352e.da39a3ee5e6b4b0d",
         "inject.js:makeInjectButton": "cf89b4ba111093a0.529989ddedef22c1",
@@ -365,7 +365,7 @@
         "layoutInspect.js:serializeLayout": "c1c0cbeb52969f14.504147a3a4fc6f99",
         "modelsPanel.js:openModelsPanel": "1cc9f26080c8504c.4cba82907f447dd3",
         "structureView.js:ensureRegionsLoaded": "ef9a95cecfeeb1a5.da39a3ee5e6b4b0d",
-        "structureView.js:renderStructureView": "8600344ae2d7202d.c4a4248f7568c9e4"
+        "structureView.js:renderStructureView": "cdf4c34ed693537a.c4a4248f7568c9e4"
       }
     },
     {
@@ -389,7 +389,7 @@
         "structureView.js:ensureRegionsLoaded": "ef9a95cecfeeb1a5.da39a3ee5e6b4b0d",
         "structureView.js:openFileInCodeViewer": "9307c7491390686d.da39a3ee5e6b4b0d",
         "structureView.js:renderLens": "848d6985840bc5d7.da39a3ee5e6b4b0d",
-        "structureView.js:renderStructureView": "8600344ae2d7202d.c4a4248f7568c9e4"
+        "structureView.js:renderStructureView": "cdf4c34ed693537a.c4a4248f7568c9e4"
       }
     },
     {
