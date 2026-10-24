@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-23T12:31:04.617Z",
-  "sha": "ff457eb7bca6800464c47c8b542dfd15c075c996",
+  "generatedAt": "2026-10-24T06:17:03.872Z",
+  "sha": "2803a9bd4e912961b3391fda69d8e44a0f220dc9",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -3229,11 +3229,11 @@
       "selector": "#injectAddTargetBtn",
       "label": "Inject Add Target Btn",
       "file": "inject.js",
-      "line": 3720,
+      "line": 3737,
       "files": [
         {
           "file": "inject.js",
-          "line": 3720
+          "line": 3737
         },
         {
           "file": "style.css",
@@ -3245,11 +3245,11 @@
       "selector": "#injectConnectionEditBtn",
       "label": "Inject Connection Edit Btn",
       "file": "inject.js",
-      "line": 3416,
+      "line": 3433,
       "files": [
         {
           "file": "inject.js",
-          "line": 3416
+          "line": 3433
         }
       ]
     },
@@ -3257,11 +3257,11 @@
       "selector": "#injectConnectionSection",
       "label": "Inject Connection Section",
       "file": "inject.js",
-      "line": 3402,
+      "line": 3419,
       "files": [
         {
           "file": "inject.js",
-          "line": 3402
+          "line": 3419
         }
       ]
     },
@@ -3269,11 +3269,11 @@
       "selector": "#injectOnboardActions",
       "label": "Inject Onboard Actions",
       "file": "inject.js",
-      "line": 2925,
+      "line": 2942,
       "files": [
         {
           "file": "inject.js",
-          "line": 2925
+          "line": 2942
         },
         {
           "file": "style.css",
@@ -3285,11 +3285,11 @@
       "selector": "#injectOnboardBackdrop",
       "label": "Inject Onboard Backdrop",
       "file": "inject.js",
-      "line": 2758,
+      "line": 2775,
       "files": [
         {
           "file": "inject.js",
-          "line": 2758
+          "line": 2775
         },
         {
           "file": "style.css",
@@ -3301,11 +3301,11 @@
       "selector": "#injectOnboardBody",
       "label": "Inject Onboard Body",
       "file": "inject.js",
-      "line": 2780,
+      "line": 2797,
       "files": [
         {
           "file": "inject.js",
-          "line": 2780
+          "line": 2797
         },
         {
           "file": "style.css",
@@ -3317,11 +3317,11 @@
       "selector": "#injectOnboardCancel",
       "label": "Inject Onboard Cancel",
       "file": "inject.js",
-      "line": 2928,
+      "line": 2945,
       "files": [
         {
           "file": "inject.js",
-          "line": 2928
+          "line": 2945
         }
       ]
     },
@@ -3329,11 +3329,11 @@
       "selector": "#injectOnboardCard",
       "label": "Inject Onboard Card",
       "file": "inject.js",
-      "line": 3736,
+      "line": 3753,
       "files": [
         {
           "file": "inject.js",
-          "line": 3736
+          "line": 3753
         }
       ]
     },
@@ -3341,11 +3341,11 @@
       "selector": "#injectOnboardCheck",
       "label": "Inject Onboard Check",
       "file": "inject.js",
-      "line": 2937,
+      "line": 2954,
       "files": [
         {
           "file": "inject.js",
-          "line": 2937
+          "line": 2954
         }
       ]
     },
@@ -3353,11 +3353,11 @@
       "selector": "#injectOnboardClose",
       "label": "Inject Onboard Close",
       "file": "inject.js",
-      "line": 2772,
+      "line": 2789,
       "files": [
         {
           "file": "inject.js",
-          "line": 2772
+          "line": 2789
         },
         {
           "file": "style.css",
@@ -3369,11 +3369,11 @@
       "selector": "#injectOnboardHeader",
       "label": "Inject Onboard Header",
       "file": "inject.js",
-      "line": 2767,
+      "line": 2784,
       "files": [
         {
           "file": "inject.js",
-          "line": 2767
+          "line": 2784
         },
         {
           "file": "style.css",
@@ -3385,11 +3385,11 @@
       "selector": "#injectOnboardModal",
       "label": "Inject Onboard Modal",
       "file": "inject.js",
-      "line": 2761,
+      "line": 2778,
       "files": [
         {
           "file": "inject.js",
-          "line": 2761
+          "line": 2778
         },
         {
           "file": "style.css",
@@ -3401,11 +3401,11 @@
       "selector": "#injectOnboardPurposeControl",
       "label": "Inject Onboard Purpose Control",
       "file": "inject.js",
-      "line": 2811,
+      "line": 2828,
       "files": [
         {
           "file": "inject.js",
-          "line": 2811
+          "line": 2828
         },
         {
           "file": "style.css",
@@ -3417,11 +3417,11 @@
       "selector": "#injectOnboardPurposeLabel",
       "label": "Inject Onboard Purpose Label",
       "file": "inject.js",
-      "line": 2808,
+      "line": 2825,
       "files": [
         {
           "file": "inject.js",
-          "line": 2808
+          "line": 2825
         }
       ]
     },
@@ -3429,11 +3429,11 @@
       "selector": "#injectOnboardRefreshControl",
       "label": "Inject Onboard Refresh Control",
       "file": "inject.js",
-      "line": 2875,
+      "line": 2892,
       "files": [
         {
           "file": "inject.js",
-          "line": 2875
+          "line": 2892
         },
         {
           "file": "style.css",
@@ -3445,11 +3445,11 @@
       "selector": "#injectOnboardRefreshHint",
       "label": "Inject Onboard Refresh Hint",
       "file": "inject.js",
-      "line": 2894,
+      "line": 2911,
       "files": [
         {
           "file": "inject.js",
-          "line": 2894
+          "line": 2911
         }
       ]
     },
@@ -3457,11 +3457,11 @@
       "selector": "#injectOnboardRefreshLabel",
       "label": "Inject Onboard Refresh Label",
       "file": "inject.js",
-      "line": 2872,
+      "line": 2889,
       "files": [
         {
           "file": "inject.js",
-          "line": 2872
+          "line": 2889
         }
       ]
     },
@@ -3469,11 +3469,11 @@
       "selector": "#injectOnboardRepoError",
       "label": "Inject Onboard Repo Error",
       "file": "inject.js",
-      "line": 2795,
+      "line": 2812,
       "files": [
         {
           "file": "inject.js",
-          "line": 2795
+          "line": 2812
         }
       ]
     },
@@ -3481,11 +3481,11 @@
       "selector": "#injectOnboardRepoInput",
       "label": "Inject Onboard Repo Input",
       "file": "inject.js",
-      "line": 2787,
+      "line": 2804,
       "files": [
         {
           "file": "inject.js",
-          "line": 2787
+          "line": 2804
         }
       ]
     },
@@ -3493,11 +3493,11 @@
       "selector": "#injectOnboardShapeSelect",
       "label": "Inject Onboard Shape Select",
       "file": "inject.js",
-      "line": 2850,
+      "line": 2867,
       "files": [
         {
           "file": "inject.js",
-          "line": 2850
+          "line": 2867
         }
       ]
     },
@@ -3505,11 +3505,11 @@
       "selector": "#injectOnboardSubmit",
       "label": "Inject Onboard Submit",
       "file": "inject.js",
-      "line": 2943,
+      "line": 2960,
       "files": [
         {
           "file": "inject.js",
-          "line": 2943
+          "line": 2960
         },
         {
           "file": "style.css",
@@ -3521,11 +3521,11 @@
       "selector": "#injectOnboardTitle",
       "label": "Inject Onboard Title",
       "file": "inject.js",
-      "line": 2769,
+      "line": 2786,
       "files": [
         {
           "file": "inject.js",
-          "line": 2769
+          "line": 2786
         },
         {
           "file": "style.css",
@@ -3537,11 +3537,11 @@
       "selector": "#injectOnboardVerdict",
       "label": "Inject Onboard Verdict",
       "file": "inject.js",
-      "line": 2916,
+      "line": 2933,
       "files": [
         {
           "file": "inject.js",
-          "line": 2916
+          "line": 2933
         },
         {
           "file": "style.css",
@@ -3553,11 +3553,11 @@
       "selector": "#injectProjectRoutingBody",
       "label": "Inject Project Routing Body",
       "file": "inject.js",
-      "line": 4196,
+      "line": 4213,
       "files": [
         {
           "file": "inject.js",
-          "line": 4196
+          "line": 4213
         },
         {
           "file": "style.css",
@@ -3569,11 +3569,11 @@
       "selector": "#injectProjectRoutingEmpty",
       "label": "Inject Project Routing Empty",
       "file": "inject.js",
-      "line": 4206,
+      "line": 4223,
       "files": [
         {
           "file": "inject.js",
-          "line": 4206
+          "line": 4223
         }
       ]
     },
@@ -3581,11 +3581,11 @@
       "selector": "#injectProjectRoutingSection",
       "label": "Inject Project Routing Section",
       "file": "inject.js",
-      "line": 4184,
+      "line": 4201,
       "files": [
         {
           "file": "inject.js",
-          "line": 4184
+          "line": 4201
         }
       ]
     },
@@ -3593,11 +3593,11 @@
       "selector": "#injectProjectRoutingTable",
       "label": "Inject Project Routing Table",
       "file": "inject.js",
-      "line": 4222,
+      "line": 4239,
       "files": [
         {
           "file": "inject.js",
-          "line": 4222
+          "line": 4239
         }
       ]
     },
@@ -3605,11 +3605,11 @@
       "selector": "#injectProjectRoutingTitle",
       "label": "Inject Project Routing Title",
       "file": "inject.js",
-      "line": 4190,
+      "line": 4207,
       "files": [
         {
           "file": "inject.js",
-          "line": 4190
+          "line": 4207
         }
       ]
     },
@@ -3617,11 +3617,11 @@
       "selector": "#injectSettingsActions",
       "label": "Inject Settings Actions",
       "file": "inject.js",
-      "line": 3506,
+      "line": 3523,
       "files": [
         {
           "file": "inject.js",
-          "line": 3506
+          "line": 3523
         },
         {
           "file": "style.css",
@@ -3633,11 +3633,11 @@
       "selector": "#injectSettingsBackdrop",
       "label": "Inject Settings Backdrop",
       "file": "inject.js",
-      "line": 3372,
+      "line": 3389,
       "files": [
         {
           "file": "inject.js",
-          "line": 3372
+          "line": 3389
         },
         {
           "file": "style.css",
@@ -3649,11 +3649,11 @@
       "selector": "#injectSettingsBody",
       "label": "Inject Settings Body",
       "file": "inject.js",
-      "line": 3455,
+      "line": 3472,
       "files": [
         {
           "file": "inject.js",
-          "line": 3455
+          "line": 3472
         },
         {
           "file": "style.css",
@@ -3665,11 +3665,11 @@
       "selector": "#injectSettingsClear",
       "label": "Inject Settings Clear",
       "file": "inject.js",
-      "line": 3524,
+      "line": 3541,
       "files": [
         {
           "file": "inject.js",
-          "line": 3524
+          "line": 3541
         }
       ]
     },
@@ -3677,11 +3677,11 @@
       "selector": "#injectSettingsClose",
       "label": "Inject Settings Close",
       "file": "inject.js",
-      "line": 3387,
+      "line": 3404,
       "files": [
         {
           "file": "inject.js",
-          "line": 3387
+          "line": 3404
         },
         {
           "file": "style.css",
@@ -3693,11 +3693,11 @@
       "selector": "#injectSettingsHeader",
       "label": "Inject Settings Header",
       "file": "inject.js",
-      "line": 3382,
+      "line": 3399,
       "files": [
         {
           "file": "inject.js",
-          "line": 3382
+          "line": 3399
         },
         {
           "file": "style.css",
@@ -3709,11 +3709,11 @@
       "selector": "#injectSettingsModal",
       "label": "Inject Settings Modal",
       "file": "inject.js",
-      "line": 3375,
+      "line": 3392,
       "files": [
         {
           "file": "inject.js",
-          "line": 3375
+          "line": 3392
         },
         {
           "file": "style.css",
@@ -3725,11 +3725,11 @@
       "selector": "#injectSettingsSave",
       "label": "Inject Settings Save",
       "file": "inject.js",
-      "line": 3509,
+      "line": 3526,
       "files": [
         {
           "file": "inject.js",
-          "line": 3509
+          "line": 3526
         }
       ]
     },
@@ -3737,11 +3737,11 @@
       "selector": "#injectSettingsScroll",
       "label": "Inject Settings Scroll",
       "file": "inject.js",
-      "line": 4293,
+      "line": 4310,
       "files": [
         {
           "file": "inject.js",
-          "line": 4293
+          "line": 4310
         },
         {
           "file": "style.css",
@@ -3753,11 +3753,11 @@
       "selector": "#injectSettingsStatusRow",
       "label": "Inject Settings Status Row",
       "file": "inject.js",
-      "line": 3413,
+      "line": 3430,
       "files": [
         {
           "file": "inject.js",
-          "line": 3413
+          "line": 3430
         },
         {
           "file": "style.css",
@@ -3769,11 +3769,11 @@
       "selector": "#injectSettingsTest",
       "label": "Inject Settings Test",
       "file": "inject.js",
-      "line": 3515,
+      "line": 3532,
       "files": [
         {
           "file": "inject.js",
-          "line": 3515
+          "line": 3532
         }
       ]
     },
@@ -3781,11 +3781,11 @@
       "selector": "#injectSettingsTitle",
       "label": "Inject Settings Title",
       "file": "inject.js",
-      "line": 3384,
+      "line": 3401,
       "files": [
         {
           "file": "inject.js",
-          "line": 3384
+          "line": 3401
         },
         {
           "file": "style.css",
@@ -3797,11 +3797,11 @@
       "selector": "#injectSharedSecretInput",
       "label": "Inject Shared Secret Input",
       "file": "inject.js",
-      "line": 3475,
+      "line": 3492,
       "files": [
         {
           "file": "inject.js",
-          "line": 3475
+          "line": 3492
         },
         {
           "file": "style.css",
@@ -3813,11 +3813,11 @@
       "selector": "#injectTargetSubActions",
       "label": "Inject Target Sub Actions",
       "file": "inject.js",
-      "line": 2159,
+      "line": 2176,
       "files": [
         {
           "file": "inject.js",
-          "line": 2159
+          "line": 2176
         },
         {
           "file": "style.css",
@@ -3829,11 +3829,11 @@
       "selector": "#injectTargetSubBackdrop",
       "label": "Inject Target Sub Backdrop",
       "file": "inject.js",
-      "line": 2093,
+      "line": 2110,
       "files": [
         {
           "file": "inject.js",
-          "line": 2093
+          "line": 2110
         },
         {
           "file": "style.css",
@@ -3845,11 +3845,11 @@
       "selector": "#injectTargetSubBody",
       "label": "Inject Target Sub Body",
       "file": "inject.js",
-      "line": 2115,
+      "line": 2132,
       "files": [
         {
           "file": "inject.js",
-          "line": 2115
+          "line": 2132
         },
         {
           "file": "style.css",
@@ -3861,11 +3861,11 @@
       "selector": "#injectTargetSubCancel",
       "label": "Inject Target Sub Cancel",
       "file": "inject.js",
-      "line": 2162,
+      "line": 2179,
       "files": [
         {
           "file": "inject.js",
-          "line": 2162
+          "line": 2179
         }
       ]
     },
@@ -3873,11 +3873,11 @@
       "selector": "#injectTargetSubClose",
       "label": "Inject Target Sub Close",
       "file": "inject.js",
-      "line": 2107,
+      "line": 2124,
       "files": [
         {
           "file": "inject.js",
-          "line": 2107
+          "line": 2124
         },
         {
           "file": "style.css",
@@ -3889,11 +3889,11 @@
       "selector": "#injectTargetSubHeader",
       "label": "Inject Target Sub Header",
       "file": "inject.js",
-      "line": 2102,
+      "line": 2119,
       "files": [
         {
           "file": "inject.js",
-          "line": 2102
+          "line": 2119
         },
         {
           "file": "style.css",
@@ -3905,11 +3905,11 @@
       "selector": "#injectTargetSubModal",
       "label": "Inject Target Sub Modal",
       "file": "inject.js",
-      "line": 2096,
+      "line": 2113,
       "files": [
         {
           "file": "inject.js",
-          "line": 2096
+          "line": 2113
         },
         {
           "file": "style.css",
@@ -3921,11 +3921,11 @@
       "selector": "#injectTargetSubSave",
       "label": "Inject Target Sub Save",
       "file": "inject.js",
-      "line": 2168,
+      "line": 2185,
       "files": [
         {
           "file": "inject.js",
-          "line": 2168
+          "line": 2185
         }
       ]
     },
@@ -3933,11 +3933,11 @@
       "selector": "#injectTargetSubTitle",
       "label": "Inject Target Sub Title",
       "file": "inject.js",
-      "line": 2104,
+      "line": 2121,
       "files": [
         {
           "file": "inject.js",
-          "line": 2104
+          "line": 2121
         },
         {
           "file": "style.css",
@@ -3949,11 +3949,11 @@
       "selector": "#injectTargetsBody",
       "label": "Inject Targets Body",
       "file": "inject.js",
-      "line": 3579,
+      "line": 3596,
       "files": [
         {
           "file": "inject.js",
-          "line": 3579
+          "line": 3596
         },
         {
           "file": "style.css",
@@ -3965,11 +3965,11 @@
       "selector": "#injectTargetsEmpty",
       "label": "Inject Targets Empty",
       "file": "inject.js",
-      "line": 3695,
+      "line": 3712,
       "files": [
         {
           "file": "inject.js",
-          "line": 3695
+          "line": 3712
         }
       ]
     },
@@ -3977,11 +3977,11 @@
       "selector": "#injectTargetsList",
       "label": "Inject Targets List",
       "file": "inject.js",
-      "line": 3701,
+      "line": 3718,
       "files": [
         {
           "file": "inject.js",
-          "line": 3701
+          "line": 3718
         }
       ]
     },
@@ -3989,11 +3989,11 @@
       "selector": "#injectTargetsSection",
       "label": "Inject Targets Section",
       "file": "inject.js",
-      "line": 3568,
+      "line": 3585,
       "files": [
         {
           "file": "inject.js",
-          "line": 3568
+          "line": 3585
         }
       ]
     },
@@ -4017,11 +4017,11 @@
       "selector": "#injectWorkerUrlInput",
       "label": "Inject Worker Url Input",
       "file": "inject.js",
-      "line": 3461,
+      "line": 3478,
       "files": [
         {
           "file": "inject.js",
-          "line": 3461
+          "line": 3478
         },
         {
           "file": "style.css",
@@ -6365,11 +6365,11 @@
       "selector": "#structureCodeSheet",
       "label": "Structure Code Sheet",
       "file": "structureView.js",
-      "line": 174,
+      "line": 178,
       "files": [
         {
           "file": "structureView.js",
-          "line": 174
+          "line": 178
         }
       ]
     },
@@ -6757,11 +6757,11 @@
       "selector": "#understandingBookmarksSheet",
       "label": "Understanding Bookmarks Sheet",
       "file": "understandingView.js",
-      "line": 1731,
+      "line": 1734,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1731
+          "line": 1734
         }
       ]
     },
@@ -6769,11 +6769,11 @@
       "selector": "#understandingCiteSheet",
       "label": "Understanding Cite Sheet",
       "file": "understandingView.js",
-      "line": 1248,
+      "line": 1251,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1248
+          "line": 1251
         }
       ]
     },
@@ -6781,11 +6781,11 @@
       "selector": "#understandingCodeSheet",
       "label": "Understanding Code Sheet",
       "file": "understandingView.js",
-      "line": 1108,
+      "line": 1111,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1108
+          "line": 1111
         }
       ]
     },
@@ -6793,11 +6793,11 @@
       "selector": "#understandingFlagSheet",
       "label": "Understanding Flag Sheet",
       "file": "understandingView.js",
-      "line": 1535,
+      "line": 1538,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1535
+          "line": 1538
         }
       ]
     },
@@ -6805,11 +6805,11 @@
       "selector": "#understandingParaSheet",
       "label": "Understanding Para Sheet",
       "file": "understandingView.js",
-      "line": 1527,
+      "line": 1530,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1527
+          "line": 1530
         }
       ]
     },
@@ -6817,11 +6817,11 @@
       "selector": "#understandingToursSheet",
       "label": "Understanding Tours Sheet",
       "file": "understandingView.js",
-      "line": 987,
+      "line": 990,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 987
+          "line": 990
         }
       ]
     },
@@ -9145,11 +9145,11 @@
       "selector": ".bookCite",
       "label": "Book Cite",
       "file": "understandingView.js",
-      "line": 1289,
+      "line": 1292,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1289
+          "line": 1292
         },
         {
           "file": "style.css",
@@ -9169,7 +9169,7 @@
         },
         {
           "file": "understandingView.js",
-          "line": 1237
+          "line": 1240
         },
         {
           "file": "style.css",
@@ -9677,11 +9677,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 70,
+      "line": 68,
       "files": [
         {
           "file": "changelog.js",
-          "line": 70
+          "line": 68
         },
         {
           "file": "style.css",
@@ -9693,11 +9693,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 39,
+      "line": 37,
       "files": [
         {
           "file": "changelog.js",
-          "line": 39
+          "line": 37
         },
         {
           "file": "style.css",
@@ -9709,11 +9709,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 49,
+      "line": 47,
       "files": [
         {
           "file": "changelog.js",
-          "line": 49
+          "line": 47
         },
         {
           "file": "style.css",
@@ -9725,11 +9725,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 42,
+      "line": 40,
       "files": [
         {
           "file": "changelog.js",
-          "line": 42
+          "line": 40
         },
         {
           "file": "style.css",
@@ -9741,11 +9741,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 45,
+      "line": 43,
       "files": [
         {
           "file": "changelog.js",
-          "line": 45
+          "line": 43
         },
         {
           "file": "style.css",
@@ -9757,11 +9757,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 66,
+      "line": 64,
       "files": [
         {
           "file": "changelog.js",
-          "line": 66
+          "line": 64
         },
         {
           "file": "style.css",
@@ -16693,11 +16693,11 @@
       "selector": ".injectEyeBtn",
       "label": "Inject Eye Btn",
       "file": "inject.js",
-      "line": 3483,
+      "line": 3500,
       "files": [
         {
           "file": "inject.js",
-          "line": 3483
+          "line": 3500
         },
         {
           "file": "style.css",
@@ -16709,11 +16709,11 @@
       "selector": ".injectFieldLabel",
       "label": "Inject Field Label",
       "file": "inject.js",
-      "line": 2119,
+      "line": 2136,
       "files": [
         {
           "file": "inject.js",
-          "line": 2119
+          "line": 2136
         },
         {
           "file": "projectRow.js",
@@ -16729,11 +16729,11 @@
       "selector": ".injectOffboardConfirm",
       "label": "Inject Offboard Confirm",
       "file": "inject.js",
-      "line": 3308,
+      "line": 3325,
       "files": [
         {
           "file": "inject.js",
-          "line": 3308
+          "line": 3325
         },
         {
           "file": "projectRow.js",
@@ -16749,11 +16749,11 @@
       "selector": ".injectOffboardSubs",
       "label": "Inject Offboard Subs",
       "file": "inject.js",
-      "line": 3326,
+      "line": 3343,
       "files": [
         {
           "file": "inject.js",
-          "line": 3326
+          "line": 3343
         },
         {
           "file": "style.css",
@@ -16765,11 +16765,11 @@
       "selector": ".injectOnboardCard",
       "label": "Inject Onboard Card",
       "file": "inject.js",
-      "line": 3738,
+      "line": 3755,
       "files": [
         {
           "file": "inject.js",
-          "line": 3738
+          "line": 3755
         },
         {
           "file": "style.css",
@@ -16781,11 +16781,11 @@
       "selector": ".injectOnboardCardIcon",
       "label": "Inject Onboard Card Icon",
       "file": "inject.js",
-      "line": 3740,
+      "line": 3757,
       "files": [
         {
           "file": "inject.js",
-          "line": 3740
+          "line": 3757
         },
         {
           "file": "style.css",
@@ -16797,11 +16797,11 @@
       "selector": ".injectOnboardCardSub",
       "label": "Inject Onboard Card Sub",
       "file": "inject.js",
-      "line": 3749,
+      "line": 3766,
       "files": [
         {
           "file": "inject.js",
-          "line": 3749
+          "line": 3766
         },
         {
           "file": "style.css",
@@ -16813,11 +16813,11 @@
       "selector": ".injectOnboardCardText",
       "label": "Inject Onboard Card Text",
       "file": "inject.js",
-      "line": 3744,
+      "line": 3761,
       "files": [
         {
           "file": "inject.js",
-          "line": 3744
+          "line": 3761
         },
         {
           "file": "style.css",
@@ -16829,11 +16829,11 @@
       "selector": ".injectOnboardCardTitle",
       "label": "Inject Onboard Card Title",
       "file": "inject.js",
-      "line": 3746,
+      "line": 3763,
       "files": [
         {
           "file": "inject.js",
-          "line": 3746
+          "line": 3763
         },
         {
           "file": "style.css",
@@ -16845,11 +16845,11 @@
       "selector": ".injectOnboardFailGlyph",
       "label": "Inject Onboard Fail Glyph",
       "file": "inject.js",
-      "line": 3644,
+      "line": 3661,
       "files": [
         {
           "file": "inject.js",
-          "line": 3644
+          "line": 3661
         },
         {
           "file": "style.css",
@@ -16861,11 +16861,11 @@
       "selector": ".injectOnboardPurposeSeg",
       "label": "Inject Onboard Purpose Seg",
       "file": "inject.js",
-      "line": 2820,
+      "line": 2837,
       "files": [
         {
           "file": "inject.js",
-          "line": 2820
+          "line": 2837
         },
         {
           "file": "style.css",
@@ -16877,11 +16877,11 @@
       "selector": ".injectOnboardRefreshHint",
       "label": "Inject Onboard Refresh Hint",
       "file": "inject.js",
-      "line": 2895,
+      "line": 2912,
       "files": [
         {
           "file": "inject.js",
-          "line": 2895
+          "line": 2912
         },
         {
           "file": "style.css",
@@ -16893,11 +16893,11 @@
       "selector": ".injectOnboardRefreshSeg",
       "label": "Inject Onboard Refresh Seg",
       "file": "inject.js",
-      "line": 2886,
+      "line": 2903,
       "files": [
         {
           "file": "inject.js",
-          "line": 2886
+          "line": 2903
         },
         {
           "file": "style.css",
@@ -16909,11 +16909,11 @@
       "selector": ".injectOnboardShapeSelect",
       "label": "Inject Onboard Shape Select",
       "file": "inject.js",
-      "line": 2851,
+      "line": 2868,
       "files": [
         {
           "file": "inject.js",
-          "line": 2851
+          "line": 2868
         },
         {
           "file": "style.css",
@@ -16925,11 +16925,11 @@
       "selector": ".injectOnboardSpinner",
       "label": "Inject Onboard Spinner",
       "file": "inject.js",
-      "line": 3125,
+      "line": 3142,
       "files": [
         {
           "file": "inject.js",
-          "line": 3125
+          "line": 3142
         },
         {
           "file": "style.css",
@@ -16941,11 +16941,11 @@
       "selector": ".injectOnboardVerdictBack",
       "label": "Inject Onboard Verdict Back",
       "file": "inject.js",
-      "line": 2664,
+      "line": 2681,
       "files": [
         {
           "file": "inject.js",
-          "line": 2664
+          "line": 2681
         },
         {
           "file": "style.css",
@@ -16957,11 +16957,11 @@
       "selector": ".injectOnboardVerdictChip",
       "label": "Inject Onboard Verdict Chip",
       "file": "inject.js",
-      "line": 2715,
+      "line": 2732,
       "files": [
         {
           "file": "inject.js",
-          "line": 2715
+          "line": 2732
         },
         {
           "file": "style.css",
@@ -16973,11 +16973,11 @@
       "selector": ".injectOnboardVerdictChips",
       "label": "Inject Onboard Verdict Chips",
       "file": "inject.js",
-      "line": 2712,
+      "line": 2729,
       "files": [
         {
           "file": "inject.js",
-          "line": 2712
+          "line": 2729
         },
         {
           "file": "style.css",
@@ -16989,11 +16989,11 @@
       "selector": ".injectOnboardVerdictClean",
       "label": "Inject Onboard Verdict Clean",
       "file": "inject.js",
-      "line": 2723,
+      "line": 2740,
       "files": [
         {
           "file": "inject.js",
-          "line": 2723
+          "line": 2740
         },
         {
           "file": "style.css",
@@ -17005,11 +17005,11 @@
       "selector": ".injectOnboardVerdictCount",
       "label": "Inject Onboard Verdict Count",
       "file": "inject.js",
-      "line": 2635,
+      "line": 2652,
       "files": [
         {
           "file": "inject.js",
-          "line": 2635
+          "line": 2652
         },
         {
           "file": "style.css",
@@ -17021,11 +17021,11 @@
       "selector": ".injectOnboardVerdictExpanded",
       "label": "Inject Onboard Verdict Expanded",
       "file": "inject.js",
-      "line": 2655,
+      "line": 2672,
       "files": [
         {
           "file": "inject.js",
-          "line": 2655
+          "line": 2672
         },
         {
           "file": "style.css",
@@ -17037,11 +17037,11 @@
       "selector": ".injectOnboardVerdictGlyph",
       "label": "Inject Onboard Verdict Glyph",
       "file": "inject.js",
-      "line": 2488,
+      "line": 2505,
       "files": [
         {
           "file": "inject.js",
-          "line": 2488
+          "line": 2505
         },
         {
           "file": "style.css",
@@ -17053,11 +17053,11 @@
       "selector": ".injectOnboardVerdictNote",
       "label": "Inject Onboard Verdict Note",
       "file": "inject.js",
-      "line": 2672,
+      "line": 2689,
       "files": [
         {
           "file": "inject.js",
-          "line": 2672
+          "line": 2689
         },
         {
           "file": "style.css",
@@ -17069,11 +17069,11 @@
       "selector": ".injectOnboardVerdictPurpose",
       "label": "Inject Onboard Verdict Purpose",
       "file": "inject.js",
-      "line": 2629,
+      "line": 2646,
       "files": [
         {
           "file": "inject.js",
-          "line": 2629
+          "line": 2646
         },
         {
           "file": "style.css",
@@ -17085,11 +17085,11 @@
       "selector": ".injectOnboardVerdictRepo",
       "label": "Inject Onboard Verdict Repo",
       "file": "inject.js",
-      "line": 2517,
+      "line": 2534,
       "files": [
         {
           "file": "inject.js",
-          "line": 2517
+          "line": 2534
         },
         {
           "file": "style.css",
@@ -17101,11 +17101,11 @@
       "selector": ".injectOnboardVerdictRetry",
       "label": "Inject Onboard Verdict Retry",
       "file": "inject.js",
-      "line": 2536,
+      "line": 2553,
       "files": [
         {
           "file": "inject.js",
-          "line": 2536
+          "line": 2553
         },
         {
           "file": "style.css",
@@ -17117,11 +17117,11 @@
       "selector": ".injectOnboardVerdictShape",
       "label": "Inject Onboard Verdict Shape",
       "file": "inject.js",
-      "line": 2624,
+      "line": 2641,
       "files": [
         {
           "file": "inject.js",
-          "line": 2624
+          "line": 2641
         },
         {
           "file": "style.css",
@@ -17133,11 +17133,11 @@
       "selector": ".injectOnboardVerdictStale",
       "label": "Inject Onboard Verdict Stale",
       "file": "inject.js",
-      "line": 2688,
+      "line": 2705,
       "files": [
         {
           "file": "inject.js",
-          "line": 2688
+          "line": 2705
         },
         {
           "file": "style.css",
@@ -17149,11 +17149,11 @@
       "selector": ".injectOnboardVerdictStaleDirs",
       "label": "Inject Onboard Verdict Stale Dirs",
       "file": "inject.js",
-      "line": 2695,
+      "line": 2712,
       "files": [
         {
           "file": "inject.js",
-          "line": 2695
+          "line": 2712
         },
         {
           "file": "style.css",
@@ -17165,11 +17165,11 @@
       "selector": ".injectOnboardVerdictStaleEdits",
       "label": "Inject Onboard Verdict Stale Edits",
       "file": "inject.js",
-      "line": 2704,
+      "line": 2721,
       "files": [
         {
           "file": "inject.js",
-          "line": 2704
+          "line": 2721
         },
         {
           "file": "style.css",
@@ -17181,11 +17181,11 @@
       "selector": ".injectOnboardVerdictStrip",
       "label": "Inject Onboard Verdict Strip",
       "file": "inject.js",
-      "line": 2514,
+      "line": 2531,
       "files": [
         {
           "file": "inject.js",
-          "line": 2514
+          "line": 2531
         },
         {
           "file": "style.css",
@@ -17197,11 +17197,11 @@
       "selector": ".injectOnboardVerdictWarning",
       "label": "Inject Onboard Verdict Warning",
       "file": "inject.js",
-      "line": 2679,
+      "line": 2696,
       "files": [
         {
           "file": "inject.js",
-          "line": 2679
+          "line": 2696
         },
         {
           "file": "style.css",
@@ -17213,11 +17213,11 @@
       "selector": ".injectProjectRoutingEmpty",
       "label": "Inject Project Routing Empty",
       "file": "inject.js",
-      "line": 4207,
+      "line": 4224,
       "files": [
         {
           "file": "inject.js",
-          "line": 4207
+          "line": 4224
         },
         {
           "file": "style.css",
@@ -17229,11 +17229,11 @@
       "selector": ".injectProjectRoutingName",
       "label": "Inject Project Routing Name",
       "file": "inject.js",
-      "line": 4236,
+      "line": 4253,
       "files": [
         {
           "file": "inject.js",
-          "line": 4236
+          "line": 4253
         },
         {
           "file": "style.css",
@@ -17245,11 +17245,11 @@
       "selector": ".injectProjectRoutingRow",
       "label": "Inject Project Routing Row",
       "file": "inject.js",
-      "line": 4232,
+      "line": 4249,
       "files": [
         {
           "file": "inject.js",
-          "line": 4232
+          "line": 4249
         },
         {
           "file": "style.css",
@@ -17261,11 +17261,11 @@
       "selector": ".injectProjectRoutingSaved",
       "label": "Inject Project Routing Saved",
       "file": "inject.js",
-      "line": 4258,
+      "line": 4275,
       "files": [
         {
           "file": "inject.js",
-          "line": 4258
+          "line": 4275
         },
         {
           "file": "style.css",
@@ -17277,11 +17277,11 @@
       "selector": ".injectProjectRoutingSelect",
       "label": "Inject Project Routing Select",
       "file": "inject.js",
-      "line": 4241,
+      "line": 4258,
       "files": [
         {
           "file": "inject.js",
-          "line": 4241
+          "line": 4258
         },
         {
           "file": "style.css",
@@ -17293,11 +17293,11 @@
       "selector": ".injectProjectRoutingTable",
       "label": "Inject Project Routing Table",
       "file": "inject.js",
-      "line": 4223,
+      "line": 4240,
       "files": [
         {
           "file": "inject.js",
-          "line": 4223
+          "line": 4240
         },
         {
           "file": "style.css",
@@ -17309,11 +17309,11 @@
       "selector": ".injectSecretWrap",
       "label": "Inject Secret Wrap",
       "file": "inject.js",
-      "line": 3473,
+      "line": 3490,
       "files": [
         {
           "file": "inject.js",
-          "line": 3473
+          "line": 3490
         },
         {
           "file": "style.css",
@@ -17325,11 +17325,11 @@
       "selector": ".injectSectionEditBtn",
       "label": "Inject Section Edit Btn",
       "file": "inject.js",
-      "line": 3418,
+      "line": 3435,
       "files": [
         {
           "file": "inject.js",
-          "line": 3418
+          "line": 3435
         },
         {
           "file": "style.css",
@@ -17341,11 +17341,11 @@
       "selector": ".injectSettingsActionsSpacer",
       "label": "Inject Settings Actions Spacer",
       "file": "inject.js",
-      "line": 3521,
+      "line": 3538,
       "files": [
         {
           "file": "inject.js",
-          "line": 3521
+          "line": 3538
         },
         {
           "file": "style.css",
@@ -17357,11 +17357,11 @@
       "selector": ".injectSettingsBtn",
       "label": "Inject Settings Btn",
       "file": "inject.js",
-      "line": 2164,
+      "line": 2181,
       "files": [
         {
           "file": "inject.js",
-          "line": 2164
+          "line": 2181
         },
         {
           "file": "style.css",
@@ -17373,11 +17373,11 @@
       "selector": ".injectSettingsSection",
       "label": "Inject Settings Section",
       "file": "inject.js",
-      "line": 3403,
+      "line": 3420,
       "files": [
         {
           "file": "inject.js",
-          "line": 3403
+          "line": 3420
         },
         {
           "file": "style.css",
@@ -17389,11 +17389,11 @@
       "selector": ".injectSettingsSectionBody",
       "label": "Inject Settings Section Body",
       "file": "inject.js",
-      "line": 3536,
+      "line": 3553,
       "files": [
         {
           "file": "inject.js",
-          "line": 3536
+          "line": 3553
         },
         {
           "file": "style.css",
@@ -17405,11 +17405,11 @@
       "selector": ".injectSettingsSectionHeader",
       "label": "Inject Settings Section Header",
       "file": "inject.js",
-      "line": 3406,
+      "line": 3423,
       "files": [
         {
           "file": "inject.js",
-          "line": 3406
+          "line": 3423
         },
         {
           "file": "style.css",
@@ -17421,11 +17421,11 @@
       "selector": ".injectSettingsSectionTitle",
       "label": "Inject Settings Section Title",
       "file": "inject.js",
-      "line": 3409,
+      "line": 3426,
       "files": [
         {
           "file": "inject.js",
-          "line": 3409
+          "line": 3426
         },
         {
           "file": "style.css",
@@ -17437,11 +17437,11 @@
       "selector": ".injectStatusPill",
       "label": "Inject Status Pill",
       "file": "inject.js",
-      "line": 3430,
+      "line": 3447,
       "files": [
         {
           "file": "inject.js",
-          "line": 3430
+          "line": 3447
         },
         {
           "file": "style.css",
@@ -17453,11 +17453,11 @@
       "selector": ".injectTargetDetail",
       "label": "Inject Target Detail",
       "file": "inject.js",
-      "line": 3658,
+      "line": 3675,
       "files": [
         {
           "file": "inject.js",
-          "line": 3658
+          "line": 3675
         },
         {
           "file": "style.css",
@@ -17469,11 +17469,11 @@
       "selector": ".injectTargetIconBtn",
       "label": "Inject Target Icon Btn",
       "file": "inject.js",
-      "line": 3673,
+      "line": 3690,
       "files": [
         {
           "file": "inject.js",
-          "line": 3673
+          "line": 3690
         },
         {
           "file": "style.css",
@@ -17485,11 +17485,11 @@
       "selector": ".injectTargetInfo",
       "label": "Inject Target Info",
       "file": "inject.js",
-      "line": 3654,
+      "line": 3671,
       "files": [
         {
           "file": "inject.js",
-          "line": 3654
+          "line": 3671
         },
         {
           "file": "style.css",
@@ -17501,11 +17501,11 @@
       "selector": ".injectTargetNickname",
       "label": "Inject Target Nickname",
       "file": "inject.js",
-      "line": 3656,
+      "line": 3673,
       "files": [
         {
           "file": "inject.js",
-          "line": 3656
+          "line": 3673
         },
         {
           "file": "style.css",
@@ -17517,11 +17517,11 @@
       "selector": ".injectTargetRefreshActions",
       "label": "Inject Target Refresh Actions",
       "file": "inject.js",
-      "line": 3950,
+      "line": 3967,
       "files": [
         {
           "file": "inject.js",
-          "line": 3950
+          "line": 3967
         },
         {
           "file": "style.css",
@@ -17533,11 +17533,11 @@
       "selector": ".injectTargetRefreshStarted",
       "label": "Inject Target Refresh Started",
       "file": "inject.js",
-      "line": 3975,
+      "line": 3992,
       "files": [
         {
           "file": "inject.js",
-          "line": 3975
+          "line": 3992
         },
         {
           "file": "style.css",
@@ -17549,11 +17549,11 @@
       "selector": ".injectTargetRow",
       "label": "Inject Target Row",
       "file": "inject.js",
-      "line": 3638,
+      "line": 3655,
       "files": [
         {
           "file": "inject.js",
-          "line": 3638
+          "line": 3655
         },
         {
           "file": "style.css",
@@ -17565,11 +17565,11 @@
       "selector": ".injectTargetSubError",
       "label": "Inject Target Sub Error",
       "file": "inject.js",
-      "line": 2130,
+      "line": 2147,
       "files": [
         {
           "file": "inject.js",
-          "line": 2130
+          "line": 2147
         },
         {
           "file": "style.css",
@@ -17581,11 +17581,11 @@
       "selector": ".injectTargetSubInput",
       "label": "Inject Target Sub Input",
       "file": "inject.js",
-      "line": 2123,
+      "line": 2140,
       "files": [
         {
           "file": "inject.js",
-          "line": 2123
+          "line": 2140
         },
         {
           "file": "style.css",
@@ -17597,11 +17597,11 @@
       "selector": ".injectTargetToggle",
       "label": "Inject Target Toggle",
       "file": "inject.js",
-      "line": 3772,
+      "line": 3789,
       "files": [
         {
           "file": "inject.js",
-          "line": 3772
+          "line": 3789
         },
         {
           "file": "style.css",
@@ -17613,11 +17613,11 @@
       "selector": ".injectTargetToggleKnob",
       "label": "Inject Target Toggle Knob",
       "file": "inject.js",
-      "line": 3775,
+      "line": 3792,
       "files": [
         {
           "file": "inject.js",
-          "line": 3775
+          "line": 3792
         },
         {
           "file": "style.css",
@@ -17629,11 +17629,11 @@
       "selector": ".injectTargetVerdict",
       "label": "Inject Target Verdict",
       "file": "inject.js",
-      "line": 3822,
+      "line": 3839,
       "files": [
         {
           "file": "inject.js",
-          "line": 3822
+          "line": 3839
         },
         {
           "file": "style.css",
@@ -17645,11 +17645,11 @@
       "selector": ".injectTargetVerdictDismiss",
       "label": "Inject Target Verdict Dismiss",
       "file": "inject.js",
-      "line": 3846,
+      "line": 3863,
       "files": [
         {
           "file": "inject.js",
-          "line": 3846
+          "line": 3863
         },
         {
           "file": "style.css",
@@ -17661,11 +17661,11 @@
       "selector": ".injectTargetsEmpty",
       "label": "Inject Targets Empty",
       "file": "inject.js",
-      "line": 3696,
+      "line": 3713,
       "files": [
         {
           "file": "inject.js",
-          "line": 3696
+          "line": 3713
         },
         {
           "file": "style.css",
@@ -17677,11 +17677,11 @@
       "selector": ".injectTargetsList",
       "label": "Inject Targets List",
       "file": "inject.js",
-      "line": 3702,
+      "line": 3719,
       "files": [
         {
           "file": "inject.js",
-          "line": 3702
+          "line": 3719
         },
         {
           "file": "style.css",
@@ -22817,11 +22817,11 @@
       "selector": ".structureActionToolbar",
       "label": "Structure Action Toolbar",
       "file": "structureView.js",
-      "line": 1517,
+      "line": 1521,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1517
+          "line": 1521
         },
         {
           "file": "style.css",
@@ -22833,11 +22833,11 @@
       "selector": ".structureActionToolbarActions",
       "label": "Structure Action Toolbar Actions",
       "file": "structureView.js",
-      "line": 1533,
+      "line": 1537,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1533
+          "line": 1537
         },
         {
           "file": "style.css",
@@ -22849,11 +22849,11 @@
       "selector": ".structureActionToolbarContext",
       "label": "Structure Action Toolbar Context",
       "file": "structureView.js",
-      "line": 1527,
+      "line": 1531,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1527
+          "line": 1531
         },
         {
           "file": "style.css",
@@ -22865,11 +22865,11 @@
       "selector": ".structureActionToolbarHead",
       "label": "Structure Action Toolbar Head",
       "file": "structureView.js",
-      "line": 1520,
+      "line": 1524,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1520
+          "line": 1524
         },
         {
           "file": "style.css",
@@ -22881,11 +22881,11 @@
       "selector": ".structureActionToolbarLabel",
       "label": "Structure Action Toolbar Label",
       "file": "structureView.js",
-      "line": 1523,
+      "line": 1527,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1523
+          "line": 1527
         },
         {
           "file": "style.css",
@@ -23153,11 +23153,11 @@
       "selector": ".structureCanvasHost",
       "label": "Structure Canvas Host",
       "file": "structureView.js",
-      "line": 4231,
+      "line": 4260,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4231
+          "line": 4260
         },
         {
           "file": "style.css",
@@ -23241,7 +23241,7 @@
         },
         {
           "file": "structureView.js",
-          "line": 2656
+          "line": 2660
         },
         {
           "file": "style.css",
@@ -23345,11 +23345,11 @@
       "selector": ".structureCaptureControl",
       "label": "Structure Capture Control",
       "file": "structureView.js",
-      "line": 2648,
+      "line": 2652,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2648
+          "line": 2652
         },
         {
           "file": "style.css",
@@ -23369,7 +23369,7 @@
         },
         {
           "file": "structureView.js",
-          "line": 2665
+          "line": 2669
         },
         {
           "file": "style.css",
@@ -23429,11 +23429,11 @@
       "selector": ".structureCollapseAllPill",
       "label": "Structure Collapse All Pill",
       "file": "structureView.js",
-      "line": 3786,
+      "line": 3790,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3786
+          "line": 3790
         },
         {
           "file": "style.css",
@@ -23445,11 +23445,11 @@
       "selector": ".structureCollapsedRow",
       "label": "Structure Collapsed Row",
       "file": "structureView.js",
-      "line": 1684,
+      "line": 1688,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1684
+          "line": 1688
         },
         {
           "file": "style.css",
@@ -23461,11 +23461,11 @@
       "selector": ".structureControlRow",
       "label": "Structure Control Row",
       "file": "structureView.js",
-      "line": 4197,
+      "line": 4226,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4197
+          "line": 4226
         },
         {
           "file": "style.css",
@@ -23477,11 +23477,11 @@
       "selector": ".structureCopyBtn",
       "label": "Structure Copy Btn",
       "file": "structureView.js",
-      "line": 1350,
+      "line": 1354,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1350
+          "line": 1354
         },
         {
           "file": "style.css",
@@ -23493,15 +23493,15 @@
       "selector": ".structureEmptyGlyph",
       "label": "Structure Empty Glyph",
       "file": "structureView.js",
-      "line": 3939,
+      "line": 3943,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3939
+          "line": 3943
         },
         {
           "file": "understandingView.js",
-          "line": 160
+          "line": 163
         },
         {
           "file": "style.css",
@@ -23513,15 +23513,15 @@
       "selector": ".structureEmptyState",
       "label": "Structure Empty State",
       "file": "structureView.js",
-      "line": 3936,
+      "line": 3940,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3936
+          "line": 3940
         },
         {
           "file": "understandingView.js",
-          "line": 157
+          "line": 160
         },
         {
           "file": "style.css",
@@ -23533,11 +23533,11 @@
       "selector": ".structureExplainError",
       "label": "Structure Explain Error",
       "file": "structureView.js",
-      "line": 732,
+      "line": 736,
       "files": [
         {
           "file": "structureView.js",
-          "line": 732
+          "line": 736
         },
         {
           "file": "style.css",
@@ -23549,11 +23549,11 @@
       "selector": ".structureExplainLoading",
       "label": "Structure Explain Loading",
       "file": "structureView.js",
-      "line": 704,
+      "line": 708,
       "files": [
         {
           "file": "structureView.js",
-          "line": 704
+          "line": 708
         },
         {
           "file": "style.css",
@@ -23565,11 +23565,11 @@
       "selector": ".structureExplainText",
       "label": "Structure Explain Text",
       "file": "structureView.js",
-      "line": 692,
+      "line": 696,
       "files": [
         {
           "file": "structureView.js",
-          "line": 692
+          "line": 696
         },
         {
           "file": "style.css",
@@ -23581,11 +23581,11 @@
       "selector": ".structureFileIcon",
       "label": "Structure File Icon",
       "file": "structureView.js",
-      "line": 913,
+      "line": 917,
       "files": [
         {
           "file": "structureView.js",
-          "line": 913
+          "line": 917
         },
         {
           "file": "style.css",
@@ -23597,11 +23597,11 @@
       "selector": ".structureFileName",
       "label": "Structure File Name",
       "file": "structureView.js",
-      "line": 921,
+      "line": 925,
       "files": [
         {
           "file": "structureView.js",
-          "line": 921
+          "line": 925
         },
         {
           "file": "style.css",
@@ -23613,11 +23613,11 @@
       "selector": ".structureFileRow",
       "label": "Structure File Row",
       "file": "structureView.js",
-      "line": 903,
+      "line": 907,
       "files": [
         {
           "file": "structureView.js",
-          "line": 903
+          "line": 907
         },
         {
           "file": "style.css",
@@ -23629,11 +23629,11 @@
       "selector": ".structureFileWrap",
       "label": "Structure File Wrap",
       "file": "structureView.js",
-      "line": 898,
+      "line": 902,
       "files": [
         {
           "file": "structureView.js",
-          "line": 898
+          "line": 902
         },
         {
           "file": "style.css",
@@ -23645,11 +23645,11 @@
       "selector": ".structureFilterBox",
       "label": "Structure Filter Box",
       "file": "structureView.js",
-      "line": 3633,
+      "line": 3637,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3633
+          "line": 3637
         },
         {
           "file": "style.css",
@@ -23661,11 +23661,11 @@
       "selector": ".structureFilterClear",
       "label": "Structure Filter Clear",
       "file": "structureView.js",
-      "line": 3656,
+      "line": 3660,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3656
+          "line": 3660
         },
         {
           "file": "style.css",
@@ -23677,11 +23677,11 @@
       "selector": ".structureFilterCount",
       "label": "Structure Filter Count",
       "file": "structureView.js",
-      "line": 3650,
+      "line": 3654,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3650
+          "line": 3654
         },
         {
           "file": "style.css",
@@ -23693,11 +23693,11 @@
       "selector": ".structureFilterIcon",
       "label": "Structure Filter Icon",
       "file": "structureView.js",
-      "line": 3636,
+      "line": 3640,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3636
+          "line": 3640
         },
         {
           "file": "style.css",
@@ -23709,11 +23709,11 @@
       "selector": ".structureFilterInput",
       "label": "Structure Filter Input",
       "file": "structureView.js",
-      "line": 3645,
+      "line": 3649,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3645
+          "line": 3649
         },
         {
           "file": "style.css",
@@ -23725,11 +23725,11 @@
       "selector": ".structureFilterMark",
       "label": "Structure Filter Mark",
       "file": "structureView.js",
-      "line": 3435,
+      "line": 3439,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3435
+          "line": 3439
         },
         {
           "file": "style.css",
@@ -23741,11 +23741,11 @@
       "selector": ".structureFilterNoMatch",
       "label": "Structure Filter No Match",
       "file": "structureView.js",
-      "line": 3611,
+      "line": 3615,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3611
+          "line": 3615
         },
         {
           "file": "style.css",
@@ -23757,11 +23757,11 @@
       "selector": ".structureFindBtn",
       "label": "Structure Find Btn",
       "file": "structureView.js",
-      "line": 1590,
+      "line": 1594,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1590
+          "line": 1594
         },
         {
           "file": "style.css",
@@ -23773,11 +23773,11 @@
       "selector": ".structureFindLoading",
       "label": "Structure Find Loading",
       "file": "structureView.js",
-      "line": 519,
+      "line": 523,
       "files": [
         {
           "file": "structureView.js",
-          "line": 519
+          "line": 523
         },
         {
           "file": "style.css",
@@ -23789,11 +23789,11 @@
       "selector": ".structureFindNone",
       "label": "Structure Find None",
       "file": "structureView.js",
-      "line": 530,
+      "line": 534,
       "files": [
         {
           "file": "structureView.js",
-          "line": 530
+          "line": 534
         },
         {
           "file": "style.css",
@@ -23805,11 +23805,11 @@
       "selector": ".structureFindResult",
       "label": "Structure Find Result",
       "file": "structureView.js",
-      "line": 1537,
+      "line": 1541,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1537
+          "line": 1541
         },
         {
           "file": "style.css",
@@ -23821,11 +23821,11 @@
       "selector": ".structureFolderCaret",
       "label": "Structure Folder Caret",
       "file": "structureView.js",
-      "line": 975,
+      "line": 979,
       "files": [
         {
           "file": "structureView.js",
-          "line": 975
+          "line": 979
         },
         {
           "file": "style.css",
@@ -23837,11 +23837,11 @@
       "selector": ".structureFolderChildren",
       "label": "Structure Folder Children",
       "file": "structureView.js",
-      "line": 986,
+      "line": 990,
       "files": [
         {
           "file": "structureView.js",
-          "line": 986
+          "line": 990
         }
       ]
     },
@@ -23849,11 +23849,11 @@
       "selector": ".structureFolderName",
       "label": "Structure Folder Name",
       "file": "structureView.js",
-      "line": 981,
+      "line": 985,
       "files": [
         {
           "file": "structureView.js",
-          "line": 981
+          "line": 985
         },
         {
           "file": "style.css",
@@ -23865,11 +23865,11 @@
       "selector": ".structureFolderRow",
       "label": "Structure Folder Row",
       "file": "structureView.js",
-      "line": 970,
+      "line": 974,
       "files": [
         {
           "file": "structureView.js",
-          "line": 970
+          "line": 974
         },
         {
           "file": "style.css",
@@ -23881,11 +23881,11 @@
       "selector": ".structureGithubLink",
       "label": "Structure Github Link",
       "file": "structureView.js",
-      "line": 374,
+      "line": 378,
       "files": [
         {
           "file": "structureView.js",
-          "line": 374
+          "line": 378
         },
         {
           "file": "style.css",
@@ -23897,11 +23897,11 @@
       "selector": ".structureHeader",
       "label": "Structure Header",
       "file": "structureView.js",
-      "line": 4093,
+      "line": 4122,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4093
+          "line": 4122
         },
         {
           "file": "style.css",
@@ -23913,11 +23913,11 @@
       "selector": ".structureLensBtn",
       "label": "Structure Lens Btn",
       "file": "structureView.js",
-      "line": 3985,
+      "line": 3989,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3985
+          "line": 3989
         },
         {
           "file": "style.css",
@@ -23929,11 +23929,11 @@
       "selector": ".structureLensRow",
       "label": "Structure Lens Row",
       "file": "structureView.js",
-      "line": 4174,
+      "line": 4203,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4174
+          "line": 4203
         },
         {
           "file": "style.css",
@@ -23945,11 +23945,11 @@
       "selector": ".structureLensToggle",
       "label": "Structure Lens Toggle",
       "file": "structureView.js",
-      "line": 3977,
+      "line": 3981,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3977
+          "line": 3981
         },
         {
           "file": "style.css",
@@ -24073,11 +24073,11 @@
       "selector": ".structureLivePreviewChip",
       "label": "Structure Live Preview Chip",
       "file": "structureView.js",
-      "line": 417,
+      "line": 421,
       "files": [
         {
           "file": "structureView.js",
-          "line": 417
+          "line": 421
         },
         {
           "file": "style.css",
@@ -24089,11 +24089,11 @@
       "selector": ".structureLivePreviewLabel",
       "label": "Structure Live Preview Label",
       "file": "structureView.js",
-      "line": 426,
+      "line": 430,
       "files": [
         {
           "file": "structureView.js",
-          "line": 426
+          "line": 430
         },
         {
           "file": "style.css",
@@ -24185,11 +24185,11 @@
       "selector": ".structureLocateBtn",
       "label": "Structure Locate Btn",
       "file": "structureView.js",
-      "line": 1613,
+      "line": 1617,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1613
+          "line": 1617
         },
         {
           "file": "style.css",
@@ -24201,11 +24201,11 @@
       "selector": ".structureLocateHint",
       "label": "Structure Locate Hint",
       "file": "structureView.js",
-      "line": 1629,
+      "line": 1633,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1629
+          "line": 1633
         },
         {
           "file": "style.css",
@@ -24217,11 +24217,11 @@
       "selector": ".structureMapArea",
       "label": "Structure Map Area",
       "file": "structureView.js",
-      "line": 3024,
+      "line": 3028,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3024
+          "line": 3028
         },
         {
           "file": "style.css",
@@ -24233,11 +24233,11 @@
       "selector": ".structureMapAreaHead",
       "label": "Structure Map Area Head",
       "file": "structureView.js",
-      "line": 3125,
+      "line": 3129,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3125
+          "line": 3129
         },
         {
           "file": "style.css",
@@ -24249,11 +24249,11 @@
       "selector": ".structureMapAreaMeta",
       "label": "Structure Map Area Meta",
       "file": "structureView.js",
-      "line": 3131,
+      "line": 3135,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3131
+          "line": 3135
         },
         {
           "file": "style.css",
@@ -24265,11 +24265,11 @@
       "selector": ".structureMapAreaName",
       "label": "Structure Map Area Name",
       "file": "structureView.js",
-      "line": 3127,
+      "line": 3131,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3127
+          "line": 3131
         },
         {
           "file": "style.css",
@@ -24281,11 +24281,11 @@
       "selector": ".structureMapAreaPurpose",
       "label": "Structure Map Area Purpose",
       "file": "structureView.js",
-      "line": 3136,
+      "line": 3140,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3136
+          "line": 3140
         },
         {
           "file": "style.css",
@@ -24297,11 +24297,11 @@
       "selector": ".structureMapCircle",
       "label": "Structure Map Circle",
       "file": "structureView.js",
-      "line": 3033,
+      "line": 3037,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3033
+          "line": 3037
         },
         {
           "file": "style.css",
@@ -24313,11 +24313,11 @@
       "selector": ".structureMapCrumb",
       "label": "Structure Map Crumb",
       "file": "structureView.js",
-      "line": 3079,
+      "line": 3083,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3079
+          "line": 3083
         },
         {
           "file": "style.css",
@@ -24329,11 +24329,11 @@
       "selector": ".structureMapCrumbBack",
       "label": "Structure Map Crumb Back",
       "file": "structureView.js",
-      "line": 3083,
+      "line": 3087,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3083
+          "line": 3087
         },
         {
           "file": "style.css",
@@ -24345,11 +24345,11 @@
       "selector": ".structureMapCrumbHere",
       "label": "Structure Map Crumb Here",
       "file": "structureView.js",
-      "line": 3097,
+      "line": 3101,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3097
+          "line": 3101
         },
         {
           "file": "style.css",
@@ -24361,11 +24361,11 @@
       "selector": ".structureMapCrumbSep",
       "label": "Structure Map Crumb Sep",
       "file": "structureView.js",
-      "line": 3092,
+      "line": 3096,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3092
+          "line": 3096
         }
       ]
     },
@@ -24373,11 +24373,11 @@
       "selector": ".structureMapFileList",
       "label": "Structure Map File List",
       "file": "structureView.js",
-      "line": 3187,
+      "line": 3191,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3187
+          "line": 3191
         },
         {
           "file": "style.css",
@@ -24389,11 +24389,11 @@
       "selector": ".structureMapFileName",
       "label": "Structure Map File Name",
       "file": "structureView.js",
-      "line": 3220,
+      "line": 3224,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3220
+          "line": 3224
         },
         {
           "file": "style.css",
@@ -24405,11 +24405,11 @@
       "selector": ".structureMapFilePurpose",
       "label": "Structure Map File Purpose",
       "file": "structureView.js",
-      "line": 3230,
+      "line": 3234,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3230
+          "line": 3234
         },
         {
           "file": "style.css",
@@ -24421,11 +24421,11 @@
       "selector": ".structureMapFileRow",
       "label": "Structure Map File Row",
       "file": "structureView.js",
-      "line": 3214,
+      "line": 3218,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3214
+          "line": 3218
         },
         {
           "file": "style.css",
@@ -24437,11 +24437,11 @@
       "selector": ".structureMapFileStats",
       "label": "Structure Map File Stats",
       "file": "structureView.js",
-      "line": 3224,
+      "line": 3228,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3224
+          "line": 3228
         },
         {
           "file": "style.css",
@@ -24453,11 +24453,11 @@
       "selector": ".structureMapFileTop",
       "label": "Structure Map File Top",
       "file": "structureView.js",
-      "line": 3218,
+      "line": 3222,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3218
+          "line": 3222
         },
         {
           "file": "style.css",
@@ -24469,11 +24469,11 @@
       "selector": ".structureMapFiles",
       "label": "Structure Map Files",
       "file": "structureView.js",
-      "line": 3157,
+      "line": 3161,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3157
+          "line": 3161
         },
         {
           "file": "style.css",
@@ -24485,11 +24485,11 @@
       "selector": ".structureMapFilesBar",
       "label": "Structure Map Files Bar",
       "file": "structureView.js",
-      "line": 3160,
+      "line": 3164,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3160
+          "line": 3164
         },
         {
           "file": "style.css",
@@ -24501,11 +24501,11 @@
       "selector": ".structureMapFilesLabel",
       "label": "Structure Map Files Label",
       "file": "structureView.js",
-      "line": 3162,
+      "line": 3166,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3162
+          "line": 3166
         },
         {
           "file": "style.css",
@@ -24517,11 +24517,11 @@
       "selector": ".structureMapLens",
       "label": "Structure Map Lens",
       "file": "structureView.js",
-      "line": 3053,
+      "line": 3057,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3053
+          "line": 3057
         },
         {
           "file": "style.css",
@@ -24533,11 +24533,11 @@
       "selector": ".structureMapMore",
       "label": "Structure Map More",
       "file": "structureView.js",
-      "line": 3196,
+      "line": 3200,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3196
+          "line": 3200
         },
         {
           "file": "style.css",
@@ -24549,11 +24549,11 @@
       "selector": ".structureMapName",
       "label": "Structure Map Name",
       "file": "structureView.js",
-      "line": 3040,
+      "line": 3044,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3040
+          "line": 3044
         },
         {
           "file": "style.css",
@@ -24565,11 +24565,11 @@
       "selector": ".structureMapOpenBtn",
       "label": "Structure Map Open Btn",
       "file": "structureView.js",
-      "line": 3301,
+      "line": 3305,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3301
+          "line": 3305
         },
         {
           "file": "style.css",
@@ -24581,11 +24581,11 @@
       "selector": ".structureMapPane",
       "label": "Structure Map Pane",
       "file": "structureView.js",
-      "line": 4221,
+      "line": 4250,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4221
+          "line": 4250
         },
         {
           "file": "style.css",
@@ -24597,11 +24597,11 @@
       "selector": ".structureMapPanel",
       "label": "Structure Map Panel",
       "file": "structureView.js",
-      "line": 3062,
+      "line": 3066,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3062
+          "line": 3066
         },
         {
           "file": "style.css",
@@ -24613,11 +24613,11 @@
       "selector": ".structureMapPanelLinks",
       "label": "Structure Map Panel Links",
       "file": "structureView.js",
-      "line": 3290,
+      "line": 3294,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3290
+          "line": 3294
         },
         {
           "file": "style.css",
@@ -24629,11 +24629,11 @@
       "selector": ".structureMapPanelMeta",
       "label": "Structure Map Panel Meta",
       "file": "structureView.js",
-      "line": 3269,
+      "line": 3273,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3269
+          "line": 3273
         },
         {
           "file": "style.css",
@@ -24645,11 +24645,11 @@
       "selector": ".structureMapPanelPurpose",
       "label": "Structure Map Panel Purpose",
       "file": "structureView.js",
-      "line": 3285,
+      "line": 3289,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3285
+          "line": 3289
         },
         {
           "file": "style.css",
@@ -24661,11 +24661,11 @@
       "selector": ".structureMapPanelTitle",
       "label": "Structure Map Panel Title",
       "file": "structureView.js",
-      "line": 3267,
+      "line": 3271,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3267
+          "line": 3271
         },
         {
           "file": "style.css",
@@ -24677,11 +24677,11 @@
       "selector": ".structureMapRail",
       "label": "Structure Map Rail",
       "file": "structureView.js",
-      "line": 2927,
+      "line": 2931,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2927
+          "line": 2931
         },
         {
           "file": "style.css",
@@ -24693,11 +24693,11 @@
       "selector": ".structureMapRailLabel",
       "label": "Structure Map Rail Label",
       "file": "structureView.js",
-      "line": 2930,
+      "line": 2934,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2930
+          "line": 2934
         },
         {
           "file": "style.css",
@@ -24709,11 +24709,11 @@
       "selector": ".structureMapRailLines",
       "label": "Structure Map Rail Lines",
       "file": "structureView.js",
-      "line": 2948,
+      "line": 2952,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2948
+          "line": 2952
         },
         {
           "file": "style.css",
@@ -24725,11 +24725,11 @@
       "selector": ".structureMapRailName",
       "label": "Structure Map Rail Name",
       "file": "structureView.js",
-      "line": 2944,
+      "line": 2948,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2944
+          "line": 2948
         },
         {
           "file": "style.css",
@@ -24741,11 +24741,11 @@
       "selector": ".structureMapRailRow",
       "label": "Structure Map Rail Row",
       "file": "structureView.js",
-      "line": 2937,
+      "line": 2941,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2937
+          "line": 2941
         },
         {
           "file": "style.css",
@@ -24757,11 +24757,11 @@
       "selector": ".structureMapSort",
       "label": "Structure Map Sort",
       "file": "structureView.js",
-      "line": 3166,
+      "line": 3170,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3166
+          "line": 3170
         },
         {
           "file": "style.css",
@@ -24773,11 +24773,11 @@
       "selector": ".structureMapSortBtn",
       "label": "Structure Map Sort Btn",
       "file": "structureView.js",
-      "line": 3172,
+      "line": 3176,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3172
+          "line": 3176
         },
         {
           "file": "style.css",
@@ -24789,11 +24789,11 @@
       "selector": ".structureMapTourCard",
       "label": "Structure Map Tour Card",
       "file": "structureView.js",
-      "line": 3871,
+      "line": 3875,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3871
+          "line": 3875
         },
         {
           "file": "style.css",
@@ -24805,11 +24805,11 @@
       "selector": ".structureMapTourDone",
       "label": "Structure Map Tour Done",
       "file": "structureView.js",
-      "line": 3882,
+      "line": 3886,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3882
+          "line": 3886
         },
         {
           "file": "style.css",
@@ -24821,11 +24821,11 @@
       "selector": ".structureMapTourFoot",
       "label": "Structure Map Tour Foot",
       "file": "structureView.js",
-      "line": 3878,
+      "line": 3882,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3878
+          "line": 3882
         },
         {
           "file": "style.css",
@@ -24837,11 +24837,11 @@
       "selector": ".structureMapTourRow",
       "label": "Structure Map Tour Row",
       "file": "structureView.js",
-      "line": 3866,
+      "line": 3870,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3866
+          "line": 3870
         },
         {
           "file": "style.css",
@@ -24853,11 +24853,11 @@
       "selector": ".structureMapTourTitle",
       "label": "Structure Map Tour Title",
       "file": "structureView.js",
-      "line": 3874,
+      "line": 3878,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3874
+          "line": 3878
         },
         {
           "file": "style.css",
@@ -24869,11 +24869,11 @@
       "selector": ".structureMapTours",
       "label": "Structure Map Tours",
       "file": "structureView.js",
-      "line": 3860,
+      "line": 3864,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3860
+          "line": 3864
         },
         {
           "file": "style.css",
@@ -24885,11 +24885,11 @@
       "selector": ".structureNoManifest",
       "label": "Structure No Manifest",
       "file": "structureView.js",
-      "line": 1033,
+      "line": 1037,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1033
+          "line": 1037
         },
         {
           "file": "style.css",
@@ -24901,11 +24901,11 @@
       "selector": ".structureNoUiMap",
       "label": "Structure No Ui Map",
       "file": "structureView.js",
-      "line": 1785,
+      "line": 1789,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1785
+          "line": 1789
         },
         {
           "file": "style.css",
@@ -24917,11 +24917,11 @@
       "selector": ".structureOwnerFileBtn",
       "label": "Structure Owner File Btn",
       "file": "structureView.js",
-      "line": 497,
+      "line": 501,
       "files": [
         {
           "file": "structureView.js",
-          "line": 497
+          "line": 501
         },
         {
           "file": "style.css",
@@ -24933,11 +24933,11 @@
       "selector": ".structureOwnerFileRow",
       "label": "Structure Owner File Row",
       "file": "structureView.js",
-      "line": 493,
+      "line": 497,
       "files": [
         {
           "file": "structureView.js",
-          "line": 493
+          "line": 497
         },
         {
           "file": "style.css",
@@ -24949,11 +24949,11 @@
       "selector": ".structurePagesIconLink",
       "label": "Structure Pages Icon Link",
       "file": "structureView.js",
-      "line": 392,
+      "line": 396,
       "files": [
         {
           "file": "structureView.js",
-          "line": 392
+          "line": 396
         },
         {
           "file": "style.css",
@@ -24965,11 +24965,11 @@
       "selector": ".structurePickerGroup",
       "label": "Structure Picker Group",
       "file": "structureView.js",
-      "line": 4096,
+      "line": 4125,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4096
+          "line": 4125
         },
         {
           "file": "style.css",
@@ -24981,11 +24981,11 @@
       "selector": ".structurePickerLabel",
       "label": "Structure Picker Label",
       "file": "structureView.js",
-      "line": 4099,
+      "line": 4128,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4099
+          "line": 4128
         },
         {
           "file": "style.css",
@@ -24997,11 +24997,11 @@
       "selector": ".structurePublishedBanner",
       "label": "Structure Published Banner",
       "file": "structureView.js",
-      "line": 1871,
+      "line": 1875,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1871
+          "line": 1875
         },
         {
           "file": "style.css",
@@ -25013,11 +25013,11 @@
       "selector": ".structurePublishedFileGroup",
       "label": "Structure Published File Group",
       "file": "structureView.js",
-      "line": 1942,
+      "line": 1946,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1942
+          "line": 1946
         }
       ]
     },
@@ -25025,11 +25025,11 @@
       "selector": ".structureReferenceBtn",
       "label": "Structure Reference Btn",
       "file": "structureView.js",
-      "line": 1339,
+      "line": 1343,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1339
+          "line": 1343
         },
         {
           "file": "style.css",
@@ -25041,11 +25041,11 @@
       "selector": ".structureRegionCaret",
       "label": "Structure Region Caret",
       "file": "structureView.js",
-      "line": 1710,
+      "line": 1714,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1710
+          "line": 1714
         },
         {
           "file": "style.css",
@@ -25057,11 +25057,11 @@
       "selector": ".structureRegionChildren",
       "label": "Structure Region Children",
       "file": "structureView.js",
-      "line": 1727,
+      "line": 1731,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1727
+          "line": 1731
         }
       ]
     },
@@ -25069,11 +25069,11 @@
       "selector": ".structureRegionLabel",
       "label": "Structure Region Label",
       "file": "structureView.js",
-      "line": 1717,
+      "line": 1721,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1717
+          "line": 1721
         },
         {
           "file": "style.css",
@@ -25085,11 +25085,11 @@
       "selector": ".structureRegionRow",
       "label": "Structure Region Row",
       "file": "structureView.js",
-      "line": 1700,
+      "line": 1704,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1700
+          "line": 1704
         },
         {
           "file": "style.css",
@@ -25101,11 +25101,11 @@
       "selector": ".structureRegionSelector",
       "label": "Structure Region Selector",
       "file": "structureView.js",
-      "line": 1722,
+      "line": 1726,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1722
+          "line": 1726
         },
         {
           "file": "style.css",
@@ -25117,11 +25117,11 @@
       "selector": ".structureRegionWrap",
       "label": "Structure Region Wrap",
       "file": "structureView.js",
-      "line": 1695,
+      "line": 1699,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1695
+          "line": 1699
         },
         {
           "file": "style.css",
@@ -25133,11 +25133,11 @@
       "selector": ".structureRepoLabel",
       "label": "Structure Repo Label",
       "file": "structureView.js",
-      "line": 4105,
+      "line": 4134,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4105
+          "line": 4134
         },
         {
           "file": "style.css",
@@ -25149,11 +25149,11 @@
       "selector": ".structureRepoName",
       "label": "Structure Repo Name",
       "file": "structureView.js",
-      "line": 4111,
+      "line": 4140,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4111
+          "line": 4140
         },
         {
           "file": "style.css",
@@ -25165,11 +25165,11 @@
       "selector": ".structureRepoNameCol",
       "label": "Structure Repo Name Col",
       "file": "structureView.js",
-      "line": 4108,
+      "line": 4137,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4108
+          "line": 4137
         },
         {
           "file": "style.css",
@@ -25181,11 +25181,11 @@
       "selector": ".structureRepoProjectHint",
       "label": "Structure Repo Project Hint",
       "file": "structureView.js",
-      "line": 4116,
+      "line": 4145,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4116
+          "line": 4145
         },
         {
           "file": "style.css",
@@ -25197,11 +25197,11 @@
       "selector": ".structureSqlChip",
       "label": "Structure Sql Chip",
       "file": "structureView.js",
-      "line": 2241,
+      "line": 2245,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2241
+          "line": 2245
         },
         {
           "file": "style.css",
@@ -25213,11 +25213,11 @@
       "selector": ".structureSqlColCount",
       "label": "Structure Sql Col Count",
       "file": "structureView.js",
-      "line": 2423,
+      "line": 2427,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2423
+          "line": 2427
         },
         {
           "file": "style.css",
@@ -25229,11 +25229,11 @@
       "selector": ".structureSqlColType",
       "label": "Structure Sql Col Type",
       "file": "structureView.js",
-      "line": 2344,
+      "line": 2348,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2344
+          "line": 2348
         },
         {
           "file": "style.css",
@@ -25245,11 +25245,11 @@
       "selector": ".structureSqlConstraintTail",
       "label": "Structure Sql Constraint Tail",
       "file": "structureView.js",
-      "line": 2336,
+      "line": 2340,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2336
+          "line": 2340
         },
         {
           "file": "style.css",
@@ -25261,11 +25261,11 @@
       "selector": ".structureSqlTableGlyph",
       "label": "Structure Sql Table Glyph",
       "file": "structureView.js",
-      "line": 2226,
+      "line": 2230,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2226
+          "line": 2230
         },
         {
           "file": "style.css",
@@ -25277,11 +25277,11 @@
       "selector": ".structureToolbar",
       "label": "Structure Toolbar",
       "file": "structureView.js",
-      "line": 3780,
+      "line": 3784,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3780
+          "line": 3784
         },
         {
           "file": "style.css",
@@ -25293,11 +25293,11 @@
       "selector": ".structureTree",
       "label": "Structure Tree",
       "file": "structureView.js",
-      "line": 4135,
+      "line": 4164,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4135
+          "line": 4164
         },
         {
           "file": "style.css",
@@ -25309,11 +25309,11 @@
       "selector": ".structureTreeLoading",
       "label": "Structure Tree Loading",
       "file": "structureView.js",
-      "line": 1022,
+      "line": 1026,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1022
+          "line": 1026
         },
         {
           "file": "style.css",
@@ -25325,11 +25325,11 @@
       "selector": ".structureViewCodeBtn",
       "label": "Structure View Code Btn",
       "file": "structureView.js",
-      "line": 1380,
+      "line": 1384,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1380
+          "line": 1384
         },
         {
           "file": "style.css",
@@ -26821,11 +26821,11 @@
       "selector": ".tourAllClose",
       "label": "Tour All Close",
       "file": "understandingView.js",
-      "line": 1016,
+      "line": 1019,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1016
+          "line": 1019
         },
         {
           "file": "style.css",
@@ -26837,11 +26837,11 @@
       "selector": ".tourAllHead",
       "label": "Tour All Head",
       "file": "understandingView.js",
-      "line": 1009,
+      "line": 1012,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1009
+          "line": 1012
         },
         {
           "file": "style.css",
@@ -26853,11 +26853,11 @@
       "selector": ".tourAllList",
       "label": "Tour All List",
       "file": "understandingView.js",
-      "line": 1040,
+      "line": 1043,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1040
+          "line": 1043
         },
         {
           "file": "style.css",
@@ -26869,11 +26869,11 @@
       "selector": ".tourAllProgress",
       "label": "Tour All Progress",
       "file": "understandingView.js",
-      "line": 1024,
+      "line": 1027,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1024
+          "line": 1027
         },
         {
           "file": "style.css",
@@ -26885,11 +26885,11 @@
       "selector": ".tourAllProgressFill",
       "label": "Tour All Progress Fill",
       "file": "understandingView.js",
-      "line": 1030,
+      "line": 1033,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1030
+          "line": 1033
         },
         {
           "file": "style.css",
@@ -26901,11 +26901,11 @@
       "selector": ".tourAllRow",
       "label": "Tour All Row",
       "file": "understandingView.js",
-      "line": 1067,
+      "line": 1070,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1067
+          "line": 1070
         },
         {
           "file": "style.css",
@@ -26917,11 +26917,11 @@
       "selector": ".tourAllRowMeta",
       "label": "Tour All Row Meta",
       "file": "understandingView.js",
-      "line": 1075,
+      "line": 1078,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1075
+          "line": 1078
         },
         {
           "file": "style.css",
@@ -26933,11 +26933,11 @@
       "selector": ".tourAllRowTitle",
       "label": "Tour All Row Title",
       "file": "understandingView.js",
-      "line": 1071,
+      "line": 1074,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1071
+          "line": 1074
         },
         {
           "file": "style.css",
@@ -26949,11 +26949,11 @@
       "selector": ".tourAllSection",
       "label": "Tour All Section",
       "file": "understandingView.js",
-      "line": 1052,
+      "line": 1055,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1052
+          "line": 1055
         },
         {
           "file": "style.css",
@@ -26965,11 +26965,11 @@
       "selector": ".tourAllSectionCount",
       "label": "Tour All Section Count",
       "file": "understandingView.js",
-      "line": 1059,
+      "line": 1062,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1059
+          "line": 1062
         }
       ]
     },
@@ -26977,11 +26977,11 @@
       "selector": ".tourAllSectionHead",
       "label": "Tour All Section Head",
       "file": "understandingView.js",
-      "line": 1054,
+      "line": 1057,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1054
+          "line": 1057
         },
         {
           "file": "style.css",
@@ -26993,11 +26993,11 @@
       "selector": ".tourAllSheet",
       "label": "Tour All Sheet",
       "file": "understandingView.js",
-      "line": 1006,
+      "line": 1009,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1006
+          "line": 1009
         },
         {
           "file": "style.css",
@@ -27009,11 +27009,11 @@
       "selector": ".tourAllSummary",
       "label": "Tour All Summary",
       "file": "understandingView.js",
-      "line": 1035,
+      "line": 1038,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1035
+          "line": 1038
         },
         {
           "file": "style.css",
@@ -27025,11 +27025,11 @@
       "selector": ".tourAllTitle",
       "label": "Tour All Title",
       "file": "understandingView.js",
-      "line": 1011,
+      "line": 1014,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1011
+          "line": 1014
         },
         {
           "file": "style.css",
@@ -27041,11 +27041,11 @@
       "selector": ".tourGlyph",
       "label": "Tour Glyph",
       "file": "understandingView.js",
-      "line": 859,
+      "line": 862,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 859
+          "line": 862
         },
         {
           "file": "style.css",
@@ -27057,11 +27057,11 @@
       "selector": ".understandingAhead",
       "label": "Understanding Ahead",
       "file": "understandingView.js",
-      "line": 1918,
+      "line": 1921,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1918
+          "line": 1921
         },
         {
           "file": "style.css",
@@ -27073,11 +27073,11 @@
       "selector": ".understandingAheadEyebrow",
       "label": "Understanding Ahead Eyebrow",
       "file": "understandingView.js",
-      "line": 1927,
+      "line": 1930,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1927
+          "line": 1930
         },
         {
           "file": "style.css",
@@ -27089,11 +27089,11 @@
       "selector": ".understandingAheadLink",
       "label": "Understanding Ahead Link",
       "file": "understandingView.js",
-      "line": 1922,
+      "line": 1925,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1922
+          "line": 1925
         },
         {
           "file": "style.css",
@@ -27105,11 +27105,11 @@
       "selector": ".understandingAheadNote",
       "label": "Understanding Ahead Note",
       "file": "understandingView.js",
-      "line": 1931,
+      "line": 1934,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1931
+          "line": 1934
         },
         {
           "file": "style.css",
@@ -27121,11 +27121,11 @@
       "selector": ".understandingAheadPromise",
       "label": "Understanding Ahead Promise",
       "file": "understandingView.js",
-      "line": 1942,
+      "line": 1945,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1942
+          "line": 1945
         },
         {
           "file": "style.css",
@@ -27137,11 +27137,11 @@
       "selector": ".understandingAheadPromises",
       "label": "Understanding Ahead Promises",
       "file": "understandingView.js",
-      "line": 1937,
+      "line": 1940,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1937
+          "line": 1940
         },
         {
           "file": "style.css",
@@ -27153,11 +27153,11 @@
       "selector": ".understandingAskChip",
       "label": "Understanding Ask Chip",
       "file": "understandingView.js",
-      "line": 2204,
+      "line": 2207,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2204
+          "line": 2207
         },
         {
           "file": "style.css",
@@ -27169,11 +27169,11 @@
       "selector": ".understandingBackChip",
       "label": "Understanding Back Chip",
       "file": "understandingView.js",
-      "line": 2195,
+      "line": 2198,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2195
+          "line": 2198
         },
         {
           "file": "style.css",
@@ -27185,11 +27185,11 @@
       "selector": ".understandingBackDot",
       "label": "Understanding Back Dot",
       "file": "understandingView.js",
-      "line": 1881,
+      "line": 1884,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1881
+          "line": 1884
         },
         {
           "file": "style.css",
@@ -27201,11 +27201,11 @@
       "selector": ".understandingBookTitle",
       "label": "Understanding Book Title",
       "file": "understandingView.js",
-      "line": 810,
+      "line": 813,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 810
+          "line": 813
         },
         {
           "file": "style.css",
@@ -27217,11 +27217,11 @@
       "selector": ".understandingBookmarkBtn",
       "label": "Understanding Bookmark Btn",
       "file": "understandingView.js",
-      "line": 558,
+      "line": 561,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 558
+          "line": 561
         },
         {
           "file": "style.css",
@@ -27233,11 +27233,11 @@
       "selector": ".understandingBookmarkCh",
       "label": "Understanding Bookmark Ch",
       "file": "understandingView.js",
-      "line": 565,
+      "line": 568,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 565
+          "line": 568
         },
         {
           "file": "style.css",
@@ -27249,11 +27249,11 @@
       "selector": ".understandingBookmarkDelete",
       "label": "Understanding Bookmark Delete",
       "file": "understandingView.js",
-      "line": 590,
+      "line": 593,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 590
+          "line": 593
         },
         {
           "file": "style.css",
@@ -27265,11 +27265,11 @@
       "selector": ".understandingBookmarkGroup",
       "label": "Understanding Bookmark Group",
       "file": "understandingView.js",
-      "line": 548,
+      "line": 551,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 548
+          "line": 551
         },
         {
           "file": "style.css",
@@ -27281,11 +27281,11 @@
       "selector": ".understandingBookmarkGroups",
       "label": "Understanding Bookmark Groups",
       "file": "understandingView.js",
-      "line": 535,
+      "line": 538,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 535
+          "line": 538
         }
       ]
     },
@@ -27293,11 +27293,11 @@
       "selector": ".understandingBookmarkHead",
       "label": "Understanding Bookmark Head",
       "file": "understandingView.js",
-      "line": 620,
+      "line": 623,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 620
+          "line": 623
         },
         {
           "file": "style.css",
@@ -27309,11 +27309,11 @@
       "selector": ".understandingBookmarkLabel",
       "label": "Understanding Bookmark Label",
       "file": "understandingView.js",
-      "line": 561,
+      "line": 564,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 561
+          "line": 564
         },
         {
           "file": "style.css",
@@ -27325,11 +27325,11 @@
       "selector": ".understandingBookmarkRow",
       "label": "Understanding Bookmark Row",
       "file": "understandingView.js",
-      "line": 555,
+      "line": 558,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 555
+          "line": 558
         },
         {
           "file": "style.css",
@@ -27341,11 +27341,11 @@
       "selector": ".understandingBookmarkSection",
       "label": "Understanding Bookmark Section",
       "file": "understandingView.js",
-      "line": 617,
+      "line": 620,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 617
+          "line": 620
         },
         {
           "file": "style.css",
@@ -27357,11 +27357,11 @@
       "selector": ".understandingBookmarks",
       "label": "Understanding Bookmarks",
       "file": "understandingView.js",
-      "line": 540,
+      "line": 543,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 540
+          "line": 543
         },
         {
           "file": "style.css",
@@ -27373,11 +27373,11 @@
       "selector": ".understandingChapterBtn",
       "label": "Understanding Chapter Btn",
       "file": "understandingView.js",
-      "line": 474,
+      "line": 477,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 474
+          "line": 477
         },
         {
           "file": "style.css",
@@ -27389,11 +27389,11 @@
       "selector": ".understandingChapterDone",
       "label": "Understanding Chapter Done",
       "file": "understandingView.js",
-      "line": 491,
+      "line": 494,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 491
+          "line": 494
         },
         {
           "file": "style.css",
@@ -27405,11 +27405,11 @@
       "selector": ".understandingChapterLeft",
       "label": "Understanding Chapter Left",
       "file": "understandingView.js",
-      "line": 502,
+      "line": 505,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 502
+          "line": 505
         },
         {
           "file": "style.css",
@@ -27421,11 +27421,11 @@
       "selector": ".understandingChapterMinutes",
       "label": "Understanding Chapter Minutes",
       "file": "understandingView.js",
-      "line": 495,
+      "line": 498,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 495
+          "line": 498
         },
         {
           "file": "style.css",
@@ -27437,11 +27437,11 @@
       "selector": ".understandingChapterNum",
       "label": "Understanding Chapter Num",
       "file": "understandingView.js",
-      "line": 477,
+      "line": 480,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 477
+          "line": 480
         },
         {
           "file": "style.css",
@@ -27453,11 +27453,11 @@
       "selector": ".understandingChapterRow",
       "label": "Understanding Chapter Row",
       "file": "understandingView.js",
-      "line": 469,
+      "line": 472,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 469
+          "line": 472
         },
         {
           "file": "style.css",
@@ -27469,11 +27469,11 @@
       "selector": ".understandingChapterStale",
       "label": "Understanding Chapter Stale",
       "file": "understandingView.js",
-      "line": 488,
+      "line": 491,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 488
+          "line": 491
         },
         {
           "file": "style.css",
@@ -27485,11 +27485,11 @@
       "selector": ".understandingChapterTitle",
       "label": "Understanding Chapter Title",
       "file": "understandingView.js",
-      "line": 482,
+      "line": 485,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 482
+          "line": 485
         },
         {
           "file": "style.css",
@@ -27501,11 +27501,11 @@
       "selector": ".understandingChapters",
       "label": "Understanding Chapters",
       "file": "understandingView.js",
-      "line": 466,
+      "line": 469,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 466
+          "line": 469
         },
         {
           "file": "style.css",
@@ -27517,11 +27517,11 @@
       "selector": ".understandingCiteQuote",
       "label": "Understanding Cite Quote",
       "file": "understandingView.js",
-      "line": 1274,
+      "line": 1277,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1274
+          "line": 1277
         },
         {
           "file": "style.css",
@@ -27533,11 +27533,11 @@
       "selector": ".understandingCodePane",
       "label": "Understanding Code Pane",
       "file": "understandingView.js",
-      "line": 1132,
+      "line": 1135,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1132
+          "line": 1135
         },
         {
           "file": "style.css",
@@ -27549,11 +27549,11 @@
       "selector": ".understandingContinue",
       "label": "Understanding Continue",
       "file": "understandingView.js",
-      "line": 426,
+      "line": 429,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 426
+          "line": 429
         },
         {
           "file": "style.css",
@@ -27565,11 +27565,11 @@
       "selector": ".understandingContinueEyebrow",
       "label": "Understanding Continue Eyebrow",
       "file": "understandingView.js",
-      "line": 430,
+      "line": 433,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 430
+          "line": 433
         },
         {
           "file": "style.css",
@@ -27581,11 +27581,11 @@
       "selector": ".understandingContinueFoot",
       "label": "Understanding Continue Foot",
       "file": "understandingView.js",
-      "line": 444,
+      "line": 447,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 444
+          "line": 447
         },
         {
           "file": "style.css",
@@ -27597,11 +27597,11 @@
       "selector": ".understandingContinueMinutes",
       "label": "Understanding Continue Minutes",
       "file": "understandingView.js",
-      "line": 446,
+      "line": 449,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 446
+          "line": 449
         },
         {
           "file": "style.css",
@@ -27613,11 +27613,11 @@
       "selector": ".understandingContinueTitle",
       "label": "Understanding Continue Title",
       "file": "understandingView.js",
-      "line": 435,
+      "line": 438,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 435
+          "line": 438
         },
         {
           "file": "style.css",
@@ -27629,11 +27629,11 @@
       "selector": ".understandingControl",
       "label": "Understanding Control",
       "file": "understandingView.js",
-      "line": 319,
+      "line": 322,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 319
+          "line": 322
         },
         {
           "file": "style.css",
@@ -27645,11 +27645,11 @@
       "selector": ".understandingDriftChip",
       "label": "Understanding Drift Chip",
       "file": "understandingView.js",
-      "line": 2091,
+      "line": 2094,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2091
+          "line": 2094
         },
         {
           "file": "style.css",
@@ -27661,11 +27661,11 @@
       "selector": ".understandingEmptyHint",
       "label": "Understanding Empty Hint",
       "file": "understandingView.js",
-      "line": 800,
+      "line": 803,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 800
+          "line": 803
         },
         {
           "file": "style.css",
@@ -27677,11 +27677,11 @@
       "selector": ".understandingFlagAction",
       "label": "Understanding Flag Action",
       "file": "understandingView.js",
-      "line": 1662,
+      "line": 1665,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1662
+          "line": 1665
         },
         {
           "file": "style.css",
@@ -27693,11 +27693,11 @@
       "selector": ".understandingFlagActions",
       "label": "Understanding Flag Actions",
       "file": "understandingView.js",
-      "line": 1658,
+      "line": 1661,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1658
+          "line": 1661
         },
         {
           "file": "style.css",
@@ -27709,11 +27709,11 @@
       "selector": ".understandingFlagBadge",
       "label": "Understanding Flag Badge",
       "file": "understandingView.js",
-      "line": 635,
+      "line": 638,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 635
+          "line": 638
         },
         {
           "file": "style.css",
@@ -27725,11 +27725,11 @@
       "selector": ".understandingFlagBtn",
       "label": "Understanding Flag Btn",
       "file": "understandingView.js",
-      "line": 1467,
+      "line": 1470,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1467
+          "line": 1470
         },
         {
           "file": "style.css",
@@ -27741,11 +27741,11 @@
       "selector": ".understandingFlagCopy",
       "label": "Understanding Flag Copy",
       "file": "understandingView.js",
-      "line": 658,
+      "line": 661,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 658
+          "line": 661
         },
         {
           "file": "style.css",
@@ -27757,11 +27757,11 @@
       "selector": ".understandingFlagExcerpt",
       "label": "Understanding Flag Excerpt",
       "file": "understandingView.js",
-      "line": 1623,
+      "line": 1626,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1623
+          "line": 1626
         },
         {
           "file": "style.css",
@@ -27773,11 +27773,11 @@
       "selector": ".understandingFlagForm",
       "label": "Understanding Flag Form",
       "file": "understandingView.js",
-      "line": 1621,
+      "line": 1624,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1621
+          "line": 1624
         },
         {
           "file": "style.css",
@@ -27789,11 +27789,11 @@
       "selector": ".understandingFlagHead",
       "label": "Understanding Flag Head",
       "file": "understandingView.js",
-      "line": 651,
+      "line": 654,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 651
+          "line": 654
         },
         {
           "file": "style.css",
@@ -27805,11 +27805,11 @@
       "selector": ".understandingFlagKind",
       "label": "Understanding Flag Kind",
       "file": "understandingView.js",
-      "line": 1635,
+      "line": 1638,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1635
+          "line": 1638
         },
         {
           "file": "style.css",
@@ -27821,11 +27821,11 @@
       "selector": ".understandingFlagKinds",
       "label": "Understanding Flag Kinds",
       "file": "understandingView.js",
-      "line": 1629,
+      "line": 1632,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1629
+          "line": 1632
         },
         {
           "file": "style.css",
@@ -27837,11 +27837,11 @@
       "selector": ".understandingFlagNote",
       "label": "Understanding Flag Note",
       "file": "understandingView.js",
-      "line": 1650,
+      "line": 1653,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1650
+          "line": 1653
         },
         {
           "file": "style.css",
@@ -27853,11 +27853,11 @@
       "selector": ".understandingFlagResolve",
       "label": "Understanding Flag Resolve",
       "file": "understandingView.js",
-      "line": 691,
+      "line": 694,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 691
+          "line": 694
         },
         {
           "file": "style.css",
@@ -27869,11 +27869,11 @@
       "selector": ".understandingFlagSection",
       "label": "Understanding Flag Section",
       "file": "understandingView.js",
-      "line": 648,
+      "line": 651,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 648
+          "line": 651
         },
         {
           "file": "style.css",
@@ -27885,11 +27885,11 @@
       "selector": ".understandingGoDeeper",
       "label": "Understanding Go Deeper",
       "file": "understandingView.js",
-      "line": 2143,
+      "line": 2146,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2143
+          "line": 2146
         },
         {
           "file": "style.css",
@@ -27901,11 +27901,11 @@
       "selector": ".understandingGoDeeperEyebrow",
       "label": "Understanding Go Deeper Eyebrow",
       "file": "understandingView.js",
-      "line": 910,
+      "line": 913,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 910
+          "line": 913
         },
         {
           "file": "style.css",
@@ -27917,11 +27917,11 @@
       "selector": ".understandingGoDeeperList",
       "label": "Understanding Go Deeper List",
       "file": "understandingView.js",
-      "line": 914,
+      "line": 917,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 914
+          "line": 917
         },
         {
           "file": "style.css",
@@ -27933,11 +27933,11 @@
       "selector": ".understandingHeader",
       "label": "Understanding Header",
       "file": "understandingView.js",
-      "line": 759,
+      "line": 762,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 759
+          "line": 762
         },
         {
           "file": "style.css",
@@ -27949,11 +27949,11 @@
       "selector": ".understandingLoading",
       "label": "Understanding Loading",
       "file": "understandingView.js",
-      "line": 2375,
+      "line": 2366,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2375
+          "line": 2366
         },
         {
           "file": "style.css",
@@ -27965,11 +27965,11 @@
       "selector": ".understandingMap",
       "label": "Understanding Map",
       "file": "understandingView.js",
-      "line": 2122,
+      "line": 2125,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2122
+          "line": 2125
         },
         {
           "file": "style.css",
@@ -27981,11 +27981,11 @@
       "selector": ".understandingMapArea",
       "label": "Understanding Map Area",
       "file": "understandingView.js",
-      "line": 1390,
+      "line": 1393,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1390
+          "line": 1393
         },
         {
           "file": "style.css",
@@ -27997,11 +27997,11 @@
       "selector": ".understandingMapAreaName",
       "label": "Understanding Map Area Name",
       "file": "understandingView.js",
-      "line": 1392,
+      "line": 1395,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1392
+          "line": 1395
         },
         {
           "file": "style.css",
@@ -28013,11 +28013,11 @@
       "selector": ".understandingMapAreaPurpose",
       "label": "Understanding Map Area Purpose",
       "file": "understandingView.js",
-      "line": 1397,
+      "line": 1400,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1397
+          "line": 1400
         },
         {
           "file": "style.css",
@@ -28029,11 +28029,11 @@
       "selector": ".understandingMapFile",
       "label": "Understanding Map File",
       "file": "understandingView.js",
-      "line": 1405,
+      "line": 1408,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1405
+          "line": 1408
         },
         {
           "file": "style.css",
@@ -28045,11 +28045,11 @@
       "selector": ".understandingMapFiles",
       "label": "Understanding Map Files",
       "file": "understandingView.js",
-      "line": 1402,
+      "line": 1405,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1402
+          "line": 1405
         },
         {
           "file": "style.css",
@@ -28061,11 +28061,11 @@
       "selector": ".understandingMapName",
       "label": "Understanding Map Name",
       "file": "understandingView.js",
-      "line": 1350,
+      "line": 1353,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1350
+          "line": 1353
         },
         {
           "file": "style.css",
@@ -28077,11 +28077,11 @@
       "selector": ".understandingMapRole",
       "label": "Understanding Map Role",
       "file": "understandingView.js",
-      "line": 1354,
+      "line": 1357,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1354
+          "line": 1357
         },
         {
           "file": "style.css",
@@ -28093,11 +28093,11 @@
       "selector": ".understandingMapRow",
       "label": "Understanding Map Row",
       "file": "understandingView.js",
-      "line": 1345,
+      "line": 1348,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1345
+          "line": 1348
         },
         {
           "file": "style.css",
@@ -28109,11 +28109,11 @@
       "selector": ".understandingMapSymbols",
       "label": "Understanding Map Symbols",
       "file": "understandingView.js",
-      "line": 1412,
+      "line": 1415,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1412
+          "line": 1415
         },
         {
           "file": "style.css",
@@ -28125,11 +28125,11 @@
       "selector": ".understandingMapTree",
       "label": "Understanding Map Tree",
       "file": "understandingView.js",
-      "line": 1386,
+      "line": 1389,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1386
+          "line": 1389
         },
         {
           "file": "style.css",
@@ -28141,11 +28141,11 @@
       "selector": ".understandingMarksBadge",
       "label": "Understanding Marks Badge",
       "file": "understandingView.js",
-      "line": 2225,
+      "line": 2228,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2225
+          "line": 2228
         },
         {
           "file": "style.css",
@@ -28157,11 +28157,11 @@
       "selector": ".understandingMarksBody",
       "label": "Understanding Marks Body",
       "file": "understandingView.js",
-      "line": 1781,
+      "line": 1784,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1781
+          "line": 1784
         },
         {
           "file": "style.css",
@@ -28173,11 +28173,11 @@
       "selector": ".understandingMarksChip",
       "label": "Understanding Marks Chip",
       "file": "understandingView.js",
-      "line": 2220,
+      "line": 2223,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2220
+          "line": 2223
         },
         {
           "file": "style.css",
@@ -28189,11 +28189,11 @@
       "selector": ".understandingMarksClose",
       "label": "Understanding Marks Close",
       "file": "understandingView.js",
-      "line": 1267,
+      "line": 1270,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1267
+          "line": 1270
         },
         {
           "file": "style.css",
@@ -28205,11 +28205,11 @@
       "selector": ".understandingMarksEmpty",
       "label": "Understanding Marks Empty",
       "file": "understandingView.js",
-      "line": 1773,
+      "line": 1776,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1773
+          "line": 1776
         },
         {
           "file": "style.css",
@@ -28221,11 +28221,11 @@
       "selector": ".understandingMarksHead",
       "label": "Understanding Marks Head",
       "file": "understandingView.js",
-      "line": 1258,
+      "line": 1261,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1258
+          "line": 1261
         },
         {
           "file": "style.css",
@@ -28237,11 +28237,11 @@
       "selector": ".understandingMarksPopover",
       "label": "Understanding Marks Popover",
       "file": "understandingView.js",
-      "line": 1798,
+      "line": 1801,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1798
+          "line": 1801
         },
         {
           "file": "style.css",
@@ -28253,11 +28253,11 @@
       "selector": ".understandingMarksTitle",
       "label": "Understanding Marks Title",
       "file": "understandingView.js",
-      "line": 1260,
+      "line": 1263,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1260
+          "line": 1263
         },
         {
           "file": "style.css",
@@ -28269,11 +28269,11 @@
       "selector": ".understandingNav",
       "label": "Understanding Nav",
       "file": "understandingView.js",
-      "line": 1959,
+      "line": 1962,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1959
+          "line": 1962
         }
       ]
     },
@@ -28281,11 +28281,11 @@
       "selector": ".understandingNavEyebrow",
       "label": "Understanding Nav Eyebrow",
       "file": "understandingView.js",
-      "line": 1962,
+      "line": 1965,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1962
+          "line": 1965
         },
         {
           "file": "style.css",
@@ -28297,11 +28297,11 @@
       "selector": ".understandingNavTitle",
       "label": "Understanding Nav Title",
       "file": "understandingView.js",
-      "line": 1967,
+      "line": 1970,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1967
+          "line": 1970
         },
         {
           "file": "style.css",
@@ -28313,11 +28313,11 @@
       "selector": ".understandingNote",
       "label": "Understanding Note",
       "file": "understandingView.js",
-      "line": 776,
+      "line": 779,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 776
+          "line": 779
         },
         {
           "file": "style.css",
@@ -28329,11 +28329,11 @@
       "selector": ".understandingPara",
       "label": "Understanding Para",
       "file": "understandingView.js",
-      "line": 1335,
+      "line": 1338,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1335
+          "line": 1338
         },
         {
           "file": "style.css",
@@ -28345,11 +28345,11 @@
       "selector": ".understandingParaAction",
       "label": "Understanding Para Action",
       "file": "understandingView.js",
-      "line": 1577,
+      "line": 1580,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1577
+          "line": 1580
         },
         {
           "file": "style.css",
@@ -28361,11 +28361,11 @@
       "selector": ".understandingParaActions",
       "label": "Understanding Para Actions",
       "file": "understandingView.js",
-      "line": 1573,
+      "line": 1576,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1573
+          "line": 1576
         },
         {
           "file": "style.css",
@@ -28377,11 +28377,11 @@
       "selector": ".understandingReadBtn",
       "label": "Understanding Read Btn",
       "file": "understandingView.js",
-      "line": 453,
+      "line": 456,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 453
+          "line": 456
         },
         {
           "file": "style.css",
@@ -28393,11 +28393,11 @@
       "selector": ".understandingReader",
       "label": "Understanding Reader",
       "file": "understandingView.js",
-      "line": 2189,
+      "line": 2192,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2189
+          "line": 2192
         },
         {
           "file": "style.css",
@@ -28409,11 +28409,11 @@
       "selector": ".understandingReaderBody",
       "label": "Understanding Reader Body",
       "file": "understandingView.js",
-      "line": 2251,
+      "line": 2254,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2251
+          "line": 2254
         },
         {
           "file": "style.css",
@@ -28425,11 +28425,11 @@
       "selector": ".understandingReaderCol",
       "label": "Understanding Reader Col",
       "file": "understandingView.js",
-      "line": 2257,
+      "line": 2260,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2257
+          "line": 2260
         },
         {
           "file": "style.css",
@@ -28441,11 +28441,11 @@
       "selector": ".understandingReaderEyebrow",
       "label": "Understanding Reader Eyebrow",
       "file": "understandingView.js",
-      "line": 2065,
+      "line": 2068,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2065
+          "line": 2068
         },
         {
           "file": "style.css",
@@ -28457,11 +28457,11 @@
       "selector": ".understandingReaderFlags",
       "label": "Understanding Reader Flags",
       "file": "understandingView.js",
-      "line": 2076,
+      "line": 2079,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2076
+          "line": 2079
         },
         {
           "file": "style.css",
@@ -28473,11 +28473,11 @@
       "selector": ".understandingReaderLeft",
       "label": "Understanding Reader Left",
       "file": "understandingView.js",
-      "line": 2244,
+      "line": 2247,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2244
+          "line": 2247
         }
       ]
     },
@@ -28485,11 +28485,11 @@
       "selector": ".understandingReaderMain",
       "label": "Understanding Reader Main",
       "file": "understandingView.js",
-      "line": 2253,
+      "line": 2256,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2253
+          "line": 2256
         },
         {
           "file": "style.css",
@@ -28501,11 +28501,11 @@
       "selector": ".understandingReaderMeta",
       "label": "Understanding Reader Meta",
       "file": "understandingView.js",
-      "line": 2239,
+      "line": 2242,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2239
+          "line": 2242
         },
         {
           "file": "style.css",
@@ -28517,11 +28517,11 @@
       "selector": ".understandingReaderNav",
       "label": "Understanding Reader Nav",
       "file": "understandingView.js",
-      "line": 2261,
+      "line": 2264,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2261
+          "line": 2264
         },
         {
           "file": "style.css",
@@ -28533,11 +28533,11 @@
       "selector": ".understandingReaderPos",
       "label": "Understanding Reader Pos",
       "file": "understandingView.js",
-      "line": 2241,
+      "line": 2244,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2241
+          "line": 2244
         }
       ]
     },
@@ -28545,11 +28545,11 @@
       "selector": ".understandingReaderProgress",
       "label": "Understanding Reader Progress",
       "file": "understandingView.js",
-      "line": 2235,
+      "line": 2238,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2235
+          "line": 2238
         },
         {
           "file": "style.css",
@@ -28561,11 +28561,11 @@
       "selector": ".understandingReaderScroll",
       "label": "Understanding Reader Scroll",
       "file": "understandingView.js",
-      "line": 2255,
+      "line": 2258,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2255
+          "line": 2258
         },
         {
           "file": "style.css",
@@ -28577,11 +28577,11 @@
       "selector": ".understandingReaderStale",
       "label": "Understanding Reader Stale",
       "file": "understandingView.js",
-      "line": 2084,
+      "line": 2087,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2084
+          "line": 2087
         },
         {
           "file": "style.css",
@@ -28593,11 +28593,11 @@
       "selector": ".understandingReaderStaleTag",
       "label": "Understanding Reader Stale Tag",
       "file": "understandingView.js",
-      "line": 2086,
+      "line": 2089,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2086
+          "line": 2089
         },
         {
           "file": "style.css",
@@ -28609,11 +28609,11 @@
       "selector": ".understandingReaderTitle",
       "label": "Understanding Reader Title",
       "file": "understandingView.js",
-      "line": 2070,
+      "line": 2073,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2070
+          "line": 2073
         },
         {
           "file": "style.css",
@@ -28625,11 +28625,11 @@
       "selector": ".understandingReaderTop",
       "label": "Understanding Reader Top",
       "file": "understandingView.js",
-      "line": 2192,
+      "line": 2195,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2192
+          "line": 2195
         },
         {
           "file": "style.css",
@@ -28641,11 +28641,11 @@
       "selector": ".understandingReaderToursChip",
       "label": "Understanding Reader Tours Chip",
       "file": "understandingView.js",
-      "line": 2214,
+      "line": 2217,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2214
+          "line": 2217
         },
         {
           "file": "style.css",
@@ -28657,11 +28657,11 @@
       "selector": ".understandingReaderWhy",
       "label": "Understanding Reader Why",
       "file": "understandingView.js",
-      "line": 2105,
+      "line": 2108,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 2105
+          "line": 2108
         },
         {
           "file": "style.css",
@@ -28673,11 +28673,11 @@
       "selector": ".understandingRepoChip",
       "label": "Understanding Repo Chip",
       "file": "understandingView.js",
-      "line": 763,
+      "line": 766,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 763
+          "line": 766
         },
         {
           "file": "style.css",
@@ -28689,11 +28689,11 @@
       "selector": ".understandingRibbon",
       "label": "Understanding Ribbon",
       "file": "understandingView.js",
-      "line": 1477,
+      "line": 1480,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1477
+          "line": 1480
         },
         {
           "file": "style.css",
@@ -28705,11 +28705,11 @@
       "selector": ".understandingShelf",
       "label": "Understanding Shelf",
       "file": "understandingView.js",
-      "line": 787,
+      "line": 790,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 787
+          "line": 790
         },
         {
           "file": "style.css",
@@ -28721,11 +28721,11 @@
       "selector": ".understandingShelfBody",
       "label": "Understanding Shelf Body",
       "file": "understandingView.js",
-      "line": 785,
+      "line": 788,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 785
+          "line": 788
         },
         {
           "file": "style.css",
@@ -28737,11 +28737,11 @@
       "selector": ".understandingStats",
       "label": "Understanding Stats",
       "file": "understandingView.js",
-      "line": 771,
+      "line": 774,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 771
+          "line": 774
         },
         {
           "file": "style.css",
@@ -28753,11 +28753,11 @@
       "selector": ".understandingTourRow",
       "label": "Understanding Tour Row",
       "file": "understandingView.js",
-      "line": 920,
+      "line": 923,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 920
+          "line": 923
         },
         {
           "file": "style.css",
@@ -28769,11 +28769,11 @@
       "selector": ".understandingTourRowMeta",
       "label": "Understanding Tour Row Meta",
       "file": "understandingView.js",
-      "line": 929,
+      "line": 932,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 929
+          "line": 932
         },
         {
           "file": "style.css",
@@ -28785,11 +28785,11 @@
       "selector": ".understandingTourRowTitle",
       "label": "Understanding Tour Row Title",
       "file": "understandingView.js",
-      "line": 925,
+      "line": 928,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 925
+          "line": 928
         },
         {
           "file": "style.css",
@@ -29553,11 +29553,11 @@
       "selector": ".why",
       "label": "Why",
       "file": "understandingView.js",
-      "line": 1323,
+      "line": 1326,
       "files": [
         {
           "file": "understandingView.js",
-          "line": 1323
+          "line": 1326
         }
       ]
     },
@@ -29565,11 +29565,11 @@
       "selector": "[data-region=\"…\"]",
       "label": "…",
       "file": "structureView.js",
-      "line": 1199,
+      "line": 1203,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1199
+          "line": 1203
         }
       ]
     }
@@ -29698,7 +29698,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 84,
+      "lines": 82,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -29915,12 +29915,13 @@
     },
     {
       "path": "index.js",
-      "lines": 491,
+      "lines": 512,
       "imports": [
         "addProj_button.svg",
         "appLock.js",
         "auth.js",
         "icon.png",
+        "inject.js",
         "listLogic.js",
         "main.js",
         "migration.js",
@@ -29934,7 +29935,7 @@
     },
     {
       "path": "inject.js",
-      "lines": 4425,
+      "lines": 4442,
       "imports": [
         "agentQueueStore.js",
         "listLogic.js",
@@ -30392,7 +30393,7 @@
     },
     {
       "path": "structureView.js",
-      "lines": 4265,
+      "lines": 4294,
       "imports": [
         "captureCard.js",
         "claudeSheet.js",
@@ -30518,7 +30519,7 @@
     },
     {
       "path": "understandingView.js",
-      "lines": 2432,
+      "lines": 2460,
       "imports": [
         "bookBookmarks.js",
         "bookFlags.js",
