@@ -3,13 +3,21 @@
 // at the end.
 //
 // Below 1024px the player is a full-screen sheet over the app. On desktop the
-// Structure view hands it a host (the code column) and it mounts there, hiding
-// whatever the column showed until it closes. Every move saves the step through
-// prefs, so Continue picks up where the user left off; Done on the recap marks
-// the tour done. ArrowLeft / ArrowRight step while the player has focus, and
-// Escape closes it.
+// host view hands it a host (Understanding's code pane, Structure's detail
+// column) and the player BECOMES the code viewer there: each step's file renders
+// in the viewer with its span highlighted, and the tour chrome is a banner pinned
+// above the code, so tap-to-trace, Explain and the GitHub link keep working under
+// it. Closing puts back whatever file the viewer had before. Every move saves the
+// step through prefs, so Continue picks up where the user left off; Done on the
+// recap marks the tour done. ArrowLeft / ArrowRight step while the player has
+// focus, and Escape closes it.
 
 import { getTourProgress, setTourProgress } from './prefs.js';
+import {
+    renderCodeViewer, clearCodeViewer, setCodeViewerHighlight, setBanner, clearBanner,
+    getOpenCodeViewerFile, getOpenCodeViewerRef, onCodeViewerChange,
+} from './codeViewer.js';
+import { joinSrcRootPath } from './srcPath.js';
 
 let activeClose = null;
 
@@ -74,10 +82,14 @@ export function isTourPlayerOpen() {
 
 // Open `tour` for `repo` at `startStep` (clamped; `steps.length` is the recap).
 // Options:
-//   host         — desktop: the element to mount in; omitted → full-screen sheet.
+//   host         — desktop: the code viewer host to play in; omitted → sheet.
+//   srcRoot      — viewer mode: the manifest's source folder (or a promise of
+//                  it) that a step's manifest-relative `file` is joined to.
+//   target       — viewer mode: the inject target files are read from
+//                  (defaults to `{ repo }`).
 //   areaName(id) — the display name for a step's area chip.
 //   onStep(step) — called with each step shown (not the recap).
-//   onOpenInCode(step, span) — "Open in code viewer"; called after the player closes.
+//   onOpenInCode(step, span) — sheet: "Open in code viewer"; called after the player closes.
 //   onClose()    — after the player is gone, however it closed.
 //   onDone()     — after Done marks the tour done (before onClose).
 export function openTourPlayer(opts) {
@@ -92,8 +104,17 @@ export function openTourPlayer(opts) {
     let index = Math.min(last, Math.max(0, Math.floor(Number(o.startStep) || 0)));
 
     const host = o.host || null;
-    const root = el('div', host ? 'tourPlayer tourPlayer--docked' : 'tourPlayer tourPlayer--sheet');
-    root.setAttribute('role', 'dialog');
+    const viewer = !!host;
+    const target = o.target && o.target.repo ? o.target : { repo: repo };
+    // The source folder, once known: a string arrives synchronously, a promise
+    // (the caller's manifest load) resolves before the first step renders.
+    let srcRoot = typeof o.srcRoot === 'string' ? o.srcRoot : null;
+    const srcRootReady = srcRoot !== null ? null : Promise.resolve(o.srcRoot).then(function (v) {
+        srcRoot = typeof v === 'string' ? v : '';
+    }, function () { srcRoot = ''; });
+
+    const root = el('div', viewer ? 'tourPlayer tourPlayerBanner' : 'tourPlayer tourPlayer--sheet');
+    root.setAttribute('role', viewer ? 'region' : 'dialog');
     root.setAttribute('aria-label', 'Tour: ' + tour.title);
     root.tabIndex = -1;
 
@@ -102,12 +123,15 @@ export function openTourPlayer(opts) {
     headTop.appendChild(el('span', 'tourPlayerEyebrow', 'TOUR'));
     const count = el('span', 'tourPlayerCount');
     headTop.appendChild(count);
+    // The banner keeps to one eyebrow line — `TOUR n / m · title` — so the code
+    // beneath it keeps the height.
+    if (viewer) headTop.appendChild(el('span', 'tourPlayerTourTitle', tour.title));
     const closeBtn = el('button', 'tourPlayerClose', '×');
     closeBtn.type = 'button';
     closeBtn.setAttribute('aria-label', 'Close tour');
     headTop.appendChild(closeBtn);
     head.appendChild(headTop);
-    head.appendChild(el('div', 'tourPlayerTourTitle', tour.title));
+    if (!viewer) head.appendChild(el('div', 'tourPlayerTourTitle', tour.title));
 
     const segBar = el('div', 'tourPlayerSegments');
     segBar.setAttribute('role', 'group');
@@ -137,7 +161,47 @@ export function openTourPlayer(opts) {
     foot.appendChild(nextBtn);
     root.appendChild(foot);
 
+    // Viewer mode: show `step`'s file with its span highlighted. A step in the
+    // file already open only moves the highlight (the trace trail survives);
+    // another file — or the reader having wandered off to one — re-renders.
+    let wanted = null;
+    let shown = false;
+    function showInViewer(step) {
+        wanted = step;
+        if (srcRoot === null) {
+            srcRootReady.then(function () {
+                if (!closed && wanted === step) showInViewer(step);
+            });
+            return;
+        }
+        const filePath = joinSrcRootPath(srcRoot, step.file);
+        const span = highlightSpan(step);
+        const same = getOpenCodeViewerFile() === filePath;
+        if (same && setCodeViewerHighlight(host, span.startLine, span.endLine)) return;
+        const opts = {
+            target: target,
+            filePath: filePath,
+            srcRoot: srcRoot,
+            startLine: span.startLine,
+            endLine: span.endLine,
+        };
+        if (same) opts.keepTrail = true;
+        renderCodeViewer(host, opts);
+        setBanner(host, root);
+        if (!shown) {
+            shown = true;
+            if (typeof root.focus === 'function') root.focus({ preventScroll: true });
+        }
+    }
+
+    function renderBannerStep(step) {
+        body.appendChild(el('h3', 'tourPlayerStepTitle', step.title || ''));
+        body.appendChild(el('p', 'tourPlayerWhy', step.why || ''));
+        showInViewer(step);
+    }
+
     function renderStep(step) {
+        if (viewer) { renderBannerStep(step); return; }
         const where = el('div', 'tourPlayerWhere');
         if (step.area) {
             const name = typeof o.areaName === 'function' ? o.areaName(step.area) : null;
@@ -207,11 +271,33 @@ export function openTourPlayer(opts) {
         close();
     }
 
+    // What the viewer showed before the tour, so closing can put it back.
+    let hadShell = false;
+    let prior = null;
+    let unwatch = null;
+
     let closed = false;
-    function close() {
+    // `restore` is false when the viewer was closed out from under the tour, so
+    // there is nothing to put back.
+    function close(restore) {
         if (closed) return;
         closed = true;
         if (activeClose === close) activeClose = null;
+        if (viewer) {
+            if (typeof unwatch === 'function') unwatch();
+            clearBanner(host);
+            if (restore !== false) {
+                if (prior) renderCodeViewer(host, prior);
+                else clearCodeViewer(host);
+            }
+            // A viewer the tour mounted for itself goes with it.
+            if (!hadShell) {
+                Array.prototype.forEach.call(
+                    host.querySelectorAll(':scope > .codeViewerPane, :scope > .codeViewerEmpty'),
+                    function (node) { node.remove(); }
+                );
+            }
+        }
         if (root.parentNode) root.parentNode.removeChild(root);
         if (host) host.classList.remove('is-touring');
         if (typeof o.onClose === 'function') o.onClose();
@@ -222,7 +308,7 @@ export function openTourPlayer(opts) {
         if (index === last) finish();
         else go(index + 1);
     });
-    closeBtn.addEventListener('click', close);
+    closeBtn.addEventListener('click', function () { close(); });
     root.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             event.preventDefault();
@@ -237,15 +323,26 @@ export function openTourPlayer(opts) {
         }
     });
 
-    if (host) {
+    if (viewer) {
+        const shellPane = host.querySelector(':scope > .codeViewerPane');
+        hadShell = !!shellPane;
+        prior = shellPane && !shellPane.hidden ? getOpenCodeViewerRef() : null;
         host.classList.add('is-touring');
-        host.appendChild(root);
     } else {
         document.body.appendChild(root);
     }
     activeClose = close;
     saveProgress(repo, tour.id, { step: index });
     paint();
+    // Opening on the recap has no step to show; the banner still needs a viewer.
+    if (viewer && index >= steps.length) showInViewer(steps[steps.length - 1]);
+    if (viewer) {
+        // The viewer closed (its ✕) or taken to another host takes the tour with it.
+        unwatch = onCodeViewerChange(function () {
+            const pane = host.querySelector(':scope > .codeViewerPane');
+            if (shown && (!pane || pane.hidden)) close(false);
+        });
+    }
     if (index < steps.length && typeof o.onStep === 'function') o.onStep(steps[index], index);
     if (typeof root.focus === 'function') root.focus({ preventScroll: true });
     return { root: root, close: close };

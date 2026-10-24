@@ -65,10 +65,16 @@ vi.mock('../src/codeViewer.js', () => ({
     clearCodeViewer: vi.fn(),
     onCodeViewerChange: vi.fn(),
     setCodeViewerCloseHandler: vi.fn(),
+    // The docked tour player drives the viewer through these.
+    setCodeViewerHighlight: vi.fn(() => false),
+    setBanner: vi.fn(),
+    clearBanner: vi.fn(),
+    getOpenCodeViewerFile: vi.fn(() => null),
+    getOpenCodeViewerRef: vi.fn(() => null),
 }));
 
 import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, openBookRefInReader } from '../src/understandingView.js';
-import { renderCodeViewer, setCodeViewerCloseHandler, clearCodeViewer } from '../src/codeViewer.js';
+import { renderCodeViewer, setCodeViewerCloseHandler, clearCodeViewer, setBanner } from '../src/codeViewer.js';
 import { loadManifest, openChatWithBookScope } from '../src/claudeSheet.js';
 import { showConfirmModal } from '../src/modals.js';
 import { getBookProgress, getTourProgress, setTourProgress } from '../src/prefs.js';
@@ -1114,33 +1120,41 @@ describe('go deeper tours', () => {
         expect(toursChip()).toBeNull();
     });
 
-    test('a row resumes its tour at the saved step, docked in the reader code pane with its open-in-code hook', async () => {
+    test('a row resumes its tour at the saved step in the reader code pane, the step file in the viewer under the banner', async () => {
         setTourProgress('owner/repo', { 'add-task': { step: 2, done: false } });
         await openToured(0);
+        renderCodeViewer.mockClear();
         deeper().querySelector('.understandingTourRow').click();
         const opts = openTourPlayer.mock.calls[0][0];
         const pane = view().querySelector('.understandingReaderBody > .understandingCodePane');
         expect(pane).not.toBeNull();
         expect(opts.host).toBe(pane);
         expect(opts.startStep).toBe(2);
-        expect(typeof opts.onOpenInCode).toBe('function');
-        expect(pane.querySelector('.tourPlayer--docked .tourPlayerCount').textContent).toBe('3 / 4');
+        expect(opts.target).toEqual({ repo: 'owner/repo' });
+        expect(pane.classList.contains('is-touring')).toBe(true);
         // The reader stays on its chapter.
         expect(title()).toBe('How the app starts');
 
-        // Open in code viewer closes the tour and renders the step's span in the reader pane.
-        document.querySelector('.tourPlayerOpenCode').click();
+        // Once the manifest's srcRoot is in, the step's file renders in the pane.
         await flush();
-        expect(pane.classList.contains('is-touring')).toBe(false);
         const call = renderCodeViewer.mock.calls[renderCodeViewer.mock.calls.length - 1];
-        expect(call[0]).toBe(view().querySelector('.understandingReaderBody > .understandingCodePane'));
+        expect(call[0]).toBe(pane);
         expect(call[1]).toMatchObject({
             target: { repo: 'owner/repo' },
             filePath: 'toDoList_main/src/inject.js',
+            srcRoot: 'toDoList_main/src',
             startLine: 30,
             endLine: 30,
-            banner: 'postToWorker title',
         });
+        const banner = setBanner.mock.calls[setBanner.mock.calls.length - 1];
+        expect(banner[0]).toBe(pane);
+        expect(banner[1].classList.contains('tourPlayerBanner')).toBe(true);
+        expect(banner[1].querySelector('.tourPlayerCount').textContent).toBe('3 / 4');
+        expect(banner[1].querySelector('.tourPlayerOpenCode')).toBeNull();
+
+        // Closing the tour takes the pane it opened for itself with it.
+        closeTourPlayer();
+        expect(view().querySelector('.understandingCodePane')).toBeNull();
     });
 
     test('on mobile the tour is a sheet; finishing it repaints the glyphs without re-rendering the chapter', async () => {
@@ -1180,7 +1194,10 @@ describe('go deeper tours', () => {
         toursChip().click();
         sheet().querySelectorAll('.tourAllRow')[1].click();
         expect(sheet().hidden).toBe(true);
-        expect(document.querySelector('.tourPlayerTourTitle').textContent).toBe('Second tour');
+        // Docked in the pane: the banner goes to the (mocked) viewer, so read the tour played.
+        const played = openTourPlayer.mock.calls[openTourPlayer.mock.calls.length - 1][0];
+        expect(played.tour.title).toBe('Second tour');
+        expect(played.host).toBe(view().querySelector('.understandingReaderBody > .understandingCodePane'));
         expect(title()).toBe('How the app starts');
     });
 });

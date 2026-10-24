@@ -43,6 +43,9 @@ import {
     onCodeViewerChange,
     resetCodeViewer,
     setCodeViewerCloseHandler,
+    setCodeViewerHighlight,
+    setBanner,
+    clearBanner,
 } from '../src/codeViewer.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -649,5 +652,94 @@ describe('several hosts', () => {
             offA();
             offB();
         }
+    });
+});
+
+// The docked tour player pins its step chrome above the source through the
+// banner slot, and moves the highlight between same-file steps in place.
+describe('setBanner / clearBanner', () => {
+    beforeEach(() => {
+        state.files['a.js'] = { content: fileOf(50) };
+        state.files['b.js'] = { content: fileOf(50) };
+    });
+    const slot = () => document.querySelector('.codeViewerPane > .codeViewerBannerSlot');
+
+    it('pins the element above the source, between the header and the lines', async () => {
+        renderCodeViewer(host(), { target: TARGET, filePath: 'a.js' });
+        await flush();
+        const el = document.createElement('div');
+        el.className = 'myBanner';
+        setBanner(host(), el);
+        expect(slot().hidden).toBe(false);
+        expect(slot().firstElementChild).toBe(el);
+        expect(slot().previousElementSibling.classList.contains('codeViewerHeader')).toBe(true);
+        expect(slot().compareDocumentPosition(document.querySelector('.codeViewerBody')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
+
+    it('survives opens, jumps and a highlight move, and leaves the jump banner alone', async () => {
+        renderCodeViewer(host(), { target: TARGET, filePath: 'a.js' });
+        await flush();
+        const el = document.createElement('div');
+        setBanner(host(), el);
+        renderCodeViewer(host(), { target: TARGET, filePath: 'b.js', startLine: 5, endLine: 6, banner: 'Jump' });
+        await flush();
+        expect(slot().firstElementChild).toBe(el);
+        expect(refs().banner.hidden).toBe(false);
+        expect(refs().bannerText.textContent).toBe('Jump');
+    });
+
+    it('replaces an earlier banner, and clearBanner takes it down', async () => {
+        renderCodeViewer(host(), { target: TARGET, filePath: 'a.js' });
+        await flush();
+        setBanner(host(), document.createElement('span'));
+        const second = document.createElement('div');
+        setBanner(host(), second);
+        expect(slot().children).toHaveLength(1);
+        expect(slot().firstElementChild).toBe(second);
+        clearBanner(host());
+        expect(slot().hidden).toBe(true);
+        expect(slot().children).toHaveLength(0);
+    });
+
+    it('clearBanner on a host with no viewer does nothing', () => {
+        expect(() => clearBanner(host())).not.toThrow();
+        expect(document.querySelector('.codeViewerPane')).toBeNull();
+    });
+});
+
+describe('setCodeViewerHighlight', () => {
+    beforeEach(() => {
+        state.files['a.js'] = { content: fileOf(1000) };
+    });
+    const hits = () => Array.from(document.querySelectorAll('.codeViewerLine--hit')).map((el) => Number(el.dataset.line));
+
+    it('moves the highlight in place without a refetch or repaint', async () => {
+        renderCodeViewer(host(), { target: TARGET, filePath: 'a.js', startLine: 10, endLine: 12 });
+        await flush();
+        const firstRow = document.querySelector('.codeViewerLine');
+        const calls = state.calls.length;
+        let notified = 0;
+        onCodeViewerChange(() => { notified++; });
+        expect(setCodeViewerHighlight(host(), 30, 31)).toBe(true);
+        expect(hits()).toEqual([30, 31]);
+        expect(document.querySelector('.codeViewerLine')).toBe(firstRow);
+        expect(state.calls.length).toBe(calls);
+        expect(notified).toBe(0);
+        expect(refs().gh.getAttribute('href')).toMatch(/#L30-L31$/);
+        expect(getOpenCodeViewerRef()).toMatchObject({ filePath: 'a.js', startLine: 30, endLine: 31 });
+    });
+
+    it('refuses a span outside the rendered window, or before the file has loaded', async () => {
+        state.defer = true;
+        renderCodeViewer(host(), { target: TARGET, filePath: 'a.js', startLine: 10, endLine: 12 });
+        expect(setCodeViewerHighlight(host(), 20, 20)).toBe(false);
+        state.pending.forEach((fn) => fn());
+        await flush();
+        expect(setCodeViewerHighlight(host(), 900, 901)).toBe(false);
+        expect(hits()).toEqual([10, 11, 12]);
+    });
+
+    it('refuses a host the viewer is not open in', () => {
+        expect(setCodeViewerHighlight(host(), 1, 1)).toBe(false);
     });
 });
