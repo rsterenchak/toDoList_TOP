@@ -443,6 +443,14 @@ function buildPane() {
 
     pane.appendChild(header);
 
+    // A host-supplied banner pinned above the source — the docked tour player's
+    // step chrome. It belongs to whoever set it, so opens and jumps leave it in
+    // place; only `clearBanner` takes it down.
+    const slot = document.createElement('div');
+    slot.className = 'codeViewerBannerSlot';
+    slot.hidden = true;
+    pane.appendChild(slot);
+
     // The trace trail: Back plus one chip per point jumped away from. Shown only
     // while there is somewhere to go back to.
     const trailBar = document.createElement('div');
@@ -544,6 +552,7 @@ function buildPane() {
         explain: explain,
         gh: gh,
         close: close,
+        slot: slot,
         banner: banner,
         bannerText: bannerText,
         bannerDismiss: bannerDismiss,
@@ -1179,6 +1188,49 @@ export function renderCodeViewer(host, opts) {
     });
 
     return pane;
+}
+
+// Move the open file's highlight to `startLine`–`endLine` in place — no refetch,
+// no repaint, the trace trail untouched — and scroll it into view. Returns false
+// when it can't (no file loaded in `host` yet, or the span falls outside the
+// rendered window), so the caller falls back to a fresh `renderCodeViewer`.
+export function setCodeViewerHighlight(host, startLine, endLine) {
+    const pane = host && host.querySelector ? host.querySelector(':scope > .codeViewerPane') : null;
+    const state = pane ? pane._codeViewerState : null;
+    const hl = normalizeSpan(startLine, endLine);
+    if (!state || !hl || !active || active.host !== host || active.filePath !== state.filePath) return false;
+    if (hl.start < state.start || hl.end > state.end) return false;
+    state.hl = hl;
+    active.hl = hl;
+    active.banner = '';
+    const refs = pane._codeViewerRefs;
+    refs.banner.hidden = true;
+    refs.bannerText.textContent = '';
+    Array.prototype.forEach.call(refs.lines.querySelectorAll('.codeViewerLine'), function (row) {
+        row.classList.toggle('codeViewerLine--hit', isHit(state, Number(row.dataset.line)));
+    });
+    refs.gh.href = githubBlobUrl(state.repo, state.filePath, hl);
+    scrollToLine(state, hl.start);
+    return true;
+}
+
+// Pin `el` above the source in `host`'s viewer, replacing any banner already
+// there. The viewer's own jump banner is separate and unaffected.
+export function setBanner(host, el) {
+    if (!host || !el) return;
+    const refs = ensureShell(host).pane._codeViewerRefs;
+    clearEl(refs.slot);
+    refs.slot.appendChild(el);
+    refs.slot.hidden = false;
+}
+
+// Take down the banner `setBanner` pinned in `host`'s viewer, if any.
+export function clearBanner(host) {
+    const pane = host && host.querySelector ? host.querySelector(':scope > .codeViewerPane') : null;
+    if (!pane) return;
+    const refs = pane._codeViewerRefs;
+    clearEl(refs.slot);
+    refs.slot.hidden = true;
 }
 
 // Return the column to empty: the viewer is hidden and reset, the placeholder

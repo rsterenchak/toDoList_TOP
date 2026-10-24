@@ -650,7 +650,9 @@ function buildWebManifest(opts) {
 // warning; a tour left with fewer than TOUR_MIN_STEPS is dropped too.
 const TOURS_VERSION = 1;
 const TOUR_MIN_STEPS = 3;
-const TOUR_SNIPPET_MAX_ROWS = 12;
+const TOUR_SNIPPET_MAX_ROWS = 24;
+// Lines of context shown either side of each matched line.
+const TOUR_SNIPPET_CONTEXT = 3;
 // Clusters separated by more than this many hidden lines get a gap row;
 // closer ones are joined by the lines between them.
 const TOUR_SNIPPET_MAX_JOIN = 2;
@@ -712,13 +714,14 @@ function resolveTourStep(step, symbols, fileLines) {
   return { line: hits[0], lines: hits };
 }
 
-// Snippet rows for the matched `hits`: each with one line of context either
-// side, clusters closed by gap rows, indentation trimmed per cluster, capped.
+// Snippet rows for the matched `hits`: each with TOUR_SNIPPET_CONTEXT lines of
+// context either side, clusters closed by gap rows, indentation trimmed per
+// cluster, capped.
 function buildTourSnippet(lines, hits) {
   const total = lines.length;
   const ranges = [];
   hits.forEach(function (n) {
-    const lo = Math.max(1, n - 1), hi = Math.min(total, n + 1);
+    const lo = Math.max(1, n - TOUR_SNIPPET_CONTEXT), hi = Math.min(total, n + TOUR_SNIPPET_CONTEXT);
     const last = ranges[ranges.length - 1];
     if (last && lo - last.hi - 1 <= TOUR_SNIPPET_MAX_JOIN) last.hi = Math.max(last.hi, hi);
     else ranges.push({ lo: lo, hi: hi });

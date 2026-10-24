@@ -5265,7 +5265,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   flex: 1 1 auto;
   min-width: 0;
 }
-.understandingCodePane.is-touring > :not(.tourPlayer) { display: none; }
+.understandingCodePane.is-touring > :not(.tourPlayer):not(.codeViewerPane) { display: none; }
 
 .understandingGoDeeper {
   display: flex;
@@ -7273,6 +7273,45 @@ span.understandingFlagBtnRow { cursor: default; }
   border-radius: 10px;
   overflow: hidden;
 }
+
+/* Docked on desktop, the player is a banner pinned above the code viewer's
+   source (codeViewer.js's banner slot): one eyebrow line, the progress bar, the
+   step's title and why, Back / Next. The slot caps its height and scrolls, so a
+   long `why` can't push the code off a short window. */
+.codeViewerBannerSlot {
+  display: block;
+  flex: 0 0 auto;
+  max-height: 50%;
+  overflow-y: auto;
+}
+.codeViewerBannerSlot[hidden] { display: none !important; }
+
+.tourPlayerBanner {
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tourPlayerBanner .tourPlayerHead { padding: 8px 12px 6px; gap: 4px; }
+.tourPlayerBanner .tourPlayerClose { width: 32px; height: 32px; margin: -6px -6px -6px 0; font-size: 20px; }
+.tourPlayerBanner .tourPlayerCount { flex: 0 0 auto; }
+.tourPlayerBanner .tourPlayerTourTitle {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'SpaceMono', monospace;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
+.tourPlayerBanner .tourPlayerTourTitle::before { content: '· '; }
+.tourPlayerBanner .tourPlayerBody { overflow: visible; gap: 6px; padding: 8px 12px 4px; }
+.tourPlayerBanner .tourPlayerStepTitle { font-size: 15px; }
+.tourPlayerBanner .tourPlayerWhy { font-size: 13px; }
+.tourPlayerBanner .tourPlayerFoot { padding: 8px 12px; border-top: none; }
+.tourPlayerBanner .tourPlayerBack,
+.tourPlayerBanner .tourPlayerNext { height: 36px; font-size: 14px; }
 
 .tourPlayerHead {
   display: flex;
@@ -28028,9 +28067,9 @@ body.appLocked { overflow: hidden; }
   }
   .tourAllSheet { padding: 20px; }
 
-  /* A tour docked in the code column hides whatever the column was showing
-     until it closes. */
-  #structureView > .structureCanvasHost.is-touring > :not(.tourPlayer) { display: none; }
+  /* A tour docked in the code column hides whatever else the column was
+     showing until it closes; the code viewer stays, since the tour plays in it. */
+  #structureView > .structureCanvasHost.is-touring > :not(.tourPlayer):not(.codeViewerPane) { display: none; }
 }
 
 /* LAUNCH VIEWPORT SETTLE — mobile. In iOS standalone the layout viewport

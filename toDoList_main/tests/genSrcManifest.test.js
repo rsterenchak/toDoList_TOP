@@ -489,7 +489,7 @@ describe('gen-src-manifest compileTours', () => {
         expect(out.tours[0].steps.map((s) => s.next)).toEqual(['other', 'inner', null]);
     });
 
-    it('builds snippets with context, gap rows, trimmed indent and a 12-row cap', () => {
+    it('builds snippets with 3 lines of context, gap rows, trimmed indent and a 24-row cap', () => {
         const body = ['function big() {'];
         for (let i = 2; i <= 40; i++) body.push('        line' + i + ';');
         body.push('}');
@@ -497,24 +497,30 @@ describe('gen-src-manifest compileTours', () => {
         const bigSyms = buildSymbols(bigSrc);
         const s = (match) => ({ file: 'big.js', symbol: 'big', match, title: 'T', why: 'W' });
         const out = compileTours({ tours: [{ id: 'b', steps: [
-            s(['line5;', 'line9;']),               // 2 hidden lines (7–8) → joined
-            s(['line5;', 'line11;']),              // 3 hidden lines (7–9) → gap row
-            s(['line3;', 'line10;', 'line17;', 'line24;', 'line31;']),
+            s(['line5;', 'line14;']),              // 2 hidden lines (9–10) → joined
+            s(['line5;', 'line15;']),              // 3 hidden lines (9–11) → gap row
+            s(['line4;', 'line14;', 'line24;', 'line34;']),
         ] }] }, bigSyms, bigSrc, undefined, vi.fn());
         const [joined, gapped, capped] = out.tours[0].steps;
-        expect(joined.snippet.map((r) => r.n)).toEqual([4, 5, 6, 7, 8, 9, 10]);
-        expect(joined.snippet[0]).toEqual({ n: 4, t: 'line4;', hi: false });
-        expect(joined.snippet[1]).toEqual({ n: 5, t: 'line5;', hi: true });
+        expect(joined.snippet.map((r) => r.n)).toEqual([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17]);
+        expect(joined.snippet[0]).toEqual({ n: 2, t: 'line2;', hi: false });
+        expect(joined.snippet[3]).toEqual({ n: 5, t: 'line5;', hi: true });
+        const row = (n) => ({ n, t: 'line' + n + ';', hi: n === 5 || n === 15 });
         expect(gapped.snippet).toEqual([
-            { n: 4, t: 'line4;', hi: false }, { n: 5, t: 'line5;', hi: true }, { n: 6, t: 'line6;', hi: false },
+            row(2), row(3), row(4), row(5), row(6), row(7), row(8),
             { gap: true },
-            { n: 10, t: 'line10;', hi: false }, { n: 11, t: 'line11;', hi: true }, { n: 12, t: 'line12;', hi: false },
+            row(12), row(13), row(14), row(15), row(16), row(17), row(18),
         ]);
-        // 3 rows + gap per cluster: the cap lands on the 3rd gap row (row 12),
-        // and a snippet never ends on a gap, so 11 rows remain.
-        expect(capped.snippet.length).toBe(11);
-        expect(capped.snippet[capped.snippet.length - 1]).toEqual({ n: 18, t: 'line18;', hi: false });
+        // 7 rows + gap per cluster: the cap lands on the 3rd gap row (row 24),
+        // and a snippet never ends on a gap, so 23 rows remain.
+        expect(capped.snippet.length).toBe(23);
+        expect(capped.snippet[capped.snippet.length - 1]).toEqual({ n: 27, t: 'line27;', hi: false });
         expect(capped.snippet.filter((r) => r.gap).length).toBe(2);
+        // The first cluster takes in the unindented `function big() {`, so
+        // nothing is cut there; the later clusters lose their 8 spaces.
+        expect(capped.snippet[0]).toEqual({ n: 1, t: 'function big() {', hi: false });
+        expect(capped.snippet[1]).toEqual({ n: 2, t: '        line2;', hi: false });
+        expect(capped.snippet[8]).toEqual({ n: 11, t: 'line11;', hi: false });
         expect(gapped.area).toBeNull();
     });
 
@@ -596,8 +602,11 @@ describe('gen-src-manifest compileTours', () => {
         // Lines 1–7 joined; `function outer` has no indent so nothing is cut.
         expect(first.find((r) => r.n === 3).t).toBe('        const a = 1;');
         const last = out.tours[0].steps[2].snippet;
-        // Lines 11–13: the closing `}` sits at 4 spaces, so only 4 are cut.
-        expect(last.map((r) => r.t)).toEqual(['    const b = 3;', '    return a + b;', '}']);
+        // Lines 9–14: the closing `}` sits at column 0, so nothing is cut and the
+        // nesting reads as in the file.
+        expect(last.map((r) => r.t)).toEqual([
+            '    function inner() {', '        const a = 2;', '        const b = 3;', '        return a + b;', '    }', '}',
+        ]);
     });
 });
 

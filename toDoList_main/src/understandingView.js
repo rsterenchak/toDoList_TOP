@@ -960,8 +960,9 @@ function openTourStepInCode(r, step, span) {
     });
 }
 
-// Play `tour` from `step`: docked in the reader's code pane on desktop, a
-// full-screen sheet below 1024px. The reader keeps its chapter and position.
+// Play `tour` from `step`: on desktop the reader's code pane becomes the tour,
+// each step's file in the viewer under the step banner; a full-screen sheet below
+// 1024px. The reader keeps its chapter and position.
 function startReaderTour(tour, step) {
     const r = reader;
     if (!r || !tour) return;
@@ -971,6 +972,11 @@ function startReaderTour(tour, step) {
         repo: r.repo,
         startStep: step,
         host: docked,
+        target: { repo: r.repo },
+        // Steps name manifest-relative files; the same cached manifest the refs use.
+        srcRoot: docked ? Promise.resolve(loadManifest(r.repo)).then(function (manifest) {
+            return manifest && typeof manifest.srcRoot === 'string' ? manifest.srcRoot : '';
+        }) : undefined,
         areaName: tourAreaName,
         onOpenInCode: function (st, span) { openTourStepInCode(r, st, span); },
         onClose: function () {

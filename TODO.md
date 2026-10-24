@@ -2805,7 +2805,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 525dc46c-6c7d-4ddb-88ed-5cee6f1f062f -->
 
-- [ ] **[MEDIUM]** Dock the tour player on the code viewer so each step shows the file, not a snippet
+- [x] **[MEDIUM]** Dock the tour player on the code viewer so each step shows the file, not a snippet — Completed: 2026-10-24
   - Type: feature
   - Description: On desktop the tour player renders a 12-row snippet in a column that has room for the whole file, and offers "Open in code viewer" as a separate action. Make the docked player *be* the code viewer: when a tour starts in a docked host (Understanding's code pane or Structure's detail column), render the step's file in the viewer with the step's span highlighted and scrolled into view, and put the tour chrome — `TOUR n / m`, progress bar, step title, `why`, Back / Next, the recap at the end — in a banner pinned above the code. Stepping to a step in another file swaps the file; stepping within a file scrolls. Tap-to-trace, the Explain control and the GitHub link keep working under the banner, so the reader can wander from a step and come back with Next. The phone keeps the sheet player, with its snippet widened to 3 lines of context and 24 rows. The "Open in code viewer" link goes away in docked mode (it is the viewer) and stays in the sheet. At 1300x900, starting "From the login dialog to the main window" from chapter 1 shows `Program.cs` in the right pane with lines 29–31 highlighted and the step banner above; Next scrolls to line 34; at 390x844 the sheet shows the wider snippet.
   - Behavior:

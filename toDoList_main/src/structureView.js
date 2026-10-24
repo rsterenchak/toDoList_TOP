@@ -2751,6 +2751,10 @@ function renderLens(repo, treeEl) {
     // so a later resize can tell the host would change and re-home the canvas.
     canvasHostDesktop = structureIsDesktop();
     syncMapLensLayout();
+    // A tour docked in the code column goes with it; close it properly first, so
+    // the column is back on the file it showed before the tour when that file is
+    // recorded below, and its progress is saved.
+    if (currentCanvasHost && currentCanvasHost.classList.contains('is-touring')) closeTourPlayer();
     // Everything below throws the open file away, so record it first — this is the
     // only point that still knows what the column was reading.
     rememberOpenCodeFile();
@@ -2758,9 +2762,6 @@ function renderLens(repo, treeEl) {
     // rebuild, so it goes with it — otherwise a lens switch would leave a sheet
     // hanging over rows that no longer exist.
     codeSheet.reset();
-    // A tour docked in the code column goes with it; close it properly so its
-    // progress and the column's hidden contents are restored first.
-    if (currentCanvasHost && currentCanvasHost.classList.contains('is-touring')) closeTourPlayer();
     if (currentCanvasHost) {
         // A code viewer mounted in the host goes with the host's contents, so drop
         // its state first — otherwise it would report a file as open long after the
@@ -3815,8 +3816,9 @@ function tourAreaName(id) {
     return a && a.name ? a.name : id;
 }
 
-// Play `tour` from `step`: docked in the code column on desktop, a full-screen
-// sheet below 1024px. With the Map lens active the map follows each step's area.
+// Play `tour` from `step`: on desktop the code column becomes the tour, each
+// step's file in the viewer under the step banner; a full-screen sheet below
+// 1024px. With the Map lens active the map follows each step's area.
 function startTour(tour, step) {
     const repo = selectedRepo;
     if (!repo || !tour) return;
@@ -3826,6 +3828,8 @@ function startTour(tour, step) {
         repo: repo,
         startStep: step,
         host: docked,
+        target: { repo: repo },
+        srcRoot: currentSrcRoot || '',
         areaName: tourAreaName,
         onStep: function (s) { followTourStep(repo, s); },
         onOpenInCode: function (s, span) {

@@ -3221,7 +3221,7 @@ describe('renderStructureView — code tours', () => {
         expect(player.querySelector('.tourPlayerArea').textContent).toBe('Pipeline');
     });
 
-    it('on desktop docks the player in the code column and the map follows each step', async () => {
+    it('on desktop the code column becomes the tour — step file in the viewer under the banner — and the map follows each step', async () => {
         state.tours = TOURS;
         setWidth(1300);
         await render();
@@ -3229,21 +3229,29 @@ describe('renderStructureView — code tours', () => {
         await startAreaTour('tasks');
         const host = view().querySelector(':scope > .structureCanvasHost');
         expect(host.classList.contains('is-touring')).toBe(true);
-        expect(host.querySelector('.tourPlayer--docked')).toBeTruthy();
         expect(document.querySelector('.tourPlayer--sheet')).toBeFalsy();
+        const codePane = host.querySelector(':scope > .codeViewerPane');
+        expect(codePane.hidden).toBe(false);
+        expect(codePane.querySelector('.codeViewerPath').textContent).toBe('src/listLogic.js');
+        const banner = codePane.querySelector('.codeViewerBannerSlot > .tourPlayerBanner');
+        expect(banner).toBeTruthy();
+        expect(banner.querySelector('.tourPlayerOpenCode')).toBeFalsy();
         const pane = view().querySelector(':scope > .structureMapPane');
         expect(pane.querySelector('.structureMapCrumbHere').textContent).toBe('Tasks');
         document.querySelector('.tourPlayerNext').click();
+        expect(codePane.querySelector('.codeViewerPath').textContent).toBe('src/toDoRow.js');
         document.querySelector('.tourPlayerNext').click();
         expect(pane.querySelector('.structureMapCrumbHere').textContent).toBe('Pipeline');
+        expect(codePane.querySelector('.codeViewerPath').textContent).toBe('src/inject.js');
+        expect(banner.querySelector('.tourPlayerCount').textContent).toBe('3 / 4');
+        await flush();
+        // The source paints beneath the banner (the canned file is three lines).
+        expect(codePane.querySelectorAll('.codeViewerLine')).toHaveLength(3);
 
-        // Open in code viewer closes the tour and opens the span in the column.
-        document.querySelector('.tourPlayerOpenCode').click();
+        // Closing takes the banner down and saves the step.
+        banner.querySelector('.tourPlayerClose').click();
         expect(host.classList.contains('is-touring')).toBe(false);
         expect(host.querySelector('.tourPlayer')).toBeFalsy();
-        const codePane = host.querySelector('.codeViewerPane');
-        expect(codePane.hidden).toBe(false);
-        expect(codePane.textContent).toContain('src/inject.js');
         expect(getTourProgress(TOP)['add-task']).toEqual({ step: 2, done: false });
     });
 
