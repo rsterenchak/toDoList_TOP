@@ -609,11 +609,13 @@ export function getChatBookScope(repo) {
     const val = readJsonObject(CHAT_BOOK_SCOPE_KEY)[repo];
     if (!val || typeof val !== 'object' || !val.chapter || typeof val.chapter !== 'object') return null;
     if (typeof val.chapter.id !== 'string' || !val.chapter.id) return null;
-    return {
+    const out = {
         chapter: val.chapter,
         prose: Array.isArray(val.prose) ? val.prose : [],
         refs: Array.isArray(val.refs) ? val.refs : [],
     };
+    if (Array.isArray(val.index)) out.index = val.index;
+    return out;
 }
 
 // Store `scope` for `repo`, or drop the repo's slot when `scope` is null.

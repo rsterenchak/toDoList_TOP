@@ -36,8 +36,10 @@
 // lives in bookProgress.js).
 //
 // The reader's Ask chip opens the Claude chat scoped to the open chapter: its
-// identity, its prose and its de-duplicated refs ride as `book_scope` on every
-// turn (see buildBookScope), and a scoped reply's code names open back here.
+// identity, its prose and its de-duplicated refs (each with the files that use
+// it) plus a short index of definitions outside the chapter ride as `book_scope`
+// on every turn (see buildBookScope), and a scoped reply's code names open back
+// here.
 //
 // Generating runs through the Worker's book dispatch. The in-flight state lives
 // at module scope (not on the view element), so leaving and re-entering the view
@@ -55,9 +57,10 @@ import { resolveProjectRepo } from './seedTasksModal.js';
 import { loadBook, revalidateBook, isBookCached, bookStats } from './codeBook.js';
 import { getCachedTargets, targetsLoaded, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured, showInjectToast } from './inject.js';
 import { showConfirmModal } from './modals.js';
-import { loadManifest, openChatWithBookScope } from './claudeSheet.js';
+import { loadManifest, getCachedManifest, openChatWithBookScope } from './claudeSheet.js';
 import { joinSrcRootPath } from './srcPath.js';
-import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerCloseHandler } from './codeViewer.js';
+import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerCloseHandler, getCachedLines } from './codeViewer.js';
+import { loadSymbols, getLoadedSymbols } from './codeTrace.js';
 import { createCodeSheet } from './codeSheet.js';
 import { readLocalProgress, recordProgress, flushProgress, loadProgress, noteChapterLeft, noteChapterOpened, noteChapterReached, readAbandoned } from './bookProgress.js';
 import { listBookmarks, isBookmarked, toggleBookmark, removeBookmark, loadBookmarks, anchorBookmarks } from './bookBookmarks.js';
@@ -1184,7 +1187,15 @@ function openRef(ref) {
 // with its ref chips read as their labels and an inferred rationale sentence
 // tagged ` [inferred]`; refs are the chapter's unique
 // `{ file, symbol, line, end, label }` by file + symbol, in first-seen order.
-export function buildBookScope(repo, book, index) {
+//
+// With `ctx` — `{ symbols, files, getLines }`: the repo's symbols index, the
+// manifest's file names, and a read-only `file → lines | null` over source the
+// viewer has already fetched (all keyed manifest-relative) — each symbol ref
+// also carries `referrers` (see findReferrers) and the scope carries `index`,
+// the widen list (see buildWidenIndex), so the chat can say who uses a name and
+// pull a definition the chapter doesn't cover. A Worker that ignores both is
+// unaffected.
+export function buildBookScope(repo, book, index, ctx) {
     const chapters = book && Array.isArray(book.chapters) ? book.chapters : [];
     const ch = chapters[index];
     if (!ch) return null;
@@ -1215,19 +1226,193 @@ export function buildBookScope(repo, book, index) {
         });
         prose.push(text);
     });
-    return {
+    const scope = {
         repo: repo,
         chapter: { id: ch.id, title: ch.title || ch.id, index: index + 1, total: chapters.length },
         prose: prose,
         refs: refs,
     };
+    if (ctx) {
+        let budget = SCOPE_REFERRERS_MAX;
+        refs.forEach(function (ref) {
+            if (!ref.symbol || budget <= 0) return;
+            const found = findReferrers(ref, ctx).slice(0, Math.min(REF_REFERRERS_MAX, budget));
+            if (!found.length) return;
+            budget -= found.length;
+            ref.referrers = found;
+        });
+        scope.index = buildWidenIndex(book, refs, ctx);
+    }
+    return scope;
+}
+
+// Referrer caps: files per ref, files per scope, use lines per file, and the
+// widen list's length.
+const REF_REFERRERS_MAX = 8;
+const SCOPE_REFERRERS_MAX = 30;
+const REFERRER_LINES_MAX = 3;
+const WIDEN_INDEX_MAX = 40;
+
+function escapeRegExp(text) {
+    return String(text).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Matches any of `names` as a whole identifier (`$` and `_` count as word
+// characters, so `\b` alone won't do for JS names).
+function wholeNameRe(names) {
+    return new RegExp('(^|[^\\w$])(?:' + names.map(escapeRegExp).join('|') + ')(?![\\w$])');
+}
+
+// Every file the scope can name: the symbols index's keys, then the manifest's.
+function scopeFiles(ctx) {
+    const out = [];
+    const seen = {};
+    const add = function (f) { if (typeof f === 'string' && f && !seen[f]) { seen[f] = true; out.push(f); } };
+    if (ctx.symbols && ctx.symbols.files) Object.keys(ctx.symbols.files).forEach(add);
+    (Array.isArray(ctx.files) ? ctx.files : []).forEach(add);
+    return out;
+}
+
+// C# when every file the scope knows is a .cs file, else web.
+function isCsharpScope(files) {
+    return files.length > 0 && files.every(function (f) { return /\.cs$/.test(f); });
+}
+
+// `{ count, lines }` — how many of `lines` name any of `names`, and the first
+// few of their 1-based numbers.
+function scanUses(lines, names) {
+    const re = wholeNameRe(names);
+    const hits = [];
+    lines.forEach(function (text, i) { if (re.test(text)) hits.push(i + 1); });
+    return { count: hits.length, lines: hits.slice(0, REFERRER_LINES_MAX) };
+}
+
+// The files that use `ref.symbol` outside `ref.file`, most uses first, as
+// `[{ file, lines? }]`. Web: files whose import bindings bring the symbol in from
+// `ref.file`, searched under their local (possibly aliased) names. C#: files
+// whose cached source names it as a whole word — only cached files are scanned,
+// and when none are, files whose name contains the symbol are sent without lines
+// for the Worker to search. `lines` is omitted whenever the text isn't cached.
+function findReferrers(ref, ctx) {
+    const files = scopeFiles(ctx);
+    const getLines = typeof ctx.getLines === 'function' ? ctx.getLines : function () { return null; };
+    const out = [];
+    const linesOf = function (f) {
+        const lines = getLines(f);
+        return Array.isArray(lines) ? lines : null;
+    };
+    if (isCsharpScope(files)) {
+        const others = files.filter(function (f) { return f !== ref.file; });
+        const cached = others.filter(function (f) { return linesOf(f); });
+        if (cached.length) {
+            cached.forEach(function (f) {
+                const uses = scanUses(linesOf(f), [ref.symbol]);
+                if (uses.count) out.push({ file: f, count: uses.count, lines: uses.lines });
+            });
+        } else {
+            const re = wholeNameRe([ref.symbol]);
+            others.forEach(function (f) {
+                if (re.test(f.split('/').pop().replace(/\.cs$/, ''))) out.push({ file: f, count: 0 });
+            });
+        }
+    } else {
+        const index = (ctx.symbols && ctx.symbols.files) || {};
+        Object.keys(index).forEach(function (f) {
+            if (f === ref.file) return;
+            const imports = (index[f] && index[f].imports) || {};
+            const locals = Object.keys(imports).filter(function (k) {
+                return imports[k] && imports[k].from === ref.file && imports[k].name === ref.symbol;
+            });
+            if (!locals.length) return;
+            const lines = linesOf(f);
+            if (!lines) { out.push({ file: f, count: 0 }); return; }
+            // The import line itself names the binding; skip it so the lines
+            // sent are uses, not the import.
+            const uses = scanUses(lines.map(function (t) { return /^\s*import\b/.test(t) ? '' : t; }), locals);
+            out.push({ file: f, count: uses.count, lines: uses.lines });
+        });
+    }
+    // Stable sort: most uses first, ties keep index order.
+    return out
+        .map(function (r, i) { return { r: r, i: i }; })
+        .sort(function (a, b) { return b.r.count - a.r.count || a.i - b.i; })
+        .map(function (x) {
+            const r = { file: x.r.file };
+            if (x.r.lines) r.lines = x.r.lines;
+            return r;
+        });
+}
+
+function isTopLevelDef(d) {
+    return !!d && typeof d.name === 'string' && (d.parent === null || d.parent === undefined)
+        && d.kind !== 'constructor' && d.name[0] !== '_';
+}
+
+// Up to WIDEN_INDEX_MAX `{ file, symbol, line, end }` top-level definitions the
+// chapter does not reference: the map chapter's ranked names first (the book's
+// own pick of what matters), then the rest of the index by how many files import
+// each (web), then file + name.
+function buildWidenIndex(book, refs, ctx) {
+    const taken = {};
+    refs.forEach(function (r) { if (r.symbol) taken[r.file + '\u0000' + r.symbol] = true; });
+    const out = [];
+    const push = function (file, symbol, line, end) {
+        const key = file + '\u0000' + symbol;
+        if (out.length >= WIDEN_INDEX_MAX || taken[key]) return;
+        taken[key] = true;
+        const e = { file: file, symbol: symbol };
+        if (line != null) e.line = line;
+        if (end != null) e.end = end;
+        out.push(e);
+    };
+    const chapters = book && Array.isArray(book.chapters) ? book.chapters : [];
+    chapters.filter(isMapChapter).forEach(function (ch) {
+        (Array.isArray(ch.paragraphs) ? ch.paragraphs : []).forEach(function (segs) {
+            (Array.isArray(segs) ? segs : []).forEach(function (seg) {
+                const r = seg && seg.ref;
+                if (r && r.file && r.symbol) push(r.file, r.symbol, r.line, r.end);
+            });
+        });
+    });
+    const index = (ctx.symbols && ctx.symbols.files) || {};
+    const importers = {};
+    Object.keys(index).forEach(function (f) {
+        const imports = (index[f] && index[f].imports) || {};
+        Object.keys(imports).forEach(function (k) {
+            const imp = imports[k];
+            if (!imp || imp.from === f) return;
+            const key = imp.from + '\u0000' + imp.name;
+            importers[key] = (importers[key] || 0) + 1;
+        });
+    });
+    const rest = [];
+    Object.keys(index).sort().forEach(function (f) {
+        const defs = index[f] && Array.isArray(index[f].defs) ? index[f].defs : [];
+        defs.forEach(function (d) {
+            if (isTopLevelDef(d)) rest.push({ file: f, def: d, uses: importers[f + '\u0000' + d.name] || 0 });
+        });
+    });
+    rest
+        .map(function (x, i) { x.i = i; return x; })
+        .sort(function (a, b) { return b.uses - a.uses || a.i - b.i; })
+        .forEach(function (x) { push(x.file, x.def.name, x.def.start, x.def.end); });
+    return out;
 }
 
 // Open the chat scoped to the chapter on screen.
+// Synchronous, so the chat opens on the tap: the referrers and widen index are
+// built from whatever symbols index and manifest are already loaded (the reader
+// warms both when it mounts the Ask chip); missing either leaves them thinner.
 function askAboutChapter() {
     const r = reader;
     if (!r) return;
-    const scope = buildBookScope(r.repo, r.book, r.index);
+    const manifest = getCachedManifest(r.repo);
+    const srcRoot = manifest && typeof manifest.srcRoot === 'string' ? manifest.srcRoot : '';
+    const scope = buildBookScope(r.repo, r.book, r.index, {
+        symbols: getLoadedSymbols(r.repo) || null,
+        files: manifest && Array.isArray(manifest.files) ? manifest.files : [],
+        getLines: function (file) { return getCachedLines(r.repo, joinSrcRootPath(srcRoot, file)); },
+    });
     if (scope) openChatWithBookScope(scope);
 }
 
@@ -2216,6 +2401,9 @@ function openReader(view, repo, book, index, paraIndex) {
     askBtn.innerHTML = ASK_GLYPH;
     askBtn.addEventListener('click', askAboutChapter);
     top.appendChild(askBtn);
+    // Warm what the Ask scope reads, so its referrers are ready by the tap.
+    Promise.resolve(loadManifest(repo)).catch(function () { /* scope goes without */ });
+    loadSymbols(repo);
     // Mounted left of Bookmarks once the tours load, and never when the repo has
     // none (see paintReaderTours).
     const toursBtn = document.createElement('button');

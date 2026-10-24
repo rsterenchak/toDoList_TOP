@@ -597,7 +597,7 @@ export function openChatWithTask(todoId) {
 }
 
 // Open the chat scoped to an Understanding chapter — the reader's Ask chip.
-// `scope` is `{ repo, chapter: { id, title, index, total }, prose, refs }`.
+// `scope` is `{ repo, chapter: { id, title, index, total }, prose, refs, index? }`.
 // Opens/uncollapses the chat surface like openChatWithTask, frames the
 // conversation on the chapter's repo (the same per-repo swap a project switch
 // does), then scopes it to the chapter in place of any task. Attachment chips
@@ -617,11 +617,14 @@ export function openChatWithBookScope(scope) {
         return;
     }
     if (scope.repo !== activeChatRepo) swapChatWorkspace(scope.repo);
-    attachBookScopeToChat({
+    const scoped = {
         chapter: scope.chapter,
         prose: Array.isArray(scope.prose) ? scope.prose.slice() : [],
         refs: Array.isArray(scope.refs) ? scope.refs.slice() : [],
-    });
+    };
+    // The widen list (definitions outside the chapter) rides along when built.
+    if (Array.isArray(scope.index)) scoped.index = scope.index.slice();
+    attachBookScopeToChat(scoped);
     const input = sheetQuery('#claudeComposerInput');
     if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
 }

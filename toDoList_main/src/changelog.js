@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             'Assistant replies in the Claude chat now show real formatting, with bold, headings, nested bullets, links and code blocks you can copy, and a ⤢ button opens any reply in a full reading view you can page through.',
             'On desktop a code tour now plays inside the code viewer, showing each step\'s whole file with its lines highlighted beneath a step banner, and on phones the tour sheet shows more of the code around each step.',
+            'Asking Claude about a code book chapter now lets it point to where each of the chapter\'s names is used elsewhere in the code, and to look up a name the chapter doesn\'t cover when you ask about it.',
         ],
     },
     {
         version: '1.1',
         date: '2026-10-23',
         fixed: [
-            'Switching tabs, waking your phone or a background sync no longer throws you out of the code book chapter you were reading and back to the shelf.',
             'The code book shelf now picks up a newly published book without a reload, checking when you open the tab, come back from a chapter or a book run finishes, and tapping the repo name checks on demand.',
             'Opening the app straight onto Understanding or Structure no longer says a linked project isn\'t linked to a repo, showing a brief loading state until your repos load instead.',
         ],
