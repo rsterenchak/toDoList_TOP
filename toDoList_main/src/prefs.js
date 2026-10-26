@@ -752,6 +752,32 @@ export function setCodeNotesOn(repo, on) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── reader notes shown on/off (Marks) ──
+// Per-repo `false` while the code viewer's Marks toggle (or the reader's Marks
+// chip) hides the reader's own notes. Absent means on, so notes show by default.
+export const CODE_MARKS_ON_KEY = 'todoapp_codeMarksOn';
+export const BOOK_MARKS_ON_KEY = 'todoapp_bookMarksOn';
+
+function readMarksOn(key, repo) {
+    if (!repo) return true;
+    return readJsonObject(key)[repo] !== false;
+}
+
+function writeMarksOn(key, repo, on) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(key);
+        if (on) delete store[repo];
+        else store[repo] = false;
+        localStorage.setItem(key, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
+export function isCodeMarksOn(repo) { return readMarksOn(CODE_MARKS_ON_KEY, repo); }
+export function setCodeMarksOn(repo, on) { writeMarksOn(CODE_MARKS_ON_KEY, repo, on); }
+export function isBookMarksOn(repo) { return readMarksOn(BOOK_MARKS_ON_KEY, repo); }
+export function setBookMarksOn(repo, on) { writeMarksOn(BOOK_MARKS_ON_KEY, repo, on); }
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is

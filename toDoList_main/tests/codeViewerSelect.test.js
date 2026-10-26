@@ -305,7 +305,7 @@ describe('codeViewer — line selection', () => {
             expect(rows[0].nextElementSibling).toBe(row(32));
         });
 
-        it('a stored note shows when its file opens, re-attaches as the window grows, and taps open its edit sheet', async () => {
+        it('a stored note shows when its file opens, re-attaches as the window grows, and its pencil opens the edit sheet', async () => {
             localStorage.setItem('todoapp_bookNotes', JSON.stringify({ 'owner/app': [
                 { filePath: 'src/Program.cs', lineStart: 10, lineEnd: 12, body: 'Early', createdAt: '2026-10-01T00:00:00.000Z' },
                 { filePath: 'src/Program.cs', lineStart: 400, lineEnd: 401, body: 'Late', createdAt: '2026-10-02T00:00:00.000Z' },
@@ -318,7 +318,7 @@ describe('codeViewer — line selection', () => {
             expect(userNotes().map((el) => el.textContent)).toEqual(['Early', 'Late']);
             expect(userNotes()[1].previousElementSibling).toBe(row(401));
 
-            userNotes()[0].querySelector('.codeViewerUserNoteText').click();
+            userNotes()[0].querySelector('.codeViewerUserNoteEdit').click();
             expect(sheet().hidden).toBe(false);
             const field = sheet().querySelector('textarea.bookNoteField');
             expect(field.value).toBe('Early');
@@ -327,10 +327,78 @@ describe('codeViewer — line selection', () => {
             sheet().querySelector('.understandingFlagAction.is-save').click();
             expect(userNotes()[0].textContent).toBe('Edited');
 
-            userNotes()[0].querySelector('.codeViewerUserNoteText').click();
+            userNotes()[0].querySelector('.codeViewerUserNoteEdit').click();
             sheet().querySelector('.understandingFlagAction.is-delete').click();
             sheet().querySelector('.bookNoteConfirm .is-confirm').click();
             expect(userNotes().map((el) => el.textContent)).toEqual(['Late']);
+        });
+
+        const LONG = 'Kept answer: the reader walks every line of the listing and pins the note beneath the last one.\nSecond line.';
+
+        it('a note renders collapsed to one line, expands on a tap without opening the sheet, and stays open across a re-attach', async () => {
+            localStorage.setItem('todoapp_bookNotes', JSON.stringify({ 'owner/app': [
+                { filePath: 'src/Program.cs', lineStart: 10, lineEnd: 12, body: LONG, source: 'answer', createdAt: '2026-10-01T00:00:00.000Z' },
+            ] }));
+            await open(600);
+            const text = () => userNotes()[0].querySelector('.codeViewerUserNoteText');
+            expect(userNotes()[0].classList.contains('is-answer')).toBe(true);
+            expect(text().getAttribute('aria-expanded')).toBe('false');
+            expect(text().textContent).toBe(LONG.slice(0, 80).trimEnd() + '…');
+            expect(text().textContent.length).toBeLessThanOrEqual(81);
+
+            text().click();
+            expect(text().getAttribute('aria-expanded')).toBe('true');
+            expect(text().textContent).toBe(LONG);
+            expect(userNotes()[0].classList.contains('is-open')).toBe(true);
+            expect(sheet() && !sheet().hidden).toBeFalsy();
+
+            // Loading more re-lays every row; the open one stays open.
+            document.querySelector('.codeViewerMore--down').click();
+            expect(text().getAttribute('aria-expanded')).toBe('true');
+            expect(text().textContent).toBe(LONG);
+
+            text().click();
+            expect(text().getAttribute('aria-expanded')).toBe('false');
+            expect(text().textContent.endsWith('…')).toBe(true);
+        });
+
+        it('a short one-line note shows whole and a multi-line one is cut at its first break', async () => {
+            localStorage.setItem('todoapp_bookNotes', JSON.stringify({ 'owner/app': [
+                { filePath: 'src/Program.cs', lineStart: 5, lineEnd: 5, body: 'Short', createdAt: '2026-10-01T00:00:00.000Z' },
+                { filePath: 'src/Program.cs', lineStart: 8, lineEnd: 8, body: 'First\nsecond', createdAt: '2026-10-02T00:00:00.000Z' },
+            ] }));
+            await open();
+            expect(userNotes().map((el) => el.querySelector('.codeViewerUserNoteText').textContent)).toEqual(['Short', 'First…']);
+        });
+
+        it('the Marks toggle, left of Notes, unmounts every note row when off and is remembered per repo', async () => {
+            localStorage.setItem('todoapp_bookNotes', JSON.stringify({ 'owner/app': [
+                { filePath: 'src/Program.cs', lineStart: 10, lineEnd: 12, body: 'Early', createdAt: '2026-10-01T00:00:00.000Z' },
+            ] }));
+            await open();
+            const marks = document.querySelector('.codeViewerMarks');
+            expect(marks.textContent).toBe('Marks');
+            expect(marks.nextElementSibling.classList.contains('codeViewerNotesWrap')).toBe(true);
+            expect(marks.disabled).toBe(false);
+            expect(marks.getAttribute('aria-pressed')).toBe('true');
+            expect(userNotes()).toHaveLength(1);
+            expect(document.querySelector('.codeViewerLines').classList.contains('codeViewerLines--userNotes')).toBe(true);
+
+            marks.click();
+            expect(marks.getAttribute('aria-pressed')).toBe('false');
+            expect(userNotes()).toHaveLength(0);
+            expect(document.querySelector('.codeViewerLines').classList.contains('codeViewerLines--userNotes')).toBe(false);
+            expect(JSON.parse(localStorage.getItem('todoapp_codeMarksOn'))).toEqual({ 'owner/app': false });
+
+            // A fresh open of the repo's files reads it back.
+            resetCodeViewer();
+            document.body.innerHTML = '<div id="col"></div>';
+            await open();
+            expect(document.querySelector('.codeViewerMarks').getAttribute('aria-pressed')).toBe('false');
+            expect(userNotes()).toHaveLength(0);
+            document.querySelector('.codeViewerMarks').click();
+            expect(userNotes()).toHaveLength(1);
+            expect(JSON.parse(localStorage.getItem('todoapp_codeMarksOn'))).toEqual({});
         });
     });
 });

@@ -772,14 +772,14 @@ describe('notes', () => {
         expect(block.textContent).toBe('bootApp is the only entry');
     });
 
-    test('tapping the block opens it pre-filled; Save edits it, Delete (confirmed) removes it', async () => {
+    test('the block’s pencil opens it pre-filled; Save edits it, Delete (confirmed) removes it', async () => {
         await openChapter(0);
         const p = view().querySelectorAll('.understandingPara')[1];
         p.querySelector('.understandingNoteBtn').click();
         type('first');
         sheet().querySelector('.understandingFlagAction.is-save').click();
 
-        p.nextElementSibling.click();
+        p.nextElementSibling.querySelector('.understandingParaNoteEdit').click();
         expect(field().value).toBe('first');
         expect(Array.from(sheet().querySelectorAll('.understandingFlagActions:not(.bookNoteConfirm) > .understandingFlagAction')).map((a) => a.textContent))
             .toEqual(['Delete', 'Cancel', 'Save']);
@@ -789,7 +789,7 @@ describe('notes', () => {
         expect(notes()[0].body).toBe('second');
         expect(p.nextElementSibling.textContent).toBe('second');
 
-        p.nextElementSibling.click();
+        p.nextElementSibling.querySelector('.understandingParaNoteEdit').click();
         sheet().querySelector('.understandingFlagAction.is-delete').click();
         expect(notes()).toHaveLength(1);
         sheet().querySelector('.bookNoteConfirm .is-confirm').click();
@@ -841,6 +841,62 @@ describe('notes', () => {
             chapterId: 'app-starts', paraIndex: 1, excerpt: 'The worker lives in sw.js.',
             refs: [{ label: 'sw.js', file: 'sw.js', symbol: null, line: 1 }], bookSha: expect.any(String),
         });
+    });
+
+    const LONG = 'bootApp is the only entry point, and every listener the page needs is wired from inside it once.\nAnd more.';
+    const seedNote = (body, source) => localStorage.setItem('todoapp_bookNotes', JSON.stringify({ 'owner/repo': [
+        { chapterId: 'app-starts', paraIndex: 0, filePath: null, lineStart: null, lineEnd: null, body: body, source: source || 'user', createdAt: '2026-10-01T00:00:00.000Z' },
+    ] }));
+
+    test('a note block shows collapsed to one line, expands on a tap without opening the sheet, and stays open across a chapter re-render', async () => {
+        seedNote(LONG, 'answer');
+        await openChapter(0);
+        const block = () => view().querySelectorAll('.understandingPara')[0].nextElementSibling;
+        const text = () => block().querySelector('.understandingParaNoteText');
+        expect(block().classList.contains('understandingParaNote')).toBe(true);
+        expect(block().classList.contains('is-answer')).toBe(true);
+        expect(text().getAttribute('aria-expanded')).toBe('false');
+        expect(text().textContent).toBe(LONG.slice(0, 80).trimEnd() + '…');
+
+        text().click();
+        expect(text().getAttribute('aria-expanded')).toBe('true');
+        expect(text().textContent).toBe(LONG);
+        expect(sheet() && !sheet().hidden).toBeFalsy();
+
+        // Away and back to the chapter: still open for this reader.
+        view().querySelector('.understandingNavNext').click();
+        view().querySelector('.understandingNavPrev').click();
+        expect(text().getAttribute('aria-expanded')).toBe('true');
+
+        text().click();
+        expect(text().getAttribute('aria-expanded')).toBe('false');
+    });
+
+    test('the top bar Marks chip hides paragraph note blocks, keeps the ✎ marker, and is remembered per repo', async () => {
+        seedNote('bootApp is the only entry');
+        await openChapter(0);
+        const chip = view().querySelector('.understandingReaderTop .understandingNoteMarksChip');
+        const p = () => view().querySelectorAll('.understandingPara')[0];
+        expect(chip.textContent).toBe('Marks');
+        expect(chip.previousElementSibling.classList.contains('understandingMarksChip')).toBe(true);
+        expect(chip.getAttribute('aria-pressed')).toBe('true');
+        expect(p().nextElementSibling.classList.contains('understandingParaNote')).toBe(true);
+
+        chip.click();
+        expect(chip.getAttribute('aria-pressed')).toBe('false');
+        expect(view().querySelector('.understandingParaNote')).toBeNull();
+        expect(p().classList.contains('is-noted')).toBe(true);
+        expect(JSON.parse(localStorage.getItem('todoapp_bookMarksOn'))).toEqual({ 'owner/repo': false });
+
+        exitUnderstandingView();
+        document.body.innerHTML =
+            '<div id="mainBar" data-view="understanding"><div id="understandingView"></div></div>' +
+            '<div class="selectedProject"><input id="projInput" value="Void"></div>';
+        await openChapter(0);
+        expect(view().querySelector('.understandingNoteMarksChip').getAttribute('aria-pressed')).toBe('false');
+        expect(view().querySelector('.understandingParaNote')).toBeNull();
+        view().querySelector('.understandingNoteMarksChip').click();
+        expect(p().nextElementSibling.classList.contains('understandingParaNote')).toBe(true);
     });
 });
 

@@ -75,14 +75,16 @@
 // The reader's OWN notes (bookNotes.js) ride on the listing beside them: the
 // selection bar's Note pins one to the selected lines, and each shows as a row
 // beneath its last line whenever that row is mounted — a lilac-ruled block,
-// distinct from the muted generated notes, that opens its edit sheet on a tap.
-// They show whether or not the Notes toggle is on.
+// collapsed to one line (a tap expands it in place, a pencil opens its edit
+// sheet), distinct from the muted generated notes by its lilac rule. They show
+// whether or not the Notes toggle is on; the header's Marks toggle (left of
+// Notes, remembered per repo) shows or hides them all at once.
 
 import { readRepoFile, showInjectToast } from './inject.js';
-import { isCodeNotesOn, setCodeNotesOn } from './prefs.js';
+import { isCodeNotesOn, setCodeNotesOn, isCodeMarksOn, setCodeMarksOn } from './prefs.js';
 import { loadSymbols, getLoadedSymbols, isTraceable, tokenizeLine, resolveName, topRanked } from './codeTrace.js';
 import { joinSrcRootPath } from './srcPath.js';
-import { BOOK_NOTES_EVENT, notesForFile, saveNote, updateNote, deleteNote, openNoteSheet, noteSpanLabel, noteFirstLine, linesExcerpt } from './bookNotes.js';
+import { BOOK_NOTES_EVENT, notesForFile, saveNote, updateNote, deleteNote, openNoteSheet, noteSpanLabel, noteFirstLine, noteCollapsedText, linesExcerpt } from './bookNotes.js';
 
 // Lines rendered when a file is opened cold (no jump span).
 const COLD_LINES = 300;
@@ -521,6 +523,17 @@ function buildPane() {
 
     header.appendChild(size);
 
+    // The Marks toggle, left of Notes: pressed while the reader's own notes show
+    // on the listing. Disabled until a file is open.
+    const marks = document.createElement('button');
+    marks.type = 'button';
+    marks.className = 'codeViewerMarks';
+    marks.textContent = 'Marks';
+    marks.disabled = true;
+    marks.setAttribute('aria-pressed', 'true');
+    marks.setAttribute('aria-label', 'Show your notes on this file');
+    header.appendChild(marks);
+
     // The Notes toggle, left of Explain. Pressed while the open file is
     // annotated; a right-click or long-press opens its menu, which on a long file
     // offers notes for every definition at once instead of the one in view.
@@ -724,6 +737,7 @@ function buildPane() {
         sizeDown: sizeDown,
         sizeValue: sizeValue,
         sizeUp: sizeUp,
+        marks: marks,
         notes: notes,
         notesMenu: notesMenu,
         notesWhole: notesWhole,
@@ -758,6 +772,10 @@ function buildPane() {
     // that follows is irrelevant to it) and null while the column is empty.
     pane._codeViewerFile = null;
     pane._codeNotes = null;
+    // Whether the reader's own notes are mounted (the Marks toggle), and which of
+    // them are expanded — by createdAt, for this pane's lifetime only.
+    pane._codeMarksOn = true;
+    pane._codeNoteOpen = new Set();
 
     setExplanationCollapsed(pane, false);
     // Before the pane is mounted, so the stored size is what the first painted
@@ -1361,6 +1379,23 @@ function setNotesStatus(pane, text) {
     el.hidden = !text;
 }
 
+function syncMarksToggle(pane) {
+    const marks = pane._codeViewerRefs.marks;
+    marks.classList.toggle('codeViewerMarks--on', pane._codeMarksOn);
+    marks.setAttribute('aria-pressed', pane._codeMarksOn ? 'true' : 'false');
+}
+
+// The Marks toggle was pressed: mount or unmount every one of the reader's notes.
+function toggleMarks(pane) {
+    const state = pane._codeViewerState;
+    const file = pane._codeViewerFile;
+    if (!file) return;
+    pane._codeMarksOn = !pane._codeMarksOn;
+    setCodeMarksOn(file.repo, pane._codeMarksOn);
+    syncMarksToggle(pane);
+    if (state) renderNotes(pane);
+}
+
 function syncNotesToggle(pane) {
     const refs = pane._codeViewerRefs;
     const on = !!(pane._codeNotes && pane._codeNotes.on);
@@ -1380,6 +1415,9 @@ function resetNotes(pane, repo) {
     closeNotesMenu(pane);
     pane._codeViewerRefs.notes.disabled = !repo || !notesHandler;
     syncNotesToggle(pane);
+    pane._codeMarksOn = repo ? isCodeMarksOn(repo) : true;
+    pane._codeViewerRefs.marks.disabled = !repo;
+    syncMarksToggle(pane);
     setNotesStatus(pane, '');
     renderNotes(pane);
 }
@@ -1442,9 +1480,10 @@ function listingRow(pane, n) {
 }
 
 // One note row. The default is a generated note; the `user` variant is one of
-// the reader's own (`{ body, lineStart, lineEnd, createdAt }`), a button-like
-// row that opens its edit sheet.
-function buildNote(state, note, variant) {
+// the reader's own (`{ body, lineStart, lineEnd, createdAt }`): one line until
+// its text is tapped (`open` starts it expanded), with a pencil that opens its
+// edit sheet.
+function buildNote(state, note, variant, open) {
     const el = document.createElement('div');
     if (variant === 'user') {
         el.className = 'codeViewerNote codeViewerNote--user' + (note.source === 'answer' ? ' is-answer' : '');
@@ -1455,9 +1494,14 @@ function buildNote(state, note, variant) {
         const text = document.createElement('button');
         text.type = 'button';
         text.className = 'codeViewerUserNoteText';
-        text.textContent = note.body;
-        text.setAttribute('aria-label', 'Edit note on ' + noteSpanLabel(note) + ': ' + noteFirstLine(note));
         userBody.appendChild(text);
+        setUserNoteOpen(el, note, !!open);
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'codeViewerUserNoteEdit';
+        edit.setAttribute('aria-label', 'Edit note on ' + noteSpanLabel(note) + ': ' + noteFirstLine(note));
+        edit.title = 'Edit note';
+        userBody.appendChild(edit);
         return el;
     }
     el.className = 'codeViewerNote';
@@ -1491,6 +1535,15 @@ function buildNote(state, note, variant) {
     return el;
 }
 
+// Show user note row `el` expanded (the full body) or collapsed to one line.
+function setUserNoteOpen(el, note, open) {
+    const text = el.querySelector('.codeViewerUserNoteText');
+    el.classList.toggle('is-open', open);
+    text.textContent = open ? note.body : noteCollapsedText(note);
+    text.setAttribute('aria-expanded', open ? 'true' : 'false');
+    text.setAttribute('aria-label', (open ? 'Collapse' : 'Expand') + ' note on ' + noteSpanLabel(note) + ': ' + noteFirstLine(note));
+}
+
 // Lay the file's notes onto the mounted rows, replacing any laid before. Rail
 // mode places each note in the grid's second column on its rows (by index in
 // the mounted window, so a window grown upward re-lays them); interleaved mode
@@ -1505,8 +1558,9 @@ function renderNotes(pane) {
         lines.removeChild(el);
     });
     // The reader's own notes first, each a row beneath its last mounted line, so
-    // the rail below counts them when it places the generated notes.
-    const user = state && state.repo ? notesForFile(state.repo, state.filePath) : [];
+    // the rail below counts them when it places the generated notes. Marks off
+    // mounts none.
+    const user = state && state.repo && pane._codeMarksOn ? notesForFile(state.repo, state.filePath) : [];
     user.forEach(function (note) {
         if (note.lineEnd < state.start || note.lineEnd > state.end) return;
         const row = listingRow(pane, note.lineEnd);
@@ -1515,7 +1569,7 @@ function renderNotes(pane) {
         while (after.nextSibling && after.nextSibling.classList && after.nextSibling.classList.contains('codeViewerNote--user')) {
             after = after.nextSibling;
         }
-        lines.insertBefore(buildNote(state, note, 'user'), after.nextSibling);
+        lines.insertBefore(buildNote(state, note, 'user', pane._codeNoteOpen.has(note.createdAt)), after.nextSibling);
     });
     const hasUser = !!lines.querySelector(':scope > .codeViewerNote--user');
     lines.classList.toggle('codeViewerLines--userNotes', hasUser);
@@ -1663,6 +1717,7 @@ function traceNoteRef(pane, chip) {
 // The toggle's, the menu's and the notes' wiring for one pane.
 function wireNotes(pane) {
     const refs = pane._codeViewerRefs;
+    refs.marks.addEventListener('click', function () { toggleMarks(pane); });
     refs.notes.addEventListener('click', function () {
         // The long-press that opened the menu must not also flip the toggle.
         if (pane._codeNotesPressed) { pane._codeNotesPressed = false; return; }
@@ -1725,7 +1780,14 @@ function wireNotes(pane) {
         const state = pane._codeViewerState;
         if (own && state) {
             const note = notesForFile(state.repo, state.filePath).filter(function (n) { return n.createdAt === own.dataset.userNote; })[0];
-            if (note) editUserNote(state.repo, note);
+            if (!note) return;
+            // The pencil edits; the text expands or collapses, never opening the sheet.
+            if (t.closest('.codeViewerUserNoteEdit')) { editUserNote(state.repo, note); return; }
+            if (!t.closest('.codeViewerUserNoteText')) return;
+            const open = !pane._codeNoteOpen.has(note.createdAt);
+            if (open) pane._codeNoteOpen.add(note.createdAt);
+            else pane._codeNoteOpen.delete(note.createdAt);
+            setUserNoteOpen(own, note, open);
             return;
         }
         if (!t || !t.closest || !pane._codeNotes || !pane._codeNotes.mode) return;

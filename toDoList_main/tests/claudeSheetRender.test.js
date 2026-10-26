@@ -69,6 +69,7 @@ import {
     openChatWithBookScope,
     openChatWithSelection,
     replyFirstParagraph,
+    replyFirstSentence,
 } from '../src/claudeSheet.js';
 import { resetSymbolsCache } from '../src/codeTrace.js';
 import { listLogic } from '../src/listLogic.js';
@@ -252,6 +253,33 @@ describe('claudeSheet — assistant replies render as markdown', () => {
             expect(chip.hidden).toBe(false);
             document.querySelector('.claudeScopeChipRemove').click();
             expect(chip.hidden).toBe(true);
+        });
+
+        it('reads a reply’s first sentence from its first paragraph', () => {
+            expect(replyFirstSentence('It starts in **`boot`**. Then it wires. Done!\n\nMore.')).toBe('It starts in boot.');
+            expect(replyFirstSentence('Why? Because.')).toBe('Why?');
+            expect(replyFirstSentence('Wow! Nice.')).toBe('Wow!');
+            expect(replyFirstSentence('One sentence only.')).toBe('One sentence only.');
+        });
+
+        it('pre-fills the first sentence and counts the field, amber past 200', async () => {
+            openChatWithBookScope(BOOK_SCOPE);
+            await flush();
+            state.reply = 'Rows are built by `buildToDoRow`. Each is then wired and saved.\n\nMore.';
+            await sendTurn('how?');
+            keep(assistantBubbles().pop()).click();
+            const field = noteSheet().querySelector('textarea.bookNoteField');
+            expect(field.value).toBe('Rows are built by buildToDoRow.');
+            const count = noteSheet().querySelector('.bookNoteCount');
+            expect(count.textContent).toBe('31 chars');
+            expect(count.classList.contains('is-long')).toBe(false);
+            field.value = 'a'.repeat(201);
+            field.dispatchEvent(new Event('input'));
+            expect(count.textContent).toBe('201 chars');
+            expect(count.classList.contains('is-long')).toBe(true);
+            // Longer stays allowed.
+            noteSheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(notes()[0].body).toBe('a'.repeat(201));
         });
 
         it('pre-fills from the first paragraph and saves an answer note on the scope’s paragraph', async () => {

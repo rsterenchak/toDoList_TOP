@@ -2894,7 +2894,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 95e7cd67-097d-4e3b-aa4f-5d572c52582f -->
 
-- [ ] **[MEDIUM]** Collapse reader notes to one line by default and add a Marks toggle to hide them
+- [x] **[MEDIUM]** Collapse reader notes to one line by default and add a Marks toggle to hide them — Completed: 2026-10-26
   - Type: feature
   - Description: A kept chat answer pinned to a line is several lines of prose in the middle of the code; three of them and the file is unreadable. Make user notes (`bookNotes.js` records) collapse to a single line by default — `✎` glyph plus the first ~80 characters, ellipsised — in both the code viewer (`.codeViewerNote--user` rows) and the reader (paragraph note blocks); tap or click expands that note in place, again collapses, and the expanded set is remembered per session so a note you opened stays open while you scroll. Add a **Marks** toggle to the viewer header beside Notes that shows or hides every user note row in the file at once, remembered per repo like Notes; and a matching `Marks` chip on the reader's top bar that hides paragraph note blocks (bookmark ribbons and flag glyphs stay). Nudge Keep toward short notes: the Keep sheet pre-fills with the reply's first *sentence* rather than first paragraph, shows a live character count, and turns the count amber past 200 — longer stays allowed. At 1300x900 a file with a kept four-line note shows it as one muted line until clicked; the Marks toggle off hides it entirely; at 390x844 the same, with tap.
   - Behavior:
