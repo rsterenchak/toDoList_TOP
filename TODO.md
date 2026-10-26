@@ -2839,7 +2839,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 1300x900, 390x844 → /
   <!-- id: 8e88b682-4c00-4cec-bd3c-63bfb2cc9538 -->
 
-- [ ] **[MEDIUM]** Ask about a selection: select lines in the code viewer and open chat scoped to them
+- [x] **[MEDIUM]** Ask about a selection: select lines in the code viewer and open chat scoped to them — Completed: 2026-10-25
   - Type: feature
   - Description: Chapter chat scopes a question to a chapter; the question you have while reading code is usually about a few lines. Add a line-range selection to the code viewer — click a gutter number, shift-click (or drag down the gutter) to extend, long-press a row on touch and drag — that highlights the range and floats a small action bar beside it: **Ask**, **Copy**, and the line span (`L29–L31`). Ask opens the Claude sheet with a *selection scope*: the chip reads `§ Program.cs:29–31`, the composer placeholder reads "Ask about these lines…", and every turn carries `book_scope` with the selected lines as the chapter's prose stand-in plus the enclosing definition (from the symbols index) as the single ref, its referrers, and the widen index — so "why is this `using` here?" is answered from the selected lines and the definition around them, and "who calls this?" still works. The scope works in both tabs' viewers and on repos with no book. A tap on a line note (when notes land) will reuse this as a one-line selection. At 1300x900, shift-clicking lines 29 and 31 in `Program.cs` shows the range highlighted with the Ask bar at line 31's right edge; tapping Ask uncollapses the chat pane with the selection chip. At 390x844, a long-press on a line then a drag selects, and Ask opens the sheet.
   - Behavior:
