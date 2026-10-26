@@ -2979,7 +2979,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Verify: 390x844, 1300x900 → /
   <!-- id: 76b64cd0-cda5-48d7-ab99-a6b5e22fe4db -->
 
-- [ ] **[HIGH]** Add a keyboardless commit for dictated todos: paused overlay with tap-to-add, and a tappable + on the placeholder row
+- [x] **[HIGH]** Add a keyboardless commit for dictated todos: paused overlay with tap-to-add, and a tappable + on the placeholder row — Completed: 2026-10-26
   - Type: bug
   - Description: On the iPhone PWA, dictating a todo from the placeholder-row mic now leaves the transcript in `#toDoInput` with no way to commit it. PR #1184 correctly made a platform-initiated session end (iOS ends continuous recognition on a pause; `no-speech`) a keep-text cancel in `voiceInput.js`, but the placeholder row's only commit path is an Enter keydown on `#toDoInput` (`toDoRow.js` ~4487), and iOS won't reopen the keyboard after the async recognition end — so the overlay closes, the text sits in the row, and nothing can submit it. Expected: a dictated todo can always be committed by tap, with or without a keyboard. Fix in two layers so the voice flow has an in-the-moment commit and the row has a fallback for any stranded text.
   - Behavior:
