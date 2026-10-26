@@ -560,6 +560,66 @@ export function setBookFlags(repo, list) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Understanding tab reader notes ──
+// Per-repo arrays of `{ repo, chapterId, paraIndex, filePath, lineStart, lineEnd,
+// body, source, excerpt, refs, bookSha, createdAt, updatedAt, synced?, dirty?,
+// deleted? }` — a note anchored to a chapter paragraph (`chapterId`/`paraIndex`)
+// or to a line range of a file (`filePath`/`lineStart`/`lineEnd`), the other
+// pair null. bookNotes.js owns the records and mirrors them to Supabase; this
+// is only the local copy.
+export const BOOK_NOTES_KEY = 'todoapp_bookNotes';
+
+function noteInt(v) {
+    const n = Number(v);
+    return v !== null && v !== undefined && v !== '' && Number.isFinite(n) ? Math.floor(n) : null;
+}
+
+// The repo's stored note records (malformed ones dropped), or [].
+export function getBookNotes(repo) {
+    if (!repo) return [];
+    const val = readJsonObject(BOOK_NOTES_KEY)[repo];
+    if (!Array.isArray(val)) return [];
+    const out = [];
+    val.forEach(function (n) {
+        if (!n || typeof n !== 'object' || typeof n.createdAt !== 'string' || !n.createdAt) return;
+        const para = typeof n.chapterId === 'string' && n.chapterId && noteInt(n.paraIndex) !== null;
+        const start = noteInt(n.lineStart);
+        const end = noteInt(n.lineEnd);
+        const code = typeof n.filePath === 'string' && n.filePath && start !== null && start >= 1 && end !== null && end >= start;
+        if (!para && !code) return;
+        const rec = {
+            repo: repo,
+            chapterId: para ? n.chapterId : null,
+            paraIndex: para ? Math.max(0, noteInt(n.paraIndex)) : null,
+            filePath: para ? null : n.filePath,
+            lineStart: para ? null : start,
+            lineEnd: para ? null : end,
+            body: typeof n.body === 'string' ? n.body : '',
+            source: n.source === 'answer' ? 'answer' : 'user',
+            excerpt: typeof n.excerpt === 'string' ? n.excerpt : '',
+            refs: Array.isArray(n.refs) ? n.refs.filter(function (r) { return r && typeof r === 'object'; }) : [],
+            bookSha: typeof n.bookSha === 'string' ? n.bookSha : '',
+            createdAt: n.createdAt,
+            updatedAt: typeof n.updatedAt === 'string' && n.updatedAt ? n.updatedAt : n.createdAt,
+        };
+        if (n.synced === true) rec.synced = true;
+        if (n.dirty === true) rec.dirty = true;
+        if (n.deleted === true) rec.deleted = true;
+        out.push(rec);
+    });
+    return out;
+}
+
+export function setBookNotes(repo, list) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(BOOK_NOTES_KEY);
+        if (Array.isArray(list) && list.length) store[repo] = list;
+        else delete store[repo];
+        localStorage.setItem(BOOK_NOTES_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── Understanding tab abandoned chapters ──
 // Per-repo `{ [chapterId]: { chapter_id, para_index, pct } }` — the chapters the
 // reader left part-read and didn't come back to in that session. bookProgress.js
@@ -615,6 +675,8 @@ export function getChatBookScope(repo) {
         refs: Array.isArray(val.refs) ? val.refs : [],
     };
     if (Array.isArray(val.index)) out.index = val.index;
+    // Where a kept answer is pinned (`{ chapterId, paraIndex, excerpt, refs, bookSha }`).
+    if (val.anchor && typeof val.anchor === 'object') out.anchor = val.anchor;
     return out;
 }
 
@@ -654,6 +716,8 @@ export function getChatSelectionScope(repo) {
         refs: Array.isArray(val.refs) ? val.refs : [],
     };
     if (Array.isArray(val.index)) out.index = val.index;
+    // Where a kept answer is pinned (`{ filePath, lineStart, lineEnd, excerpt, refs }`).
+    if (val.anchor && typeof val.anchor === 'object') out.anchor = val.anchor;
     return out;
 }
 

@@ -473,7 +473,7 @@ describe('bookmarks', () => {
             expect(sheet().hidden).toBe(false);
             expect(touch('touchend').defaultPrevented).toBe(true);
             const actions = Array.from(sheet().querySelectorAll('.understandingParaAction'));
-            expect(actions.map((a) => a.textContent)).toEqual(['Bookmark', 'Flag']);
+            expect(actions.map((a) => a.textContent)).toEqual(['Bookmark', 'Flag', 'Note']);
             expect(p.classList.contains('is-bookmarked')).toBe(false);
             actions[0].click();
             expect(sheet().hidden).toBe(true);
@@ -731,6 +731,116 @@ describe('flags', () => {
         btn.click();
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         expect(sheet().hidden).toBe(true);
+    });
+});
+
+describe('notes', () => {
+    const notes = () => JSON.parse(localStorage.getItem('todoapp_bookNotes') || '{}')['owner/repo'] || [];
+    const sheet = () => document.getElementById('bookNoteSheet');
+    const field = () => sheet().querySelector('textarea.bookNoteField');
+    const type = (text) => { field().value = text; field().dispatchEvent(new Event('input')); };
+
+    test('the note button sits left of the flag and opens the note sheet on the paragraph', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[0];
+        const btn = p.querySelector('.understandingNoteBtn');
+        expect(btn.getAttribute('aria-label')).toBe('Note this paragraph');
+        expect(btn.nextElementSibling.classList.contains('understandingFlagBtn')).toBe(true);
+        expect(p.textContent).toBe('Everything begins in bootApp when the page loads.');
+        btn.click();
+        expect(sheet().hidden).toBe(false);
+        expect(sheet().querySelector('.understandingMarksTitle').textContent).toBe('NOTE · CH 1 ¶1');
+        expect(sheet().querySelector('.understandingFlagExcerpt').textContent).toBe('Everything begins in bootApp when the page loads.');
+        expect(field().value).toBe('');
+    });
+
+    test('Save writes the record and the note block renders beneath the paragraph', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[0];
+        p.querySelector('.understandingNoteBtn').click();
+        type('  bootApp is the only entry  ');
+        sheet().querySelector('.understandingFlagAction.is-save').click();
+        expect(sheet().hidden).toBe(true);
+        expect(notes()).toEqual([expect.objectContaining({
+            chapterId: 'app-starts', paraIndex: 0, filePath: null, body: 'bootApp is the only entry', source: 'user',
+            excerpt: 'Everything begins in bootApp when the page loads.',
+            refs: [{ label: 'bootApp', file: 'index.js', symbol: 'bootApp', line: 40 }],
+        })]);
+        expect(p.classList.contains('is-noted')).toBe(true);
+        const block = p.nextElementSibling;
+        expect(block.classList.contains('understandingParaNote')).toBe(true);
+        expect(block.textContent).toBe('bootApp is the only entry');
+    });
+
+    test('tapping the block opens it pre-filled; Save edits it, Delete (confirmed) removes it', async () => {
+        await openChapter(0);
+        const p = view().querySelectorAll('.understandingPara')[1];
+        p.querySelector('.understandingNoteBtn').click();
+        type('first');
+        sheet().querySelector('.understandingFlagAction.is-save').click();
+
+        p.nextElementSibling.click();
+        expect(field().value).toBe('first');
+        expect(Array.from(sheet().querySelectorAll('.understandingFlagActions:not(.bookNoteConfirm) > .understandingFlagAction')).map((a) => a.textContent))
+            .toEqual(['Delete', 'Cancel', 'Save']);
+        type('second');
+        sheet().querySelector('.understandingFlagAction.is-save').click();
+        expect(notes()).toHaveLength(1);
+        expect(notes()[0].body).toBe('second');
+        expect(p.nextElementSibling.textContent).toBe('second');
+
+        p.nextElementSibling.click();
+        sheet().querySelector('.understandingFlagAction.is-delete').click();
+        expect(notes()).toHaveLength(1);
+        sheet().querySelector('.bookNoteConfirm .is-confirm').click();
+        expect(notes()).toEqual([]);
+        expect(p.classList.contains('is-noted')).toBe(false);
+        expect(p.nextElementSibling && p.nextElementSibling.classList.contains('understandingParaNote')).toBe(false);
+    });
+
+    test('the long-press sheet’s Note opens the note sheet', async () => {
+        vi.useFakeTimers();
+        try {
+            setWidth(390);
+            const p0 = renderUnderstandingView();
+            await vi.advanceTimersByTimeAsync(0);
+            await p0;
+            view().querySelectorAll('.understandingChapterBtn')[0].click();
+            const p = view().querySelectorAll('.understandingPara')[1];
+            const ev = new Event('touchstart', { bubbles: true, cancelable: true });
+            ev.touches = [{ clientX: 5, clientY: 5 }];
+            p.dispatchEvent(ev);
+            vi.advanceTimersByTime(500);
+            const actions = document.getElementById('understandingParaSheet').querySelectorAll('.understandingParaAction');
+            actions[2].click();
+            expect(document.getElementById('understandingParaSheet').hidden).toBe(true);
+            expect(sheet().hidden).toBe(false);
+            type('from touch');
+            sheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(p.nextElementSibling.textContent).toBe('from touch');
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+
+    test('a note saved elsewhere (a chat Keep) appears under its paragraph in the open reader', async () => {
+        await openChapter(0);
+        const { saveNote } = await import('../src/bookNotes.js');
+        saveNote('owner/repo', { chapterId: 'app-starts', paraIndex: 2, excerpt: 'x' }, { body: 'Kept answer', source: 'answer' });
+        const p = view().querySelectorAll('.understandingPara')[2];
+        expect(p.nextElementSibling.classList.contains('is-answer')).toBe(true);
+        expect(p.nextElementSibling.textContent).toBe('Kept answer');
+    });
+
+    test('Ask records the paragraph the reader is on as the scope’s anchor', async () => {
+        await openChapter(0);
+        latestObserver().show([1]);
+        view().querySelector('.understandingAskChip').click();
+        const scope = openChatWithBookScope.mock.calls[0][0];
+        expect(scope.anchor).toEqual({
+            chapterId: 'app-starts', paraIndex: 1, excerpt: 'The worker lives in sw.js.',
+            refs: [{ label: 'sw.js', file: 'sw.js', symbol: null, line: 1 }], bookSha: expect.any(String),
+        });
     });
 });
 

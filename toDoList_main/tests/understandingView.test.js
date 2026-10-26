@@ -117,7 +117,7 @@ import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, 
 import { loadBook, revalidateBook, isBookCached } from '../src/codeBook.js';
 import { fetchActiveRuns, dispatchBook, showInjectToast } from '../src/inject.js';
 import { showConfirmModal } from '../src/modals.js';
-import { setBookProgress, setBookBookmarks, setBookFlags, getBookFlags, setBookAbandon, getTourProgress, setTourProgress, isTourCardHidden } from '../src/prefs.js';
+import { setBookProgress, setBookBookmarks, setBookFlags, getBookFlags, setBookNotes, setBookAbandon, getTourProgress, setTourProgress, isTourCardHidden } from '../src/prefs.js';
 import { loadTours } from '../src/codeTours.js';
 import { openTourPlayer, closeTourPlayer } from '../src/tourPlayer.js';
 import { renderCodeViewer } from '../src/codeViewer.js';
@@ -793,6 +793,94 @@ describe('flags section', () => {
         expect(writeText).toHaveBeenCalledWith(
             '- CH 1 ¶1 · WHY · "Excerpt of app-starts"\n' +
             '- CH 2 ¶2 · WRONG · "Says sync" · refs: loadBook'
+        );
+        expect(showInjectToast).toHaveBeenCalledWith('Copied');
+    });
+});
+
+describe('notes section', () => {
+    const NOTED = {
+        title: 'Understanding Void',
+        chapters: [
+            { id: 'app-starts', index: 1, title: 'How the app starts', minutes: 4, stale: false, files: ['index.js'],
+                paragraphs: [[{ t: 'One.' }], [{ t: 'Two.' }], [{ t: 'Three.' }]] },
+            { id: 'data', index: 2, title: 'Where the data lives', minutes: 6, stale: false, files: ['listLogic.js'],
+                paragraphs: [[{ t: 'Data one.' }], [{ t: 'Data two.' }]] },
+        ],
+    };
+    const section = () => view().querySelector('.understandingNoteSection');
+    const seed = () => setBookNotes('owner/repo', [
+        { chapterId: 'data', paraIndex: 1, body: 'Data note\nmore', refs: [{ label: 'loadBook' }], createdAt: '2026-10-01T00:00:00.000Z' },
+        { filePath: 'src/listLogic.js', lineStart: 4, lineEnd: 9, body: 'Mutations here', createdAt: '2026-10-02T00:00:00.000Z' },
+        { filePath: 'scripts/deploy.js', lineStart: 7, lineEnd: 7, body: 'Uncovered', createdAt: '2026-10-03T00:00:00.000Z' },
+        { chapterId: 'app-starts', paraIndex: 0, body: 'Start note', createdAt: '2026-10-04T00:00:00.000Z' },
+    ]);
+
+    test('hidden with no notes', async () => {
+        mocks.book = NOTED;
+        await renderUnderstandingView();
+        expect(section()).toBeNull();
+    });
+
+    test('NOTES · n after the flags: rows grouped by chapter in book order, code notes under their chapter, the rest under CODE', async () => {
+        mocks.book = NOTED;
+        setBookFlags('owner/repo', [{ repo: 'owner/repo', chapterId: 'data', paraIndex: 0, excerpt: 'e', refs: [], kind: 'why', note: '', bookSha: '', createdAt: '2026-10-01T00:00:00.000Z', resolvedAt: null }]);
+        seed();
+        await renderUnderstandingView();
+        expect(section().previousElementSibling.classList.contains('understandingFlagSection')).toBe(true);
+        expect(section().querySelector('.understandingBookmarkHead').textContent).toBe('NOTES · 4');
+        expect(Array.from(section().querySelectorAll('.understandingBookmarkGroup')).map((g) => g.textContent))
+            .toEqual(['CH 1 · How the app starts', 'CH 2 · Where the data lives', 'CODE']);
+        const rows = Array.from(section().querySelectorAll('.understandingNoteRow')).map((r) => [
+            !!r.querySelector('.understandingNoteGlyph'),
+            r.querySelector('.understandingBookmarkLabel').textContent,
+            r.querySelector('.understandingBookmarkCh').textContent,
+        ]);
+        expect(rows).toEqual([
+            [true, 'Start note', 'CH 1 ¶1'],
+            [true, 'Data note', 'CH 2 ¶2'],
+            [true, 'Mutations here', 'listLogic.js:4–9'],
+            [true, 'Uncovered', 'deploy.js:7'],
+        ]);
+    });
+
+    test('a paragraph row opens the reader at its paragraph with the pulse and the note beneath it', async () => {
+        mocks.book = NOTED;
+        seed();
+        await renderUnderstandingView();
+        section().querySelectorAll('.understandingNoteRowBtn')[1].click();
+        expect(view().querySelector('.understandingReaderTitle').textContent).toBe('Where the data lives');
+        const para = view().querySelectorAll('.understandingPara')[1];
+        expect(para.classList.contains('is-pulse')).toBe(true);
+        expect(para.classList.contains('is-noted')).toBe(true);
+        expect(para.nextElementSibling.textContent).toBe('Data note\nmore');
+    });
+
+    test('a code row opens its lines in the reader’s code pane', async () => {
+        mocks.book = NOTED;
+        seed();
+        await renderUnderstandingView();
+        section().querySelectorAll('.understandingNoteRowBtn')[2].click();
+        await flush();
+        await flush();
+        expect(renderCodeViewer).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
+            target: { repo: 'owner/repo' }, filePath: 'src/listLogic.js', startLine: 4, endLine: 9,
+        }));
+    });
+
+    test('Copy puts every note on the clipboard as markdown and toasts', async () => {
+        mocks.book = NOTED;
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+        seed();
+        await renderUnderstandingView();
+        section().querySelector('.understandingNoteCopy').click();
+        await flush();
+        expect(writeText).toHaveBeenCalledWith(
+            '- CH 1 ¶1 · "Start note"\n' +
+            '- CH 2 ¶2 · "Data note more" · refs: loadBook\n' +
+            '- listLogic.js:4–9 · "Mutations here"\n' +
+            '- deploy.js:7 · "Uncovered"'
         );
         expect(showInjectToast).toHaveBeenCalledWith('Copied');
     });

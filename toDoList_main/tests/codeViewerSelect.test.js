@@ -4,7 +4,8 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 // buttons — click selects a line, shift-click / Shift+Enter extends, a drag down
 // the gutter extends live, a 500ms long-press on a touch starts a selection the
 // finger then drags — and a bar with the span, Copy and Ask floats in the range's
-// last row. Escape, a new open and a close all drop it.
+// last row. Escape, a new open and a close all drop it. The bar's Note pins a
+// reader note (bookNotes.js) to the range, shown as a row beneath its last line.
 
 const { state } = vi.hoisted(() => ({
     state: { files: {}, toasts: [] },
@@ -16,6 +17,10 @@ vi.mock('../src/inject.js', () => ({
         return Promise.resolve({ ok: true, content: (canned && canned.content) || '', sha: 'sha-1' });
     }),
     showInjectToast: vi.fn(function (message) { state.toasts.push(message); }),
+}));
+
+vi.mock('../src/supabaseClient.js', () => ({
+    supabase: { auth: { getSession: vi.fn(() => Promise.resolve({ data: { session: null } })) }, from: vi.fn() },
 }));
 
 import {
@@ -260,6 +265,72 @@ describe('codeViewer — line selection', () => {
             start: 29,
             end: 31,
             text: ['line 29', 'line 30', 'line 31'],
+        });
+    });
+
+    describe('reader notes', () => {
+        const notes = () => JSON.parse(localStorage.getItem('todoapp_bookNotes') || '{}')['owner/app'] || [];
+        const sheet = () => document.getElementById('bookNoteSheet');
+        const userNotes = () => Array.from(document.querySelectorAll('.codeViewerLines > .codeViewerNote--user'));
+
+        beforeEach(() => { localStorage.clear(); });
+
+        it('the bar’s Note, between Copy and Ask, saves a line-range note and its row renders beneath the last line', async () => {
+            await open();
+            click(gutter(29));
+            click(gutter(31), { shiftKey: true });
+            const note = bar().querySelector('.codeViewerSelectNote');
+            expect(note.textContent).toBe('Note');
+            expect(note.previousElementSibling.classList.contains('codeViewerSelectCopy')).toBe(true);
+            expect(note.nextElementSibling.classList.contains('codeViewerSelectAsk')).toBe(true);
+            note.click();
+            expect(sheet().hidden).toBe(false);
+            expect(sheet().querySelector('.understandingMarksTitle').textContent).toBe('NOTE · Program.cs:29–31');
+            expect(sheet().querySelector('.understandingFlagExcerpt').textContent).toBe('line 29 line 30 line 31');
+            const field = sheet().querySelector('textarea.bookNoteField');
+            field.value = 'Three lines that matter';
+            field.dispatchEvent(new Event('input'));
+            sheet().querySelector('.understandingFlagAction.is-save').click();
+
+            expect(notes()).toEqual([expect.objectContaining({
+                filePath: 'src/Program.cs', lineStart: 29, lineEnd: 31, chapterId: null,
+                body: 'Three lines that matter', source: 'user', excerpt: 'line 29 line 30 line 31',
+            })]);
+            expect(getCodeViewerSelection(host())).toBeNull();
+            const rows = userNotes();
+            expect(rows).toHaveLength(1);
+            expect(rows[0].previousElementSibling).toBe(row(31));
+            expect(rows[0].textContent).toBe('Three lines that matter');
+            // Numbering is untouched: the next row is still line 32.
+            expect(rows[0].nextElementSibling).toBe(row(32));
+        });
+
+        it('a stored note shows when its file opens, re-attaches as the window grows, and taps open its edit sheet', async () => {
+            localStorage.setItem('todoapp_bookNotes', JSON.stringify({ 'owner/app': [
+                { filePath: 'src/Program.cs', lineStart: 10, lineEnd: 12, body: 'Early', createdAt: '2026-10-01T00:00:00.000Z' },
+                { filePath: 'src/Program.cs', lineStart: 400, lineEnd: 401, body: 'Late', createdAt: '2026-10-02T00:00:00.000Z' },
+                { filePath: 'src/Other.cs', lineStart: 1, lineEnd: 1, body: 'Elsewhere', createdAt: '2026-10-03T00:00:00.000Z' },
+            ] }));
+            await open(600);
+            expect(userNotes().map((el) => el.textContent)).toEqual(['Early']);
+            expect(userNotes()[0].previousElementSibling).toBe(row(12));
+            document.querySelector('.codeViewerMore--down').click();
+            expect(userNotes().map((el) => el.textContent)).toEqual(['Early', 'Late']);
+            expect(userNotes()[1].previousElementSibling).toBe(row(401));
+
+            userNotes()[0].querySelector('.codeViewerUserNoteText').click();
+            expect(sheet().hidden).toBe(false);
+            const field = sheet().querySelector('textarea.bookNoteField');
+            expect(field.value).toBe('Early');
+            field.value = 'Edited';
+            field.dispatchEvent(new Event('input'));
+            sheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(userNotes()[0].textContent).toBe('Edited');
+
+            userNotes()[0].querySelector('.codeViewerUserNoteText').click();
+            sheet().querySelector('.understandingFlagAction.is-delete').click();
+            sheet().querySelector('.bookNoteConfirm .is-confirm').click();
+            expect(userNotes().map((el) => el.textContent)).toEqual(['Late']);
         });
     });
 });

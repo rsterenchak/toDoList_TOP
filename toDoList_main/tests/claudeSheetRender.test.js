@@ -2,7 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Assistant replies render through the markdown renderer in the live bubble and
 // on replay, the existing html/svg, Create task and scoped-chip behaviours hold,
-// and the `⤢` chip opens a paging reply reader.
+// and the `⤢` chip opens a paging reply reader. The Keep chip beside it saves a
+// reply as a reader note pinned to the chat's scope.
 
 const { state } = vi.hoisted(() => ({
     state: { calls: [], reply: 'ok', replies: null, symbols: null },
@@ -66,6 +67,8 @@ vi.mock('../src/codeTrace.js', async (importOriginal) => {
 import {
     mountClaudeSheet,
     openChatWithBookScope,
+    openChatWithSelection,
+    replyFirstParagraph,
 } from '../src/claudeSheet.js';
 import { resetSymbolsCache } from '../src/codeTrace.js';
 import { listLogic } from '../src/listLogic.js';
@@ -217,5 +220,91 @@ describe('claudeSheet — assistant replies render as markdown', () => {
         assistantBubbles().pop().querySelector('.claudeMsgReaderChip').click();
         readerSheet().querySelector('.claudeReaderCopy').click();
         expect(writeText).toHaveBeenCalledWith('**raw** reply');
+    });
+
+    describe('Keep', () => {
+        const notes = () => JSON.parse(localStorage.getItem('todoapp_bookNotes') || '{}')[DEFAULT_REPO] || [];
+        const noteSheet = () => document.getElementById('bookNoteSheet');
+        const keep = (bubble) => bubble.querySelector('.claudeMsgKeepChip');
+        const BOOK_SCOPE = {
+            repo: DEFAULT_REPO,
+            chapter: { id: 'life', title: 'Life', index: 3, total: 5 },
+            prose: ['First para.', 'Second para.'],
+            refs: [],
+            anchor: { chapterId: 'life', paraIndex: 1, excerpt: 'Second para.', refs: [{ label: 'x' }], bookSha: 'sha' },
+        };
+
+        it('reads a reply’s first paragraph as plain text, skipping a leading fence', () => {
+            expect(replyFirstParagraph('It starts in **`openChatWithTask`**, see [docs](http://x).\n\nMore.')).toBe('It starts in openChatWithTask, see docs.');
+            expect(replyFirstParagraph('```js\ncode\n```\n\n- the `real` one\n- two')).toBe('the real one two');
+        });
+
+        it('sits beside the ⤢ on completed replies and is hidden without a scope', async () => {
+            await sendTurn('hi');
+            const bubble = assistantBubbles().pop();
+            const chip = keep(bubble);
+            expect(chip.getAttribute('aria-label')).toBe('Keep this reply as a note');
+            expect(chip.textContent).toBe('');
+            expect(chip.previousElementSibling.classList.contains('claudeMsgReaderChip')).toBe(true);
+            expect(chip.hidden).toBe(true);
+            expect(document.querySelector('.claudeMsg--user .claudeMsgKeepChip')).toBe(null);
+            openChatWithBookScope(BOOK_SCOPE);
+            expect(chip.hidden).toBe(false);
+            document.querySelector('.claudeScopeChipRemove').click();
+            expect(chip.hidden).toBe(true);
+        });
+
+        it('pre-fills from the first paragraph and saves an answer note on the scope’s paragraph', async () => {
+            openChatWithBookScope(BOOK_SCOPE);
+            await flush();
+            state.reply = 'Rows are built by `buildToDoRow`.\n\nThen they are saved.';
+            await sendTurn('how?');
+            const chip = keep(assistantBubbles().pop());
+            expect(chip.hidden).toBe(false);
+            chip.click();
+            expect(noteSheet().hidden).toBe(false);
+            expect(noteSheet().querySelector('.understandingMarksTitle').textContent).toBe('KEEP · CH 3 ¶2');
+            const field = noteSheet().querySelector('textarea.bookNoteField');
+            expect(field.value).toBe('Rows are built by buildToDoRow.');
+            field.value = 'Rows: buildToDoRow, edited';
+            field.dispatchEvent(new Event('input'));
+            noteSheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(notes()).toEqual([expect.objectContaining({
+                chapterId: 'life', paraIndex: 1, filePath: null, body: 'Rows: buildToDoRow, edited',
+                source: 'answer', excerpt: 'Second para.', refs: [{ label: 'x' }], bookSha: 'sha',
+            })]);
+        });
+
+        it('a chapter scope without an anchor pins to paragraph 0', async () => {
+            openChatWithBookScope(Object.assign({}, BOOK_SCOPE, { anchor: undefined }));
+            await flush();
+            await sendTurn('q');
+            keep(assistantBubbles().pop()).click();
+            noteSheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(notes()[0]).toMatchObject({ chapterId: 'life', paraIndex: 0, excerpt: 'First para.' });
+        });
+
+        it('a selection scope pins to its line range', async () => {
+            openChatWithSelection({ repo: DEFAULT_REPO, filePath: 'toDoList_main/src/toDo.js', srcRoot: 'toDoList_main/src', start: 12, end: 14, text: ['a()', 'b()', 'c()'] });
+            await flush();
+            state.reply = 'They chain.';
+            await sendTurn('q');
+            keep(assistantBubbles().pop()).click();
+            expect(noteSheet().querySelector('.understandingMarksTitle').textContent).toBe('KEEP · toDo.js:12–14');
+            noteSheet().querySelector('.understandingFlagAction.is-save').click();
+            expect(notes()[0]).toMatchObject({
+                filePath: 'toDoList_main/src/toDo.js', lineStart: 12, lineEnd: 14, chapterId: null,
+                body: 'They chain.', source: 'answer', excerpt: 'a() b() c()',
+            });
+        });
+
+        it('the anchor never rides on the turn’s book_scope', async () => {
+            openChatWithBookScope(BOOK_SCOPE);
+            await flush();
+            await sendTurn('q');
+            const opts = state.calls.pop().find((a) => a && typeof a === 'object' && a.bookScope);
+            expect(opts.bookScope.chapter.id).toBe('life');
+            expect(opts.bookScope.anchor).toBeUndefined();
+        });
     });
 });
