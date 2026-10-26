@@ -25,7 +25,8 @@ import {
     getCurrentTheme,
     THEME_KEY,
 } from './theme.js';
-import { showHelpModal } from './modals.js';
+import { showHelpModal, confirmClearCaches } from './modals.js';
+import { appStorageBytes, formatBytes } from './storage.js';
 import { exportToJson, openImportPicker } from './jsonImportExport.js';
 import { startCoachmarkTour } from './coachmark.js';
 import { startWelcomeCarousel, isMobileCarouselViewport } from './welcomeCarousel.js';
@@ -314,6 +315,22 @@ export function createSettingsMenu(deps) {
             function() { openImportPicker(rebuildAfterImport); }
         );
         menu.appendChild(importItem);
+
+        // Storage — how much of the device's localStorage quota the app's
+        // keys hold (iOS Safari caps it near 5MB), read fresh on every open,
+        // plus the confirmed Clear caches action that frees the heavy keys.
+        const storageLine = document.createElement('div');
+        storageLine.className = 'settingsMenuStorageLine';
+        storageLine.setAttribute('role', 'presentation');
+        storageLine.textContent = 'Storage · ' + formatBytes(appStorageBytes()) + ' used';
+        menu.appendChild(storageLine);
+
+        const clearCachesItem = buildSettingsMenuItem(
+            'Clear caches',
+            '',
+            function() { confirmClearCaches(); }
+        );
+        menu.appendChild(clearCachesItem);
 
         // REPO SETUP section — the pipeline-facing cluster. Shape reference
         // opens the SHAPES.md picker (which shape a repo is, whether a

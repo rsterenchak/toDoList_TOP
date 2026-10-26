@@ -4537,6 +4537,10 @@ export function buildToDoRow(item, toDoName) {
             item.status = 'in_progress';
         }
 
+        // saveToStorage returns false (never throws) when localStorage is
+        // full — the commit below proceeds regardless: the row still commits
+        // visually and commitBlankPlaceholder still sends the Supabase insert,
+        // so a full device degrades to "synced but not cached".
         listLogic.saveToStorage();
         if (isFirstCommit) {
             listLogic.commitBlankPlaceholder(toDoName, item);

@@ -132,7 +132,9 @@ import { maybeStartFirstRunTour } from './coachmark.js';
 import {
     initInjectConfig,
     initInjectTargets,
+    showInjectToast,
 } from './inject.js';
+import { appStorageSizes, formatBytes } from './storage.js';
 import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController, openViewerAnchoredToEntry } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
 import { openCompletedMobileSheet, openViewerMobileSheet, openOverflowMobileSheet, closeOverflowMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
@@ -151,6 +153,21 @@ setLocateTabSwitch(function () { applyActiveView('projects'); });
 // appears when another tab applied a service-worker update: aboutVersionCue.js
 // stays a leaf and gets the reload handed to it here.
 setAppReloader(requestAppReload);
+
+// A localStorage write that throws (iOS Safari caps the origin at ~5MB) is
+// swallowed by saveToStorage / safeSetItem and reported here. Once per session:
+// toast the user and log every app key's size, largest first, so the next
+// report says which key filled the quota.
+const STORAGE_WARNED_KEY = 'todoapp_storageWarned';
+listLogic.setStorageErrorHandler(function (err, key) {
+    try {
+        if (sessionStorage.getItem(STORAGE_WARNED_KEY)) return;
+        sessionStorage.setItem(STORAGE_WARNED_KEY, '1');
+    } catch (e) { /* sessionStorage unavailable — warn anyway */ }
+    showInjectToast('Storage is full — tasks may not save on this device. Free space in Settings.', 'error');
+    console.warn('[storage] ' + key + ' write failed; app key sizes:',
+        appStorageSizes().map(function (e) { return e.key + ' ' + formatBytes(e.bytes); }));
+});
 
 // touch: verify SW revisioning 2026-05-31 //
 

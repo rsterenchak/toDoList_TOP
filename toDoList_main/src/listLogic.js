@@ -6,6 +6,7 @@ import './style.css';
 import { toDo } from './toDo.js';
 import { isSampleSeeded, setSampleSeeded } from './prefs.js';
 import { supabase } from './supabaseClient.js';
+import { reportStorageError, setStorageErrorHandler } from './storage.js';
 
 
 // ── UUID HELPER ──────────────────────────────────────────────────────
@@ -356,12 +357,25 @@ export const listLogic = (function () {
     // callers can keep their `saveToStorage(opts)` forwarding shape (the
     // saveToStorageCallers lint contract). The fromSync flag is interpreted
     // by callers' persistMutation gates, not here.
+    //
+    // Never throws: a full quota (iOS Safari caps the origin at ~5MB) is
+    // logged and handed to the storage-error hook, and false comes back so
+    // the caller still finishes its UI work. The in-memory model is already
+    // mutated and Supabase is the system of record, so a failed write means
+    // "synced but not cached", not a lost edit.
     function saveToStorage(_opts) {
         // This write already covers every project, so it supersedes any
         // coalesced write still waiting — cancel it rather than let it fire
         // a redundant second full-state stringify a moment later.
         cancelCoalescedSave();
-        localStorage.setItem('allProjects', JSON.stringify(allProjects));
+        try {
+            localStorage.setItem('allProjects', JSON.stringify(allProjects));
+            return true;
+        } catch (err) {
+            console.error('[storage] allProjects write failed', err);
+            reportStorageError(err, 'allProjects');
+            return false;
+        }
     }
 
     // @category: user-mutation-only
@@ -4547,6 +4561,7 @@ export const listLogic = (function () {
         PROJECT_COLOR_KEYS,
         saveToStorage,
         saveToStorageSoon,
+        setStorageErrorHandler,
         flushPendingSave,
         replaceAllProjects,
         snapshotProjects,

@@ -77,6 +77,7 @@ import { listLogic } from './listLogic.js';
 import { deriveAreaGraph, linksFor, formatLines, areaFiles } from './codeMapModel.js';
 import { loadTours, tourArea, orderedTours } from './codeTours.js';
 import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
+import { safeSetItem, trimToByteBudget, jsonBytes, CACHE_BYTE_BUDGET } from './storage.js';
 
 // The repo currently shown. Held at module scope so a re-render (view switch,
 // manifest refresh) preserves the user's selection. Null until first resolved
@@ -646,10 +647,16 @@ function readExplainStore(storageKey) {
     }
 }
 
+// Besides the EXPLAIN_CACHE_CAP entry count, the store is held to a byte budget
+// on write — long replies on big files could otherwise fill the quota in fewer
+// than 50 entries — evicting least-recently-used entries first.
 function writeExplainStore(store, storageKey) {
-    try {
-        localStorage.setItem(storageKey || EXPLAIN_CACHE_KEY, JSON.stringify(store));
-    } catch (e) { /* quota / unavailable — caching is best-effort */ }
+    const order = trimToByteBudget(store.order, CACHE_BYTE_BUDGET, function (k) {
+        return jsonBytes(k) + jsonBytes(store.map[k]);
+    });
+    const map = {};
+    order.forEach(function (k) { if (k in store.map) map[k] = store.map[k]; });
+    safeSetItem(storageKey || EXPLAIN_CACHE_KEY, JSON.stringify({ order: order, map: map }));
 }
 
 // A cached explanation for this repo+file+sha, or null on a miss (or when sha is

@@ -26,6 +26,23 @@ import { openModelsPanel } from './modelsPanel.js';
 import { buildSettingsDiagnosticsSection } from './settingsDiagnostics.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { supabase } from './supabaseClient.js';
+import { confirmClearCaches } from './modals.js';
+import { appStorageBytes, formatBytes } from './storage.js';
+
+// Storage — the app's share of the device's localStorage quota (iOS Safari
+// caps it near 5MB), read fresh on every open, plus the confirmed Clear caches
+// action the gear dropdown also offers. `close` dismisses the modal first.
+function appendStorageRows(section, close) {
+    const storageRow = createDrawerInfoRow('Storage', function() {
+        return formatBytes(appStorageBytes()) + ' used';
+    });
+    storageRow.row.id = 'settingsStorageRow';
+    section.appendChild(storageRow.row);
+    section.appendChild(createDrawerActionRow('Clear caches', function() {
+        close();
+        confirmClearCaches();
+    }));
+}
 
 export function createSettingsModal({
     buildExpandAllToggle,
@@ -215,6 +232,7 @@ export function createSettingsModal({
             openImportPicker(rebuildAfterImport);
         });
         dataSection.appendChild(importRow);
+        appendStorageRows(dataSection, close);
 
         // Repo setup section — mobile parity for the settings menu's own
         // Repo setup cluster. Shape reference opens the SHAPES.md picker

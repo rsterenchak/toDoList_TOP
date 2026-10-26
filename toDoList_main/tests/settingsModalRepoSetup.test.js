@@ -93,7 +93,7 @@ describe('mobile Settings modal — Repo setup section', () => {
 
     it('no longer lists Configure inject under Data', () => {
         expect(rowLabelsIn('settingsDataSection'))
-            .toEqual(['Export to JSON', 'Import from JSON']);
+            .toEqual(['Export to JSON', 'Import from JSON', 'Clear caches']);
     });
 
     it('opens the SHAPES.md picker when Shape reference is tapped', () => {
