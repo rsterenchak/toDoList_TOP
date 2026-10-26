@@ -390,7 +390,11 @@ describe('voiceInput — shared mic + dictation module', () => {
             expect(input.value).toBe('second');
         });
 
-        it('no-speech then onend mid-session keeps the text but does not commit', () => {
+        // iOS ends continuous recognition on a speech pause (or a no-speech
+        // error) and won't reopen the keyboard afterwards, so on an
+        // auto-commit surface the overlay stays up paused — the tap is the
+        // user's only keyboardless way to add the dictated todo.
+        it('no-speech then onend mid-session pauses the overlay without committing', () => {
             const input = makeInput();
             const calls = [];
             const btn = mountMicButton(input, { overlay: true, onFinal(t) { calls.push(t); } });
@@ -401,22 +405,127 @@ describe('voiceInput — shared mic + dictation module', () => {
             rec.fireEnd();
             expect(calls).toEqual([]);
             expect(input.value).toBe('pick up the');
-            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            const ov = document.querySelector('.voiceOverlay');
+            expect(ov).toBeTruthy();
+            expect(ov.querySelector('.voiceListenLabel').textContent).toBe('Paused');
+            expect(ov.querySelector('.voiceListenPill').classList.contains('voiceListenPill--paused')).toBe(true);
+            expect(ov.querySelector('.voiceInterim').textContent).toBe('pick up the');
+            expect(ov.querySelector('.voiceHint').textContent).toBe('Tap to add');
+            expect(ov.querySelector('.voiceDiscard')).toBeTruthy();
             expect(isDictating()).toBe(false);
             expect(btn.classList.contains('micButton--recording')).toBe(false);
         });
 
-        it('a bare platform onend mid-session keeps the text but does not commit', () => {
+        it('tapping a paused overlay commits the transcript once and closes it', () => {
+            const input = makeInput();
+            const calls = [];
+            const btn = mountMicButton(input, { overlay: true, onFinal(t) { calls.push(t); } });
+            btn.click();
+            const rec = lastRecognition();
+            rec.emitResult('pick up the kids');
+            rec.emitError('no-speech');
+            rec.fireEnd();
+            document.querySelector('.voiceOverlay').click();
+            expect(calls).toEqual(['pick up the kids']);
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            // A late end from the parked instance can't re-fire it.
+            rec.fireEnd();
+            expect(calls).toEqual(['pick up the kids']);
+        });
+
+        it('re-tapping the mic on a paused overlay commits', () => {
+            const input = makeInput();
+            const calls = [];
+            const btn = mountMicButton(input, { overlay: true, onFinal(t) { calls.push(t); } });
+            btn.click();
+            const rec = lastRecognition();
+            rec.emitResult('water plants');
+            rec.fireEnd();
+            btn.click();
+            expect(calls).toEqual(['water plants']);
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            expect(isDictating()).toBe(false);
+        });
+
+        it('Discard on a paused overlay keeps the text and never commits', () => {
+            const input = makeInput();
+            const calls = [];
+            const btn = mountMicButton(input, { overlay: true, onFinal(t) { calls.push(t); } });
+            btn.click();
+            const rec = lastRecognition();
+            rec.emitResult('never mind');
+            rec.emitError('no-speech');
+            rec.fireEnd();
+            document.querySelector('.voiceOverlay .voiceDiscard').click();
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            expect(input.value).toBe('never mind');
+            expect(calls).toEqual([]);
+        });
+
+        it('Escape on a paused overlay cancels without committing', () => {
             const input = makeInput();
             const calls = [];
             startDictation(input, null, { overlay: true, onFinal(t) { calls.push(t); } });
             const rec = lastRecognition();
-            rec.emitResult('half a thought');
+            rec.emitResult('escape me');
             rec.fireEnd();
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            expect(input.value).toBe('escape me');
             expect(calls).toEqual([]);
+        });
+
+        it('the runaway watchdog cancels a paused overlay, keeping the text', () => {
+            vi.useFakeTimers();
+            try {
+                const input = makeInput();
+                const onFinal = vi.fn();
+                startDictation(input, null, { overlay: true, onFinal });
+                const rec = lastRecognition();
+                rec.emitResult('left paused');
+                rec.fireEnd();
+                expect(document.querySelector('.voiceOverlay')).toBeTruthy();
+                vi.advanceTimersByTime(60000);
+                expect(document.querySelector('.voiceOverlay')).toBeNull();
+                expect(input.value).toBe('left paused');
+                expect(onFinal).not.toHaveBeenCalled();
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        it('a platform end with nothing transcribed closes the overlay', () => {
+            const input = makeInput();
+            const calls = [];
+            startDictation(input, null, { overlay: true, onFinal(t) { calls.push(t); } });
+            const rec = lastRecognition();
+            rec.emitError('no-speech');
+            rec.fireEnd();
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            expect(calls).toEqual([]);
+            expect(isDictating()).toBe(false);
+        });
+
+        it('a review-only surface still closes on a platform end, keeping the text', () => {
+            const input = makeInput();
+            const btn = mountMicButton(input, { overlay: true, continuous: true });
+            btn.click();
+            const rec = lastRecognition();
+            rec.emitResult('half a thought');
+            rec.emitError('no-speech');
+            rec.fireEnd();
             expect(input.value).toBe('half a thought');
             expect(document.querySelector('.voiceOverlay')).toBeNull();
             expect(isDictating()).toBe(false);
+        });
+
+        it('onTranscript is called after each transcript write', () => {
+            const input = makeInput();
+            const seen = [];
+            startDictation(input, null, { onTranscript() { seen.push(input.value); } });
+            lastRecognition().emitResult('buy');
+            lastRecognition().emitResult('buy milk');
+            expect(seen).toEqual(['buy', 'buy milk']);
         });
     });
 
@@ -528,6 +637,12 @@ describe('toDoRow wires the shared voice mic onto the blank placeholder', () => 
         expect(toDoRow).toMatch(/onFinal/);
         expect(toDoRow).toMatch(/new KeyboardEvent\(\s*['"]keydown['"]/);
         expect(toDoRow).not.toMatch(/onFinal[\s\S]{0,120}listLogic\.addToDo/);
+    });
+
+    it('arms the row\'s tappable `+` from each dictated transcript write', () => {
+        // Programmatic .value writes fire no `input` event, so the mic hands
+        // the row its sync hook directly.
+        expect(toDoRow).toMatch(/onTranscript:\s*syncAddGlyph/);
     });
 });
 

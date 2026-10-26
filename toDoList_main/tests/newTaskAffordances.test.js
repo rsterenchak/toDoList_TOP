@@ -48,9 +48,10 @@ describe('new-task input affordances — `+` glyph and placeholder', () => {
     });
 
     it('renders the `+` glyph only on blank placeholder rows', () => {
-        // Glyph is gated on `!item.tit` so committed rows don't carry it,
-        // and is stamped with aria-hidden since it's decorative.
-        expect(toDoRow).toMatch(/!item\.tit\s*\?\s*document\.createElement\(\s*["']span["']\s*\)/);
+        // Glyph is gated on `!item.tit` so committed rows don't carry it. It's
+        // a button (it arms into a tap-to-add control once the input holds
+        // text) but starts aria-hidden since it's decorative while empty.
+        expect(toDoRow).toMatch(/!item\.tit\s*\?\s*document\.createElement\(\s*["']button["']\s*\)/);
         expect(toDoRow).toMatch(/addGlyph\.id\s*=\s*['"]addGlyph['"]/);
         expect(toDoRow).toMatch(/addGlyph\.setAttribute\(\s*['"]aria-hidden['"]\s*,\s*['"]true['"]\s*\)/);
         expect(toDoRow).toMatch(/addGlyph\.textContent\s*=\s*["']\+["']/);

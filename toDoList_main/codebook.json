@@ -149,7 +149,7 @@
         "viewport.js:isMobileViewport": "2c2932546fb02173.04d4f49dd124a802",
         "voiceInput.js": "a20656abbbf6d60b.bac745fbd5c6a997",
         "voiceInput.js:isDictating": "d3145afa7f54cd40.540de3fc74634dd1",
-        "voiceInput.js:mountMicButton": "327db94fc08d7f13.bac745fbd5c6a997",
+        "voiceInput.js:mountMicButton": "acf6201773bf1e5e.bac745fbd5c6a997",
         "voiceInput.js:stopDictation": "dbe024a941e41f00.eda4fab1408a7fae"
       }
     },
@@ -245,7 +245,7 @@
         "listLogic.js:listLogic.sortCompletedToBottom": "bd427edc3426885c.5bfca1f3b7e4241a",
         "toDoRow.js": "ed5e5d25a01db63c.b521de31e988487e",
         "toDoRow.js:appendNewToDoRow": "52a79c2b8f4fd3c9.da39a3ee5e6b4b0d",
-        "toDoRow.js:buildToDoRow": "36630be727d8346d.da39a3ee5e6b4b0d",
+        "toDoRow.js:buildToDoRow": "b8118e3780751d48.da39a3ee5e6b4b0d",
         "todoStatus.js:refreshTodoStatusUI": "28c92420dcc01b6d.97cee0727a66f7ef",
         "todoStatus.js:showStatusPopover": "a2068bbf6496955d.da39a3ee5e6b4b0d",
         "undoToast.js:showUndoToast": "fbacb6aa814702aa.97cee0727a66f7ef"
