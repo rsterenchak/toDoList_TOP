@@ -74,6 +74,7 @@ describe('listLogic Phase 5 — persistMutation funnel reaches every user-mutati
         'addToDo',
         'removeToDo',
         'removeToDoByItem',
+        'removeCompletedToDos',
         'insertToDoAt',
         'editProject',
         'reorderProject',
@@ -99,6 +100,17 @@ describe('listLogic Phase 5 — persistMutation funnel reaches every user-mutati
 
 describe('listLogic Phase 5 — persistMutation request shape', () => {
     const body = functionBody(SRC, 'persistMutation');
+
+    it('a batched delete with payload.ids issues one .in(\'id\', ids) request', () => {
+        // removeCompletedToDos deletes hundreds of rows at once; one request
+        // rather than one per row.
+        expect(body).toMatch(/Array\.isArray\(\s*payload\.ids\s*\)/);
+        expect(body).toMatch(/\.in\(\s*['"]id['"]\s*,\s*payload\.ids\s*\)/);
+        const clear = functionBody(SRC, 'removeCompletedToDos');
+        expect(clear).toMatch(/op:\s*['"]delete['"]/);
+        expect(clear).toMatch(/payload:\s*\{\s*ids\b/);
+        expect(clear).not.toMatch(/removeToDoByItem\s*\(/);
+    });
 
     it('exists as a declared function', () => {
         expect(body).toBeTruthy();

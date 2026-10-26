@@ -52,6 +52,7 @@
         "projRunSpinner.js",
         "footerCounts.js",
         "emptyState.js",
+        "completedClearAll.js",
         "undoToast.js",
         "statsDrawerPanel.js",
         "mobileTaskCreate.js",
