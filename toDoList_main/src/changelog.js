@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-26',
+        added: [
+            'Keep what you learn in the code book with notes in your own words, pinned to a paragraph (from its Note button or long-press) or to selected lines in the code viewer, or saved straight from a Claude answer with Keep, shown in place and listed on the shelf with a Copy button.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-25',
         added: [
             'Select lines in the code viewer by clicking, shift-clicking or dragging down the line numbers (or long-pressing on a phone), then copy them or tap Ask to chat with Claude about just those lines.',
@@ -15,7 +22,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-24',
         added: [
-            'Assistant replies in the Claude chat now show real formatting, with bold, headings, nested bullets, links and code blocks you can copy, and a ⤢ button opens any reply in a full reading view you can page through.',
             'On desktop a code tour now plays inside the code viewer, showing each step\'s whole file with its lines highlighted beneath a step banner, and on phones the tour sheet shows more of the code around each step.',
             'Asking Claude about a code book chapter now lets it point to where each of the chapter\'s names is used elsewhere in the code, and to look up a name the chapter doesn\'t cover when you ask about it.',
         ],

@@ -133,6 +133,7 @@
         "bookProgress.js",
         "bookBookmarks.js",
         "bookFlags.js",
+        "bookNotes.js",
         "codeSheet.js"
       ]
     },

@@ -5631,9 +5631,9 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   /* The block a bookmark paints is always laid out, so marking only changes
      its background — the text never shifts. The negative margin keeps the
      text aligned with the title; the right padding clears the ribbon and the
-     flag button beside it. */
+     flag and note buttons beside it. */
   margin: 0 -12px 0;
-  padding: 8px 58px 8px 12px;
+  padding: 8px 86px 8px 12px;
   border-radius: 10px;
   font-size: 15px;
   line-height: 1.55;
@@ -5675,6 +5675,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   .understandingPara { -webkit-touch-callout: none; }
   .understandingPara:not(.is-bookmarked) .understandingRibbon { visibility: hidden; }
   .understandingPara:not(.is-flagged) .understandingFlagBtn { visibility: hidden; }
+  .understandingPara:not(.is-noted) .understandingNoteBtn { visibility: hidden; }
 }
 
 /* The flag button, left of the ribbon: hidden until hover like it, and once
@@ -5700,6 +5701,91 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .understandingFlagBtn:focus-visible { opacity: 1; }
 .understandingFlagBtn:hover { color: #ffbd5e; }
 .understandingPara.is-flagged .understandingFlagBtn { opacity: 1; color: #ffbd5e; }
+
+/* The note button, left of the flag: hidden until hover like it, and once the
+   paragraph carries a note a lilac ✎ that adds another. */
+.understandingNoteBtn {
+  position: absolute;
+  top: 6px;
+  right: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+.understandingPara:hover .understandingNoteBtn,
+.understandingNoteBtn:focus-visible { opacity: 1; }
+.understandingNoteBtn .understandingNoteGlyph { color: inherit; }
+.understandingNoteBtn:hover { color: #9D93EE; }
+.understandingPara.is-noted .understandingNoteBtn { opacity: 1; color: #9D93EE; }
+
+/* A paragraph's note, beneath it: the reader's own words on a dark block with a
+   lilac rule. A tap opens it for editing. */
+.understandingParaNote {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  margin: 2px 0 10px;
+  padding: 8px 12px;
+  background: #15161d;
+  border: none;
+  border-left: 2px solid #9D93EE;
+  border-radius: 0 8px 8px 0;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+.understandingParaNote:hover { background: color-mix(in srgb, #9D93EE 8%, #15161d); }
+.understandingNoteGlyph::before { content: '\270E'; }
+.understandingNoteGlyph {
+  flex: 0 0 auto;
+  width: 16px;
+  color: #9D93EE;
+  font-size: 15px;
+  line-height: 1;
+  text-align: center;
+}
+.understandingParaActionNote .understandingNoteGlyph { font-size: 16px; }
+
+/* The note sheet: the anchor's opening, a field, actions — Delete asks in place. */
+.bookNoteField {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  padding: 8px 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 8px;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 16px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.bookNoteField:focus { outline: none; border-color: #9D93EE; }
+.bookNoteForm .understandingFlagActions[hidden] { display: none; }
+.bookNoteConfirm { align-items: center; }
+.bookNoteConfirmText {
+  flex: 1 1 auto;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.bookNoteForm .understandingFlagAction.is-save:disabled { opacity: 0.45; cursor: default; }
 
 /* `n flags` under the chapter title. */
 .understandingReaderFlags {
@@ -6205,7 +6291,8 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 /* Bookmark rows — the shelf's BOOKMARKS · n section and the reader's list share
    them: amber ribbon, label, right-aligned CH n, in the chapter-row style. */
 .understandingBookmarkSection,
-.understandingFlagSection {
+.understandingFlagSection,
+.understandingNoteSection {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -8536,6 +8623,18 @@ button.codeViewerGutter:focus-visible {
   cursor: pointer;
 }
 .codeViewerSelectCopy:hover { border-color: var(--acc); }
+.codeViewerSelectNote {
+  height: 26px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  color: #9D93EE;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.codeViewerSelectNote:hover { border-color: #9D93EE; }
 .codeViewerSelectAsk {
   display: inline-flex;
   align-items: center;
@@ -8694,6 +8793,51 @@ button.codeViewerGutter:focus-visible {
 .codeViewerLines--rail > .codeViewerNote > .codeViewerNoteBody {
   height: 100%;
   padding: 0 0 4px 10px;
+}
+
+/* The reader's own notes: a row beneath the note's last line, held at the
+   scroller's left like an interleaved note but on a dark block with a lilac
+   rule in the reader's text colour — never the muted grey of a generated note.
+   In rail mode it stays in the code column, short of the rail. */
+.codeViewerNote--user {
+  padding-top: 4px;
+  padding-bottom: 6px;
+  color: var(--text-primary);
+}
+.codeViewerNote--user > .codeViewerNoteBody {
+  padding: 6px 10px;
+  background: #15161d;
+  border-left-color: #9D93EE;
+  border-radius: 0 6px 6px 0;
+}
+.codeViewerLines--rail > .codeViewerNote--user {
+  grid-column: 1;
+  left: 0;
+  right: auto;
+  z-index: 1;
+  width: max(200px, calc(100cqw - clamp(240px, 30cqw, 360px)));
+  padding: 4px 10px 6px calc(var(--code-font-size, 12px) * 3.7 + 14px);
+  background: transparent;
+  font-size: 12px;
+  line-height: 1.45;
+}
+.codeViewerLines--rail > .codeViewerNote--user > .codeViewerNoteBody {
+  height: auto;
+  padding: 6px 10px;
+}
+.codeViewerUserNoteText {
+  display: block;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  cursor: pointer;
 }
 
 /* Chunk loaders, one above and one below the rendered window, each shown only
@@ -28480,9 +28624,37 @@ body.appLocked { overflow: hidden; }
 .claudeMsgReaderChip:focus-visible { color: var(--text-primary); background: var(--bg-hover); }
 .claudeMsg--note .claudeMsgReaderChip,
 .claudeMsg--pending .claudeMsgReaderChip { display: none; }
+
+/* Keep, left of the `⤢`: shown on hover (or focus) on a pointer device, so a
+   bubble at rest reads as the reply alone; under a coarse pointer it sits
+   beneath the `⤢`, always shown. Hidden while the chat has no scope to pin to. */
+.claudeMsgKeepChip {
+  position: absolute;
+  top: 2px;
+  right: 32px;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--border-dim);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  color: #9D93EE;
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+}
+.claudeMsgKeepChip::before { content: 'Keep'; }
+.claudeMsg--assistant:hover .claudeMsgKeepChip,
+.claudeMsgKeepChip:focus-visible { opacity: 1; }
+.claudeMsgKeepChip:hover { border-color: #9D93EE; }
+.claudeMsgKeepChip[hidden],
+.claudeMsg--note .claudeMsgKeepChip,
+.claudeMsg--pending .claudeMsgKeepChip { display: none; }
 @media (pointer: coarse) {
   .claudeMsg--assistant.has-readerChip { padding-right: 40px; }
   .claudeMsgReaderChip { width: 36px; height: 36px; top: 0; right: 0; }
+  .claudeMsg--assistant:has(> .claudeMsgKeepChip:not([hidden])) { min-height: 76px; }
+  .claudeMsgKeepChip { top: 40px; right: 0; width: 36px; height: 30px; padding: 0; font-size: 11px; opacity: 1; }
 }
 
 /* The reply reader: full screen on mobile, a centred 720px column over the

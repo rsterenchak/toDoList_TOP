@@ -31,7 +31,14 @@
 // beside the ribbon on hover (desktop), or Flag in the long-press sheet (touch),
 // opens a sheet of four kinds and a note. Flags live in bookFlags.js (local +
 // Supabase); the shelf lists the open ones after the bookmarks, with a Copy that
-// puts them on the clipboard as markdown for a chat. A chapter left part-read
+// puts them on the clipboard as markdown for a chat.
+//
+// Notes are the third mark: a short text in the reader's own words pinned to a
+// paragraph (Note beside the flag on hover, or in the long-press sheet) or, from
+// the code viewer's selection bar, to a line range. A paragraph's notes show
+// beneath it; the shelf lists every note after the flags, grouped by chapter, a
+// line-range note under the chapter whose files include its file. Notes live in
+// bookNotes.js (local + Supabase). A chapter left part-read
 // and not returned to that session shows `left at ¶n` on its shelf row (the rule
 // lives in bookProgress.js).
 //
@@ -64,7 +71,8 @@ import { loadSymbols, getLoadedSymbols } from './codeTrace.js';
 import { createCodeSheet } from './codeSheet.js';
 import { readLocalProgress, recordProgress, flushProgress, loadProgress, noteChapterLeft, noteChapterOpened, noteChapterReached, readAbandoned } from './bookProgress.js';
 import { listBookmarks, isBookmarked, toggleBookmark, removeBookmark, loadBookmarks, anchorBookmarks } from './bookBookmarks.js';
-import { FLAG_KINDS, DEFAULT_FLAG_KIND, flagBadge, flagExcerpt, chapterBookSha, openFlags, openFlagFor, saveFlag, resolveFlag, deleteFlag, loadFlags, anchorFlags, flagsMarkdown } from './bookFlags.js';
+import { FLAG_KINDS, DEFAULT_FLAG_KIND, flagBadge, flagExcerpt, flagRefs, chapterBookSha, openFlags, openFlagFor, saveFlag, resolveFlag, deleteFlag, loadFlags, anchorFlags, flagsMarkdown } from './bookFlags.js';
+import { BOOK_NOTES_EVENT, listNotes, notesForParagraph, saveNote, updateNote, deleteNote, loadNotes, groupNotes, notesMarkdown, noteSpanLabel, noteFirstLine, isLineNote, openNoteSheet, hideNoteSheet } from './bookNotes.js';
 import { loadTours, orderedTours, tourStats } from './codeTours.js';
 import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
 import { getTourProgress, getActiveView } from './prefs.js';
@@ -81,7 +89,7 @@ const BOOK_WATCH_MS = 30 * 1000;
 const BOOK_WATCH_CAP_MS = 10 * 60 * 1000;
 const LAG_NOTE = 'The published copy lags the commit by a deploy (~1 min).';
 
-// How long a touch must rest on a paragraph to open its Bookmark / Flag sheet.
+// How long a touch must rest on a paragraph to open its Bookmark / Flag / Note sheet.
 const BOOKMARK_LONG_PRESS_MS = 500;
 // How long a paragraph reached from a bookmark keeps its amber outline.
 const BOOKMARK_PULSE_MS = 1000;
@@ -734,6 +742,128 @@ function buildFlagSection(view, repo, book) {
     return section;
 }
 
+// ── notes ──
+
+function noteGlyphEl() {
+    const el = document.createElement('span');
+    el.className = 'understandingNoteGlyph';
+    el.setAttribute('aria-hidden', 'true');
+    // The ✎ is drawn by CSS, so a row's or a paragraph's text stays its own.
+    return el;
+}
+
+// The shelf's NOTES · n section, or null when the repo has none: a header with
+// Copy, then the notes grouped by chapter in book order — ✎, the note's first
+// line, `CH n ¶m` or `<file>:<start>–<end>` — each opening its anchor. Line-range
+// notes no chapter covers follow under CODE, paragraph notes whose chapter is
+// gone under REMOVED CHAPTER (listed, not openable).
+function buildNoteSection(view, repo, book) {
+    const notes = listNotes(repo);
+    if (!notes.length) return null;
+    const section = document.createElement('section');
+    section.className = 'understandingNoteSection';
+    section.setAttribute('aria-label', 'Notes');
+    const head = document.createElement('div');
+    head.className = 'understandingFlagHead';
+    const title = document.createElement('span');
+    title.className = 'understandingBookmarkHead';
+    title.textContent = 'NOTES · ' + notes.length;
+    head.appendChild(title);
+    const copy = document.createElement('button');
+    copy.type = 'button';
+    copy.className = 'understandingFlagCopy understandingNoteCopy';
+    copy.textContent = 'Copy';
+    copy.setAttribute('aria-label', 'Copy notes as markdown');
+    copy.addEventListener('click', function () {
+        copyFlags(notesMarkdown(book, listNotes(repo), function (i) { return chapterNum(book, i); }));
+    });
+    head.appendChild(copy);
+    section.appendChild(head);
+
+    const grouped = groupNotes(book, notes);
+    function addRows(list, items, chLabel, onOpen) {
+        items.forEach(function (item) {
+            const n = item.note;
+            const row = document.createElement('li');
+            row.className = 'understandingBookmarkRow understandingNoteRow';
+            const btn = document.createElement(onOpen ? 'button' : 'span');
+            if (onOpen) btn.type = 'button';
+            btn.className = 'understandingBookmarkBtn understandingNoteRowBtn';
+            btn.appendChild(noteGlyphEl());
+            const label = document.createElement('span');
+            label.className = 'understandingBookmarkLabel';
+            label.textContent = noteFirstLine(n);
+            btn.appendChild(label);
+            const where = document.createElement('span');
+            where.className = 'understandingBookmarkCh';
+            where.textContent = isLineNote(n) ? noteSpanLabel(n) : chLabel + ' ¶' + (n.paraIndex + 1);
+            btn.appendChild(where);
+            if (onOpen) btn.addEventListener('click', function () { onOpen(item); });
+            row.appendChild(btn);
+            list.appendChild(row);
+        });
+    }
+    function addGroup(label, items, chLabel, onOpen, removed) {
+        const gh = document.createElement('div');
+        gh.className = 'understandingBookmarkGroup' + (removed ? ' is-removed' : '');
+        gh.textContent = label;
+        wrap.appendChild(gh);
+        const list = document.createElement('ol');
+        list.className = 'understandingBookmarks' + (removed ? ' is-removed' : '');
+        addRows(list, items, chLabel, onOpen);
+        wrap.appendChild(list);
+    }
+    const wrap = document.createElement('div');
+    wrap.className = 'understandingBookmarkGroups';
+    grouped.groups.forEach(function (group) {
+        const chLabel = 'CH ' + chapterNum(book, group.index);
+        addGroup(chLabel + ' · ' + (group.chapter.title || group.chapter.id), group.items, chLabel, function (item) {
+            openNoteAnchor(view, repo, book, group.index, item);
+        });
+    });
+    if (grouped.code.length) {
+        addGroup('CODE', grouped.code, '', function (item) { openNoteAnchor(view, repo, book, -1, item); });
+    }
+    if (grouped.removed.length) {
+        addGroup('REMOVED CHAPTER', grouped.removed.map(function (n) { return { note: n }; }), 'CH ?', null, true);
+    }
+    section.appendChild(wrap);
+    return section;
+}
+
+// Open a shelf note's anchor: a paragraph note's paragraph (pulsed) in the
+// reader, a line-range note's lines in the reader's code pane — opening its
+// chapter (`index`, or the book's first for an uncovered file) first.
+function openNoteAnchor(view, repo, book, index, item) {
+    const n = item.note;
+    if (!isLineNote(n)) {
+        openReader(view, repo, book, index, item.paraIndex);
+        if (item.inRange) pulseParagraph(item.paraIndex);
+        return;
+    }
+    openReader(view, repo, book, Math.max(0, index), 0);
+    const r = reader;
+    // The note's path is already repo-relative, so it opens as is.
+    Promise.resolve(loadManifest(repo)).then(function (manifest) {
+        if (reader !== r) return;
+        const srcRoot = manifest && typeof manifest.srcRoot === 'string' ? manifest.srcRoot : '';
+        const host = understandingIsDesktop() ? ensureCodePane() : codeSheet.ensure();
+        if (!host) return;
+        renderCodeViewer(host, {
+            target: { repo: repo },
+            filePath: n.filePath,
+            srcRoot: srcRoot,
+            startLine: n.lineStart,
+            endLine: n.lineEnd,
+            banner: noteSpanLabel(n),
+        });
+    });
+}
+
+function noteSignature(list) {
+    return (list || []).map(function (n) { return n.createdAt + '#' + n.updatedAt + '#' + n.body; }).sort().join('|');
+}
+
 // Put `text` on the clipboard and say so in a toast.
 function copyFlags(text) {
     const done = function () { showInjectToast('Copied'); };
@@ -824,6 +954,8 @@ function paintShelf(view, repo, book, progress) {
     if (marks) shelf.appendChild(marks);
     const flags = buildFlagSection(view, repo, book);
     if (flags) shelf.appendChild(flags);
+    const notes = buildNoteSection(view, repo, book);
+    if (notes) shelf.appendChild(notes);
 }
 
 // ── tours ──
@@ -1399,8 +1531,8 @@ function buildWidenIndex(book, refs, ctx) {
     return out;
 }
 
-// Open the chat scoped to the chapter on screen.
-// Synchronous, so the chat opens on the tap: the referrers and widen index are
+// Open the chat scoped to the chapter on screen, anchored (for Keep) to the
+// paragraph the reader is on. Synchronous, so the chat opens on the tap: the referrers and widen index are
 // built from whatever symbols index and manifest are already loaded (the reader
 // warms both when it mounts the Ask chip); missing either leaves them thinner.
 function askAboutChapter() {
@@ -1413,7 +1545,14 @@ function askAboutChapter() {
         files: manifest && Array.isArray(manifest.files) ? manifest.files : [],
         getLines: function (file) { return getCachedLines(r.repo, joinSrcRootPath(srcRoot, file)); },
     });
-    if (scope) openChatWithBookScope(scope);
+    if (!scope) return;
+    // A kept answer pins to the paragraph the reader was on when they asked.
+    const ch = r.book.chapters[r.index];
+    const paras = Array.isArray(ch.paragraphs) ? ch.paragraphs : [];
+    const at = Math.min(Math.max(0, r.paraIndex || 0), Math.max(0, paras.length - 1));
+    const segs = paras[at];
+    scope.anchor = { chapterId: ch.id, paraIndex: at, excerpt: flagExcerpt(segs), refs: flagRefs(segs), bookSha: chapterBookSha(ch) };
+    openChatWithBookScope(scope);
 }
 
 // The chat scope for lines `sel.start`–`sel.end` of `sel.filePath` (REPO-relative;
@@ -1725,12 +1864,21 @@ function paintParaFlag(p, flagged) {
     }
 }
 
-// Give paragraph `p` its ribbon and flag button (hover-revealed on desktop, a
-// tap target once set) and the ~500ms long-press that opens its Bookmark / Flag
-// sheet on touch.
+// Give paragraph `p` its ribbon, flag and note buttons (hover-revealed on
+// desktop, a tap target once set) and the ~500ms long-press that opens its
+// Bookmark / Flag / Note sheet on touch. Its notes are painted beneath it.
 function wireParaMark(p, segments, index) {
     const r = reader;
     const chapterId = r.book.chapters[r.index].id;
+    const noteBtn = document.createElement('button');
+    noteBtn.type = 'button';
+    noteBtn.className = 'understandingNoteBtn';
+    noteBtn.appendChild(noteGlyphEl());
+    noteBtn.addEventListener('click', function (event) {
+        event.stopPropagation();
+        openParaNoteSheet(p, segments, index, null);
+    });
+    p.appendChild(noteBtn);
     const flagBtn = document.createElement('button');
     flagBtn.type = 'button';
     flagBtn.className = 'understandingFlagBtn';
@@ -1862,8 +2010,83 @@ function openParaActions(p, segments, index) {
         openFlagSheet(p, segments, index);
     });
     actions.appendChild(flag);
+    const note = document.createElement('button');
+    note.type = 'button';
+    note.className = 'understandingParaAction understandingParaActionNote';
+    note.appendChild(noteGlyphEl());
+    note.appendChild(document.createTextNode('Note'));
+    note.addEventListener('click', function () {
+        paraSheet.hide();
+        openParaNoteSheet(p, segments, index, null);
+    });
+    actions.appendChild(note);
     host.appendChild(actions);
     paraSheet.show();
+}
+
+// Show paragraph `p`'s notes beneath it (each a block that opens its edit
+// sheet), replacing any shown before, and mark the paragraph as noted.
+function paintParaNotes(p, segments, index) {
+    const r = reader;
+    if (!r) return;
+    let next = p.nextSibling;
+    while (next && next.classList && next.classList.contains('understandingParaNote')) {
+        const gone = next;
+        next = next.nextSibling;
+        gone.parentNode.removeChild(gone);
+    }
+    const notes = notesForParagraph(r.repo, r.book.chapters[r.index].id, index);
+    p.classList.toggle('is-noted', notes.length > 0);
+    const btn = p.querySelector(':scope > .understandingNoteBtn');
+    if (btn) btn.setAttribute('aria-label', notes.length ? 'Add another note' : 'Note this paragraph');
+    let after = p;
+    notes.forEach(function (n) {
+        const block = document.createElement('button');
+        block.type = 'button';
+        block.className = 'understandingParaNote' + (n.source === 'answer' ? ' is-answer' : '');
+        block.textContent = n.body;
+        block.setAttribute('aria-label', 'Edit note: ' + noteFirstLine(n));
+        block.addEventListener('click', function () { openParaNoteSheet(p, segments, index, n); });
+        if (after.nextSibling) after.parentNode.insertBefore(block, after.nextSibling);
+        else after.parentNode.appendChild(block);
+        after = block;
+    });
+}
+
+// Open the note sheet for paragraph `index`: a new note, or `existing` to edit
+// (Save and Delete).
+function openParaNoteSheet(p, segments, index, existing) {
+    const r = reader;
+    if (!r) return;
+    const ch = r.book.chapters[r.index];
+    const repo = r.repo;
+    // The block beneath the paragraph repaints on BOOK_NOTES_EVENT.
+    openNoteSheet({
+        title: 'NOTE · ' + paraLabel(index),
+        excerpt: existing ? existing.excerpt : flagExcerpt(segments),
+        body: existing ? existing.body : '',
+        onSave: function (text) {
+            if (existing) updateNote(repo, existing, text);
+            else saveNote(repo, { chapterId: ch.id, paraIndex: index, segments: segments }, { body: text, source: 'user', bookSha: chapterBookSha(ch) });
+        },
+        onDelete: existing ? function () { deleteNote(repo, existing); } : null,
+    });
+}
+
+// A note saved, edited or deleted anywhere (here, the code viewer, a chat's
+// Keep) repaints the open chapter's paragraph notes.
+function onNotesChanged(event) {
+    const r = reader;
+    const repo = event && event.detail ? event.detail.repo : null;
+    if (!r || !r.column || (repo && repo !== r.repo)) return;
+    const paragraphs = r.book.chapters[r.index].paragraphs || [];
+    Array.prototype.forEach.call(r.column.querySelectorAll('p.understandingPara[data-para-index]'), function (p) {
+        const i = Number(p.dataset.paraIndex);
+        paintParaNotes(p, paragraphs[i], i);
+    });
+}
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener(BOOK_NOTES_EVENT, onNotesChanged);
 }
 
 // After a flag changes: the paragraph, the chapter's flag count.
@@ -2402,6 +2625,7 @@ function showChapter(index, paraIndex) {
             wireParaMark(p, segs, i);
             paraEls.push(p);
             r.column.appendChild(p);
+            paintParaNotes(p, segs, i);
             if (ahead && i === aheadAfter) r.column.appendChild(ahead);
         });
         if (ahead && !paragraphs.length) r.column.appendChild(ahead);
@@ -2589,6 +2813,7 @@ function teardownReader() {
     citeSheet.hide();
     paraSheet.hide();
     flagSheet.hide();
+    hideNoteSheet();
     closeCodePane();
     if (codeSheet.isOpen()) codeSheet.reset();
     reader.view.classList.remove('is-reading');
@@ -2667,6 +2892,7 @@ export function renderUnderstandingView(opts) {
         const local = readLocalProgress(repo);
         const localMarks = bookmarkSignature(listBookmarks(repo));
         const localFlags = flagSignature(openFlags(repo));
+        const localNotes = noteSignature(listNotes(repo));
         clear(view);
         paintShelf(view, repo, book, local);
         shelfRepo = repo;
@@ -2676,15 +2902,16 @@ export function renderUnderstandingView(opts) {
             });
         }
         if (!book || !book.chapters.length) return;
-        // The synced record may be newer (another device) and the synced bookmarks
-        // and flags may differ; repaint when any does.
-        return Promise.all([loadProgress(repo), loadBookmarks(repo), loadFlags(repo)]).then(function (res) {
+        // The synced record may be newer (another device) and the synced bookmarks,
+        // flags and notes may differ; repaint when any does.
+        return Promise.all([loadProgress(repo), loadBookmarks(repo), loadFlags(repo), loadNotes(repo)]).then(function (res) {
             const merged = res[0];
             if (seq !== renderSeq || reader) return;
             const sameProgress = merged === local ||
                 (merged && local && merged.updatedAt === local.updatedAt && merged.chapterId === local.chapterId);
             if (sameProgress && bookmarkSignature(res[1]) === localMarks &&
-                flagSignature(openFlags(repo)) === localFlags) return;
+                flagSignature(openFlags(repo)) === localFlags &&
+                noteSignature(listNotes(repo)) === localNotes) return;
             clear(view);
             paintShelf(view, repo, book, merged);
         });

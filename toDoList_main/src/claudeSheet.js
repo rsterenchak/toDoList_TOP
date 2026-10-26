@@ -96,6 +96,7 @@ import {
 import DOMPurify from 'dompurify';
 import { renderMarkdown } from './chatMarkdown.js';
 import { createCodeSheet } from './codeSheet.js';
+import { saveNote, openNoteSheet, noteSpanLabel, linesExcerpt } from './bookNotes.js';
 
 const MOBILE_MAX_WIDTH = 1023;
 // Swipe-down-to-dismiss commit thresholds. A deliberate dismiss is either a
@@ -632,6 +633,8 @@ export function openChatWithBookScope(scope) {
     };
     // The widen list (definitions outside the chapter) rides along when built.
     if (Array.isArray(scope.index)) scoped.index = scope.index.slice();
+    // Where a reply's Keep pins its note — the paragraph the Ask came from.
+    if (scope.anchor && typeof scope.anchor === 'object') scoped.anchor = Object.assign({}, scope.anchor);
     attachBookScopeToChat(scoped);
     const input = sheetQuery('#claudeComposerInput');
     if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
@@ -679,6 +682,16 @@ export function openChatWithSelection(sel) {
         refs: built && Array.isArray(built.refs) ? built.refs.slice() : [],
     };
     if (built && Array.isArray(built.index)) scoped.index = built.index.slice();
+    // Where a reply's Keep pins its note — the selected lines.
+    scoped.anchor = {
+        filePath: scoped.file,
+        lineStart: start,
+        lineEnd: end,
+        excerpt: linesExcerpt(Array.isArray(sel.text) ? sel.text : []),
+        refs: scoped.refs.map(function (r) {
+            return { label: String(r.label || r.symbol || r.file || ''), file: r.file || null, symbol: r.symbol || null, line: r.line != null ? r.line : null };
+        }),
+    };
     attachSelectionScopeToChat(scoped);
     const input = sheetQuery('#claudeComposerInput');
     if (!input) return;
@@ -1407,6 +1420,7 @@ function renderScopeChip() {
         chip.textContent = 'Unscoped';
     }
     host.appendChild(chip);
+    syncKeepChips();
 }
 
 // Attach a committed task to the conversation by id (replacing any current one —
@@ -1551,7 +1565,12 @@ function detachSelectionScope() {
 // The `book_scope` a turn carries: the chapter scope, or the selection scope
 // without its own bookkeeping fields, or null when the chat is neither.
 function chatCodeScope() {
-    if (activeBookScope) return activeBookScope;
+    if (activeBookScope) {
+        if (!activeBookScope.anchor) return activeBookScope;
+        const out = Object.assign({}, activeBookScope);
+        delete out.anchor;
+        return out;
+    }
     if (!activeSelectionScope) return null;
     const s = activeSelectionScope;
     const out = { chapter: s.chapter, prose: s.prose, refs: s.refs };
@@ -4512,6 +4531,138 @@ function mountReaderChip(bubble, turn) {
     });
     bubble.classList.add('has-readerChip');
     bubble.insertBefore(chip, bubble.firstChild);
+    mountKeepChip(bubble, chip);
+}
+
+// ── KEEP (save a reply as a reader note) ──
+// A Keep chip beside the `⤢` on each completed assistant bubble saves the
+// reply's first paragraph — or the part of it the user has selected — as a
+// reader note (bookNotes.js) on whatever the conversation is scoped to: the
+// chapter paragraph the Ask came from, or the selected lines. The note sheet
+// opens pre-filled so the text can be edited first; what's saved is what's in
+// the field. Unscoped (or task-scoped) chats have nothing to pin to, so the chip
+// hides — every chip is re-synced whenever the scope changes.
+
+// Where a kept note is pinned for the current scope, or null when unscoped:
+// `{ chapterId, paraIndex, excerpt, refs, bookSha }` for a chapter (paragraph 0
+// when the scope doesn't record one) or `{ filePath, lineStart, lineEnd,
+// excerpt, refs }` for a selection.
+function keepAnchor() {
+    if (activeSelectionScope) {
+        const sc = activeSelectionScope;
+        if (sc.anchor && typeof sc.anchor.filePath === 'string' && sc.anchor.filePath) return sc.anchor;
+        return { filePath: sc.file, lineStart: sc.start, lineEnd: sc.end, excerpt: '', refs: [] };
+    }
+    if (activeBookScope && activeBookScope.chapter) {
+        const a = activeBookScope.anchor;
+        if (a && typeof a.chapterId === 'string' && a.chapterId) return a;
+        const prose = Array.isArray(activeBookScope.prose) ? activeBookScope.prose : [];
+        return { chapterId: activeBookScope.chapter.id, paraIndex: 0, excerpt: linesExcerpt([String(prose[0] || '')]), refs: [] };
+    }
+    return null;
+}
+
+// `CH 3 ¶2` or `toDo.js:12–14` — the kept note's anchor, for the sheet title.
+function keepAnchorLabel(anchor) {
+    if (anchor.filePath) return noteSpanLabel(anchor);
+    const ch = activeBookScope && activeBookScope.chapter ? activeBookScope.chapter : {};
+    return 'CH ' + (Number(ch.index) || 0) + ' ¶' + ((Number(anchor.paraIndex) || 0) + 1);
+}
+
+// Markdown read as the plain text it shows: code chips, bold, links and
+// list or heading markers flattened, whitespace collapsed.
+function flattenReplyText(text) {
+    return String(text || '')
+        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        .replace(/`+([^`]*)`+/g, '$1')
+        .replace(/\*\*(\S(?:[^*]*?\S)?)\*\*/g, '$1')
+        .replace(/^\s*(#{1,6}|[-*+]|\d+[.)]|>)\s+/gm, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
+// A reply's first paragraph as plain text — the first block that isn't a code
+// fence, its directive lines stripped first.
+export function replyFirstParagraph(content) {
+    const blocks = readerVisibleText(content).split(/\n\s*\n/);
+    for (let i = 0; i < blocks.length; i++) {
+        const block = blocks[i].trim();
+        if (!block || /^(```|~~~)/.test(block)) continue;
+        const flat = flattenReplyText(block);
+        if (flat) return flat;
+    }
+    return '';
+}
+
+// The text the user has selected inside `bubble`, flattened, or ''.
+function bubbleSelectionText(bubble) {
+    try {
+        const sel = typeof window.getSelection === 'function' ? window.getSelection() : null;
+        if (!sel || sel.isCollapsed || !sel.rangeCount) return '';
+        const range = sel.getRangeAt(0);
+        if (!bubble.contains(range.commonAncestorContainer)) return '';
+        return String(sel.toString() || '').replace(/\s+/g, ' ').trim();
+    } catch (e) {
+        return '';
+    }
+}
+
+function syncKeepChip(chip) {
+    chip.hidden = !keepAnchor();
+}
+
+// Re-sync every mounted Keep chip with the current scope.
+function syncKeepChips() {
+    if (typeof document === 'undefined') return;
+    Array.prototype.forEach.call(document.querySelectorAll('.claudeMsgKeepChip'), syncKeepChip);
+}
+
+// Open the note sheet for `bubble`'s reply, pre-filled from `selected` (the
+// selection captured as the chip was pressed) or the reply's first paragraph.
+function keepReply(bubble, selected) {
+    const anchor = keepAnchor();
+    const turn = readerTurnOf.get(bubble);
+    if (!anchor || !turn) return;
+    const repo = activeChatRepo;
+    const text = selected || replyFirstParagraph(turn.content);
+    openNoteSheet({
+        title: 'KEEP · ' + keepAnchorLabel(anchor),
+        excerpt: anchor.excerpt || '',
+        body: text,
+        onSave: function (body) {
+            const res = saveNote(repo, anchor, { body: body, source: 'answer', bookSha: anchor.bookSha || '' });
+            if (res.note) showInjectToast('Kept as a note');
+        },
+    });
+}
+
+// Mount the Keep chip beside the `⤢` chip `readerChip` on a completed bubble.
+function mountKeepChip(bubble, readerChip) {
+    if (bubble.querySelector('.claudeMsgKeepChip')) return;
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    // The label is drawn by CSS, like the ⤢, so the bubble's text stays the reply's own.
+    chip.className = 'claudeMsgKeepChip';
+    chip.setAttribute('aria-label', 'Keep this reply as a note');
+    chip.title = 'Keep as a note';
+    // A press would collapse the selection before the click lands, so it is read
+    // (and the press kept from clearing it) on the way down.
+    let selected = '';
+    chip.addEventListener('mousedown', function (event) {
+        selected = bubbleSelectionText(bubble);
+        if (selected) event.preventDefault();
+    });
+    chip.addEventListener('touchstart', function () {
+        selected = bubbleSelectionText(bubble);
+    }, { passive: true });
+    chip.addEventListener('click', function () {
+        const text = selected || bubbleSelectionText(bubble);
+        selected = '';
+        keepReply(bubble, text);
+    });
+    syncKeepChip(chip);
+    bubble.classList.add('has-keepChip');
+    bubble.insertBefore(chip, readerChip.nextSibling);
 }
 
 // Detect an `INSPECT: <selector>` directive line the Worker emits in iterate

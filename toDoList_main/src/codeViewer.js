@@ -71,11 +71,18 @@
 // Notes sit in a line-aligned rail right of the code when the pane is at least
 // 620px wide and interleave beneath their lines when it is narrower; they never
 // renumber lines or disturb the highlight, the selection or tap-to-trace.
+//
+// The reader's OWN notes (bookNotes.js) ride on the listing beside them: the
+// selection bar's Note pins one to the selected lines, and each shows as a row
+// beneath its last line whenever that row is mounted — a lilac-ruled block,
+// distinct from the muted generated notes, that opens its edit sheet on a tap.
+// They show whether or not the Notes toggle is on.
 
 import { readRepoFile, showInjectToast } from './inject.js';
 import { isCodeNotesOn, setCodeNotesOn } from './prefs.js';
 import { loadSymbols, getLoadedSymbols, isTraceable, tokenizeLine, resolveName, topRanked } from './codeTrace.js';
 import { joinSrcRootPath } from './srcPath.js';
+import { BOOK_NOTES_EVENT, notesForFile, saveNote, updateNote, deleteNote, openNoteSheet, noteSpanLabel, noteFirstLine, linesExcerpt } from './bookNotes.js';
 
 // Lines rendered when a file is opened cold (no jump span).
 const COLD_LINES = 300;
@@ -701,6 +708,12 @@ function buildPane() {
     selectAsk.setAttribute('aria-label', 'Ask Claude about the selected lines');
     selectAsk.title = 'Ask';
     selectAsk.disabled = !askHandler;
+    const selectNote = document.createElement('button');
+    selectNote.type = 'button';
+    selectNote.className = 'codeViewerSelectNote';
+    selectNote.textContent = 'Note';
+    selectNote.setAttribute('aria-label', 'Add a note to the selected lines');
+    selectBar.appendChild(selectNote);
     selectBar.appendChild(selectAsk);
     selectDock.appendChild(selectBar);
 
@@ -738,6 +751,7 @@ function buildPane() {
         selectSpan: selectSpan,
         selectCopy: selectCopy,
         selectAsk: selectAsk,
+        selectNote: selectNote,
     };
     pane._codeSelection = null;
     // The file the Explain control acts on, set synchronously on open (the read
@@ -776,6 +790,7 @@ function buildPane() {
     wireSelection(pane);
     selectCopy.addEventListener('click', function () { copySelection(pane); });
     selectAsk.addEventListener('click', function () { askSelection(pane); });
+    selectNote.addEventListener('click', function () { noteSelection(pane); });
     lines.addEventListener('click', function (event) {
         const btn = event.target && event.target.closest ? event.target.closest('.codeViewerSym') : null;
         const state = pane._codeViewerState;
@@ -1074,6 +1089,36 @@ function askSelection(pane) {
         start: pane._codeSelection.start,
         end: pane._codeSelection.end,
         text: lines,
+    });
+}
+
+// The selection bar's Note: open the note sheet for the selected lines.
+function noteSelection(pane) {
+    const lines = selectedLines(pane);
+    const state = pane._codeViewerState;
+    const sel = pane._codeSelection;
+    if (!lines || !state || !sel) return;
+    const anchor = { filePath: state.filePath, lineStart: sel.start, lineEnd: sel.end, lines: lines };
+    const repo = state.repo;
+    openNoteSheet({
+        title: 'NOTE · ' + noteSpanLabel(anchor),
+        excerpt: linesExcerpt(lines),
+        body: '',
+        onSave: function (text) {
+            saveNote(repo, anchor, { body: text, source: 'user' });
+            clearSelection(pane);
+        },
+    });
+}
+
+// Open `note`'s edit sheet (Save and Delete).
+function editUserNote(repo, note) {
+    openNoteSheet({
+        title: 'NOTE · ' + noteSpanLabel(note),
+        excerpt: note.excerpt,
+        body: note.body,
+        onSave: function (text) { updateNote(repo, note, text); },
+        onDelete: function () { deleteNote(repo, note); },
     });
 }
 
@@ -1396,8 +1441,25 @@ function listingRow(pane, n) {
     return pane._codeViewerRefs.lines.querySelector(':scope > .codeViewerLine[data-line="' + n + '"]');
 }
 
-function buildNote(state, note) {
+// One note row. The default is a generated note; the `user` variant is one of
+// the reader's own (`{ body, lineStart, lineEnd, createdAt }`), a button-like
+// row that opens its edit sheet.
+function buildNote(state, note, variant) {
     const el = document.createElement('div');
+    if (variant === 'user') {
+        el.className = 'codeViewerNote codeViewerNote--user' + (note.source === 'answer' ? ' is-answer' : '');
+        el.dataset.userNote = note.createdAt;
+        const userBody = document.createElement('div');
+        userBody.className = 'codeViewerNoteBody';
+        el.appendChild(userBody);
+        const text = document.createElement('button');
+        text.type = 'button';
+        text.className = 'codeViewerUserNoteText';
+        text.textContent = note.body;
+        text.setAttribute('aria-label', 'Edit note on ' + noteSpanLabel(note) + ': ' + noteFirstLine(note));
+        userBody.appendChild(text);
+        return el;
+    }
     el.className = 'codeViewerNote';
     el.dataset.noteLine = String(note.line);
     // The body carries the left rule; the note itself is the (sticky) slot.
@@ -1442,6 +1504,21 @@ function renderNotes(pane) {
     Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerNote'), function (el) {
         lines.removeChild(el);
     });
+    // The reader's own notes first, each a row beneath its last mounted line, so
+    // the rail below counts them when it places the generated notes.
+    const user = state && state.repo ? notesForFile(state.repo, state.filePath) : [];
+    user.forEach(function (note) {
+        if (note.lineEnd < state.start || note.lineEnd > state.end) return;
+        const row = listingRow(pane, note.lineEnd);
+        if (!row) return;
+        let after = row;
+        while (after.nextSibling && after.nextSibling.classList && after.nextSibling.classList.contains('codeViewerNote--user')) {
+            after = after.nextSibling;
+        }
+        lines.insertBefore(buildNote(state, note, 'user'), after.nextSibling);
+    });
+    const hasUser = !!lines.querySelector(':scope > .codeViewerNote--user');
+    lines.classList.toggle('codeViewerLines--userNotes', hasUser);
     Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerLine[data-note]'), function (row) {
         row.removeAttribute('data-note');
         row.classList.remove('codeViewerLine--noteActive');
@@ -1450,9 +1527,10 @@ function renderNotes(pane) {
     const rail = show && notesMode(pane) === 'rail';
     lines.classList.toggle('codeViewerLines--notes', show);
     lines.classList.toggle('codeViewerLines--rail', rail);
-    // Interleaved notes are sized to the scroller's visible width, which the
-    // body exposes as a size container only while they are showing.
-    refs.body.classList.toggle('codeViewerBody--notes', show && !rail);
+    // Interleaved notes (and the reader's own, in either mode) are sized to the
+    // scroller's visible width, which the body exposes as a size container only
+    // while they are showing.
+    refs.body.classList.toggle('codeViewerBody--notes', (show && !rail) || hasUser);
     if (rec) rec.mode = show ? (rail ? 'rail' : 'inline') : null;
     if (!show) return;
     rec.notes.forEach(function (note) {
@@ -1466,10 +1544,25 @@ function renderNotes(pane) {
         const el = buildNote(state, note);
         const anchor = listingRow(pane, rail ? first : last);
         if (!anchor) return;
-        if (rail) el.style.gridRow = (first - state.start + 1) + ' / span ' + (last - first + 1);
+        if (rail) {
+            // Rows count the reader's notes between them, which sit in the code column.
+            const top = railRow(pane, anchor);
+            const lastRow = listingRow(pane, last);
+            el.style.gridRow = top + ' / span ' + ((lastRow ? railRow(pane, lastRow) : top) - top + 1);
+        }
         lines.insertBefore(el, anchor.nextSibling);
     });
     setActiveNote(pane, rec.active);
+}
+
+// The grid row `row` sits on in rail mode: its place among the code column's
+// children (lines and the reader's notes), 1-based.
+function railRow(pane, row) {
+    let n = 1;
+    for (let el = pane._codeViewerRefs.lines.firstElementChild; el && el !== row; el = el.nextElementSibling) {
+        if (el.classList.contains('codeViewerLine') || el.classList.contains('codeViewerNote--user')) n++;
+    }
+    return n;
 }
 
 // Light note `line` and its rows (0 lights none).
@@ -1478,7 +1571,7 @@ function setActiveNote(pane, line) {
     if (rec) rec.active = line || 0;
     const lines = pane._codeViewerRefs.lines;
     const key = String(line || '');
-    Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerNote'), function (el) {
+    Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerNote:not(.codeViewerNote--user)'), function (el) {
         el.classList.toggle('codeViewerNote--active', !!line && el.dataset.noteLine === key);
     });
     Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerLine[data-note]'), function (row) {
@@ -1488,7 +1581,7 @@ function setActiveNote(pane, line) {
 
 // The note line a listing element belongs to — a note, or a row one covers.
 function noteLineAt(pane, target) {
-    const el = target && target.closest ? target.closest('.codeViewerNote, .codeViewerLine[data-note]') : null;
+    const el = target && target.closest ? target.closest('.codeViewerNote:not(.codeViewerNote--user), .codeViewerLine[data-note]') : null;
     if (!el || el.parentNode !== pane._codeViewerRefs.lines) return 0;
     return Number(el.classList.contains('codeViewerNote') ? el.dataset.noteLine : el.dataset.note) || 0;
 }
@@ -1628,6 +1721,13 @@ function wireNotes(pane) {
     });
     refs.lines.addEventListener('click', function (event) {
         const t = event.target;
+        const own = t && t.closest ? t.closest('.codeViewerNote--user') : null;
+        const state = pane._codeViewerState;
+        if (own && state) {
+            const note = notesForFile(state.repo, state.filePath).filter(function (n) { return n.createdAt === own.dataset.userNote; })[0];
+            if (note) editUserNote(state.repo, note);
+            return;
+        }
         if (!t || !t.closest || !pane._codeNotes || !pane._codeNotes.mode) return;
         const chip = t.closest('.codeViewerNoteRef');
         if (chip) { traceNoteRef(pane, chip); return; }
@@ -1662,6 +1762,17 @@ function wireNotes(pane) {
             requestNotes(pane, false);
         }, NOTES_SCROLL_MS);
     }, { passive: true });
+}
+
+// A note saved, edited or deleted anywhere repaints every pane on that repo.
+if (typeof document !== 'undefined' && typeof document.addEventListener === 'function') {
+    document.addEventListener(BOOK_NOTES_EVENT, function (event) {
+        const repo = event && event.detail ? event.detail.repo : null;
+        panes.forEach(function (p) {
+            const state = p._codeViewerState;
+            if (state && (!repo || state.repo === repo)) renderNotes(p);
+        });
+    });
 }
 
 // ── Trace ────────────────────────────────────────────────────────────────────
@@ -2159,6 +2270,8 @@ export function renderCodeViewer(host, opts) {
         refs.status.textContent = '';
         if (win.end >= win.start) paintRange(state, win.start, win.end, false);
         refreshWindowChrome(state);
+        // The reader's own notes on this file show from the first paint.
+        renderNotes(pane);
         if (hl) scrollToLine(state, hl.start);
         if (pane._codeNotes && pane._codeNotes.on) requestNotes(pane, false);
     });
