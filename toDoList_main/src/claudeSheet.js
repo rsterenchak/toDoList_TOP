@@ -82,7 +82,7 @@ import {
 import { onQueueChange, getQueueRows, getLoadedProjectName } from './agentQueueStore.js';
 import { parsePastedEntry, commitEntryToActiveProject, taskLineTitle } from './entryParse.js';
 import { mountMicButton, stopDictation } from './voiceInput.js';
-import { setChatPaneCollapsed, getUsageBudget, setUsageBudget, getChatBookScope, setChatBookScope } from './prefs.js';
+import { setChatPaneCollapsed, getUsageBudget, setUsageBudget, getChatBookScope, setChatBookScope, getChatSelectionScope, setChatSelectionScope } from './prefs.js';
 import { loadSymbols, getLoadedSymbols, isTraceable, resolveName } from './codeTrace.js';
 import { wireModalDismiss } from './modalDismiss.js';
 import { serializeLayout } from './layoutInspect.js';
@@ -129,6 +129,8 @@ const GHOST_LISTENING_COPY = 'the ghost is listening';
 const CHAT_PLACEHOLDER = 'Ask Agent';
 // The composer placeholder while the chat is scoped to an Understanding chapter.
 const BOOK_SCOPE_PLACEHOLDER = 'Ask about this chapter…';
+// The composer placeholder while the chat is scoped to a code-viewer selection.
+const SELECTION_SCOPE_PLACEHOLDER = 'Ask about these lines…';
 
 const RUNS_KEY = 'todoapp_claudeRuns';
 const RUN_POLL_INTERVAL_MS = 5000;
@@ -212,6 +214,12 @@ let activeChatTask = null;
 // per repo (todoapp_claudeBookScope) and cleared/swapped exactly like
 // activeChatTask. While set, backticked names in replies become code chips.
 let activeBookScope = null;
+// The code-viewer line range SCOPED to the current conversation — `{ file, start,
+// end, chapter, prose, refs, index? }`, `file` repo-relative and the rest the
+// `book_scope` payload (the selected lines stand in for the chapter's prose) —
+// or null. One scope at a time with the task and chapter scopes; persisted per
+// repo (todoapp_claudeSelectionScope) and cleared/swapped exactly like them.
+let activeSelectionScope = null;
 // Opens a resolved `{ repo, file, symbol, line, end, label }` code chip from a
 // scoped reply. Registered by main.js (the reader's pane when the Understanding
 // view is active, Structure's viewer otherwise) so this module never imports
@@ -629,6 +637,52 @@ export function openChatWithBookScope(scope) {
     if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
 }
 
+// Open the chat scoped to lines selected in a code viewer — the selection bar's
+// Ask. `sel` is `{ repo, filePath, srcRoot, start, end, text, scope? }`, `scope`
+// the `{ chapter, prose, refs, index? }` payload understandingView's
+// buildSelectionScope makes (it owns the symbols helpers this module can't
+// import without a cycle); without one the lines alone are sent. Opens the chat
+// surface and frames the repo exactly like openChatWithBookScope, then scopes the
+// conversation to the selection in place of any task or chapter.
+export function openChatWithSelection(sel) {
+    if (!sel || !sel.repo || !sel.filePath) return;
+    const start = Number(sel.start);
+    const end = Number(sel.end);
+    if (!(start >= 1) || !(end >= start)) return;
+    if (window.innerWidth <= MOBILE_MAX_WIDTH) {
+        if (!isClaudeSheetOpen()) openClaudeSheet();
+    } else {
+        document.body.classList.remove('chatPaneCollapsed');
+        setChatPaneCollapsed(false);
+    }
+    setActiveTab('chat');
+    if (attachedFiles.length && attachedRepo && attachedRepo !== sel.repo) {
+        showAttachNotice();
+        return;
+    }
+    if (sel.repo !== activeChatRepo) swapChatWorkspace(sel.repo);
+    const built = sel.scope && sel.scope.chapter && sel.scope.chapter.id ? sel.scope : null;
+    const span = start === end ? String(start) : (start + '–' + end);
+    const scoped = {
+        file: String(sel.filePath),
+        start: start,
+        end: end,
+        chapter: built ? built.chapter : {
+            id: 'sel:' + sel.filePath + ':' + start + '-' + end,
+            title: sel.filePath + (start === end ? ' line ' : ' lines ') + span,
+            index: 0,
+            total: 0,
+        },
+        prose: built && Array.isArray(built.prose) ? built.prose.slice()
+            : (Array.isArray(sel.text) ? [sel.text.join('\n')] : []),
+        refs: built && Array.isArray(built.refs) ? built.refs.slice() : [],
+    };
+    if (built && Array.isArray(built.index)) scoped.index = built.index.slice();
+    attachSelectionScopeToChat(scoped);
+    const input = sheetQuery('#claudeComposerInput');
+    if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
+}
+
 // Register the opener for a scoped reply's code chips (see bookRefOpener).
 export function setBookRefOpener(fn) {
     bookRefOpener = typeof fn === 'function' ? fn : null;
@@ -789,6 +843,7 @@ function swapChatWorkspace(repo) {
     saveIterateEntry();
     saveChatTask();
     saveBookScope();
+    saveSelectionScope();
     setActiveChatRepo(repo);
     chatHistory = loadChatHistory(repo);
     activeIterateEntry = loadIterateEntry(repo);
@@ -797,7 +852,8 @@ function swapChatWorkspace(repo) {
     // across repos and swapping back restores it.
     activeChatTask = loadChatTask(repo);
     activeBookScope = loadBookScope(repo);
-    if (activeBookScope) ensureBookSymbols();
+    activeSelectionScope = loadSelectionScope(repo);
+    if (chatCodeScope()) ensureBookSymbols();
     syncComposerPlaceholder();
     // A workspace swap starts fresh on the incoming repo, so any hand-off link
     // from the outgoing repo's session must not ride a later ship on the new one.
@@ -1290,9 +1346,25 @@ function renderScopeChip() {
     host.innerHTML = '';
     const chip = document.createElement('span');
     chip.className = 'claudeScopeChipTag';
-    // A chapter scope and a task scope never coexist (attaching either drops the
-    // other), so whichever is set owns the chip.
-    if (activeBookScope) {
+    // A selection, chapter or task scope never coexist (attaching any drops the
+    // others), so whichever is set owns the chip.
+    if (activeSelectionScope) {
+        chip.classList.add('claudeScopeChipTag--scoped', 'claudeScopeChipTag--book', 'claudeScopeChipTag--selection');
+        const text = selectionScopeLabel(activeSelectionScope);
+        const label = document.createElement('span');
+        label.className = 'claudeScopeChipLabel';
+        label.textContent = '§ ' + text;
+        label.title = activeSelectionScope.file + ':' + activeSelectionScope.start
+            + (activeSelectionScope.end !== activeSelectionScope.start ? '–' + activeSelectionScope.end : '');
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'claudeScopeChipRemove';
+        x.setAttribute('aria-label', 'Detach selected lines from chat');
+        x.textContent = '✕';
+        x.addEventListener('click', detachSelectionScope);
+        chip.appendChild(label);
+        chip.appendChild(x);
+    } else if (activeBookScope) {
         chip.classList.add('claudeScopeChipTag--scoped', 'claudeScopeChipTag--book');
         const text = bookScopeLabel(activeBookScope);
         const label = document.createElement('span');
@@ -1338,10 +1410,12 @@ function attachTaskToChat(todoId) {
     if (!listLogic.getTodoById(todoId)) return;
     activeChatTask = todoId;
     saveChatTask();
-    // One scope at a time: a task replaces a chapter scope.
-    if (activeBookScope) {
+    // One scope at a time: a task replaces a chapter or selection scope.
+    if (activeBookScope || activeSelectionScope) {
         activeBookScope = null;
         saveBookScope();
+        activeSelectionScope = null;
+        saveSelectionScope();
         syncComposerPlaceholder();
     }
     renderScopeChip();
@@ -1397,6 +1471,10 @@ function bookScopeLabel(scope) {
 function attachBookScopeToChat(scope) {
     activeBookScope = scope;
     saveBookScope();
+    if (activeSelectionScope) {
+        activeSelectionScope = null;
+        saveSelectionScope();
+    }
     if (activeChatTask) {
         activeChatTask = null;
         saveChatTask();
@@ -1417,9 +1495,66 @@ function detachBookScope() {
     if (!chatTurnInFlight) replayChatHistory();
 }
 
+// ── CHAT SELECTION SCOPE (Ask about these lines) ──
+// Stored per repo through prefs.js (todoapp_claudeSelectionScope) beside the
+// chapter scope, and saved / loaded / dropped on exactly the same paths.
+
+function saveSelectionScope() {
+    setChatSelectionScope(activeChatRepo, activeSelectionScope);
+}
+
+function loadSelectionScope(repo) {
+    return getChatSelectionScope(repo);
+}
+
+// `Program.cs:29–31` (`Program.cs:29` for one line) — the chip text.
+function selectionScopeLabel(scope) {
+    const file = String(scope.file || '');
+    const base = file.slice(file.lastIndexOf('/') + 1);
+    return base + ':' + scope.start + (scope.end !== scope.start ? '–' + scope.end : '');
+}
+
+// Scope the conversation to a selection, replacing any task or chapter scope.
+function attachSelectionScopeToChat(scope) {
+    activeSelectionScope = scope;
+    saveSelectionScope();
+    if (activeBookScope) {
+        activeBookScope = null;
+        saveBookScope();
+    }
+    if (activeChatTask) {
+        activeChatTask = null;
+        saveChatTask();
+    }
+    renderScopeChip();
+    syncComposerPlaceholder();
+    ensureBookSymbols();
+}
+
+function detachSelectionScope() {
+    if (!activeSelectionScope) return;
+    activeSelectionScope = null;
+    saveSelectionScope();
+    renderScopeChip();
+    syncComposerPlaceholder();
+    if (!chatTurnInFlight) replayChatHistory();
+}
+
+// The `book_scope` a turn carries: the chapter scope, or the selection scope
+// without its own bookkeeping fields, or null when the chat is neither.
+function chatCodeScope() {
+    if (activeBookScope) return activeBookScope;
+    if (!activeSelectionScope) return null;
+    const s = activeSelectionScope;
+    const out = { chapter: s.chapter, prose: s.prose, refs: s.refs };
+    if (Array.isArray(s.index)) out.index = s.index;
+    return out;
+}
+
 // The work composer's placeholder for the current scope. Possession owns the
 // placeholder while it holds, so this leaves the ghost's alone.
 function workPlaceholder() {
+    if (activeSelectionScope) return SELECTION_SCOPE_PLACEHOLDER;
     return activeBookScope ? BOOK_SCOPE_PLACEHOLDER : CHAT_PLACEHOLDER;
 }
 
@@ -1435,7 +1570,7 @@ function ensureBookSymbols() {
     const repo = activeChatRepo;
     if (!repo || getLoadedSymbols(repo)) return;
     Promise.resolve(loadSymbols(repo)).then(function (symbols) {
-        if (!symbols || !activeBookScope || repo !== activeChatRepo || chatTurnInFlight) return;
+        if (!symbols || !chatCodeScope() || repo !== activeChatRepo || chatTurnInFlight) return;
         replayChatHistory();
     });
 }
@@ -1468,11 +1603,11 @@ export function resolveBookRefSpan(symbols, scope, span) {
 // rendered html/svg boxes are left untouched. A no-op when unscoped or the index
 // hasn't loaded, so unscoped chats render exactly as before.
 function decorateBookRefs(bubble) {
-    if (!bubble || !activeBookScope) return;
+    const scope = chatCodeScope();
+    if (!bubble || !scope) return;
     const repo = activeChatRepo;
     const symbols = getLoadedSymbols(repo);
     if (!symbols) return;
-    const scope = activeBookScope;
     Array.prototype.forEach.call(bubble.querySelectorAll('code'), function (code) {
         if (code.closest('pre, .claudeMsgRendered')) return;
         const ref = resolveBookRefSpan(symbols, scope, code.textContent);
@@ -2505,6 +2640,8 @@ function clearChatConversation() {
     deleteChatTask(activeChatRepo);
     activeBookScope = null;
     saveBookScope();
+    activeSelectionScope = null;
+    saveSelectionScope();
     syncComposerPlaceholder();
     // A fresh chat is no longer the hand-off session, so a subsequent ship must
     // not settle the row the wiped conversation was handed off from.
@@ -3765,6 +3902,11 @@ export function getActiveBookScope() {
     return activeBookScope;
 }
 
+// And for the conversation's selection scope (null when none).
+export function getActiveSelectionScope() {
+    return activeSelectionScope;
+}
+
 // The app's own repo — the "running app" the UI lens can walk live. The
 // Structure view compares its selected repo against this to decide between the
 // live DOM map and the "no published UI map yet" state.
@@ -3794,6 +3936,8 @@ export function setChatWorkspaceRepo(repo) {
     deleteChatTask(repo);
     activeBookScope = null;
     saveBookScope();
+    activeSelectionScope = null;
+    saveSelectionScope();
     syncComposerPlaceholder();
     // Reframing on a new repo starts a fresh session, so drop any hand-off link.
     activeHandoffRow = null;
@@ -4480,8 +4624,9 @@ async function requestAssistantReply(entryId, deep) {
         // re-explanation; resolveActiveChatTask reads its title/description live
         // and self-heals a deleted task to unscoped before the send.
         const attachTask = resolveActiveChatTask();
-        // The chapter scope (if any) rides on every turn the same way.
-        const chatOpts = activeBookScope ? { bookScope: activeBookScope } : undefined;
+        // The chapter or selection scope (if any) rides on every turn the same way.
+        const codeScope = chatCodeScope();
+        const chatOpts = codeScope ? { bookScope: codeScope } : undefined;
         const result = await chatWithWorker(toWorkerTurns(chatHistory), entryId, attachedFiles, activeChatRepo, suggestedAttachedFiles, deep, attachTask, chatOpts);
         const reply = result.reply;
         const suggestedFiles = result.suggestedFiles || [];
@@ -7199,7 +7344,8 @@ export function mountClaudeSheet(parent) {
     // (self-healing to unscoped if the task was deleted while away).
     activeChatTask = loadChatTask(activeChatRepo);
     activeBookScope = loadBookScope(activeChatRepo);
-    if (activeBookScope) ensureBookSymbols();
+    activeSelectionScope = loadSelectionScope(activeChatRepo);
+    if (chatCodeScope()) ensureBookSymbols();
     syncComposerPlaceholder();
     // A fresh mount (reload / PWA relaunch) has no in-flight hand-off — the link
     // is in-memory session state, and once a run ships it rides the persisted run

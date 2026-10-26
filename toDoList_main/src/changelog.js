@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-25',
+        added: [
+            'Select lines in the code viewer by clicking, shift-clicking or dragging down the line numbers (or long-pressing on a phone), then copy them or tap Ask to chat with Claude about just those lines.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-24',
         added: [
             'Assistant replies in the Claude chat now show real formatting, with bold, headings, nested bullets, links and code blocks you can copy, and a ⤢ button opens any reply in a full reading view you can page through.',
@@ -16,7 +23,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-23',
         fixed: [
-            'The code book shelf now picks up a newly published book without a reload, checking when you open the tab, come back from a chapter or a book run finishes, and tapping the repo name checks on demand.',
             'Opening the app straight onto Understanding or Structure no longer says a linked project isn\'t linked to a repo, showing a brief loading state until your repos load instead.',
         ],
     },

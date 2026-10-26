@@ -72,6 +72,7 @@ vi.mock('../src/codeViewer.js', () => ({
     clearCodeViewer: vi.fn(),
     onCodeViewerChange: vi.fn(),
     setCodeViewerCloseHandler: vi.fn(),
+    setCodeViewerAskHandler: vi.fn(),
     // The docked tour player drives the viewer through these.
     setCodeViewerHighlight: vi.fn(() => false),
     setBanner: vi.fn(),

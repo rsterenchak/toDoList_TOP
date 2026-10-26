@@ -1,0 +1,265 @@
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Line selection in the code viewer (codeViewer.js): the gutter numbers are
+// buttons — click selects a line, shift-click / Shift+Enter extends, a drag down
+// the gutter extends live, a 500ms long-press on a touch starts a selection the
+// finger then drags — and a bar with the span, Copy and Ask floats in the range's
+// last row. Escape, a new open and a close all drop it.
+
+const { state } = vi.hoisted(() => ({
+    state: { files: {}, toasts: [] },
+}));
+
+vi.mock('../src/inject.js', () => ({
+    readRepoFile: vi.fn(function (target, filePath) {
+        const canned = state.files[filePath];
+        return Promise.resolve({ ok: true, content: (canned && canned.content) || '', sha: 'sha-1' });
+    }),
+    showInjectToast: vi.fn(function (message) { state.toasts.push(message); }),
+}));
+
+import {
+    renderCodeViewer,
+    clearCodeViewer,
+    resetCodeViewer,
+    setCodeViewerAskHandler,
+    getCodeViewerSelection,
+} from '../src/codeViewer.js';
+
+const tick = () => new Promise((r) => setTimeout(r, 0));
+async function flush(n = 4) { for (let i = 0; i < n; i++) await tick(); }
+
+const TARGET = { repo: 'owner/app' };
+
+function fileOf(n) {
+    const out = [];
+    for (let i = 1; i <= n; i++) out.push('line ' + i);
+    return out.join('\n');
+}
+
+const host = () => document.getElementById('col');
+const row = (n) => document.querySelector('.codeViewerLine[data-line="' + n + '"]');
+const gutter = (n) => row(n).querySelector('.codeViewerGutter');
+const bar = () => document.querySelector('.codeViewerSelectBar');
+// The bar is detached from the listing while nothing is selected.
+const barShown = () => !!bar() && !bar().hidden;
+const selectedLines = () => Array.from(document.querySelectorAll('.codeViewerLine--selected'))
+    .map((el) => Number(el.dataset.line));
+
+function click(el, opts) {
+    el.dispatchEvent(new MouseEvent('click', Object.assign({ bubbles: true, cancelable: true }, opts || {})));
+}
+
+function pointer(type, el, opts) {
+    const ev = new MouseEvent(type, Object.assign({ bubbles: true, cancelable: true }, opts || {}));
+    el.dispatchEvent(ev);
+    return ev;
+}
+
+function touch(type, el, x, y) {
+    const ev = new Event(type, { bubbles: true, cancelable: true });
+    const t = { clientX: x, clientY: y, target: el };
+    ev.touches = type === 'touchend' ? [] : [t];
+    el.dispatchEvent(ev);
+    return ev;
+}
+
+async function open(n) {
+    state.files['src/Program.cs'] = { content: fileOf(n || 60) };
+    renderCodeViewer(host(), { target: TARGET, filePath: 'src/Program.cs', srcRoot: 'src' });
+    await flush();
+}
+
+describe('codeViewer — line selection', () => {
+    beforeEach(() => {
+        resetCodeViewer();
+        state.files = {};
+        state.toasts = [];
+        document.body.innerHTML = '<div id="col"></div>';
+    });
+
+    afterEach(() => {
+        vi.useRealTimers();
+        document.elementFromPoint = undefined;
+    });
+
+    it('renders the gutter numbers as unpressed buttons', async () => {
+        await open();
+        const g = gutter(29);
+        expect(g.tagName).toBe('BUTTON');
+        expect(g.textContent).toBe('29');
+        expect(g.getAttribute('aria-pressed')).toBe('false');
+        expect(barShown()).toBe(false);
+    });
+
+    it('a click selects one line; a shift-click extends to the range', async () => {
+        await open();
+        click(gutter(29));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 29 });
+        expect(selectedLines()).toEqual([29]);
+
+        click(gutter(31), { shiftKey: true });
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 31 });
+        expect(selectedLines()).toEqual([29, 30, 31]);
+        expect(gutter(30).getAttribute('aria-pressed')).toBe('true');
+        expect(gutter(32).getAttribute('aria-pressed')).toBe('false');
+
+        // Extending above the anchor keeps the range ordered.
+        click(gutter(27), { shiftKey: true });
+        expect(getCodeViewerSelection(host())).toEqual({ start: 27, end: 29 });
+
+        // A plain click starts over.
+        click(gutter(40));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 40, end: 40 });
+    });
+
+    it('keeps the selected band separate from the jump highlight', async () => {
+        state.files['src/Program.cs'] = { content: fileOf(60) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'src/Program.cs', startLine: 30, endLine: 30 });
+        await flush();
+        click(gutter(30));
+        expect(row(30).classList.contains('codeViewerLine--hit')).toBe(true);
+        expect(row(30).classList.contains('codeViewerLine--selected')).toBe(true);
+    });
+
+    it('shows the bar with the span in the range\'s last row, and hides it when cleared', async () => {
+        await open();
+        click(gutter(29));
+        expect(barShown()).toBe(true);
+        expect(bar().querySelector('.codeViewerSelectSpan').textContent).toBe('L29');
+        expect(row(29).contains(bar())).toBe(true);
+
+        click(gutter(31), { shiftKey: true });
+        expect(bar().querySelector('.codeViewerSelectSpan').textContent).toBe('L29–L31');
+        expect(row(31).contains(bar())).toBe(true);
+        expect(row(29).contains(bar())).toBe(false);
+
+        const ask = bar().querySelector('.codeViewerSelectAsk');
+        const copy = bar().querySelector('.codeViewerSelectCopy');
+        expect(ask.tagName).toBe('BUTTON');
+        expect(copy.tagName).toBe('BUTTON');
+        expect(ask.getAttribute('aria-label')).toMatch(/Ask/);
+
+        clearCodeViewer(host());
+        expect(getCodeViewerSelection(host())).toBe(null);
+        expect(barShown()).toBe(false);
+    });
+
+    it('Escape clears the selection', async () => {
+        await open();
+        click(gutter(29));
+        click(gutter(31), { shiftKey: true });
+        const ev = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        document.body.dispatchEvent(ev);
+        expect(getCodeViewerSelection(host())).toBe(null);
+        expect(selectedLines()).toEqual([]);
+        expect(barShown()).toBe(false);
+        expect(ev.defaultPrevented).toBe(true);
+
+        // With nothing selected, Escape passes through untouched.
+        const again = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+        document.body.dispatchEvent(again);
+        expect(again.defaultPrevented).toBe(false);
+    });
+
+    it('opening a file (or the same file again) drops the selection', async () => {
+        await open();
+        click(gutter(29));
+        state.files['src/Other.cs'] = { content: fileOf(10) };
+        renderCodeViewer(host(), { target: TARGET, filePath: 'src/Other.cs' });
+        await flush();
+        expect(getCodeViewerSelection(host())).toBe(null);
+        expect(selectedLines()).toEqual([]);
+        expect(barShown()).toBe(false);
+    });
+
+    it('selects and extends by keyboard: Enter, then Shift+Enter', async () => {
+        await open();
+        const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        gutter(12).dispatchEvent(enter);
+        expect(enter.defaultPrevented).toBe(true);
+        expect(getCodeViewerSelection(host())).toEqual({ start: 12, end: 12 });
+        gutter(14).dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true, cancelable: true }));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 12, end: 14 });
+    });
+
+    it('a drag down the gutter extends the selection live, and its trailing click does not reset it', async () => {
+        await open();
+        pointer('pointerdown', gutter(29));
+        pointer('pointermove', gutter(30));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 30 });
+        pointer('pointermove', row(31).querySelector('.codeViewerCode'));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 31 });
+        window.dispatchEvent(new MouseEvent('pointerup'));
+        click(gutter(31));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 31 });
+
+        // After the drag has ended, moving the pointer changes nothing.
+        pointer('pointermove', gutter(40));
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 31 });
+    });
+
+    it('a long-press on a touch starts a selection that a drag extends', async () => {
+        await open();
+        vi.useFakeTimers();
+        const code = row(29).querySelector('.codeViewerCode');
+        touch('touchstart', code, 100, 100);
+        vi.advanceTimersByTime(499);
+        expect(getCodeViewerSelection(host())).toBe(null);
+        vi.advanceTimersByTime(1);
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 29 });
+
+        document.elementFromPoint = () => row(32).querySelector('.codeViewerCode');
+        const move = touch('touchmove', code, 100, 160);
+        expect(move.defaultPrevented).toBe(true);
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 32 });
+        const end = touch('touchend', code, 100, 160);
+        expect(end.defaultPrevented).toBe(true);
+        expect(getCodeViewerSelection(host())).toEqual({ start: 29, end: 32 });
+    });
+
+    it('a touch that moves before the long-press fires is a scroll, not a selection', async () => {
+        await open();
+        vi.useFakeTimers();
+        const code = row(29).querySelector('.codeViewerCode');
+        touch('touchstart', code, 100, 100);
+        const move = touch('touchmove', code, 100, 140);
+        expect(move.defaultPrevented).toBe(false);
+        vi.advanceTimersByTime(600);
+        expect(getCodeViewerSelection(host())).toBe(null);
+    });
+
+    it('Copy copies the raw selected lines and confirms with the toast', async () => {
+        await open();
+        const writeText = vi.fn(() => Promise.resolve());
+        Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } });
+        click(gutter(29));
+        click(gutter(31), { shiftKey: true });
+        bar().querySelector('.codeViewerSelectCopy').click();
+        await flush();
+        expect(writeText).toHaveBeenCalledWith('line 29\nline 30\nline 31');
+        expect(state.toasts).toEqual(['Copied']);
+        delete navigator.clipboard;
+    });
+
+    it('Ask hands the range and its lines to the registered handler; disabled with none', async () => {
+        await open();
+        click(gutter(29));
+        const ask = bar().querySelector('.codeViewerSelectAsk');
+        expect(ask.disabled).toBe(true);
+
+        const handler = vi.fn();
+        setCodeViewerAskHandler(handler);
+        expect(ask.disabled).toBe(false);
+        click(gutter(31), { shiftKey: true });
+        ask.click();
+        expect(handler).toHaveBeenCalledWith({
+            repo: 'owner/app',
+            filePath: 'src/Program.cs',
+            srcRoot: 'src',
+            start: 29,
+            end: 31,
+            text: ['line 29', 'line 30', 'line 31'],
+        });
+    });
+});
