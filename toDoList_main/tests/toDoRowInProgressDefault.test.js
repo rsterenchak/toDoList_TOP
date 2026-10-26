@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildToDoRow } from '../src/toDoRow.js';
 import { listLogic } from '../src/listLogic.js';
 import { PHASE_FILTER_KEY } from '../src/prefs.js';
@@ -122,5 +122,53 @@ describe('new tasks default to in_progress while the IN PROGRESS filter is activ
 
         expect(committed.tit).toBe('Parked idea, renamed');
         expect(committed.status).toBe('idea');
+    });
+});
+
+// iPhone: a full localStorage quota made saveToStorage throw inside the Enter
+// handler, aborting it before the row committed — the title sat stranded in
+// the placeholder with the `+` glyph still showing. saveToStorage now returns
+// false instead, and the handler must finish its UI commit regardless.
+describe('Enter still commits the placeholder when localStorage is full', () => {
+
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.innerHTML = '<div id="mainList"></div>';
+    });
+
+    afterEach(() => {
+        vi.restoreAllMocks();
+    });
+
+    function expectCommitted(row, commitSpy, project, item) {
+        expect(row.querySelector('#addGlyph')).toBeNull();
+        expect(row.querySelector('.todoStatusLabel')).toBeTruthy();
+        expect(commitSpy).toHaveBeenCalledWith(project, item);
+    }
+
+    it('with saveToStorage returning false', () => {
+        const project = freshProject();
+        const built = buildPlaceholderRow(project);
+        expect(built.row.querySelector('#addGlyph')).toBeTruthy();
+        vi.spyOn(listLogic, 'saveToStorage').mockReturnValue(false);
+        const commitSpy = vi.spyOn(listLogic, 'commitBlankPlaceholder').mockImplementation(() => {});
+
+        pressEnterWithTitle(built.row, 'Saved nowhere');
+
+        expectCommitted(built.row, commitSpy, project, built.item);
+    });
+
+    it('with the real allProjects write throwing QuotaExceededError', () => {
+        const project = freshProject();
+        const built = buildPlaceholderRow(project);
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new DOMException('full', 'QuotaExceededError');
+        });
+        const commitSpy = vi.spyOn(listLogic, 'commitBlankPlaceholder').mockImplementation(() => {});
+
+        pressEnterWithTitle(built.row, 'Quota task');
+
+        expectCommitted(built.row, commitSpy, project, built.item);
     });
 });

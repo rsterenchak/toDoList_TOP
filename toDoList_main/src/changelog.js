@@ -15,13 +15,7 @@ export const changelog = [
         fixed: [
             'Pausing mid-sentence while dictating a todo no longer adds a half-finished item, only a tap adds it, and if the phone stops listening on its own your words stay in the field.',
             'Leaving voice dictation running for a minute no longer adds a todo on its own, the mic stops listening and your words stay in the field for you to add.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-25',
-        added: [
-            'A Notes toggle in the code viewer annotates the open file with a short note beside each line (or beneath it on narrow screens) saying what it is for and what it connects to, skipping lines a comment already explains, and tapping a note asks Claude about that line.',
+            'New todos commit again on iPhones whose storage is full, with a one-time warning when space runs out, a Storage line in Settings showing how much the app uses, and a Clear caches action that frees it.',
         ],
     },
 ];

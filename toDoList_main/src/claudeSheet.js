@@ -97,6 +97,7 @@ import DOMPurify from 'dompurify';
 import { renderMarkdown } from './chatMarkdown.js';
 import { createCodeSheet } from './codeSheet.js';
 import { saveNote, openNoteSheet, noteSpanLabel, linesExcerpt } from './bookNotes.js';
+import { safeSetItem, keepNewest } from './storage.js';
 
 const MOBILE_MAX_WIDTH = 1023;
 // Swipe-down-to-dismiss commit thresholds. A deliberate dismiss is either a
@@ -134,6 +135,9 @@ const BOOK_SCOPE_PLACEHOLDER = 'Ask about this chapter…';
 const SELECTION_SCOPE_PLACEHOLDER = 'Ask about these lines…';
 
 const RUNS_KEY = 'todoapp_claudeRuns';
+// Run records kept in localStorage, newest first; older ones are evicted on
+// write so the key can't grow without bound and starve allProjects' quota.
+const RUNS_CAP = 100;
 const RUN_POLL_INTERVAL_MS = 5000;
 const RUN_GIVE_UP_MS = 20 * 60 * 1000;
 
@@ -912,9 +916,7 @@ function loadRunRecords() {
 }
 
 function saveRunRecords() {
-    try {
-        localStorage.setItem(RUNS_KEY, JSON.stringify(runRecords));
-    } catch (e) { /* private mode */ }
+    safeSetItem(RUNS_KEY, JSON.stringify(keepNewest(runRecords, RUNS_CAP, true)));
     // A run record just changed (created, reconciled to SHIPPED, etc.). Notify
     // the todo rows so any description-status dot correlating to this entry
     // re-evaluates live — the shipped edge that flips a pending amber dot green.
@@ -1010,9 +1012,7 @@ function readChatMap() {
 }
 
 function writeChatMap(map) {
-    try {
-        localStorage.setItem(CHAT_KEY, JSON.stringify(map));
-    } catch (e) { /* private mode */ }
+    safeSetItem(CHAT_KEY, JSON.stringify(map));
 }
 
 // Persist the active workspace's thread, capped to the last CHAT_HISTORY_CAP

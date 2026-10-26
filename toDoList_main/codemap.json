@@ -150,6 +150,7 @@
         "auth.js",
         "migration.js",
         "prefs.js",
+        "storage.js",
         "appLock.js",
         "pinLockModal.js",
         "settingsMenu.js",

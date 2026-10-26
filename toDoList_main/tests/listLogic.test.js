@@ -3384,3 +3384,69 @@ describe('listLogic — Conceive Shipped log', () => {
         expect(byId.v2).toBe('nochange');
     });
 });
+
+// ── STORAGE QUOTA ────────────────────────────────────────────────────
+// iOS Safari caps localStorage near 5MB per origin. A QuotaExceededError out
+// of the allProjects write used to propagate out of saveToStorage and abort
+// the todo-row Enter handler mid-commit ("Enter does nothing"). The write is
+// now guarded: it returns false, keeps the in-memory edit, and reports the
+// error to the registered handler.
+describe('listLogic — saveToStorage when localStorage is full', () => {
+    let setItemSpy;
+    let errorSpy;
+
+    beforeEach(() => {
+        listLogic._reset();
+        errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    });
+
+    afterEach(() => {
+        if (setItemSpy) setItemSpy.mockRestore();
+        setItemSpy = null;
+        errorSpy.mockRestore();
+        listLogic.setStorageErrorHandler(null);
+    });
+
+    function quotaError() {
+        return new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    }
+
+    it('returns false, does not throw, keeps the in-memory edit and reports once', () => {
+        listLogic.addProject('Groceries');
+        const handler = vi.fn();
+        listLogic.setStorageErrorHandler(handler);
+        const err = quotaError();
+        setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw err; });
+
+        listLogic.addToDo('Groceries', 'Milk');
+        handler.mockClear();
+
+        let result;
+        expect(() => { result = listLogic.saveToStorage(); }).not.toThrow();
+        expect(result).toBe(false);
+        expect(listLogic.listItems('Groceries').map(i => i.tit)).toContain('Milk');
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(handler.mock.calls[0][0]).toBe(err);
+        expect(handler.mock.calls[0][1]).toBe('allProjects');
+    });
+
+    it('returns true when the write succeeds', () => {
+        listLogic.addProject('Groceries');
+        expect(listLogic.saveToStorage()).toBe(true);
+    });
+
+    it('the coalesced keystroke save swallows the throw too', () => {
+        vi.useFakeTimers();
+        try {
+            listLogic.addProject('Groceries');
+            const handler = vi.fn();
+            listLogic.setStorageErrorHandler(handler);
+            setItemSpy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw quotaError(); });
+            listLogic.saveToStorageSoon();
+            expect(() => vi.runAllTimers()).not.toThrow();
+            expect(handler).toHaveBeenCalledTimes(1);
+        } finally {
+            vi.useRealTimers();
+        }
+    });
+});

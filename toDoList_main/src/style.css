@@ -21794,6 +21794,16 @@ body.row-dragging * { cursor: grabbing !important; }
    houses Replay welcome tour + Help). Tight typography matches the
    mobile settings modal's section headings so the two surfaces feel
    like the same surface in different chrome. */
+/* Read-only "Storage · 1.2 MB used" line above Clear caches in the Data
+   section — item padding so it aligns with the rows, muted so it reads as a
+   status, not an action. */
+.settingsMenuStorageLine {
+  padding: 6px 14px 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
 .settingsMenuSectionHeading {
   font-family: inherit;
   font-size: 10px;

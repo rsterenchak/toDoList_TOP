@@ -9,6 +9,8 @@
 // (completed section, sidebar width, changelog last-seen) is consolidated
 // here so the persisted surface is auditable in one place.
 
+import { safeSetItem, capBookNotesStore, CACHE_BYTE_BUDGET } from './storage.js';
+
 export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
 export const QUEUE_WIDTH_KEY = 'todoapp_queueWidth';
@@ -616,7 +618,10 @@ export function setBookNotes(repo, list) {
         const store = readJsonObject(BOOK_NOTES_KEY);
         if (Array.isArray(list) && list.length) store[repo] = list;
         else delete store[repo];
-        localStorage.setItem(BOOK_NOTES_KEY, JSON.stringify(store));
+        // Capped on write: past the byte budget the least recently updated
+        // synced notes go first (they re-merge from Supabase); unsynced ones
+        // are never evicted.
+        safeSetItem(BOOK_NOTES_KEY, JSON.stringify(capBookNotesStore(store, CACHE_BYTE_BUDGET)));
     } catch (e) { /* ignore quota/private-mode */ }
 }
 

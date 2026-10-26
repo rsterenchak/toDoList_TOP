@@ -15,7 +15,8 @@
 import { getNewestChangelogDate, renderChangelogEntries } from './changelog.js';
 import { readChangelogLastSeen, writeChangelogLastSeen } from './prefs.js';
 import { listLogic } from './listLogic.js';
-import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT } from './inject.js';
+import { makeInjectButton, refreshInjectButton, writeAssignmentToWorker, readAssignmentFromWorker, TODO_RUN_STATUS_EVENT, showInjectToast } from './inject.js';
+import { clearCaches, formatBytes } from './storage.js';
 import { buildManualStatusControl, invokeReviewBadgeTap } from './todoStatus.js';
 import { promptRunInjectedEntry } from './todoMdViewer.js';
 import {
@@ -166,6 +167,23 @@ export function showConfirmModal(options) {
         if (event.target === backdrop) close();
     });
     document.addEventListener('keydown', onKeydown, true);
+}
+
+
+// ── CLEAR CACHES CONFIRM ──
+// The Settings "Clear caches" action, shared by the desktop gear dropdown and
+// the mobile settings modal. Destructive, so it confirms first and names what
+// goes; tasks, settings and sign-in are never touched.
+export function confirmClearCaches() {
+    showConfirmModal({
+        message: 'Clear cached data on this device? Local chat history, Runs tab records, '
+            + 'cached code explanations and synced reader notes are removed; chat and notes '
+            + 'reload from your account. Unsynced notes, tasks, settings and sign-in are kept.',
+        confirmLabel: 'Clear',
+        onConfirm: function() {
+            showInjectToast('Cleared ' + formatBytes(clearCaches()) + ' of cached data.');
+        },
+    });
 }
 
 
