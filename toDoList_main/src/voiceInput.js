@@ -7,8 +7,9 @@
 // user taps the overlay (or re-taps the mic) to add the todo, which fires
 // onFinal with the transcript. Escape / surface-close cancel and discard. A
 // session the platform ends on its own (iOS Safari closes even continuous
-// sessions on a speech pause, or after a no-speech / network error) is a
-// cancel that keeps the text in the field — it never fires onFinal.
+// sessions on a speech pause, or after a no-speech / network error), or that
+// the runaway watchdog ends, is a cancel that keeps the text in the field — it
+// never fires onFinal.
 // Continuous listening — where a speech pause shouldn't end the session — is a
 // separate opt-in: passing onFinal implies it, and a review-only surface that
 // dictates paragraphs (the quick-capture panel) asks for it directly with
@@ -35,7 +36,7 @@ let overlayEl = null;      // the listening overlay element, while shown
 let overlayKeyHandler = null;
 let barTimer = null;
 let runawayTimer = null;   // continuous sessions never self-end, so a watchdog
-                           // commits/cancels a session left running too long
+                           // cancels (keeping text) a session left running too long
 let activeOnFinal = null;   // per-session opt-in: called with the final transcript
                            // when the user commits (overlay tap / mic re-tap),
                            // never on a cancel (Escape / surface-close)
@@ -47,8 +48,8 @@ let sessionId = 0;          // bumped per session start and end; every rec handl
                            // (iOS delivers onend/onresult late, sometimes after a
                            // new session has already started)
 
-// A continuous session has no natural end, so stop it after this long and commit
-// whatever was captured (or cancel if nothing was said).
+// A continuous session has no natural end, so stop it after this long — a
+// keep-text cancel, never a commit.
 const RUNAWAY_MS = 60000;
 
 // Simple mic glyph: a rounded capsule (the mic body) over a stand stem. Shared
@@ -251,12 +252,12 @@ export function startDictation(target, btn, opts = {}) {
     setButtonState(btn, 'recording');
     if (opts.overlay) openOverlay();
     // A continuous session has no natural end, so guard against one left running
-    // (e.g. the user walks away): commit what was captured, or cancel if silent.
+    // (e.g. the user walks away): end it, leaving any transcript in the field
+    // but never firing onFinal — only an explicit tap adds a todo by voice.
     if (continuous && typeof setTimeout === 'function') {
         runawayTimer = setTimeout(function() {
             runawayTimer = null;
-            if (lastTranscript) commitDictation();
-            else cancelDictation();
+            cancelDictation();
         }, RUNAWAY_MS);
     }
 }
@@ -287,8 +288,7 @@ function finishSession(btn) {
     if (shouldCommit) cb(finalText);
 }
 
-// Commit path — the user tapped the overlay, re-tapped the mic, or the runaway
-// watchdog fired. Stop WITHOUT suppressing and finalize here, firing onFinal with
+// Commit path — the user tapped the overlay or re-tapped the mic. Stop WITHOUT suppressing and finalize here, firing onFinal with
 // the transcript (when non-empty). Safe to call when nothing is recording.
 function commitDictation() {
     // No live session, but the tap still has to dismiss: an overlay can outlive
@@ -305,9 +305,9 @@ function commitDictation() {
     finishSession(activeButton);
 }
 
-// Cancel path — Escape, backdrop dismiss, or surface-close cleanup. Suppress the
-// onFinal an onend would otherwise fire and abort so the mic releases promptly,
-// discarding the transcript.
+// Cancel path — Escape, surface-close cleanup, or the runaway watchdog. Suppress
+// the onFinal an onend would otherwise fire and abort so the mic releases
+// promptly; the transcript is never committed but stays in the field.
 function cancelDictation() {
     recording = false;
     suppressFinal = true;
