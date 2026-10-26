@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-26T13:00:41.506Z",
-  "sha": "96ea7cad69e6b1fbe026ab6efe40b6e6ff36260c",
+  "generatedAt": "2026-10-26T14:59:11.880Z",
+  "sha": "27fdf97d7d7dc917a29fe77350740ae52952b6ec",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -81,6 +81,7 @@
     "sidebarDrawer.js",
     "srcPath.js",
     "statsDrawerPanel.js",
+    "storage.js",
     "structureCanvas.js",
     "structureRemoteCapture.js",
     "structureView.js",
@@ -127,11 +128,11 @@
       "selector": "#addProj",
       "label": "Add Proj",
       "file": "main.js",
-      "line": 240,
+      "line": 257,
       "files": [
         {
           "file": "main.js",
-          "line": 240
+          "line": 257
         },
         {
           "file": "style.css",
@@ -215,11 +216,11 @@
       "selector": "#assignmentEditorModal",
       "label": "Assignment Editor Modal",
       "file": "modals.js",
-      "line": 1089,
+      "line": 1107,
       "files": [
         {
           "file": "modals.js",
-          "line": 1089
+          "line": 1107
         },
         {
           "file": "style.css",
@@ -231,11 +232,11 @@
       "selector": "#assignmentEditorModalActions",
       "label": "Assignment Editor Modal Actions",
       "file": "modals.js",
-      "line": 1145,
+      "line": 1163,
       "files": [
         {
           "file": "modals.js",
-          "line": 1145
+          "line": 1163
         },
         {
           "file": "style.css",
@@ -247,11 +248,11 @@
       "selector": "#assignmentEditorModalBackdrop",
       "label": "Assignment Editor Modal Backdrop",
       "file": "modals.js",
-      "line": 1086,
+      "line": 1104,
       "files": [
         {
           "file": "modals.js",
-          "line": 1086
+          "line": 1104
         },
         {
           "file": "style.css",
@@ -263,11 +264,11 @@
       "selector": "#assignmentEditorModalBody",
       "label": "Assignment Editor Modal Body",
       "file": "modals.js",
-      "line": 1121,
+      "line": 1139,
       "files": [
         {
           "file": "modals.js",
-          "line": 1121
+          "line": 1139
         },
         {
           "file": "style.css",
@@ -279,11 +280,11 @@
       "selector": "#assignmentEditorModalCancel",
       "label": "Assignment Editor Modal Cancel",
       "file": "modals.js",
-      "line": 1148,
+      "line": 1166,
       "files": [
         {
           "file": "modals.js",
-          "line": 1148
+          "line": 1166
         },
         {
           "file": "style.css",
@@ -295,11 +296,11 @@
       "selector": "#assignmentEditorModalClose",
       "label": "Assignment Editor Modal Close",
       "file": "modals.js",
-      "line": 1112,
+      "line": 1130,
       "files": [
         {
           "file": "modals.js",
-          "line": 1112
+          "line": 1130
         },
         {
           "file": "style.css",
@@ -311,11 +312,11 @@
       "selector": "#assignmentEditorModalEyebrow",
       "label": "Assignment Editor Modal Eyebrow",
       "file": "modals.js",
-      "line": 1101,
+      "line": 1119,
       "files": [
         {
           "file": "modals.js",
-          "line": 1101
+          "line": 1119
         },
         {
           "file": "style.css",
@@ -327,11 +328,11 @@
       "selector": "#assignmentEditorModalHeader",
       "label": "Assignment Editor Modal Header",
       "file": "modals.js",
-      "line": 1095,
+      "line": 1113,
       "files": [
         {
           "file": "modals.js",
-          "line": 1095
+          "line": 1113
         },
         {
           "file": "style.css",
@@ -343,11 +344,11 @@
       "selector": "#assignmentEditorModalResize",
       "label": "Assignment Editor Modal Resize",
       "file": "modals.js",
-      "line": 1167,
+      "line": 1185,
       "files": [
         {
           "file": "modals.js",
-          "line": 1167
+          "line": 1185
         },
         {
           "file": "style.css",
@@ -359,11 +360,11 @@
       "selector": "#assignmentEditorModalSave",
       "label": "Assignment Editor Modal Save",
       "file": "modals.js",
-      "line": 1154,
+      "line": 1172,
       "files": [
         {
           "file": "modals.js",
-          "line": 1154
+          "line": 1172
         }
       ]
     },
@@ -371,11 +372,11 @@
       "selector": "#assignmentEditorModalStatus",
       "label": "Assignment Editor Modal Status",
       "file": "modals.js",
-      "line": 1140,
+      "line": 1158,
       "files": [
         {
           "file": "modals.js",
-          "line": 1140
+          "line": 1158
         },
         {
           "file": "style.css",
@@ -387,11 +388,11 @@
       "selector": "#assignmentEditorModalTextarea",
       "label": "Assignment Editor Modal Textarea",
       "file": "modals.js",
-      "line": 1124,
+      "line": 1142,
       "files": [
         {
           "file": "modals.js",
-          "line": 1124
+          "line": 1142
         },
         {
           "file": "style.css",
@@ -403,11 +404,11 @@
       "selector": "#assignmentEditorModalTitle",
       "label": "Assignment Editor Modal Title",
       "file": "modals.js",
-      "line": 1098,
+      "line": 1116,
       "files": [
         {
           "file": "modals.js",
-          "line": 1098
+          "line": 1116
         },
         {
           "file": "style.css",
@@ -419,11 +420,11 @@
       "selector": "#assignmentEditorModalTitleText",
       "label": "Assignment Editor Modal Title Text",
       "file": "modals.js",
-      "line": 1105,
+      "line": 1123,
       "files": [
         {
           "file": "modals.js",
-          "line": 1105
+          "line": 1123
         },
         {
           "file": "style.css",
@@ -491,7 +492,7 @@
         },
         {
           "file": "style.css",
-          "line": 22229
+          "line": 22239
         }
       ]
     },
@@ -627,7 +628,7 @@
         },
         {
           "file": "style.css",
-          "line": 23590
+          "line": 23600
         }
       ]
     },
@@ -643,7 +644,7 @@
         },
         {
           "file": "style.css",
-          "line": 23629
+          "line": 23639
         }
       ]
     },
@@ -659,7 +660,7 @@
         },
         {
           "file": "style.css",
-          "line": 23809
+          "line": 23819
         }
       ]
     },
@@ -675,7 +676,7 @@
         },
         {
           "file": "style.css",
-          "line": 24010
+          "line": 24020
         }
       ]
     },
@@ -691,7 +692,7 @@
         },
         {
           "file": "style.css",
-          "line": 23646
+          "line": 23656
         }
       ]
     },
@@ -707,7 +708,7 @@
         },
         {
           "file": "style.css",
-          "line": 23704
+          "line": 23714
         }
       ]
     },
@@ -715,11 +716,11 @@
       "selector": "#bulkDescActions",
       "label": "Bulk Desc Actions",
       "file": "main.js",
-      "line": 1219,
+      "line": 1236,
       "files": [
         {
           "file": "main.js",
-          "line": 1219
+          "line": 1236
         },
         {
           "file": "style.css",
@@ -747,11 +748,11 @@
       "selector": "#changelogDot",
       "label": "Changelog Dot",
       "file": "main.js",
-      "line": 632,
+      "line": 649,
       "files": [
         {
           "file": "main.js",
-          "line": 632
+          "line": 649
         },
         {
           "file": "style.css",
@@ -823,11 +824,11 @@
       "selector": "#changelogModal",
       "label": "Changelog Modal",
       "file": "modals.js",
-      "line": 1351,
+      "line": 1369,
       "files": [
         {
           "file": "modals.js",
-          "line": 1351
+          "line": 1369
         },
         {
           "file": "style.css",
@@ -839,11 +840,11 @@
       "selector": "#changelogModalActions",
       "label": "Changelog Modal Actions",
       "file": "modals.js",
-      "line": 1378,
+      "line": 1396,
       "files": [
         {
           "file": "modals.js",
-          "line": 1378
+          "line": 1396
         },
         {
           "file": "style.css",
@@ -855,11 +856,11 @@
       "selector": "#changelogModalBackdrop",
       "label": "Changelog Modal Backdrop",
       "file": "modals.js",
-      "line": 1348,
+      "line": 1366,
       "files": [
         {
           "file": "modals.js",
-          "line": 1348
+          "line": 1366
         },
         {
           "file": "style.css",
@@ -871,11 +872,11 @@
       "selector": "#changelogModalBody",
       "label": "Changelog Modal Body",
       "file": "modals.js",
-      "line": 1373,
+      "line": 1391,
       "files": [
         {
           "file": "modals.js",
-          "line": 1373
+          "line": 1391
         },
         {
           "file": "style.css",
@@ -887,11 +888,11 @@
       "selector": "#changelogModalClose",
       "label": "Changelog Modal Close",
       "file": "modals.js",
-      "line": 1364,
+      "line": 1382,
       "files": [
         {
           "file": "modals.js",
-          "line": 1364
+          "line": 1382
         },
         {
           "file": "style.css",
@@ -903,11 +904,11 @@
       "selector": "#changelogModalCloseBtn",
       "label": "Changelog Modal Close Btn",
       "file": "modals.js",
-      "line": 1381,
+      "line": 1399,
       "files": [
         {
           "file": "modals.js",
-          "line": 1381
+          "line": 1399
         },
         {
           "file": "style.css",
@@ -919,11 +920,11 @@
       "selector": "#changelogModalHeader",
       "label": "Changelog Modal Header",
       "file": "modals.js",
-      "line": 1357,
+      "line": 1375,
       "files": [
         {
           "file": "modals.js",
-          "line": 1357
+          "line": 1375
         },
         {
           "file": "style.css",
@@ -935,11 +936,11 @@
       "selector": "#changelogModalTitle",
       "label": "Changelog Modal Title",
       "file": "modals.js",
-      "line": 1360,
+      "line": 1378,
       "files": [
         {
           "file": "modals.js",
-          "line": 1360
+          "line": 1378
         },
         {
           "file": "style.css",
@@ -951,11 +952,11 @@
       "selector": "#chatCollapseButton",
       "label": "Chat Collapse Button",
       "file": "main.js",
-      "line": 548,
+      "line": 565,
       "files": [
         {
           "file": "main.js",
-          "line": 548
+          "line": 565
         },
         {
           "file": "style.css",
@@ -967,11 +968,11 @@
       "selector": "#chatExpandButton",
       "label": "Chat Expand Button",
       "file": "main.js",
-      "line": 553,
+      "line": 570,
       "files": [
         {
           "file": "main.js",
-          "line": 553
+          "line": 570
         },
         {
           "file": "style.css",
@@ -1783,11 +1784,11 @@
       "selector": "#confirmModal",
       "label": "Confirm Modal",
       "file": "modals.js",
-      "line": 76,
+      "line": 77,
       "files": [
         {
           "file": "modals.js",
-          "line": 76
+          "line": 77
         },
         {
           "file": "style.css",
@@ -1799,11 +1800,11 @@
       "selector": "#confirmModalActions",
       "label": "Confirm Modal Actions",
       "file": "modals.js",
-      "line": 85,
+      "line": 86,
       "files": [
         {
           "file": "modals.js",
-          "line": 85
+          "line": 86
         },
         {
           "file": "style.css",
@@ -1815,11 +1816,11 @@
       "selector": "#confirmModalBackdrop",
       "label": "Confirm Modal Backdrop",
       "file": "modals.js",
-      "line": 73,
+      "line": 74,
       "files": [
         {
           "file": "modals.js",
-          "line": 73
+          "line": 74
         },
         {
           "file": "style.css",
@@ -1831,11 +1832,11 @@
       "selector": "#confirmModalCancel",
       "label": "Confirm Modal Cancel",
       "file": "modals.js",
-      "line": 88,
+      "line": 89,
       "files": [
         {
           "file": "modals.js",
-          "line": 88
+          "line": 89
         },
         {
           "file": "style.css",
@@ -1847,11 +1848,11 @@
       "selector": "#confirmModalConfirm",
       "label": "Confirm Modal Confirm",
       "file": "modals.js",
-      "line": 93,
+      "line": 94,
       "files": [
         {
           "file": "modals.js",
-          "line": 93
+          "line": 94
         },
         {
           "file": "style.css",
@@ -1863,11 +1864,11 @@
       "selector": "#confirmModalMessage",
       "label": "Confirm Modal Message",
       "file": "modals.js",
-      "line": 81,
+      "line": 82,
       "files": [
         {
           "file": "modals.js",
-          "line": 81
+          "line": 82
         },
         {
           "file": "style.css",
@@ -2247,11 +2248,11 @@
       "selector": "#descDetailPane",
       "label": "Desc Detail Pane",
       "file": "main.js",
-      "line": 677,
+      "line": 694,
       "files": [
         {
           "file": "main.js",
-          "line": 677
+          "line": 694
         },
         {
           "file": "style.css",
@@ -2263,11 +2264,11 @@
       "selector": "#descEditorModal",
       "label": "Desc Editor Modal",
       "file": "modals.js",
-      "line": 225,
+      "line": 243,
       "files": [
         {
           "file": "modals.js",
-          "line": 225
+          "line": 243
         },
         {
           "file": "style.css",
@@ -2279,11 +2280,11 @@
       "selector": "#descEditorModalActions",
       "label": "Desc Editor Modal Actions",
       "file": "modals.js",
-      "line": 758,
+      "line": 776,
       "files": [
         {
           "file": "modals.js",
-          "line": 758
+          "line": 776
         },
         {
           "file": "style.css",
@@ -2295,11 +2296,11 @@
       "selector": "#descEditorModalBackdrop",
       "label": "Desc Editor Modal Backdrop",
       "file": "modals.js",
-      "line": 222,
+      "line": 240,
       "files": [
         {
           "file": "modals.js",
-          "line": 222
+          "line": 240
         },
         {
           "file": "style.css",
@@ -2311,11 +2312,11 @@
       "selector": "#descEditorModalBody",
       "label": "Desc Editor Modal Body",
       "file": "modals.js",
-      "line": 409,
+      "line": 427,
       "files": [
         {
           "file": "modals.js",
-          "line": 409
+          "line": 427
         },
         {
           "file": "style.css",
@@ -2327,11 +2328,11 @@
       "selector": "#descEditorModalClear",
       "label": "Desc Editor Modal Clear",
       "file": "modals.js",
-      "line": 761,
+      "line": 779,
       "files": [
         {
           "file": "modals.js",
-          "line": 761
+          "line": 779
         },
         {
           "file": "style.css",
@@ -2343,11 +2344,11 @@
       "selector": "#descEditorModalClose",
       "label": "Desc Editor Modal Close",
       "file": "modals.js",
-      "line": 279,
+      "line": 297,
       "files": [
         {
           "file": "modals.js",
-          "line": 279
+          "line": 297
         },
         {
           "file": "style.css",
@@ -2359,11 +2360,11 @@
       "selector": "#descEditorModalCopy",
       "label": "Desc Editor Modal Copy",
       "file": "modals.js",
-      "line": 767,
+      "line": 785,
       "files": [
         {
           "file": "modals.js",
-          "line": 767
+          "line": 785
         },
         {
           "file": "style.css",
@@ -2375,11 +2376,11 @@
       "selector": "#descEditorModalEntryDisclosure",
       "label": "Desc Editor Modal Entry Disclosure",
       "file": "modals.js",
-      "line": 684,
+      "line": 702,
       "files": [
         {
           "file": "modals.js",
-          "line": 684
+          "line": 702
         }
       ]
     },
@@ -2387,11 +2388,11 @@
       "selector": "#descEditorModalEntryLabel",
       "label": "Desc Editor Modal Entry Label",
       "file": "modals.js",
-      "line": 415,
+      "line": 433,
       "files": [
         {
           "file": "modals.js",
-          "line": 415
+          "line": 433
         },
         {
           "file": "style.css",
@@ -2403,11 +2404,11 @@
       "selector": "#descEditorModalGenerateSpend",
       "label": "Desc Editor Modal Generate Spend",
       "file": "modals.js",
-      "line": 816,
+      "line": 834,
       "files": [
         {
           "file": "modals.js",
-          "line": 816
+          "line": 834
         },
         {
           "file": "style.css",
@@ -2419,11 +2420,11 @@
       "selector": "#descEditorModalHeader",
       "label": "Desc Editor Modal Header",
       "file": "modals.js",
-      "line": 234,
+      "line": 252,
       "files": [
         {
           "file": "modals.js",
-          "line": 234
+          "line": 252
         },
         {
           "file": "style.css",
@@ -2435,11 +2436,11 @@
       "selector": "#descEditorModalMockup",
       "label": "Desc Editor Modal Mockup",
       "file": "modals.js",
-      "line": 514,
+      "line": 532,
       "files": [
         {
           "file": "modals.js",
-          "line": 514
+          "line": 532
         }
       ]
     },
@@ -2447,11 +2448,11 @@
       "selector": "#descEditorModalRail",
       "label": "Desc Editor Modal Rail",
       "file": "modals.js",
-      "line": 365,
+      "line": 383,
       "files": [
         {
           "file": "modals.js",
-          "line": 365
+          "line": 383
         },
         {
           "file": "style.css",
@@ -2511,11 +2512,11 @@
       "selector": "#descEditorModalStuck",
       "label": "Desc Editor Modal Stuck",
       "file": "modals.js",
-      "line": 466,
+      "line": 484,
       "files": [
         {
           "file": "modals.js",
-          "line": 466
+          "line": 484
         }
       ]
     },
@@ -2523,11 +2524,11 @@
       "selector": "#descEditorModalTextarea",
       "label": "Desc Editor Modal Textarea",
       "file": "modals.js",
-      "line": 723,
+      "line": 741,
       "files": [
         {
           "file": "modals.js",
-          "line": 723
+          "line": 741
         },
         {
           "file": "style.css",
@@ -2539,11 +2540,11 @@
       "selector": "#descEditorModalTitle",
       "label": "Desc Editor Modal Title",
       "file": "modals.js",
-      "line": 237,
+      "line": 255,
       "files": [
         {
           "file": "modals.js",
-          "line": 237
+          "line": 255
         },
         {
           "file": "style.css",
@@ -2555,11 +2556,11 @@
       "selector": "#descEditorModalTitleEdit",
       "label": "Desc Editor Modal Title Edit",
       "file": "modals.js",
-      "line": 254,
+      "line": 272,
       "files": [
         {
           "file": "modals.js",
-          "line": 254
+          "line": 272
         },
         {
           "file": "style.css",
@@ -2571,11 +2572,11 @@
       "selector": "#descEditorModalTitleEyebrow",
       "label": "Desc Editor Modal Title Eyebrow",
       "file": "modals.js",
-      "line": 247,
+      "line": 265,
       "files": [
         {
           "file": "modals.js",
-          "line": 247
+          "line": 265
         },
         {
           "file": "style.css",
@@ -2587,11 +2588,11 @@
       "selector": "#descEditorModalTitleEyebrowLabel",
       "label": "Desc Editor Modal Title Eyebrow Label",
       "file": "modals.js",
-      "line": 250,
+      "line": 268,
       "files": [
         {
           "file": "modals.js",
-          "line": 250
+          "line": 268
         },
         {
           "file": "style.css",
@@ -2603,11 +2604,11 @@
       "selector": "#descEditorModalTitleInput",
       "label": "Desc Editor Modal Title Input",
       "file": "modals.js",
-      "line": 266,
+      "line": 284,
       "files": [
         {
           "file": "modals.js",
-          "line": 266
+          "line": 284
         },
         {
           "file": "style.css",
@@ -2619,11 +2620,11 @@
       "selector": "#descEditorModalTitleText",
       "label": "Desc Editor Modal Title Text",
       "file": "modals.js",
-      "line": 262,
+      "line": 280,
       "files": [
         {
           "file": "modals.js",
-          "line": 262
+          "line": 280
         },
         {
           "file": "style.css",
@@ -2703,11 +2704,11 @@
       "selector": "#desktopChatPane",
       "label": "Desktop Chat Pane",
       "file": "main.js",
-      "line": 537,
+      "line": 554,
       "files": [
         {
           "file": "main.js",
-          "line": 537
+          "line": 554
         },
         {
           "file": "style.css",
@@ -2719,11 +2720,11 @@
       "selector": "#drawerFooter",
       "label": "Drawer Footer",
       "file": "main.js",
-      "line": 1615,
+      "line": 1632,
       "files": [
         {
           "file": "main.js",
-          "line": 1615
+          "line": 1632
         },
         {
           "file": "style.css",
@@ -2735,11 +2736,11 @@
       "selector": "#drawerFooterCount",
       "label": "Drawer Footer Count",
       "file": "main.js",
-      "line": 1620,
+      "line": 1637,
       "files": [
         {
           "file": "main.js",
-          "line": 1620
+          "line": 1637
         },
         {
           "file": "style.css",
@@ -2751,11 +2752,11 @@
       "selector": "#drawerFooterVersion",
       "label": "Drawer Footer Version",
       "file": "main.js",
-      "line": 1617,
+      "line": 1634,
       "files": [
         {
           "file": "main.js",
-          "line": 1617
+          "line": 1634
         },
         {
           "file": "style.css",
@@ -2767,11 +2768,11 @@
       "selector": "#drawerSettingsBtn",
       "label": "Drawer Settings Btn",
       "file": "main.js",
-      "line": 1554,
+      "line": 1571,
       "files": [
         {
           "file": "main.js",
-          "line": 1554
+          "line": 1571
         },
         {
           "file": "style.css",
@@ -2783,11 +2784,11 @@
       "selector": "#drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 1572,
+      "line": 1589,
       "files": [
         {
           "file": "main.js",
-          "line": 1572
+          "line": 1589
         }
       ]
     },
@@ -2795,11 +2796,11 @@
       "selector": "#drawerSettingsBtnWrap",
       "label": "Drawer Settings Btn Wrap",
       "file": "main.js",
-      "line": 1611,
+      "line": 1628,
       "files": [
         {
           "file": "main.js",
-          "line": 1611
+          "line": 1628
         },
         {
           "file": "style.css",
@@ -2907,15 +2908,15 @@
       "selector": "#focusModeToggle",
       "label": "Focus Mode Toggle",
       "file": "main.js",
-      "line": 378,
+      "line": 395,
       "files": [
         {
           "file": "main.js",
-          "line": 378
+          "line": 395
         },
         {
           "file": "style.css",
-          "line": 23039
+          "line": 23049
         }
       ]
     },
@@ -2923,11 +2924,11 @@
       "selector": "#footBar",
       "label": "Foot Bar",
       "file": "main.js",
-      "line": 218,
+      "line": 235,
       "files": [
         {
           "file": "main.js",
-          "line": 218
+          "line": 235
         },
         {
           "file": "style.css",
@@ -2939,11 +2940,11 @@
       "selector": "#footCounts",
       "label": "Foot Counts",
       "file": "main.js",
-      "line": 650,
+      "line": 667,
       "files": [
         {
           "file": "main.js",
-          "line": 650
+          "line": 667
         },
         {
           "file": "style.css",
@@ -2955,11 +2956,11 @@
       "selector": "#footDone",
       "label": "Foot Done",
       "file": "main.js",
-      "line": 652,
+      "line": 669,
       "files": [
         {
           "file": "main.js",
-          "line": 652
+          "line": 669
         },
         {
           "file": "style.css",
@@ -2971,11 +2972,11 @@
       "selector": "#footOpen",
       "label": "Foot Open",
       "file": "main.js",
-      "line": 651,
+      "line": 668,
       "files": [
         {
           "file": "main.js",
-          "line": 651
+          "line": 668
         },
         {
           "file": "style.css",
@@ -2987,11 +2988,11 @@
       "selector": "#footVersion",
       "label": "Foot Version",
       "file": "main.js",
-      "line": 621,
+      "line": 638,
       "files": [
         {
           "file": "main.js",
-          "line": 621
+          "line": 638
         },
         {
           "file": "style.css",
@@ -3003,11 +3004,11 @@
       "selector": "#footVersionLabel",
       "label": "Foot Version Label",
       "file": "main.js",
-      "line": 628,
+      "line": 645,
       "files": [
         {
           "file": "main.js",
-          "line": 628
+          "line": 645
         },
         {
           "file": "style.css",
@@ -3031,11 +3032,11 @@
       "selector": "#helpModal",
       "label": "Help Modal",
       "file": "modals.js",
-      "line": 1519,
+      "line": 1537,
       "files": [
         {
           "file": "modals.js",
-          "line": 1519
+          "line": 1537
         },
         {
           "file": "style.css",
@@ -3047,11 +3048,11 @@
       "selector": "#helpModalActions",
       "label": "Help Modal Actions",
       "file": "modals.js",
-      "line": 1623,
+      "line": 1641,
       "files": [
         {
           "file": "modals.js",
-          "line": 1623
+          "line": 1641
         },
         {
           "file": "style.css",
@@ -3063,11 +3064,11 @@
       "selector": "#helpModalBackdrop",
       "label": "Help Modal Backdrop",
       "file": "modals.js",
-      "line": 1516,
+      "line": 1534,
       "files": [
         {
           "file": "modals.js",
-          "line": 1516
+          "line": 1534
         },
         {
           "file": "style.css",
@@ -3079,11 +3080,11 @@
       "selector": "#helpModalBody",
       "label": "Help Modal Body",
       "file": "modals.js",
-      "line": 1541,
+      "line": 1559,
       "files": [
         {
           "file": "modals.js",
-          "line": 1541
+          "line": 1559
         },
         {
           "file": "style.css",
@@ -3095,11 +3096,11 @@
       "selector": "#helpModalClose",
       "label": "Help Modal Close",
       "file": "modals.js",
-      "line": 1532,
+      "line": 1550,
       "files": [
         {
           "file": "modals.js",
-          "line": 1532
+          "line": 1550
         },
         {
           "file": "style.css",
@@ -3111,11 +3112,11 @@
       "selector": "#helpModalCloseBtn",
       "label": "Help Modal Close Btn",
       "file": "modals.js",
-      "line": 1626,
+      "line": 1644,
       "files": [
         {
           "file": "modals.js",
-          "line": 1626
+          "line": 1644
         },
         {
           "file": "style.css",
@@ -3127,11 +3128,11 @@
       "selector": "#helpModalHeader",
       "label": "Help Modal Header",
       "file": "modals.js",
-      "line": 1525,
+      "line": 1543,
       "files": [
         {
           "file": "modals.js",
-          "line": 1525
+          "line": 1543
         },
         {
           "file": "style.css",
@@ -3143,11 +3144,11 @@
       "selector": "#helpModalTitle",
       "label": "Help Modal Title",
       "file": "modals.js",
-      "line": 1528,
+      "line": 1546,
       "files": [
         {
           "file": "modals.js",
-          "line": 1528
+          "line": 1546
         },
         {
           "file": "style.css",
@@ -3167,7 +3168,7 @@
         },
         {
           "file": "style.css",
-          "line": 21979
+          "line": 21989
         }
       ]
     },
@@ -3183,7 +3184,7 @@
         },
         {
           "file": "style.css",
-          "line": 22003
+          "line": 22013
         }
       ]
     },
@@ -3199,7 +3200,7 @@
         },
         {
           "file": "style.css",
-          "line": 21989
+          "line": 21999
         }
       ]
     },
@@ -3215,7 +3216,7 @@
         },
         {
           "file": "style.css",
-          "line": 22007
+          "line": 22017
         }
       ]
     },
@@ -3231,7 +3232,7 @@
         },
         {
           "file": "style.css",
-          "line": 22015
+          "line": 22025
         }
       ]
     },
@@ -3247,7 +3248,7 @@
         },
         {
           "file": "style.css",
-          "line": 22529
+          "line": 22539
         }
       ]
     },
@@ -3263,7 +3264,7 @@
         },
         {
           "file": "style.css",
-          "line": 26659
+          "line": 26669
         }
       ]
     },
@@ -3303,7 +3304,7 @@
         },
         {
           "file": "style.css",
-          "line": 27001
+          "line": 27011
         }
       ]
     },
@@ -3319,7 +3320,7 @@
         },
         {
           "file": "style.css",
-          "line": 26828
+          "line": 26838
         }
       ]
     },
@@ -3335,7 +3336,7 @@
         },
         {
           "file": "style.css",
-          "line": 26872
+          "line": 26882
         }
       ]
     },
@@ -3387,7 +3388,7 @@
         },
         {
           "file": "style.css",
-          "line": 26859
+          "line": 26869
         }
       ]
     },
@@ -3403,7 +3404,7 @@
         },
         {
           "file": "style.css",
-          "line": 26848
+          "line": 26858
         }
       ]
     },
@@ -3419,7 +3420,7 @@
         },
         {
           "file": "style.css",
-          "line": 26837
+          "line": 26847
         }
       ]
     },
@@ -3435,7 +3436,7 @@
         },
         {
           "file": "style.css",
-          "line": 26895
+          "line": 26905
         }
       ]
     },
@@ -3463,7 +3464,7 @@
         },
         {
           "file": "style.css",
-          "line": 26933
+          "line": 26943
         }
       ]
     },
@@ -3539,7 +3540,7 @@
         },
         {
           "file": "style.css",
-          "line": 27008
+          "line": 27018
         }
       ]
     },
@@ -3555,7 +3556,7 @@
         },
         {
           "file": "style.css",
-          "line": 26855
+          "line": 26865
         }
       ]
     },
@@ -3571,7 +3572,7 @@
         },
         {
           "file": "style.css",
-          "line": 27020
+          "line": 27030
         }
       ]
     },
@@ -3587,7 +3588,7 @@
         },
         {
           "file": "style.css",
-          "line": 27226
+          "line": 27236
         }
       ]
     },
@@ -3651,7 +3652,7 @@
         },
         {
           "file": "style.css",
-          "line": 26398
+          "line": 26408
         }
       ]
     },
@@ -3667,7 +3668,7 @@
         },
         {
           "file": "style.css",
-          "line": 26255
+          "line": 26265
         }
       ]
     },
@@ -3683,7 +3684,7 @@
         },
         {
           "file": "style.css",
-          "line": 26342
+          "line": 26352
         }
       ]
     },
@@ -3711,7 +3712,7 @@
         },
         {
           "file": "style.css",
-          "line": 26297
+          "line": 26307
         }
       ]
     },
@@ -3727,7 +3728,7 @@
         },
         {
           "file": "style.css",
-          "line": 26278
+          "line": 26288
         }
       ]
     },
@@ -3743,7 +3744,7 @@
         },
         {
           "file": "style.css",
-          "line": 26265
+          "line": 26275
         }
       ]
     },
@@ -3771,7 +3772,7 @@
         },
         {
           "file": "style.css",
-          "line": 26286
+          "line": 26296
         }
       ]
     },
@@ -3787,7 +3788,7 @@
         },
         {
           "file": "style.css",
-          "line": 26311
+          "line": 26321
         }
       ]
     },
@@ -3815,7 +3816,7 @@
         },
         {
           "file": "style.css",
-          "line": 26293
+          "line": 26303
         }
       ]
     },
@@ -3831,7 +3832,7 @@
         },
         {
           "file": "style.css",
-          "line": 26356
+          "line": 26366
         }
       ]
     },
@@ -3847,7 +3848,7 @@
         },
         {
           "file": "style.css",
-          "line": 26739
+          "line": 26749
         }
       ]
     },
@@ -3863,7 +3864,7 @@
         },
         {
           "file": "style.css",
-          "line": 26667
+          "line": 26677
         }
       ]
     },
@@ -3879,7 +3880,7 @@
         },
         {
           "file": "style.css",
-          "line": 26711
+          "line": 26721
         }
       ]
     },
@@ -3907,7 +3908,7 @@
         },
         {
           "file": "style.css",
-          "line": 26698
+          "line": 26708
         }
       ]
     },
@@ -3923,7 +3924,7 @@
         },
         {
           "file": "style.css",
-          "line": 26687
+          "line": 26697
         }
       ]
     },
@@ -3939,7 +3940,7 @@
         },
         {
           "file": "style.css",
-          "line": 26676
+          "line": 26686
         }
       ]
     },
@@ -3967,7 +3968,7 @@
         },
         {
           "file": "style.css",
-          "line": 26694
+          "line": 26704
         }
       ]
     },
@@ -3983,7 +3984,7 @@
         },
         {
           "file": "style.css",
-          "line": 26500
+          "line": 26510
         }
       ]
     },
@@ -4035,7 +4036,7 @@
         },
         {
           "file": "style.css",
-          "line": 27291
+          "line": 27301
         }
       ]
     },
@@ -4051,7 +4052,7 @@
         },
         {
           "file": "style.css",
-          "line": 26355
+          "line": 26365
         }
       ]
     },
@@ -4067,7 +4068,7 @@
         },
         {
           "file": "style.css",
-          "line": 22530
+          "line": 22540
         }
       ]
     },
@@ -4075,11 +4076,11 @@
       "selector": "#mainBar",
       "label": "Main Bar",
       "file": "main.js",
-      "line": 221,
+      "line": 238,
       "files": [
         {
           "file": "main.js",
-          "line": 221
+          "line": 238
         },
         {
           "file": "style.css",
@@ -4091,11 +4092,11 @@
       "selector": "#mainList",
       "label": "Main List",
       "file": "main.js",
-      "line": 249,
+      "line": 266,
       "files": [
         {
           "file": "main.js",
-          "line": 249
+          "line": 266
         },
         {
           "file": "style.css",
@@ -4107,11 +4108,11 @@
       "selector": "#mainSec",
       "label": "Main Sec",
       "file": "main.js",
-      "line": 217,
+      "line": 234,
       "files": [
         {
           "file": "main.js",
-          "line": 217
+          "line": 234
         },
         {
           "file": "style.css",
@@ -4123,11 +4124,11 @@
       "selector": "#mainSplit",
       "label": "Main Split",
       "file": "main.js",
-      "line": 534,
+      "line": 551,
       "files": [
         {
           "file": "main.js",
-          "line": 534
+          "line": 551
         },
         {
           "file": "style.css",
@@ -4151,11 +4152,11 @@
       "selector": "#missedDatesModal",
       "label": "Missed Dates Modal",
       "file": "modals.js",
-      "line": 1682,
+      "line": 1700,
       "files": [
         {
           "file": "modals.js",
-          "line": 1682
+          "line": 1700
         },
         {
           "file": "style.css",
@@ -4167,11 +4168,11 @@
       "selector": "#missedDatesModalActions",
       "label": "Missed Dates Modal Actions",
       "file": "modals.js",
-      "line": 1784,
+      "line": 1802,
       "files": [
         {
           "file": "modals.js",
-          "line": 1784
+          "line": 1802
         },
         {
           "file": "style.css",
@@ -4183,11 +4184,11 @@
       "selector": "#missedDatesModalBackdrop",
       "label": "Missed Dates Modal Backdrop",
       "file": "modals.js",
-      "line": 1679,
+      "line": 1697,
       "files": [
         {
           "file": "modals.js",
-          "line": 1679
+          "line": 1697
         },
         {
           "file": "style.css",
@@ -4199,11 +4200,11 @@
       "selector": "#missedDatesModalBody",
       "label": "Missed Dates Modal Body",
       "file": "modals.js",
-      "line": 1704,
+      "line": 1722,
       "files": [
         {
           "file": "modals.js",
-          "line": 1704
+          "line": 1722
         },
         {
           "file": "style.css",
@@ -4215,11 +4216,11 @@
       "selector": "#missedDatesModalClose",
       "label": "Missed Dates Modal Close",
       "file": "modals.js",
-      "line": 1695,
+      "line": 1713,
       "files": [
         {
           "file": "modals.js",
-          "line": 1695
+          "line": 1713
         },
         {
           "file": "style.css",
@@ -4231,11 +4232,11 @@
       "selector": "#missedDatesModalCloseBtn",
       "label": "Missed Dates Modal Close Btn",
       "file": "modals.js",
-      "line": 1787,
+      "line": 1805,
       "files": [
         {
           "file": "modals.js",
-          "line": 1787
+          "line": 1805
         },
         {
           "file": "style.css",
@@ -4247,11 +4248,11 @@
       "selector": "#missedDatesModalHeader",
       "label": "Missed Dates Modal Header",
       "file": "modals.js",
-      "line": 1688,
+      "line": 1706,
       "files": [
         {
           "file": "modals.js",
-          "line": 1688
+          "line": 1706
         },
         {
           "file": "style.css",
@@ -4263,11 +4264,11 @@
       "selector": "#missedDatesModalTitle",
       "label": "Missed Dates Modal Title",
       "file": "modals.js",
-      "line": 1691,
+      "line": 1709,
       "files": [
         {
           "file": "modals.js",
-          "line": 1691
+          "line": 1709
         },
         {
           "file": "style.css",
@@ -4279,11 +4280,11 @@
       "selector": "#mobileProjChevCol",
       "label": "Mobile Proj Chev Col",
       "file": "main.js",
-      "line": 775,
+      "line": 792,
       "files": [
         {
           "file": "main.js",
-          "line": 775
+          "line": 792
         },
         {
           "file": "style.css",
@@ -4295,11 +4296,11 @@
       "selector": "#mobileProjChevron",
       "label": "Mobile Proj Chevron",
       "file": "main.js",
-      "line": 800,
+      "line": 817,
       "files": [
         {
           "file": "main.js",
-          "line": 800
+          "line": 817
         }
       ]
     },
@@ -4307,11 +4308,11 @@
       "selector": "#mobileProjCountBadge",
       "label": "Mobile Proj Count Badge",
       "file": "main.js",
-      "line": 821,
+      "line": 838,
       "files": [
         {
           "file": "main.js",
-          "line": 821
+          "line": 838
         }
       ]
     },
@@ -4319,11 +4320,11 @@
       "selector": "#mobileProjCounts",
       "label": "Mobile Proj Counts",
       "file": "main.js",
-      "line": 773,
+      "line": 790,
       "files": [
         {
           "file": "main.js",
-          "line": 773
+          "line": 790
         },
         {
           "file": "style.css",
@@ -4335,11 +4336,11 @@
       "selector": "#mobileProjHeader",
       "label": "Mobile Proj Header",
       "file": "main.js",
-      "line": 766,
+      "line": 783,
       "files": [
         {
           "file": "main.js",
-          "line": 766
+          "line": 783
         },
         {
           "file": "style.css",
@@ -4351,11 +4352,11 @@
       "selector": "#mobileProjLabel",
       "label": "Mobile Proj Label",
       "file": "main.js",
-      "line": 767,
+      "line": 784,
       "files": [
         {
           "file": "main.js",
-          "line": 767
+          "line": 784
         },
         {
           "file": "style.css",
@@ -4367,11 +4368,11 @@
       "selector": "#mobileProjMain",
       "label": "Mobile Proj Main",
       "file": "main.js",
-      "line": 774,
+      "line": 791,
       "files": [
         {
           "file": "main.js",
-          "line": 774
+          "line": 791
         },
         {
           "file": "style.css",
@@ -4383,11 +4384,11 @@
       "selector": "#mobileProjName",
       "label": "Mobile Proj Name",
       "file": "main.js",
-      "line": 770,
+      "line": 787,
       "files": [
         {
           "file": "main.js",
-          "line": 770
+          "line": 787
         },
         {
           "file": "style.css",
@@ -4399,11 +4400,11 @@
       "selector": "#mobileProjNext",
       "label": "Mobile Proj Next",
       "file": "main.js",
-      "line": 771,
+      "line": 788,
       "files": [
         {
           "file": "main.js",
-          "line": 771
+          "line": 788
         }
       ]
     },
@@ -4411,11 +4412,11 @@
       "selector": "#mobileProjPill",
       "label": "Mobile Proj Pill",
       "file": "main.js",
-      "line": 826,
+      "line": 843,
       "files": [
         {
           "file": "main.js",
-          "line": 826
+          "line": 843
         },
         {
           "file": "style.css",
@@ -4427,11 +4428,11 @@
       "selector": "#mobileProjPrev",
       "label": "Mobile Proj Prev",
       "file": "main.js",
-      "line": 769,
+      "line": 786,
       "files": [
         {
           "file": "main.js",
-          "line": 769
+          "line": 786
         }
       ]
     },
@@ -4439,11 +4440,11 @@
       "selector": "#mobileProjRunSpinner",
       "label": "Mobile Proj Run Spinner",
       "file": "main.js",
-      "line": 839,
+      "line": 856,
       "files": [
         {
           "file": "main.js",
-          "line": 839
+          "line": 856
         }
       ]
     },
@@ -4451,11 +4452,11 @@
       "selector": "#mobileProjStats",
       "label": "Mobile Proj Stats",
       "file": "main.js",
-      "line": 772,
+      "line": 789,
       "files": [
         {
           "file": "main.js",
-          "line": 772
+          "line": 789
         },
         {
           "file": "style.css",
@@ -4467,11 +4468,11 @@
       "selector": "#mobileProjTitleRow",
       "label": "Mobile Proj Title Row",
       "file": "main.js",
-      "line": 768,
+      "line": 785,
       "files": [
         {
           "file": "main.js",
-          "line": 768
+          "line": 785
         },
         {
           "file": "style.css",
@@ -4483,11 +4484,11 @@
       "selector": "#mobileSidebarClose",
       "label": "Mobile Sidebar Close",
       "file": "main.js",
-      "line": 1200,
+      "line": 1217,
       "files": [
         {
           "file": "main.js",
-          "line": 1200
+          "line": 1217
         },
         {
           "file": "style.css",
@@ -4539,7 +4540,7 @@
         },
         {
           "file": "style.css",
-          "line": 24540
+          "line": 24550
         }
       ]
     },
@@ -4555,7 +4556,7 @@
         },
         {
           "file": "style.css",
-          "line": 24539
+          "line": 24549
         }
       ]
     },
@@ -4571,7 +4572,7 @@
         },
         {
           "file": "style.css",
-          "line": 24371
+          "line": 24381
         }
       ]
     },
@@ -4771,7 +4772,7 @@
         },
         {
           "file": "style.css",
-          "line": 23137
+          "line": 23147
         }
       ]
     },
@@ -4787,7 +4788,7 @@
         },
         {
           "file": "style.css",
-          "line": 23069
+          "line": 23079
         }
       ]
     },
@@ -4795,15 +4796,15 @@
       "selector": "#musicToggle",
       "label": "Music Toggle",
       "file": "main.js",
-      "line": 328,
+      "line": 345,
       "files": [
         {
           "file": "main.js",
-          "line": 328
+          "line": 345
         },
         {
           "file": "style.css",
-          "line": 22904
+          "line": 22914
         }
       ]
     },
@@ -4811,11 +4812,11 @@
       "selector": "#navBar",
       "label": "Nav Bar",
       "file": "main.js",
-      "line": 216,
+      "line": 233,
       "files": [
         {
           "file": "main.js",
-          "line": 216
+          "line": 233
         },
         {
           "file": "style.css",
@@ -4855,11 +4856,11 @@
       "selector": "#outerContainer",
       "label": "Outer Container",
       "file": "main.js",
-      "line": 215,
+      "line": 232,
       "files": [
         {
           "file": "main.js",
-          "line": 215
+          "line": 232
         },
         {
           "file": "style.css",
@@ -4895,7 +4896,7 @@
         },
         {
           "file": "style.css",
-          "line": 28418
+          "line": 28428
         }
       ]
     },
@@ -4911,7 +4912,7 @@
         },
         {
           "file": "style.css",
-          "line": 28321
+          "line": 28331
         }
       ]
     },
@@ -4927,7 +4928,7 @@
         },
         {
           "file": "style.css",
-          "line": 28372
+          "line": 28382
         }
       ]
     },
@@ -4955,7 +4956,7 @@
         },
         {
           "file": "style.css",
-          "line": 28358
+          "line": 28368
         }
       ]
     },
@@ -4983,7 +4984,7 @@
         },
         {
           "file": "style.css",
-          "line": 28346
+          "line": 28356
         }
       ]
     },
@@ -4999,7 +5000,7 @@
         },
         {
           "file": "style.css",
-          "line": 28280
+          "line": 28290
         }
       ]
     },
@@ -5039,7 +5040,7 @@
         },
         {
           "file": "style.css",
-          "line": 28354
+          "line": 28364
         }
       ]
     },
@@ -5079,7 +5080,7 @@
         },
         {
           "file": "style.css",
-          "line": 22735
+          "line": 22745
         }
       ]
     },
@@ -5087,11 +5088,11 @@
       "selector": "#pomodoroToggle",
       "label": "Pomodoro Toggle",
       "file": "main.js",
-      "line": 292,
+      "line": 309,
       "files": [
         {
           "file": "main.js",
-          "line": 292
+          "line": 309
         },
         {
           "file": "style.css",
@@ -5103,11 +5104,11 @@
       "selector": "#projButton",
       "label": "Proj Button",
       "file": "main.js",
-      "line": 241,
+      "line": 258,
       "files": [
         {
           "file": "main.js",
-          "line": 241
+          "line": 258
         },
         {
           "file": "style.css",
@@ -5119,11 +5120,11 @@
       "selector": "#projChild",
       "label": "Proj Child",
       "file": "main.js",
-      "line": 2197,
+      "line": 2214,
       "files": [
         {
           "file": "main.js",
-          "line": 2197
+          "line": 2214
         },
         {
           "file": "style.css",
@@ -5151,11 +5152,11 @@
       "selector": "#projInput",
       "label": "Proj Input",
       "file": "main.js",
-      "line": 2205,
+      "line": 2222,
       "files": [
         {
           "file": "main.js",
-          "line": 2205
+          "line": 2222
         },
         {
           "file": "style.css",
@@ -5183,11 +5184,11 @@
       "selector": "#projectPickerDropdown",
       "label": "Project Picker Dropdown",
       "file": "main.js",
-      "line": 882,
+      "line": 899,
       "files": [
         {
           "file": "main.js",
-          "line": 882
+          "line": 899
         },
         {
           "file": "style.css",
@@ -5419,11 +5420,11 @@
       "selector": "#queueResizeHandle",
       "label": "Queue Resize Handle",
       "file": "main.js",
-      "line": 690,
+      "line": 707,
       "files": [
         {
           "file": "main.js",
-          "line": 690
+          "line": 707
         },
         {
           "file": "style.css",
@@ -5467,7 +5468,7 @@
         },
         {
           "file": "style.css",
-          "line": 27866
+          "line": 27876
         }
       ]
     },
@@ -5483,7 +5484,7 @@
         },
         {
           "file": "style.css",
-          "line": 27910
+          "line": 27920
         }
       ]
     },
@@ -5499,7 +5500,7 @@
         },
         {
           "file": "style.css",
-          "line": 27897
+          "line": 27907
         }
       ]
     },
@@ -5515,7 +5516,7 @@
         },
         {
           "file": "style.css",
-          "line": 27963
+          "line": 27973
         }
       ]
     },
@@ -5531,7 +5532,7 @@
         },
         {
           "file": "style.css",
-          "line": 27917
+          "line": 27927
         }
       ]
     },
@@ -5547,7 +5548,7 @@
         },
         {
           "file": "style.css",
-          "line": 28177
+          "line": 28187
         }
       ]
     },
@@ -5575,7 +5576,7 @@
         },
         {
           "file": "style.css",
-          "line": 27886
+          "line": 27896
         }
       ]
     },
@@ -5591,7 +5592,7 @@
         },
         {
           "file": "style.css",
-          "line": 27975
+          "line": 27985
         }
       ]
     },
@@ -5607,7 +5608,7 @@
         },
         {
           "file": "style.css",
-          "line": 27875
+          "line": 27885
         }
       ]
     },
@@ -5635,7 +5636,7 @@
         },
         {
           "file": "style.css",
-          "line": 27957
+          "line": 27967
         }
       ]
     },
@@ -5651,7 +5652,7 @@
         },
         {
           "file": "style.css",
-          "line": 27893
+          "line": 27903
         }
       ]
     },
@@ -5843,11 +5844,11 @@
       "selector": "#settingsAboutSection",
       "label": "Settings About Section",
       "file": "settingsModal.js",
-      "line": 110,
+      "line": 127,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 110
+          "line": 127
         }
       ]
     },
@@ -5855,11 +5856,11 @@
       "selector": "#settingsAccountSection",
       "label": "Settings Account Section",
       "file": "settingsModal.js",
-      "line": 278,
+      "line": 296,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 278
+          "line": 296
         }
       ]
     },
@@ -5867,11 +5868,11 @@
       "selector": "#settingsAppearanceSection",
       "label": "Settings Appearance Section",
       "file": "settingsModal.js",
-      "line": 87,
+      "line": 104,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 87
+          "line": 104
         }
       ]
     },
@@ -5879,11 +5880,11 @@
       "selector": "#settingsDataSection",
       "label": "Settings Data Section",
       "file": "settingsModal.js",
-      "line": 202,
+      "line": 219,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 202
+          "line": 219
         }
       ]
     },
@@ -5915,11 +5916,11 @@
       "selector": "#settingsHelpSection",
       "label": "Settings Help Section",
       "file": "settingsModal.js",
-      "line": 168,
+      "line": 185,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 168
+          "line": 185
         }
       ]
     },
@@ -5927,11 +5928,11 @@
       "selector": "#settingsMenu",
       "label": "Settings Menu",
       "file": "settingsMenu.js",
-      "line": 176,
+      "line": 177,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 176
+          "line": 177
         },
         {
           "file": "style.css",
@@ -5943,11 +5944,11 @@
       "selector": "#settingsModal",
       "label": "Settings Modal",
       "file": "settingsModal.js",
-      "line": 52,
+      "line": 69,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 52
+          "line": 69
         },
         {
           "file": "style.css",
@@ -5959,11 +5960,11 @@
       "selector": "#settingsModalBackdrop",
       "label": "Settings Modal Backdrop",
       "file": "settingsModal.js",
-      "line": 49,
+      "line": 66,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 49
+          "line": 66
         },
         {
           "file": "style.css",
@@ -5975,11 +5976,11 @@
       "selector": "#settingsModalBody",
       "label": "Settings Modal Body",
       "file": "settingsModal.js",
-      "line": 74,
+      "line": 91,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 74
+          "line": 91
         },
         {
           "file": "style.css",
@@ -5991,11 +5992,11 @@
       "selector": "#settingsModalClose",
       "label": "Settings Modal Close",
       "file": "settingsModal.js",
-      "line": 65,
+      "line": 82,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 65
+          "line": 82
         },
         {
           "file": "style.css",
@@ -6007,11 +6008,11 @@
       "selector": "#settingsModalHeader",
       "label": "Settings Modal Header",
       "file": "settingsModal.js",
-      "line": 58,
+      "line": 75,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 58
+          "line": 75
         },
         {
           "file": "style.css",
@@ -6023,11 +6024,11 @@
       "selector": "#settingsModalTitle",
       "label": "Settings Modal Title",
       "file": "settingsModal.js",
-      "line": 61,
+      "line": 78,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 61
+          "line": 78
         },
         {
           "file": "style.css",
@@ -6039,11 +6040,11 @@
       "selector": "#settingsModelsSection",
       "label": "Settings Models Section",
       "file": "settingsModal.js",
-      "line": 254,
+      "line": 272,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 254
+          "line": 272
         }
       ]
     },
@@ -6051,11 +6052,23 @@
       "selector": "#settingsRepoSetupSection",
       "label": "Settings Repo Setup Section",
       "file": "settingsModal.js",
-      "line": 228,
+      "line": 246,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 228
+          "line": 246
+        }
+      ]
+    },
+    {
+      "selector": "#settingsStorageRow",
+      "label": "Settings Storage Row",
+      "file": "settingsModal.js",
+      "line": 39,
+      "files": [
+        {
+          "file": "settingsModal.js",
+          "line": 39
         }
       ]
     },
@@ -6063,11 +6076,11 @@
       "selector": "#settingsToggle",
       "label": "Settings Toggle",
       "file": "main.js",
-      "line": 429,
+      "line": 446,
       "files": [
         {
           "file": "main.js",
-          "line": 429
+          "line": 446
         },
         {
           "file": "style.css",
@@ -6079,11 +6092,11 @@
       "selector": "#settingsViewSection",
       "label": "Settings View Section",
       "file": "settingsModal.js",
-      "line": 77,
+      "line": 94,
       "files": [
         {
           "file": "settingsModal.js",
-          "line": 77
+          "line": 94
         }
       ]
     },
@@ -6091,11 +6104,11 @@
       "selector": "#sideBar",
       "label": "Side Bar",
       "file": "main.js",
-      "line": 220,
+      "line": 237,
       "files": [
         {
           "file": "main.js",
-          "line": 220
+          "line": 237
         },
         {
           "file": "style.css",
@@ -6107,11 +6120,11 @@
       "selector": "#sideMa",
       "label": "Side Ma",
       "file": "main.js",
-      "line": 238,
+      "line": 255,
       "files": [
         {
           "file": "main.js",
-          "line": 238
+          "line": 255
         },
         {
           "file": "style.css",
@@ -6123,11 +6136,11 @@
       "selector": "#sideTit",
       "label": "Side Tit",
       "file": "main.js",
-      "line": 237,
+      "line": 254,
       "files": [
         {
           "file": "main.js",
-          "line": 237
+          "line": 254
         },
         {
           "file": "style.css",
@@ -6139,11 +6152,11 @@
       "selector": "#sidebarBottom",
       "label": "Sidebar Bottom",
       "file": "main.js",
-      "line": 731,
+      "line": 748,
       "files": [
         {
           "file": "main.js",
-          "line": 731
+          "line": 748
         },
         {
           "file": "style.css",
@@ -6155,11 +6168,11 @@
       "selector": "#sidebarOverlay",
       "label": "Sidebar Overlay",
       "file": "main.js",
-      "line": 265,
+      "line": 282,
       "files": [
         {
           "file": "main.js",
-          "line": 265
+          "line": 282
         },
         {
           "file": "style.css",
@@ -6171,11 +6184,11 @@
       "selector": "#sidebarToggle",
       "label": "Sidebar Toggle",
       "file": "main.js",
-      "line": 260,
+      "line": 277,
       "files": [
         {
           "file": "main.js",
-          "line": 260
+          "line": 277
         },
         {
           "file": "style.css",
@@ -6187,11 +6200,11 @@
       "selector": "#sidebarTop",
       "label": "Sidebar Top",
       "file": "main.js",
-      "line": 730,
+      "line": 747,
       "files": [
         {
           "file": "main.js",
-          "line": 730
+          "line": 747
         },
         {
           "file": "style.css",
@@ -6391,11 +6404,11 @@
       "selector": "#structureCodeSheet",
       "label": "Structure Code Sheet",
       "file": "structureView.js",
-      "line": 179,
+      "line": 180,
       "files": [
         {
           "file": "structureView.js",
-          "line": 179
+          "line": 180
         }
       ]
     },
@@ -6403,11 +6416,11 @@
       "selector": "#structureView",
       "label": "Structure View",
       "file": "main.js",
-      "line": 1107,
+      "line": 1124,
       "files": [
         {
           "file": "main.js",
-          "line": 1107
+          "line": 1124
         },
         {
           "file": "style.css",
@@ -6447,11 +6460,11 @@
       "selector": "#taskRefreshBtn",
       "label": "Task Refresh Btn",
       "file": "main.js",
-      "line": 3868,
+      "line": 3885,
       "files": [
         {
           "file": "main.js",
-          "line": 3868
+          "line": 3885
         },
         {
           "file": "style.css",
@@ -6463,11 +6476,11 @@
       "selector": "#taskSortBtn",
       "label": "Task Sort Btn",
       "file": "main.js",
-      "line": 1237,
+      "line": 1254,
       "files": [
         {
           "file": "main.js",
-          "line": 1237
+          "line": 1254
         },
         {
           "file": "style.css",
@@ -6479,11 +6492,11 @@
       "selector": "#taskSortBtnMobile",
       "label": "Task Sort Btn Mobile",
       "file": "main.js",
-      "line": 1274,
+      "line": 1291,
       "files": [
         {
           "file": "main.js",
-          "line": 1274
+          "line": 1291
         },
         {
           "file": "style.css",
@@ -6855,11 +6868,11 @@
       "selector": "#understandingView",
       "label": "Understanding View",
       "file": "main.js",
-      "line": 1113,
+      "line": 1130,
       "files": [
         {
           "file": "main.js",
-          "line": 1113
+          "line": 1130
         },
         {
           "file": "style.css",
@@ -7095,15 +7108,15 @@
       "selector": "#usageSpendToggle",
       "label": "Usage Spend Toggle",
       "file": "main.js",
-      "line": 409,
+      "line": 426,
       "files": [
         {
           "file": "main.js",
-          "line": 409
+          "line": 426
         },
         {
           "file": "style.css",
-          "line": 22946
+          "line": 22956
         }
       ]
     },
@@ -7111,11 +7124,11 @@
       "selector": "#viewPillProjects",
       "label": "View Pill Projects",
       "file": "main.js",
-      "line": 1002,
+      "line": 1019,
       "files": [
         {
           "file": "main.js",
-          "line": 1002
+          "line": 1019
         },
         {
           "file": "style.css",
@@ -7127,11 +7140,11 @@
       "selector": "#viewPillStructure",
       "label": "View Pill Structure",
       "file": "main.js",
-      "line": 1028,
+      "line": 1045,
       "files": [
         {
           "file": "main.js",
-          "line": 1028
+          "line": 1045
         },
         {
           "file": "style.css",
@@ -7143,11 +7156,11 @@
       "selector": "#viewPillUnderstanding",
       "label": "View Pill Understanding",
       "file": "main.js",
-      "line": 1045,
+      "line": 1062,
       "files": [
         {
           "file": "main.js",
-          "line": 1045
+          "line": 1062
         },
         {
           "file": "style.css",
@@ -7159,11 +7172,11 @@
       "selector": "#viewSwitcher",
       "label": "View Switcher",
       "file": "main.js",
-      "line": 997,
+      "line": 1014,
       "files": [
         {
           "file": "main.js",
-          "line": 997
+          "line": 1014
         },
         {
           "file": "style.css",
@@ -8079,7 +8092,7 @@
         },
         {
           "file": "style.css",
-          "line": 25622
+          "line": 25632
         }
       ]
     },
@@ -8095,7 +8108,7 @@
         },
         {
           "file": "style.css",
-          "line": 25632
+          "line": 25642
         }
       ]
     },
@@ -8175,7 +8188,7 @@
         },
         {
           "file": "style.css",
-          "line": 25545
+          "line": 25555
         }
       ]
     },
@@ -8335,7 +8348,7 @@
         },
         {
           "file": "style.css",
-          "line": 25585
+          "line": 25595
         }
       ]
     },
@@ -8351,7 +8364,7 @@
         },
         {
           "file": "style.css",
-          "line": 25578
+          "line": 25588
         }
       ]
     },
@@ -8439,11 +8452,11 @@
       "selector": ".agentNoRepoMarker",
       "label": "Agent No Repo Marker",
       "file": "main.js",
-      "line": 1037,
+      "line": 1054,
       "files": [
         {
           "file": "main.js",
-          "line": 1037
+          "line": 1054
         },
         {
           "file": "mobileUtilitySheet.js",
@@ -8783,11 +8796,11 @@
       "selector": ".agentWorkingMarker",
       "label": "Agent Working Marker",
       "file": "main.js",
-      "line": 1015,
+      "line": 1032,
       "files": [
         {
           "file": "main.js",
-          "line": 1015
+          "line": 1032
         },
         {
           "file": "mobileUtilitySheet.js",
@@ -8811,7 +8824,7 @@
         },
         {
           "file": "style.css",
-          "line": 28476
+          "line": 28486
         }
       ]
     },
@@ -8827,7 +8840,7 @@
         },
         {
           "file": "style.css",
-          "line": 28503
+          "line": 28513
         }
       ]
     },
@@ -8843,7 +8856,7 @@
         },
         {
           "file": "style.css",
-          "line": 28498
+          "line": 28508
         }
       ]
     },
@@ -8859,7 +8872,7 @@
         },
         {
           "file": "style.css",
-          "line": 28490
+          "line": 28500
         }
       ]
     },
@@ -8875,7 +8888,7 @@
         },
         {
           "file": "style.css",
-          "line": 28494
+          "line": 28504
         }
       ]
     },
@@ -8979,11 +8992,11 @@
       "selector": ".assignmentEditorModalBtn",
       "label": "Assignment Editor Modal Btn",
       "file": "modals.js",
-      "line": 1150,
+      "line": 1168,
       "files": [
         {
           "file": "modals.js",
-          "line": 1150
+          "line": 1168
         },
         {
           "file": "style.css",
@@ -9003,7 +9016,7 @@
         },
         {
           "file": "style.css",
-          "line": 22314
+          "line": 22324
         }
       ]
     },
@@ -9019,7 +9032,7 @@
         },
         {
           "file": "style.css",
-          "line": 22264
+          "line": 22274
         }
       ]
     },
@@ -9035,7 +9048,7 @@
         },
         {
           "file": "style.css",
-          "line": 22321
+          "line": 22331
         }
       ]
     },
@@ -9051,7 +9064,7 @@
         },
         {
           "file": "style.css",
-          "line": 22239
+          "line": 22249
         }
       ]
     },
@@ -9067,7 +9080,7 @@
         },
         {
           "file": "style.css",
-          "line": 22306
+          "line": 22316
         }
       ]
     },
@@ -9083,7 +9096,7 @@
         },
         {
           "file": "style.css",
-          "line": 22219
+          "line": 22229
         }
       ]
     },
@@ -9099,7 +9112,7 @@
         },
         {
           "file": "style.css",
-          "line": 22198
+          "line": 22208
         }
       ]
     },
@@ -9115,7 +9128,7 @@
         },
         {
           "file": "style.css",
-          "line": 22179
+          "line": 22189
         }
       ]
     },
@@ -9131,7 +9144,7 @@
         },
         {
           "file": "style.css",
-          "line": 22326
+          "line": 22336
         }
       ]
     },
@@ -9147,7 +9160,7 @@
         },
         {
           "file": "style.css",
-          "line": 22288
+          "line": 22298
         }
       ]
     },
@@ -9163,7 +9176,7 @@
         },
         {
           "file": "style.css",
-          "line": 22342
+          "line": 22352
         }
       ]
     },
@@ -9259,11 +9272,11 @@
       "selector": ".bulkDescBtn",
       "label": "Bulk Desc Btn",
       "file": "main.js",
-      "line": 1238,
+      "line": 1255,
       "files": [
         {
           "file": "main.js",
-          "line": 1238
+          "line": 1255
         },
         {
           "file": "style.css",
@@ -9275,11 +9288,11 @@
       "selector": ".bulkDescCaret",
       "label": "Bulk Desc Caret",
       "file": "main.js",
-      "line": 1244,
+      "line": 1261,
       "files": [
         {
           "file": "main.js",
-          "line": 1244
+          "line": 1261
         },
         {
           "file": "style.css",
@@ -9291,11 +9304,11 @@
       "selector": ".bulkDescLabel",
       "label": "Bulk Desc Label",
       "file": "main.js",
-      "line": 1242,
+      "line": 1259,
       "files": [
         {
           "file": "main.js",
-          "line": 1242
+          "line": 1259
         }
       ]
     },
@@ -9755,11 +9768,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 76,
+      "line": 70,
       "files": [
         {
           "file": "changelog.js",
-          "line": 76
+          "line": 70
         },
         {
           "file": "style.css",
@@ -9771,11 +9784,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 45,
+      "line": 39,
       "files": [
         {
           "file": "changelog.js",
-          "line": 45
+          "line": 39
         },
         {
           "file": "style.css",
@@ -9787,11 +9800,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 55,
+      "line": 49,
       "files": [
         {
           "file": "changelog.js",
-          "line": 55
+          "line": 49
         },
         {
           "file": "style.css",
@@ -9803,11 +9816,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 48,
+      "line": 42,
       "files": [
         {
           "file": "changelog.js",
-          "line": 48
+          "line": 42
         },
         {
           "file": "style.css",
@@ -9819,11 +9832,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 51,
+      "line": 45,
       "files": [
         {
           "file": "changelog.js",
-          "line": 51
+          "line": 45
         },
         {
           "file": "style.css",
@@ -9835,11 +9848,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 72,
+      "line": 66,
       "files": [
         {
           "file": "changelog.js",
-          "line": 72
+          "line": 66
         },
         {
           "file": "style.css",
@@ -11055,7 +11068,7 @@
         },
         {
           "file": "style.css",
-          "line": 28619
+          "line": 28629
         }
       ]
     },
@@ -11071,7 +11084,7 @@
         },
         {
           "file": "style.css",
-          "line": 28679
+          "line": 28689
         }
       ]
     },
@@ -11087,7 +11100,7 @@
         },
         {
           "file": "style.css",
-          "line": 28667
+          "line": 28677
         }
       ]
     },
@@ -11103,7 +11116,7 @@
         },
         {
           "file": "style.css",
-          "line": 28674
+          "line": 28684
         }
       ]
     },
@@ -11327,7 +11340,7 @@
         },
         {
           "file": "style.css",
-          "line": 28734
+          "line": 28744
         }
       ]
     },
@@ -11343,7 +11356,7 @@
         },
         {
           "file": "style.css",
-          "line": 28708
+          "line": 28718
         }
       ]
     },
@@ -11375,7 +11388,7 @@
         },
         {
           "file": "style.css",
-          "line": 28766
+          "line": 28776
         }
       ]
     },
@@ -11391,7 +11404,7 @@
         },
         {
           "file": "style.css",
-          "line": 28813
+          "line": 28823
         }
       ]
     },
@@ -11407,7 +11420,7 @@
         },
         {
           "file": "style.css",
-          "line": 28793
+          "line": 28803
         }
       ]
     },
@@ -11423,7 +11436,7 @@
         },
         {
           "file": "style.css",
-          "line": 28792
+          "line": 28802
         }
       ]
     },
@@ -11439,7 +11452,7 @@
         },
         {
           "file": "style.css",
-          "line": 28773
+          "line": 28783
         }
       ]
     },
@@ -11455,7 +11468,7 @@
         },
         {
           "file": "style.css",
-          "line": 28772
+          "line": 28782
         }
       ]
     },
@@ -11471,7 +11484,7 @@
         },
         {
           "file": "style.css",
-          "line": 28795
+          "line": 28805
         }
       ]
     },
@@ -11487,7 +11500,7 @@
         },
         {
           "file": "style.css",
-          "line": 28794
+          "line": 28804
         }
       ]
     },
@@ -11503,7 +11516,7 @@
         },
         {
           "file": "style.css",
-          "line": 28785
+          "line": 28795
         }
       ]
     },
@@ -12239,11 +12252,11 @@
       "selector": ".claudeUnavailableTooltip",
       "label": "Claude Unavailable Tooltip",
       "file": "claudeSheet.js",
-      "line": 817,
+      "line": 821,
       "files": [
         {
           "file": "claudeSheet.js",
-          "line": 817
+          "line": 821
         },
         {
           "file": "style.css",
@@ -12351,11 +12364,11 @@
       "selector": ".clockIcon",
       "label": "Clock Icon",
       "file": "main.js",
-      "line": 302,
+      "line": 319,
       "files": [
         {
           "file": "main.js",
-          "line": 302
+          "line": 319
         }
       ]
     },
@@ -12363,15 +12376,15 @@
       "selector": ".clockIconHand",
       "label": "Clock Icon Hand",
       "file": "main.js",
-      "line": 307,
+      "line": 324,
       "files": [
         {
           "file": "main.js",
-          "line": 307
+          "line": 324
         },
         {
           "file": "style.css",
-          "line": 22719
+          "line": 22729
         }
       ]
     },
@@ -12387,7 +12400,7 @@
         },
         {
           "file": "style.css",
-          "line": 22080
+          "line": 22090
         }
       ]
     },
@@ -12403,7 +12416,7 @@
         },
         {
           "file": "style.css",
-          "line": 22133
+          "line": 22143
         }
       ]
     },
@@ -12419,7 +12432,7 @@
         },
         {
           "file": "style.css",
-          "line": 22127
+          "line": 22137
         }
       ]
     },
@@ -12435,7 +12448,7 @@
         },
         {
           "file": "style.css",
-          "line": 22086
+          "line": 22096
         }
       ]
     },
@@ -12451,7 +12464,7 @@
         },
         {
           "file": "style.css",
-          "line": 22094
+          "line": 22104
         }
       ]
     },
@@ -12467,7 +12480,7 @@
         },
         {
           "file": "style.css",
-          "line": 22035
+          "line": 22045
         }
       ]
     },
@@ -12483,7 +12496,7 @@
         },
         {
           "file": "style.css",
-          "line": 22093
+          "line": 22103
         }
       ]
     },
@@ -12499,7 +12512,7 @@
         },
         {
           "file": "style.css",
-          "line": 22064
+          "line": 22074
         }
       ]
     },
@@ -12515,7 +12528,7 @@
         },
         {
           "file": "style.css",
-          "line": 22073
+          "line": 22083
         }
       ]
     },
@@ -13631,7 +13644,7 @@
         },
         {
           "file": "style.css",
-          "line": 21843
+          "line": 21853
         }
       ]
     },
@@ -13647,7 +13660,7 @@
         },
         {
           "file": "style.css",
-          "line": 21905
+          "line": 21915
         }
       ]
     },
@@ -14695,7 +14708,7 @@
         },
         {
           "file": "style.css",
-          "line": 24962
+          "line": 24972
         }
       ]
     },
@@ -14703,11 +14716,11 @@
       "selector": ".descDetailEmpty",
       "label": "Desc Detail Empty",
       "file": "main.js",
-      "line": 680,
+      "line": 697,
       "files": [
         {
           "file": "main.js",
-          "line": 680
+          "line": 697
         },
         {
           "file": "style.css",
@@ -14823,7 +14836,7 @@
         },
         {
           "file": "style.css",
-          "line": 25078
+          "line": 25088
         }
       ]
     },
@@ -14839,7 +14852,7 @@
         },
         {
           "file": "style.css",
-          "line": 25064
+          "line": 25074
         }
       ]
     },
@@ -14855,7 +14868,7 @@
         },
         {
           "file": "style.css",
-          "line": 25094
+          "line": 25104
         }
       ]
     },
@@ -14871,7 +14884,7 @@
         },
         {
           "file": "style.css",
-          "line": 25084
+          "line": 25094
         }
       ]
     },
@@ -14879,11 +14892,11 @@
       "selector": ".descEditorModalBtn",
       "label": "Desc Editor Modal Btn",
       "file": "modals.js",
-      "line": 763,
+      "line": 781,
       "files": [
         {
           "file": "modals.js",
-          "line": 763
+          "line": 781
         },
         {
           "file": "style.css",
@@ -14895,11 +14908,11 @@
       "selector": ".descEditorModalEntryDisclosure",
       "label": "Desc Editor Modal Entry Disclosure",
       "file": "modals.js",
-      "line": 686,
+      "line": 704,
       "files": [
         {
           "file": "modals.js",
-          "line": 686
+          "line": 704
         },
         {
           "file": "style.css",
@@ -14911,11 +14924,11 @@
       "selector": ".descEditorModalEntryDisclosureHint",
       "label": "Desc Editor Modal Entry Disclosure Hint",
       "file": "modals.js",
-      "line": 695,
+      "line": 713,
       "files": [
         {
           "file": "modals.js",
-          "line": 695
+          "line": 713
         },
         {
           "file": "style.css",
@@ -14927,11 +14940,11 @@
       "selector": ".descEditorModalEntryDisclosureLabel",
       "label": "Desc Editor Modal Entry Disclosure Label",
       "file": "modals.js",
-      "line": 691,
+      "line": 709,
       "files": [
         {
           "file": "modals.js",
-          "line": 691
+          "line": 709
         },
         {
           "file": "style.css",
@@ -14943,15 +14956,15 @@
       "selector": ".descEditorModalMockup",
       "label": "Desc Editor Modal Mockup",
       "file": "modals.js",
-      "line": 515,
+      "line": 533,
       "files": [
         {
           "file": "modals.js",
-          "line": 515
+          "line": 533
         },
         {
           "file": "style.css",
-          "line": 25751
+          "line": 25761
         }
       ]
     },
@@ -14959,15 +14972,15 @@
       "selector": ".descEditorModalMockupIntro",
       "label": "Desc Editor Modal Mockup Intro",
       "file": "modals.js",
-      "line": 519,
+      "line": 537,
       "files": [
         {
           "file": "modals.js",
-          "line": 519
+          "line": 537
         },
         {
           "file": "style.css",
-          "line": 25759
+          "line": 25769
         }
       ]
     },
@@ -14991,11 +15004,11 @@
       "selector": ".descEditorModalStuck",
       "label": "Desc Editor Modal Stuck",
       "file": "modals.js",
-      "line": 467,
+      "line": 485,
       "files": [
         {
           "file": "modals.js",
-          "line": 467
+          "line": 485
         },
         {
           "file": "toDoRow.js",
@@ -15011,11 +15024,11 @@
       "selector": ".descEditorModalStuckLabel",
       "label": "Desc Editor Modal Stuck Label",
       "file": "modals.js",
-      "line": 471,
+      "line": 489,
       "files": [
         {
           "file": "modals.js",
-          "line": 471
+          "line": 489
         },
         {
           "file": "toDoRow.js",
@@ -15031,11 +15044,11 @@
       "selector": ".descEditorModalStuckReason",
       "label": "Desc Editor Modal Stuck Reason",
       "file": "modals.js",
-      "line": 476,
+      "line": 494,
       "files": [
         {
           "file": "modals.js",
-          "line": 476
+          "line": 494
         },
         {
           "file": "toDoRow.js",
@@ -15059,7 +15072,7 @@
         },
         {
           "file": "style.css",
-          "line": 24983
+          "line": 24993
         }
       ]
     },
@@ -15075,7 +15088,7 @@
         },
         {
           "file": "style.css",
-          "line": 25008
+          "line": 25018
         }
       ]
     },
@@ -15091,7 +15104,7 @@
         },
         {
           "file": "style.css",
-          "line": 24991
+          "line": 25001
         }
       ]
     },
@@ -15107,7 +15120,7 @@
         },
         {
           "file": "style.css",
-          "line": 25007
+          "line": 25017
         }
       ]
     },
@@ -15123,7 +15136,7 @@
         },
         {
           "file": "style.css",
-          "line": 24999
+          "line": 25009
         }
       ]
     },
@@ -15139,7 +15152,7 @@
         },
         {
           "file": "style.css",
-          "line": 26039
+          "line": 26049
         }
       ]
     },
@@ -15155,7 +15168,7 @@
         },
         {
           "file": "style.css",
-          "line": 25921
+          "line": 25931
         }
       ]
     },
@@ -15171,7 +15184,7 @@
         },
         {
           "file": "style.css",
-          "line": 26033
+          "line": 26043
         }
       ]
     },
@@ -15187,7 +15200,7 @@
         },
         {
           "file": "style.css",
-          "line": 25511
+          "line": 25521
         }
       ]
     },
@@ -15203,7 +15216,7 @@
         },
         {
           "file": "style.css",
-          "line": 25524
+          "line": 25534
         }
       ]
     },
@@ -15235,7 +15248,7 @@
         },
         {
           "file": "style.css",
-          "line": 25915
+          "line": 25925
         }
       ]
     },
@@ -15267,7 +15280,7 @@
         },
         {
           "file": "style.css",
-          "line": 25988
+          "line": 25998
         }
       ]
     },
@@ -15283,7 +15296,7 @@
         },
         {
           "file": "style.css",
-          "line": 25920
+          "line": 25930
         }
       ]
     },
@@ -15299,7 +15312,7 @@
         },
         {
           "file": "style.css",
-          "line": 25970
+          "line": 25980
         }
       ]
     },
@@ -15315,7 +15328,7 @@
         },
         {
           "file": "style.css",
-          "line": 26002
+          "line": 26012
         }
       ]
     },
@@ -15331,7 +15344,7 @@
         },
         {
           "file": "style.css",
-          "line": 25994
+          "line": 26004
         }
       ]
     },
@@ -15347,7 +15360,7 @@
         },
         {
           "file": "style.css",
-          "line": 25365
+          "line": 25375
         }
       ]
     },
@@ -15363,7 +15376,7 @@
         },
         {
           "file": "style.css",
-          "line": 25407
+          "line": 25417
         }
       ]
     },
@@ -15379,7 +15392,7 @@
         },
         {
           "file": "style.css",
-          "line": 25391
+          "line": 25401
         }
       ]
     },
@@ -15395,7 +15408,7 @@
         },
         {
           "file": "style.css",
-          "line": 25392
+          "line": 25402
         }
       ]
     },
@@ -15411,7 +15424,7 @@
         },
         {
           "file": "style.css",
-          "line": 25144
+          "line": 25154
         }
       ]
     },
@@ -15427,7 +15440,7 @@
         },
         {
           "file": "style.css",
-          "line": 25431
+          "line": 25441
         }
       ]
     },
@@ -15459,7 +15472,7 @@
         },
         {
           "file": "style.css",
-          "line": 25241
+          "line": 25251
         }
       ]
     },
@@ -15475,7 +15488,7 @@
         },
         {
           "file": "style.css",
-          "line": 25252
+          "line": 25262
         }
       ]
     },
@@ -15491,7 +15504,7 @@
         },
         {
           "file": "style.css",
-          "line": 25375
+          "line": 25385
         }
       ]
     },
@@ -15507,7 +15520,7 @@
         },
         {
           "file": "style.css",
-          "line": 25164
+          "line": 25174
         }
       ]
     },
@@ -15523,7 +15536,7 @@
         },
         {
           "file": "style.css",
-          "line": 25198
+          "line": 25208
         }
       ]
     },
@@ -15539,7 +15552,7 @@
         },
         {
           "file": "style.css",
-          "line": 25172
+          "line": 25182
         }
       ]
     },
@@ -15555,7 +15568,7 @@
         },
         {
           "file": "style.css",
-          "line": 25186
+          "line": 25196
         }
       ]
     },
@@ -15571,7 +15584,7 @@
         },
         {
           "file": "style.css",
-          "line": 25274
+          "line": 25284
         }
       ]
     },
@@ -15587,7 +15600,7 @@
         },
         {
           "file": "style.css",
-          "line": 25299
+          "line": 25309
         }
       ]
     },
@@ -15603,7 +15616,7 @@
         },
         {
           "file": "style.css",
-          "line": 25338
+          "line": 25348
         }
       ]
     },
@@ -15619,7 +15632,7 @@
         },
         {
           "file": "style.css",
-          "line": 25326
+          "line": 25336
         }
       ]
     },
@@ -15635,7 +15648,7 @@
         },
         {
           "file": "style.css",
-          "line": 25291
+          "line": 25301
         }
       ]
     },
@@ -15651,7 +15664,7 @@
         },
         {
           "file": "style.css",
-          "line": 25349
+          "line": 25359
         }
       ]
     },
@@ -15683,7 +15696,7 @@
         },
         {
           "file": "style.css",
-          "line": 26101
+          "line": 26111
         }
       ]
     },
@@ -15699,7 +15712,7 @@
         },
         {
           "file": "style.css",
-          "line": 26109
+          "line": 26119
         }
       ]
     },
@@ -15715,7 +15728,7 @@
         },
         {
           "file": "style.css",
-          "line": 26069
+          "line": 26079
         }
       ]
     },
@@ -15731,7 +15744,7 @@
         },
         {
           "file": "style.css",
-          "line": 26126
+          "line": 26136
         }
       ]
     },
@@ -15747,7 +15760,7 @@
         },
         {
           "file": "style.css",
-          "line": 26085
+          "line": 26095
         }
       ]
     },
@@ -15763,7 +15776,7 @@
         },
         {
           "file": "style.css",
-          "line": 26093
+          "line": 26103
         }
       ]
     },
@@ -15779,7 +15792,7 @@
         },
         {
           "file": "style.css",
-          "line": 26134
+          "line": 26144
         }
       ]
     },
@@ -15891,7 +15904,7 @@
         },
         {
           "file": "style.css",
-          "line": 24851
+          "line": 24861
         }
       ]
     },
@@ -15947,7 +15960,7 @@
         },
         {
           "file": "settingsModal.js",
-          "line": 145
+          "line": 162
         },
         {
           "file": "style.css",
@@ -16007,11 +16020,11 @@
       "selector": ".drawerSettingsBtnLabel",
       "label": "Drawer Settings Btn Label",
       "file": "main.js",
-      "line": 1560,
+      "line": 1577,
       "files": [
         {
           "file": "main.js",
-          "line": 1560
+          "line": 1577
         },
         {
           "file": "style.css",
@@ -16023,11 +16036,11 @@
       "selector": ".drawerSettingsBtnUpdateDot",
       "label": "Drawer Settings Btn Update Dot",
       "file": "main.js",
-      "line": 1573,
+      "line": 1590,
       "files": [
         {
           "file": "main.js",
-          "line": 1573
+          "line": 1590
         },
         {
           "file": "style.css",
@@ -16783,7 +16796,7 @@
         },
         {
           "file": "style.css",
-          "line": 27577
+          "line": 27587
         }
       ]
     },
@@ -16799,7 +16812,7 @@
         },
         {
           "file": "style.css",
-          "line": 27606
+          "line": 27616
         }
       ]
     },
@@ -16815,7 +16828,7 @@
         },
         {
           "file": "style.css",
-          "line": 27723
+          "line": 27733
         }
       ]
     },
@@ -16831,7 +16844,7 @@
         },
         {
           "file": "style.css",
-          "line": 27704
+          "line": 27714
         }
       ]
     },
@@ -16839,11 +16852,11 @@
       "selector": ".focusModeIcon",
       "label": "Focus Mode Icon",
       "file": "main.js",
-      "line": 386,
+      "line": 403,
       "files": [
         {
           "file": "main.js",
-          "line": 386
+          "line": 403
         }
       ]
     },
@@ -16859,7 +16872,7 @@
         },
         {
           "file": "style.css",
-          "line": 27380
+          "line": 27390
         }
       ]
     },
@@ -16875,7 +16888,7 @@
         },
         {
           "file": "style.css",
-          "line": 27444
+          "line": 27454
         }
       ]
     },
@@ -16891,7 +16904,7 @@
         },
         {
           "file": "style.css",
-          "line": 27586
+          "line": 27596
         }
       ]
     },
@@ -16907,7 +16920,7 @@
         },
         {
           "file": "style.css",
-          "line": 27404
+          "line": 27414
         }
       ]
     },
@@ -16923,7 +16936,7 @@
         },
         {
           "file": "style.css",
-          "line": 27635
+          "line": 27645
         }
       ]
     },
@@ -16939,7 +16952,7 @@
         },
         {
           "file": "style.css",
-          "line": 27663
+          "line": 27673
         }
       ]
     },
@@ -16955,7 +16968,7 @@
         },
         {
           "file": "style.css",
-          "line": 27664
+          "line": 27674
         }
       ]
     },
@@ -16971,7 +16984,7 @@
         },
         {
           "file": "style.css",
-          "line": 27489
+          "line": 27499
         }
       ]
     },
@@ -16987,7 +17000,7 @@
         },
         {
           "file": "style.css",
-          "line": 27416
+          "line": 27426
         }
       ]
     },
@@ -17003,7 +17016,7 @@
         },
         {
           "file": "style.css",
-          "line": 27599
+          "line": 27609
         }
       ]
     },
@@ -17019,7 +17032,7 @@
         },
         {
           "file": "style.css",
-          "line": 27471
+          "line": 27481
         }
       ]
     },
@@ -17035,7 +17048,7 @@
         },
         {
           "file": "style.css",
-          "line": 27670
+          "line": 27680
         }
       ]
     },
@@ -17051,7 +17064,7 @@
         },
         {
           "file": "style.css",
-          "line": 27505
+          "line": 27515
         }
       ]
     },
@@ -17059,11 +17072,11 @@
       "selector": ".gearIcon",
       "label": "Gear Icon",
       "file": "main.js",
-      "line": 441,
+      "line": 458,
       "files": [
         {
           "file": "main.js",
-          "line": 441
+          "line": 458
         },
         {
           "file": "style.css",
@@ -17083,7 +17096,7 @@
         },
         {
           "file": "style.css",
-          "line": 24973
+          "line": 24983
         }
       ]
     },
@@ -17099,7 +17112,7 @@
         },
         {
           "file": "style.css",
-          "line": 25820
+          "line": 25830
         }
       ]
     },
@@ -17115,7 +17128,7 @@
         },
         {
           "file": "style.css",
-          "line": 25827
+          "line": 25837
         }
       ]
     },
@@ -17131,7 +17144,7 @@
         },
         {
           "file": "style.css",
-          "line": 25831
+          "line": 25841
         }
       ]
     },
@@ -17147,7 +17160,7 @@
         },
         {
           "file": "style.css",
-          "line": 25860
+          "line": 25870
         }
       ]
     },
@@ -17163,7 +17176,7 @@
         },
         {
           "file": "style.css",
-          "line": 26147
+          "line": 26157
         }
       ]
     },
@@ -17179,7 +17192,7 @@
         },
         {
           "file": "style.css",
-          "line": 26141
+          "line": 26151
         }
       ]
     },
@@ -17195,7 +17208,7 @@
         },
         {
           "file": "style.css",
-          "line": 21922
+          "line": 21932
         }
       ]
     },
@@ -17203,11 +17216,11 @@
       "selector": ".helpTopic",
       "label": "Help Topic",
       "file": "modals.js",
-      "line": 1547,
+      "line": 1565,
       "files": [
         {
           "file": "modals.js",
-          "line": 1547
+          "line": 1565
         },
         {
           "file": "style.css",
@@ -17219,11 +17232,11 @@
       "selector": ".helpTopicLabel",
       "label": "Help Topic Label",
       "file": "modals.js",
-      "line": 1550,
+      "line": 1568,
       "files": [
         {
           "file": "modals.js",
-          "line": 1550
+          "line": 1568
         },
         {
           "file": "style.css",
@@ -17235,11 +17248,11 @@
       "selector": ".helpTopicList",
       "label": "Help Topic List",
       "file": "modals.js",
-      "line": 1555,
+      "line": 1573,
       "files": [
         {
           "file": "modals.js",
-          "line": 1555
+          "line": 1573
         },
         {
           "file": "style.css",
@@ -17275,7 +17288,7 @@
         },
         {
           "file": "style.css",
-          "line": 24817
+          "line": 24827
         }
       ]
     },
@@ -17291,7 +17304,7 @@
         },
         {
           "file": "style.css",
-          "line": 24913
+          "line": 24923
         }
       ]
     },
@@ -17307,7 +17320,7 @@
         },
         {
           "file": "style.css",
-          "line": 24920
+          "line": 24930
         }
       ]
     },
@@ -17323,7 +17336,7 @@
         },
         {
           "file": "style.css",
-          "line": 26382
+          "line": 26392
         }
       ]
     },
@@ -17343,7 +17356,7 @@
         },
         {
           "file": "style.css",
-          "line": 26348
+          "line": 26358
         }
       ]
     },
@@ -17363,7 +17376,7 @@
         },
         {
           "file": "style.css",
-          "line": 26972
+          "line": 26982
         }
       ]
     },
@@ -17379,7 +17392,7 @@
         },
         {
           "file": "style.css",
-          "line": 26978
+          "line": 26988
         }
       ]
     },
@@ -17395,7 +17408,7 @@
         },
         {
           "file": "style.css",
-          "line": 26754
+          "line": 26764
         }
       ]
     },
@@ -17411,7 +17424,7 @@
         },
         {
           "file": "style.css",
-          "line": 26772
+          "line": 26782
         }
       ]
     },
@@ -17427,7 +17440,7 @@
         },
         {
           "file": "style.css",
-          "line": 26789
+          "line": 26799
         }
       ]
     },
@@ -17443,7 +17456,7 @@
         },
         {
           "file": "style.css",
-          "line": 26779
+          "line": 26789
         }
       ]
     },
@@ -17459,7 +17472,7 @@
         },
         {
           "file": "style.css",
-          "line": 26784
+          "line": 26794
         }
       ]
     },
@@ -17475,7 +17488,7 @@
         },
         {
           "file": "style.css",
-          "line": 26813
+          "line": 26823
         }
       ]
     },
@@ -17491,7 +17504,7 @@
         },
         {
           "file": "style.css",
-          "line": 26900
+          "line": 26910
         }
       ]
     },
@@ -17507,7 +17520,7 @@
         },
         {
           "file": "style.css",
-          "line": 26964
+          "line": 26974
         }
       ]
     },
@@ -17523,7 +17536,7 @@
         },
         {
           "file": "style.css",
-          "line": 26937
+          "line": 26947
         }
       ]
     },
@@ -17539,7 +17552,7 @@
         },
         {
           "file": "style.css",
-          "line": 26878
+          "line": 26888
         }
       ]
     },
@@ -17555,7 +17568,7 @@
         },
         {
           "file": "style.css",
-          "line": 26804
+          "line": 26814
         }
       ]
     },
@@ -17571,7 +17584,7 @@
         },
         {
           "file": "style.css",
-          "line": 27196
+          "line": 27206
         }
       ]
     },
@@ -17587,7 +17600,7 @@
         },
         {
           "file": "style.css",
-          "line": 27174
+          "line": 27184
         }
       ]
     },
@@ -17603,7 +17616,7 @@
         },
         {
           "file": "style.css",
-          "line": 27169
+          "line": 27179
         }
       ]
     },
@@ -17619,7 +17632,7 @@
         },
         {
           "file": "style.css",
-          "line": 27184
+          "line": 27194
         }
       ]
     },
@@ -17635,7 +17648,7 @@
         },
         {
           "file": "style.css",
-          "line": 27100
+          "line": 27110
         }
       ]
     },
@@ -17651,7 +17664,7 @@
         },
         {
           "file": "style.css",
-          "line": 27115
+          "line": 27125
         }
       ]
     },
@@ -17667,7 +17680,7 @@
         },
         {
           "file": "style.css",
-          "line": 27054
+          "line": 27064
         }
       ]
     },
@@ -17683,7 +17696,7 @@
         },
         {
           "file": "style.css",
-          "line": 27191
+          "line": 27201
         }
       ]
     },
@@ -17699,7 +17712,7 @@
         },
         {
           "file": "style.css",
-          "line": 27095
+          "line": 27105
         }
       ]
     },
@@ -17715,7 +17728,7 @@
         },
         {
           "file": "style.css",
-          "line": 27061
+          "line": 27071
         }
       ]
     },
@@ -17731,7 +17744,7 @@
         },
         {
           "file": "style.css",
-          "line": 27067
+          "line": 27077
         }
       ]
     },
@@ -17747,7 +17760,7 @@
         },
         {
           "file": "style.css",
-          "line": 27086
+          "line": 27096
         }
       ]
     },
@@ -17763,7 +17776,7 @@
         },
         {
           "file": "style.css",
-          "line": 27133
+          "line": 27143
         }
       ]
     },
@@ -17779,7 +17792,7 @@
         },
         {
           "file": "style.css",
-          "line": 27148
+          "line": 27158
         }
       ]
     },
@@ -17795,7 +17808,7 @@
         },
         {
           "file": "style.css",
-          "line": 27160
+          "line": 27170
         }
       ]
     },
@@ -17811,7 +17824,7 @@
         },
         {
           "file": "style.css",
-          "line": 27030
+          "line": 27040
         }
       ]
     },
@@ -17827,7 +17840,7 @@
         },
         {
           "file": "style.css",
-          "line": 27121
+          "line": 27131
         }
       ]
     },
@@ -17843,7 +17856,7 @@
         },
         {
           "file": "style.css",
-          "line": 27230
+          "line": 27240
         }
       ]
     },
@@ -17859,7 +17872,7 @@
         },
         {
           "file": "style.css",
-          "line": 27251
+          "line": 27261
         }
       ]
     },
@@ -17875,7 +17888,7 @@
         },
         {
           "file": "style.css",
-          "line": 27241
+          "line": 27251
         }
       ]
     },
@@ -17891,7 +17904,7 @@
         },
         {
           "file": "style.css",
-          "line": 27274
+          "line": 27284
         }
       ]
     },
@@ -17907,7 +17920,7 @@
         },
         {
           "file": "style.css",
-          "line": 27259
+          "line": 27269
         }
       ]
     },
@@ -17923,7 +17936,7 @@
         },
         {
           "file": "style.css",
-          "line": 27236
+          "line": 27246
         }
       ]
     },
@@ -17939,7 +17952,7 @@
         },
         {
           "file": "style.css",
-          "line": 26374
+          "line": 26384
         }
       ]
     },
@@ -17955,7 +17968,7 @@
         },
         {
           "file": "style.css",
-          "line": 26479
+          "line": 26489
         }
       ]
     },
@@ -17971,7 +17984,7 @@
         },
         {
           "file": "style.css",
-          "line": 26405
+          "line": 26415
         }
       ]
     },
@@ -17987,7 +18000,7 @@
         },
         {
           "file": "style.css",
-          "line": 26406
+          "line": 26416
         }
       ]
     },
@@ -18003,7 +18016,7 @@
         },
         {
           "file": "style.css",
-          "line": 26453
+          "line": 26463
         }
       ]
     },
@@ -18019,7 +18032,7 @@
         },
         {
           "file": "style.css",
-          "line": 26491
+          "line": 26501
         }
       ]
     },
@@ -18035,7 +18048,7 @@
         },
         {
           "file": "style.css",
-          "line": 26459
+          "line": 26469
         }
       ]
     },
@@ -18051,7 +18064,7 @@
         },
         {
           "file": "style.css",
-          "line": 26465
+          "line": 26475
         }
       ]
     },
@@ -18067,7 +18080,7 @@
         },
         {
           "file": "style.css",
-          "line": 26316
+          "line": 26326
         }
       ]
     },
@@ -18083,7 +18096,7 @@
         },
         {
           "file": "style.css",
-          "line": 26603
+          "line": 26613
         }
       ]
     },
@@ -18099,7 +18112,7 @@
         },
         {
           "file": "style.css",
-          "line": 26610
+          "line": 26620
         }
       ]
     },
@@ -18115,7 +18128,7 @@
         },
         {
           "file": "style.css",
-          "line": 26589
+          "line": 26599
         }
       ]
     },
@@ -18131,7 +18144,7 @@
         },
         {
           "file": "style.css",
-          "line": 26595
+          "line": 26605
         }
       ]
     },
@@ -18147,7 +18160,7 @@
         },
         {
           "file": "style.css",
-          "line": 26565
+          "line": 26575
         }
       ]
     },
@@ -18163,7 +18176,7 @@
         },
         {
           "file": "style.css",
-          "line": 26582
+          "line": 26592
         }
       ]
     },
@@ -18179,7 +18192,7 @@
         },
         {
           "file": "style.css",
-          "line": 26516
+          "line": 26526
         }
       ]
     },
@@ -18195,7 +18208,7 @@
         },
         {
           "file": "style.css",
-          "line": 26732
+          "line": 26742
         }
       ]
     },
@@ -18211,7 +18224,7 @@
         },
         {
           "file": "style.css",
-          "line": 26717
+          "line": 26727
         }
       ]
     },
@@ -18227,7 +18240,7 @@
         },
         {
           "file": "style.css",
-          "line": 26628
+          "line": 26638
         }
       ]
     },
@@ -18243,7 +18256,7 @@
         },
         {
           "file": "style.css",
-          "line": 26642
+          "line": 26652
         }
       ]
     },
@@ -18259,7 +18272,7 @@
         },
         {
           "file": "style.css",
-          "line": 26532
+          "line": 26542
         }
       ]
     },
@@ -18275,7 +18288,7 @@
         },
         {
           "file": "style.css",
-          "line": 26542
+          "line": 26552
         }
       ]
     },
@@ -18291,7 +18304,7 @@
         },
         {
           "file": "style.css",
-          "line": 26504
+          "line": 26514
         }
       ]
     },
@@ -18307,7 +18320,7 @@
         },
         {
           "file": "style.css",
-          "line": 26510
+          "line": 26520
         }
       ]
     },
@@ -18331,11 +18344,11 @@
       "selector": ".missedDatesMonthGroup",
       "label": "Missed Dates Month Group",
       "file": "modals.js",
-      "line": 1756,
+      "line": 1774,
       "files": [
         {
           "file": "modals.js",
-          "line": 1756
+          "line": 1774
         },
         {
           "file": "style.css",
@@ -18347,11 +18360,11 @@
       "selector": ".missedDatesMonthHeading",
       "label": "Missed Dates Month Heading",
       "file": "modals.js",
-      "line": 1759,
+      "line": 1777,
       "files": [
         {
           "file": "modals.js",
-          "line": 1759
+          "line": 1777
         },
         {
           "file": "style.css",
@@ -18363,11 +18376,11 @@
       "selector": ".missedDatesOverview",
       "label": "Missed Dates Overview",
       "file": "modals.js",
-      "line": 1714,
+      "line": 1732,
       "files": [
         {
           "file": "modals.js",
-          "line": 1714
+          "line": 1732
         },
         {
           "file": "style.css",
@@ -18379,11 +18392,11 @@
       "selector": ".mobileProjChev",
       "label": "Mobile Proj Chev",
       "file": "main.js",
-      "line": 779,
+      "line": 796,
       "files": [
         {
           "file": "main.js",
-          "line": 779
+          "line": 796
         },
         {
           "file": "style.css",
@@ -18395,11 +18408,11 @@
       "selector": ".mobileProjCountBadge",
       "label": "Mobile Proj Count Badge",
       "file": "main.js",
-      "line": 822,
+      "line": 839,
       "files": [
         {
           "file": "main.js",
-          "line": 822
+          "line": 839
         },
         {
           "file": "style.css",
@@ -18411,11 +18424,11 @@
       "selector": ".mobileProjDropdownChev",
       "label": "Mobile Proj Dropdown Chev",
       "file": "main.js",
-      "line": 801,
+      "line": 818,
       "files": [
         {
           "file": "main.js",
-          "line": 801
+          "line": 818
         },
         {
           "file": "style.css",
@@ -18427,11 +18440,11 @@
       "selector": ".mobileProjRunSpinner",
       "label": "Mobile Proj Run Spinner",
       "file": "main.js",
-      "line": 840,
+      "line": 857,
       "files": [
         {
           "file": "main.js",
-          "line": 840
+          "line": 857
         },
         {
           "file": "style.css",
@@ -18451,7 +18464,7 @@
         },
         {
           "file": "style.css",
-          "line": 24496
+          "line": 24506
         }
       ]
     },
@@ -18467,7 +18480,7 @@
         },
         {
           "file": "style.css",
-          "line": 24574
+          "line": 24584
         }
       ]
     },
@@ -18483,7 +18496,7 @@
         },
         {
           "file": "style.css",
-          "line": 24584
+          "line": 24594
         }
       ]
     },
@@ -18499,7 +18512,7 @@
         },
         {
           "file": "style.css",
-          "line": 24424
+          "line": 24434
         }
       ]
     },
@@ -18515,7 +18528,7 @@
         },
         {
           "file": "style.css",
-          "line": 24396
+          "line": 24406
         }
       ]
     },
@@ -18531,7 +18544,7 @@
         },
         {
           "file": "style.css",
-          "line": 24403
+          "line": 24413
         }
       ]
     },
@@ -18547,7 +18560,7 @@
         },
         {
           "file": "style.css",
-          "line": 24409
+          "line": 24419
         }
       ]
     },
@@ -18563,7 +18576,7 @@
         },
         {
           "file": "style.css",
-          "line": 25679
+          "line": 25689
         }
       ]
     },
@@ -18579,7 +18592,7 @@
         },
         {
           "file": "style.css",
-          "line": 25665
+          "line": 25675
         }
       ]
     },
@@ -18595,7 +18608,7 @@
         },
         {
           "file": "style.css",
-          "line": 25712
+          "line": 25722
         }
       ]
     },
@@ -18611,7 +18624,7 @@
         },
         {
           "file": "style.css",
-          "line": 25697
+          "line": 25707
         }
       ]
     },
@@ -18627,7 +18640,7 @@
         },
         {
           "file": "style.css",
-          "line": 25704
+          "line": 25714
         }
       ]
     },
@@ -19091,7 +19104,7 @@
         },
         {
           "file": "style.css",
-          "line": 23253
+          "line": 23263
         }
       ]
     },
@@ -19107,7 +19120,7 @@
         },
         {
           "file": "style.css",
-          "line": 23105
+          "line": 23115
         }
       ]
     },
@@ -19123,7 +19136,7 @@
         },
         {
           "file": "style.css",
-          "line": 23141
+          "line": 23151
         }
       ]
     },
@@ -19139,7 +19152,7 @@
         },
         {
           "file": "style.css",
-          "line": 23218
+          "line": 23228
         }
       ]
     },
@@ -19155,7 +19168,7 @@
         },
         {
           "file": "style.css",
-          "line": 23249
+          "line": 23259
         }
       ]
     },
@@ -19171,7 +19184,7 @@
         },
         {
           "file": "style.css",
-          "line": 23233
+          "line": 23243
         }
       ]
     },
@@ -19187,7 +19200,7 @@
         },
         {
           "file": "style.css",
-          "line": 23238
+          "line": 23248
         }
       ]
     },
@@ -19203,7 +19216,7 @@
         },
         {
           "file": "style.css",
-          "line": 23212
+          "line": 23222
         }
       ]
     },
@@ -19219,7 +19232,7 @@
         },
         {
           "file": "style.css",
-          "line": 23239
+          "line": 23249
         }
       ]
     },
@@ -19235,7 +19248,7 @@
         },
         {
           "file": "style.css",
-          "line": 23150
+          "line": 23160
         }
       ]
     },
@@ -19251,7 +19264,7 @@
         },
         {
           "file": "style.css",
-          "line": 23157
+          "line": 23167
         }
       ]
     },
@@ -19267,7 +19280,7 @@
         },
         {
           "file": "style.css",
-          "line": 23126
+          "line": 23136
         }
       ]
     },
@@ -19283,7 +19296,7 @@
         },
         {
           "file": "style.css",
-          "line": 23088
+          "line": 23098
         }
       ]
     },
@@ -19299,7 +19312,7 @@
         },
         {
           "file": "style.css",
-          "line": 23097
+          "line": 23107
         }
       ]
     },
@@ -19315,7 +19328,7 @@
         },
         {
           "file": "style.css",
-          "line": 23102
+          "line": 23112
         }
       ]
     },
@@ -19331,7 +19344,7 @@
         },
         {
           "file": "style.css",
-          "line": 23258
+          "line": 23268
         }
       ]
     },
@@ -19347,7 +19360,7 @@
         },
         {
           "file": "style.css",
-          "line": 23190
+          "line": 23200
         }
       ]
     },
@@ -19363,7 +19376,7 @@
         },
         {
           "file": "style.css",
-          "line": 23179
+          "line": 23189
         }
       ]
     },
@@ -19379,7 +19392,7 @@
         },
         {
           "file": "style.css",
-          "line": 23196
+          "line": 23206
         }
       ]
     },
@@ -19395,7 +19408,7 @@
         },
         {
           "file": "style.css",
-          "line": 23165
+          "line": 23175
         }
       ]
     },
@@ -19411,7 +19424,7 @@
         },
         {
           "file": "style.css",
-          "line": 23341
+          "line": 23351
         }
       ]
     },
@@ -19427,7 +19440,7 @@
         },
         {
           "file": "style.css",
-          "line": 23444
+          "line": 23454
         }
       ]
     },
@@ -19443,7 +19456,7 @@
         },
         {
           "file": "style.css",
-          "line": 23429
+          "line": 23439
         }
       ]
     },
@@ -19451,15 +19464,15 @@
       "selector": ".musicVizBars",
       "label": "Music Viz Bars",
       "file": "main.js",
-      "line": 339,
+      "line": 356,
       "files": [
         {
           "file": "main.js",
-          "line": 339
+          "line": 356
         },
         {
           "file": "style.css",
-          "line": 22973
+          "line": 22983
         }
       ]
     },
@@ -19475,7 +19488,7 @@
         },
         {
           "file": "style.css",
-          "line": 23380
+          "line": 23390
         }
       ]
     },
@@ -19491,7 +19504,7 @@
         },
         {
           "file": "style.css",
-          "line": 23291
+          "line": 23301
         }
       ]
     },
@@ -19507,7 +19520,7 @@
         },
         {
           "file": "style.css",
-          "line": 23304
+          "line": 23314
         }
       ]
     },
@@ -19523,7 +19536,7 @@
         },
         {
           "file": "style.css",
-          "line": 23299
+          "line": 23309
         }
       ]
     },
@@ -19539,7 +19552,7 @@
         },
         {
           "file": "style.css",
-          "line": 23475
+          "line": 23485
         }
       ]
     },
@@ -19555,7 +19568,7 @@
         },
         {
           "file": "style.css",
-          "line": 23486
+          "line": 23496
         }
       ]
     },
@@ -19571,7 +19584,7 @@
         },
         {
           "file": "style.css",
-          "line": 23409
+          "line": 23419
         }
       ]
     },
@@ -19587,7 +19600,7 @@
         },
         {
           "file": "style.css",
-          "line": 23282
+          "line": 23292
         }
       ]
     },
@@ -19603,7 +19616,7 @@
         },
         {
           "file": "style.css",
-          "line": 23366
+          "line": 23376
         }
       ]
     },
@@ -19619,7 +19632,7 @@
         },
         {
           "file": "style.css",
-          "line": 23307
+          "line": 23317
         }
       ]
     },
@@ -19635,7 +19648,7 @@
         },
         {
           "file": "style.css",
-          "line": 23319
+          "line": 23329
         }
       ]
     },
@@ -19651,7 +19664,7 @@
         },
         {
           "file": "style.css",
-          "line": 23313
+          "line": 23323
         }
       ]
     },
@@ -19667,7 +19680,7 @@
         },
         {
           "file": "style.css",
-          "line": 23277
+          "line": 23287
         }
       ]
     },
@@ -19683,7 +19696,7 @@
         },
         {
           "file": "style.css",
-          "line": 23272
+          "line": 23282
         }
       ]
     },
@@ -19995,7 +20008,7 @@
         },
         {
           "file": "style.css",
-          "line": 28298
+          "line": 28308
         }
       ]
     },
@@ -20011,7 +20024,7 @@
         },
         {
           "file": "style.css",
-          "line": 28293
+          "line": 28303
         }
       ]
     },
@@ -20027,7 +20040,7 @@
         },
         {
           "file": "style.css",
-          "line": 28426
+          "line": 28436
         }
       ]
     },
@@ -20043,7 +20056,7 @@
         },
         {
           "file": "style.css",
-          "line": 28381
+          "line": 28391
         }
       ]
     },
@@ -20059,7 +20072,7 @@
         },
         {
           "file": "style.css",
-          "line": 28427
+          "line": 28437
         }
       ]
     },
@@ -20075,7 +20088,7 @@
         },
         {
           "file": "style.css",
-          "line": 28411
+          "line": 28421
         }
       ]
     },
@@ -20091,7 +20104,7 @@
         },
         {
           "file": "style.css",
-          "line": 28387
+          "line": 28397
         }
       ]
     },
@@ -20107,7 +20120,7 @@
         },
         {
           "file": "style.css",
-          "line": 28396
+          "line": 28406
         }
       ]
     },
@@ -20123,7 +20136,7 @@
         },
         {
           "file": "style.css",
-          "line": 22845
+          "line": 22855
         }
       ]
     },
@@ -20139,7 +20152,7 @@
         },
         {
           "file": "style.css",
-          "line": 22816
+          "line": 22826
         }
       ]
     },
@@ -20147,15 +20160,15 @@
       "selector": ".pomodoroCountdownInline",
       "label": "Pomodoro Countdown Inline",
       "file": "main.js",
-      "line": 313,
+      "line": 330,
       "files": [
         {
           "file": "main.js",
-          "line": 313
+          "line": 330
         },
         {
           "file": "style.css",
-          "line": 22689
+          "line": 22699
         }
       ]
     },
@@ -20171,7 +20184,7 @@
         },
         {
           "file": "style.css",
-          "line": 22830
+          "line": 22840
         }
       ]
     },
@@ -20187,7 +20200,7 @@
         },
         {
           "file": "style.css",
-          "line": 22812
+          "line": 22822
         }
       ]
     },
@@ -20203,7 +20216,7 @@
         },
         {
           "file": "style.css",
-          "line": 22749
+          "line": 22759
         }
       ]
     },
@@ -20219,7 +20232,7 @@
         },
         {
           "file": "style.css",
-          "line": 22849
+          "line": 22859
         }
       ]
     },
@@ -20235,7 +20248,7 @@
         },
         {
           "file": "style.css",
-          "line": 22850
+          "line": 22860
         }
       ]
     },
@@ -20251,7 +20264,7 @@
         },
         {
           "file": "style.css",
-          "line": 22760
+          "line": 22770
         }
       ]
     },
@@ -20267,7 +20280,7 @@
         },
         {
           "file": "style.css",
-          "line": 22785
+          "line": 22795
         }
       ]
     },
@@ -20283,7 +20296,7 @@
         },
         {
           "file": "style.css",
-          "line": 22786
+          "line": 22796
         }
       ]
     },
@@ -20299,7 +20312,7 @@
         },
         {
           "file": "style.css",
-          "line": 22878
+          "line": 22888
         }
       ]
     },
@@ -20315,7 +20328,7 @@
         },
         {
           "file": "style.css",
-          "line": 22875
+          "line": 22885
         }
       ]
     },
@@ -20331,7 +20344,7 @@
         },
         {
           "file": "style.css",
-          "line": 22794
+          "line": 22804
         }
       ]
     },
@@ -20347,7 +20360,7 @@
         },
         {
           "file": "style.css",
-          "line": 22787
+          "line": 22797
         }
       ]
     },
@@ -20355,11 +20368,11 @@
       "selector": ".projBadge",
       "label": "Proj Badge",
       "file": "main.js",
-      "line": 2217,
+      "line": 2234,
       "files": [
         {
           "file": "main.js",
-          "line": 2217
+          "line": 2234
         },
         {
           "file": "style.css",
@@ -20487,11 +20500,11 @@
       "selector": ".projQuestionCount",
       "label": "Proj Question Count",
       "file": "main.js",
-      "line": 3301,
+      "line": 3318,
       "files": [
         {
           "file": "main.js",
-          "line": 3301
+          "line": 3318
         },
         {
           "file": "style.css",
@@ -21295,11 +21308,11 @@
       "selector": ".refreshSplashGlyph",
       "label": "Refresh Splash Glyph",
       "file": "main.js",
-      "line": 3770,
+      "line": 3787,
       "files": [
         {
           "file": "main.js",
-          "line": 3770
+          "line": 3787
         },
         {
           "file": "template.html",
@@ -21319,7 +21332,7 @@
         },
         {
           "file": "style.css",
-          "line": 28093
+          "line": 28103
         }
       ]
     },
@@ -21335,7 +21348,7 @@
         },
         {
           "file": "style.css",
-          "line": 28088
+          "line": 28098
         }
       ]
     },
@@ -21351,7 +21364,7 @@
         },
         {
           "file": "style.css",
-          "line": 28137
+          "line": 28147
         }
       ]
     },
@@ -21367,7 +21380,7 @@
         },
         {
           "file": "style.css",
-          "line": 28058
+          "line": 28068
         }
       ]
     },
@@ -21383,7 +21396,7 @@
         },
         {
           "file": "style.css",
-          "line": 28081
+          "line": 28091
         }
       ]
     },
@@ -21399,7 +21412,7 @@
         },
         {
           "file": "style.css",
-          "line": 28063
+          "line": 28073
         }
       ]
     },
@@ -21415,7 +21428,7 @@
         },
         {
           "file": "style.css",
-          "line": 28183
+          "line": 28193
         }
       ]
     },
@@ -21431,7 +21444,7 @@
         },
         {
           "file": "style.css",
-          "line": 28191
+          "line": 28201
         }
       ]
     },
@@ -21447,7 +21460,7 @@
         },
         {
           "file": "style.css",
-          "line": 28205
+          "line": 28215
         }
       ]
     },
@@ -21463,7 +21476,7 @@
         },
         {
           "file": "style.css",
-          "line": 28201
+          "line": 28211
         }
       ]
     },
@@ -21479,7 +21492,7 @@
         },
         {
           "file": "style.css",
-          "line": 28212
+          "line": 28222
         }
       ]
     },
@@ -21495,7 +21508,7 @@
         },
         {
           "file": "style.css",
-          "line": 28225
+          "line": 28235
         }
       ]
     },
@@ -21511,7 +21524,7 @@
         },
         {
           "file": "style.css",
-          "line": 27969
+          "line": 27979
         }
       ]
     },
@@ -21527,7 +21540,7 @@
         },
         {
           "file": "style.css",
-          "line": 27933
+          "line": 27943
         }
       ]
     },
@@ -21543,7 +21556,7 @@
         },
         {
           "file": "style.css",
-          "line": 28162
+          "line": 28172
         }
       ]
     },
@@ -21559,7 +21572,7 @@
         },
         {
           "file": "style.css",
-          "line": 28157
+          "line": 28167
         }
       ]
     },
@@ -21575,7 +21588,7 @@
         },
         {
           "file": "style.css",
-          "line": 28053
+          "line": 28063
         }
       ]
     },
@@ -21591,7 +21604,7 @@
         },
         {
           "file": "style.css",
-          "line": 27981
+          "line": 27991
         }
       ]
     },
@@ -21607,7 +21620,7 @@
         },
         {
           "file": "style.css",
-          "line": 28046
+          "line": 28056
         }
       ]
     },
@@ -21623,7 +21636,7 @@
         },
         {
           "file": "style.css",
-          "line": 27990
+          "line": 28000
         }
       ]
     },
@@ -21639,7 +21652,7 @@
         },
         {
           "file": "style.css",
-          "line": 28018
+          "line": 28028
         }
       ]
     },
@@ -21655,7 +21668,7 @@
         },
         {
           "file": "style.css",
-          "line": 28011
+          "line": 28021
         }
       ]
     },
@@ -21671,7 +21684,7 @@
         },
         {
           "file": "style.css",
-          "line": 28038
+          "line": 28048
         }
       ]
     },
@@ -21687,7 +21700,7 @@
         },
         {
           "file": "style.css",
-          "line": 27925
+          "line": 27935
         }
       ]
     },
@@ -21703,7 +21716,7 @@
         },
         {
           "file": "style.css",
-          "line": 28150
+          "line": 28160
         }
       ]
     },
@@ -21719,7 +21732,7 @@
         },
         {
           "file": "style.css",
-          "line": 28124
+          "line": 28134
         }
       ]
     },
@@ -21735,7 +21748,7 @@
         },
         {
           "file": "style.css",
-          "line": 28118
+          "line": 28128
         }
       ]
     },
@@ -21751,7 +21764,7 @@
         },
         {
           "file": "style.css",
-          "line": 26896
+          "line": 26906
         }
       ]
     },
@@ -21767,7 +21780,7 @@
         },
         {
           "file": "style.css",
-          "line": 28130
+          "line": 28140
         }
       ]
     },
@@ -21783,7 +21796,7 @@
         },
         {
           "file": "style.css",
-          "line": 28142
+          "line": 28152
         }
       ]
     },
@@ -21799,7 +21812,7 @@
         },
         {
           "file": "style.css",
-          "line": 26901
+          "line": 26911
         }
       ]
     },
@@ -21815,7 +21828,7 @@
         },
         {
           "file": "style.css",
-          "line": 28107
+          "line": 28117
         }
       ]
     },
@@ -22047,11 +22060,11 @@
       "selector": ".settingsMenuDivider",
       "label": "Settings Menu Divider",
       "file": "settingsMenu.js",
-      "line": 169,
+      "line": 170,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 169
+          "line": 170
         },
         {
           "file": "style.css",
@@ -22063,11 +22076,11 @@
       "selector": ".settingsMenuItem",
       "label": "Settings Menu Item",
       "file": "settingsMenu.js",
-      "line": 139,
+      "line": 140,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 139
+          "line": 140
         },
         {
           "file": "style.css",
@@ -22079,11 +22092,11 @@
       "selector": ".settingsMenuItemLabel",
       "label": "Settings Menu Item Label",
       "file": "settingsMenu.js",
-      "line": 142,
+      "line": 143,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 142
+          "line": 143
         },
         {
           "file": "style.css",
@@ -22095,11 +22108,11 @@
       "selector": ".settingsMenuItemState",
       "label": "Settings Menu Item State",
       "file": "settingsMenu.js",
-      "line": 145,
+      "line": 146,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 145
+          "line": 146
         },
         {
           "file": "style.css",
@@ -22111,15 +22124,31 @@
       "selector": ".settingsMenuSectionHeading",
       "label": "Settings Menu Section Heading",
       "file": "settingsMenu.js",
-      "line": 241,
+      "line": 242,
       "files": [
         {
           "file": "settingsMenu.js",
-          "line": 241
+          "line": 242
         },
         {
           "file": "style.css",
-          "line": 21797
+          "line": 21807
+        }
+      ]
+    },
+    {
+      "selector": ".settingsMenuStorageLine",
+      "label": "Settings Menu Storage Line",
+      "file": "settingsMenu.js",
+      "line": 323,
+      "files": [
+        {
+          "file": "settingsMenu.js",
+          "line": 323
+        },
+        {
+          "file": "style.css",
+          "line": 21800
         }
       ]
     },
@@ -22135,7 +22164,7 @@
         },
         {
           "file": "settingsModal.js",
-          "line": 78
+          "line": 95
         },
         {
           "file": "style.css",
@@ -22155,7 +22184,7 @@
         },
         {
           "file": "settingsModal.js",
-          "line": 80
+          "line": 97
         },
         {
           "file": "style.css",
@@ -22175,7 +22204,7 @@
         },
         {
           "file": "style.css",
-          "line": 23842
+          "line": 23852
         }
       ]
     },
@@ -22191,7 +22220,7 @@
         },
         {
           "file": "style.css",
-          "line": 23930
+          "line": 23940
         }
       ]
     },
@@ -22207,7 +22236,7 @@
         },
         {
           "file": "style.css",
-          "line": 23940
+          "line": 23950
         }
       ]
     },
@@ -22223,7 +22252,7 @@
         },
         {
           "file": "style.css",
-          "line": 23956
+          "line": 23966
         }
       ]
     },
@@ -22239,7 +22268,7 @@
         },
         {
           "file": "style.css",
-          "line": 23955
+          "line": 23965
         }
       ]
     },
@@ -22255,7 +22284,7 @@
         },
         {
           "file": "style.css",
-          "line": 23941
+          "line": 23951
         }
       ]
     },
@@ -22271,7 +22300,7 @@
         },
         {
           "file": "style.css",
-          "line": 23948
+          "line": 23958
         }
       ]
     },
@@ -22287,7 +22316,7 @@
         },
         {
           "file": "style.css",
-          "line": 23662
+          "line": 23672
         }
       ]
     },
@@ -22303,7 +22332,7 @@
         },
         {
           "file": "style.css",
-          "line": 24068
+          "line": 24078
         }
       ]
     },
@@ -22319,7 +22348,7 @@
         },
         {
           "file": "style.css",
-          "line": 24092
+          "line": 24102
         }
       ]
     },
@@ -22335,7 +22364,7 @@
         },
         {
           "file": "style.css",
-          "line": 24077
+          "line": 24087
         }
       ]
     },
@@ -22351,7 +22380,7 @@
         },
         {
           "file": "style.css",
-          "line": 24083
+          "line": 24093
         }
       ]
     },
@@ -22367,7 +22396,7 @@
         },
         {
           "file": "style.css",
-          "line": 24062
+          "line": 24072
         }
       ]
     },
@@ -22383,7 +22412,7 @@
         },
         {
           "file": "style.css",
-          "line": 24084
+          "line": 24094
         }
       ]
     },
@@ -22399,7 +22428,7 @@
         },
         {
           "file": "style.css",
-          "line": 23784
+          "line": 23794
         }
       ]
     },
@@ -22415,7 +22444,7 @@
         },
         {
           "file": "style.css",
-          "line": 23777
+          "line": 23787
         }
       ]
     },
@@ -22431,7 +22460,7 @@
         },
         {
           "file": "style.css",
-          "line": 23796
+          "line": 23806
         }
       ]
     },
@@ -22447,7 +22476,7 @@
         },
         {
           "file": "style.css",
-          "line": 23734
+          "line": 23744
         }
       ]
     },
@@ -22463,7 +22492,7 @@
         },
         {
           "file": "style.css",
-          "line": 23764
+          "line": 23774
         }
       ]
     },
@@ -22479,7 +22508,7 @@
         },
         {
           "file": "style.css",
-          "line": 23752
+          "line": 23762
         }
       ]
     },
@@ -22495,7 +22524,7 @@
         },
         {
           "file": "style.css",
-          "line": 23724
+          "line": 23734
         }
       ]
     },
@@ -22511,7 +22540,7 @@
         },
         {
           "file": "style.css",
-          "line": 23743
+          "line": 23753
         }
       ]
     },
@@ -22527,7 +22556,7 @@
         },
         {
           "file": "style.css",
-          "line": 23769
+          "line": 23779
         }
       ]
     },
@@ -22543,7 +22572,7 @@
         },
         {
           "file": "style.css",
-          "line": 23742
+          "line": 23752
         }
       ]
     },
@@ -22559,7 +22588,7 @@
         },
         {
           "file": "style.css",
-          "line": 23770
+          "line": 23780
         }
       ]
     },
@@ -22575,7 +22604,7 @@
         },
         {
           "file": "style.css",
-          "line": 23760
+          "line": 23770
         }
       ]
     },
@@ -22591,7 +22620,7 @@
         },
         {
           "file": "style.css",
-          "line": 23981
+          "line": 23991
         }
       ]
     },
@@ -22607,7 +22636,7 @@
         },
         {
           "file": "style.css",
-          "line": 23976
+          "line": 23986
         }
       ]
     },
@@ -22623,7 +22652,7 @@
         },
         {
           "file": "style.css",
-          "line": 23992
+          "line": 24002
         }
       ]
     },
@@ -22639,7 +22668,7 @@
         },
         {
           "file": "style.css",
-          "line": 24004
+          "line": 24014
         }
       ]
     },
@@ -22655,7 +22684,7 @@
         },
         {
           "file": "style.css",
-          "line": 23906
+          "line": 23916
         }
       ]
     },
@@ -22671,7 +22700,7 @@
         },
         {
           "file": "style.css",
-          "line": 23913
+          "line": 23923
         }
       ]
     },
@@ -22687,7 +22716,7 @@
         },
         {
           "file": "style.css",
-          "line": 23911
+          "line": 23921
         }
       ]
     },
@@ -22703,7 +22732,7 @@
         },
         {
           "file": "style.css",
-          "line": 23912
+          "line": 23922
         }
       ]
     },
@@ -22719,7 +22748,7 @@
         },
         {
           "file": "style.css",
-          "line": 23890
+          "line": 23900
         }
       ]
     },
@@ -22735,7 +22764,7 @@
         },
         {
           "file": "style.css",
-          "line": 23885
+          "line": 23895
         }
       ]
     },
@@ -22751,7 +22780,7 @@
         },
         {
           "file": "style.css",
-          "line": 23878
+          "line": 23888
         }
       ]
     },
@@ -22767,7 +22796,7 @@
         },
         {
           "file": "style.css",
-          "line": 23864
+          "line": 23874
         }
       ]
     },
@@ -22783,7 +22812,7 @@
         },
         {
           "file": "style.css",
-          "line": 23869
+          "line": 23879
         }
       ]
     },
@@ -22823,7 +22852,7 @@
         },
         {
           "file": "style.css",
-          "line": 23997
+          "line": 24007
         }
       ]
     },
@@ -22839,7 +22868,7 @@
         },
         {
           "file": "style.css",
-          "line": 24048
+          "line": 24058
         }
       ]
     },
@@ -22855,7 +22884,7 @@
         },
         {
           "file": "style.css",
-          "line": 24017
+          "line": 24027
         }
       ]
     },
@@ -22871,7 +22900,7 @@
         },
         {
           "file": "style.css",
-          "line": 24037
+          "line": 24047
         }
       ]
     },
@@ -22887,7 +22916,7 @@
         },
         {
           "file": "style.css",
-          "line": 24053
+          "line": 24063
         }
       ]
     },
@@ -22903,7 +22932,7 @@
         },
         {
           "file": "style.css",
-          "line": 24029
+          "line": 24039
         }
       ]
     },
@@ -22919,7 +22948,7 @@
         },
         {
           "file": "style.css",
-          "line": 24022
+          "line": 24032
         }
       ]
     },
@@ -22935,7 +22964,7 @@
         },
         {
           "file": "style.css",
-          "line": 23683
+          "line": 23693
         }
       ]
     },
@@ -22951,7 +22980,7 @@
         },
         {
           "file": "style.css",
-          "line": 23853
+          "line": 23863
         }
       ]
     },
@@ -22967,7 +22996,7 @@
         },
         {
           "file": "style.css",
-          "line": 24110
+          "line": 24120
         }
       ]
     },
@@ -22983,7 +23012,7 @@
         },
         {
           "file": "style.css",
-          "line": 24165
+          "line": 24175
         }
       ]
     },
@@ -22999,7 +23028,7 @@
         },
         {
           "file": "style.css",
-          "line": 24101
+          "line": 24111
         }
       ]
     },
@@ -23015,7 +23044,7 @@
         },
         {
           "file": "style.css",
-          "line": 24125
+          "line": 24135
         }
       ]
     },
@@ -23023,11 +23052,11 @@
       "selector": ".shortcutsDesc",
       "label": "Shortcuts Desc",
       "file": "modals.js",
-      "line": 1608,
+      "line": 1626,
       "files": [
         {
           "file": "modals.js",
-          "line": 1608
+          "line": 1626
         },
         {
           "file": "style.css",
@@ -23039,11 +23068,11 @@
       "selector": ".shortcutsGroup",
       "label": "Shortcuts Group",
       "file": "modals.js",
-      "line": 1578,
+      "line": 1596,
       "files": [
         {
           "file": "modals.js",
-          "line": 1578
+          "line": 1596
         },
         {
           "file": "style.css",
@@ -23055,11 +23084,11 @@
       "selector": ".shortcutsGroupLabel",
       "label": "Shortcuts Group Label",
       "file": "modals.js",
-      "line": 1581,
+      "line": 1599,
       "files": [
         {
           "file": "modals.js",
-          "line": 1581
+          "line": 1599
         },
         {
           "file": "style.css",
@@ -23071,11 +23100,11 @@
       "selector": ".shortcutsKey",
       "label": "Shortcuts Key",
       "file": "modals.js",
-      "line": 1602,
+      "line": 1620,
       "files": [
         {
           "file": "modals.js",
-          "line": 1602
+          "line": 1620
         },
         {
           "file": "style.css",
@@ -23087,11 +23116,11 @@
       "selector": ".shortcutsKeySep",
       "label": "Shortcuts Key Sep",
       "file": "modals.js",
-      "line": 1597,
+      "line": 1615,
       "files": [
         {
           "file": "modals.js",
-          "line": 1597
+          "line": 1615
         },
         {
           "file": "style.css",
@@ -23103,11 +23132,11 @@
       "selector": ".shortcutsKeys",
       "label": "Shortcuts Keys",
       "file": "modals.js",
-      "line": 1593,
+      "line": 1611,
       "files": [
         {
           "file": "modals.js",
-          "line": 1593
+          "line": 1611
         },
         {
           "file": "style.css",
@@ -23119,11 +23148,11 @@
       "selector": ".shortcutsList",
       "label": "Shortcuts List",
       "file": "modals.js",
-      "line": 1586,
+      "line": 1604,
       "files": [
         {
           "file": "modals.js",
-          "line": 1586
+          "line": 1604
         },
         {
           "file": "style.css",
@@ -23135,11 +23164,11 @@
       "selector": ".shortcutsRow",
       "label": "Shortcuts Row",
       "file": "modals.js",
-      "line": 1590,
+      "line": 1608,
       "files": [
         {
           "file": "modals.js",
-          "line": 1590
+          "line": 1608
         },
         {
           "file": "style.css",
@@ -23151,11 +23180,11 @@
       "selector": ".spendIcon",
       "label": "Spend Icon",
       "file": "main.js",
-      "line": 417,
+      "line": 434,
       "files": [
         {
           "file": "main.js",
-          "line": 417
+          "line": 434
         }
       ]
     },
@@ -23307,11 +23336,11 @@
       "selector": ".statsMissedList",
       "label": "Stats Missed List",
       "file": "modals.js",
-      "line": 1767,
+      "line": 1785,
       "files": [
         {
           "file": "modals.js",
-          "line": 1767
+          "line": 1785
         },
         {
           "file": "statsDrawerPanel.js",
@@ -23343,11 +23372,11 @@
       "selector": ".statsMissedPill",
       "label": "Stats Missed Pill",
       "file": "modals.js",
-      "line": 1774,
+      "line": 1792,
       "files": [
         {
           "file": "modals.js",
-          "line": 1774
+          "line": 1792
         },
         {
           "file": "statsDrawerPanel.js",
@@ -23439,11 +23468,11 @@
       "selector": ".structureActionToolbar",
       "label": "Structure Action Toolbar",
       "file": "structureView.js",
-      "line": 1622,
+      "line": 1629,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1622
+          "line": 1629
         },
         {
           "file": "style.css",
@@ -23455,11 +23484,11 @@
       "selector": ".structureActionToolbarActions",
       "label": "Structure Action Toolbar Actions",
       "file": "structureView.js",
-      "line": 1638,
+      "line": 1645,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1638
+          "line": 1645
         },
         {
           "file": "style.css",
@@ -23471,11 +23500,11 @@
       "selector": ".structureActionToolbarContext",
       "label": "Structure Action Toolbar Context",
       "file": "structureView.js",
-      "line": 1632,
+      "line": 1639,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1632
+          "line": 1639
         },
         {
           "file": "style.css",
@@ -23487,11 +23516,11 @@
       "selector": ".structureActionToolbarHead",
       "label": "Structure Action Toolbar Head",
       "file": "structureView.js",
-      "line": 1625,
+      "line": 1632,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1625
+          "line": 1632
         },
         {
           "file": "style.css",
@@ -23503,11 +23532,11 @@
       "selector": ".structureActionToolbarLabel",
       "label": "Structure Action Toolbar Label",
       "file": "structureView.js",
-      "line": 1628,
+      "line": 1635,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1628
+          "line": 1635
         },
         {
           "file": "style.css",
@@ -23775,11 +23804,11 @@
       "selector": ".structureCanvasHost",
       "label": "Structure Canvas Host",
       "file": "structureView.js",
-      "line": 4365,
+      "line": 4372,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4365
+          "line": 4372
         },
         {
           "file": "style.css",
@@ -23863,7 +23892,7 @@
         },
         {
           "file": "structureView.js",
-          "line": 2761
+          "line": 2768
         },
         {
           "file": "style.css",
@@ -23967,11 +23996,11 @@
       "selector": ".structureCaptureControl",
       "label": "Structure Capture Control",
       "file": "structureView.js",
-      "line": 2753,
+      "line": 2760,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2753
+          "line": 2760
         },
         {
           "file": "style.css",
@@ -23991,7 +24020,7 @@
         },
         {
           "file": "structureView.js",
-          "line": 2770
+          "line": 2777
         },
         {
           "file": "style.css",
@@ -24051,11 +24080,11 @@
       "selector": ".structureCollapseAllPill",
       "label": "Structure Collapse All Pill",
       "file": "structureView.js",
-      "line": 3892,
+      "line": 3899,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3892
+          "line": 3899
         },
         {
           "file": "style.css",
@@ -24067,11 +24096,11 @@
       "selector": ".structureCollapsedRow",
       "label": "Structure Collapsed Row",
       "file": "structureView.js",
-      "line": 1789,
+      "line": 1796,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1789
+          "line": 1796
         },
         {
           "file": "style.css",
@@ -24083,11 +24112,11 @@
       "selector": ".structureControlRow",
       "label": "Structure Control Row",
       "file": "structureView.js",
-      "line": 4331,
+      "line": 4338,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4331
+          "line": 4338
         },
         {
           "file": "style.css",
@@ -24099,11 +24128,11 @@
       "selector": ".structureCopyBtn",
       "label": "Structure Copy Btn",
       "file": "structureView.js",
-      "line": 1455,
+      "line": 1462,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1455
+          "line": 1462
         },
         {
           "file": "style.css",
@@ -24115,11 +24144,11 @@
       "selector": ".structureEmptyGlyph",
       "label": "Structure Empty Glyph",
       "file": "structureView.js",
-      "line": 4048,
+      "line": 4055,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4048
+          "line": 4055
         },
         {
           "file": "understandingView.js",
@@ -24135,11 +24164,11 @@
       "selector": ".structureEmptyState",
       "label": "Structure Empty State",
       "file": "structureView.js",
-      "line": 4045,
+      "line": 4052,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4045
+          "line": 4052
         },
         {
           "file": "understandingView.js",
@@ -24155,11 +24184,11 @@
       "selector": ".structureExplainError",
       "label": "Structure Explain Error",
       "file": "structureView.js",
-      "line": 737,
+      "line": 744,
       "files": [
         {
           "file": "structureView.js",
-          "line": 737
+          "line": 744
         },
         {
           "file": "style.css",
@@ -24171,11 +24200,11 @@
       "selector": ".structureExplainLoading",
       "label": "Structure Explain Loading",
       "file": "structureView.js",
-      "line": 709,
+      "line": 716,
       "files": [
         {
           "file": "structureView.js",
-          "line": 709
+          "line": 716
         },
         {
           "file": "style.css",
@@ -24187,11 +24216,11 @@
       "selector": ".structureExplainText",
       "label": "Structure Explain Text",
       "file": "structureView.js",
-      "line": 697,
+      "line": 704,
       "files": [
         {
           "file": "structureView.js",
-          "line": 697
+          "line": 704
         },
         {
           "file": "style.css",
@@ -24203,11 +24232,11 @@
       "selector": ".structureFileIcon",
       "label": "Structure File Icon",
       "file": "structureView.js",
-      "line": 1018,
+      "line": 1025,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1018
+          "line": 1025
         },
         {
           "file": "style.css",
@@ -24219,11 +24248,11 @@
       "selector": ".structureFileName",
       "label": "Structure File Name",
       "file": "structureView.js",
-      "line": 1026,
+      "line": 1033,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1026
+          "line": 1033
         },
         {
           "file": "style.css",
@@ -24235,11 +24264,11 @@
       "selector": ".structureFileRow",
       "label": "Structure File Row",
       "file": "structureView.js",
-      "line": 1008,
+      "line": 1015,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1008
+          "line": 1015
         },
         {
           "file": "style.css",
@@ -24251,11 +24280,11 @@
       "selector": ".structureFileWrap",
       "label": "Structure File Wrap",
       "file": "structureView.js",
-      "line": 1003,
+      "line": 1010,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1003
+          "line": 1010
         },
         {
           "file": "style.css",
@@ -24267,11 +24296,11 @@
       "selector": ".structureFilterBox",
       "label": "Structure Filter Box",
       "file": "structureView.js",
-      "line": 3739,
+      "line": 3746,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3739
+          "line": 3746
         },
         {
           "file": "style.css",
@@ -24283,11 +24312,11 @@
       "selector": ".structureFilterClear",
       "label": "Structure Filter Clear",
       "file": "structureView.js",
-      "line": 3762,
+      "line": 3769,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3762
+          "line": 3769
         },
         {
           "file": "style.css",
@@ -24299,11 +24328,11 @@
       "selector": ".structureFilterCount",
       "label": "Structure Filter Count",
       "file": "structureView.js",
-      "line": 3756,
+      "line": 3763,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3756
+          "line": 3763
         },
         {
           "file": "style.css",
@@ -24315,11 +24344,11 @@
       "selector": ".structureFilterIcon",
       "label": "Structure Filter Icon",
       "file": "structureView.js",
-      "line": 3742,
+      "line": 3749,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3742
+          "line": 3749
         },
         {
           "file": "style.css",
@@ -24331,11 +24360,11 @@
       "selector": ".structureFilterInput",
       "label": "Structure Filter Input",
       "file": "structureView.js",
-      "line": 3751,
+      "line": 3758,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3751
+          "line": 3758
         },
         {
           "file": "style.css",
@@ -24347,11 +24376,11 @@
       "selector": ".structureFilterMark",
       "label": "Structure Filter Mark",
       "file": "structureView.js",
-      "line": 3541,
+      "line": 3548,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3541
+          "line": 3548
         },
         {
           "file": "style.css",
@@ -24363,11 +24392,11 @@
       "selector": ".structureFilterNoMatch",
       "label": "Structure Filter No Match",
       "file": "structureView.js",
-      "line": 3717,
+      "line": 3724,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3717
+          "line": 3724
         },
         {
           "file": "style.css",
@@ -24379,11 +24408,11 @@
       "selector": ".structureFindBtn",
       "label": "Structure Find Btn",
       "file": "structureView.js",
-      "line": 1695,
+      "line": 1702,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1695
+          "line": 1702
         },
         {
           "file": "style.css",
@@ -24395,11 +24424,11 @@
       "selector": ".structureFindLoading",
       "label": "Structure Find Loading",
       "file": "structureView.js",
-      "line": 524,
+      "line": 525,
       "files": [
         {
           "file": "structureView.js",
-          "line": 524
+          "line": 525
         },
         {
           "file": "style.css",
@@ -24411,11 +24440,11 @@
       "selector": ".structureFindNone",
       "label": "Structure Find None",
       "file": "structureView.js",
-      "line": 535,
+      "line": 536,
       "files": [
         {
           "file": "structureView.js",
-          "line": 535
+          "line": 536
         },
         {
           "file": "style.css",
@@ -24427,11 +24456,11 @@
       "selector": ".structureFindResult",
       "label": "Structure Find Result",
       "file": "structureView.js",
-      "line": 1642,
+      "line": 1649,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1642
+          "line": 1649
         },
         {
           "file": "style.css",
@@ -24443,11 +24472,11 @@
       "selector": ".structureFolderCaret",
       "label": "Structure Folder Caret",
       "file": "structureView.js",
-      "line": 1080,
+      "line": 1087,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1080
+          "line": 1087
         },
         {
           "file": "style.css",
@@ -24459,11 +24488,11 @@
       "selector": ".structureFolderChildren",
       "label": "Structure Folder Children",
       "file": "structureView.js",
-      "line": 1091,
+      "line": 1098,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1091
+          "line": 1098
         }
       ]
     },
@@ -24471,11 +24500,11 @@
       "selector": ".structureFolderName",
       "label": "Structure Folder Name",
       "file": "structureView.js",
-      "line": 1086,
+      "line": 1093,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1086
+          "line": 1093
         },
         {
           "file": "style.css",
@@ -24487,11 +24516,11 @@
       "selector": ".structureFolderRow",
       "label": "Structure Folder Row",
       "file": "structureView.js",
-      "line": 1075,
+      "line": 1082,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1075
+          "line": 1082
         },
         {
           "file": "style.css",
@@ -24503,11 +24532,11 @@
       "selector": ".structureGithubLink",
       "label": "Structure Github Link",
       "file": "structureView.js",
-      "line": 379,
+      "line": 380,
       "files": [
         {
           "file": "structureView.js",
-          "line": 379
+          "line": 380
         },
         {
           "file": "style.css",
@@ -24519,11 +24548,11 @@
       "selector": ".structureHeader",
       "label": "Structure Header",
       "file": "structureView.js",
-      "line": 4227,
+      "line": 4234,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4227
+          "line": 4234
         },
         {
           "file": "style.css",
@@ -24535,11 +24564,11 @@
       "selector": ".structureLensBtn",
       "label": "Structure Lens Btn",
       "file": "structureView.js",
-      "line": 4094,
+      "line": 4101,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4094
+          "line": 4101
         },
         {
           "file": "style.css",
@@ -24551,11 +24580,11 @@
       "selector": ".structureLensRow",
       "label": "Structure Lens Row",
       "file": "structureView.js",
-      "line": 4308,
+      "line": 4315,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4308
+          "line": 4315
         },
         {
           "file": "style.css",
@@ -24567,11 +24596,11 @@
       "selector": ".structureLensToggle",
       "label": "Structure Lens Toggle",
       "file": "structureView.js",
-      "line": 4086,
+      "line": 4093,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4086
+          "line": 4093
         },
         {
           "file": "style.css",
@@ -24695,11 +24724,11 @@
       "selector": ".structureLivePreviewChip",
       "label": "Structure Live Preview Chip",
       "file": "structureView.js",
-      "line": 422,
+      "line": 423,
       "files": [
         {
           "file": "structureView.js",
-          "line": 422
+          "line": 423
         },
         {
           "file": "style.css",
@@ -24711,11 +24740,11 @@
       "selector": ".structureLivePreviewLabel",
       "label": "Structure Live Preview Label",
       "file": "structureView.js",
-      "line": 431,
+      "line": 432,
       "files": [
         {
           "file": "structureView.js",
-          "line": 431
+          "line": 432
         },
         {
           "file": "style.css",
@@ -24807,11 +24836,11 @@
       "selector": ".structureLocateBtn",
       "label": "Structure Locate Btn",
       "file": "structureView.js",
-      "line": 1718,
+      "line": 1725,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1718
+          "line": 1725
         },
         {
           "file": "style.css",
@@ -24823,11 +24852,11 @@
       "selector": ".structureLocateHint",
       "label": "Structure Locate Hint",
       "file": "structureView.js",
-      "line": 1734,
+      "line": 1741,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1734
+          "line": 1741
         },
         {
           "file": "style.css",
@@ -24839,11 +24868,11 @@
       "selector": ".structureMapArea",
       "label": "Structure Map Area",
       "file": "structureView.js",
-      "line": 3130,
+      "line": 3137,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3130
+          "line": 3137
         },
         {
           "file": "style.css",
@@ -24855,11 +24884,11 @@
       "selector": ".structureMapAreaHead",
       "label": "Structure Map Area Head",
       "file": "structureView.js",
-      "line": 3231,
+      "line": 3238,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3231
+          "line": 3238
         },
         {
           "file": "style.css",
@@ -24871,11 +24900,11 @@
       "selector": ".structureMapAreaMeta",
       "label": "Structure Map Area Meta",
       "file": "structureView.js",
-      "line": 3237,
+      "line": 3244,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3237
+          "line": 3244
         },
         {
           "file": "style.css",
@@ -24887,11 +24916,11 @@
       "selector": ".structureMapAreaName",
       "label": "Structure Map Area Name",
       "file": "structureView.js",
-      "line": 3233,
+      "line": 3240,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3233
+          "line": 3240
         },
         {
           "file": "style.css",
@@ -24903,11 +24932,11 @@
       "selector": ".structureMapAreaPurpose",
       "label": "Structure Map Area Purpose",
       "file": "structureView.js",
-      "line": 3242,
+      "line": 3249,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3242
+          "line": 3249
         },
         {
           "file": "style.css",
@@ -24919,11 +24948,11 @@
       "selector": ".structureMapCircle",
       "label": "Structure Map Circle",
       "file": "structureView.js",
-      "line": 3139,
+      "line": 3146,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3139
+          "line": 3146
         },
         {
           "file": "style.css",
@@ -24935,11 +24964,11 @@
       "selector": ".structureMapCrumb",
       "label": "Structure Map Crumb",
       "file": "structureView.js",
-      "line": 3185,
+      "line": 3192,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3185
+          "line": 3192
         },
         {
           "file": "style.css",
@@ -24951,11 +24980,11 @@
       "selector": ".structureMapCrumbBack",
       "label": "Structure Map Crumb Back",
       "file": "structureView.js",
-      "line": 3189,
+      "line": 3196,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3189
+          "line": 3196
         },
         {
           "file": "style.css",
@@ -24967,11 +24996,11 @@
       "selector": ".structureMapCrumbHere",
       "label": "Structure Map Crumb Here",
       "file": "structureView.js",
-      "line": 3203,
+      "line": 3210,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3203
+          "line": 3210
         },
         {
           "file": "style.css",
@@ -24983,11 +25012,11 @@
       "selector": ".structureMapCrumbSep",
       "label": "Structure Map Crumb Sep",
       "file": "structureView.js",
-      "line": 3198,
+      "line": 3205,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3198
+          "line": 3205
         }
       ]
     },
@@ -24995,11 +25024,11 @@
       "selector": ".structureMapFileList",
       "label": "Structure Map File List",
       "file": "structureView.js",
-      "line": 3293,
+      "line": 3300,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3293
+          "line": 3300
         },
         {
           "file": "style.css",
@@ -25011,11 +25040,11 @@
       "selector": ".structureMapFileName",
       "label": "Structure Map File Name",
       "file": "structureView.js",
-      "line": 3326,
+      "line": 3333,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3326
+          "line": 3333
         },
         {
           "file": "style.css",
@@ -25027,11 +25056,11 @@
       "selector": ".structureMapFilePurpose",
       "label": "Structure Map File Purpose",
       "file": "structureView.js",
-      "line": 3336,
+      "line": 3343,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3336
+          "line": 3343
         },
         {
           "file": "style.css",
@@ -25043,11 +25072,11 @@
       "selector": ".structureMapFileRow",
       "label": "Structure Map File Row",
       "file": "structureView.js",
-      "line": 3320,
+      "line": 3327,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3320
+          "line": 3327
         },
         {
           "file": "style.css",
@@ -25059,11 +25088,11 @@
       "selector": ".structureMapFileStats",
       "label": "Structure Map File Stats",
       "file": "structureView.js",
-      "line": 3330,
+      "line": 3337,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3330
+          "line": 3337
         },
         {
           "file": "style.css",
@@ -25075,11 +25104,11 @@
       "selector": ".structureMapFileTop",
       "label": "Structure Map File Top",
       "file": "structureView.js",
-      "line": 3324,
+      "line": 3331,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3324
+          "line": 3331
         },
         {
           "file": "style.css",
@@ -25091,11 +25120,11 @@
       "selector": ".structureMapFiles",
       "label": "Structure Map Files",
       "file": "structureView.js",
-      "line": 3263,
+      "line": 3270,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3263
+          "line": 3270
         },
         {
           "file": "style.css",
@@ -25107,11 +25136,11 @@
       "selector": ".structureMapFilesBar",
       "label": "Structure Map Files Bar",
       "file": "structureView.js",
-      "line": 3266,
+      "line": 3273,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3266
+          "line": 3273
         },
         {
           "file": "style.css",
@@ -25123,11 +25152,11 @@
       "selector": ".structureMapFilesLabel",
       "label": "Structure Map Files Label",
       "file": "structureView.js",
-      "line": 3268,
+      "line": 3275,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3268
+          "line": 3275
         },
         {
           "file": "style.css",
@@ -25139,11 +25168,11 @@
       "selector": ".structureMapLens",
       "label": "Structure Map Lens",
       "file": "structureView.js",
-      "line": 3159,
+      "line": 3166,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3159
+          "line": 3166
         },
         {
           "file": "style.css",
@@ -25155,11 +25184,11 @@
       "selector": ".structureMapMore",
       "label": "Structure Map More",
       "file": "structureView.js",
-      "line": 3302,
+      "line": 3309,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3302
+          "line": 3309
         },
         {
           "file": "style.css",
@@ -25171,11 +25200,11 @@
       "selector": ".structureMapName",
       "label": "Structure Map Name",
       "file": "structureView.js",
-      "line": 3146,
+      "line": 3153,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3146
+          "line": 3153
         },
         {
           "file": "style.css",
@@ -25187,11 +25216,11 @@
       "selector": ".structureMapOpenBtn",
       "label": "Structure Map Open Btn",
       "file": "structureView.js",
-      "line": 3407,
+      "line": 3414,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3407
+          "line": 3414
         },
         {
           "file": "style.css",
@@ -25203,11 +25232,11 @@
       "selector": ".structureMapPane",
       "label": "Structure Map Pane",
       "file": "structureView.js",
-      "line": 4355,
+      "line": 4362,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4355
+          "line": 4362
         },
         {
           "file": "style.css",
@@ -25219,11 +25248,11 @@
       "selector": ".structureMapPanel",
       "label": "Structure Map Panel",
       "file": "structureView.js",
-      "line": 3168,
+      "line": 3175,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3168
+          "line": 3175
         },
         {
           "file": "style.css",
@@ -25235,11 +25264,11 @@
       "selector": ".structureMapPanelLinks",
       "label": "Structure Map Panel Links",
       "file": "structureView.js",
-      "line": 3396,
+      "line": 3403,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3396
+          "line": 3403
         },
         {
           "file": "style.css",
@@ -25251,11 +25280,11 @@
       "selector": ".structureMapPanelMeta",
       "label": "Structure Map Panel Meta",
       "file": "structureView.js",
-      "line": 3375,
+      "line": 3382,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3375
+          "line": 3382
         },
         {
           "file": "style.css",
@@ -25267,11 +25296,11 @@
       "selector": ".structureMapPanelPurpose",
       "label": "Structure Map Panel Purpose",
       "file": "structureView.js",
-      "line": 3391,
+      "line": 3398,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3391
+          "line": 3398
         },
         {
           "file": "style.css",
@@ -25283,11 +25312,11 @@
       "selector": ".structureMapPanelTitle",
       "label": "Structure Map Panel Title",
       "file": "structureView.js",
-      "line": 3373,
+      "line": 3380,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3373
+          "line": 3380
         },
         {
           "file": "style.css",
@@ -25299,11 +25328,11 @@
       "selector": ".structureMapRail",
       "label": "Structure Map Rail",
       "file": "structureView.js",
-      "line": 3033,
+      "line": 3040,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3033
+          "line": 3040
         },
         {
           "file": "style.css",
@@ -25315,11 +25344,11 @@
       "selector": ".structureMapRailLabel",
       "label": "Structure Map Rail Label",
       "file": "structureView.js",
-      "line": 3036,
+      "line": 3043,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3036
+          "line": 3043
         },
         {
           "file": "style.css",
@@ -25331,11 +25360,11 @@
       "selector": ".structureMapRailLines",
       "label": "Structure Map Rail Lines",
       "file": "structureView.js",
-      "line": 3054,
+      "line": 3061,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3054
+          "line": 3061
         },
         {
           "file": "style.css",
@@ -25347,11 +25376,11 @@
       "selector": ".structureMapRailName",
       "label": "Structure Map Rail Name",
       "file": "structureView.js",
-      "line": 3050,
+      "line": 3057,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3050
+          "line": 3057
         },
         {
           "file": "style.css",
@@ -25363,11 +25392,11 @@
       "selector": ".structureMapRailRow",
       "label": "Structure Map Rail Row",
       "file": "structureView.js",
-      "line": 3043,
+      "line": 3050,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3043
+          "line": 3050
         },
         {
           "file": "style.css",
@@ -25379,11 +25408,11 @@
       "selector": ".structureMapSort",
       "label": "Structure Map Sort",
       "file": "structureView.js",
-      "line": 3272,
+      "line": 3279,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3272
+          "line": 3279
         },
         {
           "file": "style.css",
@@ -25395,11 +25424,11 @@
       "selector": ".structureMapSortBtn",
       "label": "Structure Map Sort Btn",
       "file": "structureView.js",
-      "line": 3278,
+      "line": 3285,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3278
+          "line": 3285
         },
         {
           "file": "style.css",
@@ -25411,11 +25440,11 @@
       "selector": ".structureMapTourCard",
       "label": "Structure Map Tour Card",
       "file": "structureView.js",
-      "line": 3980,
+      "line": 3987,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3980
+          "line": 3987
         },
         {
           "file": "style.css",
@@ -25427,11 +25456,11 @@
       "selector": ".structureMapTourDone",
       "label": "Structure Map Tour Done",
       "file": "structureView.js",
-      "line": 3991,
+      "line": 3998,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3991
+          "line": 3998
         },
         {
           "file": "style.css",
@@ -25443,11 +25472,11 @@
       "selector": ".structureMapTourFoot",
       "label": "Structure Map Tour Foot",
       "file": "structureView.js",
-      "line": 3987,
+      "line": 3994,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3987
+          "line": 3994
         },
         {
           "file": "style.css",
@@ -25459,11 +25488,11 @@
       "selector": ".structureMapTourRow",
       "label": "Structure Map Tour Row",
       "file": "structureView.js",
-      "line": 3975,
+      "line": 3982,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3975
+          "line": 3982
         },
         {
           "file": "style.css",
@@ -25475,11 +25504,11 @@
       "selector": ".structureMapTourTitle",
       "label": "Structure Map Tour Title",
       "file": "structureView.js",
-      "line": 3983,
+      "line": 3990,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3983
+          "line": 3990
         },
         {
           "file": "style.css",
@@ -25491,11 +25520,11 @@
       "selector": ".structureMapTours",
       "label": "Structure Map Tours",
       "file": "structureView.js",
-      "line": 3969,
+      "line": 3976,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3969
+          "line": 3976
         },
         {
           "file": "style.css",
@@ -25507,11 +25536,11 @@
       "selector": ".structureNoManifest",
       "label": "Structure No Manifest",
       "file": "structureView.js",
-      "line": 1138,
+      "line": 1145,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1138
+          "line": 1145
         },
         {
           "file": "style.css",
@@ -25523,11 +25552,11 @@
       "selector": ".structureNoUiMap",
       "label": "Structure No Ui Map",
       "file": "structureView.js",
-      "line": 1890,
+      "line": 1897,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1890
+          "line": 1897
         },
         {
           "file": "style.css",
@@ -25539,11 +25568,11 @@
       "selector": ".structureOwnerFileBtn",
       "label": "Structure Owner File Btn",
       "file": "structureView.js",
-      "line": 502,
+      "line": 503,
       "files": [
         {
           "file": "structureView.js",
-          "line": 502
+          "line": 503
         },
         {
           "file": "style.css",
@@ -25555,11 +25584,11 @@
       "selector": ".structureOwnerFileRow",
       "label": "Structure Owner File Row",
       "file": "structureView.js",
-      "line": 498,
+      "line": 499,
       "files": [
         {
           "file": "structureView.js",
-          "line": 498
+          "line": 499
         },
         {
           "file": "style.css",
@@ -25571,11 +25600,11 @@
       "selector": ".structurePagesIconLink",
       "label": "Structure Pages Icon Link",
       "file": "structureView.js",
-      "line": 397,
+      "line": 398,
       "files": [
         {
           "file": "structureView.js",
-          "line": 397
+          "line": 398
         },
         {
           "file": "style.css",
@@ -25587,11 +25616,11 @@
       "selector": ".structurePickerGroup",
       "label": "Structure Picker Group",
       "file": "structureView.js",
-      "line": 4230,
+      "line": 4237,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4230
+          "line": 4237
         },
         {
           "file": "style.css",
@@ -25603,11 +25632,11 @@
       "selector": ".structurePickerLabel",
       "label": "Structure Picker Label",
       "file": "structureView.js",
-      "line": 4233,
+      "line": 4240,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4233
+          "line": 4240
         },
         {
           "file": "style.css",
@@ -25619,11 +25648,11 @@
       "selector": ".structurePublishedBanner",
       "label": "Structure Published Banner",
       "file": "structureView.js",
-      "line": 1976,
+      "line": 1983,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1976
+          "line": 1983
         },
         {
           "file": "style.css",
@@ -25635,11 +25664,11 @@
       "selector": ".structurePublishedFileGroup",
       "label": "Structure Published File Group",
       "file": "structureView.js",
-      "line": 2047,
+      "line": 2054,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2047
+          "line": 2054
         }
       ]
     },
@@ -25647,11 +25676,11 @@
       "selector": ".structureReferenceBtn",
       "label": "Structure Reference Btn",
       "file": "structureView.js",
-      "line": 1444,
+      "line": 1451,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1444
+          "line": 1451
         },
         {
           "file": "style.css",
@@ -25663,11 +25692,11 @@
       "selector": ".structureRegionCaret",
       "label": "Structure Region Caret",
       "file": "structureView.js",
-      "line": 1815,
+      "line": 1822,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1815
+          "line": 1822
         },
         {
           "file": "style.css",
@@ -25679,11 +25708,11 @@
       "selector": ".structureRegionChildren",
       "label": "Structure Region Children",
       "file": "structureView.js",
-      "line": 1832,
+      "line": 1839,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1832
+          "line": 1839
         }
       ]
     },
@@ -25691,11 +25720,11 @@
       "selector": ".structureRegionLabel",
       "label": "Structure Region Label",
       "file": "structureView.js",
-      "line": 1822,
+      "line": 1829,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1822
+          "line": 1829
         },
         {
           "file": "style.css",
@@ -25707,11 +25736,11 @@
       "selector": ".structureRegionRow",
       "label": "Structure Region Row",
       "file": "structureView.js",
-      "line": 1805,
+      "line": 1812,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1805
+          "line": 1812
         },
         {
           "file": "style.css",
@@ -25723,11 +25752,11 @@
       "selector": ".structureRegionSelector",
       "label": "Structure Region Selector",
       "file": "structureView.js",
-      "line": 1827,
+      "line": 1834,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1827
+          "line": 1834
         },
         {
           "file": "style.css",
@@ -25739,11 +25768,11 @@
       "selector": ".structureRegionWrap",
       "label": "Structure Region Wrap",
       "file": "structureView.js",
-      "line": 1800,
+      "line": 1807,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1800
+          "line": 1807
         },
         {
           "file": "style.css",
@@ -25755,11 +25784,11 @@
       "selector": ".structureRepoLabel",
       "label": "Structure Repo Label",
       "file": "structureView.js",
-      "line": 4239,
+      "line": 4246,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4239
+          "line": 4246
         },
         {
           "file": "style.css",
@@ -25771,11 +25800,11 @@
       "selector": ".structureRepoName",
       "label": "Structure Repo Name",
       "file": "structureView.js",
-      "line": 4245,
+      "line": 4252,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4245
+          "line": 4252
         },
         {
           "file": "style.css",
@@ -25787,11 +25816,11 @@
       "selector": ".structureRepoNameCol",
       "label": "Structure Repo Name Col",
       "file": "structureView.js",
-      "line": 4242,
+      "line": 4249,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4242
+          "line": 4249
         },
         {
           "file": "style.css",
@@ -25803,11 +25832,11 @@
       "selector": ".structureRepoProjectHint",
       "label": "Structure Repo Project Hint",
       "file": "structureView.js",
-      "line": 4250,
+      "line": 4257,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4250
+          "line": 4257
         },
         {
           "file": "style.css",
@@ -25819,11 +25848,11 @@
       "selector": ".structureSqlChip",
       "label": "Structure Sql Chip",
       "file": "structureView.js",
-      "line": 2346,
+      "line": 2353,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2346
+          "line": 2353
         },
         {
           "file": "style.css",
@@ -25835,11 +25864,11 @@
       "selector": ".structureSqlColCount",
       "label": "Structure Sql Col Count",
       "file": "structureView.js",
-      "line": 2528,
+      "line": 2535,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2528
+          "line": 2535
         },
         {
           "file": "style.css",
@@ -25851,11 +25880,11 @@
       "selector": ".structureSqlColType",
       "label": "Structure Sql Col Type",
       "file": "structureView.js",
-      "line": 2449,
+      "line": 2456,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2449
+          "line": 2456
         },
         {
           "file": "style.css",
@@ -25867,11 +25896,11 @@
       "selector": ".structureSqlConstraintTail",
       "label": "Structure Sql Constraint Tail",
       "file": "structureView.js",
-      "line": 2441,
+      "line": 2448,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2441
+          "line": 2448
         },
         {
           "file": "style.css",
@@ -25883,11 +25912,11 @@
       "selector": ".structureSqlTableGlyph",
       "label": "Structure Sql Table Glyph",
       "file": "structureView.js",
-      "line": 2331,
+      "line": 2338,
       "files": [
         {
           "file": "structureView.js",
-          "line": 2331
+          "line": 2338
         },
         {
           "file": "style.css",
@@ -25899,11 +25928,11 @@
       "selector": ".structureToolbar",
       "label": "Structure Toolbar",
       "file": "structureView.js",
-      "line": 3886,
+      "line": 3893,
       "files": [
         {
           "file": "structureView.js",
-          "line": 3886
+          "line": 3893
         },
         {
           "file": "style.css",
@@ -25915,11 +25944,11 @@
       "selector": ".structureTree",
       "label": "Structure Tree",
       "file": "structureView.js",
-      "line": 4269,
+      "line": 4276,
       "files": [
         {
           "file": "structureView.js",
-          "line": 4269
+          "line": 4276
         },
         {
           "file": "style.css",
@@ -25931,11 +25960,11 @@
       "selector": ".structureTreeLoading",
       "label": "Structure Tree Loading",
       "file": "structureView.js",
-      "line": 1127,
+      "line": 1134,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1127
+          "line": 1134
         },
         {
           "file": "style.css",
@@ -25947,11 +25976,11 @@
       "selector": ".structureViewCodeBtn",
       "label": "Structure View Code Btn",
       "file": "structureView.js",
-      "line": 1485,
+      "line": 1492,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1485
+          "line": 1492
         },
         {
           "file": "style.css",
@@ -25995,11 +26024,11 @@
       "selector": ".swipeCompleteFlash",
       "label": "Swipe Complete Flash",
       "file": "main.js",
-      "line": 3029,
+      "line": 3046,
       "files": [
         {
           "file": "main.js",
-          "line": 3029
+          "line": 3046
         },
         {
           "file": "style.css",
@@ -26011,11 +26040,11 @@
       "selector": ".swipeCompleteFlashCheck",
       "label": "Swipe Complete Flash Check",
       "file": "main.js",
-      "line": 3034,
+      "line": 3051,
       "files": [
         {
           "file": "main.js",
-          "line": 3034
+          "line": 3051
         },
         {
           "file": "style.css",
@@ -26027,11 +26056,11 @@
       "selector": ".swipeCompleteFlashRipple",
       "label": "Swipe Complete Flash Ripple",
       "file": "main.js",
-      "line": 3032,
+      "line": 3049,
       "files": [
         {
           "file": "main.js",
-          "line": 3032
+          "line": 3049
         },
         {
           "file": "style.css",
@@ -26319,11 +26348,11 @@
       "selector": ".taskRefreshBtnGlyph",
       "label": "Task Refresh Btn Glyph",
       "file": "main.js",
-      "line": 3873,
+      "line": 3890,
       "files": [
         {
           "file": "main.js",
-          "line": 3873
+          "line": 3890
         },
         {
           "file": "style.css",
@@ -26335,11 +26364,11 @@
       "selector": ".taskSortBtnMobileGlyph",
       "label": "Task Sort Btn Mobile Glyph",
       "file": "main.js",
-      "line": 1285,
+      "line": 1302,
       "files": [
         {
           "file": "main.js",
-          "line": 1285
+          "line": 1302
         },
         {
           "file": "style.css",
@@ -29571,7 +29600,7 @@
         },
         {
           "file": "style.css",
-          "line": 24303
+          "line": 24313
         }
       ]
     },
@@ -29587,7 +29616,7 @@
         },
         {
           "file": "style.css",
-          "line": 24297
+          "line": 24307
         }
       ]
     },
@@ -30027,11 +30056,11 @@
       "selector": ".viewPill",
       "label": "View Pill",
       "file": "main.js",
-      "line": 1004,
+      "line": 1021,
       "files": [
         {
           "file": "main.js",
-          "line": 1004
+          "line": 1021
         },
         {
           "file": "style.css",
@@ -30147,7 +30176,7 @@
         },
         {
           "file": "style.css",
-          "line": 22470
+          "line": 22480
         }
       ]
     },
@@ -30163,7 +30192,7 @@
         },
         {
           "file": "style.css",
-          "line": 22492
+          "line": 22502
         }
       ]
     },
@@ -30179,7 +30208,7 @@
         },
         {
           "file": "style.css",
-          "line": 22486
+          "line": 22496
         }
       ]
     },
@@ -30195,7 +30224,7 @@
         },
         {
           "file": "style.css",
-          "line": 22478
+          "line": 22488
         }
       ]
     },
@@ -30211,7 +30240,7 @@
         },
         {
           "file": "style.css",
-          "line": 22440
+          "line": 22450
         }
       ]
     },
@@ -30227,7 +30256,7 @@
         },
         {
           "file": "style.css",
-          "line": 22504
+          "line": 22514
         }
       ]
     },
@@ -30243,7 +30272,7 @@
         },
         {
           "file": "style.css",
-          "line": 22388
+          "line": 22398
         }
       ]
     },
@@ -30259,7 +30288,7 @@
         },
         {
           "file": "style.css",
-          "line": 22428
+          "line": 22438
         }
       ]
     },
@@ -30275,7 +30304,7 @@
         },
         {
           "file": "style.css",
-          "line": 22463
+          "line": 22473
         }
       ]
     },
@@ -30291,7 +30320,7 @@
         },
         {
           "file": "style.css",
-          "line": 22420
+          "line": 22430
         }
       ]
     },
@@ -30307,7 +30336,7 @@
         },
         {
           "file": "style.css",
-          "line": 22412
+          "line": 22422
         }
       ]
     },
@@ -30327,11 +30356,11 @@
       "selector": "[data-region=\"…\"]",
       "label": "…",
       "file": "structureView.js",
-      "line": 1304,
+      "line": 1311,
       "files": [
         {
           "file": "structureView.js",
-          "line": 1304
+          "line": 1311
         }
       ]
     }
@@ -30471,7 +30500,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 90,
+      "lines": 84,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -30502,6 +30531,7 @@
         "modelsPanel.js",
         "prefs.js",
         "runState.js",
+        "storage.js",
         "voiceInput.js"
       ],
       "purpose": "In-app Claude assistant."
@@ -30747,9 +30777,10 @@
     },
     {
       "path": "listLogic.js",
-      "lines": 4822,
+      "lines": 4837,
       "imports": [
         "prefs.js",
+        "storage.js",
         "supabaseClient.js",
         "toDo.js"
       ],
@@ -30757,7 +30788,7 @@
     },
     {
       "path": "main.js",
-      "lines": 4244,
+      "lines": 4261,
       "imports": [
         "aboutVersionCue.js",
         "addProj_button.svg",
@@ -30794,6 +30825,7 @@
         "settingsMenu.js",
         "settingsModal.js",
         "sidebarDrawer.js",
+        "storage.js",
         "structureCanvas.js",
         "structureView.js",
         "taskFilter.js",
@@ -30887,7 +30919,7 @@
     },
     {
       "path": "modals.js",
-      "lines": 1868,
+      "lines": 1886,
       "imports": [
         "agentQueueStore.js",
         "changelog.js",
@@ -30899,6 +30931,7 @@
         "phase.js",
         "phaseRail.js",
         "prefs.js",
+        "storage.js",
         "toDoRow.js",
         "todoMdViewer.js",
         "todoStatus.js"
@@ -30973,8 +31006,10 @@
     },
     {
       "path": "prefs.js",
-      "lines": 882,
-      "imports": [],
+      "lines": 887,
+      "imports": [
+        "storage.js"
+      ],
       "purpose": "Centralised localStorage accessors for user preferences."
     },
     {
@@ -31087,7 +31122,7 @@
     },
     {
       "path": "settingsMenu.js",
-      "lines": 432,
+      "lines": 449,
       "imports": [
         "appLock.js",
         "coachmark.js",
@@ -31101,6 +31136,7 @@
         "pinLockModal.js",
         "popoverNav.js",
         "repoSetup.js",
+        "storage.js",
         "supabaseClient.js",
         "theme.js",
         "welcomeCarousel.js"
@@ -31109,7 +31145,7 @@
     },
     {
       "path": "settingsModal.js",
-      "lines": 336,
+      "lines": 354,
       "imports": [
         "aboutVersionCue.js",
         "coachmark.js",
@@ -31119,9 +31155,11 @@
         "listLogic.js",
         "migration.js",
         "mobileSheets.js",
+        "modals.js",
         "modelsPanel.js",
         "repoSetup.js",
         "settingsDiagnostics.js",
+        "storage.js",
         "supabaseClient.js",
         "welcomeCarousel.js"
       ],
@@ -31158,6 +31196,12 @@
       "purpose": "── Recurring-task stats surface: render + re-render + full-screen modal ── Extracted verbatim from toDoRow.js's `wireStatsToggle` closure."
     },
     {
+      "path": "storage.js",
+      "lines": 178,
+      "imports": [],
+      "purpose": "Guarded localStorage writes, the app's storage size report, and the caps and \"Clear caches\" action for the heavy cache keys."
+    },
+    {
       "path": "structureCanvas.js",
       "lines": 2011,
       "imports": [
@@ -31177,7 +31221,7 @@
     },
     {
       "path": "structureView.js",
-      "lines": 4399,
+      "lines": 4406,
       "imports": [
         "captureCard.js",
         "claudeSheet.js",
@@ -31192,6 +31236,7 @@
         "refactorCard.js",
         "seedTasksModal.js",
         "srcPath.js",
+        "storage.js",
         "structureCanvas.js",
         "structureRemoteCapture.js",
         "tourPlayer.js"
@@ -31239,7 +31284,7 @@
     },
     {
       "path": "toDoRow.js",
-      "lines": 5287,
+      "lines": 5291,
       "imports": [
         "agentQueueStore.js",
         "authoringModeStrip.js",
@@ -31533,6 +31578,7 @@
         "auth.js",
         "migration.js",
         "prefs.js",
+        "storage.js",
         "appLock.js",
         "pinLockModal.js",
         "settingsMenu.js",
