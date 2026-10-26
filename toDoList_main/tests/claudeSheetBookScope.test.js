@@ -69,8 +69,10 @@ import {
     mountClaudeSheet,
     openChatWithTask,
     openChatWithBookScope,
+    openChatWithSelection,
     getActiveChatTask,
     getActiveBookScope,
+    getActiveSelectionScope,
     getActiveChatRepo,
     setBookRefOpener,
 } from '../src/claudeSheet.js';
@@ -275,5 +277,154 @@ describe('claudeSheet — chapter scope', () => {
         openChatWithBookScope({ repo: DEFAULT_REPO, chapter: {} });
         openChatWithBookScope({ chapter: { id: 'x' } });
         expect(getActiveBookScope()).toBe(null);
+    });
+});
+
+// The selection scope ("Ask about these lines"): the code viewer's Ask opens the
+// chat with a `§ file:start–end` chip and the "Ask about these lines…"
+// placeholder, sends the selection as `book_scope` on every turn, replaces any
+// task or chapter scope (and is replaced by them), and is cleared by + New Chat
+// and the chip's remove control.
+describe('claudeSheet — selection scope', () => {
+    const SELECTION_KEY = 'todoapp_claudeSelectionScope';
+
+    function selection(overrides) {
+        return Object.assign({
+            repo: DEFAULT_REPO,
+            filePath: 'src/Program.cs',
+            srcRoot: 'src',
+            start: 29,
+            end: 31,
+            text: ['using A;', 'using B;', 'using C;'],
+            scope: {
+                chapter: { id: 'sel:Program.cs:29-31', title: 'Program.cs lines 29–31', index: 0, total: 0 },
+                prose: ['29  using A;\n30  using B;\n31  using C;'],
+                refs: [{ file: 'Program.cs', symbol: 'Main', label: 'Main', line: 20, end: 40 }],
+                index: [{ file: 'Other.cs', symbol: 'Helper', line: 1, end: 5 }],
+            },
+        }, overrides || {});
+    }
+
+    beforeEach(() => {
+        localStorage.clear();
+        document.body.innerHTML = '';
+        document.body.className = '';
+        state.calls = [];
+        state.reply = 'ok';
+        state.symbols = SYMBOLS;
+        resetSymbolsCache();
+        listLogic._reset();
+        Object.defineProperty(window, 'innerWidth', { configurable: true, writable: true, value: 1300 });
+        mountClaudeSheet(document.body);
+    });
+
+    it('opening uncollapses the chat with the selection chip, placeholder and stored scope', () => {
+        document.body.classList.add('chatPaneCollapsed');
+        openChatWithSelection(selection());
+
+        expect(document.body.classList.contains('chatPaneCollapsed')).toBe(false);
+        expect(getActiveSelectionScope()).toMatchObject({ file: 'src/Program.cs', start: 29, end: 31 });
+        expect(scopeChip().textContent).toContain('§ Program.cs:29–31');
+        expect(scopeChip().querySelector('.claudeScopeChipRemove')).toBeTruthy();
+        expect(input().getAttribute('placeholder')).toBe('Ask about these lines…');
+        expect(document.activeElement).toBe(input());
+        const stored = JSON.parse(localStorage.getItem(SELECTION_KEY));
+        expect(stored[DEFAULT_REPO].chapter.id).toBe('sel:Program.cs:29-31');
+    });
+
+    it('labels a one-line selection without a range', () => {
+        openChatWithSelection(selection({ start: 7, end: 7, scope: null, text: ['x'] }));
+        expect(scopeChip().textContent).toContain('§ Program.cs:7');
+        expect(scopeChip().textContent).not.toContain('–');
+    });
+
+    it('sends the selection as book_scope on every turn, without its own bookkeeping fields', async () => {
+        openChatWithSelection(selection());
+        await sendTurn('why is this using here?');
+        await sendTurn('who calls this?');
+        const sent = state.calls[0][7].bookScope;
+        expect(sent).toEqual({
+            chapter: { id: 'sel:Program.cs:29-31', title: 'Program.cs lines 29–31', index: 0, total: 0 },
+            prose: ['29  using A;\n30  using B;\n31  using C;'],
+            refs: [{ file: 'Program.cs', symbol: 'Main', label: 'Main', line: 20, end: 40 }],
+            index: [{ file: 'Other.cs', symbol: 'Helper', line: 1, end: 5 }],
+        });
+        expect(state.calls[1][7].bookScope.chapter.id).toBe('sel:Program.cs:29-31');
+        expect(state.calls[1][3]).toBe(DEFAULT_REPO);
+    });
+
+    it('falls back to the raw lines when no scope was built', async () => {
+        openChatWithSelection(selection({ scope: undefined }));
+        await sendTurn('what is this?');
+        const sent = state.calls[0][7].bookScope;
+        expect(sent.chapter).toEqual({ id: 'sel:src/Program.cs:29-31', title: 'src/Program.cs lines 29–31', index: 0, total: 0 });
+        expect(sent.prose).toEqual(['using A;\nusing B;\nusing C;']);
+        expect(sent.refs).toEqual([]);
+    });
+
+    it('detaches a task or chapter scope, and either replaces it back', () => {
+        const item = seedTodo('Proj', 'Scoped task');
+        openChatWithTask(item.id);
+        openChatWithSelection(selection());
+        expect(getActiveChatTask()).toBe(null);
+        expect(getActiveSelectionScope()).not.toBe(null);
+
+        openChatWithBookScope(scope());
+        expect(getActiveSelectionScope()).toBe(null);
+        expect(scopeChip().textContent).toContain('📖 CH 3');
+        expect(JSON.parse(localStorage.getItem(SELECTION_KEY) || '{}')[DEFAULT_REPO]).toBeUndefined();
+
+        openChatWithSelection(selection());
+        expect(getActiveBookScope()).toBe(null);
+        expect(scopeChip().textContent).toContain('§ Program.cs:29–31');
+
+        openChatWithTask(item.id);
+        expect(getActiveSelectionScope()).toBe(null);
+        expect(input().getAttribute('placeholder')).toBe('Ask Agent');
+    });
+
+    it('the remove control clears the scope, its stored copy and the placeholder', () => {
+        openChatWithSelection(selection());
+        scopeChip().querySelector('.claudeScopeChipRemove').click();
+        expect(getActiveSelectionScope()).toBe(null);
+        expect(scopeChip().textContent).toContain('Unscoped');
+        expect(input().getAttribute('placeholder')).toBe('Ask Agent');
+        expect(JSON.parse(localStorage.getItem(SELECTION_KEY) || '{}')[DEFAULT_REPO]).toBeUndefined();
+    });
+
+    it('"+ New Chat" clears the scope with the transcript', async () => {
+        openChatWithSelection(selection());
+        await sendTurn('hello');
+        document.getElementById('claudeClearChat').click();
+        document.querySelector('.claudeClearChatYes').click();
+        expect(getActiveSelectionScope()).toBe(null);
+        expect(scopeChip().textContent).toContain('Unscoped');
+        expect(JSON.parse(localStorage.getItem(SELECTION_KEY) || '{}')[DEFAULT_REPO]).toBeUndefined();
+    });
+
+    it('survives a re-mount (reload)', () => {
+        openChatWithSelection(selection());
+        document.body.innerHTML = '';
+        mountClaudeSheet(document.body);
+        expect(getActiveSelectionScope()).toMatchObject({ start: 29, end: 31 });
+        expect(scopeChip().textContent).toContain('§ Program.cs:29–31');
+        expect(input().getAttribute('placeholder')).toBe('Ask about these lines…');
+    });
+
+    it('frames the conversation on the selection repo, keeping each repo its own scope', () => {
+        openChatWithSelection(selection());
+        openChatWithSelection(selection({ repo: 'owner/other', filePath: 'lib/a.js', start: 2, end: 3, scope: null }));
+        expect(getActiveChatRepo()).toBe('owner/other');
+        expect(scopeChip().textContent).toContain('§ a.js:2–3');
+        const stored = JSON.parse(localStorage.getItem(SELECTION_KEY));
+        expect(stored[DEFAULT_REPO].start).toBe(29);
+        expect(stored['owner/other'].file).toBe('lib/a.js');
+    });
+
+    it('ignores a selection with no repo, file or valid range', () => {
+        openChatWithSelection({ filePath: 'a.js', start: 1, end: 1 });
+        openChatWithSelection({ repo: DEFAULT_REPO, start: 1, end: 1 });
+        openChatWithSelection({ repo: DEFAULT_REPO, filePath: 'a.js', start: 5, end: 2 });
+        expect(getActiveSelectionScope()).toBe(null);
     });
 });

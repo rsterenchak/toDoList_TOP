@@ -8447,6 +8447,111 @@ span.understandingFlagBtnRow { cursor: default; }
   tab-size: 4;
 }
 
+/* The gutter number is a button (it selects its line), stripped back to read as
+   the plain number it was — same width, same alignment, same muted ink. */
+button.codeViewerGutter {
+  display: block;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  font: inherit;
+  line-height: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button.codeViewerGutter:hover { color: var(--text-primary); }
+button.codeViewerGutter:focus-visible {
+  outline: 1px solid #9D93EE;
+  outline-offset: -1px;
+}
+
+/* A selected range is a background band, so it coexists with the jump/tour
+   highlight, which keeps its left border. The sticky gutter repaints with the
+   band or the number would sit on a dark notch. */
+.codeViewerLine--selected,
+.codeViewerLine--selected > .codeViewerGutter {
+  background: #191a22;
+}
+.codeViewerLine--selected > .codeViewerGutter { color: var(--text-primary); }
+
+/* While a gutter drag is live the code beside it must not text-select. */
+.codeViewerLines--selecting { user-select: none; -webkit-user-select: none; }
+
+/* On touch a long-press selects lines, so the platform's own text-selection
+   and callout are held off — scoped to the listing; Copy replaces them. */
+@media (hover: none) {
+  .codeViewerLines {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}
+
+/* The selection's action bar. codeViewer.js appends the zero-size dock to the
+   range's last visible row; `margin-left: auto` puts it at the row's end and
+   sticky `right` holds it at the scroller's right edge however far a long line
+   is scrolled. The bar hangs from it, right-aligned. z-index lifts it over the
+   later rows' sticky gutters. */
+.codeViewerSelectDock {
+  position: sticky;
+  right: 8px;
+  z-index: 3;
+  flex: 0 0 0;
+  width: 0;
+  height: 0;
+  margin-left: auto;
+  align-self: flex-start;
+}
+.codeViewerSelectBar {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 0 0 10px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  box-sizing: border-box;
+}
+.codeViewerSelectBar[hidden] { display: none !important; }
+.codeViewerSelectSpan {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.codeViewerSelectCopy {
+  height: 26px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border-dim);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+.codeViewerSelectCopy:hover { border-color: var(--acc); }
+.codeViewerSelectAsk {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin: -1px -1px -1px 0;
+  padding: 0;
+  background: var(--acc);
+  border: none;
+  border-radius: 0 8px 8px 0;
+  color: #ffffff;
+  cursor: pointer;
+}
+.codeViewerSelectAsk:disabled { opacity: 0.4; cursor: default; }
+
 /* Chunk loaders, one above and one below the rendered window, each shown only
    while unrendered lines remain in that direction. */
 .codeViewerMore {

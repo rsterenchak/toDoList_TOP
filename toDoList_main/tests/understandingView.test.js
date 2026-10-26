@@ -58,6 +58,7 @@ vi.mock('../src/claudeSheet.js', () => ({
     loadManifest: vi.fn(() => Promise.resolve({ ok: true, files: [], srcRoot: 'src' })),
     getCachedManifest: vi.fn(() => null),
     openChatWithBookScope: vi.fn(),
+    openChatWithSelection: vi.fn(),
 }));
 
 // The tours loader would fetch src-tours.json from Pages; feed it from
@@ -112,7 +113,7 @@ vi.mock('../src/bookProgress.js', async () => {
     };
 });
 
-import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, buildBookScope } from '../src/understandingView.js';
+import { renderUnderstandingView, exitUnderstandingView, resetUnderstandingRun, buildBookScope, buildSelectionScope } from '../src/understandingView.js';
 import { loadBook, revalidateBook, isBookCached } from '../src/codeBook.js';
 import { fetchActiveRuns, dispatchBook, showInjectToast } from '../src/inject.js';
 import { showConfirmModal } from '../src/modals.js';
@@ -1016,5 +1017,71 @@ describe('ask scope referrers and widen index', () => {
         const book = { chapters: [{ id: 'c', title: 'C', paragraphs: [[{ t: 'x' }]] }] };
         const scope = buildBookScope('o/r', book, 0, { symbols: { files: { 'big.js': { defs, imports: {} } } }, files: [], getLines: () => null });
         expect(scope.index).toHaveLength(40);
+    });
+});
+
+describe('selection scope payload', () => {
+    const SYMBOLS = {
+        files: {
+            'index.js': {
+                defs: [
+                    { name: 'bootApp', kind: 'function', start: 40, end: 72, parent: null },
+                    { name: 'inner', kind: 'function', start: 50, end: 60, parent: 'bootApp' },
+                ],
+                imports: {},
+            },
+            'a.js': { defs: [{ name: 'helperA', kind: 'function', start: 1, end: 2, parent: null }], imports: { bootApp: { from: 'index.js', name: 'bootApp' } } },
+        },
+    };
+    const TEXTS = { 'a.js': ["import { bootApp } from './index.js';", 'bootApp();'] };
+    const ctx = { symbols: SYMBOLS, files: Object.keys(SYMBOLS.files), getLines: (f) => TEXTS[f] || null };
+    const sel = (start, end, extra) => Object.assign({ filePath: 'src/index.js', srcRoot: 'src', start, end, text: null }, extra || {});
+
+    test('the selected lines, numbered, are the one prose block, under a sel: chapter', () => {
+        const scope = buildSelectionScope(sel(9, 11, { text: ['a', 'b', 'c'] }), ctx);
+        expect(scope.chapter).toEqual({ id: 'sel:index.js:9-11', title: 'index.js lines 9–11', index: 0, total: 0 });
+        expect(scope.prose).toEqual([' 9  a\n10  b\n11  c']);
+    });
+
+    test('reads the lines from the cache when none are passed', () => {
+        const lines = [];
+        for (let i = 1; i <= 80; i++) lines.push('L' + i);
+        const scope = buildSelectionScope(sel(52, 53), Object.assign({}, ctx, { getLines: (f) => (f === 'index.js' ? lines : null) }));
+        expect(scope.prose).toEqual(['52  L52\n53  L53']);
+    });
+
+    test('picks the innermost definition enclosing the whole range, with its referrers', () => {
+        const nested = buildSelectionScope(sel(52, 55, { text: [] }), ctx);
+        expect(nested.refs).toEqual([{ file: 'index.js', symbol: 'inner', label: 'inner', line: 50, end: 60 }]);
+
+        // A range that crosses out of `inner` falls back to its parent, whose
+        // importer comes along as a referrer.
+        const outer = buildSelectionScope(sel(45, 55, { text: [] }), ctx);
+        expect(outer.refs).toEqual([{
+            file: 'index.js', symbol: 'bootApp', label: 'bootApp', line: 40, end: 72,
+            referrers: [{ file: 'a.js', lines: [2] }],
+        }]);
+    });
+
+    test('falls back to a file ref when no definition contains the range', () => {
+        const scope = buildSelectionScope(sel(1, 3, { text: [] }), ctx);
+        expect(scope.refs).toEqual([{ file: 'index.js', symbol: '', label: 'index.js' }]);
+        const bare = buildSelectionScope(sel(1, 1, { text: ['x'] }), { symbols: null, files: [], getLines: () => null });
+        expect(bare.chapter.title).toBe('index.js line 1');
+        expect(bare.refs).toEqual([{ file: 'index.js', symbol: '', label: 'index.js' }]);
+        expect(bare.index).toEqual([]);
+    });
+
+    test('carries the widen index without the enclosing definition', () => {
+        const scope = buildSelectionScope(sel(45, 46, { text: [] }), ctx);
+        const names = scope.index.map((e) => e.symbol);
+        expect(names).toContain('helperA');
+        expect(names).not.toContain('bootApp');
+    });
+
+    test('returns null for a selection that addresses nothing', () => {
+        expect(buildSelectionScope(null, ctx)).toBeNull();
+        expect(buildSelectionScope({ filePath: '', start: 1, end: 1 }, ctx)).toBeNull();
+        expect(buildSelectionScope(sel(5, 2), ctx)).toBeNull();
     });
 });

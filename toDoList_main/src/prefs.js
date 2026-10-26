@@ -629,6 +629,45 @@ export function setChatBookScope(repo, scope) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── chat selection scope (Ask about these lines) ──
+// Per-repo `{ file, start, end, chapter, prose, refs, index? }` — the code-viewer
+// line range a Claude chat is scoped to (`file` repo-relative, the rest the
+// `book_scope` payload it rides as). Kept beside the book scope and owned by
+// claudeSheet.js the same way.
+export const CHAT_SELECTION_SCOPE_KEY = 'todoapp_claudeSelectionScope';
+
+// The repo's stored selection scope, or null when none is stored or it is malformed.
+export function getChatSelectionScope(repo) {
+    if (!repo) return null;
+    const val = readJsonObject(CHAT_SELECTION_SCOPE_KEY)[repo];
+    if (!val || typeof val !== 'object' || typeof val.file !== 'string' || !val.file) return null;
+    const start = Number(val.start);
+    const end = Number(val.end);
+    if (!(start >= 1) || !(end >= start)) return null;
+    if (!val.chapter || typeof val.chapter !== 'object' || typeof val.chapter.id !== 'string' || !val.chapter.id) return null;
+    const out = {
+        file: val.file,
+        start: start,
+        end: end,
+        chapter: val.chapter,
+        prose: Array.isArray(val.prose) ? val.prose : [],
+        refs: Array.isArray(val.refs) ? val.refs : [],
+    };
+    if (Array.isArray(val.index)) out.index = val.index;
+    return out;
+}
+
+// Store `scope` for `repo`, or drop the repo's slot when `scope` is null.
+export function setChatSelectionScope(repo, scope) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(CHAT_SELECTION_SCOPE_KEY);
+        if (scope && typeof scope === 'object') store[repo] = scope;
+        else delete store[repo];
+        localStorage.setItem(CHAT_SELECTION_SCOPE_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is

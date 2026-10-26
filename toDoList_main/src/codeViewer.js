@@ -50,8 +50,17 @@
 // foot of the column above), tracing on from inside the peek extends its trail,
 // and Open jumps the viewer to the definition, leaving a trail bar to step back
 // along. The trail is cleared by any open that isn't a step along it.
+//
+// LINE SELECTION rides on the gutter. Each number is a button: a click selects
+// that line, a shift-click (or Shift+Enter) extends to it, a drag down the gutter
+// extends live, and on touch a 500ms long-press on any row starts a selection
+// that the same finger then drags. The range is banded and a small bar floats at
+// its last visible row — the span, Copy, and Ask. Ask hands the lines to the
+// registered handler (understandingView builds the chat scope, so this module
+// never imports the chat). The selection lives on the pane, so each host's
+// viewer keeps its own, and any open, close or Escape drops it.
 
-import { readRepoFile } from './inject.js';
+import { readRepoFile, showInjectToast } from './inject.js';
 import { loadSymbols, getLoadedSymbols, isTraceable, tokenizeLine, resolveName, topRanked } from './codeTrace.js';
 import { joinSrcRootPath } from './srcPath.js';
 
@@ -115,6 +124,34 @@ const srcRoots = new Map();
 
 // Rows the peek shows of a definition before summarising the rest.
 const PEEK_ROWS = 14;
+
+// Who answers the selection bar's Ask, registered by understandingView (which
+// owns the scope builder). Null until then, in which case Ask is disabled.
+let askHandler = null;
+// How long a touch must rest on a row before it starts a selection, and how far
+// it may drift first before the gesture counts as a scroll instead.
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_SLOP = 10;
+// The Ask control's chat-bubble glyph.
+const ASK_ICON_PATH = 'M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z';
+const SVG_NS = 'http://www.w3.org/2000/svg';
+
+function buildAskIcon() {
+    const svg = document.createElementNS(SVG_NS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '18');
+    svg.setAttribute('height', '18');
+    svg.setAttribute('aria-hidden', 'true');
+    svg.setAttribute('focusable', 'false');
+    const path = document.createElementNS(SVG_NS, 'path');
+    path.setAttribute('d', ASK_ICON_PATH);
+    path.setAttribute('fill', 'none');
+    path.setAttribute('stroke', 'currentColor');
+    path.setAttribute('stroke-width', '1.8');
+    path.setAttribute('stroke-linejoin', 'round');
+    svg.appendChild(path);
+    return svg;
+}
 
 // ── Code text size ───────────────────────────────────────────────────────────
 
@@ -213,6 +250,21 @@ export function setCodeViewerCloseHandler(fn) {
     };
 }
 
+// Register the function the selection bar's Ask calls with
+// `{ repo, filePath, srcRoot, start, end, text }` — `text` the selected lines as
+// an array. Passing a non-function unregisters.
+export function setCodeViewerAskHandler(fn) {
+    askHandler = typeof fn === 'function' ? fn : null;
+    panes.forEach(function (p) { p._codeViewerRefs.selectAsk.disabled = !askHandler; });
+}
+
+// The selected `{ start, end }` in `host`'s viewer (a copy), or null.
+export function getCodeViewerSelection(host) {
+    const pane = host && host.querySelector ? host.querySelector(':scope > .codeViewerPane') : null;
+    const sel = pane ? pane._codeSelection : null;
+    return sel ? { start: sel.start, end: sel.end } : null;
+}
+
 // Subscribe to open/close transitions. Returns an unsubscribe function.
 export function onCodeViewerChange(fn) {
     if (typeof fn !== 'function') return function () {};
@@ -265,6 +317,7 @@ export function resetCodeViewer() {
     panes.clear();
     trail = [];
     srcRoots.clear();
+    askHandler = null;
     // Re-read rather than reset to the default: the size is a persisted device
     // preference, so a reset viewer must still come back at the stored size.
     codeFontSize = readStoredFontSize();
@@ -551,6 +604,36 @@ function buildPane() {
 
     pane.appendChild(body);
 
+    // The selection bar floats over the listing at the range's last visible row:
+    // a zero-size dock is appended to that row and pinned (sticky) to the
+    // scroller's right edge, so a sideways scroll of a long line can't carry it
+    // off screen, and the bar hangs from the dock. Detached while nothing is
+    // selected.
+    const selectDock = document.createElement('div');
+    selectDock.className = 'codeViewerSelectDock';
+    const selectBar = document.createElement('div');
+    selectBar.className = 'codeViewerSelectBar';
+    selectBar.setAttribute('role', 'toolbar');
+    selectBar.hidden = true;
+    const selectSpan = document.createElement('span');
+    selectSpan.className = 'codeViewerSelectSpan';
+    selectBar.appendChild(selectSpan);
+    const selectCopy = document.createElement('button');
+    selectCopy.type = 'button';
+    selectCopy.className = 'codeViewerSelectCopy';
+    selectCopy.textContent = 'Copy';
+    selectCopy.setAttribute('aria-label', 'Copy the selected lines');
+    selectBar.appendChild(selectCopy);
+    const selectAsk = document.createElement('button');
+    selectAsk.type = 'button';
+    selectAsk.className = 'codeViewerSelectAsk';
+    selectAsk.appendChild(buildAskIcon());
+    selectAsk.setAttribute('aria-label', 'Ask Claude about the selected lines');
+    selectAsk.title = 'Ask';
+    selectAsk.disabled = !askHandler;
+    selectBar.appendChild(selectAsk);
+    selectDock.appendChild(selectBar);
+
     pane._codeViewerRefs = {
         path: path,
         meta: meta,
@@ -576,7 +659,13 @@ function buildPane() {
         trail: trailBar,
         trailBack: trailBack,
         trailChips: trailChips,
+        selectDock: selectDock,
+        selectBar: selectBar,
+        selectSpan: selectSpan,
+        selectCopy: selectCopy,
+        selectAsk: selectAsk,
     };
+    pane._codeSelection = null;
     // The file the Explain control acts on, set synchronously on open (the read
     // that follows is irrelevant to it) and null while the column is empty.
     pane._codeViewerFile = null;
@@ -608,6 +697,9 @@ function buildPane() {
     bannerDismiss.addEventListener('click', function () {
         dismissBanner(pane);
     });
+    wireSelection(pane);
+    selectCopy.addEventListener('click', function () { copySelection(pane); });
+    selectAsk.addEventListener('click', function () { askSelection(pane); });
     lines.addEventListener('click', function (event) {
         const btn = event.target && event.target.closest ? event.target.closest('.codeViewerSym') : null;
         const state = pane._codeViewerState;
@@ -642,14 +734,26 @@ function buildPane() {
 // recoloured when a line is in the span, so the gutter's width is byte-identical
 // on highlighted and unhighlighted rows. Colouring a border only on hits would
 // shift every number by 2px as the highlight scrolls past, which reads as broken.
-function buildLine(number, text, hit, trace) {
+//
+// In the listing (`select` given) the gutter number is a button that selects the
+// line, pressed while the row is in the selection; the peek's rows pass none and
+// keep the inert number.
+function buildLine(number, text, hit, trace, select) {
     const row = document.createElement('div');
-    row.className = 'codeViewerLine' + (hit ? ' codeViewerLine--hit' : '');
+    const selected = !!select && number >= select.start && number <= select.end;
+    row.className = 'codeViewerLine' + (hit ? ' codeViewerLine--hit' : '')
+        + (selected ? ' codeViewerLine--selected' : '');
     row.dataset.line = String(number);
 
-    const gutter = document.createElement('span');
+    const gutter = document.createElement(select !== undefined ? 'button' : 'span');
     gutter.className = 'codeViewerGutter';
-    gutter.setAttribute('aria-hidden', 'true');
+    if (select !== undefined) {
+        gutter.type = 'button';
+        gutter.setAttribute('aria-label', 'Select line ' + number);
+        gutter.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    } else {
+        gutter.setAttribute('aria-hidden', 'true');
+    }
     gutter.textContent = String(number);
     row.appendChild(gutter);
 
@@ -696,10 +800,11 @@ function paintRange(state, from, to, atTop) {
     const refs = state.pane._codeViewerRefs;
     const frag = document.createDocumentFragment();
     for (let n = from; n <= to; n++) {
-        frag.appendChild(buildLine(n, state.lines[n - 1], isHit(state, n), state.trace));
+        frag.appendChild(buildLine(n, state.lines[n - 1], isHit(state, n), state.trace, state.pane._codeSelection));
     }
     if (atTop) refs.lines.insertBefore(frag, refs.lines.firstChild);
     else refs.lines.appendChild(frag);
+    placeSelectBar(state.pane);
 }
 
 // Re-state the rendered window: each "Load 200 more" control shows only while
@@ -762,6 +867,250 @@ function scrollToLine(state, number) {
     try { if (el.scrollIntoView) el.scrollIntoView({ block: 'center' }); } catch (e) { /* jsdom */ }
 }
 
+// ── Selection ────────────────────────────────────────────────────────────────
+
+// The listing row number under a viewport point, or under `fallback` when the
+// point misses the listing (or the platform can't hit-test). 0 when neither is
+// a row. A touch keeps targeting the element it started on, so a drag has to
+// hit-test the point to learn which row the finger is over now.
+function rowNumberAt(pane, x, y, fallback) {
+    const lines = pane._codeViewerRefs.lines;
+    let el = null;
+    if (isFinite(x) && isFinite(y) && typeof document.elementFromPoint === 'function') {
+        try { el = document.elementFromPoint(x, y); } catch (e) { el = null; }
+    }
+    if (!el || !lines.contains(el)) el = fallback;
+    const row = el && el.closest ? el.closest('.codeViewerLine') : null;
+    if (!row || !lines.contains(row)) return 0;
+    return Number(row.dataset.line) || 0;
+}
+
+// Select from `anchor` to `to` (either order). The anchor is kept so a later
+// shift-click or drag extends from where the selection began.
+function setSelection(pane, anchor, to) {
+    if (!pane._codeViewerState || !anchor || !to) { clearSelection(pane); return; }
+    pane._codeSelectAnchor = anchor;
+    pane._codeSelection = { start: Math.min(anchor, to), end: Math.max(anchor, to) };
+    paintSelection(pane);
+}
+
+// A gutter click or Enter: select the line, or extend to it when `extend`.
+function pickLine(pane, number, extend) {
+    if (!number) return;
+    if (extend && pane._codeSelection) setSelection(pane, pane._codeSelectAnchor, number);
+    else setSelection(pane, number, number);
+}
+
+function clearSelection(pane) {
+    if (!pane) return;
+    cancelPress(pane);
+    pane._codeSelection = null;
+    pane._codeSelectAnchor = 0;
+    pane._codeSelectDrag = null;
+    pane._codeViewerRefs.lines.classList.remove('codeViewerLines--selecting');
+    paintSelection(pane);
+}
+
+function paintSelection(pane) {
+    const sel = pane._codeSelection;
+    const rows = pane._codeViewerRefs.lines.querySelectorAll('.codeViewerLine');
+    Array.prototype.forEach.call(rows, function (row) {
+        const n = Number(row.dataset.line);
+        const on = !!sel && n >= sel.start && n <= sel.end;
+        row.classList.toggle('codeViewerLine--selected', on);
+        const gutter = row.querySelector('button.codeViewerGutter');
+        if (gutter) gutter.setAttribute('aria-pressed', on ? 'true' : 'false');
+    });
+    placeSelectBar(pane);
+}
+
+// `L29–L31`, or `L29` for one line.
+function selectLabel(sel) {
+    return sel.start === sel.end ? ('L' + sel.start) : ('L' + sel.start + '–L' + sel.end);
+}
+
+// Show the bar for the current selection, docked in the last selected row that
+// is scrolled into view (the range's last row when none is, or when the platform
+// can't measure). Moving the dock between rows is the only positioning — the
+// sticky CSS does the rest.
+function placeSelectBar(pane) {
+    const refs = pane._codeViewerRefs;
+    const bar = refs.selectBar;
+    const dock = refs.selectDock;
+    const sel = pane._codeSelection;
+    if (!sel) {
+        bar.hidden = true;
+        if (dock.parentNode) dock.parentNode.removeChild(dock);
+        return;
+    }
+    refs.selectSpan.textContent = selectLabel(sel);
+    refs.selectSpan.setAttribute('aria-label', sel.start === sel.end
+        ? ('Line ' + sel.start + ' selected')
+        : ('Lines ' + sel.start + ' to ' + sel.end + ' selected'));
+    const bodyRect = refs.body.getBoundingClientRect();
+    let fallback = null;
+    let row = null;
+    for (let n = sel.end; n >= sel.start && !row; n--) {
+        const el = refs.lines.querySelector('[data-line="' + n + '"]');
+        if (!el) continue;
+        if (!fallback) fallback = el;
+        const r = el.getBoundingClientRect();
+        if (bodyRect.height > 0 && r.bottom > bodyRect.top && r.top < bodyRect.bottom) row = el;
+    }
+    row = row || fallback;
+    if (!row) {
+        bar.hidden = true;
+        if (dock.parentNode) dock.parentNode.removeChild(dock);
+        return;
+    }
+    bar.hidden = false;
+    if (dock.parentNode !== row) row.appendChild(dock);
+}
+
+// The selected source lines, raw, or null when nothing is selected.
+function selectedLines(pane) {
+    const sel = pane._codeSelection;
+    const state = pane._codeViewerState;
+    if (!sel || !state) return null;
+    return state.lines.slice(sel.start - 1, sel.end);
+}
+
+function copySelection(pane) {
+    const lines = selectedLines(pane);
+    if (!lines) return;
+    const text = lines.join('\n');
+    const done = function () { showInjectToast('Copied'); };
+    // The async clipboard is the one path that works from a tap on mobile Safari;
+    // without it there is nothing to confirm, so the toast stays down.
+    if (typeof navigator === 'undefined' || !navigator.clipboard || typeof navigator.clipboard.writeText !== 'function') return;
+    navigator.clipboard.writeText(text).then(done).catch(function () {});
+}
+
+function askSelection(pane) {
+    const lines = selectedLines(pane);
+    const state = pane._codeViewerState;
+    if (!lines || !askHandler) return;
+    askHandler({
+        repo: state.repo,
+        filePath: state.filePath,
+        srcRoot: state.srcRoot,
+        start: pane._codeSelection.start,
+        end: pane._codeSelection.end,
+        text: lines,
+    });
+}
+
+// Drop a pending or live long-press.
+function cancelPress(pane) {
+    const press = pane._codeSelectPress;
+    if (!press) return;
+    if (press.timer) clearTimeout(press.timer);
+    pane._codeSelectPress = null;
+}
+
+// The gutter's mouse, keyboard and touch wiring for one pane.
+function wireSelection(pane) {
+    wireViewerGlobals();
+    const refs = pane._codeViewerRefs;
+    const lines = refs.lines;
+    const gutterOf = function (event) {
+        const t = event.target;
+        const g = t && t.closest ? t.closest('button.codeViewerGutter') : null;
+        return g && lines.contains(g) ? g : null;
+    };
+    const lineOf = function (g) {
+        const row = g.closest('.codeViewerLine');
+        return row ? Number(row.dataset.line) : 0;
+    };
+
+    lines.addEventListener('click', function (event) {
+        const g = gutterOf(event);
+        if (!g) return;
+        // A drag already set the range; its trailing click must not reset it.
+        if (pane._codeSelectDragged) { pane._codeSelectDragged = false; return; }
+        pickLine(pane, lineOf(g), event.shiftKey);
+    });
+    // Enter selects, Shift+Enter extends. Handled here rather than left to the
+    // button's synthetic click, which doesn't reliably carry the Shift key.
+    lines.addEventListener('keydown', function (event) {
+        if (event.key !== 'Enter') return;
+        const g = gutterOf(event);
+        if (!g) return;
+        event.preventDefault();
+        pickLine(pane, lineOf(g), event.shiftKey);
+    });
+
+    // Mouse and pen: press on a number, drag down the gutter to extend.
+    lines.addEventListener('pointerdown', function (event) {
+        pane._codeSelectDragged = false;
+        if (event.pointerType === 'touch') return;
+        if (event.button) return;
+        const g = gutterOf(event);
+        if (!g) return;
+        const n = lineOf(g);
+        const anchor = (event.shiftKey && pane._codeSelection) ? pane._codeSelectAnchor : n;
+        pane._codeSelectDrag = { anchor: anchor, from: n };
+        lines.classList.add('codeViewerLines--selecting');
+    });
+    lines.addEventListener('pointermove', function (event) {
+        const drag = pane._codeSelectDrag;
+        if (!drag) return;
+        const n = rowNumberAt(pane, event.clientX, event.clientY, event.target);
+        if (!n || (n === drag.from && !pane._codeSelectDragged)) return;
+        pane._codeSelectDragged = true;
+        setSelection(pane, drag.anchor, n);
+    });
+
+    // Touch: rest a finger on any row for LONG_PRESS_MS to start a selection,
+    // then drag it to extend; lifting ends it. Moving first is a scroll.
+    lines.addEventListener('touchstart', function (event) {
+        cancelPress(pane);
+        if (!event.touches || event.touches.length !== 1) return;
+        const t = event.touches[0];
+        const n = rowNumberAt(pane, NaN, NaN, event.target);
+        if (!n) return;
+        const press = { x: t.clientX, y: t.clientY, active: false, timer: null };
+        press.timer = setTimeout(function () {
+            press.timer = null;
+            if (pane._codeSelectPress !== press) return;
+            press.active = true;
+            setSelection(pane, n, n);
+        }, LONG_PRESS_MS);
+        pane._codeSelectPress = press;
+    }, { passive: true });
+    lines.addEventListener('touchmove', function (event) {
+        const press = pane._codeSelectPress;
+        if (!press || !event.touches || !event.touches.length) return;
+        const t = event.touches[0];
+        if (!press.active) {
+            if (Math.abs(t.clientX - press.x) > LONG_PRESS_SLOP || Math.abs(t.clientY - press.y) > LONG_PRESS_SLOP) {
+                cancelPress(pane);
+            }
+            return;
+        }
+        // The finger is extending the selection, not scrolling the listing.
+        if (event.cancelable) event.preventDefault();
+        const n = rowNumberAt(pane, t.clientX, t.clientY, null);
+        if (n) setSelection(pane, pane._codeSelectAnchor, n);
+    }, { passive: false });
+    lines.addEventListener('touchend', function (event) {
+        const press = pane._codeSelectPress;
+        if (!press) return;
+        // A finished long-press must not also land as a tap on a number or a name.
+        if (press.active && event.cancelable) event.preventDefault();
+        cancelPress(pane);
+    });
+    lines.addEventListener('touchcancel', function () { cancelPress(pane); });
+    // The long-press would otherwise also raise the platform's context menu.
+    lines.addEventListener('contextmenu', function (event) {
+        if (pane._codeSelectPress) event.preventDefault();
+    });
+
+    refs.body.addEventListener('scroll', function () {
+        if (pane._codeSelection) placeSelectBar(pane);
+    }, { passive: true });
+}
+
 // ── Trace ────────────────────────────────────────────────────────────────────
 
 // The index key for a repo-relative path: the manifest names files relative to
@@ -821,20 +1170,51 @@ function jumpToTrail(pane, index) {
     });
 }
 
-let escapeWired = false;
-// Escape closes an open peek before anything else hears it — the mobile code
-// sheet's own Escape listens on document, so this listens a level above.
-function wirePeekEscape() {
-    if (escapeWired || typeof window === 'undefined') return;
-    escapeWired = true;
+let globalsWired = false;
+// Document-level listeners every pane shares, wired once. Escape closes an open
+// peek before anything else hears it — the mobile code sheet's own Escape
+// listens on document, so this listens a level above — and with no peek open it
+// clears a selection instead, so a second Escape still reaches the sheet. A
+// pointer released anywhere ends a gutter drag.
+function wireViewerGlobals() {
+    if (globalsWired || typeof window === 'undefined') return;
+    globalsWired = true;
     window.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
         const layer = document.querySelector('.codeTraceLayer');
-        if (!layer) return;
-        event.preventDefault();
-        event.stopPropagation();
-        closePeek(layer.parentElement);
+        if (layer) {
+            event.preventDefault();
+            event.stopPropagation();
+            closePeek(layer.parentElement);
+            return;
+        }
+        // Only a selection the user is plausibly looking at: one in a mounted
+        // pane, while focus is in that pane or nowhere in particular.
+        const focus = document.activeElement;
+        let cleared = false;
+        panes.forEach(function (p) {
+            if (!p._codeSelection || !p.isConnected || p.hidden) return;
+            if (focus && focus !== document.body && !p.contains(focus)) return;
+            clearSelection(p);
+            cleared = true;
+        });
+        if (cleared) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
     }, true);
+    const endDrag = function () {
+        panes.forEach(function (p) {
+            if (!p._codeSelectDrag) return;
+            p._codeSelectDrag = null;
+            p._codeViewerRefs.lines.classList.remove('codeViewerLines--selecting');
+        });
+    };
+    window.addEventListener('pointerup', endDrag);
+    window.addEventListener('pointercancel', endDrag);
+    window.addEventListener('resize', function () {
+        panes.forEach(function (p) { if (p._codeSelection) placeSelectBar(p); });
+    });
 }
 
 function closePeek(pane) {
@@ -872,7 +1252,7 @@ function startTrace(pane, btn, from, fresh) {
 // A fresh overlay layer in `pane`, replacing any open one. The layer is the
 // backdrop: a tap that lands on it rather than the card closes the peek.
 function openLayer(pane, label) {
-    wirePeekEscape();
+    wireViewerGlobals();
     const old = pane.querySelector(':scope > .codeTraceLayer');
     if (old) old.remove();
     const layer = document.createElement('div');
@@ -1123,6 +1503,7 @@ export function renderCodeViewer(host, opts) {
     refs.explain.disabled = false;
     refs.explain.textContent = EXPLAIN_LABEL;
     resetExplanation(pane);
+    clearSelection(pane);
     clearEl(refs.lines);
     refs.moreUp.hidden = true;
     refs.moreDown.hidden = true;
@@ -1261,6 +1642,7 @@ export function clearCodeViewer(host) {
     refs.explain.disabled = true;
     refs.explain.textContent = EXPLAIN_LABEL;
     resetExplanation(shell.pane);
+    clearSelection(shell.pane);
     refs.path.textContent = '';
     refs.meta.textContent = '';
     refs.gh.removeAttribute('href');

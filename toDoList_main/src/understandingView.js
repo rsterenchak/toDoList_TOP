@@ -57,9 +57,9 @@ import { resolveProjectRepo } from './seedTasksModal.js';
 import { loadBook, revalidateBook, isBookCached, bookStats } from './codeBook.js';
 import { getCachedTargets, targetsLoaded, fetchActiveRuns, dispatchBook, mintEntryId, isInjectConfigured, showInjectToast } from './inject.js';
 import { showConfirmModal } from './modals.js';
-import { loadManifest, getCachedManifest, openChatWithBookScope } from './claudeSheet.js';
+import { loadManifest, getCachedManifest, openChatWithBookScope, openChatWithSelection } from './claudeSheet.js';
 import { joinSrcRootPath } from './srcPath.js';
-import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerCloseHandler, getCachedLines } from './codeViewer.js';
+import { renderCodeViewer, clearCodeViewer, onCodeViewerChange, setCodeViewerCloseHandler, getCachedLines, setCodeViewerAskHandler } from './codeViewer.js';
 import { loadSymbols, getLoadedSymbols } from './codeTrace.js';
 import { createCodeSheet } from './codeSheet.js';
 import { readLocalProgress, recordProgress, flushProgress, loadProgress, noteChapterLeft, noteChapterOpened, noteChapterReached, readAbandoned } from './bookProgress.js';
@@ -1415,6 +1415,81 @@ function askAboutChapter() {
     });
     if (scope) openChatWithBookScope(scope);
 }
+
+// The chat scope for lines `sel.start`–`sel.end` of `sel.filePath` (REPO-relative;
+// `sel.srcRoot` maps it to the index's manifest-relative key) — the code
+// viewer's Ask. The same shape as a chapter scope so the Worker needs nothing
+// new: the selected lines, numbered, are the one prose block; the single ref is
+// the innermost definition that contains the whole range, with its referrers
+// (or a file ref when no definition does); `index` is the widen list. `sel.text`
+// is the lines themselves, read from `ctx.getLines` when absent. `ctx` is
+// buildBookScope's `{ symbols, files, getLines }` plus an optional `book` that
+// ranks the widen list; null when the range can't address anything.
+export function buildSelectionScope(sel, ctx) {
+    if (!sel || !sel.filePath) return null;
+    const start = Number(sel.start);
+    const end = Number(sel.end);
+    if (!(start >= 1) || !(end >= start)) return null;
+    const c = ctx || {};
+    const root = String(sel.srcRoot || '').replace(/\/+$/, '');
+    const filePath = String(sel.filePath);
+    const file = (root && filePath.indexOf(root + '/') === 0) ? filePath.slice(root.length + 1) : filePath;
+    let text = Array.isArray(sel.text) ? sel.text : null;
+    if (!text && typeof c.getLines === 'function') {
+        const all = c.getLines(file);
+        if (Array.isArray(all)) text = all.slice(start - 1, end);
+    }
+    text = text || [];
+    const width = String(end).length;
+    const numbered = text.map(function (line, i) {
+        return String(start + i).padStart(width, ' ') + '  ' + line;
+    }).join('\n');
+    const span = start === end ? ('line ' + start) : ('lines ' + start + '–' + end);
+    const scope = {
+        chapter: { id: 'sel:' + file + ':' + start + '-' + end, title: file + ' ' + span, index: 0, total: 0 },
+        prose: [numbered],
+        refs: [],
+    };
+    const entry = c.symbols && c.symbols.files ? c.symbols.files[file] : null;
+    const defs = entry && Array.isArray(entry.defs) ? entry.defs : [];
+    let def = null;
+    defs.forEach(function (d) {
+        if (!d || typeof d.name !== 'string' || !(d.start <= start) || !(d.end >= end)) return;
+        if (!def || (d.end - d.start) < (def.end - def.start)) def = d;
+    });
+    const ref = def
+        ? { file: file, symbol: def.name, label: def.name, line: def.start, end: def.end }
+        : { file: file, symbol: '', label: file };
+    if (def) {
+        const found = findReferrers(ref, c).slice(0, REF_REFERRERS_MAX);
+        if (found.length) ref.referrers = found;
+    }
+    scope.refs.push(ref);
+    scope.index = buildWidenIndex(c.book || null, scope.refs, c);
+    return scope;
+}
+
+// The code viewer's Ask: scope the chat to the selected lines. Like
+// askAboutChapter it builds from whatever is already loaded so the chat opens on
+// the tap; the reader's book ranks the widen list when it is that repo's.
+function askAboutSelection(sel) {
+    if (!sel || !sel.repo) return;
+    const manifest = getCachedManifest(sel.repo);
+    const srcRoot = typeof sel.srcRoot === 'string' ? sel.srcRoot
+        : (manifest && typeof manifest.srcRoot === 'string' ? manifest.srcRoot : '');
+    const scope = buildSelectionScope(Object.assign({}, sel, { srcRoot: srcRoot }), {
+        symbols: getLoadedSymbols(sel.repo) || null,
+        files: manifest && Array.isArray(manifest.files) ? manifest.files : [],
+        getLines: function (file) { return getCachedLines(sel.repo, joinSrcRootPath(srcRoot, file)); },
+        book: reader && reader.repo === sel.repo ? reader.book : null,
+    });
+    if (!scope) return;
+    openChatWithSelection(Object.assign({}, sel, { srcRoot: srcRoot, scope: scope }));
+}
+
+// Both tabs' viewers (Structure and this reader) share codeViewer.js, so one
+// registration serves every pane.
+setCodeViewerAskHandler(askAboutSelection);
 
 // Open a scoped chat reply's code chip `{ repo, file, symbol, line, end, label }`
 // in the reader's code pane / sheet. Returns false (leaving it to the caller's
