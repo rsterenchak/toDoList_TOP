@@ -439,10 +439,35 @@ describe('voiceInput — shared mic + dictation module', () => {
                 expect(isDictating()).toBe(true);
                 // The watchdog is the safety net that makes the overlay never
                 // the only way out of a continuous session.
+                // Firing it is a keep-text cancel: the session ends, the text
+                // stays in the field for review.
                 vi.advanceTimersByTime(60000);
                 expect(isDictating()).toBe(false);
                 expect(document.querySelector('.voiceOverlay')).toBeNull();
                 expect(input.value).toBe('two thoughts in one paragraph');
+                expect(btn.classList.contains('micButton--recording')).toBe(false);
+            } finally {
+                vi.useRealTimers();
+            }
+        });
+
+        // Regression: the watchdog used to commit whatever was transcribed, so
+        // on the add-task row a todo appeared with no user tap. Only an explicit
+        // tap may add a todo by voice.
+        it('the watchdog keeps the text and never fires onFinal on an auto-commit surface', () => {
+            vi.useFakeTimers();
+            try {
+                const input = makeInput();
+                const onFinal = vi.fn();
+                const btn = mountMicButton(input, { overlay: true, onFinal });
+                btn.click();
+                lastRecognition().emitResult('walked away mid thought');
+                vi.advanceTimersByTime(60000);
+                expect(onFinal).not.toHaveBeenCalled();
+                expect(input.value).toBe('walked away mid thought');
+                expect(isDictating()).toBe(false);
+                expect(document.querySelector('.voiceOverlay')).toBeNull();
+                expect(btn.classList.contains('micButton--recording')).toBe(false);
             } finally {
                 vi.useRealTimers();
             }
