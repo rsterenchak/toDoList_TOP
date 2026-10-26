@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-10-25',
         added: [
             'Select lines in the code viewer by clicking, shift-clicking or dragging down the line numbers (or long-pressing on a phone), then copy them or tap Ask to chat with Claude about just those lines.',
+            'A Notes toggle in the code viewer annotates the open file with a short note beside each line (or beneath it on narrow screens) saying what it is for and what it connects to, skipping lines a comment already explains, and tapping a note asks Claude about that line.',
         ],
     },
     {
@@ -17,13 +18,6 @@ export const changelog = [
             'Assistant replies in the Claude chat now show real formatting, with bold, headings, nested bullets, links and code blocks you can copy, and a ⤢ button opens any reply in a full reading view you can page through.',
             'On desktop a code tour now plays inside the code viewer, showing each step\'s whole file with its lines highlighted beneath a step banner, and on phones the tour sheet shows more of the code around each step.',
             'Asking Claude about a code book chapter now lets it point to where each of the chapter\'s names is used elsewhere in the code, and to look up a name the chapter doesn\'t cover when you ask about it.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-23',
-        fixed: [
-            'Opening the app straight onto Understanding or Structure no longer says a linked project isn\'t linked to a repo, showing a brief loading state until your repos load instead.',
         ],
     },
 ];

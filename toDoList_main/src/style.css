@@ -8552,6 +8552,150 @@ button.codeViewerGutter:focus-visible {
 }
 .codeViewerSelectAsk:disabled { opacity: 0.4; cursor: default; }
 
+/* Line notes. The toggle sits left of Explain and reads as its quieter sibling;
+   pressed, it takes Explain's accent. Its menu (right-click / long-press) hangs
+   under it, right-aligned. */
+.codeViewerNotesWrap {
+  position: relative;
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+.codeViewerNotes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  color: var(--text-secondary);
+  border: 0.5px solid var(--border-mid);
+  border-radius: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.codeViewerNotes:hover:not(:disabled) { border-color: #6C5DF5; color: var(--text-primary); }
+.codeViewerNotes--on {
+  background: rgba(108, 93, 245, 0.22);
+  border-color: #6C5DF5;
+  color: var(--text-primary);
+}
+.codeViewerNotes:disabled { opacity: 0.5; cursor: default; }
+.codeViewerNotesMenu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 6;
+  min-width: 180px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-dim);
+  border-radius: 8px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+.codeViewerNotesMenu[hidden] { display: none !important; }
+.codeViewerNotesMenuItem {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-primary);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.codeViewerNotesMenuItem:hover { background: var(--bg-surface); }
+.codeViewerNotesStatus {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.codeViewerNotesStatus[hidden] { display: none !important; }
+
+/* Interleaved (pane under 620px): a note row after its line, held at the
+   scroller's left edge and sized to its visible width — the body is a size
+   container while interleaved notes show, so `100cqw` is that width — so a long
+   line scrolled sideways can't carry it off or stretch it, and indented past the
+   gutter (6 SpaceMono ch + its padding and the row's border) to the text
+   column. */
+.codeViewerBody--notes { container-type: inline-size; }
+.codeViewerNote {
+  position: sticky;
+  left: 0;
+  box-sizing: border-box;
+  width: 320px;
+  width: 100cqw;
+  padding: 2px 10px 6px calc(var(--code-font-size, 12px) * 3.7 + 14px);
+  font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #8b8da0;
+}
+.codeViewerNoteBody {
+  box-sizing: border-box;
+  padding: 1px 0 1px 8px;
+  border-left: 2px solid #2a2b36;
+}
+.codeViewerNote--active { color: #c9cad6; }
+.codeViewerNote--active > .codeViewerNoteBody { border-left-color: #6C5DF5; }
+.codeViewerNoteText {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  white-space: normal;
+  cursor: pointer;
+}
+.codeViewerNoteText:hover { color: #c9cad6; }
+.codeViewerNoteRefs {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-left: 6px;
+  vertical-align: baseline;
+}
+.codeViewerNoteRef.bookRef { font-size: 11px; }
+.codeViewerLine--noteActive:not(.codeViewerLine--selected),
+.codeViewerLine--noteActive:not(.codeViewerLine--selected) > .codeViewerGutter {
+  background: rgba(108, 93, 245, 0.08);
+}
+
+/* Rail (pane 620px and wider): the listing becomes code | notes, each note
+   placed on its own rows by codeViewer.js (`grid-row`) so it stays level with
+   them however either side wraps. The rail is sticky to the scroller's right
+   edge, so sideways-scrolling a long line slides the code under it. */
+.codeViewerLines--rail {
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) clamp(240px, 30%, 360px);
+}
+.codeViewerLines--rail > .codeViewerLine { grid-column: 1; }
+.codeViewerLines--rail > .codeViewerNote {
+  grid-column: 2;
+  left: auto;
+  right: 0;
+  z-index: 2;
+  width: auto;
+  padding: 0 10px 0 0;
+  background: #0a0b0f;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.codeViewerLines--rail > .codeViewerNote > .codeViewerNoteBody {
+  height: 100%;
+  padding: 0 0 4px 10px;
+}
+
 /* Chunk loaders, one above and one below the rendered window, each shown only
    while unrendered lines remain in that direction. */
 .codeViewerMore {
@@ -8876,6 +9020,13 @@ button.codeViewerGutter:focus-visible {
 }
 .structureCodeSheet .codeViewerSize {
   order: 1;
+}
+.structureCodeSheet .codeViewerNotesWrap {
+  order: 1;
+}
+.structureCodeSheet .codeViewerNotes {
+  min-height: 40px;
+  font-size: 13px;
 }
 /* Sized to the 40px Explain button beside it, and to a comfortable touch target
    — the desktop 24px square is a mouse affordance, not a thumb one. */

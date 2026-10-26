@@ -59,8 +59,21 @@
 // registered handler (understandingView builds the chat scope, so this module
 // never imports the chat). The selection lives on the pane, so each host's
 // viewer keeps its own, and any open, close or Escape drops it.
+//
+// LINE NOTES ride on the listing too. The header's Notes toggle (left of
+// Explain) annotates the open file in place with one short note per line or
+// statement — what the code and its comments can't say on their own. Like
+// Explain, the writing lives elsewhere: structureView registers the doer through
+// `setCodeViewerNotesHandler` (it owns the Worker turn and its cache), and this
+// module only asks for a scope, filters what comes back and lays it out. A file
+// of 300 lines or fewer is annotated whole; a longer one, the definition the
+// listing is scrolled to (or every top-level definition, from the toggle's menu).
+// Notes sit in a line-aligned rail right of the code when the pane is at least
+// 620px wide and interleave beneath their lines when it is narrower; they never
+// renumber lines or disturb the highlight, the selection or tap-to-trace.
 
 import { readRepoFile, showInjectToast } from './inject.js';
+import { isCodeNotesOn, setCodeNotesOn } from './prefs.js';
 import { loadSymbols, getLoadedSymbols, isTraceable, tokenizeLine, resolveName, topRanked } from './codeTrace.js';
 import { joinSrcRootPath } from './srcPath.js';
 
@@ -132,6 +145,22 @@ let askHandler = null;
 // it may drift first before the gesture counts as a scroll instead.
 const LONG_PRESS_MS = 500;
 const LONG_PRESS_SLOP = 10;
+
+// Who writes a file's line notes, registered by structureView (which owns the
+// Worker turn and the notes cache). Called with `{ repo, filePath, srcRoot, sha,
+// lines, scope, names }` and resolving to `{ ok: true, notes }` or `{ ok: false }`.
+// Null until then, in which case the Notes toggle is disabled.
+let notesHandler = null;
+const NOTES_LABEL = 'Notes';
+// A file this long or shorter is annotated in one call; past it, per definition.
+const NOTES_WHOLE_MAX = 300;
+// The pane width at which notes move from beneath their lines into a rail.
+const NOTES_RAIL_MIN = 620;
+// How long the listing must rest after a scroll before an un-noted definition
+// scrolled into view is fetched.
+const NOTES_SCROLL_MS = 300;
+const NOTE_MAX_CHARS = 120;
+const NOTES_ERROR = 'Couldn’t read notes for this file.';
 // The Ask control's chat-bubble glyph.
 const ASK_ICON_PATH = 'M4 5.5A2.5 2.5 0 0 1 6.5 3h11A2.5 2.5 0 0 1 20 5.5v8a2.5 2.5 0 0 1-2.5 2.5H10l-4.5 4v-4A1.5 1.5 0 0 1 4 14.5z';
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -258,6 +287,13 @@ export function setCodeViewerAskHandler(fn) {
     panes.forEach(function (p) { p._codeViewerRefs.selectAsk.disabled = !askHandler; });
 }
 
+// Register the function the Notes toggle asks for a scope's notes (see
+// `notesHandler`). Passing a non-function unregisters.
+export function setCodeViewerNotesHandler(fn) {
+    notesHandler = typeof fn === 'function' ? fn : null;
+    panes.forEach(function (p) { p._codeViewerRefs.notes.disabled = !notesHandler || !p._codeViewerFile; });
+}
+
 // The selected `{ start, end }` in `host`'s viewer (a copy), or null.
 export function getCodeViewerSelection(host) {
     const pane = host && host.querySelector ? host.querySelector(':scope > .codeViewerPane') : null;
@@ -318,6 +354,7 @@ export function resetCodeViewer() {
     trail = [];
     srcRoots.clear();
     askHandler = null;
+    notesHandler = null;
     // Re-read rather than reset to the default: the size is a persisted device
     // preference, so a reset viewer must still come back at the stored size.
     codeFontSize = readStoredFontSize();
@@ -477,6 +514,32 @@ function buildPane() {
 
     header.appendChild(size);
 
+    // The Notes toggle, left of Explain. Pressed while the open file is
+    // annotated; a right-click or long-press opens its menu, which on a long file
+    // offers notes for every definition at once instead of the one in view.
+    const notesWrap = document.createElement('span');
+    notesWrap.className = 'codeViewerNotesWrap';
+    const notes = document.createElement('button');
+    notes.type = 'button';
+    notes.className = 'codeViewerNotes';
+    notes.textContent = NOTES_LABEL;
+    notes.disabled = true;
+    notes.setAttribute('aria-pressed', 'false');
+    notes.setAttribute('aria-label', 'Show line notes for this file');
+    notesWrap.appendChild(notes);
+    const notesMenu = document.createElement('div');
+    notesMenu.className = 'codeViewerNotesMenu';
+    notesMenu.setAttribute('role', 'menu');
+    notesMenu.hidden = true;
+    const notesWhole = document.createElement('button');
+    notesWhole.type = 'button';
+    notesWhole.className = 'codeViewerNotesMenuItem';
+    notesWhole.setAttribute('role', 'menuitem');
+    notesWhole.textContent = 'Notes for whole file';
+    notesMenu.appendChild(notesWhole);
+    notesWrap.appendChild(notesMenu);
+    header.appendChild(notesWrap);
+
     // One Explain control for the open file, left of the GitHub link. Disabled
     // until a file is open, so it never advertises an action it can't perform.
     // In the mobile sheet CSS wraps it onto its own full-width row beneath the
@@ -581,6 +644,13 @@ function buildPane() {
 
     pane.appendChild(explanation);
 
+    // One line of notes progress or failure, above the listing.
+    const notesStatus = document.createElement('div');
+    notesStatus.className = 'codeViewerNotesStatus';
+    notesStatus.hidden = true;
+    notesStatus.setAttribute('role', 'status');
+    pane.appendChild(notesStatus);
+
     const body = document.createElement('div');
     body.className = 'codeViewerBody';
 
@@ -641,6 +711,10 @@ function buildPane() {
         sizeDown: sizeDown,
         sizeValue: sizeValue,
         sizeUp: sizeUp,
+        notes: notes,
+        notesMenu: notesMenu,
+        notesWhole: notesWhole,
+        notesStatus: notesStatus,
         explain: explain,
         gh: gh,
         close: close,
@@ -669,6 +743,7 @@ function buildPane() {
     // The file the Explain control acts on, set synchronously on open (the read
     // that follows is irrelevant to it) and null while the column is empty.
     pane._codeViewerFile = null;
+    pane._codeNotes = null;
 
     setExplanationCollapsed(pane, false);
     // Before the pane is mounted, so the stored size is what the first painted
@@ -691,6 +766,7 @@ function buildPane() {
         setExplanationCollapsed(pane, false);
         explainHandler(file.repo, file.filePath, explain, pane._codeViewerRefs.explanationBody);
     });
+    wireNotes(pane);
     explanationToggle.addEventListener('click', function () {
         setExplanationCollapsed(pane, !pane._codeViewerRefs.explanationBody.hidden);
     });
@@ -835,6 +911,7 @@ function loadMore(pane, atTop) {
         state.end = newEnd;
     }
     refreshWindowChrome(state);
+    renderNotes(pane);
 }
 
 // Drop the jump highlight and hide the banner, leaving the file and the rendered
@@ -1111,6 +1188,482 @@ function wireSelection(pane) {
     }, { passive: true });
 }
 
+// ── Line notes ───────────────────────────────────────────────────────────────
+
+function isCommentText(t) {
+    return /^(\/\/|\/\*|\*|<!--)/.test(t);
+}
+
+// A line a note may sit on: not blank, not a comment on its own, not a lone
+// brace or bracket.
+function isNoteableLine(text) {
+    const t = String(text == null ? '' : text).trim();
+    return !!t && !isCommentText(t) && !/^[{}()[\];,]+$/.test(t);
+}
+
+// Whether an adjacent comment already explains line `n`: the line directly above
+// is a `//`, `///` or `/* */` comment, or the line carries a trailing one. Such a
+// line gets no note even when the reply offers one — a paraphrase of the comment
+// beside it is noise, and a well-commented file should read as a sparse rail.
+function isCommentExplained(lines, n) {
+    const own = String(lines[n - 1] == null ? '' : lines[n - 1]);
+    if (/\S\s+\/\/\s/.test(own) || /\S\s*\/\*.*\*\/\s*$/.test(own)) return true;
+    if (n < 2) return false;
+    return isCommentText(String(lines[n - 2] == null ? '' : lines[n - 2]).trim());
+}
+
+// The handler's raw notes, kept only where they may sit and clipped to `scope`
+// (the whole file when null): `{ line, end, note, refs }`, one per line.
+function filterNotes(lines, raw, scope) {
+    const out = [];
+    const seen = {};
+    const lo = scope ? scope.start : 1;
+    const hi = scope ? Math.min(scope.end, lines.length) : lines.length;
+    (Array.isArray(raw) ? raw : []).forEach(function (item) {
+        if (!item || typeof item !== 'object') return;
+        const line = Math.floor(Number(item.line));
+        if (!(line >= lo && line <= hi) || seen[line]) return;
+        const text = typeof item.note === 'string' ? item.note.trim() : '';
+        if (!text || !isNoteableLine(lines[line - 1]) || isCommentExplained(lines, line)) return;
+        const end = Math.floor(Number(item.end));
+        seen[line] = true;
+        out.push({
+            line: line,
+            end: end >= line ? Math.min(end, hi) : line,
+            note: text.length > NOTE_MAX_CHARS ? text.slice(0, NOTE_MAX_CHARS - 1).trim() + '…' : text,
+            refs: Array.isArray(item.refs)
+                ? item.refs.filter(function (r) { return typeof r === 'string' && r; })
+                : [],
+        });
+    });
+    return out;
+}
+
+// Fold a scope's notes into the file's, in line order. A note that starts inside
+// an earlier note's span is dropped, so no two notes ever claim the same row.
+function mergeNotes(rec, list) {
+    const all = rec.notes.concat(list).sort(function (a, b) { return a.line - b.line; });
+    const kept = [];
+    all.forEach(function (n) {
+        const prev = kept[kept.length - 1];
+        if (prev && n.line <= prev.end) return;
+        kept.push(n);
+    });
+    rec.notes = kept;
+}
+
+// The open file's definitions from the trace index, or [] before it has loaded
+// (or when the repo publishes none).
+function fileDefs(state) {
+    const t = state.trace;
+    const entry = t && t.symbols && t.symbols.files ? t.symbols.files[t.fileKey] : null;
+    if (!entry || !Array.isArray(entry.defs)) return [];
+    return entry.defs.filter(function (d) {
+        return d && typeof d.name === 'string' && d.name && d.start >= 1 && d.end >= d.start;
+    });
+}
+
+function scopeOfDef(d) {
+    return { start: d.start, end: d.end, symbol: d.name };
+}
+
+// The first listing row at least partly below the scroller's top edge — or,
+// where the platform can't measure, the span the file opened on.
+function topVisibleLine(state) {
+    const refs = state.pane._codeViewerRefs;
+    const top = refs.body.getBoundingClientRect().top;
+    const rows = refs.lines.querySelectorAll(':scope > .codeViewerLine');
+    for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].getBoundingClientRect();
+        if (r.height > 0 && r.bottom > top) return Number(rows[i].dataset.line);
+    }
+    return state.hl ? state.hl.start : state.start;
+}
+
+// What to annotate: the whole file (one null scope) when it is short enough;
+// otherwise every top-level definition when `whole`, else the one in view — the
+// widest definition around the top visible line that still fits one call, or the
+// narrowest when none does.
+function notesScopes(state, whole) {
+    if (state.total <= NOTES_WHOLE_MAX) return [null];
+    const defs = fileDefs(state).sort(function (a, b) { return (a.start - b.start) || (b.end - a.end); });
+    if (whole) {
+        const out = [];
+        let last = 0;
+        defs.forEach(function (d) {
+            if (d.start <= last) return;
+            out.push(scopeOfDef(d));
+            last = d.end;
+        });
+        return out;
+    }
+    const n = topVisibleLine(state);
+    let fit = null;
+    let narrow = null;
+    defs.forEach(function (d) {
+        if (d.start > n || d.end < n) return;
+        const span = d.end - d.start + 1;
+        if (span <= NOTES_WHOLE_MAX && (!fit || span > fit.end - fit.start + 1)) fit = d;
+        if (!narrow || span < narrow.end - narrow.start + 1) narrow = d;
+    });
+    const pick = fit || narrow;
+    return pick ? [scopeOfDef(pick)] : [];
+}
+
+function setNotesStatus(pane, text) {
+    const el = pane._codeViewerRefs.notesStatus;
+    el.textContent = text || '';
+    el.hidden = !text;
+}
+
+function syncNotesToggle(pane) {
+    const refs = pane._codeViewerRefs;
+    const on = !!(pane._codeNotes && pane._codeNotes.on);
+    refs.notes.classList.toggle('codeViewerNotes--on', on);
+    refs.notes.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+
+// Start a fresh notes record for a newly opened file (or none, `repo` null): the
+// toggle reads the repo's remembered state, nothing is fetched or shown yet. A
+// reply still in flight holds the old record, so it lands nowhere.
+function resetNotes(pane, repo) {
+    if (pane._codeNotesTimer) clearTimeout(pane._codeNotesTimer);
+    pane._codeNotesTimer = null;
+    pane._codeNotes = repo
+        ? { on: isCodeNotesOn(repo), notes: [], done: {}, pending: {}, active: 0, mode: null }
+        : null;
+    closeNotesMenu(pane);
+    pane._codeViewerRefs.notes.disabled = !repo || !notesHandler;
+    syncNotesToggle(pane);
+    setNotesStatus(pane, '');
+    renderNotes(pane);
+}
+
+// Ask the handler for one scope's notes, unless they are already in or coming.
+function fetchNoteScope(pane, rec, state, scope) {
+    const key = scope ? (scope.symbol + '@' + scope.start) : '';
+    if (pane._codeNotes !== rec || !rec.on || !notesHandler || rec.done[key] || rec.pending[key]) {
+        return Promise.resolve();
+    }
+    rec.pending[key] = true;
+    setNotesStatus(pane, 'Writing notes…');
+    const handler = notesHandler;
+    return Promise.resolve().then(function () {
+        return handler({
+            repo: state.repo,
+            filePath: state.filePath,
+            srcRoot: state.srcRoot,
+            sha: state.sha,
+            lines: state.lines,
+            scope: scope,
+            names: fileDefs(state).map(function (d) { return d.name; }),
+        });
+    }).catch(function () { return null; }).then(function (res) {
+        delete rec.pending[key];
+        if (pane._codeNotes !== rec) return;
+        if (!res || res.ok !== true || !Array.isArray(res.notes)) {
+            // Off rather than half-on: the toggle never claims notes it hasn't got.
+            rec.on = false;
+            syncNotesToggle(pane);
+            setNotesStatus(pane, NOTES_ERROR);
+            renderNotes(pane);
+            return;
+        }
+        rec.done[key] = true;
+        mergeNotes(rec, filterNotes(state.lines, res.notes, scope));
+        if (!Object.keys(rec.pending).length) setNotesStatus(pane, '');
+        renderNotes(pane);
+    });
+}
+
+// Fetch whatever the current view (or, `whole`, the whole file) still lacks,
+// one call at a time so a long file's chunks can't fan out into a burst.
+function requestNotes(pane, whole) {
+    const rec = pane._codeNotes;
+    const state = pane._codeViewerState;
+    if (!rec || !rec.on || !state || !notesHandler) return;
+    let chain = Promise.resolve();
+    notesScopes(state, whole).forEach(function (scope) {
+        chain = chain.then(function () { return fetchNoteScope(pane, rec, state, scope); });
+    });
+}
+
+function notesMode(pane) {
+    return pane.getBoundingClientRect().width >= NOTES_RAIL_MIN ? 'rail' : 'inline';
+}
+
+function listingRow(pane, n) {
+    return pane._codeViewerRefs.lines.querySelector(':scope > .codeViewerLine[data-line="' + n + '"]');
+}
+
+function buildNote(state, note) {
+    const el = document.createElement('div');
+    el.className = 'codeViewerNote';
+    el.dataset.noteLine = String(note.line);
+    // The body carries the left rule; the note itself is the (sticky) slot.
+    const body = document.createElement('div');
+    body.className = 'codeViewerNoteBody';
+    el.appendChild(body);
+    const text = document.createElement('button');
+    text.type = 'button';
+    text.className = 'codeViewerNoteText';
+    text.textContent = note.note;
+    text.setAttribute('aria-label', 'Ask about line ' + note.line + ': ' + note.note);
+    body.appendChild(text);
+    // Only names the trace index can resolve become chips, so none is dead.
+    const trace = state.trace;
+    const names = trace ? note.refs.filter(function (r) { return isTraceable(trace.symbols, trace.fileKey, r); }) : [];
+    if (names.length) {
+        const refs = document.createElement('span');
+        refs.className = 'codeViewerNoteRefs';
+        names.forEach(function (name) {
+            const chip = document.createElement('button');
+            chip.type = 'button';
+            chip.className = 'bookRef codeViewerNoteRef';
+            chip.dataset.name = name;
+            chip.textContent = name;
+            refs.appendChild(chip);
+        });
+        body.appendChild(refs);
+    }
+    return el;
+}
+
+// Lay the file's notes onto the mounted rows, replacing any laid before. Rail
+// mode places each note in the grid's second column on its rows (by index in
+// the mounted window, so a window grown upward re-lays them); interleaved mode
+// puts it after its last row. Rows only gain `data-note` — nothing about the
+// numbering, the highlight or the selection changes.
+function renderNotes(pane) {
+    const refs = pane._codeViewerRefs;
+    const lines = refs.lines;
+    const rec = pane._codeNotes;
+    const state = pane._codeViewerState;
+    Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerNote'), function (el) {
+        lines.removeChild(el);
+    });
+    Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerLine[data-note]'), function (row) {
+        row.removeAttribute('data-note');
+        row.classList.remove('codeViewerLine--noteActive');
+    });
+    const show = !!rec && rec.on && !!state && rec.notes.length > 0;
+    const rail = show && notesMode(pane) === 'rail';
+    lines.classList.toggle('codeViewerLines--notes', show);
+    lines.classList.toggle('codeViewerLines--rail', rail);
+    // Interleaved notes are sized to the scroller's visible width, which the
+    // body exposes as a size container only while they are showing.
+    refs.body.classList.toggle('codeViewerBody--notes', show && !rail);
+    if (rec) rec.mode = show ? (rail ? 'rail' : 'inline') : null;
+    if (!show) return;
+    rec.notes.forEach(function (note) {
+        const first = Math.max(note.line, state.start);
+        const last = Math.min(note.end, state.end);
+        if (first > last) return;
+        for (let n = first; n <= last; n++) {
+            const row = listingRow(pane, n);
+            if (row) row.dataset.note = String(note.line);
+        }
+        const el = buildNote(state, note);
+        const anchor = listingRow(pane, rail ? first : last);
+        if (!anchor) return;
+        if (rail) el.style.gridRow = (first - state.start + 1) + ' / span ' + (last - first + 1);
+        lines.insertBefore(el, anchor.nextSibling);
+    });
+    setActiveNote(pane, rec.active);
+}
+
+// Light note `line` and its rows (0 lights none).
+function setActiveNote(pane, line) {
+    const rec = pane._codeNotes;
+    if (rec) rec.active = line || 0;
+    const lines = pane._codeViewerRefs.lines;
+    const key = String(line || '');
+    Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerNote'), function (el) {
+        el.classList.toggle('codeViewerNote--active', !!line && el.dataset.noteLine === key);
+    });
+    Array.prototype.forEach.call(lines.querySelectorAll(':scope > .codeViewerLine[data-note]'), function (row) {
+        row.classList.toggle('codeViewerLine--noteActive', !!line && row.dataset.note === key);
+    });
+}
+
+// The note line a listing element belongs to — a note, or a row one covers.
+function noteLineAt(pane, target) {
+    const el = target && target.closest ? target.closest('.codeViewerNote, .codeViewerLine[data-note]') : null;
+    if (!el || el.parentNode !== pane._codeViewerRefs.lines) return 0;
+    return Number(el.classList.contains('codeViewerNote') ? el.dataset.noteLine : el.dataset.note) || 0;
+}
+
+function toggleNotes(pane) {
+    const rec = pane._codeNotes;
+    const file = pane._codeViewerFile;
+    if (!rec || !file || !notesHandler) return;
+    rec.on = !rec.on;
+    setCodeNotesOn(file.repo, rec.on);
+    syncNotesToggle(pane);
+    setNotesStatus(pane, '');
+    renderNotes(pane);
+    if (rec.on) requestNotes(pane, false);
+}
+
+// Whether the toggle's menu has anything to offer: a file too long for one call
+// whose definitions the index can name.
+function canNoteWhole(pane) {
+    const state = pane._codeViewerState;
+    return !!state && !!notesHandler && state.total > NOTES_WHOLE_MAX && fileDefs(state).length > 0;
+}
+
+function openNotesMenu(pane) {
+    if (!canNoteWhole(pane)) return;
+    wireViewerGlobals();
+    pane._codeViewerRefs.notesMenu.hidden = false;
+}
+
+function closeNotesMenu(pane) {
+    pane._codeViewerRefs.notesMenu.hidden = true;
+}
+
+function noteWholeFile(pane) {
+    const rec = pane._codeNotes;
+    const file = pane._codeViewerFile;
+    if (!rec || !file) return;
+    if (!rec.on) {
+        rec.on = true;
+        setCodeNotesOn(file.repo, true);
+        syncNotesToggle(pane);
+        setNotesStatus(pane, '');
+    }
+    requestNotes(pane, true);
+}
+
+// A note's text was tapped: open chat on its line (or statement), seeded.
+function askAboutNote(pane, line) {
+    const rec = pane._codeNotes;
+    const state = pane._codeViewerState;
+    if (!rec || !state || !askHandler) return;
+    const note = rec.notes.filter(function (n) { return n.line === line; })[0];
+    if (!note) return;
+    askHandler({
+        repo: state.repo,
+        filePath: state.filePath,
+        srcRoot: state.srcRoot,
+        start: note.line,
+        end: note.end || note.line,
+        text: state.lines.slice(note.line - 1, note.end || note.line),
+        seed: 'Explain line ' + note.line,
+    });
+}
+
+// A note's ref chip was tapped: peek the definition like a tapped name would.
+function traceNoteRef(pane, chip) {
+    const state = pane._codeViewerState;
+    const note = chip.closest('.codeViewerNote');
+    if (!state || !state.trace || !note) return;
+    traceName(pane, chip.dataset.name, null, Number(note.dataset.noteLine), {
+        repo: state.repo,
+        srcRoot: state.srcRoot,
+        filePath: state.filePath,
+        fileKey: state.trace.fileKey,
+        symbols: state.trace.symbols,
+    }, true);
+}
+
+// The toggle's, the menu's and the notes' wiring for one pane.
+function wireNotes(pane) {
+    const refs = pane._codeViewerRefs;
+    refs.notes.addEventListener('click', function () {
+        // The long-press that opened the menu must not also flip the toggle.
+        if (pane._codeNotesPressed) { pane._codeNotesPressed = false; return; }
+        closeNotesMenu(pane);
+        toggleNotes(pane);
+    });
+    refs.notes.addEventListener('contextmenu', function (event) {
+        if (!canNoteWhole(pane)) return;
+        event.preventDefault();
+        openNotesMenu(pane);
+    });
+    refs.notes.addEventListener('touchstart', function (event) {
+        if (pane._codeNotesPress) clearTimeout(pane._codeNotesPress.timer);
+        const t = event.touches && event.touches[0];
+        if (!t) return;
+        const press = { x: t.clientX, y: t.clientY, timer: null };
+        press.timer = setTimeout(function () {
+            if (pane._codeNotesPress !== press) return;
+            pane._codeNotesPress = null;
+            if (!canNoteWhole(pane)) return;
+            pane._codeNotesPressed = true;
+            openNotesMenu(pane);
+        }, LONG_PRESS_MS);
+        pane._codeNotesPress = press;
+    }, { passive: true });
+    refs.notes.addEventListener('touchmove', function (event) {
+        const press = pane._codeNotesPress;
+        const t = event.touches && event.touches[0];
+        if (!press || !t) return;
+        if (Math.abs(t.clientX - press.x) > LONG_PRESS_SLOP || Math.abs(t.clientY - press.y) > LONG_PRESS_SLOP) {
+            clearTimeout(press.timer);
+            pane._codeNotesPress = null;
+        }
+    }, { passive: true });
+    const endPress = function () {
+        if (pane._codeNotesPress) clearTimeout(pane._codeNotesPress.timer);
+        pane._codeNotesPress = null;
+    };
+    refs.notes.addEventListener('touchend', endPress);
+    refs.notes.addEventListener('touchcancel', endPress);
+    refs.notesWhole.addEventListener('click', function () {
+        closeNotesMenu(pane);
+        noteWholeFile(pane);
+    });
+
+    // Hover pairs a row with its note (and back); a tap does the same on touch.
+    refs.lines.addEventListener('mouseover', function (event) {
+        const rec = pane._codeNotes;
+        if (!rec || !rec.mode) return;
+        const line = noteLineAt(pane, event.target);
+        if (line !== rec.active) setActiveNote(pane, line);
+    });
+    refs.lines.addEventListener('mouseleave', function () {
+        const rec = pane._codeNotes;
+        if (rec && rec.active) setActiveNote(pane, 0);
+    });
+    refs.lines.addEventListener('click', function (event) {
+        const t = event.target;
+        if (!t || !t.closest || !pane._codeNotes || !pane._codeNotes.mode) return;
+        const chip = t.closest('.codeViewerNoteRef');
+        if (chip) { traceNoteRef(pane, chip); return; }
+        const text = t.closest('.codeViewerNoteText');
+        if (text) { askAboutNote(pane, noteLineAt(pane, text)); return; }
+        // A number or a name has its own job.
+        if (t.closest('button')) return;
+        const line = noteLineAt(pane, t);
+        if (line) setActiveNote(pane, line);
+    });
+
+    // Rail or interleaved follows the pane's width, not the viewport's: the chat
+    // pane opening on desktop narrows the viewer without resizing the window.
+    if (typeof ResizeObserver === 'function') {
+        try {
+            new ResizeObserver(function () {
+                const rec = pane._codeNotes;
+                if (rec && rec.mode && notesMode(pane) !== rec.mode) renderNotes(pane);
+            }).observe(pane);
+        } catch (e) { /* the mode is still chosen on every render */ }
+    }
+
+    // A long file is annotated a definition at a time, so scrolling into one that
+    // has none yet fetches it once the listing settles.
+    refs.body.addEventListener('scroll', function () {
+        const rec = pane._codeNotes;
+        const state = pane._codeViewerState;
+        if (!rec || !rec.on || !state || state.total <= NOTES_WHOLE_MAX) return;
+        if (pane._codeNotesTimer) clearTimeout(pane._codeNotesTimer);
+        pane._codeNotesTimer = setTimeout(function () {
+            pane._codeNotesTimer = null;
+            requestNotes(pane, false);
+        }, NOTES_SCROLL_MS);
+    }, { passive: true });
+}
+
 // ── Trace ────────────────────────────────────────────────────────────────────
 
 // The index key for a repo-relative path: the manifest names files relative to
@@ -1181,6 +1734,15 @@ function wireViewerGlobals() {
     globalsWired = true;
     window.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape') return;
+        let menuClosed = false;
+        panes.forEach(function (p) {
+            if (!p._codeViewerRefs.notesMenu.hidden) { closeNotesMenu(p); menuClosed = true; }
+        });
+        if (menuClosed) {
+            event.preventDefault();
+            event.stopPropagation();
+            return;
+        }
         const layer = document.querySelector('.codeTraceLayer');
         if (layer) {
             event.preventDefault();
@@ -1210,6 +1772,18 @@ function wireViewerGlobals() {
             p._codeViewerRefs.lines.classList.remove('codeViewerLines--selecting');
         });
     };
+    // The Notes menu closes on a press or a right-click anywhere outside it.
+    const closeMenusOutside = function (event) {
+        panes.forEach(function (p) {
+            const refs = p._codeViewerRefs;
+            if (refs.notesMenu.hidden) return;
+            const wrap = refs.notesMenu.parentNode;
+            if (event.target && wrap && wrap.contains(event.target)) return;
+            closeNotesMenu(p);
+        });
+    };
+    document.addEventListener('pointerdown', closeMenusOutside, true);
+    document.addEventListener('contextmenu', closeMenusOutside, true);
     window.addEventListener('pointerup', endDrag);
     window.addEventListener('pointercancel', endDrag);
     window.addEventListener('resize', function () {
@@ -1229,8 +1803,13 @@ function closePeek(pane) {
 function startTrace(pane, btn, from, fresh) {
     const row = btn.closest('[data-line]');
     const line = row ? Number(row.dataset.line) : 0;
-    const name = btn.dataset.name;
-    const qualifier = btn.dataset.qualifier || null;
+    traceName(pane, btn.dataset.name, btn.dataset.qualifier || null, line, from, fresh);
+}
+
+// Resolve `name` as written on `line` of `from`'s file and peek or pick — the
+// half of a trace that doesn't care whether a listing name or a note's ref chip
+// was tapped.
+function traceName(pane, name, qualifier, line, from, fresh) {
     const candidates = resolveName(from.symbols, from.fileKey, line, name, qualifier);
     if (!candidates.length) return;
     const prev = (!fresh && pane._codeTracePeek) ? pane._codeTracePeek.trail : [];
@@ -1503,6 +2082,7 @@ export function renderCodeViewer(host, opts) {
     refs.explain.disabled = false;
     refs.explain.textContent = EXPLAIN_LABEL;
     resetExplanation(pane);
+    resetNotes(pane, target.repo);
     clearSelection(pane);
     clearEl(refs.lines);
     refs.moreUp.hidden = true;
@@ -1545,6 +2125,7 @@ export function renderCodeViewer(host, opts) {
             repo: target.repo,
             filePath: filePath,
             lines: res.lines,
+            sha: res.sha || null,
             total: total,
             hl: hl,
             start: 1,
@@ -1564,6 +2145,10 @@ export function renderCodeViewer(host, opts) {
                     if (!symbols || pane._codeViewerState !== state) return;
                     state.trace = { symbols: symbols, fileKey: fileKey };
                     redecorate(state);
+                    // A long file's notes are scoped by definition, which only
+                    // the index can name.
+                    renderNotes(pane);
+                    if (pane._codeNotes && pane._codeNotes.on) requestNotes(pane, false);
                 });
             }
         }
@@ -1575,6 +2160,7 @@ export function renderCodeViewer(host, opts) {
         if (win.end >= win.start) paintRange(state, win.start, win.end, false);
         refreshWindowChrome(state);
         if (hl) scrollToLine(state, hl.start);
+        if (pane._codeNotes && pane._codeNotes.on) requestNotes(pane, false);
     });
 
     return pane;
@@ -1642,6 +2228,7 @@ export function clearCodeViewer(host) {
     refs.explain.disabled = true;
     refs.explain.textContent = EXPLAIN_LABEL;
     resetExplanation(shell.pane);
+    resetNotes(shell.pane, null);
     clearSelection(shell.pane);
     refs.path.textContent = '';
     refs.meta.textContent = '';

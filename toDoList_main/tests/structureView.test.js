@@ -112,7 +112,7 @@ vi.mock('../src/structureRemoteCapture.js', () => ({
     }),
 }));
 
-import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport, exitStructureLiveView } from '../src/structureView.js';
+import { renderStructureView, captureStructureSnapshot, buildUiTree, syncStructureCanvasForViewport, exitStructureLiveView, writeLineNotes, parseNotesReply } from '../src/structureView.js';
 import { resetCanvasState, captureSnapshot } from '../src/structureCanvas.js';
 import { chatWithWorker, readRepoFile } from '../src/inject.js';
 import { captureRemote, pagesUrlFor } from '../src/structureRemoteCapture.js';
@@ -3272,5 +3272,80 @@ describe('renderStructureView — code tours', () => {
         const css = readFileSync(resolvePath(__dirname, '../src/style.css'), 'utf8');
         expect(css).not.toMatch(/has-tourStart/);
         expect(css).not.toMatch(/\.structureTourChip/);
+    });
+});
+
+// Line notes: the code viewer's Notes toggle asks this handler for a scope's
+// notes. It is a Fast-mode one-shot turn with the file attached, whose JSON
+// array reply is parsed defensively and cached per repo + file + sha (+ symbol).
+describe('structureView — line notes handler', () => {
+    const NOTES_KEY = 'todoapp_codeNotes';
+    const REPO = 'rsterenchak/toDoList_TOP';
+
+    beforeEach(() => {
+        try { localStorage.removeItem(NOTES_KEY); } catch (e) { /* ignore */ }
+    });
+
+    it('parses the JSON array out of a reply, ignoring prose around it', () => {
+        expect(parseNotesReply('Here you go:\n```json\n[{"line": 3, "note": "x", "refs": ["a"]}]\n```'))
+            .toEqual([{ line: 3, note: 'x', refs: ['a'] }]);
+        expect(parseNotesReply('[]')).toEqual([]);
+        expect(parseNotesReply('no array here')).toBeNull();
+        expect(parseNotesReply('[{"line": 3,')).toBeNull();
+        expect(parseNotesReply('{"line": 3}')).toBeNull();
+    });
+
+    it('runs a Fast-mode turn with the file attached and resolves the parsed notes', async () => {
+        state.explainReply = '[{"line": 2, "end": 3, "note": "Reads the store.", "refs": ["load"]}]';
+        const res = await writeLineNotes({
+            repo: REPO, filePath: 'src/a.js', srcRoot: 'src', sha: 'blob-1', scope: null, names: ['load'],
+        });
+        expect(res).toEqual({ ok: true, notes: [{ line: 2, end: 3, note: 'Reads the store.', refs: ['load'] }] });
+        const call = state.lastChatCall;
+        expect(call.attach).toEqual(['a.js']);
+        expect(call.repo).toBe(REPO);
+        expect(call.deep).toBeFalsy();
+        expect(call.messages[0].content).toMatch(/JSON array/);
+        expect(call.messages[0].content).toMatch(/chosen from: load/);
+    });
+
+    it('names the definition when the scope is one', async () => {
+        state.explainReply = '[]';
+        await writeLineNotes({
+            repo: REPO, filePath: 'src/a.js', srcRoot: 'src', sha: 'blob-1',
+            scope: { start: 40, end: 90, symbol: 'render' }, names: [],
+        });
+        expect(state.lastChatCall.messages[0].content).toMatch(/lines 40–90 of `a\.js` — the definition `render`/);
+    });
+
+    it('rejects a malformed reply and caches nothing', async () => {
+        state.explainReply = 'Sorry, I cannot do that.';
+        const res = await writeLineNotes({ repo: REPO, filePath: 'src/a.js', srcRoot: 'src', sha: 'blob-1' });
+        expect(res.ok).toBe(false);
+        expect(localStorage.getItem(NOTES_KEY)).toBeNull();
+    });
+
+    it('caches by sha and reuses it without another turn; a new sha asks again', async () => {
+        state.explainReply = '[{"line": 1, "note": "First."}]';
+        const req = { repo: REPO, filePath: 'src/a.js', srcRoot: 'src', sha: 'blob-1', scope: { start: 1, end: 9, symbol: 'f' } };
+        await writeLineNotes(req);
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        const stored = JSON.parse(localStorage.getItem(NOTES_KEY));
+        expect(stored.order).toEqual([REPO + ':a.js:blob-1:f']);
+
+        state.explainReply = '[{"line": 1, "note": "Second."}]';
+        const again = await writeLineNotes(req);
+        expect(chatWithWorker).toHaveBeenCalledTimes(1);
+        expect(again.notes[0].note).toBe('First.');
+
+        const fresh = await writeLineNotes(Object.assign({}, req, { sha: 'blob-2' }));
+        expect(chatWithWorker).toHaveBeenCalledTimes(2);
+        expect(fresh.notes[0].note).toBe('Second.');
+    });
+
+    it('resolves not-ok when the turn fails', async () => {
+        state.explainError = Object.assign(new Error('boom'), { reason: 'boom' });
+        const res = await writeLineNotes({ repo: REPO, filePath: 'src/a.js', srcRoot: 'src', sha: 'blob-1' });
+        expect(res.ok).toBe(false);
     });
 });

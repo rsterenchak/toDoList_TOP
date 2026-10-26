@@ -668,6 +668,26 @@ export function setChatSelectionScope(repo, scope) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── code viewer line notes on/off ──
+// Per-repo `true` while the code viewer's Notes toggle is on for that repo's
+// files. Absent means off, so a repo nobody has annotated reads as before.
+export const CODE_NOTES_ON_KEY = 'todoapp_codeNotesOn';
+
+export function isCodeNotesOn(repo) {
+    if (!repo) return false;
+    return readJsonObject(CODE_NOTES_ON_KEY)[repo] === true;
+}
+
+export function setCodeNotesOn(repo, on) {
+    if (!repo) return;
+    try {
+        const store = readJsonObject(CODE_NOTES_ON_KEY);
+        if (on) store[repo] = true;
+        else delete store[repo];
+        localStorage.setItem(CODE_NOTES_ON_KEY, JSON.stringify(store));
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── music visualizer (focus-music popover) ──
 // The visualizer is a decorative overlay that covers the YouTube iframe
 // footprint inside the music popover. Useful when YouTube video is

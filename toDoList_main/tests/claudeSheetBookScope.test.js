@@ -427,4 +427,13 @@ describe('claudeSheet — selection scope', () => {
         openChatWithSelection({ repo: DEFAULT_REPO, filePath: 'a.js', start: 5, end: 2 });
         expect(getActiveSelectionScope()).toBe(null);
     });
+
+    it('a line note\'s seed fills an empty composer but never a draft', () => {
+        openChatWithSelection(selection({ start: 8, end: 8, scope: null, text: ['x'], seed: 'Explain line 8' }));
+        expect(input().value).toBe('Explain line 8');
+        expect(scopeChip().textContent).toContain('§ Program.cs:8');
+        input().value = 'my own question';
+        openChatWithSelection(selection({ start: 9, end: 9, scope: null, text: ['y'], seed: 'Explain line 9' }));
+        expect(input().value).toBe('my own question');
+    });
 });

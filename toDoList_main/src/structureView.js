@@ -67,6 +67,7 @@ import {
     getOpenCodeViewerRef,
     onCodeViewerChange,
     setCodeViewerExplainHandler,
+    setCodeViewerNotesHandler,
     setCodeViewerCloseHandler,
 } from './codeViewer.js';
 import { joinSrcRootPath } from './srcPath.js';
@@ -629,9 +630,9 @@ function explainCacheKey(repo, filePath, sha) {
     return repo + ':' + filePath + ':' + sha;
 }
 
-function readExplainStore() {
+function readExplainStore(storageKey) {
     try {
-        const raw = localStorage.getItem(EXPLAIN_CACHE_KEY);
+        const raw = localStorage.getItem(storageKey || EXPLAIN_CACHE_KEY);
         if (!raw) return { order: [], map: {} };
         const data = JSON.parse(raw);
         if (!data || typeof data !== 'object') return { order: [], map: {} };
@@ -645,9 +646,9 @@ function readExplainStore() {
     }
 }
 
-function writeExplainStore(store) {
+function writeExplainStore(store, storageKey) {
     try {
-        localStorage.setItem(EXPLAIN_CACHE_KEY, JSON.stringify(store));
+        localStorage.setItem(storageKey || EXPLAIN_CACHE_KEY, JSON.stringify(store));
     } catch (e) { /* quota / unavailable — caching is best-effort */ }
 }
 
@@ -778,6 +779,106 @@ onCodeViewerChange(codeSheet.sync);
 setCodeViewerExplainHandler(function (repo, filePath, btn, resultEl) {
     explainFile(repo, splitSrcRootPath(currentSrcRoot, filePath), btn, resultEl);
 });
+
+// LINE NOTES — the viewer's Notes toggle asks here for one scope's notes (the
+// whole file, or one definition of a long one) and lays out whatever comes back.
+// Like Explain it is a one-shot, fast-mode turn with the file attached, so it
+// never touches the chat transcript, and replies are cached the same way: an
+// LRU map under one key, capped at EXPLAIN_CACHE_CAP, keyed
+// `repo:file:sha[:symbol]`. The sha is the file's own blob sha from the viewer's
+// read, so the Understanding reader's pane — which shares this handler, the
+// registration being the viewer module's one slot — caches correctly for a repo
+// this view hasn't loaded a manifest for. Only parsed replies are stored.
+const NOTES_CACHE_KEY = 'todoapp_codeNotes';
+// How many of the file's definition names the prompt lists for refs to use.
+const NOTES_NAMES_MAX = 80;
+
+// The note objects in a reply — the JSON array between its first `[` and last
+// `]`, so a stray sentence or code fence around it doesn't matter — or null when
+// there is no such array. Items are passed through as-is; the viewer validates
+// each against the file it is showing.
+export function parseNotesReply(text) {
+    const str = typeof text === 'string' ? text : '';
+    const from = str.indexOf('[');
+    const to = str.lastIndexOf(']');
+    if (from === -1 || to <= from) return null;
+    try {
+        const data = JSON.parse(str.slice(from, to + 1));
+        if (!Array.isArray(data)) return null;
+        return data.filter(function (item) { return item && typeof item === 'object' && !Array.isArray(item); });
+    } catch (e) {
+        return null;
+    }
+}
+
+function notesCacheKey(repo, filePath, sha, scope) {
+    return repo + ':' + filePath + ':' + sha + (scope && scope.symbol ? ':' + scope.symbol : '');
+}
+
+function readCachedNotes(key) {
+    const store = readExplainStore(NOTES_CACHE_KEY);
+    if (!Object.prototype.hasOwnProperty.call(store.map, key) || !Array.isArray(store.map[key])) return null;
+    store.order = store.order.filter(function (k) { return k !== key; });
+    store.order.push(key);
+    writeExplainStore(store, NOTES_CACHE_KEY);
+    return store.map[key];
+}
+
+function writeCachedNotes(key, notes) {
+    const store = readExplainStore(NOTES_CACHE_KEY);
+    store.order = store.order.filter(function (k) { return k !== key; });
+    store.map[key] = notes;
+    store.order.push(key);
+    while (store.order.length > EXPLAIN_CACHE_CAP) {
+        const evict = store.order.shift();
+        delete store.map[evict];
+    }
+    writeExplainStore(store, NOTES_CACHE_KEY);
+}
+
+function notesPrompt(filePath, scope, names) {
+    const where = scope
+        ? ('lines ' + scope.start + '–' + scope.end + ' of `' + filePath + '` — the definition `' + scope.symbol + '`')
+        : ('`' + filePath + '`');
+    const known = (Array.isArray(names) ? names : []).slice(0, NOTES_NAMES_MAX);
+    return 'Write line notes for ' + where + '. Reply with ONLY a JSON array, no preamble: '
+        + '[{"line": n, "end": m, "note": "…", "refs": ["symbol"]}].\n'
+        + '- `line` is the 1-based line number in the file; give `end` only when the note covers a multi-line statement.\n'
+        + '- `note` is at most 120 characters and says what the code and its comments cannot say on their own: '
+        + 'what the line is for, who reads or calls it elsewhere, and what rule applies to it.\n'
+        + '- `refs` lists the names the note relies on'
+        + (known.length ? (', chosen from: ' + known.join(', ')) : '') + '.\n'
+        + '- Annotate only lines that are code — never a blank line, a comment-only line or a lone brace — '
+        + 'and skip any line an adjacent //, /// or /* */ comment already explains.\n'
+        + '- One note per line or statement; leave out lines with nothing worth saying.';
+}
+
+// The viewer's notes handler: `{ repo, filePath, srcRoot, sha, scope, names }` →
+// `{ ok: true, notes }` from the cache or one Worker turn, `{ ok: false }` when
+// the turn fails or its reply holds no array.
+export function writeLineNotes(req) {
+    if (!req || !req.repo || !req.filePath) return Promise.resolve({ ok: false });
+    const root = typeof req.srcRoot === 'string' ? req.srcRoot : currentSrcRoot;
+    const filePath = splitSrcRootPath(root, req.filePath);
+    const sha = req.sha || currentSha;
+    const key = sha ? notesCacheKey(req.repo, filePath, sha, req.scope) : '';
+    const cached = key ? readCachedNotes(key) : null;
+    if (cached) return Promise.resolve({ ok: true, notes: cached });
+    const prompt = notesPrompt(filePath, req.scope || null, req.names);
+    return Promise.resolve()
+        .then(function () {
+            return chatWithWorker([{ role: 'user', content: prompt }], undefined, [filePath], req.repo, undefined, false);
+        })
+        .then(function (res) {
+            const notes = parseNotesReply(res && typeof res.reply === 'string' ? res.reply : '');
+            if (!notes) return { ok: false };
+            if (key) writeCachedNotes(key, notes);
+            return { ok: true, notes: notes };
+        })
+        .catch(function () { return { ok: false }; });
+}
+
+setCodeViewerNotesHandler(writeLineNotes);
 
 // The inverse of joinSrcRootPath: strip a leading `srcRoot/` when the path
 // carries one, and hand anything else back untouched.
