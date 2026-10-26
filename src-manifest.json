@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-26T11:29:18.063Z",
-  "sha": "c2cabdf55a79ab9bc67f1f910eb748245e1fc442",
+  "generatedAt": "2026-10-26T12:17:30.408Z",
+  "sha": "2d5f0bd3603cefcb94b19ae74f66efc239a78b44",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -9755,11 +9755,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 80,
+      "line": 76,
       "files": [
         {
           "file": "changelog.js",
-          "line": 80
+          "line": 76
         },
         {
           "file": "style.css",
@@ -9771,11 +9771,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 49,
+      "line": 45,
       "files": [
         {
           "file": "changelog.js",
-          "line": 49
+          "line": 45
         },
         {
           "file": "style.css",
@@ -9787,11 +9787,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 59,
+      "line": 55,
       "files": [
         {
           "file": "changelog.js",
-          "line": 59
+          "line": 55
         },
         {
           "file": "style.css",
@@ -9803,11 +9803,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 52,
+      "line": 48,
       "files": [
         {
           "file": "changelog.js",
-          "line": 52
+          "line": 48
         },
         {
           "file": "style.css",
@@ -9819,11 +9819,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 55,
+      "line": 51,
       "files": [
         {
           "file": "changelog.js",
-          "line": 55
+          "line": 51
         },
         {
           "file": "style.css",
@@ -9835,11 +9835,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 76,
+      "line": 72,
       "files": [
         {
           "file": "changelog.js",
-          "line": 76
+          "line": 72
         },
         {
           "file": "style.css",
@@ -30043,11 +30043,11 @@
       "selector": ".voiceBar",
       "label": "Voice Bar",
       "file": "voiceInput.js",
-      "line": 331,
+      "line": 353,
       "files": [
         {
           "file": "voiceInput.js",
-          "line": 331
+          "line": 353
         },
         {
           "file": "style.css",
@@ -30059,11 +30059,11 @@
       "selector": ".voiceHint",
       "label": "Voice Hint",
       "file": "voiceInput.js",
-      "line": 347,
+      "line": 369,
       "files": [
         {
           "file": "voiceInput.js",
-          "line": 347
+          "line": 369
         },
         {
           "file": "style.css",
@@ -30075,11 +30075,11 @@
       "selector": ".voiceInterim",
       "label": "Voice Interim",
       "file": "voiceInput.js",
-      "line": 336,
+      "line": 358,
       "files": [
         {
           "file": "voiceInput.js",
-          "line": 336
+          "line": 358
         },
         {
           "file": "style.css",
@@ -30091,11 +30091,11 @@
       "selector": ".voiceListenLabel",
       "label": "Voice Listen Label",
       "file": "voiceInput.js",
-      "line": 324,
+      "line": 346,
       "files": [
         {
           "file": "voiceInput.js",
-          "line": 324
+          "line": 346
         },
         {
           "file": "style.css",
@@ -30107,11 +30107,11 @@
       "selector": ".voiceListenPill",
       "label": "Voice Listen Pill",
       "file": "voiceInput.js",
-      "line": 328,
+      "line": 350,
       "files": [
         {
           "file": "voiceInput.js",
-          "line": 328
+          "line": 350
         },
         {
           "file": "style.css",
@@ -30123,11 +30123,11 @@
       "selector": ".voiceOverlay",
       "label": "Voice Overlay",
       "file": "voiceInput.js",
-      "line": 319,
+      "line": 341,
       "files": [
         {
           "file": "voiceInput.js",
-          "line": 319
+          "line": 341
         },
         {
           "file": "style.css",
@@ -30471,7 +30471,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 94,
+      "lines": 90,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -31370,7 +31370,7 @@
     },
     {
       "path": "voiceInput.js",
-      "lines": 403,
+      "lines": 425,
       "imports": [],
       "purpose": "Shared browser-native voice dictation."
     },
