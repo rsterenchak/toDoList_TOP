@@ -2957,3 +2957,24 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/storage.js`, `toDoList_main/src/main.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/claudeSheet.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`, `toDoList_main/tests/storage.test.js`, `toDoList_main/tests/toDoRowInProgressDefault.test.js`
   - Verify: 390x844, 1300x900 → /
   <!-- id: a9fa4c44-8f1f-40a3-a366-f5b66255c66b -->
+
+- [ ] **[MEDIUM]** Add a Clear all control to the COMPLETED header that deletes every completed task in the current project
+  - Type: feature
+  - Description: Completed tasks accumulate with no bulk way to remove them (415 in one project today), and because `allProjects` lives in localStorage that pile is also what pushes iOS Safari toward its storage quota. Add a danger-tinted "Clear all" pill to the completed sheet's header on mobile, placed left of the existing X close button in `.completedMobileSheetHeader` (`mobileSheets.js` ~155–170, the `openCompletedMobileSheet` builder), and the same pill on the inline `#completedHeader` accordion at ≥1024px (`main.js`, see the `#completedHeader` click wiring ~3122). Tapping it opens `showConfirmModal` (`modals.js` ~66) with the title "Delete completed tasks?" and body "Delete <N> completed tasks in <project>? This can't be undone." and a destructive confirm button labelled "Delete <N>"; on confirm, every item in the current project with `completed` set is removed through `listLogic`, the sheet/accordion re-renders, and a toast reads "<N> completed tasks deleted". The control is hidden when the project has zero completed items and is scoped to the current project only. The pill uses the existing design tokens (`--danger`/danger surface variables already used by the delete confirm), 32px tall, 44px tap target, and must not push the title or the X off their current positions at 390px — the header stays one row.
+  - Behavior:
+    1. Add `listLogic.removeCompletedToDos(projectName)` as the single mutation path: it filters `allProjects[projectName].items` down to the non-completed items, calls `sortCompletedInPlace`, saves once with `saveToStorage()`, and issues the Supabase deletes in one `persistMutation` batch (an `op: 'delete'` with the array of ids, or a single `in` filter — whichever `persistMutation` supports; do not loop `removeToDoByItem` 415 times, which would fire 415 saves and 415 requests). Returns the number removed.
+    2. The mobile pill lives inside the header's right-hand group next to `.completedMobileSheetClose`; after the confirm it calls `removeCompletedToDos`, triggers the normal list re-render, and `refreshCompletedMobileSheetContent` (~55) closes the sheet when the row count hits zero exactly as it does today.
+    3. The desktop pill sits at the right end of `#completedHeader`, with its own click handler that stops propagation so the accordion doesn't toggle when the pill is tapped.
+    4. Cancelling the confirm (button, backdrop, Escape) changes nothing.
+  - Acceptance criteria:
+    - `tests/listLogic.test.js`: `removeCompletedToDos` on a project with 3 completed and 2 open items leaves exactly the 2 open items in their order, returns 3, writes `allProjects` to localStorage once, and does not touch other projects; on a project with no completed items it returns 0 and writes nothing.
+    - A new `tests/completedClearAll.test.js` mounts the completed sheet with completed rows, asserts the pill is present in the header with `aria-label="Delete all completed tasks"`, that clicking it opens the confirm modal with the count in the body, that confirming removes the rows and closes the sheet, and that the pill is absent when there are no completed rows.
+    - At 390x844 with the completed sheet open: title, "Clear all" pill, and X on one row with no wrapping or overlap; at 1300x900 the pill shows at the right end of the inline COMPLETED header and tapping it doesn't expand/collapse the accordion.
+  - Implementation notes:
+    - Destructive-action rule from CLAUDE.md: the confirm must state what will be lost, including the count and project name.
+    - The sheet is per-project and desktop's accordion is per-project, so no project picker in the confirm.
+    - No new dependencies; reuse `showConfirmModal` and the existing inject toast.
+  - Out of scope: archiving instead of deleting; clearing completed across all projects; the storage-usage readout (separate entry).
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/src/mobileSheets.js`, `toDoList_main/src/main.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/listLogic.test.js`, `toDoList_main/tests/completedClearAll.test.js`
+  - Verify: 390x844, 1300x900 → /
+  <!-- id: 76b64cd0-cda5-48d7-ab99-a6b5e22fe4db -->
