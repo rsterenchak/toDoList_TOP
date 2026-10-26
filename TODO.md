@@ -2929,7 +2929,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/tests/voiceInput.test.js`
   <!-- id: 8eada8a3-9336-41b6-937e-ff2702200b85 -->
 
-- [ ] **[LOW]** Make the voice runaway watchdog keep text instead of committing a todo
+- [x] **[LOW]** Make the voice runaway watchdog keep text instead of committing a todo — Completed: 2026-10-26
   - Type: bug
   - Description: After 60 seconds (`RUNAWAY_MS`) a continuous dictation session fires `commitDictation` if anything was transcribed (`voiceInput.js` ~lines 238–242), so on the add-task row a todo is created with no user tap — the overlay just vanishes and a row appears. Expected: the watchdog ends the session the way Escape does but keeps the text — transcript left in the field, overlay closed, button idle, `onFinal` NOT called — so the only way a todo is added by voice is an explicit tap. Change the timer callback to a keep-text cancel (the same path the natural-end fix uses) regardless of `lastTranscript`; keep the 60s duration. Update the test in the "continuous opt-in without onFinal" block that asserts the watchdog arms, and add one asserting that firing it on an `onFinal` surface with a non-empty transcript leaves the text in the target and does not call `onFinal`.
   - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/tests/voiceInput.test.js`
