@@ -5,11 +5,14 @@
 // the transcribed text in the field for the user to edit and send manually.
 // Auto-commit surfaces (the add-task row) opt in with an onFinal callback: the
 // user taps the overlay (or re-taps the mic) to add the todo, which fires
-// onFinal with the transcript. Escape / surface-close cancel and discard.
-// Continuous listening — where a natural speech pause no longer ends the
-// session — is a separate opt-in: passing onFinal implies it, and a review-only
-// surface that dictates paragraphs (the quick-capture panel) asks for it
-// directly with `continuous: true`.
+// onFinal with the transcript. Escape / surface-close cancel and discard. A
+// session the platform ends on its own (iOS Safari closes even continuous
+// sessions on a speech pause, or after a no-speech / network error) is a
+// cancel that keeps the text in the field — it never fires onFinal.
+// Continuous listening — where a speech pause shouldn't end the session — is a
+// separate opt-in: passing onFinal implies it, and a review-only surface that
+// dictates paragraphs (the quick-capture panel) asks for it directly with
+// `continuous: true`.
 //
 // The optional "listening overlay" (a centered pill with an equalizer and the
 // live interim transcript over a dimmed, blurred backdrop) also lives here so
@@ -38,6 +41,11 @@ let activeOnFinal = null;   // per-session opt-in: called with the final transcr
                            // never on a cancel (Escape / surface-close)
 let lastTranscript = '';    // most-recent trimmed transcript, for the onFinal payload/guard
 let suppressFinal = false;  // set on the cancel path so onend skips onFinal
+let committing = false;     // set by the commit path so its own onend may commit
+let sessionId = 0;          // bumped per session start and end; every rec handler
+                           // ignores events from an instance that isn't current
+                           // (iOS delivers onend/onresult late, sometimes after a
+                           // new session has already started)
 
 // A continuous session has no natural end, so stop it after this long and commit
 // whatever was captured (or cancel if nothing was said).
@@ -154,10 +162,12 @@ export function startDictation(target, btn, opts = {}) {
     activeButton = btn || null;
     baseValue = input.value || '';
     // Fresh session — clear any suppress flag/transcript left by a prior one so
-    // a natural end here can auto-commit even if the last session was cancelled.
+    // a commit here still fires onFinal even if the last session was cancelled.
     activeOnFinal = typeof opts.onFinal === 'function' ? opts.onFinal : null;
     lastTranscript = '';
     suppressFinal = false;
+    committing = false;
+    const id = ++sessionId;
 
     if (opts.focusTarget) {
         try { input.focus(); } catch (e) { /* not focusable */ }
@@ -175,6 +185,7 @@ export function startDictation(target, btn, opts = {}) {
         rec.interimResults = true;
         rec.lang = (typeof navigator !== 'undefined' && navigator.language) || 'en-US';
         rec.onresult = function(event) {
+            if (id !== sessionId) return;
             let transcript = '';
             const results = event && event.results ? event.results : [];
             for (let i = 0; i < results.length; i++) {
@@ -190,6 +201,7 @@ export function startDictation(target, btn, opts = {}) {
             pulseOverlayBars();
         };
         rec.onerror = function(event) {
+            if (id !== sessionId) return;
             const code = event && event.error;
             if (code === 'not-allowed' || code === 'permission-denied' ||
                 code === 'service-not-allowed') {
@@ -200,13 +212,19 @@ export function startDictation(target, btn, opts = {}) {
                 clearRunaway();
                 setButtonState(btn, 'denied');
                 closeOverlay();
+            } else {
+                // no-speech / network / audio-capture: the platform is about to
+                // end the session — a keep-text cancel, never a commit.
+                suppressFinal = true;
             }
         };
         // Recognition ends when we stop/abort it (commit or cancel), on a denial,
         // or if the platform closes a continuous session on its own. finishSession
-        // does the teardown and fires onFinal only on the commit path (decoupled
-        // from `recording`: it commits iff !suppressFinal && onFinal && a transcript).
+        // does the teardown and fires onFinal only on the commit path; an end the
+        // user didn't ask for keeps the transcript in the field but never commits.
         rec.onend = function() {
+            if (id !== sessionId) return;
+            if (!committing) suppressFinal = true;
             activeRec = null;
             finishSession(btn);
         };
@@ -251,8 +269,11 @@ function clearRunaway() {
 // to idle, closes the overlay, and fires onFinal only on the commit path — never
 // when suppressed (cancel), when there's no onFinal (review-only), or when the
 // transcript is empty. State is neutralized before the callback so a repeat
-// onend or a follow-up cancel can't re-fire it.
+// onend or a follow-up cancel can't re-fire it, and the session id is retired so
+// a late event from the ended instance can't touch the next session.
 function finishSession(btn) {
+    sessionId++;
+    committing = false;
     clearRunaway();
     recording = false;
     setButtonState(btn || activeButton, 'idle');
@@ -266,15 +287,16 @@ function finishSession(btn) {
     if (shouldCommit) cb(finalText);
 }
 
-// Commit path — the user tapped the overlay or re-tapped the mic to finish.
-// Stop WITHOUT suppressing so onend fires onFinal with the transcript (when
-// non-empty). Safe to call when nothing is recording.
+// Commit path — the user tapped the overlay, re-tapped the mic, or the runaway
+// watchdog fired. Stop WITHOUT suppressing and finalize here, firing onFinal with
+// the transcript (when non-empty). Safe to call when nothing is recording.
 function commitDictation() {
     // No live session, but the tap still has to dismiss: an overlay can outlive
     // its session (iOS standalone doesn't reliably fire onend), and leaving it
     // up reads as a hung app with no way out.
     if (!recording && !activeRec) { closeOverlay(); return; }
     recording = false;
+    committing = true;
     if (activeRec) {
         try { activeRec.stop(); } catch (e) { /* already stopped */ }
         activeRec = null;

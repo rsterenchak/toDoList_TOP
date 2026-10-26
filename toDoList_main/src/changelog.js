@@ -12,6 +12,9 @@ export const changelog = [
         changed: [
             'Your notes in the code viewer and the code book now show as a single line until you tap to expand them (a pencil edits), a Marks toggle hides them all at once, and Keep starts from the answer\'s first sentence with a character count that turns amber past 200.',
         ],
+        fixed: [
+            'Pausing mid-sentence while dictating a todo no longer adds a half-finished item, only a tap adds it, and if the phone stops listening on its own your words stay in the field.',
+        ],
     },
     {
         version: '1.1',
@@ -19,13 +22,6 @@ export const changelog = [
         added: [
             'Select lines in the code viewer by clicking, shift-clicking or dragging down the line numbers (or long-pressing on a phone), then copy them or tap Ask to chat with Claude about just those lines.',
             'A Notes toggle in the code viewer annotates the open file with a short note beside each line (or beneath it on narrow screens) saying what it is for and what it connects to, skipping lines a comment already explains, and tapping a note asks Claude about that line.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-24',
-        added: [
-            'Asking Claude about a code book chapter now lets it point to where each of the chapter\'s names is used elsewhere in the code, and to look up a name the chapter doesn\'t cover when you ask about it.',
         ],
     },
 ];

@@ -324,13 +324,99 @@ describe('voiceInput — shared mic + dictation module', () => {
             startDictation(makeInput(), null, { onFinal() {} });
             lastRecognition().emitResult('first');
             stopDictation();
-            // …then a new session must still auto-commit on a natural end.
+            // …then a new session must still commit on an overlay tap.
             const calls = [];
-            startDictation(makeInput(), null, { onFinal(t) { calls.push(t); } });
-            const rec = lastRecognition();
-            rec.emitResult('second');
-            rec.onend();
+            startDictation(makeInput(), null, { overlay: true, onFinal(t) { calls.push(t); } });
+            lastRecognition().emitResult('second');
+            document.querySelector('.voiceOverlay').click();
             expect(calls).toEqual(['second']);
+        });
+    });
+
+    // Regression: iOS Safari ends even continuous sessions on a speech pause
+    // (often via a no-speech error), and delivers the old instance's onend late —
+    // sometimes after a new session has started. A platform-initiated end must
+    // keep the text without committing, and a stale instance's events must never
+    // touch the live session.
+    describe('platform-initiated end and stale instances', () => {
+        // onend arrives asynchronously, as on iOS, rather than inside stop().
+        class AsyncEndRecognition extends FakeRecognition {
+            stop() { this.started = false; }
+            abort() { this.started = false; }
+            fireEnd() { if (this.onend) this.onend(); }
+        }
+
+        beforeEach(() => {
+            window.SpeechRecognition = AsyncEndRecognition;
+        });
+
+        it('a late onend from a committed session leaves the next session intact', () => {
+            const input = makeInput();
+            const calls = [];
+            const btn = mountMicButton(input, { overlay: true, onFinal(t) { calls.push(t); } });
+            btn.click();
+            const a = lastRecognition();
+            a.emitResult('buy milk');
+            document.querySelector('.voiceOverlay').click();
+            expect(calls).toEqual(['buy milk']);
+
+            btn.click();
+            const b = lastRecognition();
+            expect(b).not.toBe(a);
+            a.fireEnd();
+
+            expect(isDictating()).toBe(true);
+            expect(document.querySelector('.voiceOverlay')).toBeTruthy();
+            expect(btn.classList.contains('micButton--recording')).toBe(true);
+            expect(calls).toEqual(['buy milk']);
+
+            // B still commits through its own handle.
+            b.emitResult('call mom');
+            document.querySelector('.voiceOverlay').click();
+            expect(calls).toEqual(['buy milk', 'call mom']);
+        });
+
+        it('a late onresult from a stale instance does not overwrite the field', () => {
+            const input = makeInput();
+            startDictation(input, null, { overlay: true, onFinal() {} });
+            const a = lastRecognition();
+            a.emitResult('first');
+            document.querySelector('.voiceOverlay').click();
+            input.value = '';
+            startDictation(input, null, { overlay: true, onFinal() {} });
+            a.emitResult('first and stale');
+            expect(input.value).toBe('');
+            lastRecognition().emitResult('second');
+            expect(input.value).toBe('second');
+        });
+
+        it('no-speech then onend mid-session keeps the text but does not commit', () => {
+            const input = makeInput();
+            const calls = [];
+            const btn = mountMicButton(input, { overlay: true, onFinal(t) { calls.push(t); } });
+            btn.click();
+            const rec = lastRecognition();
+            rec.emitResult('pick up the');
+            rec.emitError('no-speech');
+            rec.fireEnd();
+            expect(calls).toEqual([]);
+            expect(input.value).toBe('pick up the');
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            expect(isDictating()).toBe(false);
+            expect(btn.classList.contains('micButton--recording')).toBe(false);
+        });
+
+        it('a bare platform onend mid-session keeps the text but does not commit', () => {
+            const input = makeInput();
+            const calls = [];
+            startDictation(input, null, { overlay: true, onFinal(t) { calls.push(t); } });
+            const rec = lastRecognition();
+            rec.emitResult('half a thought');
+            rec.fireEnd();
+            expect(calls).toEqual([]);
+            expect(input.value).toBe('half a thought');
+            expect(document.querySelector('.voiceOverlay')).toBeNull();
+            expect(isDictating()).toBe(false);
         });
     });
 
@@ -411,7 +497,7 @@ describe('toDoRow wires the shared voice mic onto the blank placeholder', () => 
     });
 
     it('passes an onFinal that commits through the input\'s Enter path', () => {
-        // The add-task mic auto-commits on a natural speech-pause end by
+        // The add-task mic auto-commits on an overlay tap / mic re-tap by
         // dispatching a synthetic Enter keydown on #toDoInput, reusing the
         // existing commit handler rather than calling listLogic.addToDo.
         expect(toDoRow).toMatch(/onFinal/);
