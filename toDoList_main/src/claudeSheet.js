@@ -638,12 +638,13 @@ export function openChatWithBookScope(scope) {
 }
 
 // Open the chat scoped to lines selected in a code viewer — the selection bar's
-// Ask. `sel` is `{ repo, filePath, srcRoot, start, end, text, scope? }`, `scope`
+// Ask. `sel` is `{ repo, filePath, srcRoot, start, end, text, scope?, seed? }`, `scope`
 // the `{ chapter, prose, refs, index? }` payload understandingView's
 // buildSelectionScope makes (it owns the symbols helpers this module can't
 // import without a cycle); without one the lines alone are sent. Opens the chat
 // surface and frames the repo exactly like openChatWithBookScope, then scopes the
-// conversation to the selection in place of any task or chapter.
+// conversation to the selection in place of any task or chapter. `seed` (a line
+// note's "Explain line N") fills an empty composer.
 export function openChatWithSelection(sel) {
     if (!sel || !sel.repo || !sel.filePath) return;
     const start = Number(sel.start);
@@ -680,7 +681,14 @@ export function openChatWithSelection(sel) {
     if (built && Array.isArray(built.index)) scoped.index = built.index.slice();
     attachSelectionScopeToChat(scoped);
     const input = sheetQuery('#claudeComposerInput');
-    if (input) { try { input.focus(); } catch (e) { /* defensive */ } }
+    if (!input) return;
+    // A line note's tap seeds the question; it never overwrites a draft.
+    const seed = typeof sel.seed === 'string' ? sel.seed : '';
+    if (seed && !input.value.trim()) {
+        input.value = seed;
+        try { input.dispatchEvent(new Event('input', { bubbles: true })); } catch (e) { /* defensive */ }
+    }
+    try { input.focus(); } catch (e) { /* defensive */ }
 }
 
 // Register the opener for a scoped reply's code chips (see bookRefOpener).
