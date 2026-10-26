@@ -3294,6 +3294,41 @@ body:has(#settingsMenu) #claudeLauncher {
   line-height: 1.4;
   color: var(--text-primary);
 }
+/* Paused — the platform ended the session (iOS stops on a speech pause) but
+   the transcript is held for a tap: the equalizer and glow freeze to a static
+   pill. */
+.voiceListenPill--paused,
+.voiceListenPill--paused .voiceBar {
+  animation: none;
+}
+.voiceListenPill--paused .voiceBar {
+  transform: scaleY(1.4);
+  opacity: 0.6;
+}
+/* Discard — explicit cancel on the auto-commit overlay (phones have no Escape
+   key). A 44px tap target pinned to the top-right corner. */
+.voiceDiscard {
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0.5px solid var(--border-bright);
+  border-radius: 50%;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+}
+.voiceDiscard:hover,
+.voiceDiscard:focus-visible {
+  color: var(--text-primary);
+}
 /* Cancel-vs-commit hint — shown only on auto-commit surfaces (the add-task row):
    a natural pause adds the todo, a tap/Escape cancels. */
 .voiceHint {
@@ -15259,6 +15294,12 @@ body.row-dragging * { cursor: grabbing !important; }
   color: var(--text-muted);
   pointer-events: none;
   user-select: none;
+  /* #addGlyph is a <button> (it arms into a tap-to-add control on mobile, see
+     the max-width: 1023px block); strip the native button chrome. */
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
 }
 
 /* DUE DATE PILL — bordered trigger that opens the calendar popover. The
@@ -18573,6 +18614,26 @@ body.row-dragging * { cursor: grabbing !important; }
    MOBILE ≤ 1023px
 ══════════════════════════════════════════ */
 @media (max-width: 1023px) {
+
+  /* Armed `+` on the blank placeholder row: once #toDoInput holds text (a
+     dictated or typed title), the decorative glyph becomes a tappable accent
+     circle that commits the todo without a keyboard. 28px visual, padded out
+     to a 44px tap target with a matching negative margin so the row's layout
+     doesn't shift. Desktop keeps the muted, non-interactive glyph. */
+  #addGlyph[data-armed="true"] {
+    box-sizing: content-box;
+    width: 28px;
+    height: 28px;
+    padding: 8px;
+    margin: -8px;
+    border-radius: 50%;
+    background: var(--accent) content-box;
+    color: var(--bg-base);
+    font-size: 18px;
+    pointer-events: auto;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+  }
 
   /* The global html/body height:100% rule resolves against the initial
      containing block, which on iOS Safari can settle at 100svh (URL bar

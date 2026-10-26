@@ -4089,16 +4089,47 @@ export function buildToDoRow(item, toDoName) {
     // mode can rely on hover to reveal text that the ellipsis would clip.
     toDoInput.title       = item.tit || "";
 
-    // Affordance cue only on the blank placeholder row: a leading purple `+`
-    // glyph. Decorative (aria-hidden, pointer-events: none in CSS) so click-
-    // anywhere on the row still falls through to wireToDoRowClick → focus the
-    // input.
-    const addGlyph = !item.tit ? document.createElement("span") : null;
+    // Affordance cue only on the blank placeholder row: a leading `+` glyph.
+    // While #toDoInput is empty it's decorative (aria-hidden, pointer-events:
+    // none in CSS) so click-anywhere on the row still falls through to
+    // wireToDoRowClick → focus the input. Once the input holds text it arms
+    // (data-armed="true") and, on mobile widths, paints as a tappable accent
+    // circle — a keyboardless commit for a dictated todo, since iOS won't
+    // reopen the keyboard after recognition ends. Tapping it dispatches the
+    // same synthetic Enter the mic's onFinal does, so the commit flows through
+    // the Enter handler below. tabIndex -1: keyboard users already have Enter.
+    const addGlyph = !item.tit ? document.createElement("button") : null;
     if (addGlyph) {
+        addGlyph.type = "button";
         addGlyph.id = "addGlyph";
+        addGlyph.tabIndex = -1;
+        addGlyph.setAttribute('aria-label', 'Add task');
         addGlyph.setAttribute('aria-hidden', 'true');
         addGlyph.textContent = "+";
+        addGlyph.addEventListener('click', function(e) {
+            if (addGlyph.getAttribute('data-armed') !== 'true') return;
+            // Keep the row's own click handler from also firing.
+            e.preventDefault();
+            e.stopPropagation();
+            toDoInput.dispatchEvent(new KeyboardEvent('keydown', {
+                key: 'Enter', bubbles: true,
+            }));
+        });
     }
+    // Arm the `+` while the input holds text. Driven by `input` for typing and
+    // called directly by the mic, whose programmatic .value writes fire no event.
+    const syncAddGlyph = function() {
+        if (!addGlyph) return;
+        const armed = toDoInput.value.trim() !== '';
+        if (armed) {
+            addGlyph.setAttribute('data-armed', 'true');
+            addGlyph.removeAttribute('aria-hidden');
+        } else {
+            addGlyph.removeAttribute('data-armed');
+            addGlyph.setAttribute('aria-hidden', 'true');
+        }
+    };
+    if (addGlyph) toDoInput.addEventListener('input', syncAddGlyph);
 
     // Voice capture — a mic button at the trailing edge of the blank
     // placeholder row that dictates a new todo into this row's #toDoInput.
@@ -4127,6 +4158,7 @@ export function buildToDoRow(item, toDoName) {
             overlay: true,
             focusTarget: true,
             stopPropagation: true,
+            onTranscript: syncAddGlyph,
             onFinal: function() {
                 toDoInput.dispatchEvent(new KeyboardEvent('keydown', {
                     key: 'Enter', bubbles: true,
