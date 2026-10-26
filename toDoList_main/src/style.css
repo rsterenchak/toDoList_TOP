@@ -16801,6 +16801,68 @@ body.row-dragging * { cursor: grabbing !important; }
   -webkit-overflow-scrolling: touch;
   padding: 6px 0 12px;
 }
+.completedMobileSheetActions {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* COMPLETED "Clear all" pill — danger-tinted, in the mobile sheet header (left
+   of the X) and at the right end of the desktop #completedHeader. 32px tall;
+   the ::after extends the hit area to a 44px tap target without growing the
+   header row. */
+.completedClearAllBtn {
+  position: relative;
+  appearance: none;
+  flex: 0 0 auto;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid color-mix(in srgb, var(--text-danger) 45%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-danger) 12%, transparent);
+  color: var(--text-danger);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  white-space: nowrap;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.completedClearAllBtn::after {
+  content: '';
+  position: absolute;
+  inset: -6px -4px;
+}
+.completedClearAllBtn[hidden] {
+  display: none;
+}
+.completedClearAllBtn:hover {
+  background: color-mix(in srgb, var(--text-danger) 22%, transparent);
+  border-color: var(--text-danger);
+}
+.completedClearAllBtn:focus-visible {
+  outline: 2px solid var(--text-danger);
+  outline-offset: 2px;
+}
+/* The desktop divider is a 32px row with 8px padding, so the pill sits shorter
+   there (its ::after still reaches 44px) and is pushed to the right end. */
+#completedHeader .completedClearAllBtn {
+  margin-left: auto;
+  height: 24px;
+}
+#completedHeader .completedClearAllBtn::after {
+  inset: -10px -4px;
+}
+/* The confirm's detail line, mounted beneath the "Delete completed tasks?" title. */
+.completedClearAllConfirmBody {
+  margin: -10px 0 18px;
+  color: var(--text-secondary);
+  word-break: break-word;
+}
 
 /* ── MOBILE SORT BOTTOM SHEET ──
    Slide-up sheet opened by the in-row mobile Sort trigger (#taskSortBtnMobile).
@@ -19819,6 +19881,9 @@ body.row-dragging * { cursor: grabbing !important; }
      10px inset so its edges line up with the rows and the inline launcher.
      The base #completedHeader rule governs desktop and is left untouched. */
   #completedHeader { margin: 4px 10px 18px; padding: 6px 12px; height: 28px; }
+  /* A header tap opens the completed sheet here, which carries its own
+     "Clear all" pill, so the inline one is hidden. */
+  #completedHeader .completedClearAllBtn { display: none; }
 
   /* Inline-card launcher mode. The inline #mainList card is redundant on
      mobile — tapping it opens the full-screen bottom sheet that holds the

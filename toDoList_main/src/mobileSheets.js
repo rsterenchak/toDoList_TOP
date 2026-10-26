@@ -13,6 +13,7 @@ import { placeViewerCard } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
 import { renderChangelogEntries, getNewestChangelogDate } from './changelog.js';
 import { writeChangelogLastSeen } from './prefs.js';
+import { buildClearCompletedPill } from './completedClearAll.js';
 
 // ── Mobile completed-section bottom sheet ──
 // The inline accordion that reveals the COMPLETED list (and the TODO.md
@@ -65,6 +66,9 @@ function refreshCompletedMobileSheetContent() {
     const rowCount = moved.filter(function(e) { return e.kind === 'row'; }).length;
     if (completedMobileSheetState.titleEl) {
         completedMobileSheetState.titleEl.textContent = 'Completed (' + rowCount + ')';
+    }
+    if (completedMobileSheetState.clearAllEl) {
+        completedMobileSheetState.clearAllEl.hidden = rowCount === 0;
     }
     if (rowCount === 0 && !moved.some(function(e) { return e.kind === 'viewer'; })) {
         closeCompletedMobileSheet();
@@ -166,8 +170,17 @@ export function openCompletedMobileSheet() {
     closeX.setAttribute('aria-label', 'Close completed items');
     closeX.textContent = '×';
 
+    // Right-hand group: the "Clear all" pill sits left of the X so the title
+    // keeps the flexible space and the header stays one row.
+    const clearAll = buildClearCompletedPill();
+    clearAll.hidden = initialCount === 0;
+    const actions = document.createElement('div');
+    actions.className = 'completedMobileSheetActions';
+    actions.appendChild(clearAll);
+    actions.appendChild(closeX);
+
     headerEl.appendChild(title);
-    headerEl.appendChild(closeX);
+    headerEl.appendChild(actions);
 
     const body = document.createElement('div');
     body.className = 'completedMobileSheetBody';
@@ -187,6 +200,7 @@ export function openCompletedMobileSheet() {
         sheet: sheet,
         body: body,
         titleEl: title,
+        clearAllEl: clearAll,
         moved: moved,
         previouslyFocused: previouslyFocused,
         onKeydown: null,

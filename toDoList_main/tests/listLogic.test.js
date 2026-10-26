@@ -483,6 +483,62 @@ describe('listLogic — completed sorting', () => {
 
 
 // ── TODO STATUS FIELD ────────────────────────────────────────────────
+// The COMPLETED section's "Clear all" control deletes every completed todo in
+// one project through a single mutation: one storage write, open items kept in
+// order, other projects untouched.
+describe('listLogic — removeCompletedToDos', () => {
+    beforeEach(() => {
+        listLogic._reset();
+        listLogic.addProject('Work');
+        listLogic.addProject('Home');
+    });
+
+    it('removes the 3 completed items, keeps the 2 open ones in order, and writes once', () => {
+        ['A', 'B', 'C', 'D', 'E'].forEach(t => listLogic.addToDo('Work', t));
+        listLogic.addToDo('Home', 'H');
+        const items = listLogic.listItems('Work');
+        ['A', 'C', 'E'].forEach(t => { items.find(i => i.tit === t).completed = true; });
+        listLogic.listItems('Home').find(i => i.tit === 'H').completed = true;
+        listLogic.saveToStorage();
+
+        const openBefore = items.filter(i => i.tit !== '' && !i.completed).map(i => i.tit);
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+        const removed = listLogic.removeCompletedToDos('Work');
+        const writes = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
+        setItemSpy.mockRestore();
+
+        expect(removed).toBe(3);
+        expect(writes.length).toBe(1);
+        const left = listLogic.listItems('Work').filter(i => i.tit !== '');
+        expect(left.map(i => i.tit)).toEqual(openBefore);
+        expect(left.map(i => i.tit).sort()).toEqual(['B', 'D']);
+        expect(left.every(i => !i.completed)).toBe(true);
+        // Other projects keep their completed items.
+        expect(listLogic.listItems('Home').some(i => i.tit === 'H' && i.completed)).toBe(true);
+        // Durable: the reload snapshot no longer carries the completed items.
+        const parsed = JSON.parse(localStorage.getItem('allProjects'));
+        expect(parsed.Work.items.filter(i => i.tit !== '').map(i => i.tit).sort()).toEqual(['B', 'D']);
+    });
+
+    it('returns 0 and writes nothing when the project has no completed items', () => {
+        listLogic.addToDo('Work', 'A');
+        listLogic.saveToStorage();
+
+        const setItemSpy = vi.spyOn(Storage.prototype, 'setItem');
+        const removed = listLogic.removeCompletedToDos('Work');
+        const writes = setItemSpy.mock.calls.filter(args => args[0] === 'allProjects');
+        setItemSpy.mockRestore();
+
+        expect(removed).toBe(0);
+        expect(writes.length).toBe(0);
+        expect(listLogic.listItems('Work').some(i => i.tit === 'A')).toBe(true);
+    });
+
+    it('returns 0 for an unknown project', () => {
+        expect(listLogic.removeCompletedToDos('Nope')).toBe(0);
+    });
+});
+
 // The data model carries a workflow `status` ('active' | 'in_progress' |
 // 'idea') that mirrors the Supabase `todos.status` column. These pin the
 // invariants the downstream status-UI entries depend on: new todos

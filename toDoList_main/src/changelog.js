@@ -7,7 +7,7 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-26',
         added: [
-            'Keep what you learn in the code book with notes in your own words, pinned to a paragraph (from its Note button or long-press) or to selected lines in the code viewer, or saved straight from a Claude answer with Keep, shown in place and listed on the shelf with a Copy button.',
+            'A Clear all button on the Completed section deletes every completed task in the current project at once, after confirming how many will be lost.',
         ],
         changed: [
             'Your notes in the code viewer and the code book now show as a single line until you tap to expand them (a pencil edits), a Marks toggle hides them all at once, and Keep starts from the answer\'s first sentence with a character count that turns amber past 200.',

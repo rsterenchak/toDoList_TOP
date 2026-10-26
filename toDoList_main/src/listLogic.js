@@ -819,6 +819,42 @@ export const listLogic = (function () {
     };
 
 
+    // Remove every completed todo in one project — the COMPLETED section's
+    // "Clear all" control. One filter, one save and one batched Supabase delete
+    // rather than looping removeToDoByItem, which would fire a full-state save
+    // and a delete request per item (hundreds in a long-lived project). Other
+    // projects are untouched. Returns the number of items removed; a project
+    // with nothing completed returns 0 and writes nothing.
+    // @category: user-mutation-only
+    function removeCompletedToDos(project) {
+
+        if (!allProjects[project]) return 0;
+
+        const arr = allProjects[project].items;
+        const removed = arr.filter(function(i) { return i.tit !== '' && !!i.completed; });
+        if (removed.length === 0) return 0;
+
+        const kept = arr.filter(function(i) { return removed.indexOf(i) === -1; });
+        arr.length = 0;
+        for (let i = 0; i < kept.length; i++) arr.push(kept[i]);
+
+        sortCompletedInPlace(arr);
+
+        saveToStorage();
+        const ids = removed
+            .map(function(i) { return i.id; })
+            .filter(function(id) { return !!id; });
+        if (ids.length > 0) {
+            persistMutation({
+                op: 'delete',
+                table: 'todos',
+                payload: { ids: ids },
+            });
+        }
+        return removed.length;
+    }
+
+
     // Re-insert a previously-removed todo item at a specific position in the
     // project's items array. Backs the mobile swipe-delete "undo" path: the
     // caller captures the array index before splicing the item out so this
@@ -3732,6 +3768,11 @@ export const listLogic = (function () {
     function trackPendingTodoWrite(req) {
         if (!req || req.table !== 'todos') return;
         const payload = req.payload;
+        // A batched delete (removeCompletedToDos) names its rows in `ids`.
+        if (payload && Array.isArray(payload.ids) && req.op === 'delete') {
+            payload.ids.forEach(function(id) { _pendingTodoInserts.delete(id); });
+            return;
+        }
         if (!payload || !payload.id) return;
         // Blank placeholders never reach the server (filtered in the insert
         // path below), so they are never pending either.
@@ -3920,6 +3961,19 @@ export const listLogic = (function () {
             }
 
             if (op === 'delete') {
+                // Batched form: `ids` deletes every named row in one request.
+                if (Array.isArray(payload.ids)) {
+                    if (payload.ids.length === 0) return;
+                    payload.ids.forEach(function(id) { noteSelfEcho(id); });
+                    const result = await supabase
+                        .from(table)
+                        .delete()
+                        .in('id', payload.ids);
+                    if (result && result.error) {
+                        console.warn('[persistMutation] delete error:', result.error);
+                    }
+                    return result;
+                }
                 if (!payload.id) return;
                 noteSelfEcho(payload.id);
                 const result = await supabase
@@ -4501,6 +4555,7 @@ export const listLogic = (function () {
         addEntryTodo,
         removeToDo,
         removeToDoByItem,
+        removeCompletedToDos,
         removeToDoById,
         insertToDoAt,
         commitBlankPlaceholder,

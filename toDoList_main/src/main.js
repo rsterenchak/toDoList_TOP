@@ -138,6 +138,7 @@ import { appStorageSizes, formatBytes } from './storage.js';
 import { placeViewerCard, setViewerCardTapHandler, setOverflowSheetController, openViewerAnchoredToEntry } from './todoMdViewer.js';
 import { isMobileViewport } from './viewport.js';
 import { openCompletedMobileSheet, openViewerMobileSheet, openOverflowMobileSheet, closeOverflowMobileSheet, isAnyMobileSheetOpen } from './mobileSheets.js';
+import { buildClearCompletedPill } from './completedClearAll.js';
 import button from './addProj_button.svg';
 
 // Hydrate the inject config cache from localStorage before any inject
@@ -3146,6 +3147,9 @@ function wireExclusiveCompletedDescCollapse(mainListDiv) {
             return;
         }
 
+        // The header's "Clear all" pill is its own control, not a toggle.
+        if (target.closest('.completedClearAllBtn')) return;
+
         const ch = target.closest('#completedHeader');
         if (ch && mainListDiv.contains(ch)) {
             // Mobile: the inline accordion fails to render the completed
@@ -3168,6 +3172,17 @@ function wireExclusiveCompletedDescCollapse(mainListDiv) {
         }
     }, true);
 }
+
+// Mount the "Clear all" pill at the right end of the inline #completedHeader.
+// emptyState.js rebuilds that header from scratch on every render pass and then
+// fires mainListRendered, so re-add the pill each time. CSS hides it below
+// 1024px, where tapping the header opens the mobile sheet (which carries its
+// own pill) instead of the accordion.
+document.addEventListener('mainListRendered', function() {
+    const header = document.querySelector('#mainList #completedHeader');
+    if (!header || header.querySelector('.completedClearAllBtn')) return;
+    header.appendChild(buildClearCompletedPill());
+});
 
 // Wire the viewer card's mobile tap-to-open-sheet behavior. The viewer card
 // is built in todoMdViewer.js but the mobile-sheet machinery (and its state)
