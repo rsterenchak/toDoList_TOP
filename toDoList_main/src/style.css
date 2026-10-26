@@ -5730,27 +5730,75 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 .understandingPara.is-noted .understandingNoteBtn { opacity: 1; color: #9D93EE; }
 
 /* A paragraph's note, beneath it: the reader's own words on a dark block with a
-   lilac rule. A tap opens it for editing. */
+   lilac rule. Collapsed it is one muted line (✎, then the opening); a tap on
+   the text expands it in the reader's text colour, the pencil edits. */
 .understandingParaNote {
-  display: block;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   box-sizing: border-box;
   width: 100%;
   margin: 2px 0 10px;
-  padding: 8px 12px;
+  padding: 8px 8px 8px 12px;
   background: #15161d;
-  border: none;
   border-left: 2px solid #9D93EE;
   border-radius: 0 8px 8px 0;
-  color: var(--text-primary);
-  font: inherit;
+  color: #8b8da0;
   font-size: 14px;
   line-height: 1.5;
+}
+.understandingParaNote.is-open { color: var(--text-primary); }
+.understandingParaNote:hover { background: color-mix(in srgb, #9D93EE 8%, #15161d); }
+.understandingParaNoteText {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
   text-align: left;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   cursor: pointer;
 }
-.understandingParaNote:hover { background: color-mix(in srgb, #9D93EE 8%, #15161d); }
+.understandingParaNote.is-open .understandingParaNoteText {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+/* The ✎ (and § for a kept answer) leads the note, drawn here so the text stays
+   the note's own. */
+.understandingParaNoteText::before,
+.codeViewerUserNoteText::before {
+  content: '\270E\00a0';
+  color: #9D93EE;
+}
+.understandingParaNote.is-answer .understandingParaNoteText::before,
+.codeViewerNote--user.is-answer .codeViewerUserNoteText::before {
+  content: '\270E\00a0\00a7\00a0';
+}
+.understandingParaNoteEdit,
+.codeViewerUserNoteEdit {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  margin: -2px 0;
+  padding: 0;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 24px;
+  text-align: center;
+  cursor: pointer;
+}
+.understandingParaNoteEdit::before,
+.codeViewerUserNoteEdit::before { content: '\270F\FE0E'; }
+.understandingParaNoteEdit:hover,
+.codeViewerUserNoteEdit:hover { color: #9D93EE; background: rgba(157, 147, 238, 0.12); }
 .understandingNoteGlyph::before { content: '\270E'; }
 .understandingNoteGlyph {
   flex: 0 0 auto;
@@ -5785,6 +5833,15 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-size: 13px;
   color: var(--text-secondary);
 }
+/* Keep's live length, amber once the note is past a short one. */
+.bookNoteCount {
+  margin-top: -2px;
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
+.bookNoteCount.is-long { color: #ffbd5e; }
 .bookNoteForm .understandingFlagAction.is-save:disabled { opacity: 0.45; cursor: default; }
 
 /* `n flags` under the chapter title. */
@@ -6215,6 +6272,29 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .understandingReaderToursChip:hover { border-color: #ffbd5e; color: #ffbd5e; }
 .understandingReaderToursChip + .understandingMarksChip { margin-left: 0; }
+
+/* Marks — right of Bookmarks, shows or hides the paragraphs' note blocks;
+   lilac while they show. */
+.understandingNoteMarksChip {
+  flex: 0 0 auto;
+  min-width: 36px;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--border-mid);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  font-family: 'SpaceMono', monospace;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.understandingNoteMarksChip:hover { border-color: #9D93EE; color: #9D93EE; }
+.understandingNoteMarksChip.is-on {
+  border-color: #9D93EE;
+  background: rgba(157, 147, 238, 0.14);
+  color: var(--text-primary);
+}
 
 /* A chapter-scoped reply's resolved code names, and the plain <code> left for
    the ones that don't resolve. */
@@ -8659,7 +8739,8 @@ button.codeViewerGutter:focus-visible {
   display: inline-flex;
   flex: 0 0 auto;
 }
-.codeViewerNotes {
+.codeViewerNotes,
+.codeViewerMarks {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -8682,6 +8763,15 @@ button.codeViewerGutter:focus-visible {
   color: var(--text-primary);
 }
 .codeViewerNotes:disabled { opacity: 0.5; cursor: default; }
+/* Marks, left of Notes: lilac (the reader's notes' colour) while they show. */
+.codeViewerMarks { flex: 0 0 auto; }
+.codeViewerMarks:hover:not(:disabled) { border-color: #9D93EE; color: var(--text-primary); }
+.codeViewerMarks--on {
+  background: rgba(157, 147, 238, 0.18);
+  border-color: #9D93EE;
+  color: var(--text-primary);
+}
+.codeViewerMarks:disabled { opacity: 0.5; cursor: default; }
 .codeViewerNotesMenu {
   position: absolute;
   top: calc(100% + 4px);
@@ -8797,15 +8887,20 @@ button.codeViewerGutter:focus-visible {
 
 /* The reader's own notes: a row beneath the note's last line, held at the
    scroller's left like an interleaved note but on a dark block with a lilac
-   rule in the reader's text colour — never the muted grey of a generated note.
+   rule. Collapsed it is one line in a generated note's muted grey (the rule
+   tells the two apart); expanded, the full note in the reader's text colour.
    In rail mode it stays in the code column, short of the rail. */
 .codeViewerNote--user {
   padding-top: 4px;
   padding-bottom: 6px;
-  color: var(--text-primary);
+  color: #8b8da0;
 }
+.codeViewerNote--user.is-open { color: var(--text-primary); }
 .codeViewerNote--user > .codeViewerNoteBody {
-  padding: 6px 10px;
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 6px 6px 6px 10px;
   background: #15161d;
   border-left-color: #9D93EE;
   border-radius: 0 6px 6px 0;
@@ -8823,11 +8918,12 @@ button.codeViewerGutter:focus-visible {
 }
 .codeViewerLines--rail > .codeViewerNote--user > .codeViewerNoteBody {
   height: auto;
-  padding: 6px 10px;
+  padding: 6px 6px 6px 10px;
 }
 .codeViewerUserNoteText {
   display: block;
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   margin: 0;
   padding: 0;
   background: none;
@@ -8835,9 +8931,14 @@ button.codeViewerGutter:focus-visible {
   color: inherit;
   font: inherit;
   text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+.codeViewerNote--user.is-open .codeViewerUserNoteText {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
-  cursor: pointer;
 }
 
 /* Chunk loaders, one above and one below the rendered window, each shown only
@@ -9165,10 +9266,12 @@ button.codeViewerGutter:focus-visible {
 .structureCodeSheet .codeViewerSize {
   order: 1;
 }
-.structureCodeSheet .codeViewerNotesWrap {
+.structureCodeSheet .codeViewerNotesWrap,
+.structureCodeSheet .codeViewerMarks {
   order: 1;
 }
-.structureCodeSheet .codeViewerNotes {
+.structureCodeSheet .codeViewerNotes,
+.structureCodeSheet .codeViewerMarks {
   min-height: 40px;
   font-size: 13px;
 }

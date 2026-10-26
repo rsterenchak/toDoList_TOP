@@ -853,7 +853,8 @@ describe('notes section', () => {
         const para = view().querySelectorAll('.understandingPara')[1];
         expect(para.classList.contains('is-pulse')).toBe(true);
         expect(para.classList.contains('is-noted')).toBe(true);
-        expect(para.nextElementSibling.textContent).toBe('Data note\nmore');
+        // Collapsed to its first line until tapped.
+        expect(para.nextElementSibling.textContent).toBe('Data note…');
     });
 
     test('a code row opens its lines in the reader’s code pane', async () => {

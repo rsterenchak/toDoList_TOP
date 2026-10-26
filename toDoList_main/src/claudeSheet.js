@@ -4594,6 +4594,14 @@ export function replyFirstParagraph(content) {
     return '';
 }
 
+// The first sentence of a reply's first paragraph — cut after the first `. `,
+// `? ` or `! ` — so what Keep offers starts short.
+export function replyFirstSentence(content) {
+    const para = replyFirstParagraph(content);
+    const m = /[.?!] /.exec(para);
+    return m ? para.slice(0, m.index + 1) : para;
+}
+
 // The text the user has selected inside `bubble`, flattened, or ''.
 function bubbleSelectionText(bubble) {
     try {
@@ -4618,17 +4626,19 @@ function syncKeepChips() {
 }
 
 // Open the note sheet for `bubble`'s reply, pre-filled from `selected` (the
-// selection captured as the chip was pressed) or the reply's first paragraph.
+// selection captured as the chip was pressed) or the reply's first sentence,
+// with a character count that nudges toward a short note.
 function keepReply(bubble, selected) {
     const anchor = keepAnchor();
     const turn = readerTurnOf.get(bubble);
     if (!anchor || !turn) return;
     const repo = activeChatRepo;
-    const text = selected || replyFirstParagraph(turn.content);
+    const text = selected || replyFirstSentence(turn.content);
     openNoteSheet({
         title: 'KEEP · ' + keepAnchorLabel(anchor),
         excerpt: anchor.excerpt || '',
         body: text,
+        counter: true,
         onSave: function (body) {
             const res = saveNote(repo, anchor, { body: body, source: 'answer', bookSha: anchor.bookSha || '' });
             if (res.note) showInjectToast('Kept as a note');

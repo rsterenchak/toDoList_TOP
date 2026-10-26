@@ -32,6 +32,10 @@ export const BOOK_NOTES_EVENT = 'bookNotesChanged';
 // How much of the anchor's text a note keeps, and how long a note may run.
 export const NOTE_EXCERPT_MAX = 160;
 export const NOTE_BODY_MAX = 2000;
+// How much of a note shows while it is collapsed to one line, and the length
+// past which the sheet's counter (Keep's) turns amber — longer is still allowed.
+export const NOTE_COLLAPSED_MAX = 80;
+export const NOTE_LONG_CHARS = 200;
 
 function stamp(t) {
     const n = Date.parse(t || '');
@@ -484,6 +488,20 @@ export function noteFirstLine(n) {
     return String((n && n.body) || '').split('\n')[0].trim();
 }
 
+// A collapsed note's one line: the body cut at its first line break or at
+// NOTE_COLLAPSED_MAX characters, with `…` when anything was cut.
+export function noteCollapsedText(n) {
+    const body = String((n && n.body) || '').trim();
+    const brk = body.indexOf('\n');
+    let line = brk === -1 ? body : body.slice(0, brk).trimEnd();
+    let cut = brk !== -1;
+    if (line.length > NOTE_COLLAPSED_MAX) {
+        line = line.slice(0, NOTE_COLLAPSED_MAX).trimEnd();
+        cut = true;
+    }
+    return cut ? line + '…' : line;
+}
+
 function noteLine(label, n) {
     const parts = [label, '"' + String(n.body || '').replace(/\s+/g, ' ').trim() + '"'];
     const refs = (n.refs || []).map(function (r) {
@@ -546,6 +564,7 @@ export function isNoteSheetOpen() {
 //   • body     — the field's starting text ('' for a new note).
 //   • onSave(text) — Save with a non-empty field; the sheet closes after it.
 //   • onDelete()   — when given (editing), a Delete that asks first.
+//   • counter  — show a live character count under the field.
 // Returns the sheet's host, or null when there is no document.
 export function openNoteSheet(opts) {
     const o = opts || {};
@@ -586,6 +605,20 @@ export function openNoteSheet(opts) {
     field.setAttribute('aria-label', 'Note');
     field.value = typeof o.body === 'string' ? o.body : '';
     body.appendChild(field);
+    // `counter`: a live `n chars` under the field, amber past NOTE_LONG_CHARS.
+    let count = null;
+    if (o.counter) {
+        count = document.createElement('div');
+        count.className = 'bookNoteCount';
+        count.setAttribute('aria-live', 'polite');
+        body.appendChild(count);
+    }
+    const syncCount = function () {
+        if (!count) return;
+        const n = field.value.length;
+        count.textContent = n + (n === 1 ? ' char' : ' chars');
+        count.classList.toggle('is-long', n > NOTE_LONG_CHARS);
+    };
 
     const actions = document.createElement('div');
     actions.className = 'understandingFlagActions';
@@ -637,7 +670,7 @@ export function openNoteSheet(opts) {
         hide();
         if (typeof o.onSave === 'function') o.onSave(text);
     });
-    const syncSave = function () { save.disabled = !field.value.trim(); };
+    const syncSave = function () { save.disabled = !field.value.trim(); syncCount(); };
     field.addEventListener('input', syncSave);
     syncSave();
     body.appendChild(actions);

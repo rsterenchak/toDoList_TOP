@@ -36,7 +36,9 @@
 // Notes are the third mark: a short text in the reader's own words pinned to a
 // paragraph (Note beside the flag on hover, or in the long-press sheet) or, from
 // the code viewer's selection bar, to a line range. A paragraph's notes show
-// beneath it; the shelf lists every note after the flags, grouped by chapter, a
+// beneath it, collapsed to one line until tapped (a pencil edits), and the top
+// bar's Marks chip hides them all (remembered per repo); the shelf lists every
+// note after the flags, grouped by chapter, a
 // line-range note under the chapter whose files include its file. Notes live in
 // bookNotes.js (local + Supabase). A chapter left part-read
 // and not returned to that session shows `left at ¶n` on its shelf row (the rule
@@ -72,10 +74,10 @@ import { createCodeSheet } from './codeSheet.js';
 import { readLocalProgress, recordProgress, flushProgress, loadProgress, noteChapterLeft, noteChapterOpened, noteChapterReached, readAbandoned } from './bookProgress.js';
 import { listBookmarks, isBookmarked, toggleBookmark, removeBookmark, loadBookmarks, anchorBookmarks } from './bookBookmarks.js';
 import { FLAG_KINDS, DEFAULT_FLAG_KIND, flagBadge, flagExcerpt, flagRefs, chapterBookSha, openFlags, openFlagFor, saveFlag, resolveFlag, deleteFlag, loadFlags, anchorFlags, flagsMarkdown } from './bookFlags.js';
-import { BOOK_NOTES_EVENT, listNotes, notesForParagraph, saveNote, updateNote, deleteNote, loadNotes, groupNotes, notesMarkdown, noteSpanLabel, noteFirstLine, isLineNote, openNoteSheet, hideNoteSheet } from './bookNotes.js';
+import { BOOK_NOTES_EVENT, listNotes, notesForParagraph, saveNote, updateNote, deleteNote, loadNotes, groupNotes, notesMarkdown, noteSpanLabel, noteFirstLine, noteCollapsedText, isLineNote, openNoteSheet, hideNoteSheet } from './bookNotes.js';
 import { loadTours, orderedTours, tourStats } from './codeTours.js';
 import { openTourPlayer, closeTourPlayer } from './tourPlayer.js';
-import { getTourProgress, getActiveView } from './prefs.js';
+import { getTourProgress, getActiveView, isBookMarksOn, setBookMarksOn } from './prefs.js';
 
 // Probe cadence and limits for a tracked book run, matching the scan tracker's.
 const BOOK_POLL_MS = 5000;
@@ -2024,8 +2026,10 @@ function openParaActions(p, segments, index) {
     paraSheet.show();
 }
 
-// Show paragraph `p`'s notes beneath it (each a block that opens its edit
-// sheet), replacing any shown before, and mark the paragraph as noted.
+// Show paragraph `p`'s notes beneath it, replacing any shown before, and mark
+// the paragraph as noted. Each block is one line until its text is tapped (the
+// reader remembers which are open) and carries a pencil that opens its edit
+// sheet. With the Marks chip off no block is mounted; the ✎ glyph stays.
 function paintParaNotes(p, segments, index) {
     const r = reader;
     if (!r) return;
@@ -2039,18 +2043,61 @@ function paintParaNotes(p, segments, index) {
     p.classList.toggle('is-noted', notes.length > 0);
     const btn = p.querySelector(':scope > .understandingNoteBtn');
     if (btn) btn.setAttribute('aria-label', notes.length ? 'Add another note' : 'Note this paragraph');
+    if (!r.marksOn) return;
     let after = p;
     notes.forEach(function (n) {
-        const block = document.createElement('button');
-        block.type = 'button';
+        const block = document.createElement('div');
         block.className = 'understandingParaNote' + (n.source === 'answer' ? ' is-answer' : '');
-        block.textContent = n.body;
-        block.setAttribute('aria-label', 'Edit note: ' + noteFirstLine(n));
-        block.addEventListener('click', function () { openParaNoteSheet(p, segments, index, n); });
+        block.dataset.note = n.createdAt;
+        const text = document.createElement('button');
+        text.type = 'button';
+        text.className = 'understandingParaNoteText';
+        block.appendChild(text);
+        setParaNoteOpen(block, n, r.openNotes.has(n.createdAt));
+        text.addEventListener('click', function () {
+            const open = !r.openNotes.has(n.createdAt);
+            if (open) r.openNotes.add(n.createdAt);
+            else r.openNotes.delete(n.createdAt);
+            setParaNoteOpen(block, n, open);
+        });
+        const edit = document.createElement('button');
+        edit.type = 'button';
+        edit.className = 'understandingParaNoteEdit';
+        edit.setAttribute('aria-label', 'Edit note: ' + noteFirstLine(n));
+        edit.title = 'Edit note';
+        edit.addEventListener('click', function () { openParaNoteSheet(p, segments, index, n); });
+        block.appendChild(edit);
         if (after.nextSibling) after.parentNode.insertBefore(block, after.nextSibling);
         else after.parentNode.appendChild(block);
         after = block;
     });
+}
+
+// Show paragraph note block `block` expanded (the full body) or collapsed.
+function setParaNoteOpen(block, n, open) {
+    const text = block.querySelector('.understandingParaNoteText');
+    block.classList.toggle('is-open', open);
+    text.textContent = open ? n.body : noteCollapsedText(n);
+    text.setAttribute('aria-expanded', open ? 'true' : 'false');
+    text.setAttribute('aria-label', (open ? 'Collapse' : 'Expand') + ' note: ' + noteFirstLine(n));
+}
+
+// The top bar's Marks chip: pressed while paragraph notes show.
+function paintNoteMarksChip() {
+    const r = reader;
+    if (!r || !r.noteMarksBtn) return;
+    r.noteMarksBtn.classList.toggle('is-on', r.marksOn);
+    r.noteMarksBtn.setAttribute('aria-pressed', r.marksOn ? 'true' : 'false');
+}
+
+// Marks pressed: show or hide every paragraph note block in the open chapter.
+function toggleNoteMarks() {
+    const r = reader;
+    if (!r) return;
+    r.marksOn = !r.marksOn;
+    setBookMarksOn(r.repo, r.marksOn);
+    paintNoteMarksChip();
+    onNotesChanged(null);
 }
 
 // Open the note sheet for paragraph `index`: a new note, or `existing` to edit
@@ -2725,6 +2772,15 @@ function openReader(view, repo, book, index, paraIndex) {
         else openMarksList();
     });
     top.appendChild(marksBtn);
+    // Marks, right of Bookmarks, shows or hides the paragraphs' note blocks
+    // (bookmark ribbons and flag glyphs stay).
+    const noteMarksBtn = document.createElement('button');
+    noteMarksBtn.type = 'button';
+    noteMarksBtn.className = 'understandingNoteMarksChip';
+    noteMarksBtn.textContent = 'Marks';
+    noteMarksBtn.setAttribute('aria-label', 'Show your notes');
+    noteMarksBtn.addEventListener('click', toggleNoteMarks);
+    top.appendChild(noteMarksBtn);
     root.appendChild(top);
 
     const progress = document.createElement('div');
@@ -2783,6 +2839,10 @@ function openReader(view, repo, book, index, paraIndex) {
         marksBtn: marksBtn,
         marksBadge: marksBadge,
         marksList: null,
+        noteMarksBtn: noteMarksBtn,
+        // Whether paragraph notes show, and which are expanded (this reader only).
+        marksOn: isBookMarksOn(repo),
+        openNotes: new Set(),
         flagsEl: null,
         // The chapter on screen (-1 before the first) and the furthest paragraph
         // of it seen, for the abandonment rule.
@@ -2797,6 +2857,7 @@ function openReader(view, repo, book, index, paraIndex) {
         chapterGone: false,
     };
     paintMarksChip();
+    paintNoteMarksChip();
     paintBackChip();
     showChapter(index, paraIndex);
     if (!tourData || tourData.repo !== repo) loadTourData(repo, renderSeq);

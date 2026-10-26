@@ -44,6 +44,7 @@ import {
     notesMarkdown,
     linesExcerpt,
     openNoteSheet,
+    noteCollapsedText,
 } from '../src/bookNotes.js';
 import { getBookNotes, setBookNotes } from '../src/prefs.js';
 import { supabase } from '../src/supabaseClient.js';
@@ -350,5 +351,37 @@ describe('note sheet', () => {
         openNoteSheet({ title: 'NOTE', body: 'x', onSave: vi.fn() });
         document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
         expect(sheet().hidden).toBe(true);
+    });
+});
+
+describe('collapsed text', () => {
+    test('a short single line shows whole; a break or more than 80 characters is cut with …', () => {
+        expect(noteCollapsedText({ body: 'Short' })).toBe('Short');
+        expect(noteCollapsedText({ body: 'First\nsecond' })).toBe('First…');
+        const long = 'x'.repeat(79) + ' tail end';
+        expect(noteCollapsedText({ body: long })).toBe('x'.repeat(79) + '…');
+        expect(noteCollapsedText({ body: 'y'.repeat(80) })).toBe('y'.repeat(80));
+        expect(noteCollapsedText({ body: '' })).toBe('');
+    });
+});
+
+describe('note sheet counter', () => {
+    const sheet = () => document.getElementById('bookNoteSheet');
+
+    test('only a sheet asked for it counts the field, amber past 200 characters', () => {
+        openNoteSheet({ title: 'NOTE', body: 'x', onSave: vi.fn() });
+        expect(sheet().querySelector('.bookNoteCount')).toBeNull();
+        openNoteSheet({ title: 'KEEP', body: 'abc', counter: true, onSave: vi.fn() });
+        const count = sheet().querySelector('.bookNoteCount');
+        expect(count.textContent).toBe('3 chars');
+        const field = sheet().querySelector('textarea.bookNoteField');
+        field.value = 'z'.repeat(200);
+        field.dispatchEvent(new Event('input'));
+        expect(count.textContent).toBe('200 chars');
+        expect(count.classList.contains('is-long')).toBe(false);
+        field.value = 'z'.repeat(201);
+        field.dispatchEvent(new Event('input'));
+        expect(count.textContent).toBe('201 chars');
+        expect(count.classList.contains('is-long')).toBe(true);
     });
 });
