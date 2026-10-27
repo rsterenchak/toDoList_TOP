@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-27T07:29:28.267Z",
-  "sha": "8d1fe43a5fdb6dbc070e9386e6d680ac542b044d",
+  "generatedAt": "2026-10-27T08:11:49.815Z",
+  "sha": "4781f6acd55b33943510e679d9f10dfd8c0b5a51",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -115,11 +115,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 4145,
+      "line": 4146,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4145
+          "line": 4146
         },
         {
           "file": "style.css",
@@ -159,11 +159,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 4196,
+      "line": 4197,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4196
+          "line": 4197
         }
       ]
     },
@@ -1663,11 +1663,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 4218,
+      "line": 4219,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4218
+          "line": 4219
         },
         {
           "file": "style.css",
@@ -1883,11 +1883,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 4243,
+      "line": 4244,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4243
+          "line": 4244
         }
       ]
     },
@@ -2639,11 +2639,11 @@
       "selector": "#descIndicator",
       "label": "Desc Indicator",
       "file": "toDoRow.js",
-      "line": 4399,
+      "line": 4400,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4399
+          "line": 4400
         },
         {
           "file": "style.css",
@@ -2655,11 +2655,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 4278,
+      "line": 4279,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4278
+          "line": 4279
         },
         {
           "file": "style.css",
@@ -2671,11 +2671,11 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 4277,
+      "line": 4278,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4277
+          "line": 4278
         },
         {
           "file": "style.css",
@@ -2695,7 +2695,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4252
+          "line": 4253
         },
         {
           "file": "style.css",
@@ -2851,7 +2851,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4089
+          "line": 4090
         },
         {
           "file": "style.css",
@@ -6231,11 +6231,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 4094,
+      "line": 4095,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4094
+          "line": 4095
         },
         {
           "file": "style.css",
@@ -6403,11 +6403,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 4268,
+      "line": 4269,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4268
+          "line": 4269
         },
         {
           "file": "style.css",
@@ -6599,11 +6599,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 4073,
+      "line": 4074,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4073
+          "line": 4074
         },
         {
           "file": "style.css",
@@ -6615,11 +6615,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 4109,
+      "line": 4110,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4109
+          "line": 4110
         },
         {
           "file": "style.css",
@@ -6631,11 +6631,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 4102,
+      "line": 4103,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4102
+          "line": 4103
         }
       ]
     },
@@ -9783,11 +9783,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 72,
+      "line": 74,
       "files": [
         {
           "file": "changelog.js",
-          "line": 72
+          "line": 74
         },
         {
           "file": "style.css",
@@ -9799,11 +9799,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 41,
+      "line": 43,
       "files": [
         {
           "file": "changelog.js",
-          "line": 41
+          "line": 43
         },
         {
           "file": "style.css",
@@ -9815,11 +9815,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 51,
+      "line": 53,
       "files": [
         {
           "file": "changelog.js",
-          "line": 51
+          "line": 53
         },
         {
           "file": "style.css",
@@ -9831,11 +9831,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 44,
+      "line": 46,
       "files": [
         {
           "file": "changelog.js",
-          "line": 44
+          "line": 46
         },
         {
           "file": "style.css",
@@ -9847,11 +9847,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 47,
+      "line": 49,
       "files": [
         {
           "file": "changelog.js",
-          "line": 47
+          "line": 49
         },
         {
           "file": "style.css",
@@ -9863,11 +9863,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 68,
+      "line": 70,
       "files": [
         {
           "file": "changelog.js",
-          "line": 68
+          "line": 70
         },
         {
           "file": "style.css",
@@ -14091,11 +14091,11 @@
       "selector": ".copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 4245,
+      "line": 4246,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4245
+          "line": 4246
         },
         {
           "file": "style.css",
@@ -15159,11 +15159,11 @@
       "selector": ".descFileReadoutLabel",
       "label": "Desc File Readout Label",
       "file": "entryScreenshot.js",
-      "line": 155,
+      "line": 194,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 155
+          "line": 194
         },
         {
           "file": "toDoRow.js",
@@ -15739,11 +15739,11 @@
       "selector": ".descScreenshotIdle",
       "label": "Desc Screenshot Idle",
       "file": "entryScreenshot.js",
-      "line": 160,
+      "line": 199,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 160
+          "line": 199
         },
         {
           "file": "style.css",
@@ -15771,11 +15771,11 @@
       "selector": ".descScreenshotMeta",
       "label": "Desc Screenshot Meta",
       "file": "entryScreenshot.js",
-      "line": 169,
+      "line": 208,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 169
+          "line": 208
         },
         {
           "file": "style.css",
@@ -15787,11 +15787,11 @@
       "selector": ".descScreenshotPath",
       "label": "Desc Screenshot Path",
       "file": "entryScreenshot.js",
-      "line": 171,
+      "line": 210,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 171
+          "line": 210
         },
         {
           "file": "style.css",
@@ -15803,11 +15803,11 @@
       "selector": ".descScreenshotRemove",
       "label": "Desc Screenshot Remove",
       "file": "entryScreenshot.js",
-      "line": 178,
+      "line": 217,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 178
+          "line": 217
         },
         {
           "file": "style.css",
@@ -15819,11 +15819,11 @@
       "selector": ".descScreenshotRow",
       "label": "Desc Screenshot Row",
       "file": "entryScreenshot.js",
-      "line": 153,
+      "line": 192,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 153
+          "line": 192
         },
         {
           "file": "style.css",
@@ -15835,11 +15835,11 @@
       "selector": ".descScreenshotSize",
       "label": "Desc Screenshot Size",
       "file": "entryScreenshot.js",
-      "line": 173,
+      "line": 212,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 173
+          "line": 212
         },
         {
           "file": "style.css",
@@ -15851,11 +15851,11 @@
       "selector": ".descScreenshotStaged",
       "label": "Desc Screenshot Staged",
       "file": "entryScreenshot.js",
-      "line": 164,
+      "line": 203,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 164
+          "line": 203
         },
         {
           "file": "style.css",
@@ -15867,11 +15867,11 @@
       "selector": ".descScreenshotThumb",
       "label": "Desc Screenshot Thumb",
       "file": "entryScreenshot.js",
-      "line": 166,
+      "line": 205,
       "files": [
         {
           "file": "entryScreenshot.js",
-          "line": 166
+          "line": 205
         },
         {
           "file": "style.css",
@@ -16107,11 +16107,11 @@
       "selector": ".discussBtn",
       "label": "Discuss Btn",
       "file": "toDoRow.js",
-      "line": 4336,
+      "line": 4337,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4336
+          "line": 4337
         },
         {
           "file": "style.css",
@@ -16123,11 +16123,11 @@
       "selector": ".discussBtnGlyph",
       "label": "Discuss Btn Glyph",
       "file": "toDoRow.js",
-      "line": 4339,
+      "line": 4340,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4339
+          "line": 4340
         }
       ]
     },
@@ -16135,11 +16135,11 @@
       "selector": ".discussBtnLabel",
       "label": "Discuss Btn Label",
       "file": "toDoRow.js",
-      "line": 4339,
+      "line": 4340,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4339
+          "line": 4340
         }
       ]
     },
@@ -23667,11 +23667,11 @@
       "selector": ".statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 4269,
+      "line": 4270,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4269
+          "line": 4270
         }
       ]
     },
@@ -26251,11 +26251,11 @@
       "selector": ".swipeActionGlyph",
       "label": "Swipe Action Glyph",
       "file": "toDoRow.js",
-      "line": 4411,
+      "line": 4412,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4411
+          "line": 4412
         },
         {
           "file": "style.css",
@@ -26267,11 +26267,11 @@
       "selector": ".swipeActionPane",
       "label": "Swipe Action Pane",
       "file": "toDoRow.js",
-      "line": 4408,
+      "line": 4409,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4408
+          "line": 4409
         },
         {
           "file": "style.css",
@@ -26783,11 +26783,11 @@
       "selector": ".toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 4103,
+      "line": 4104,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4103
+          "line": 4104
         },
         {
           "file": "style.css",
@@ -30775,7 +30775,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 86,
+      "lines": 88,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -30969,7 +30969,7 @@
     },
     {
       "path": "entryScreenshot.js",
-      "lines": 303,
+      "lines": 349,
       "imports": [
         "imagePrep.js",
         "inject.js",
@@ -31032,11 +31032,12 @@
     },
     {
       "path": "index.js",
-      "lines": 512,
+      "lines": 517,
       "imports": [
         "addProj_button.svg",
         "appLock.js",
         "auth.js",
+        "entryScreenshot.js",
         "icon.png",
         "inject.js",
         "listLogic.js",
@@ -31591,7 +31592,7 @@
     },
     {
       "path": "toDoRow.js",
-      "lines": 5365,
+      "lines": 5366,
       "imports": [
         "agentQueueStore.js",
         "authoringModeStrip.js",
