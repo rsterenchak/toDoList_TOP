@@ -408,6 +408,7 @@ export function showDescEditorModal(item, options) {
         renderDispatchBlock();
         renderMockupBlock(phase);
         renderReviewBlock(phase);
+        syncAgentSections();
         applyPhaseChrome(phase);
         renderEntryDisclosure(phase);
         syncAgentTabs();
@@ -515,6 +516,155 @@ export function showDescEditorModal(item, options) {
             tabBar.hidden = false;
             selectPaneTab('agent');
         }
+    }
+
+    // ── AGENT ACCORDION SECTIONS ──
+    // Stacked open, the phase blocks overflow the Agent pane before any option is
+    // visible. After the renderers mount (always as top-level agentPane children),
+    // this pass relocates each block into a collapsible section: a 36px header
+    // (status dot, label, short status, chevron) over a body holding the block as
+    // built — the builders and their listeners are moved, never rebuilt. Sections
+    // keep a fixed order, a section whose block unmounted is removed (with any
+    // leftovers, e.g. a stale run report), and only when a NEW section appears is
+    // the open state reset so the block that needs the user is the one expanded;
+    // otherwise the user's own expand/collapse choices survive a repaint. Blocks
+    // stay findable by agentPane.querySelector*, so AGENT_BLOCK_SELECTOR and every
+    // renderer's idempotency lookup keep working through the extra nesting.
+    // `members` orders a section's body (the REVIEW card, its async run report,
+    // then its action row); `needs` ranks which section opens by default.
+    const AGENT_SECTION_KINDS = [
+        { kind: 'review', label: 'Review', needs: 2,
+            members: ['.descReviewBlock', '.descRunReportBlock', '.descReviewActions'],
+            primary: '.descReviewBlock, .descReviewActions',
+            status: function () { return 'Shipped'; } },
+        { kind: 'mockup', label: 'Mockup', needs: 1,
+            members: ['#descEditorModalMockup'], primary: '#descEditorModalMockup',
+            status: function () { return 'Pick A/B/C'; } },
+        { kind: 'asking', label: 'Asking', needs: 0,
+            members: ['.askingBlock'], primary: '.askingBlock',
+            status: function () { return 'Answer'; } },
+        { kind: 'stuck', label: 'Stuck', needs: 4,
+            members: ['#descEditorModalStuck'], primary: '#descEditorModalStuck',
+            status: function () {
+                const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
+                return queueRow && queueRow.state === 'no_change' ? 'No change' : 'Failed';
+            } },
+        { kind: 'dispatch', label: 'Dispatch', needs: 3,
+            members: ['.descDispatchBlock'], primary: '.descDispatchBlock',
+            status: function (sectionBody) {
+                const block = sectionBody.querySelector('.descDispatchBlock');
+                const mode = block && block.getAttribute('data-dispatch-mode');
+                return mode === 'retry' ? 'Retry' : (mode === 'retriage' ? 'Retriage' : 'Ready');
+            } },
+    ];
+
+    function agentKindFor(node) {
+        if (!node || node.nodeType !== 1) return null;
+        for (const spec of AGENT_SECTION_KINDS) {
+            if (spec.members.some(function (sel) { return node.matches(sel); })) return spec;
+        }
+        return null;
+    }
+
+    function setAgentSectionOpen(section, open) {
+        const header = section.querySelector('.agentSectionHeader');
+        const sectionBody = section.querySelector('.agentSectionBody');
+        section.classList.toggle('agentSection--open', open);
+        header.setAttribute('aria-expanded', open ? 'true' : 'false');
+        header.querySelector('.agentSectionChevron').textContent = open ? '▾' : '▸';
+        sectionBody.hidden = !open;
+    }
+
+    function buildAgentSection(spec) {
+        const section = document.createElement('section');
+        section.className = 'agentSection';
+        section.setAttribute('data-agent-section', spec.kind);
+
+        const header = document.createElement('button');
+        header.type = 'button';
+        header.className = 'agentSectionHeader';
+        header.id = 'descEditorModalAgentSection-' + spec.kind;
+        header.setAttribute('aria-controls', 'descEditorModalAgentSectionBody-' + spec.kind);
+
+        const dot = document.createElement('span');
+        dot.className = 'agentSectionDot';
+        dot.setAttribute('aria-hidden', 'true');
+        const label = document.createElement('span');
+        label.className = 'agentSectionLabel';
+        label.textContent = spec.label;
+        const status = document.createElement('span');
+        status.className = 'agentSectionStatus';
+        const chevron = document.createElement('span');
+        chevron.className = 'agentSectionChevron';
+        chevron.setAttribute('aria-hidden', 'true');
+        header.appendChild(dot);
+        header.appendChild(label);
+        header.appendChild(status);
+        header.appendChild(chevron);
+
+        const sectionBody = document.createElement('div');
+        sectionBody.className = 'agentSectionBody';
+        sectionBody.id = 'descEditorModalAgentSectionBody-' + spec.kind;
+        sectionBody.setAttribute('role', 'region');
+        sectionBody.setAttribute('aria-labelledby', header.id);
+
+        header.addEventListener('click', function () {
+            setAgentSectionOpen(section, sectionBody.hidden);
+        });
+
+        section.appendChild(header);
+        section.appendChild(sectionBody);
+        setAgentSectionOpen(section, false);
+        return section;
+    }
+
+    function agentSectionFor(spec) {
+        return agentPane.querySelector(':scope > [data-agent-section="' + spec.kind + '"]');
+    }
+
+    function syncAgentSections() {
+        let created = false;
+        // Relocate every loose top-level block into its section (created on demand,
+        // in AGENT_SECTION_KINDS order), slotted by its section's member order.
+        Array.from(agentPane.children).forEach(function (node) {
+            if (node.classList.contains('agentSection')) return;
+            const spec = agentKindFor(node);
+            if (!spec) return;
+            let section = agentSectionFor(spec);
+            if (!section) {
+                section = buildAgentSection(spec);
+                const rank = AGENT_SECTION_KINDS.indexOf(spec);
+                const after = AGENT_SECTION_KINDS.slice(rank + 1)
+                    .map(agentSectionFor).find(Boolean) || null;
+                agentPane.insertBefore(section, after);
+                created = true;
+            }
+            const sectionBody = section.querySelector('.agentSectionBody');
+            const memberRank = function (el) {
+                return spec.members.findIndex(function (sel) { return el.matches(sel); });
+            };
+            const own = memberRank(node);
+            const before = Array.from(sectionBody.children).find(function (el) {
+                return memberRank(el) > own;
+            }) || null;
+            sectionBody.insertBefore(node, before);
+        });
+        // Drop a section whose block unmounted — never leave an orphaned header.
+        AGENT_SECTION_KINDS.forEach(function (spec) {
+            const section = agentSectionFor(spec);
+            if (section && !section.querySelector('.agentSectionBody').querySelector(spec.primary)) {
+                section.remove();
+            }
+        });
+        const live = AGENT_SECTION_KINDS.filter(agentSectionFor);
+        const needsUser = live.slice().sort(function (a, b) { return a.needs - b.needs; })[0];
+        live.forEach(function (spec) {
+            const section = agentSectionFor(spec);
+            const sectionBody = section.querySelector('.agentSectionBody');
+            section.querySelector('.agentSectionStatus').textContent = spec.status(sectionBody);
+            section.classList.toggle('agentSection--needsUser', spec === needsUser);
+            if (created) setAgentSectionOpen(section, spec === needsUser);
+        });
     }
 
     // Label the entry field with the same SpaceMono uppercase treatment the rest
@@ -668,12 +818,14 @@ export function showDescEditorModal(item, options) {
         }
         const block = buildDispatchBlock(item, queueRow, mode, opts.projectName || '');
         // Retry and Retry triage sit beneath the STUCK reason card; Dispatch (and a
-        // Retry with no card to follow) append at the end of the Agent pane.
+        // Retry with no card to follow, or one already nested in its accordion
+        // section) append at the end of the Agent pane — syncAgentSections slots it.
         const anchorAfter = mode !== 'dispatch'
             ? agentPane.querySelector('#descEditorModalStuck')
             : null;
-        if (anchorAfter) agentPane.insertBefore(block, anchorAfter.nextSibling);
-        else agentPane.appendChild(block);
+        if (anchorAfter && anchorAfter.parentNode === agentPane) {
+            agentPane.insertBefore(block, anchorAfter.nextSibling);
+        } else agentPane.appendChild(block);
     }
 
     // ── REVIEW (ACCEPT-PHASE) DECISION SURFACE ──
@@ -728,7 +880,9 @@ export function showDescEditorModal(item, options) {
         // already scrolls under the modal height cap, so no expanded-height re-snapshot is
         // needed here (that is the desktop viewer's concern). A run with no summary,
         // or a failed fetch, mounts nothing.
-        mountRunReportBlock(agentPane, item, queueRow, actionsRow, null);
+        // The summary lands after syncAgentSections has nested actionsRow, so it
+        // appends to the pane; onRender re-runs the sync to slot it into REVIEW.
+        mountRunReportBlock(agentPane, item, queueRow, actionsRow, { onRender: syncAgentSections });
     }
 
     // ── PHASE CHROME (blocked-phase eyebrow + dialog accent) ──
