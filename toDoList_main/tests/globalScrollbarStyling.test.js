@@ -35,7 +35,7 @@ describe('Global scrollbar styling matches the Void aesthetic', () => {
     it('declares scrollbar-width: thin and a neutral-gray-on-transparent scrollbar-color for Firefox', () => {
         const rule = topLevelRule('*');
         expect(rule).toMatch(/scrollbar-width:\s*thin/);
-        expect(rule).toMatch(/scrollbar-color:\s*#3a3a48\s+transparent/i);
+        expect(rule).toMatch(/scrollbar-color:\s*color-mix\(in srgb, var\(--border-bright\) 70%, var\(--text-muted\)\)\s+transparent/);
     });
 
     it('sizes the WebKit scrollbar at 4px in both axes', () => {
@@ -49,19 +49,19 @@ describe('Global scrollbar styling matches the Void aesthetic', () => {
         expect(rule).toMatch(/background:\s*transparent/);
     });
 
-    it('paints the WebKit thumb muted gray #3a3a48 with a ~2px border radius', () => {
+    it('paints the WebKit thumb muted gray (border-bright toward text-muted) with a ~2px border radius', () => {
         const rule = topLevelRule('*::-webkit-scrollbar-thumb');
-        expect(rule).toMatch(/background:\s*#3a3a48/i);
+        expect(rule).toMatch(/background:\s*color-mix\(in srgb, var\(--border-bright\) 70%, var\(--text-muted\)\)/);
         expect(rule).toMatch(/border-radius:\s*2px/);
     });
 
     it('lifts the thumb to a slightly lighter gray on hover', () => {
         const rule = topLevelRule('*::-webkit-scrollbar-thumb:hover');
-        // Hover shade must be a hex color distinct from the resting #3a3a48
-        // thumb so the lift is visible.
-        const match = rule.match(/background:\s*(#[0-9a-f]{3,8})/i);
+        // Hover shade leans further toward --text-muted than the resting
+        // thumb (70% --border-bright) so the lift is visible in every theme.
+        const match = rule.match(/background:\s*color-mix\(in srgb, var\(--border-bright\) (\d+)%, var\(--text-muted\)\)/);
         expect(match).not.toBeNull();
-        expect(match[1].toLowerCase()).not.toBe('#3a3a48');
+        expect(Number(match[1])).toBeLessThan(70);
     });
 
     it('drops the old per-element 3px scrollbar override on #sideMa / #mainList in favor of the global rule', () => {

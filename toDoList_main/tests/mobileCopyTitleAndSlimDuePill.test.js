@@ -255,12 +255,12 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         // red is reserved for past-due.
         const blocks = allMobileMediaBlocks();
         const joined = blocks.map(b => b.text).join('\n');
-        // Default (date set, no urgency class): dim neutral #4a4b58 on the
+        // Default (date set, no urgency class): dim neutral (text-muted toward border-bright) on the
         // base #duePill rule itself.
         const hit = findMobileDuePillRule();
-        expect(hit.body).toMatch(/color:\s*#4a4b58/i);
-        // Empty (no date set): dim gray #5A5A6A.
-        expect(joined).toMatch(/#duePill\[data-empty="true"\]\s*\{[^}]*color:\s*#5A5A6A/i);
+        expect(hit.body).toMatch(/color:\s*color-mix\(in srgb, var\(--text-muted\) 60%, var\(--border-bright\)\)/);
+        // Empty (no date set): dim gray var(--text-muted).
+        expect(joined).toMatch(/#duePill\[data-empty="true"\]\s*\{[^}]*color:\s*var\(--text-muted\)/);
         // Due-soon: amber #EF9F27.
         expect(joined).toMatch(/#toDoChild\.due-soon\s+#duePill\s*\{[^}]*color:\s*#EF9F27/i);
         // Overdue: red #ff5d7a — reserved for a past-due date.
@@ -279,13 +279,13 @@ describe('mobile due-date pill — slimmed background-less treatment with conden
         expect(body).toMatch(/text-transform:\s*uppercase/);
     });
 
-    it('mobile ≤1023px recedes the copy-title button to the dim #4a4b58 (mobile unchanged)', () => {
+    it('mobile ≤1023px recedes the copy-title button to the dim neutral (mobile unchanged)', () => {
         // The copy button's desktop resting color is var(--text-secondary)
-        // (the base rule), but on mobile it keeps the receded #4a4b58 it has
+        // (the base rule), but on mobile it keeps the receded dim neutral it has
         // always used, so the mobile row is visually unchanged by the desktop
         // restyle that surfaces the button in the retired chevron's slot.
         const block = allMobileMediaBlocks().find(b =>
-            /\.copyTitleBtn\s*\{[^}]*color:\s*#4a4b58/i.test(b.text)
+            /\.copyTitleBtn\s*\{[^}]*color:\s*color-mix\(in srgb, var\(--text-muted\) 60%, var\(--border-bright\)\)/.test(b.text)
         );
         expect(block).toBeTruthy();
     });

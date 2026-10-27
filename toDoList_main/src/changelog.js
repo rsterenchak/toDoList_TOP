@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-10-26',
-        added: [
-            'Phosphor, a green CRT theme with faint scanlines and a glowing project title, joins Void and Light, picked from a Void / Light / Phosphor switch in Settings or cycled from the settings menu, and the companion ghost turns green to match.',
-        ],
         fixed: [
             'Leaving voice dictation running for a minute no longer adds a todo on its own, the mic stops listening and your words stay in the field for you to add.',
             'New todos commit again on iPhones whose storage is full, with a one-time warning when space runs out, a Storage line in Settings showing how much the app uses, and a Clear caches action that frees it.',
             'A dictated todo can always be added by tap: when the phone stops listening the overlay stays up paused with Tap to add and a Discard button, and the + on the Add a task row turns into a tappable add button once the row has text.',
             'Purple accents across the app, including todo row and header borders and the Claude chat pane, now switch to the deeper light-theme violets in light mode instead of staying on the dark-theme shades.',
+            'The Phosphor theme no longer shows stray violet-grey: the Completed header, the COVERAGE tab, the TODO.md card buttons and the rest of the app now follow the green palette.',
         ],
     },
 ];

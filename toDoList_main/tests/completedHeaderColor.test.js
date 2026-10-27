@@ -21,7 +21,7 @@ describe('COMPLETED section header color', () => {
         const m = css.match(/(?:^|\})\s*#completedHeader\s*\{([^}]*)\}/m);
         expect(m).not.toBeNull();
         const rule = m[1];
-        expect(rule.toLowerCase()).toMatch(/color:\s*#7a74a8/);
+        expect(rule.toLowerCase()).toMatch(/color:\s*color-mix\(in srgb, var\(--accent-soft\) 45%, var\(--text-muted\)\)/);
         // The brighter accent that read as caution-level attention is retired.
         expect(rule).not.toMatch(/color:\s*var\(--accent-text\)/);
     });

@@ -79,6 +79,6 @@ describe('queue row — selection and manual status use different CSS properties
             '#mainList #toDoChild.todo-detail-open.todo-row--idea'
         );
         expect(ideaSelected).not.toBeNull();
-        expect(ideaSelected).toMatch(/background:\s*rgba\(90, 90, 106, 0\.10\)/);
+        expect(ideaSelected).toMatch(/background:\s*color-mix\(in srgb, var\(--text-muted\) 10%, transparent\)/);
     });
 });

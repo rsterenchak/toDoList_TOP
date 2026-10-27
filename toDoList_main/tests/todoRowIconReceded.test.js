@@ -22,28 +22,28 @@ describe('row action icons recede to a dim neutral by default', () => {
 
     const css = read('style.css');
 
-    it('desktop #duePill top-level rule uses the dim neutral #4a4b58', () => {
+    it('desktop #duePill top-level rule uses the dim neutral (text-muted toward border-bright)', () => {
         const topLevel = css.match(/(?:^|\n)#duePill\s*\{([\s\S]*?)\}/);
         expect(topLevel).not.toBeNull();
-        expect(topLevel[1]).toMatch(/color:\s*#4a4b58/i);
+        expect(topLevel[1]).toMatch(/color:\s*color-mix\(in srgb, var\(--text-muted\) 60%, var\(--border-bright\)\)/);
     });
 
     it('.copyTitleBtn top-level (desktop) rule uses var(--text-secondary), matching the meta cluster', () => {
         // The copy icon took the retired chevron's desktop slot, so its resting
         // desktop color matches #statsToggle / the chevron it replaced —
         // var(--text-secondary), a dim neutral — rather than the receded
-        // #4a4b58, which now applies only in the ≤1023px mobile block so the
+        // text-muted/border-bright mix, which now applies only in the ≤1023px mobile block so the
         // mobile copy button stays visually unchanged.
         const topLevel = css.match(/(?:^|\n)\.copyTitleBtn\s*\{([\s\S]*?)\}/);
         expect(topLevel).not.toBeNull();
         expect(topLevel[1]).toMatch(/color:\s*var\(--text-secondary\)/);
     });
 
-    it('the copy button keeps its receded #4a4b58 on mobile (mobile visually unchanged)', () => {
+    it('the copy button keeps its receded dim neutral on mobile (mobile visually unchanged)', () => {
         // The desktop restyle must not touch the mobile copy button — the
-        // ≤1023px block recedes it to the dim #4a4b58 it has always used.
+        // ≤1023px block recedes it to the dim text-muted/border-bright mix.
         const mobileRule = css.match(
-            /@media \(max-width: 1023px\)[\s\S]*?\.copyTitleBtn\s*\{[^}]*color:\s*#4a4b58/i
+            /@media \(max-width: 1023px\)[\s\S]*?\.copyTitleBtn\s*\{[^}]*color:\s*color-mix\(in srgb, var\(--text-muted\) 60%, var\(--border-bright\)\)/
         );
         expect(mobileRule).not.toBeNull();
     });

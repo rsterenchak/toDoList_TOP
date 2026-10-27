@@ -482,14 +482,14 @@ describe('possession — styling and wiring', () => {
         ].forEach((sel) => expect(hide[0]).toContain(sel));
         // …and says who is reading instead.
         expect(rule('#claudeSheetBody.is-possessed .claudeGhostListening', 'display:\\s*inline-flex'))
-            .toMatch(/color:\s*#cfc9ff/);
+            .toMatch(/color:\s*color-mix\(in srgb, var\(--accent-soft\) 40%, var\(--text-primary\)\)/);
     });
 
     it('paints the approved ghost row and ghostly composer', () => {
         const ghostRow = rule('.claudeGhostRow--ghost');
-        expect(ghostRow).toMatch(/background:\s*#191434/);
-        expect(ghostRow).toMatch(/border:\s*1px solid rgba\(122,\s*108,\s*240,\s*0?\.35\)/);
-        expect(ghostRow).toMatch(/color:\s*#cfc9ff/);
+        expect(ghostRow).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-strong\) 12%, var\(--bg-base\)\)/);
+        expect(ghostRow).toMatch(/border:\s*1px solid color-mix\(in srgb, var\(--accent-strong\) 35%, transparent\)/);
+        expect(ghostRow).toMatch(/color:\s*color-mix\(in srgb, var\(--accent-soft\) 40%, var\(--text-primary\)\)/);
         expect(rule('.claudeGhostRow--user')).toMatch(/align-self:\s*flex-end/);
 
         const input = rule('#claudeSheetBody.is-possessed .claudeComposerInput');

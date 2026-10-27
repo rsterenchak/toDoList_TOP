@@ -410,7 +410,7 @@ describe('todo.md viewer — body collapse toggle', () => {
         }
     });
 
-    it('renders the collapse button as a neutral 36×36 chip in dark mode (#15161d fill, faint purple border, #8b8c99 icon)', () => {
+    it('renders the collapse button as a neutral 36×36 chip in dark mode (--bg-elevated fill, faint purple border, --text-secondary icon)', () => {
         // Bar restyle: the expand toggle is normalized to the same quiet
         // neutral chip as Sync so only the amber Run backlog pill carries
         // color emphasis.
@@ -419,9 +419,9 @@ describe('todo.md viewer — body collapse toggle', () => {
         const rule = ruleMatch[0];
         expect(rule).toMatch(/width:\s*36px/);
         expect(rule).toMatch(/height:\s*36px/);
-        expect(rule).toMatch(/background:\s*#15161d/);
+        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
         expect(rule).toMatch(/border:[^;]*color-mix\(in srgb, var\(--accent-soft\)/);
-        expect(rule).toMatch(/color:\s*#8b8c99/);
+        expect(rule).toMatch(/color:\s*var\(--text-secondary\)/);
         expect(rule).toMatch(/border-radius:\s*10px/);
     });
 
@@ -688,9 +688,9 @@ describe('todo.md viewer — run-status pill + pollRunStatus helper', () => {
         const baseMatch = css.match(/\.todoMdViewerRunPill\s*\{[^}]*\}/);
         expect(baseMatch).not.toBeNull();
         const base = baseMatch[0];
-        expect(base).toMatch(/background:\s*#161622/);
-        expect(base).toMatch(/border:[^;]*#2a2a38/);
-        expect(base).toMatch(/color:\s*#8a8699/);
+        expect(base).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(base).toMatch(/border:[^;]*var\(--border-bright\)/);
+        expect(base).toMatch(/color:\s*var\(--text-secondary\)/);
 
         // In-flight states (starting/queued/running) now mirror the Deploy
         // pill's amber "Deploying" treatment: transparent fill, amber text and
@@ -973,12 +973,12 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
         expect(block).toMatch(/<!-- id: \\S\+ -->/);
     });
 
-    it('styles the control with the inject/run vocabulary (#161622 fill, #2a2a38 border, #9D93EE text)', () => {
+    it('styles the control with the inject/run vocabulary (--bg-elevated fill, --border-bright border, #9D93EE text)', () => {
         const ruleMatch = css.match(/\.todoMdViewerRunEntryBtn\s*\{[^}]*\}/);
         expect(ruleMatch).not.toBeNull();
         const rule = ruleMatch[0];
-        expect(rule).toMatch(/background:\s*#161622/);
-        expect(rule).toMatch(/border:[^;]*#2a2a38/);
+        expect(rule).toMatch(/background:\s*var\(--bg-elevated\)/);
+        expect(rule).toMatch(/border:[^;]*var\(--border-bright\)/);
         expect(rule).toMatch(/color:\s*var\(--accent-soft\)/);
     });
 });
