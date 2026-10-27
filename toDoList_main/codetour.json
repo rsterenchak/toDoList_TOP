@@ -3382,10 +3382,10 @@
           "match": [
             "parsed = JSON.parse(rawText);",
             "if (parsed.version !== EXPORT_VERSION) {",
-            "const projects = normaliseProjectsField(parsed.projects);"
+            ": normaliseProjectsField(parsed.projects);"
           ],
           "title": "The text must parse and match the version.",
-          "why": "Then the projects field is normalised. Older object-shaped files are turned into the array shape."
+          "why": "Then the projects field is normalised. Signed-in rows fold into projects; older object-shaped files become the array shape."
         },
         {
           "file": "exportImport.js",

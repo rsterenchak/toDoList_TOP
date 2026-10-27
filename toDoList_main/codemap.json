@@ -162,7 +162,8 @@
         "settingsDiagnostics.js",
         "repoSetup.js",
         "exportImport.js",
-        "jsonImportExport.js"
+        "jsonImportExport.js",
+        "backupNudge.js"
       ]
     },
     {

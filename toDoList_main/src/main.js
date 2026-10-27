@@ -64,6 +64,7 @@ import {
 import { startAppLockWatch } from './appLock.js';
 import { mountClaudeSheet } from './claudeSheet.js';
 import { hasAccount } from './accessMode.js';
+import { mountBackupNudge } from './backupNudge.js';
 import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry, setBookRefOpener } from './claudeSheet.js';
 import { openSpendPanel } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
@@ -1162,6 +1163,11 @@ function component() {
     main2.appendChild(taskFilterBar);
     main2.appendChild(mainList);
     applyTaskFilter();
+    // Offline devices keep tasks in this browser only — a quiet reminder row
+    // at the top of the list asks for a periodic export. Mounted on every
+    // boot: the shell is built behind the sign-in gate before the visitor
+    // picks offline, and each refresh checks the access mode itself.
+    mountBackupNudge(mainList);
 
     // Arrow-key nav for the status/sort filter bar, making it a two-way stop
     // between #viewSwitcher and the todo list. A focused control inside the bar

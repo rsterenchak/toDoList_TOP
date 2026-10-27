@@ -7,7 +7,7 @@
 // the data is handed off to listLogic.replaceAllProjects which wipes and
 // rewrites the tree in one pass (no partial-overwrite states).
 
-import { listLogic } from './listLogic.js';
+import { listLogic, isoToDueString } from './listLogic.js';
 import { showConfirmModal } from './modals.js';
 
 const EXPORT_VERSION = 1;
@@ -48,6 +48,49 @@ function normaliseProjectsField(projects) {
     return null;
 }
 
+// A signed-in (Supabase) export carries raw `projects` + `todos` rows rather
+// than snapshot entries. Fold the todo rows under their projects in the
+// snapshot shape so the same file restores on a device with no account.
+function projectsFromSupabaseRows(projectRows, todoRows) {
+    if (!Array.isArray(projectRows)) return null;
+    const byProject = {};
+    todoRows.forEach(function(t) {
+        if (!t || typeof t !== 'object' || !t.project_id) return;
+        (byProject[t.project_id] = byProject[t.project_id] || []).push(t);
+    });
+    const ordered = projectRows.slice().sort(function(a, b) {
+        return ((a && a.position) || 0) - ((b && b.position) || 0);
+    });
+    return ordered.filter(function(p) {
+        return p && typeof p === 'object';
+    }).map(function(p) {
+        const rows = (byProject[p.id] || []).slice().sort(function(a, b) {
+            return (a.position || 0) - (b.position || 0);
+        });
+        return {
+            name: p.name,
+            color: typeof p.color === 'string' ? p.color : null,
+            stages: p.stages,
+            lifecycle: p.lifecycle,
+            items: rows.map(function(t) {
+                return {
+                    id: t.id,
+                    tit: t.title || '',
+                    desc: t.description || '',
+                    due: isoToDueString(t.due_date),
+                    pri: t.priority == null ? 1 : t.priority,
+                    pos: t.position == null ? 0 : t.position,
+                    completed: !!t.completed,
+                    status: t.status,
+                    recurrence: t.recurrence || null,
+                    entryId: t.entry_id || undefined,
+                    created_at: t.created_at || null,
+                };
+            }),
+        };
+    });
+}
+
 export function parseAndValidateExport(rawText) {
 
     let parsed;
@@ -73,7 +116,9 @@ export function parseAndValidateExport(rawText) {
         };
     }
 
-    const projects = normaliseProjectsField(parsed.projects);
+    const projects = Array.isArray(parsed.todos)
+        ? projectsFromSupabaseRows(parsed.projects, parsed.todos)
+        : normaliseProjectsField(parsed.projects);
     if (!projects) {
         return { ok: false, error: "Couldn't read that file — expected a todos export." };
     }
