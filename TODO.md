@@ -3068,3 +3068,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: e040a8c8-076e-4797-8dad-7220ba90badb -->
+
+- [ ] **[MEDIUM]** Collapse agent phase blocks into accordion sections in the mobile Agent tab
+  - Type: feature
+  - Description: On mobile the Agent tab (`#descEditorModalAgentPane`) stacks every mounted phase block — Asking, Stuck, Mockup, Dispatch, Review — so the action rows overflow the pane and the user has to scroll before any option is visible. Wrap each mounted block in a collapsible section: a 36px header row with a status dot, a SpaceMono 10-11px uppercase block label, a right-aligned short status/count, and a ▸/▾ chevron, with the block's existing action rows rendered inside the body, opened by default only for the block that currently needs the user. Keep the Notes/Agent tab bar (`#descEditorModalTabs`) and its badge exactly as they are, keep every control at the 36px tap floor with 4-6px gaps, and use only existing tokens (`--accent`, `--accent-dim`, `--border-dim`, `--bg-hover`, `--text-muted`). Because the blocks are being relocated into new wrappers rather than rebuilt, the move must preserve: `syncAgentTabs`'s `AGENT_BLOCK_SELECTOR` count still matching the blocks now nested inside the collapsible sections (badge count unchanged), each block builder's own listeners and internal show/hide logic still firing when its section is expanded or collapsed, no orphaned empty section left behind when a phase block unmounts, and the pane's `overflow-y: auto` scroll region still collapsing to the remaining content. All new styling goes in `style.css`, no inline styles.
+  - File: `toDoList_main/src/modals.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #<number>)
+  <!-- id: 971ab20b-95a3-41b2-b439-61634ee56218 -->
