@@ -1,290 +1,214 @@
-# Task Manager PWA
+# Void — Task Manager PWA
 
-Offline-first task management as an installable Progressive Web App — projects, recurring tasks, realtime multi-device sync, a built-in Pomodoro timer, and an in-app Claude assistant that drafts and ships its own backlog.
+An offline-first, installable task manager that also understands and ships its own code. Projects and tasks sync across devices in realtime; a built-in Claude assistant drafts backlog entries, triages them against the live source, opens pull requests and auto-merges them; and an **Understanding** tab turns any onboarded repo into a readable book with guided tours.
 
+[![Tests](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/test.yml/badge.svg)](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/test.yml)
+[![Deploy](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/deploy.yml/badge.svg)](https://github.com/rsterenchak/toDoList_TOP/actions/workflows/deploy.yml)
 
+**Live:** https://rsterenchak.github.io/toDoList_TOP/
+
+Built and maintained solo. It's a daily-driver tool first and a sandbox for full-stack and agentic-workflow ideas second — vanilla JavaScript, no UI framework, with a dark "Void" theme and a keyboard-first interaction model.
 
 ---
 
-## Onboarding a repo into the routine
+## Contents
 
-The routine reads a repo's `TODO.md`, opens a PR implementing each entry, and auto-merges it. `onboard.sh` (in the **`claude-routine-template`** repo) scaffolds a repo into it — it's shape-aware, and if your `gh` CLI is authenticated it also sets most of the GitHub settings for you. The rest is a handful of one-time credentials.
+- [The three tabs](#the-three-tabs)
+- [The agent pipeline](#the-agent-pipeline)
+- [Tech stack](#tech-stack)
+- [Architecture](#architecture)
+- [Repository layout](#repository-layout)
+- [Development](#development)
+- [Testing](#testing)
+- [PWA update contract](#pwa-update-contract)
+- [Related repositories](#related-repositories)
 
-**Already-wired repo** — nothing to set up: open the PWA, switch the workspace picker to the repo, and inject an entry (or paste into `TODO.md` on `main`). The next run opens the PR and merges it.
+---
 
-### New repo — the fast path
+## The three tabs
 
-**0. Preconditions.** onboard runs your *local* `onboard.sh` for detection and fetches the scaffold fresh from `claude-routine-template` **main**, so both have to be current:
+### Stream — tasks
 
-```bash
-grep -c 'SHAPE="sql"' onboard.sh   # local script up to date? want >= 1
-curl -fsI https://raw.githubusercontent.com/rsterenchak/claude-routine-template/main/scripts/gen-src-manifest.js   # template pushed? want 200
+- Multiple projects, each with its own list; **All / In progress / Done** filter and sort; **Projects**, **Today** and **Calendar** views.
+- Tasks carry a title, a description (which doubles as the entry the agent ships — see below), due dates, recurrence with a per-task completion-stats drawer, drag-and-drop ordering and a manual status.
+- Keyboard-first on desktop: add with `Enter`, arrow keys across rows and panes, `Ctrl/Cmd+Enter` to expand every description.
+- Mobile: bottom tab bar, bottom sheets, swipe navigation between projects, a first-run welcome carousel, and **quick capture** — dictate or type a note, have it split into tasks, review them as a checklist and file them into any project.
+- Undo toast on destructive actions; confirmation on anything that loses data.
+
+### Understanding — the repo as a book
+
+- Each onboarded repo gets a generated **code book** (`codebook.json` → `src-book.json`): chapters ordered so one read-through gives a working grasp of how everything connects, with tappable symbol chips that open the real code beside the reader.
+- Resume card, reading progress and paragraph-level bookmarks sync through Supabase; notes and per-chapter flags live alongside.
+- **Guided tours** — step-through walkthroughs of a flow (how the app boots, how the database connects) with forward/back navigation, nested under the chapters they belong to.
+- **Chapter-scoped chat** — ask a question about one chapter and the assistant answers from that chapter's files only.
+- Stale chapters are flagged when the code they anchor to moves; regeneration runs in CI from a button.
+
+### Structure — the codebase as a map
+
+- A **constellation map** of the repo's areas (from `codemap.json`), drilling into a per-area mini-map and file list; three-pane layout on desktop (areas rail, map, code viewer).
+- **Code viewer** with **code trace** — tap a name to jump to its definition, with a trail back.
+- Lenses: **Code**, **UI**, **Types**, **SQL** — what's shown depends on the repo's shape.
+- **Complexity scanner** with a *Next refactor* card (cheapest-first by dependency order, not file size), a **Run & Capture** card for console-shaped repos, and remote layout capture for guest repos.
+- **Coverage** for coursework repos: the assignment rubric's aspects (A1, B2, …) tracked against proposed, accepted and shipped work.
+
+---
+
+## The agent pipeline
+
+Every project can be linked to a GitHub repo that has been onboarded with [`claude-routine-template`](https://github.com/rsterenchak/claude-routine-template). From then on, a task's description *is* its `TODO.md` entry, and the app can ship it without leaving the browser.
+
+```
+ you ──► Stream task ──► Generate (triage) ──► entry ──► Inject ──► TODO.md on main
+                              │                             │
+                      needs words / mockup?                 ▼
+                              │                       claude-run.yml
+                      escalated? ──► scoped pass       build · test · PR
+                      (Fable)                               │
+                                                      auto-merge ──► deploy.yml ──► Pages
 ```
 
-**1. Scaffold.** Fill `NAME`/`SHAPE` and paste. The `( set -e … )` subshell stops at the first real error instead of cascading into misleading noise:
+**Roles and billing.** Two Claude roles share the work: a conversational planner (Sonnet, API-billed through the Worker) for chat, drafting and A/B/C mockups, and an agentic builder (Opus by default, Max-plan-billed via Claude Code in Actions) for runs, triage and derive. The **Models** panel picks the model per surface, per repo or globally.
 
-```bash
-NAME=SQL_shape_test    # exact repo name
-SHAPE=sql              # repo-only | console | desktop | maui | sql | web-build | web-served
+**Ways an entry gets written.**
 
-( set -e
-cd /workspaces
+- **Write** it yourself in the description, with a searchable `File:` picker that fills real repo paths.
+- **Paste** an entry drafted elsewhere; the parser checks it.
+- **Generate** — flag the task and the **triage sweep** reads the live source and returns one of: a finished draft, a question only you can answer (*needs words*), a park for a visual change (*needs mockup* — the app then generates three mockups to pick from), or **escalated**: intent is clear but the fast pass couldn't root-cause it, so a second, scoped pass on a stronger model picks up from its findings.
+- **Chat** with the assistant, attach source files and screenshots, and tap *Inject & run* on the draft it produces. For structural UI moves it first enumerates everything wired to the element (listeners, paired popovers, mount-path registrations) so the entry names what must survive.
+- **Derive** — on coursework repos, propose entries from `assignment.md`'s rubric; on personal repos, from `project.md`'s brief and committed mockups.
 
-# clone if it exists, else create. NOTE: --clone is a BOOLEAN flag — no trailing
-# dir arg (the trailing "$NAME" was the "accepts at most 1 arg(s)" bug).
-if gh repo view "rsterenchak/$NAME" >/dev/null 2>&1; then
-  [ -d "$NAME/.git" ] || gh repo clone "rsterenchak/$NAME"
-else
-  gh repo create "rsterenchak/$NAME" --private --clone
-fi
-[ -d "$NAME/.git" ] || { echo "!! $NAME dir not created — read the gh error above."; exit 1; }
-cd "$NAME"
+**Shipping and after.**
 
-case "$SHAPE" in                       # seed a minimal fixture for the shape
-  repo-only)  : ;;
-  console)    dotnet new console ;;
-  desktop)    dotnet new winforms ;;
-  maui)       dotnet new maui ;;       # needs: dotnet workload install maui
-  sql)        mkdir -p migrations; [ -e schema.sql ] || printf 'CREATE TABLE example (\n    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),\n    name TEXT NOT NULL\n);\n' > schema.sql ;;
-  web-build)  printf '{"name":"web","scripts":{"build":"vite build","test":"vitest run --passWithNoTests"},"devDependencies":{"vite":"^5","vitest":"^2"}}' > package.json; echo 'export default {}' > vite.config.js; printf '<!doctype html><script type="module" src="/src/main.js"></script>' > index.html; mkdir -p src; echo 'console.log(1)' > src/main.js ;;
-  web-served) printf '<!doctype html><h1>served</h1>' > index.html; mkdir -p src; echo 'console.log(1)' > src/app.js ;;
-esac
-[ -e README.md ] || echo "# $NAME ($SHAPE)" > README.md
+- **Inject** appends the entry to `TODO.md` with a stable `<!-- id -->` marker; a screenshot attached to the task is committed beside it as context for the run.
+- A run implements exactly one entry, runs the suite, renders the change at the viewports named on its `Verify:` line and inspects the screenshots, opens a PR, and auto-merges with a merge commit. The **Runs** sheet tracks QUEUED → RUNNING → SHIPPED with the shots and verdicts attached.
+- **Iterate** — tap a shipped run to open a chat seeded with its diff and fix forward.
+- **Revert** — a full-auto in-app rollback that opens and merges a revert PR for the rare change iterate can't cure.
+- The **TODO.md viewer** shows the linked backlog as a checklist and can run, revert or redeploy entries directly.
 
-git add -A && git commit -q -m fixture 2>/dev/null || true
-git branch -M main
-git push -u origin main                # 403 in a Codespace? see "Codespace push auth" below, then re-run
-
-cd /workspaces/claude-routine-template && ./onboard.sh "../$NAME"
-)
-```
-
-This clones or creates the repo, seeds a fixture for the shape, and runs onboard. If `gh` is authenticated, onboard also sets read-write workflow permissions, the Pages source, and offers to add your secrets — so steps 3–4 may already be done for you.
-
-**2. Confirm the files reached `main`.** The one step that bites: onboard's own `git push` can 403 silently in a Codespace, leaving the scaffold local-only. Check what's actually on `main`:
-
-```bash
-gh api repos/rsterenchak/<repo>/contents --jq '.[].path'   # want manifest.yml, scripts/, claude-run.yml…
-```
-
-Only your original files? onboard's push didn't land — see **Troubleshooting → Codespace push auth**, then `git add -A && git commit -m scaffold && git push`.
-
-**3. Grant access** (per repo, quick):
-- Install the Claude GitHub app on the repo — https://github.com/apps/claude
-- Add the repo to your worker PAT (**Contents: write, Actions: read + write**) — https://github.com/settings/personal-access-tokens
-
-**4. Settings** — onboard's `gh` path sets these; do them by hand only if it didn't:
-- **Actions → General → Workflow permissions:** "Read and write" *and* tick "Allow GitHub Actions to create and approve pull requests."
-- **Pages → Deploy from a branch:** `web-build` → `gh-pages` / root; every other manifest shape (`web-served`, `console`, `desktop`, `maui`, `sql`, `doc`) → `main` / root; `repo-only` → skip.
-- **Secrets:** `CLAUDE_CODE_OAUTH_TOKEN` (always); `SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` (the legacy service_role JWT) if the repo runs triage.
-
-**5. Register with the worker.** In the PWA, open Inject settings → **+ Add target** and enter the repo and its `TODO.md` path. That writes an enabled row to the Supabase `inject_targets` registry, which the worker reads live on every request — no `wrangler deploy` needed. `srcPrefix` is `"src/"` for web, the project subfolder for .NET, and `""` for `sql` / `doc` / `repo-only`.
-
-**6. Verify + smoke-test.**
-
-```bash
-curl -fsI https://rsterenchak.github.io/<repo>/src-manifest.json   # want 200 (every shape but repo-only)
-```
-
-Inject a trivial entry in the PWA — the PR should open and merge (`sql` / `doc` / `repo-only` auto-merge with no CI; the code shapes merge once tests pass).
-
-### Shape reference
-
-`onboard.sh` detects the shape and scaffolds the matching files; override at the prompt if it guesses wrong.
-
-| Shape | Detected from | Publishes | Structure lens |
-|---|---|---|---|
-| `web-build` | bundler config + build script | Pages `gh-pages` (built output) | Code + UI |
-| `web-served` | no build; root `index.html` / `src/` | Pages `main` | Code + UI |
-| `console` | `.csproj` / `.sln`, cross-platform | Pages `main` (manifest only) | Code + Types |
-| `desktop` | WinForms / WPF (`net*-windows`) | Pages `main` (manifest only) | Code + Types |
-| `maui` | `UseMaui` or an `-android` TFM | Pages `main` (manifest only) | Code + Types |
-| `sql` | `.sql` files, no `package.json` | Pages `main` (manifest only) | Code + SQL |
-| `doc` | a `docs/` dir or ≥ 2 `.md` files, no code | Pages `main` (manifest only) | Code |
-| `repo-only` | none of the above | — | — |
-
-CI on push: `desktop` on Windows, `maui` builds the Android head, the other code shapes on ubuntu; `sql` / `doc` / `repo-only` have none.
+**Focus tools, because it's still a task manager.** A Pomodoro timer (Focus / Short / Long, inline-editable, survives reloads, audio and notification alerts), a desktop **focus mode**, focus-music stations with a visualizer, and a ghost companion that wanders the footer, studies alongside the timer and will talk back when asked.
 
 ---
 
-## Overview
+## Tech stack
 
-A personal, offline-first task manager built as an installable PWA. Projects and tasks live in **Supabase** (Postgres) with realtime sync across devices, the app installs to the home screen and works offline, and an **in-app Claude assistant** can draft backlog entries that flow through an automated pipeline which opens and auto-merges its own pull requests.
-
-It's built and maintained solo — a daily-driver tool first, and a sandbox for trying out full-stack architecture ideas second. The UI is a dark "Void" theme with a keyboard-first interaction model (add with `Enter`, arrow-key navigation across rows and panes).
-
----
-
-## Live Application
-
-https://rsterenchak.github.io/toDoList_TOP/
-
----
-
-## Features
-
-**Tasks & projects**
-
-* Multiple projects, each with its own task list
-* Tasks with titles, descriptions, due dates, and completion
-* Drag-and-drop reordering
-* Recurring tasks (advance-on-check) with a per-task completion stats drawer
-* Three views — **Projects**, **Today**, and **Calendar**
-* Keyboard-first: add with `Enter`, arrow-key navigation across rows and panes
-
-**Sync & data**
-
-* Supabase Postgres as the source of truth, with per-user row-level security
-* Realtime sync across devices and tabs (self-echo filtered)
-* Passwordless **magic-link** authentication
-* Offline-first: localStorage cache plus first-login migration of any pre-auth data
-* Google Drive export
-
-**Focus tools**
-
-* Pomodoro timer — Focus / Short / Long modes, inline-editable countdown, audio + browser-notification alerts, survives a page refresh
-* A ghost "study companion" that wanders and studies alongside the timer
-* Built-in focus-music stations (YouTube-backed)
-
-**In-app Claude assistant**
-
-* Chat panel that can draft `TODO.md` backlog entries
-* One-tap **Inject & run** dispatches an automated pipeline run that opens a PR and auto-merges
-* A **Runs** tab tracks each dispatch QUEUED → RUNNING → SHIPPED
-
-**Platform**
-
-* Installable PWA — works offline, with an in-app update flow
-* Two-pane desktop layout (task list + persistent chat); mobile bottom tab bar + bottom sheets
-* Changelog and stats modals
-
----
-
-## Tech Stack
-
-* **Language:** Vanilla JavaScript (ES modules) — no UI framework
-* **Build:** Webpack 5 + Babel
-* **PWA:** Workbox (`workbox-webpack-plugin` `InjectManifest`) service worker
-* **Data:** Supabase — Postgres + Realtime + Auth (magic link), per-user RLS
-* **Backend proxy:** Cloudflare Worker (Wrangler) — GitHub Contents API operations and the in-app Claude chat surface
-* **Tests:** Vitest + jsdom
-* **CI/CD:** GitHub Actions, deployed to GitHub Pages
-* **Client storage:** localStorage (offline cache of project data + device-scoped UI prefs)
+| Layer | Choice |
+|---|---|
+| Language | Vanilla JavaScript (ES modules), plain CSS — no UI framework, no preprocessor |
+| Build | Webpack 5 + Babel; Workbox `InjectManifest` service worker |
+| Data | Supabase — Postgres, Realtime, Auth (magic link), per-user row-level security |
+| Backend | Cloudflare Worker (`todo-injector-worker`): GitHub Contents/Actions operations, the chat gateway with prompt caching, model routing across Anthropic (plan or API), OpenCode Go and Vercel AI Gateway lanes |
+| Automation | GitHub Actions running Claude Code (`claude-run.yml`, `claude-triage.yml`, `claude-derive.yml`, `claude-book.yml`, `claude-scan.yml`) |
+| Tests | Vitest + jsdom, 400+ test files |
+| Hosting | GitHub Pages via `deploy.yml` |
+| Client storage | localStorage — offline cache of project data plus device-scoped preferences (`todoapp_*`) |
 
 ---
 
 ## Architecture
 
-All projects and tasks live in an in-memory model (`allProjects`) backed by Supabase Postgres, which is the source of truth. Every user mutation updates memory, writes a localStorage cache, and mirrors the change to Supabase. Access is scoped per user by row-level security — the `todos` table has no `user_id` column, so ownership is enforced via a sub-select against the parent `projects` row.
+**Data model.** Projects and tasks live in an in-memory model (`allProjects` in `listLogic.js`) backed by Supabase, which is the source of truth. Every mutation goes through `listLogic.js` — view files never touch Supabase directly — and each one updates memory, writes the localStorage cache, and mirrors to Postgres through a column-whitelisted `persistMutation`. Ownership is enforced by RLS: the `todos` table carries no `user_id`; access resolves through a sub-select against the parent `projects` row.
 
-On load, the cached snapshot renders immediately, then reconciles against Supabase using last-write-wins on `updated_at`, then subscribes to a realtime channel so changes made on other devices or tabs appear without a refresh (the client filters echoes of its own writes). The service worker precaches the app shell so the app opens instantly and works offline.
+**Sync.** On load the cached snapshot renders immediately, then reconciles against Supabase (last-write-wins on `updated_at`), then subscribes to a realtime channel so edits from other devices appear without a refresh; the client filters echoes of its own writes. Returning to the tab re-hydrates and re-subscribes unless an edit is in progress. The agent queue (`agent_queue`), run outputs, book progress and bookmarks ride the same channel.
 
-A passwordless magic-link sign-in gates the app. On a user's first sign-in on a given device, any pre-auth local data is migrated up to Supabase (cloud wins if both sides hold data); sign-out wipes that user's local data while preserving device-scoped UI prefs.
+**Auth.** A passwordless magic-link sign-in gates the app; an optional PIN lock covers a shared device. First sign-in on a device migrates any pre-auth local data up (cloud wins on conflict); sign-out wipes that user's data and keeps device prefs.
 
-A Cloudflare Worker proxies GitHub Contents API operations and backs the in-app Claude chat. From chat, a drafted entry can be injected into `TODO.md` and dispatched to an automated routine that opens a pull request, runs the test suite, and auto-merges — see the pipeline section below. Webpack bundles the app, GitHub Actions builds and deploys it to GitHub Pages, and Workbox emits the precaching service worker.
+**The Worker.** All Worker calls funnel through `postToWorker` in `inject.js`, carrying the shared secret and the user's Supabase session; the Worker admits PWA routes only for e-mails in its `ADMIN_EMAILS` list, while CI routes stay on the secret alone. The set of repos it may touch is the Supabase `inject_targets` registry, read live — registering a repo needs no redeploy. Chat context layers three mechanisms: an active-repo reframe (`repo`), attached source files (`attach_files`), and an iterate seed (`entry_id` → the merged PR's diff).
+
+**Offline.** The service worker precaches the app shell so the installed app opens instantly without a network; see [PWA update contract](#pwa-update-contract) for how new builds reach installed clients.
 
 ---
 
-## Project Structure
+## Repository layout
 
-Representative module map (`toDoList_main/src/`). `main.js` is the app's spine and is being progressively decomposed into the focused modules below.
+```
+toDoList_TOP/
+├── TODO.md                  the agent-driven backlog (markers link entries to PRs)
+├── project.md               the brief the derive pass reads
+├── CLAUDE.md                conventions and architecture notes for agent runs
+├── docs/                    automation overview, routine spec, porting guide,
+│   └── mockups/             approved designs for surfaces not yet built
+├── .claude/                 routine-base.md, triage.md, derive.md, book.md…
+├── .github/workflows/       test.yml, deploy.yml, claude-*.yml
+└── toDoList_main/           the app
+    ├── src/                 ~100 ES modules; every module opens with a purpose comment
+    ├── tests/               Vitest + jsdom suite
+    ├── scripts/             gen-src-manifest.js — builds src-manifest / src-book / src-tours
+    ├── codemap.json         module → area map that drives the Structure tab
+    ├── codebook.json        the Understanding tab's chapters
+    ├── codetour.json        guided-tour steps
+    └── webpack.config.js
+```
 
-**Core & data**
+Where to look in `src/` (the Structure tab's areas, in `codemap.json`):
 
-* `listLogic.js` — in-memory model (`allProjects`) + Supabase persistence + realtime
-* `toDo.js` — task factory
-* `supabaseClient.js` — Supabase client (with a test stub for jsdom)
-* `auth.js` — magic-link sign-in modal and auth gate
-* `migration.js` — first-login localStorage → Supabase migration + sign-out wipe
+| Area | Load-bearing modules |
+|---|---|
+| Data | `listLogic.js` (model + persistence + realtime), `supabaseClient.js`, `auth.js`, `migration.js`, `storage.js`, `prefs.js` |
+| Tasks | `toDoRow.js`, `dueDate.js`, `dragDrop.js`, `taskFilter.js`, `taskSort.js`, `mobileTaskCreate.js`, `entryScreenshot.js`, `filePicker.js` |
+| Shell | `main.js` (DOM + wiring; grep it, it's large), `index.js`, `modals.js`, `mobileSheets.js`, `settingsModal.js`, `theme.js`, `sw.js` |
+| Pipeline | `inject.js` (every Worker call), `shipEntry.js`, `runState.js`, `agentQueueStore.js`, `agentView.js`, `dispatchDraft.js`, `todoMdViewer.js`, `assignmentCoverage.js`, `modelsPanel.js` |
+| Chat | `claudeSheet.js`, `chatMarkdown.js`, `mockupFlow.js`, `layoutInspect.js`, `imagePrep.js` |
+| Structure | `structureView.js`, `structureCanvas.js`, `codeMapModel.js`, `codeViewer.js`, `codeTrace.js`, `codeTours.js`, `complexityHotspots.js`, `refactorCard.js`, `captureCard.js` |
+| Understanding | `understandingView.js`, `codeBook.js`, `bookProgress.js`, `bookBookmarks.js`, `bookNotes.js`, `tourPlayer.js` |
+| Focus / Ghost | `pomodoro.js`, `focusMode.js`, `music.js`, `musicVisualizer.js`, `companion.js`, `ghostTalk.js` |
 
-**UI & interaction**
+---
 
-* `main.js` — DOM construction, layout shells, and event wiring
-* `toDoRow.js` / `dueDate.js` / `dragDrop.js` — task rows, due-date & recurrence popovers, drag reorder
-* `claudeSheet.js` — in-app Claude chat + Runs panel
-* `inject.js` — TODO.md inject + pipeline dispatch/status (via the Worker)
-* `modals.js` / `changelog.js` — modals, update cue, changelog
-* `pomodoro.js` / `companion.js` — focus timer and ghost companion
-* `driveExport.js` — Google Drive export
-* `index.js` / `sw.js` — entry point and service worker
+## Development
 
-**Build & infra**
+```bash
+cd toDoList_main
+npm install
+npm start          # webpack dev server
+npm run build      # production bundle → dist/
+npm test           # vitest (watch)
+npm run test:run   # vitest, single pass — what CI runs
+```
 
-* `webpack.config.js` — bundling + Workbox service-worker generation
-* `tests/` — Vitest + jsdom suite
-* `.github/workflows/` — CI plus the Claude run pipeline
+The app expects a Supabase project (URL + anon key) and, for the pipeline features, the Worker URL and secret entered in **Inject settings**. Without them the task manager still works locally; the agent surfaces stay idle.
+
+Conventions worth knowing before changing code — all enforced by review or tests:
+
+- No new dependencies, frameworks or CSS tooling without a task that says so.
+- Data mutations route through `listLogic.js`; new persisted fields must be added to `persistMutation`'s whitelist.
+- Every new module gets a purpose comment and a `codemap.json` entry; `tests/genSrcManifest.test.js` fails otherwise, and also when a tour step or book chapter stops resolving.
+- Mobile text inputs are 16px or larger (iOS auto-zoom); right-click features have a long-press twin; modals close on X, backdrop and `Escape`.
+- `dist/` is build output — never edited, never committed from a feature branch.
+
+`CLAUDE.md` holds the full set, with the reasoning behind each rule.
 
 ---
 
 ## Testing
 
-Automated testing runs on a **Vitest + jsdom** suite, executed in CI on every push (the badge above tracks it). Coverage spans model and persistence logic, the service-worker update lifecycle (`tests/serviceWorkerUpdate.test.js`), and mobile layout invariants — for example, a test pins task inputs at a 16px+ font size to prevent iOS Safari's auto-zoom-on-focus.
+The suite runs on **Vitest + jsdom** on every push (`test.yml` — the badge at the top). Coverage spans the data model and persistence, the service-worker update lifecycle, the agent queue's state machine (stuck-row reconcile, queued-sweep handling, retroactive promotion, run dedup), the manifest/book/tour generator, and layout invariants such as the 16px input floor and viewport-fit on mobile.
 
-Because the full PWA update lifecycle depends on real browser behavior (especially `controllerchange` semantics, which differ across engines), it's also validated manually on Desktop Chrome, iOS Safari, and Android Chrome — see the **PWA updates → Validating updates empirically** section below for the per-platform checklist.
+Two behaviours — retroactive promotion of a run to Shipped and run-record dedup — each shipped once as a silent no-op that looked correct in review. Both now carry a regression test; the operating rule is that a green Shipped badge plus a changelog line is not proof a change worked — only behaviour on real data is.
 
----
-
-## PWA updates
-
-The app installs as a Progressive Web App. The service worker (built by `workbox-webpack-plugin`'s `InjectManifest` and emitted as `dist/sw.js`) precaches the app shell, so installed clients load instantly and work offline. When a new build is deployed, installed clients need to discover the update, fetch it, and reload — this section documents that flow so future contributors know the contract.
-
-### Update lifecycle
-
-1. **Build deployed.** A new `sw.js` ships with a fresh precache manifest. The HTML, JS, CSS, and other assets it lists also change.
-2. **Update discovery.** The currently-installed worker calls `registration.update()` on three triggers:
-   * Each `visibilitychange` event where the tab becomes visible (handles re-foregrounding the app after sleep, app switching, or screen-off on mobile).
-   * An hourly `setInterval` poll (handles long-lived tabs that stay visible without any visibility transition).
-   * The initial `load` event on every navigation.
-   The worker is registered with `updateViaCache: 'none'`, which tells the browser to bypass its HTTP cache when re-checking `sw.js`. GitHub Pages serves assets with a 10-minute `Cache-Control` max-age, so without this option update discovery would be gated behind that lifetime; with it, every check goes to the origin.
-3. **New worker installs.** The browser downloads the new `sw.js`, runs `install`, precaches the new asset manifest, and parks the worker in the `waiting` state (because the old worker still controls open clients).
-4. **Cue surfaces.** `notifyUpdateAvailable(registration)` fires in `src/modals.js`. It writes a "hasUpdate" class onto the desktop footer's version pill and dispatches an `appUpdateAvailable` `CustomEvent` on `document`. The mobile Settings modal's About → Version row and the mobile chrome's gear button both listen for the event and flip into their "update available" appearance — so the cue surfaces on every layout, not just desktop.
-5. **User taps the cue.** `applyPendingUpdate()` posts `{ type: 'SKIP_WAITING' }` to the waiting worker.
-6. **Worker activates.** The waiting worker calls `self.skipWaiting()` (handled in `src/sw.js`), the browser activates it, and `controllerchange` fires on every open client.
-7. **Page reloads.** A one-shot `controllerchange` listener in `src/index.js` calls `window.location.reload()`, the page comes back up under the new worker, and the cue clears.
-
-The contract: in the worst case, an installed client picks up a new build on the second navigation or the next `visibilitychange` after the build is live, whichever comes first.
-
-### Validating updates empirically
-
-The mechanics above are exercised by unit tests in `toDoList_main/tests/serviceWorkerUpdate.test.js`, but the full lifecycle depends on real browser behavior (especially `controllerchange` semantics, which differ subtly across engines). When making changes to the service-worker registration, the update cue, or the cache strategy, validate on at least:
-
-* **Desktop Chrome** — installed PWA from `chrome://apps`. The most forgiving environment; expect updates to appear within one visibility change.
-* **iOS Safari** — home-screen-installed PWA. iOS has documented quirks around `skipWaiting` and `controllerchange` in standalone display mode; confirm `controllerchange` actually fires after `SKIP_WAITING` and that the reload happens automatically (vs. requiring a manual swipe-down refresh).
-* **Android Chrome** — installed PWA via the install prompt. Generally behaves like desktop Chrome but worth confirming on a real device since the install scope and storage isolation differ.
-
-For each platform, the validation step is: deploy a known version bump, open the installed PWA, and confirm the cue appears within the contract (at most one navigation or visibility change after the new build is live), and that tapping it reloads the page into the new worker.
-
-### Asset filename hashing
-
-`webpack.config.js` currently emits bundles as `[name]bundle.js` with no content hash. Content hashing is **not required** for update discovery: Workbox's `InjectManifest` tracks asset revisions independently in the precache manifest baked into `sw.js`, so every new build produces a new `sw.js` whose precache list invalidates the old caches regardless of filename. Hashing would improve long-term HTTP caching for unchanged assets across deploys, but until that becomes a measurable problem, the simpler unhashed filenames are kept.
+The full PWA update path depends on real browser behaviour (`controllerchange` semantics differ across engines), so it is also validated by hand on desktop Chrome, iOS Safari and Android Chrome — see below.
 
 ---
 
-## Troubleshooting
+## PWA update contract
 
-**Codespace push auth (the recurring 403).** A Codespace's pinned `GITHUB_TOKEN` is scoped to the repo it *launched* from, not your target — so `git push` (and onboard's internal push) 403 with `Permission … denied`. Fix it, then verify before pushing:
+The service worker (`workbox-webpack-plugin` `InjectManifest`, emitted as `dist/sw.js`) precaches the app shell. When a new build deploys, installed clients discover, fetch and apply it like this:
 
-```bash
-unset GITHUB_TOKEN && gh auth status   # "not logged in"? run: gh auth login  (GitHub.com → HTTPS → browser)
-gh auth setup-git
-git -C <repo> ls-remote origin >/dev/null && echo "AUTH OK"   # proves write access BEFORE you push
-```
+1. The installed worker calls `registration.update()` on every `visibilitychange` to visible, on an hourly interval, and on each navigation. Registration uses `updateViaCache: 'none'` so the check bypasses the browser's HTTP cache (Pages serves a 10-minute max-age).
+2. The new worker installs, precaches the new manifest and parks in `waiting`.
+3. `notifyUpdateAvailable` (`modals.js`) marks the desktop version pill and dispatches `appUpdateAvailable`; the mobile Settings → About row and the gear button listen and flip to their update state.
+4. Tapping the cue posts `SKIP_WAITING`; the worker calls `self.skipWaiting()`; `controllerchange` fires; a one-shot listener in `index.js` reloads the page.
 
-Make it stick across new terminals: `echo 'unset GITHUB_TOKEN' >> ~/.bashrc`. (Sibling: `git config --local --unset commit.gpgsign` if commits fail on GPG signing.)
+Worst case: an installed client picks up a new build on the second navigation or the next `visibilitychange` after the build is live. Bundles are not content-hashed on purpose — Workbox tracks revisions in the precache manifest, so a new `sw.js` invalidates old caches regardless of filenames.
 
-**onboard wrote files but nothing's on `main`.** Its push is guarded with `2>/dev/null`, so a 403 is swallowed — the scaffold is local-only, and re-running skips it as "already exists" while pushing nothing (a no-op loop). Never trust onboard's exit; confirm with `gh api repos/<owner>/<repo>/contents`. A bare `git push` reporting *"Everything up-to-date"* means the files were never **committed** — stage them: `git add -A && git commit -m scaffold && git push`.
+When changing registration, the cue or the cache strategy, deploy a version bump and confirm on each platform that the cue appears within the contract and that tapping it reloads into the new worker: desktop Chrome (installed from `chrome://apps`), iOS Safari (home-screen install — check `controllerchange` actually fires in standalone mode), Android Chrome (install prompt).
 
-**Cascading `not a git repository` / `target is not a directory`.** A chained `cmd; cmd; cmd` line barrels past its first error, so you see downstream noise instead of the root cause (the repo dir was never created — read the line *above* the cascade). Run steps individually, or use the `( set -e … )` subshell, which halts at the real failure and says why.
+---
 
-**Manifest 404s.** `curl -fsI https://<owner>.github.io/<repo>/src-manifest.json` — read the 404 body: **~9KB of HTML with a GitHub CSP header** means Pages is serving but the manifest isn't committed yet (workflow hasn't run, or failed); **no HTML body** means Pages isn't enabled (step 4). Then check `gh run list --repo <owner>/<repo>` — a **red run** is almost always missing read-write permissions (the commit-back to `main` 403s); a **green run** just needs a minute for Pages to redeploy.
+## Related repositories
 
-**PR opens but won't auto-merge.** The "Allow GitHub Actions to create and approve pull requests" toggle is off (step 4).
-
-**Inject refused.** A 400 `Target not in allowlist` means the repo has no enabled `inject_targets` row — add one in Inject settings → **+ Add target** (step 5). A 401 `Sign-in required` or 403 `Admin only` means the caller isn't a signed-in admin — sign in to the PWA with an email listed in the worker's `ADMIN_EMAILS` secret. A GitHub 403 from the append itself means the worker PAT lacks access to the repo (step 3).
-
-**OAuth token vs. PAT — two different credentials.** `CLAUDE_CODE_OAUTH_TOKEN` (step 4) authenticates Claude *inside* the run; the PAT access-list entry (step 3) lets the worker *reach* the repo. Setting one does not cover the other.
-
-**Routine or config changes go straight to `main`** — don't route them through the pipeline. It ships backlog entries, not its own scaffolding.
+- [`claude-routine-template`](https://github.com/rsterenchak/claude-routine-template) — the routine, triage, derive and book prompts, the workflows, and `onboard.sh` / `offboard.sh`, which scaffold any repo (web, .NET console/desktop/MAUI, SQL, docs-only) into the pipeline. The template is the source of truth: a pipeline change made here is landed there too, and onboarded repos refresh from it.
+- `todo-injector-worker` (private) — the Cloudflare Worker: inject, dispatch, status, read, chat, resolve, revert, the model registry and the provider gateway.
+- [`docs/onboarding.md`](docs/onboarding.md) — the step-by-step runbook for wiring a new repo into the pipeline from this app, with troubleshooting for the 403s and 404s that actually happen.
 
 ---
 
