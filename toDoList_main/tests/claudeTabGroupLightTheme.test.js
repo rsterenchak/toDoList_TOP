@@ -42,7 +42,7 @@ describe('claudeTabGroup responds to light theme', () => {
 
     it('fills the active pill with the brand purple and white label', () => {
         const rule = ruleBody(':root[data-theme="light"] #desktopChatPane .claudeTabGroup .claudeTab[aria-selected="true"]');
-        expect(rule).toMatch(/background:\s*#6C5DF5/i);
+        expect(rule).toMatch(/background:\s*var\(--accent-strong\)/i);
         expect(rule).toMatch(/color:\s*#ffffff/i);
     });
 });

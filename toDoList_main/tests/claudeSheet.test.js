@@ -457,8 +457,8 @@ describe('Claude sheet — module surface and styling', () => {
         expect(pill).toMatch(/translateX\(-50%\)/);
         // Purple accent palette: #2a2560 fill, #6C5DF5 border, #9D93EE arrow.
         expect(pill).toMatch(/background:\s*#2a2560/i);
-        expect(pill).toMatch(/border:[^;]*#6C5DF5/i);
-        expect(pill).toMatch(/color:\s*#9D93EE/i);
+        expect(pill).toMatch(/border:[^;]*var\(--accent-strong\)/i);
+        expect(pill).toMatch(/color:\s*var\(--accent-soft\)/i);
         // The base rule sets a flex display, so the [hidden] state needs an
         // explicit display: none override to actually hide the pill.
         expect(extractTopLevelRule('.claudeScrollDown[hidden]')).toMatch(/display:\s*none/);
@@ -482,7 +482,7 @@ describe('Claude sheet — module surface and styling', () => {
         const main = extractTopLevelRule('.claudeComposerSend');
         expect(main).toMatch(/border-radius:\s*18px/);
         expect(main).not.toMatch(/border-radius:\s*18px 0 0 18px/);
-        expect(main).toMatch(/background:\s*#6C5DF5/i);
+        expect(main).toMatch(/background:\s*var\(--accent-strong\)/i);
         expect(main).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
         expect(main).toMatch(/color:\s*#fff/i);
         // Model toggle: the quiet acronym chip that opens the mode menu — the
@@ -491,11 +491,11 @@ describe('Claude sheet — module surface and styling', () => {
         const toggle = extractTopLevelRule('.claudeModelToggle');
         expect(toggle).toMatch(/background:\s*var\(--bg-elevated\)/);
         expect(toggle).toMatch(/border:\s*0\.5px solid var\(--border-mid\)/);
-        expect(toggle).not.toMatch(/background:\s*#6C5DF5/i);
+        expect(toggle).not.toMatch(/background:\s*var\(--accent-strong\)/i);
         // Deep default: both the send pill and the toggle take the accent fill.
         const deep = extractTopLevelRule('.claudeComposerSendDeep');
-        expect(deep).toMatch(/background:\s*#6C5DF5/i);
-        expect(extractTopLevelRule('.claudeModelToggleDeep')).toMatch(/background:\s*#6C5DF5/i);
+        expect(deep).toMatch(/background:\s*var\(--accent-strong\)/i);
+        expect(extractTopLevelRule('.claudeModelToggleDeep')).toMatch(/background:\s*var\(--accent-strong\)/i);
         // The mode menu anchors above the toggle, carries the neutral elevated
         // surface, and hides when [hidden].
         const menu = extractTopLevelRule('.claudeModeMenu');

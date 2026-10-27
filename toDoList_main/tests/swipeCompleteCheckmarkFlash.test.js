@@ -41,8 +41,8 @@ describe('Swipe-to-complete center-screen checkmark flash', () => {
             expect(rippleIdx).toBeGreaterThan(-1);
             const checkBody = css.slice(checkIdx, css.indexOf('}', checkIdx));
             const rippleBody = css.slice(rippleIdx, css.indexOf('}', rippleIdx));
-            expect(checkBody).toMatch(/color:\s*#6C5DF5/i);
-            expect(rippleBody).toMatch(/border:[^;]*#6C5DF5/i);
+            expect(checkBody).toMatch(/color:\s*var\(--accent-strong\)/i);
+            expect(rippleBody).toMatch(/border:[^;]*var\(--accent-strong\)/i);
         });
 
         it('pop keyframes scale 0.3 → overshoot to 1.2 → settle at 1.0 → fade out', () => {

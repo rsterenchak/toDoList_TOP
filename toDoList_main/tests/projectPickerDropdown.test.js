@@ -189,7 +189,7 @@ describe('desktop project-picker dropdown', () => {
     });
 
     it('CSS styles the header add button with the purple accent', () => {
-        expect(css).toMatch(/\.projectPickerAddBtn\s*\{[^}]*background:\s*#6C5DF5/);
+        expect(css).toMatch(/\.projectPickerAddBtn\s*\{[^}]*background:\s*var\(--accent-strong\)/);
     });
 
     it('CSS hides the inline create row by default and reveals it via .open', () => {
@@ -197,7 +197,7 @@ describe('desktop project-picker dropdown', () => {
         expect(css).toMatch(/\.projectPickerCreateRow\.open\s*\{[^}]*display:\s*flex/);
         // Confirm + button carries the purple accent; the input shows a red
         // border on validation reject; the input is 16px to avoid iOS zoom.
-        expect(css).toMatch(/\.projectPickerCreateConfirm\s*\{[^}]*background:\s*#6C5DF5/);
+        expect(css).toMatch(/\.projectPickerCreateConfirm\s*\{[^}]*background:\s*var\(--accent-strong\)/);
         expect(css).toMatch(/\.projectPickerCreateInput\.error\s*\{[^}]*border-color:\s*#e5484d/);
         expect(css).toMatch(/\.projectPickerCreateInput\s*\{[^}]*font-size:\s*16px/);
     });

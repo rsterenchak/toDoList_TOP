@@ -94,7 +94,7 @@ describe('D1c — desktop project pill', () => {
         // accent-purple (70%) chevron so the dropdown affordance is legible.
         const chev = rule(desktopPillBlock(), '.mobileProjDropdownChev');
         expect(chev).toMatch(/font-size:\s*14px/);
-        expect(chev.replace(/\s+/g, '')).toMatch(/color:rgba\(157,147,238,0\.7\)/);
+        expect(chev.replace(/\s+/g, '')).toMatch(/color:color-mix\(insrgb,var\(--accent-soft\)70%,transparent\)/);
         expect(chev).not.toMatch(/color:\s*var\(--text-muted\)/);
     });
 
@@ -199,9 +199,9 @@ describe('desktop header consolidation', () => {
         // accent text, and a solid purple border.
         const active = css.match(/\n\.viewPill\.active\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
-        expect(active[1]).toMatch(/color:\s*#9D93EE/);
-        expect(active[1]).toMatch(/background:\s*rgba\(108, 93, 245/);
-        expect(active[1]).toMatch(/border-color:\s*#6C5DF5/);
+        expect(active[1]).toMatch(/color:\s*var\(--accent-soft\)/);
+        expect(active[1]).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-strong\)/);
+        expect(active[1]).toMatch(/border-color:\s*var\(--accent-strong\)/);
     });
 
     it('(d) the desktop counts collapse into the in-pill count badge', () => {

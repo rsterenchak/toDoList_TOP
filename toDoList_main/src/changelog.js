@@ -6,14 +6,12 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-10-26',
-        changed: [
-            'Your notes in the code viewer and the code book now show as a single line until you tap to expand them (a pencil edits), a Marks toggle hides them all at once, and Keep starts from the answer\'s first sentence with a character count that turns amber past 200.',
-        ],
         fixed: [
             'Pausing mid-sentence while dictating a todo no longer adds a half-finished item, only a tap adds it, and if the phone stops listening on its own your words stay in the field.',
             'Leaving voice dictation running for a minute no longer adds a todo on its own, the mic stops listening and your words stay in the field for you to add.',
             'New todos commit again on iPhones whose storage is full, with a one-time warning when space runs out, a Storage line in Settings showing how much the app uses, and a Clear caches action that frees it.',
             'A dictated todo can always be added by tap: when the phone stops listening the overlay stays up paused with Tap to add and a Discard button, and the + on the Add a task row turns into a tappable add button once the row has text.',
+            'Purple accents across the app, including todo row and header borders and the Claude chat pane, now switch to the deeper light-theme violets in light mode instead of staying on the dark-theme shades.',
         ],
     },
 ];

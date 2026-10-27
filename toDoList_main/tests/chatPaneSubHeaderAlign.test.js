@@ -101,7 +101,7 @@ describe('chat pane sub-header alignment (desktop)', () => {
         // declaration is gone with the sub-band, so the separator is now the
         // only shadow.
         const pane = ruleBody(d2Block(), '#desktopChatPane');
-        expect(pane).toMatch(/box-shadow:[^;]*-1px\s+0\s+0\s+0\s+rgba\(108,\s*93,\s*245,\s*0\.18\)/);
+        expect(pane).toMatch(/box-shadow:[^;]*-1px\s+0\s+0\s+0\s+color-mix\(in srgb, var\(--accent-strong\) 18%, transparent\)/);
         expect(pane).not.toMatch(/border-left:\s*1px\s+solid/);
     });
 

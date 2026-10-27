@@ -211,7 +211,7 @@ describe('D2 — desktop chat pane (layout source)', () => {
         const shadow = body.match(/box-shadow:\s*([^;]+);/);
         expect(shadow).not.toBeNull();
         const value = shadow[1];
-        expect(value).toMatch(/-1px\s+0\s+0\s+0\s+rgba\(108,\s*93,\s*245,\s*0\.18\)/);
+        expect(value).toMatch(/-1px\s+0\s+0\s+0\s+color-mix\(in srgb, var\(--accent-strong\) 18%, transparent\)/);
         // The retired gap-fill overhang no longer leads the declaration.
         expect(value).not.toMatch(/0\s+-16px\s+0\s+0\s+var\(--bg-base\)/);
     });

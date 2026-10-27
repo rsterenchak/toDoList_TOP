@@ -60,8 +60,8 @@ describe('desktop view sub-band retired (view tabs moved into the header)', () =
         // accent text, and a solid purple border.
         const active = css.match(/\n\.viewPill\.active\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
-        expect(active[1]).toMatch(/color:\s*#9D93EE/);
-        expect(active[1]).toMatch(/border-color:\s*#6C5DF5/);
+        expect(active[1]).toMatch(/color:\s*var\(--accent-soft\)/);
+        expect(active[1]).toMatch(/border-color:\s*var\(--accent-strong\)/);
     });
 
     it('(d) main.js seats #viewSwitcher in #navBar, never in a sub-band', () => {

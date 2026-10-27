@@ -102,7 +102,7 @@ describe('todo.md viewer — main.js card wiring', () => {
     it('defines the sync spinner with a keyframe rotation and the Void accent color', () => {
         const css = read('style.css');
         expect(css).toMatch(/\.todoMdViewerSyncSpinner\s*\{[\s\S]*?animation:\s*todoMdViewerSyncSpin/);
-        expect(css).toMatch(/\.todoMdViewerSyncSpinner\s*\{[\s\S]*?border-top-color:\s*#9D93EE/i);
+        expect(css).toMatch(/\.todoMdViewerSyncSpinner\s*\{[\s\S]*?border-top-color:\s*var\(--accent-soft\)/i);
         expect(css).toMatch(/@keyframes\s+todoMdViewerSyncSpin\s*\{[\s\S]*?rotate\(360deg\)/);
     });
 
@@ -420,7 +420,7 @@ describe('todo.md viewer — body collapse toggle', () => {
         expect(rule).toMatch(/width:\s*36px/);
         expect(rule).toMatch(/height:\s*36px/);
         expect(rule).toMatch(/background:\s*#15161d/);
-        expect(rule).toMatch(/border:[^;]*rgba\(157,\s*147,\s*238/);
+        expect(rule).toMatch(/border:[^;]*color-mix\(in srgb, var\(--accent-soft\)/);
         expect(rule).toMatch(/color:\s*#8b8c99/);
         expect(rule).toMatch(/border-radius:\s*10px/);
     });
@@ -432,8 +432,8 @@ describe('todo.md viewer — body collapse toggle', () => {
         expect(btnMatch).not.toBeNull();
         const btnRule = btnMatch[0];
         expect(btnRule).toMatch(/background:\s*none/);
-        expect(btnRule).toMatch(/border-color:\s*rgba\(108,\s*93,\s*245/);
-        expect(btnRule).toMatch(/color:\s*#6C5DF5/);
+        expect(btnRule).toMatch(/border-color:\s*color-mix\(in srgb, var\(--accent-strong\)/);
+        expect(btnRule).toMatch(/color:\s*var\(--accent-strong\)/);
     });
 });
 
@@ -567,8 +567,8 @@ describe('todo.md viewer — Run backlog button + dispatchRun helper', () => {
         expect(btnMatch).not.toBeNull();
         const btnRule = btnMatch[0];
         expect(btnRule).toMatch(/background:\s*transparent/);
-        expect(btnRule).toMatch(/border:[^;]*1\.5px[^;]*#6C5DF5/);
-        expect(btnRule).toMatch(/color:\s*#6C5DF5/);
+        expect(btnRule).toMatch(/border:[^;]*1\.5px[^;]*var\(--accent-strong\)/);
+        expect(btnRule).toMatch(/color:\s*var\(--accent-strong\)/);
 
         const iconMatch = css.match(
             /:root\[data-theme="light"\]\s+\.todoMdViewerRunIcon\s*\{[^}]*\}/
@@ -979,7 +979,7 @@ describe('todo.md viewer — per-entry "Run this entry" control', () => {
         const rule = ruleMatch[0];
         expect(rule).toMatch(/background:\s*#161622/);
         expect(rule).toMatch(/border:[^;]*#2a2a38/);
-        expect(rule).toMatch(/color:\s*#9D93EE/);
+        expect(rule).toMatch(/color:\s*var\(--accent-soft\)/);
     });
 });
 
@@ -991,7 +991,7 @@ describe('todo.md viewer — style.css', () => {
         expect(css).toMatch(/\.todoMdViewerCard\s*\{/);
         expect(css).toMatch(/\.todoMdViewerTab\s*\{/);
         // Purple accent on the active tab underline, per spec.
-        expect(css).toMatch(/\.todoMdViewerTab\.is-active[\s\S]{0,200}#6C5DF5/);
+        expect(css).toMatch(/\.todoMdViewerTab\.is-active[\s\S]{0,200}var\(--accent-strong\)/);
     });
 
     it('uses monospace for the raw tab body', () => {

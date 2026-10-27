@@ -109,7 +109,7 @@ describe('cross-device run status — project-trigger spinner (main.js)', () => 
         const base = css.match(/\.mobileProjRunSpinner\s*\{[^}]*\}/);
         expect(base).not.toBeNull();
         expect(base[0]).toMatch(/display:\s*none/);
-        expect(base[0]).toMatch(/#9D93EE/);
+        expect(base[0]).toMatch(/var\(--accent-soft\)/);
         expect(base[0]).toMatch(/pointer-events:\s*none/);
         const active = css.match(/\.mobileProjRunSpinner--active\s*\{[^}]*\}/);
         expect(active).not.toBeNull();

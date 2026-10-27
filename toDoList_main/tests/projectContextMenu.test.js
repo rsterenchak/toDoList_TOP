@@ -132,7 +132,7 @@ describe('desktop project-picker inline rename', () => {
         const block = css.slice(ruleIdx, ruleIdx + 600);
         expect(block).toMatch(/font-size:\s*13px/);
         expect(block).toMatch(/SpaceMono/);
-        expect(block).toMatch(/border:\s*1px solid #6C5DF5/);
+        expect(block).toMatch(/border:\s*1px solid var\(--accent-strong\)/);
         // error variant turns the border red
         expect(css).toMatch(/\.projectPickerRenameInput\.error\s*\{[\s\S]*?border-color:\s*#e5484d/);
     });

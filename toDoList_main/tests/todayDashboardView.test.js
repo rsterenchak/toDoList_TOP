@@ -257,7 +257,7 @@ describe('Stream / Structure view switcher', () => {
             const idx = css.indexOf('.viewPill.active');
             expect(idx).toBeGreaterThan(-1);
             const rule = css.slice(idx, css.indexOf('}', idx));
-            expect(rule).toMatch(/background:\s*rgba\(\s*108\s*,\s*93\s*,\s*245\s*,\s*0?\.20?\s*\)/);
+            expect(rule).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-strong\) 20%, transparent\)/);
         });
 
         it('drops the #inboxView rules entirely', () => {

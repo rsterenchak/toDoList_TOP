@@ -509,8 +509,8 @@ describe('focus mode — video scene CSS hooks', () => {
     it('gives the swap control a purple active state and a disabled state', () => {
         const active = css.match(/\.focusVideoBtn\[aria-pressed="true"\]\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
-        expect(active[1]).toMatch(/rgba\(108,\s*93,\s*245,\s*0\.28\)/);
-        expect(active[1]).toMatch(/#9D93EE/i);
+        expect(active[1]).toMatch(/color-mix\(in srgb, var\(--accent-strong\) 28%, transparent\)/);
+        expect(active[1]).toMatch(/var\(--accent-soft\)/i);
         expect(css).toMatch(/\.focusVideoBtn:disabled\s*\{/);
     });
 });

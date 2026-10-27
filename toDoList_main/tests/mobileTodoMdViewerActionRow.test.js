@@ -92,7 +92,7 @@ describe('Mobile TODO.md viewer sheet action row', () => {
         // Target the Sync-specific rule that carries the purple fill (a
         // separate grouped rule also matches the bare selector for the
         // 50/50 sizing, so scope by the background declaration).
-        const re = /#todoMdViewerMobileSheet\s+\.todoMdViewerSyncBtn\s*\{[^}]*background:\s*#6C5DF5[^}]*\}/i;
+        const re = /#todoMdViewerMobileSheet\s+\.todoMdViewerSyncBtn\s*\{[^}]*background:\s*var\(--accent-strong\)[^}]*\}/i;
         const rule = block(re);
         expect(rule).toBeTruthy();
         expect(inMobileMediaBlock(css.search(re))).toBe(true);
