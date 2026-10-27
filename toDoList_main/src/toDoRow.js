@@ -51,6 +51,7 @@ import { buildStatusLabel, applyTodoStatusClass, refreshTodoStatusUI, buildManua
 import { derivePhase, PHASE, isBlockedPhase } from './phase.js';
 import {
     getQueueRowForTodo,
+    isGeneratingState,
     pendingAnswers,
     loadQueueRows,
     fireTriageSweep,
@@ -2111,7 +2112,7 @@ export function syncTriageBlock(toDoChild, item) {
     if (!panel) return;
     const existing = panel.querySelector('.descTriageBlock');
     const row = item && item.id ? getQueueRowForTodo(item.id) : null;
-    const wantTriage = !!(row && row.state === 'triaging');
+    const wantTriage = !!(row && isGeneratingState(row.state));
     if (wantTriage) {
         if (existing) {
             // Same run — keep the mounted block and its live clock (restart it if a
@@ -2467,7 +2468,7 @@ export function syncGenerateBody(descSibling, item, projectName) {
     const state = body.querySelector('.descGenerateState');
     const action = body.querySelector('.descGenerateAction');
     const row = item && item.id ? getQueueRowForTodo(item.id) : null;
-    const generating = !!row && row.state === 'triaging';
+    const generating = !!row && isGeneratingState(row.state);
     if (generating) {
         if (state) state.textContent = 'Generating an entry from this task…';
         if (action) {
@@ -2554,7 +2555,9 @@ const landedGenerateDrafts = new Set();
 // tappable accent-outlined action; 'generating' is a disabled spinner; 'hidden'
 // removes it (no resolved inject target, or a queue row already owns the task's
 // lifecycle). Idempotent enough to call on every store push.
-function setGenerateVisual(btn, state) {
+// `escalating` swaps the in-flight label to "Escalating…" for a row the sweep
+// handed to the escalation pass — same spinner, same disabled state.
+function setGenerateVisual(btn, state, escalating) {
     if (!btn) return;
     if (state === 'hidden') {
         btn.style.display = 'none';
@@ -2565,7 +2568,8 @@ function setGenerateVisual(btn, state) {
     if (state === 'generating') {
         btn.disabled = true;
         btn.classList.add('is-generating');
-        btn.innerHTML = '<span class="generateBtnSpinner" aria-hidden="true"></span><span class="generateBtnLabel">Generating…</span>';
+        btn.innerHTML = '<span class="generateBtnSpinner" aria-hidden="true"></span><span class="generateBtnLabel">'
+            + (escalating ? 'Escalating…' : 'Generating…') + '</span>';
         btn.setAttribute('aria-label', 'Generating an entry with the agent');
         btn.title = 'The agent is generating an entry from this task';
         return;
@@ -2754,7 +2758,7 @@ export function syncGenerateControl(btn) {
     const hasTarget = !!(item.id && projectName && listLogic.getProjectTargetId(projectName));
     const row = item.id ? getQueueRowForTodo(item.id) : null;
     const state = row ? row.state : null;
-    const generating = state === 'triaging';
+    const generating = isGeneratingState(state);
 
     // Read-only textarea + disabled Inject hold ONLY while triaging. Restore
     // Inject through its own refresh when leaving the generating state so it
@@ -2798,7 +2802,7 @@ export function syncGenerateControl(btn) {
     if (!hasTarget) {
         setGenerateVisual(btn, 'hidden');
     } else if (generating) {
-        setGenerateVisual(btn, inDescPanel ? 'hidden' : 'generating');
+        setGenerateVisual(btn, inDescPanel ? 'hidden' : 'generating', state === 'escalated');
     } else if (row) {
         setGenerateVisual(btn, 'hidden');
     } else {

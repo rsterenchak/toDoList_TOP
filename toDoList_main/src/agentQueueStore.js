@@ -26,6 +26,17 @@ import { listLogic } from './listLogic.js';
 // forced shipped-marker refresh — see refreshMarkersForShippedTransitions.
 const SHIPPED_STATE = 'shipped';
 
+// The `agent_queue` states that mean a triage pass is in flight for a row.
+// `triaging` is the first sweep; `escalated` is the brief hand-off the sweep
+// writes for rows it couldn't root-cause, before the escalation pass flips them
+// back to `triaging` and re-dispatches on the `escalate` surface's model. Both
+// read as Generating… on the row, and both count as in flight to the reapers.
+const GENERATING_STATES = ['triaging', 'escalated'];
+
+export function isGeneratingState(state) {
+    return GENERATING_STATES.indexOf(state) !== -1;
+}
+
 // The rows last loaded for a project, and which project they belong to. The
 // realtime channel is app-lifetime (see startAgentQueueSubscription) so the
 // task-row badges stay live on the list view, not just while the Agent tab is
@@ -1162,12 +1173,13 @@ function verifyThenReconcile(projectName) {
 // and so has nothing a dispatch could ship. The queue is read fresh
 // (not the possibly-stale render cache) so a row the sweep DID resolve is never clobbered,
 // and the board repaints only when the swept project is still the one on screen.
+// An 'escalated' row with no run behind it is stuck the same way, so it is reaped too.
 async function reconcileStuckTriaging(projectName) {
     const projectId = projectName ? listLogic.getProjectId(projectName) : null;
     if (!projectId) return;
     const rows = await fetchQueueRows(projectId);
     const stuck = (Array.isArray(rows) ? rows : []).filter(function (r) {
-        return r && r.state === 'triaging';
+        return r && isGeneratingState(r.state);
     });
     if (!stuck.length) return;
     let changedAny = false;
@@ -1678,7 +1690,7 @@ export function pollAgentWorkingWatch() {
             return {
                 repoActive: probeOk && !!parts[0].active,
                 projectTriaging: (Array.isArray(parts[1]) ? parts[1] : []).some(function (r) {
-                    return r && r.state === 'triaging';
+                    return r && isGeneratingState(r.state);
                 }),
                 probeOk: probeOk,
             };
