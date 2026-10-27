@@ -34,6 +34,7 @@ import { wireModalDismiss } from './modals.js';
 import { chatWithWorker, findTargetById } from './inject.js';
 import { actionableStageLabelForStages } from './conceiveShapes.js';
 import { addToDos_restore, addAllToDo_DOM } from './toDoRow.js';
+import { hasAccount } from './accessMode.js';
 
 // Hard ceiling on proposed tasks so a runaway reply can't flood the list. The
 // title-only paths (string array / line-split fallback) allow more rows; the
@@ -183,6 +184,8 @@ function clear(el) {
 // todos and switches the app to the Projects view.
 export function openSeedTasksModal(projectName) {
     if (!projectName) return;
+    // Generating tasks asks the Worker — offline (no-account) mode has none.
+    if (!hasAccount()) return;
 
     // The actionable stage (task source) depends on the project's shape:
     // 'Build plan' for Spec projects, 'Now' for the Iterative board, and 'Next

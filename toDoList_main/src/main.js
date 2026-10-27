@@ -63,6 +63,7 @@ import {
 } from './drawerRows.js';
 import { startAppLockWatch } from './appLock.js';
 import { mountClaudeSheet } from './claudeSheet.js';
+import { hasAccount } from './accessMode.js';
 import { syncClaudeSheetForProject, openChatWithTask, openIterateForEntry, setBookRefOpener } from './claudeSheet.js';
 import { openSpendPanel } from './claudeSheet.js';
 import { isClaudeUnavailable, showClaudeUnavailableTooltip } from './claudeSheet.js';
@@ -607,7 +608,9 @@ function component() {
     // keypress. The launcher opens a bottom sheet on mobile and a docked
     // right-hand panel on wider viewports; CSS hides the launcher while
     // another modal / popover is open via the body:has(...) rules.
-    mountClaudeSheet(base);
+    // Offline (no-account) mode has no assistant: nothing is built, so the
+    // sheet never reaches the Worker.
+    if (hasAccount()) mountClaudeSheet(base);
 
     // ── Mobile bottom sheet utility surface ──
     // The persistent mobile tab bar — and, behind that module's own gate, the
@@ -1074,6 +1077,12 @@ function component() {
     viewSwitcher.appendChild(viewPillProjects);
     viewSwitcher.appendChild(viewPillUnderstanding);
     viewSwitcher.appendChild(viewPillStructure);
+    // UNDERSTANDING and STRUCTURE read a routed repo through the Worker, so an
+    // offline (no-account) shell keeps STREAM alone.
+    if (!hasAccount()) {
+        viewSwitcher.removeChild(viewPillUnderstanding);
+        viewSwitcher.removeChild(viewPillStructure);
+    }
 
     viewPillProjects.addEventListener('click', function() {
         applyActiveView('projects');
@@ -1107,7 +1116,8 @@ function component() {
     // those keys. The nav walk still enters the switcher as one group via
     // viewSwitcherEntryPill(), so from the header chrome the switcher reads as a
     // single, internally-navigable stop rather than one fixed tab stop.
-    const viewSwitcherPills = [viewPillProjects, viewPillUnderstanding, viewPillStructure];
+    const viewSwitcherPills = [viewPillProjects, viewPillUnderstanding, viewPillStructure]
+        .filter(function(pill) { return pill.parentNode === viewSwitcher; });
     viewPillProjects.setAttribute('tabindex', '0');
     viewPillUnderstanding.setAttribute('tabindex', '-1');
     viewPillStructure.setAttribute('tabindex', '-1');

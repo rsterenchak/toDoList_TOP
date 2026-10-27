@@ -40,6 +40,7 @@ import {
     emitTodoRunStatusChange,
     TODO_RUN_STATUS_EVENT,
 } from './inject.js';
+import { hasAccount } from './accessMode.js';
 
 // Predicate shared by the viewer's completed-collapse, count, and amber-
 // treatment paths: a checked entry is "shipped but unreviewed" when its
@@ -2558,7 +2559,8 @@ function updateTodoMdViewerCard() {
         return;
     }
 
-    const targetId = listLogic.getProjectTargetId(projectName);
+    // Offline (no-account) mode has no TODO.md to read, so no card mounts.
+    const targetId = hasAccount() ? listLogic.getProjectTargetId(projectName) : null;
     const target = targetId ? findTargetById(targetId) : null;
 
     if (!target) {

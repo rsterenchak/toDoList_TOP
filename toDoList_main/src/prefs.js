@@ -10,6 +10,7 @@
 // here so the persisted surface is auditable in one place.
 
 import { safeSetItem, capBookNotesStore, CACHE_BYTE_BUDGET } from './storage.js';
+import { hasAccount } from './accessMode.js';
 
 export const COMPLETED_SECTION_KEY = 'todoapp_completedSectionOpen';
 export const SIDEBAR_WIDTH_KEY = 'todoapp_sidebarWidth';
@@ -108,6 +109,9 @@ export function hasQueueWidthPref() {
 // retired Conceive incubator, or a legacy 'agent' value from the retired
 // Agent queue board) can't desync the renderer.
 export function getActiveView() {
+    // Offline (no-account) mode has only the Stream — a persisted repo view
+    // falls back to it.
+    if (!hasAccount()) return 'projects';
     try {
         const v = localStorage.getItem(ACTIVE_VIEW_KEY);
         if (v === 'projects') return 'projects';

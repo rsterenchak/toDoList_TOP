@@ -14,6 +14,8 @@
 // is imported from popoverNav.js. Only what is built or defined inside main.js's
 // component() — the gear button and the four view/render helpers — is injected.
 import { listLogic } from './listLogic.js';
+import { hasAccount } from './accessMode.js';
+import { showAuthModal } from './auth.js';
 import {
     isCompanionEnabled,
     setCompanionEnabled,
@@ -327,12 +329,18 @@ export function createSettingsMenu(deps) {
         );
         menu.appendChild(clearCachesItem);
 
+        // Offline (no-account) mode has no repo, Worker or models to point at,
+        // so the Repo setup and Models rows built next are dropped again and
+        // Account offers Sign in.
+        const local = !hasAccount();
+
         // REPO SETUP section — the pipeline-facing cluster. Shape reference
         // opens the SHAPES.md picker (which shape a repo is, whether a
         // template exists, and the gotchas that apply); Configure inject sits
         // under the same heading because pointing the app at a repo is the
         // other half of setting one up. The chevron state slot marks the
         // reference row as "tap to open a flow", matching Replay welcome tour.
+        const pipelineRowsStart = menu.childNodes.length;
         menu.appendChild(buildSettingsMenuDivider());
         const repoSetupHeading = document.createElement('div');
         repoSetupHeading.className = 'settingsMenuSectionHeading';
@@ -377,6 +385,9 @@ export function createSettingsMenu(deps) {
             'settingsMenuItem--chevron'
         );
         menu.appendChild(modelsItem);
+        if (local) {
+            while (menu.childNodes.length > pipelineRowsStart) menu.removeChild(menu.lastChild);
+        }
 
         // ACCOUNT section — Phase 4 auth gate's sign-out exit. Mirrors
         // the HELP section pattern: a divider + small heading followed by
@@ -390,14 +401,25 @@ export function createSettingsMenu(deps) {
         accountHeading.setAttribute('role', 'presentation');
         menu.appendChild(accountHeading);
 
-        const signOutItem = buildSettingsMenuItem(
-            'Sign out',
-            '',
-            function() {
-                hideSettingsMenu();
-                wipeLocalUserDataOnSignOut().then(function() { supabase.auth.signOut(); });
-            }
-        );
+        // Sign in raises the gate; a session landing then reloads the app
+        // signed in (index.js), which carries the offline data up.
+        const signOutItem = local
+            ? buildSettingsMenuItem(
+                'Sign in',
+                '',
+                function() {
+                    hideSettingsMenu();
+                    showAuthModal();
+                }
+            )
+            : buildSettingsMenuItem(
+                'Sign out',
+                '',
+                function() {
+                    hideSettingsMenu();
+                    wipeLocalUserDataOnSignOut().then(function() { supabase.auth.signOut(); });
+                }
+            );
         menu.appendChild(signOutItem);
 
         document.body.appendChild(menu);

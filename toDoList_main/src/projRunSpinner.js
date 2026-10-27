@@ -10,6 +10,7 @@
 import { listLogic } from './listLogic.js';
 import { isInjectConfigured, findTargetById, fetchActiveRuns } from './inject.js';
 import { setProjectRunSpinnerActive } from './projectRow.js';
+import { hasAccount } from './accessMode.js';
 
 const DRAWER_SPINNER_INTERVAL_MS = 10000;
 
@@ -21,9 +22,10 @@ export function createProjRunSpinner({ mobileProjName, mobileProjRunSpinner, sid
     // Resolve the active project's routed inject target (repo). Same gate as
     // the ⚡ inject bolt: inject must be configured AND the project must route
     // to a target id. A project with no routed target has no repo, so it is
-    // never polled and never spins.
+    // never polled and never spins — nor is any project in offline
+    // (no-account) mode, which has no runs to probe.
     function resolveActiveProjectTarget(name) {
-        if (!name || !isInjectConfigured()) return null;
+        if (!name || !hasAccount() || !isInjectConfigured()) return null;
         const targetId = listLogic.getProjectTargetId(name);
         if (!targetId) return null;
         const target = findTargetById(targetId);

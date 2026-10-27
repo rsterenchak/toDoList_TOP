@@ -15,7 +15,9 @@
 // Screens:
 //   1 (sign-in)      — "Welcome." heading + email input + Continue button.
 //                      Submit calls supabase.auth.signInWithOtp; advances
-//                      to screen 2 on success.
+//                      to screen 2 on success. Below it, an `or` rule and
+//                      the "Use offline on this device" door into local
+//                      mode (accessMode.js) for a visitor with no account.
 //   2 (code entry)   — "Enter your code." with a code input and a
 //                      Verify button (calls verifyOtp in-app), plus a
 //                      "Resend code" button (cooldown-disabled for 60s
@@ -24,6 +26,7 @@
 //                      back to screen 1.
 
 import { supabase } from './supabaseClient.js';
+import { chooseLocalMode, bootLocalMode } from './accessMode.js';
 
 const BACKDROP_ID = 'authModalBackdrop';
 const DIALOG_ID   = 'authModal';
@@ -157,6 +160,35 @@ function renderSignInScreen(dialog, prefillEmail) {
     form.appendChild(submit);
     form.appendChild(errorEl);
     dialog.appendChild(form);
+
+    // ── OFFLINE DOOR ──
+    // Sign-up is restricted, so an address that isn't on the allowlist would
+    // otherwise dead-end here. The `or` rule and outlined button open local
+    // mode: projects and tasks only, kept in this browser.
+    const divider = document.createElement('div');
+    divider.className = 'authModalOr';
+    divider.setAttribute('role', 'presentation');
+    const dividerLabel = document.createElement('span');
+    dividerLabel.textContent = 'or';
+    divider.appendChild(dividerLabel);
+    dialog.appendChild(divider);
+
+    const offline = document.createElement('button');
+    offline.type = 'button';
+    offline.id = 'authModalOffline';
+    offline.className = 'authModalOffline';
+    offline.textContent = 'Use offline on this device';
+    offline.addEventListener('click', function() {
+        chooseLocalMode();
+        hideAuthModal();
+        bootLocalMode();
+    });
+    dialog.appendChild(offline);
+
+    const caption = document.createElement('p');
+    caption.className = 'authModalOfflineCaption';
+    caption.textContent = 'Projects and tasks only, saved in this browser. Export a backup any time from Settings.';
+    dialog.appendChild(caption);
 
     // Defer focus so the modal has finished attaching to the DOM before
     // we hand keyboard focus to the input — jsdom-friendly and avoids

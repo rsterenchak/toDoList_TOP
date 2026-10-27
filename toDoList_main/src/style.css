@@ -22789,6 +22789,105 @@ body.row-dragging * { cursor: grabbing !important; }
 
 .authModalUseDifferent:hover { color: var(--text-primary); }
 
+/* Offline door beneath Continue: a hairline `or` rule, an outlined button at
+   .authModalSubmit's size, and a muted caption naming what local mode keeps. */
+.authModalOr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+.authModalOr::before,
+.authModalOr::after {
+  content: '';
+  flex: 1 1 auto;
+  height: 1px;
+  background: var(--border-mid);
+}
+
+.authModalOffline {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 16px;
+  font-family: inherit;
+  font-weight: 600;
+  color: var(--accent-text);
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.authModalOffline:hover { background: var(--accent-dim); }
+
+.authModalOfflineCaption {
+  margin: -6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
+/* ── LOCAL (OFFLINE, NO-ACCOUNT) MODE ──
+   One switch for every Worker- or pipeline-backed surface: accessMode.js stamps
+   html[data-access="local"] and this block hides them all. The selector list is
+   LOCAL_HIDDEN_SELECTORS in accessMode.js — keep the two identical (a test
+   compares them). */
+/* local-hidden:start */
+html[data-access="local"] #viewPillUnderstanding,
+html[data-access="local"] #viewPillStructure,
+html[data-access="local"] #mobileTabUnderstanding,
+html[data-access="local"] #mobileTabStructure,
+html[data-access="local"] #desktopChatPane,
+html[data-access="local"] #chatCollapseButton,
+html[data-access="local"] #chatExpandButton,
+html[data-access="local"] #claudeLauncher,
+html[data-access="local"] #claudeSheet,
+html[data-access="local"] #claudeSheetBackdrop,
+html[data-access="local"] #usageSpendToggle,
+html[data-access="local"] #todoMdViewerCard,
+html[data-access="local"] #todoMdViewerStrip,
+html[data-access="local"] #mobileProjRunSpinner,
+html[data-access="local"] .projRunSpinner,
+html[data-access="local"] #descIndicator,
+html[data-access="local"] .agentWorkingMarker,
+html[data-access="local"] .descActionsRow,
+html[data-access="local"] .injectBtn,
+html[data-access="local"] .generateBtn,
+html[data-access="local"] .discussBtn,
+html[data-access="local"] .generateFailure,
+html[data-access="local"] .filePickTrigger,
+html[data-access="local"] .filePickPanel,
+html[data-access="local"] .descFileReadout,
+html[data-access="local"] .descDetailHeaderMarker,
+html[data-access="local"] .descScreenshotRow,
+html[data-access="local"] .descModeStrip,
+html[data-access="local"] .descGenerateBody,
+html[data-access="local"] .descPasteBody,
+html[data-access="local"] .phaseRail,
+html[data-access="local"] .askingBlock,
+html[data-access="local"] .descEditorModalStuck,
+html[data-access="local"] .descDispatchBlock,
+html[data-access="local"] .descReviewBlock,
+html[data-access="local"] .descRunReportBlock,
+html[data-access="local"] .descMockupBlock,
+html[data-access="local"] .descTriageBlock,
+html[data-access="local"] #descEditorModalTabs,
+html[data-access="local"] #descEditorModalAgentPane,
+html[data-access="local"] #descEditorModalGenerateSpend,
+html[data-access="local"] #settingsRepoSetupSection,
+html[data-access="local"] #settingsModelsSection,
+html[data-access="local"] #settingsDiagnosticsSection,
+html[data-access="local"] #createCaptureChip {
+  display: none !important;
+}
+/* local-hidden:end */
+
 
 /* ── WELCOME CAROUSEL (MOBILE FIRST RUN) ──
    Four-card full-viewport walkthrough that introduces projects, the slide-

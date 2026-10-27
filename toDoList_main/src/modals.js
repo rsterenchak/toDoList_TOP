@@ -54,6 +54,7 @@ export { insertFilePathIntoEntry };
 // AND re-exported to preserve the existing `from './modals.js'` import path for
 // all its callers/tests.
 import { wireModalDismiss } from './modalDismiss.js';
+import { hasAccount } from './accessMode.js';
 export { wireModalDismiss };
 
 
@@ -505,7 +506,8 @@ export function showDescEditorModal(item, options) {
     const AGENT_BLOCK_SELECTOR = '.askingBlock, #descEditorModalStuck, #descEditorModalMockup, '
         + '.descDispatchBlock, .descReviewBlock';
     function syncAgentTabs() {
-        const count = agentPane.querySelectorAll(AGENT_BLOCK_SELECTOR).length;
+        // Offline (no-account) mode has no agent: Notes is always the whole body.
+        const count = hasAccount() ? agentPane.querySelectorAll(AGENT_BLOCK_SELECTOR).length : 0;
         agentTabBadge.textContent = String(count);
         if (count === 0) {
             tabBar.hidden = true;
@@ -1013,8 +1015,14 @@ export function showDescEditorModal(item, options) {
         panelId: 'descEditorModalTargetPanel',
         onInsert: function () { listLogic.saveToStorage(); },
     });
-    notesPane.insertBefore(filePicker.trigger, textarea);
-    notesPane.appendChild(filePicker.panel);
+    // Offline (no-account) mode keeps the textarea, Clear / Copy and Manual
+    // status only — the picker, phase rail, Inject / Generate and the screenshot
+    // row stay unmounted.
+    const pipeline = hasAccount();
+    if (pipeline) {
+        notesPane.insertBefore(filePicker.trigger, textarea);
+        notesPane.appendChild(filePicker.panel);
+    }
 
     const actions = document.createElement('div');
     actions.id = 'descEditorModalActions';
@@ -1089,9 +1097,11 @@ export function showDescEditorModal(item, options) {
     // own `order` in CSS rather than layering another override onto a basis hack, so
     // the sequence is readable.
     actions.appendChild(clearBtn);
-    actions.appendChild(injectBtn);
-    actions.appendChild(generateBtn);
-    actions.appendChild(generateSpend);
+    if (pipeline) {
+        actions.appendChild(injectBtn);
+        actions.appendChild(generateBtn);
+        actions.appendChild(generateSpend);
+    }
     actions.appendChild(copyBtn);
     // Reflect the linked queue row's current state (Generating…/failure) and land
     // a draft that finished while the modal was closed. Live pushes re-sync via
@@ -1120,7 +1130,7 @@ export function showDescEditorModal(item, options) {
     // image input (on a phone it opens the camera roll). A stage or remove re-syncs
     // the textarea and fires its `input`, which updates item.desc + Inject below.
     let screenshotRow = null;
-    if (item.id) {
+    if (pipeline && item.id) {
         screenshotRow = buildScreenshotRow();
         const screenshotInput = document.createElement('input');
         screenshotInput.type = 'file';
@@ -1140,7 +1150,7 @@ export function showDescEditorModal(item, options) {
     // Clear / Copy), the SCREENSHOT row, then the manual STATUS control last — the derived phase now
     // leads and the manual annotation is demoted below the actions.
     dialog.appendChild(header);
-    dialog.appendChild(rail);
+    if (pipeline) dialog.appendChild(rail);
     dialog.appendChild(body);
     dialog.appendChild(actions);
     if (screenshotRow) dialog.appendChild(screenshotRow);

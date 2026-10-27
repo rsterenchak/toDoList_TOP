@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-27',
         added: [
-            'The phone editor\'s Agent tab now shows each agent step as a collapsible section, with only the one waiting on you opened, so its options are visible without scrolling.',
             'Tasks handed to a second triage pass now show "Escalating…" instead of dropping out of Generating…, and the Models panel has an Escalate row for choosing that pass\'s model.',
+            'The sign-in screen offers "Use offline on this device", which opens the app without an account for projects and tasks only, saved in this browser, with Sign in available from Settings later.',
         ],
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
