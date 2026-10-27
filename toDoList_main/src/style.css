@@ -1289,7 +1289,18 @@ body {
 #descEditorModal {
   width: 100%;
   max-width: 520px;
-  max-height: 86vh;
+  /* Sized against the DYNAMIC viewport so mobile browser chrome (URL bar,
+     toolbar) can't push the bottom of the dialog off-screen the way the old
+     86vh / 92vh caps did — `vh` measures the layout viewport, which ignores the
+     chrome. 36px = the backdrop's 18px padding on both edges. The `vh` line is
+     the fallback for browsers without `dvh`. The body's Notes / Agent panes
+     scroll inside this fixed height instead of growing the dialog. */
+  height: min(560px, calc(100vh - 36px));
+  height: min(560px, calc(100dvh - 36px));
+  /* Last resort: when the header, rail, actions, SCREENSHOT row and MANUAL
+     STATUS plus the body's 200px floor (below) exceed the cap on a very short
+     screen, the dialog scrolls as a whole rather than painting past its edge. */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background: var(--bg-surface);
@@ -1497,7 +1508,10 @@ body {
 
 #descEditorModalBody {
   padding: 12px 14px;
-  flex: 1 1 auto;
+  /* Grow into the space the fixed-height dialog leaves, but never shrink below a
+     200px basis — the actions / screenshot / status siblings are tall enough on
+     a phone that a shrinkable body was squeezed to nothing under the cap. */
+  flex: 1 0 200px;
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -1511,6 +1525,84 @@ body {
      MANUAL STATUS control — which live in the sibling actions container below,
      outside this scroll region — always reachable. */
   overflow-y: auto;
+}
+
+/* NOTES / AGENT tab bar — shown only while an agent phase block is mounted
+   (modals.js syncAgentTabs). SpaceMono uppercase to match the pipeline labels;
+   36px tap targets. */
+#descEditorModalTabs {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 4px;
+  border-bottom: 0.5px solid var(--border-dim);
+}
+#descEditorModalTabs[hidden],
+.descEditorModalPane[hidden] {
+  display: none !important;
+}
+.descEditorModalTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+}
+.descEditorModalTab:hover { color: var(--text-primary); }
+.descEditorModalTab:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+.descEditorModalTab[aria-selected="true"] {
+  color: var(--accent-text);
+  border-bottom-color: var(--accent);
+}
+.descEditorModalTabBadge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--accent-dim);
+  color: var(--accent-text);
+  font-size: 10px;
+  line-height: 18px;
+  text-align: center;
+  letter-spacing: 0;
+}
+
+/* Each pane is its own scroll region inside the fixed-height dialog, so the
+   stacked agent blocks (or the textarea's min-height floor) scroll in place
+   rather than pushing the modal past its cap. */
+.descEditorModalPane {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+/* Agent button rows wrap rather than overflowing the phone width, and every
+   control keeps a 36px tap floor. */
+#descEditorModalAgentPane .askingAnswerActions,
+#descEditorModalAgentPane .descDispatchActions,
+#descEditorModalAgentPane .descReviewActions,
+#descEditorModalAgentPane .descReviewActionsPrimary,
+#descEditorModalAgentPane .descReviewActionsTertiary,
+#descEditorModalAgentPane .agentMockupTabs,
+#descEditorModalAgentPane .agentMockupUseRow {
+  flex-wrap: wrap;
+}
+#descEditorModalAgentPane button {
+  min-height: 36px;
+}
+#descEditorModalAgentPane > * {
+  flex-shrink: 0;
 }
 
 /* THE ENTRY label above the textarea — the SpaceMono uppercase accent label
@@ -2209,9 +2301,6 @@ body {
 }
 
 @media (max-width: 480px) {
-  #descEditorModal {
-    max-height: 92vh;
-  }
   #descEditorModalTextarea {
     /* Lowered from 220px: on a short phone the old floor plus the rail, label,
        the six action controls (including the full-width REVIEW row), and the

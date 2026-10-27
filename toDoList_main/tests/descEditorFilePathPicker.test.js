@@ -219,11 +219,11 @@ describe('File:-path picker — modal host (modals.js)', () => {
         expect(modals).not.toMatch(/getCachedManifest\(/);
     });
 
-    it('mounts the trigger above the textarea and the panel in the body, keeping the modal id hooks', () => {
+    it('mounts the trigger above the textarea and the panel in the Notes pane, keeping the modal id hooks', () => {
         expect(modals).toMatch(/createFilePicker\(\{/);
         expect(modals).toMatch(/triggerId:\s*['"]descEditorModalTargetPick['"]/);
-        expect(modals).toMatch(/body\.insertBefore\(\s*filePicker\.trigger\s*,\s*textarea\s*\)/);
-        expect(modals).toMatch(/body\.appendChild\(\s*filePicker\.panel\s*\)/);
+        expect(modals).toMatch(/notesPane\.insertBefore\(\s*filePicker\.trigger\s*,\s*textarea\s*\)/);
+        expect(modals).toMatch(/notesPane\.appendChild\(\s*filePicker\.panel\s*\)/);
     });
 
     it('persists through listLogic after a pick', () => {
