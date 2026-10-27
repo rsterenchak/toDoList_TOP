@@ -60,7 +60,7 @@ describe('Structure tab — left-gutter guide lines', () => {
     it('paints quiet 1px caret-purple lines on a 14px period via a repeating gradient', () => {
         const decl = rule('.structureFolderRow::before');
         expect(decl).not.toBeNull();
-        expect(decl).toMatch(/background-image:\s*repeating-linear-gradient\(\s*to right,\s*rgba\(157,\s*147,\s*238,\s*0\.22\)\s*0\s*1px,\s*transparent\s*1px\s*14px\)/);
+        expect(decl).toMatch(/background-image:\s*repeating-linear-gradient\(\s*to right,\s*color-mix\(in srgb, var\(--accent-soft\) 22%, transparent\)\s*0\s*1px,\s*transparent\s*1px\s*14px\)/);
     });
 
     it('anchors the strip at the caret column and spans the full row height, click-through', () => {

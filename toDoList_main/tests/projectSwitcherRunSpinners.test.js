@@ -155,7 +155,7 @@ describe('project-switcher run spinners — styling', () => {
         const base = css.match(/\.projectPickerRunSpinner\s*\{[^}]*\}/);
         expect(base).not.toBeNull();
         expect(base[0]).toMatch(/display:\s*none/);
-        expect(base[0]).toMatch(/#9D93EE/);
+        expect(base[0]).toMatch(/var\(--accent-soft\)/);
         expect(base[0]).toMatch(/pointer-events:\s*none/);
         const active = css.match(/\.projectPickerRunSpinner--active\s*\{[^}]*\}/);
         expect(active).not.toBeNull();
@@ -168,7 +168,7 @@ describe('project-switcher run spinners — styling', () => {
         const base = css.match(/\.projRunSpinner\s*\{[^}]*\}/);
         expect(base).not.toBeNull();
         expect(base[0]).toMatch(/display:\s*none/);
-        expect(base[0]).toMatch(/#9D93EE/);
+        expect(base[0]).toMatch(/var\(--accent-soft\)/);
         expect(base[0]).toMatch(/pointer-events:\s*none/);
         // The row gains a column for the spinner, and a 5-column variant coexists with the bolt.
         expect(css).toMatch(/#projChild\.hasRunSpinner\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s+auto\s+auto\s+12px/);

@@ -109,7 +109,7 @@ describe('two-pane sub-header polish (desktop)', () => {
             /#desktopChatPane\s+\.claudeTabGroup\s+\.claudeTab\[aria-selected="true"\]\s*\{([^}]*)\}/
         );
         expect(active).not.toBeNull();
-        expect(active[1]).toMatch(/background:\s*#6C5DF5/i);
+        expect(active[1]).toMatch(/background:\s*var\(--accent-strong\)/i);
     });
 
     // ── (f) Collapse toggle behavior preserved ──

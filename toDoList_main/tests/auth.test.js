@@ -409,6 +409,6 @@ describe('Auth modal — CSS', () => {
         // The design pass pinned this exact accent — keep it sourced
         // from the literal so a theme-token drift can't quietly change
         // the auth gate's button color.
-        expect(block).toMatch(/#6C5DF5/i);
+        expect(block).toMatch(/var\(--accent-strong\)/i);
     });
 });

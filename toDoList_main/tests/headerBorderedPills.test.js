@@ -47,8 +47,8 @@ describe('header — bordered STREAM/STRUCTURE pills + project-block spacing', (
         expect(rule[1]).toMatch(/border-radius:\s*6px/);
         const active = css.match(/\n\.viewPill\.active\s*\{([^}]*)\}/);
         expect(active).not.toBeNull();
-        expect(active[1]).toMatch(/background:\s*rgba\(108, 93, 245/);
-        expect(active[1]).toMatch(/border-color:\s*#6C5DF5/);
+        expect(active[1]).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-strong\)/);
+        expect(active[1]).toMatch(/border-color:\s*var\(--accent-strong\)/);
     });
 
     it('(2) opens horizontal space between the project block and the pills without a second auto margin', () => {

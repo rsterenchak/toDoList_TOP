@@ -176,7 +176,7 @@ describe('mobile Sort trigger — CSS visibility', () => {
         const dueRule = /#taskSortBtnMobile\[data-sort="due"\]\s+\.taskSortBtnMobileGlyph[\s\S]*?\{([^}]*)\}/;
         const match = css.match(dueRule);
         expect(match).not.toBeNull();
-        expect(match[1].toLowerCase()).toMatch(/#9d93ee/);
+        expect(match[1].toLowerCase()).toMatch(/var\(--accent-soft\)/);
         expect(css).toMatch(/#taskSortBtnMobile\[data-sort="status"\]\s+\.taskSortBtnMobileGlyph/);
     });
 });
@@ -193,7 +193,7 @@ describe('mobile Sort bottom sheet — CSS', () => {
         const ruleRe = /\.taskSortSheetChip\.selected\s*\{([^}]*)\}/;
         const match = css.match(ruleRe);
         expect(match).not.toBeNull();
-        expect(match[1].toLowerCase()).toMatch(/#6c5df5/);
+        expect(match[1].toLowerCase()).toMatch(/var\(--accent-strong\)/);
     });
 });
 

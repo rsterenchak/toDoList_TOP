@@ -71,8 +71,8 @@ describe('desc editor modal — stacked actions layout', () => {
             '#descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected)'
         );
         expect(body).not.toBeNull();
-        expect(body).toMatch(/background:\s*#6C5DF5/i);
-        expect(body).toMatch(/border-color:\s*#6C5DF5/i);
+        expect(body).toMatch(/background:\s*var\(--accent-strong\)/i);
+        expect(body).toMatch(/border-color:\s*var\(--accent-strong\)/i);
     });
 
     it('Clear and Copy share the second row at equal width', () => {

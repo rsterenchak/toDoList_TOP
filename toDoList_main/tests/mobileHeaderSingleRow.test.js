@@ -92,7 +92,7 @@ describe('Dense left-aligned mobile header (Variant C)', () => {
         expect(name).toMatch(/font-size:\s*16px/);
         expect(name).toMatch(/font-weight:\s*700/);
         expect(name).toMatch(/text-align:\s*left/);
-        expect(name).toMatch(/color:\s*#9D93EE/i);
+        expect(name).toMatch(/color:\s*var\(--accent-soft\)/i);
         // One line with ellipsis, not a two-line clamp — a name too long for one
         // line truncates rather than wrapping the chevron off the row.
         expect(name).toMatch(/white-space:\s*nowrap/);
@@ -129,7 +129,7 @@ describe('Dense left-aligned mobile header (Variant C)', () => {
 
     it('paints the ▾ project-menu chevron in full accent purple', () => {
         const chev = rule(denseBlock(), '.mobileProjDropdownChev');
-        expect(chev).toMatch(/color:\s*#6C5DF5/i);
+        expect(chev).toMatch(/color:\s*var\(--accent-strong\)/i);
     });
 
     it('hides the desktop in-pill count badge on mobile (counts render as their own line)', () => {

@@ -73,7 +73,7 @@ describe('desktop project eyebrow — PROJECT n OF m two-line block', () => {
         // as the smaller line and the name as the larger.
         const name = rule(desktopPillBlock(), '#mobileProjName');
         expect(name).toMatch(/font-size:\s*14px/);
-        expect(name).toMatch(/color:\s*#9D93EE/);
+        expect(name).toMatch(/color:\s*var\(--accent-soft\)/);
     });
 
     it('(d) the title row (name + ▾) stays a horizontal flex row', () => {
