@@ -2998,3 +2998,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/voiceInput.js`, `toDoList_main/src/toDoRow.js`, `toDoList_main/src/style.css`, `toDoList_main/tests/voiceInput.test.js`
   - Verify: 390x844, 1300x900 → /
   <!-- id: d570acac-ff14-41d6-b83b-0289a51118f6 -->
+
+- [ ] **[MEDIUM]** Move hardcoded Void violets in style.css onto theme tokens
+  - Type: bug
+  - Description: About 309 color values in `toDoList_main/src/style.css` name the Void violets directly instead of reading theme tokens: `#6C5DF5` (91), `#9D93EE` (88), `#8b7bff` (15), `rgba(108, 93, 245, …)` (82), `rgba(139, 123, 255, …)` (13) and `rgba(157, 147, …)` (20). They include the `#toDoChild` row border, the `#navBar` bottom border and most of the Claude chat pane, so they ignore `data-theme` and would stay purple under any theme with a non-violet accent. Add two tokens to the `:root` Void block, `--accent-strong: #6C5DF5` and `--accent-soft: #9D93EE`, and give them light values in `:root[data-theme="light"]` (`--accent-strong: #5d4eca`, `--accent-soft: #4a3bb8`). Then replace every literal: `#8b7bff` → `var(--accent)`, `#6C5DF5` → `var(--accent-strong)`, `#9D93EE` → `var(--accent-soft)`, and each rgba form → `color-mix(in srgb, var(<matching token>) <alpha as %>, transparent)` (108,93,245 → `--accent-strong`; 139,123,255 → `--accent`; 157,147,238 → `--accent-soft`). Leave the `#8b7bff` pairs in `mockupFlow.js` and the `#ffbd5e` amber out of scope. Dark mode must render pixel-identical at 1300x900 and 390x844 (same values, now via tokens). In light mode, spots that were stuck on the dark-theme violets pick up the darker light-theme violets, which is intended; no light-violet text on a light fill should remain.
+  - File: `toDoList_main/src/style.css`
+  - Verify: 1300x900, 390x844 → /
+  <!-- id: f879b3f1-cfff-4033-8143-b96582673b0d -->
