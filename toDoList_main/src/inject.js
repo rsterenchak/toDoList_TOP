@@ -12,6 +12,7 @@ import { listLogic } from './listLogic.js';
 import { supabase } from './supabaseClient.js';
 import { isMobileViewport } from './viewport.js';
 import { setShippedMarkerRefresher, setDispatchReconcilerDeps, setAgentAvailabilityDeps } from './agentQueueStore.js';
+import { getEntryScreenshot, hasScreenshotLine, clearStagedScreenshot } from './entryScreenshot.js';
 
 const URL_KEY              = 'todoapp_injectWorkerUrl';
 const SECRET_KEY           = 'todoapp_injectSharedSecret';
@@ -373,6 +374,13 @@ export function emitTodoRunStatusChange() {
 
 async function injectDescription(item, target) {
     if (!item || !item.desc) return { ok: false, reason: 'No description' };
+    // A `- Screenshot:` line is the Worker's contract that the image rides along
+    // (it 400s otherwise). The staged image is in-memory only, so a reload can
+    // leave the line with nothing to send — refuse rather than post a dangling path.
+    const screenshot = getEntryScreenshot(item);
+    if (!screenshot && hasScreenshotLine(item.desc)) {
+        return { ok: false, reason: 'Reattach the screenshot or remove its line' };
+    }
     try {
         // Mint once and reuse on re-inject so the Worker's dedup-by-id makes
         // a repeat a no-op and the entry traces back to its merged PR.
@@ -385,8 +393,14 @@ async function injectDescription(item, target) {
             body.repo = target.repo;
             body.filePath = target.file_path;
         }
+        if (screenshot) {
+            body.screenshot = { media_type: screenshot.media_type, data: screenshot.data };
+        }
         await postToWorker(body);
         item.injectedAt = Date.now();
+        // The Worker has committed the image to docs/context/, so that file is
+        // now the source; drop the staged copy but keep the entry's line.
+        if (screenshot) clearStagedScreenshot(item);
         listLogic.saveToStorage();
         // Show the amber pending glyph immediately, then reconcile against the
         // real TODO.md (forced past the TTL so the just-injected entry lands).

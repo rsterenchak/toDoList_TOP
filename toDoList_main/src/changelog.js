@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-27',
+        added: [
+            'A todo\'s description panel and mobile editor now have a Screenshot row where you can attach one image, which Inject commits alongside the entry so the run that ships it can see it.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-26',
         fixed: [
-            'Leaving voice dictation running for a minute no longer adds a todo on its own, the mic stops listening and your words stay in the field for you to add.',
             'New todos commit again on iPhones whose storage is full, with a one-time warning when space runs out, a Storage line in Settings showing how much the app uses, and a Clear caches action that frees it.',
             'A dictated todo can always be added by tap: when the phone stops listening the overlay stays up paused with Tap to add and a Discard button, and the + on the Add a task row turns into a tappable add button once the row has text.',
             'Purple accents across the app, including todo row and header borders and the Claude chat pane, now switch to the deeper light-theme violets in light mode instead of staying on the dark-theme shades.',

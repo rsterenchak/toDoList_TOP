@@ -44,6 +44,7 @@ import { buildMockupSecondary } from './mockupFlow.js';
 // picker and supplies its post-pick side effects. insertFilePathIntoEntry is
 // re-exported below to preserve its existing import path for callers/tests.
 import { createFilePicker, insertFilePathIntoEntry } from './filePicker.js';
+import { buildScreenshotRow, refreshScreenshotRow, wireScreenshotRow } from './entryScreenshot.js';
 
 export { insertFilePathIntoEntry };
 
@@ -870,13 +871,36 @@ export function showDescEditorModal(item, options) {
     // OWN annotation, so the label reads "Manual status".
     const statusRow = buildManualStatusControl(item, opts.projectName || '');
 
+    // ── SCREENSHOT ROW ──
+    // The mobile host of entryScreenshot.js's row, directly after the actions: one
+    // image the Inject POST commits beside the entry. The modal owns the hidden
+    // image input (on a phone it opens the camera roll). A stage or remove re-syncs
+    // the textarea and fires its `input`, which updates item.desc + Inject below.
+    let screenshotRow = null;
+    if (item.id) {
+        screenshotRow = buildScreenshotRow();
+        const screenshotInput = document.createElement('input');
+        screenshotInput.type = 'file';
+        screenshotInput.accept = 'image/*';
+        screenshotInput.hidden = true;
+        screenshotInput.className = 'descScreenshotInput';
+        screenshotRow.appendChild(screenshotInput);
+        wireScreenshotRow(screenshotRow, {
+            item: item,
+            fileInput: screenshotInput,
+            textarea: textarea,
+            projectName: opts.projectName || '',
+        });
+    }
+
     // Order: header, phase rail, entry body, actions (Generate / Inject /
-    // Clear / Copy), then the manual STATUS control last — the derived phase now
+    // Clear / Copy), the SCREENSHOT row, then the manual STATUS control last — the derived phase now
     // leads and the manual annotation is demoted below the actions.
     dialog.appendChild(header);
     dialog.appendChild(rail);
     dialog.appendChild(body);
     dialog.appendChild(actions);
+    if (screenshotRow) dialog.appendChild(screenshotRow);
     dialog.appendChild(statusRow);
     backdrop.appendChild(dialog);
     document.body.appendChild(backdrop);
@@ -951,6 +975,7 @@ export function showDescEditorModal(item, options) {
                 textarea.value = '';
                 item.desc = '';
                 refreshInjectButton(injectBtn, item, opts.projectName || '');
+                refreshScreenshotRow(dialog, item, '');
                 textarea.focus();
             }
         });
@@ -963,6 +988,7 @@ export function showDescEditorModal(item, options) {
     textarea.addEventListener('input', function() {
         item.desc = textarea.value;
         refreshInjectButton(injectBtn, item, opts.projectName || '');
+        refreshScreenshotRow(dialog, item, textarea.value);
     });
 
     // Mobile keyboards land focus more reliably if the focus call is deferred
