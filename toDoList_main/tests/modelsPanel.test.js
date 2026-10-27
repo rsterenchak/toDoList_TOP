@@ -314,13 +314,31 @@ describe('models panel — row presentation (pure)', () => {
     it('stacks DEEP between CHAT and GHOST, pickable and on the non-plan lane', () => {
         const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
         const order = rows.map((r) => r.surface);
-        expect(order).toEqual(['run', 'triage', 'derive', 'scan', 'chat', 'deep', 'mockup', 'ghost']);
+        expect(order).toEqual(['run', 'triage', 'escalate', 'derive', 'scan', 'chat', 'deep', 'mockup', 'ghost']);
         const deep = rows.find((r) => r.surface === 'deep');
         // Not in plan_lanes, so the existing dot logic amber-dots it for free —
         // and it is a real row, not the locked display-only shape GHOST uses.
         expect(deep.lane).toBe('other');
         expect(deep.locked).toBe(false);
         expect(deep.label).toBe('DEEP');
+    });
+
+    it('stacks ESCALATE right after TRIAGE, pickable, noted as the second triage pass', () => {
+        const rows = buildModelRows(CATALOG, settingsFixture(), 'repo');
+        const order = rows.map((r) => r.surface);
+        expect(order.indexOf('escalate')).toBe(order.indexOf('triage') + 1);
+        const escalate = rows.find((r) => r.surface === 'escalate');
+        expect(escalate.locked).toBe(false);
+        expect(escalate.label).toBe('ESCALATE');
+        expect(escalate.subline).toBe("second triage pass for rows the sweep couldn't root-cause");
+        // The plan dot follows the catalog's plan_lanes; this fixture's list
+        // predates the surface, so it reads as a non-plan lane until the Worker
+        // names it.
+        expect(escalate.lane).toBe('other');
+        const withLane = buildModelRows(Object.assign({}, CATALOG, {
+            plan_lanes: ['run', 'triage', 'escalate', 'derive'],
+        }), settingsFixture(), 'repo');
+        expect(withLane.find((r) => r.surface === 'escalate').lane).toBe('plan');
     });
 
     it('stacks MOCKUP after DEEP, pickable, noted as the A/B/C previews row', () => {
@@ -558,7 +576,7 @@ describe('models panel — panel behaviour', () => {
     it('renders every surface plus ghost, reading the active repo for the scope toggle', async () => {
         await openPanel();
         const labels = [...document.querySelectorAll('.modelsRowLabel')].map((el) => el.textContent);
-        expect(labels).toEqual(['RUN', 'TRIAGE', 'DERIVE', 'SCAN', 'CHAT', 'DEEP', 'MOCKUP', 'GHOST']);
+        expect(labels).toEqual(['RUN', 'TRIAGE', 'ESCALATE', 'DERIVE', 'SCAN', 'CHAT', 'DEEP', 'MOCKUP', 'GHOST']);
         expect(fetchModelSettings).toHaveBeenCalledWith('rsterenchak/toDoList_TOP');
         // The REPO half is labelled with the workspace's short name, not owner/name.
         expect(document.querySelectorAll('.modelsScopeSeg')[0].textContent).toBe('toDoList_TOP');
@@ -785,6 +803,20 @@ describe('models panel — panel behaviour', () => {
         expect(chip.textContent).toBe('gpt-5-codex');
         expect(rowBySurface('run').querySelector('.modelsRowBadge')).toBeTruthy();
         expect(showInjectToast).not.toHaveBeenCalled();
+    });
+
+    it('renders the ESCALATE row and filters its picker on the triage lane', async () => {
+        await openPanel();
+        const escalateRow = rowBySurface('escalate');
+        expect(escalateRow).toBeTruthy();
+        expect(escalateRow.tagName).toBe('BUTTON');
+        escalateRow.click();
+        await flush();
+        expect(document.getElementById('modelsPanelTitleText').textContent).toBe('ESCALATE');
+        // The triage lane's models only — a run/chat-only model is absent.
+        const labels = [...document.querySelectorAll('.modelsPickerRow')]
+            .map((r) => r.querySelector('.modelsPickerLabel').textContent);
+        expect(labels).toEqual(['Inherit', 'claude-opus-4-8', 'claude-sonnet-5']);
     });
 
     it('drills into DEEP and writes the pick against the deep surface', async () => {

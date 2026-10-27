@@ -127,7 +127,7 @@ const BUCKETS = [
     { key: 'proposed', label: 'Proposed', states: ['proposed'] },
     { key: 'needs-you', label: 'Needs you', states: ['needs_words', 'needs_mockup'] },
     { key: 'stuck', label: 'Stuck', states: ['failed', 'no_change'] },
-    { key: 'in-progress', label: 'In progress', states: ['triaging', 'drafted', 'dispatched', 'running'] },
+    { key: 'in-progress', label: 'In progress', states: ['triaging', 'escalated', 'drafted', 'dispatched', 'running'] },
     { key: 'shipped', label: 'Shipped', states: ['shipped'] },
 ];
 
@@ -139,12 +139,12 @@ const THIN_STATES = ['dispatched', 'running'];
 // block appended below their state content (buildPostTriageHandoff). needs_words
 // is excluded — it renders the hand-off inline within its answer control — and so
 // is needs_mockup, which has its own Copy/Open-Claude mockup flow.
-const POST_TRIAGE_HANDOFF_STATES = ['drafted', 'shipped', 'failed', 'no_change', 'triaging'];
+const POST_TRIAGE_HANDOFF_STATES = ['drafted', 'shipped', 'failed', 'no_change', 'triaging', 'escalated'];
 
 // The in-flight workflow states that drive the header's Working/Idle pill and
 // the "N running" count: a row in any of these is actively moving through the
-// pipeline (being triaged, queued for dispatch, or executing a run).
-const IN_FLIGHT_STATES = ['triaging', 'dispatched', 'running'];
+// pipeline (being triaged or escalated, queued for dispatch, or executing a run).
+const IN_FLIGHT_STATES = ['triaging', 'escalated', 'dispatched', 'running'];
 
 // Human-readable chip label per state.
 const STATE_CHIP = {
@@ -153,6 +153,7 @@ const STATE_CHIP = {
     needs_mockup: 'Needs mockup',
     failed: 'Stuck',
     triaging: 'Triaging',
+    escalated: 'Escalating',
     drafted: 'Drafted',
     dispatched: 'Queued',
     running: 'Running',
@@ -521,11 +522,12 @@ function buildSecondary(row) {
     if (state === 'proposed') {
         return buildProposedSecondary(row);
     }
-    // In-progress triaging: a short status line.
-    if (state === 'triaging') {
+    // In-progress triaging: a short status line. An escalated row is the same
+    // in-flight card — the sweep handed it to the second triage pass.
+    if (state === 'triaging' || state === 'escalated') {
         const p = document.createElement('p');
         p.className = 'agentSecondary agentSecondaryMuted';
-        p.textContent = 'Triaging the request…';
+        p.textContent = state === 'escalated' ? 'Escalating…' : 'Triaging the request…';
         return p;
     }
     return null;

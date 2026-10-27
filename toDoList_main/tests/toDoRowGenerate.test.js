@@ -42,13 +42,18 @@ describe('Generate-with-triage — toDoRow.js control', () => {
         expect(toDoRow).toMatch(/loadQueueRows\(projectName\)\)\.then\(refreshDescStatusDots\)/);
     });
 
-    it('treats triaging as the generating state (spinner + read-only + inject disabled)', () => {
-        expect(toDoRow).toMatch(/state\s*===\s*'triaging'/);
+    it('treats triaging (and escalated) as the generating state (spinner + read-only + inject disabled)', () => {
+        expect(toDoRow).toMatch(/const generating = isGeneratingState\(state\)/);
         // textarea read-only ONLY while generating
         expect(toDoRow).toMatch(/textarea\.readOnly\s*=\s*generating/);
         // inject disabled while generating, restored on leaving it
         expect(toDoRow).toMatch(/injectBtn\.classList\.add\('injectBtn--generating'\)/);
         expect(toDoRow).toMatch(/refreshInjectButton\(injectBtn,\s*item,\s*projectName\)/);
+    });
+
+    it('labels the in-flight control Escalating… for an escalated row', () => {
+        expect(toDoRow).toMatch(/setGenerateVisual\(btn, inDescPanel \? 'hidden' : 'generating', state === 'escalated'\)/);
+        expect(toDoRow).toMatch(/escalating \? 'Escalating…' : 'Generating…'/);
     });
 
     it('lands the drafted row text into the description through listLogic, exactly once', () => {

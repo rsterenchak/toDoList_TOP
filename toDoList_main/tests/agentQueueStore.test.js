@@ -41,6 +41,7 @@ import {
     notifyQueueChange,
     setTriageDispatcher,
     fireTriageSweep,
+    isGeneratingState,
 } from '../src/agentQueueStore.js';
 
 const tick = () => new Promise((r) => setTimeout(r, 0));
@@ -57,6 +58,22 @@ beforeEach(() => {
 
 afterEach(() => {
     setTriageDispatcher(null);
+});
+
+describe('isGeneratingState', () => {
+    it('treats triaging and escalated as in flight', () => {
+        expect(isGeneratingState('triaging')).toBe(true);
+        // The sweep's hand-off to the escalation pass is still in flight — the
+        // row must not drop out of Generating… while it sits there.
+        expect(isGeneratingState('escalated')).toBe(true);
+    });
+
+    it('is false for every settled or post-triage state', () => {
+        ['drafted', 'dispatched', 'running', 'shipped', 'failed', 'no_change',
+            'needs_words', 'needs_mockup', 'proposed', null, undefined, ''].forEach((s) => {
+            expect(isGeneratingState(s)).toBe(false);
+        });
+    });
 });
 
 describe('cache accessors', () => {

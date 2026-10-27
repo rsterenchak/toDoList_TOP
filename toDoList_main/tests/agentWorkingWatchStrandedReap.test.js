@@ -207,4 +207,20 @@ describe('working watch — reaping rows stranded at triaging', () => {
         await tick();
         expect(failedFlips()).toHaveLength(1);
     });
+
+    it('reaps an escalated row with no run behind it, the same as a stuck triaging row', async () => {
+        listLogic.addProject('Hotel');
+        listLogic.setProjectTargetId('Hotel', 'tgt-1');
+        rowsByProjectId[listLogic.getProjectId('Hotel')] = [{ id: 'escalated-1', state: 'escalated' }];
+        setSelected('Hotel');
+
+        await tick();
+        advance(SWEEP_RECONCILE_QUIET_MS + 1000);
+        await tick();
+
+        const flips = failedFlips();
+        expect(flips).toHaveLength(1);
+        expect(flips[0].id).toBe('escalated-1');
+        expect(flips[0].patch.failure_reason).toMatch(/Retry triage/);
+    });
 });

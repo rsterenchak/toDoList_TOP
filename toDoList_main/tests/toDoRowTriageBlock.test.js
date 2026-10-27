@@ -263,7 +263,7 @@ describe('TRIAGE RUNNING block — wiring', () => {
         const start = toDoRow.indexOf('export function syncTriageBlock(');
         const body = toDoRow.slice(start, start + 1400);
         expect(body).toMatch(/getQueueRowForTodo\(item\.id\)/);
-        expect(body).toMatch(/row\.state === 'triaging'/);
+        expect(body).toMatch(/isGeneratingState\(row\.state\)/);
     });
 
     it('mounts on panel open and repaints on the live sweep (definition + two call sites)', () => {
