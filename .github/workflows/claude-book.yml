@@ -35,6 +35,7 @@ on:
 
 permissions:
   contents: write     # the book pass commits codebook.json back to main
+  actions: write      # …and dispatches the publish workflow afterwards (see below)
   id-token: write     # required: the action authenticates via OIDC
 
 concurrency:
@@ -67,6 +68,26 @@ jobs:
           if [ -f package-lock.json ]; then npm ci || npm install || true
           elif [ -f package.json ]; then npm install || true
           fi
+
+      # Resolve the generator file. gen-src-manifest.js is filled on the web
+      # shapes (gen-src-manifest.js / .cjs) but onboard.sh writes a "(none — …)"
+      # note on the .NET shapes, which only deploy.yml ever read — so the first
+      # .NET book run tried to execute `node scripts/(none — desktop project)`.
+      # Go by what is actually in scripts/ and export the basename for the
+      # agent step and the gate; fail loudly if neither variant exists.
+      - name: Resolve generator
+        working-directory: toDoList_main
+        run: |
+          gen=""
+          for cand in "gen-src-manifest.js" gen-src-manifest.js gen-src-manifest.cjs; do
+            if [ -n "$cand" ] && [ -f "scripts/$cand" ]; then gen="$cand"; break; fi
+          done
+          if [ -z "$gen" ]; then
+            echo "No scripts/gen-src-manifest.js or .cjs in $(pwd) — the book pass needs the manifest generator."
+            exit 1
+          fi
+          echo "MANIFEST_VARIANT=$gen" >> "$GITHUB_ENV"
+          echo "Generator: scripts/$gen"
 
       # Resolve model routing. Identical to claude-derive.yml: claude-* ids
       # (and no pick) stay on plan via OAuth; anything else reroutes every
@@ -111,7 +132,12 @@ jobs:
         env:
           BOOK_SCOPE: ${{ inputs.scope || 'stale' }}
           WORKING_DIR: toDoList_main
-          MANIFEST_VARIANT: gen-src-manifest.js
+          # MANIFEST_VARIANT comes from the Resolve generator step (GITHUB_ENV).
+          # Empty on web repos (the generator's default mode); 'csharp' on the
+          # .NET shapes so the routine's own generator runs and the gate below
+          # build the same index manifest.yml publishes.
+          MANIFEST_LANG: ''
+          MANIFEST_SRC_ROOT: 'toDoList_main/src'
         with:
           # Subscription auth (Pro/Max) — the SAME plan-billed path as
           # claude-run.yml / claude-derive.yml, NOT anthropic_api_key.
@@ -134,6 +160,11 @@ jobs:
             and `all` scopes mean, and how to validate every reference with the
             generator before you finish.
 
+            After your validation pass is clean, run the generator once more
+            with `--write-fingerprints` (per `.claude/book.md`) so every chapter
+            carries the fingerprint of the code it references; the gate below
+            refuses a book whose fingerprints are missing or already drifted.
+
             Do NOT commit or push. Leave the updated `codebook.json` in the
             working tree; the workflow's next step validates and commits it.
 
@@ -149,16 +180,25 @@ jobs:
         env:
           MANIFEST_OUT_DIR: ${{ runner.temp }}/book-check
           MANIFEST_DETERMINISTIC: 'true'
+          MANIFEST_LANG: ''
+          MANIFEST_SRC_ROOT: 'toDoList_main/src'
         run: |
           if [ ! -f codebook.json ]; then
             echo "No codebook.json after the pass — nothing to commit."
             exit 0
           fi
-          node scripts/gen-src-manifest.js > gen.out 2> gen.err || { cat gen.err; exit 1; }
+          node "scripts/$MANIFEST_VARIANT" > gen.out 2> gen.err || { cat gen.err; exit 1; }
           cat gen.out
           if grep -q 'Warning: codebook.json' gen.err; then
             echo "codebook.json produced warnings — refusing to commit:"
             grep 'Warning: codebook.json' gen.err
+            exit 1
+          fi
+          # Tours are authored by the same pass; a step that no longer resolves
+          # is dropped silently by the generator, so refuse on its warning too.
+          if grep -q 'Warning: codetour.json' gen.err; then
+            echo "codetour.json produced warnings — refusing to commit:"
+            grep 'Warning: codetour.json' gen.err
             exit 1
           fi
           if ! grep -q 'src-book.json written' gen.out; then
@@ -169,6 +209,14 @@ jobs:
             echo "src-book.json has stale chapters — refusing to commit."
             exit 1
           fi
+          # Every chapter must carry a fingerprint (the routine's final
+          # --write-fingerprints run); a book without them can never report drift.
+          if node -e "const b=require('./codebook.json');process.exit(b.chapters.every(c=>c.fingerprint)?0:1)" 2>/dev/null; then
+            echo "Fingerprints present on every chapter."
+          else
+            echo "codebook.json is missing fingerprints — the routine must run --write-fingerprints after validation. Refusing to commit."
+            exit 1
+          fi
           # The repo's own generator tests, when it has them (Void does). A
           # repo without them skips this silently.
           if [ -f tests/genSrcManifest.test.js ] && [ -d node_modules ]; then
@@ -176,19 +224,65 @@ jobs:
           fi
           rm -f gen.out gen.err
 
-      # Commit the book. No [skip ci]: deploy.yml / manifest.yml must run so the
-      # published src-book.json picks up the new chapters. paths-ignore in those
-      # workflows covers the GENERATED files, not codebook.json, so this commit
-      # triggers exactly one republish.
+      # Commit the book. Two things about the push:
+      #   1. claude-code-action rewrites the checkout's remote URL with its own
+      #      app token and REVOKES that token in its post step, so a plain
+      #      `git push` here fails with "Invalid username or token". Point the
+      #      remote back at the workflow's GITHUB_TOKEN first.
+      #   2. A GITHUB_TOKEN push does not trigger other workflows, so the
+      #      republish (manifest.yml / deploy.yml) is dispatched explicitly in
+      #      the next step rather than relied on as a push trigger.
       - name: Commit codebook.json if it changed
+        id: commit
         working-directory: toDoList_main
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
-          if [ ! -f codebook.json ] || [ -z "$(git status --porcelain codebook.json)" ]; then
-            echo "codebook.json unchanged — nothing to commit."
+          changed=""
+          for f in codebook.json codetour.json; do
+            if [ -f "$f" ] && [ -n "$(git status --porcelain "$f")" ]; then changed="$changed $f"; fi
+          done
+          if [ -z "$changed" ]; then
+            echo "codebook.json / codetour.json unchanged — nothing to commit."
+            echo "changed=0" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add codebook.json
-          git commit -m "Update code book (${{ inputs.scope || 'stale' }})"
-          git push
+          git add $changed
+          # Repos that serve the manifest outputs from the repo root (the
+          # served-from-source and .NET shapes carry manifest.yml) get them
+          # regenerated into this same commit: a book run IS a manifest publish,
+          # so src-symbols.json can never lag the chapters and there is no
+          # separate "Update source manifest" step to remember. Build-pipeline
+          # repos keep theirs under dist/ via deploy.yml, dispatched below.
+          if [ -f "$GITHUB_WORKSPACE/.github/workflows/manifest.yml" ]; then
+            ( cd "$GITHUB_WORKSPACE" && MANIFEST_OUT_DIR=. MANIFEST_DETERMINISTIC=true \
+                MANIFEST_LANG='' MANIFEST_SRC_ROOT='toDoList_main/src' \
+                node "toDoList_main/scripts/$MANIFEST_VARIANT" )
+            for f in src-manifest.json src-symbols.json src-tours.json src-book.json; do
+              [ -f "$GITHUB_WORKSPACE/$f" ] && git add "$GITHUB_WORKSPACE/$f"
+            done
+            echo "published=1" >> "$GITHUB_OUTPUT"
+          fi
+          git commit -m "Update code book (${{ inputs.scope || 'stale' }}) [skip ci]"
+          git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git push origin HEAD:main
+          echo "changed=1" >> "$GITHUB_OUTPUT"
+
+      # Build-pipeline repos publish from dist/ via deploy.yml, which a
+      # GITHUB_TOKEN push does not trigger — dispatch it. Root-served repos
+      # already got their outputs in the commit above (published=1), so
+      # nothing is dispatched there (the commit carries [skip ci] for the same
+      # reason: manifest.yml would only regenerate byte-identical files).
+      - name: Republish the manifest outputs
+        if: steps.commit.outputs.changed == '1' && steps.commit.outputs.published != '1'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f ".github/workflows/deploy.yml" ]; then
+            gh workflow run deploy.yml --ref main
+            echo "Dispatched deploy.yml"
+          else
+            echo "No deploy.yml to dispatch — src-book.json republishes on the next push."
+          fi
