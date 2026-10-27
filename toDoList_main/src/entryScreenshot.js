@@ -142,6 +142,45 @@ export function removeEntryScreenshot(item, opts) {
 }
 
 
+// ── PICK IN FLIGHT ───────────────────────────────────────────────────────
+// On a phone the idle tap opens the native Photos picker, which backgrounds the
+// page; on return index.js's visibility/focus wake re-hydrates the list, and the
+// tap already moved focus off the textarea, so its mid-edit guard misses it and
+// the rebuild tears the open row down under the pick. The flag is set when the
+// idle button opens the input and cleared on the input's `change` / `cancel`;
+// older iOS fires no `cancel` on a dismissed picker, so the next return to
+// visible also arms a 3s timer that clears it, and a cancelled pick can never
+// block hydration for good.
+export const SCREENSHOT_PICK_RETURN_MS = 3000;
+let pickInFlight = false;
+let pickTimer = null;
+
+// True while a screenshot pick is open (index.js skips re-hydrating meanwhile).
+export function isScreenshotPickInFlight() {
+    return pickInFlight;
+}
+
+function onPickReturn() {
+    if (document.visibilityState !== 'visible') return;
+    document.removeEventListener('visibilitychange', onPickReturn);
+    if (pickTimer) clearTimeout(pickTimer);
+    pickTimer = setTimeout(endScreenshotPick, SCREENSHOT_PICK_RETURN_MS);
+}
+
+function beginScreenshotPick() {
+    endScreenshotPick();
+    pickInFlight = true;
+    if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onPickReturn);
+}
+
+function endScreenshotPick() {
+    pickInFlight = false;
+    if (pickTimer) clearTimeout(pickTimer);
+    pickTimer = null;
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onPickReturn);
+}
+
+
 // ── THE ROW ──────────────────────────────────────────────────────────────
 // Idle: a dashed strip ("Tap to attach a screenshot"), also a drop target.
 // Staged: a 56×56 thumbnail (a background-image, no <img>), the committed path,
@@ -243,7 +282,11 @@ function refreshMountedRows() {
 export function wireScreenshotRow(row, opts) {
     if (!row || !opts || !opts.fileInput) return;
     row.__screenshotOpts = opts;
-    refreshScreenshotRow(row, opts.item, opts.textarea ? opts.textarea.value : undefined);
+    // The mount-time repaint reads item.desc, not the textarea: a host may wire
+    // the row before it fills the textarea, and an empty textarea read as "no
+    // line" would drop a staged image the entry still names. Later `input`
+    // events pass the live text, so deleting the line by hand still drops it.
+    refreshScreenshotRow(row, opts.item);
     if (row.__screenshotWired) return;
     row.__screenshotWired = true;
 
@@ -272,6 +315,7 @@ export function wireScreenshotRow(row, opts) {
         event.stopPropagation();
         const input = current().fileInput;
         try { input.value = ''; } catch (e) { /* defensive */ }
+        beginScreenshotPick();
         input.click();
     });
     row.querySelector('.descScreenshotRemove').addEventListener('click', function(event) {
@@ -297,7 +341,9 @@ export function wireScreenshotRow(row, opts) {
         row.screenshotStagePromise = stage(files[0]);
     });
     opts.fileInput.addEventListener('change', function() {
+        endScreenshotPick();
         const input = current().fileInput;
         row.screenshotStagePromise = stage(input.files && input.files[0]);
     });
+    opts.fileInput.addEventListener('cancel', endScreenshotPick);
 }

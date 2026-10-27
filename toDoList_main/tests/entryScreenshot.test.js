@@ -26,7 +26,13 @@ import {
     getEntryScreenshot,
     buildScreenshotRow,
     refreshScreenshotRow,
+    wireScreenshotRow,
+    isScreenshotPickInFlight,
+    SCREENSHOT_PICK_RETURN_MS,
 } from '../src/entryScreenshot.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
 
 // A todo's entry carries ONE screenshot that Inject commits beside it. The
 // `- Screenshot: docs/context/<entryId>.<ext>` line is the Worker's contract, so
@@ -218,5 +224,113 @@ describe('entry screenshot — Inject', () => {
         expect(fetchSpy).not.toHaveBeenCalled();
         const toast = document.getElementById('injectToast');
         expect(toast.textContent).toContain('Reattach the screenshot or remove its line');
+    });
+});
+
+describe('entry screenshot — surviving the pick and a reopen', () => {
+    let editSpy;
+    beforeEach(() => {
+        editSpy = vi.spyOn(listLogic, 'editToDoItem').mockImplementation(() => {});
+    });
+    afterEach(() => { editSpy.mockRestore(); vi.useRealTimers(); });
+
+    function mountRow(item, textareaValue) {
+        const row = buildScreenshotRow();
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.click = vi.fn();
+        const textarea = document.createElement('textarea');
+        textarea.value = textareaValue;
+        row.appendChild(fileInput);
+        wireScreenshotRow(row, { item, fileInput, textarea, projectName: 'P' });
+        return { row, fileInput, textarea };
+    }
+
+    it('wiring against a not-yet-filled textarea keeps the staged record item.desc names', async () => {
+        const item = toDo('Shot', '  - Type: bug', '', null, 0);
+        item.id = 'todo-reopen-1';
+        await stageEntryScreenshot(item, file());
+        const { row } = mountRow(item, '');
+        expect(getEntryScreenshot(item)).toBeTruthy();
+        expect(row.classList.contains('descScreenshotRow--staged')).toBe(true);
+        expect(row.querySelector('.descScreenshotPath').textContent)
+            .toBe('docs/context/' + item.entryId + '.png');
+        removeEntryScreenshot(item);
+    });
+
+    it('a later textarea input that drops the line still clears the stage', async () => {
+        const item = toDo('Shot', '  - Type: bug', '', null, 0);
+        item.id = 'todo-reopen-2';
+        await stageEntryScreenshot(item, file());
+        const { row } = mountRow(item, item.desc);
+        refreshScreenshotRow(row, item, stripScreenshotLine(item.desc));
+        expect(getEntryScreenshot(item)).toBeNull();
+    });
+
+    it('flags a pick in flight from the idle click until change or cancel', () => {
+        const item = toDo('Shot', '', '', null, 0);
+        item.id = 'todo-pick-1';
+        const { row, fileInput } = mountRow(item, '');
+        expect(isScreenshotPickInFlight()).toBe(false);
+
+        row.querySelector('.descScreenshotIdle').click();
+        expect(fileInput.click).toHaveBeenCalled();
+        expect(isScreenshotPickInFlight()).toBe(true);
+        fileInput.dispatchEvent(new Event('change'));
+        expect(isScreenshotPickInFlight()).toBe(false);
+
+        row.querySelector('.descScreenshotIdle').click();
+        expect(isScreenshotPickInFlight()).toBe(true);
+        fileInput.dispatchEvent(new Event('cancel'));
+        expect(isScreenshotPickInFlight()).toBe(false);
+    });
+
+    it('a dismissed pick with no cancel clears itself shortly after the page returns', () => {
+        vi.useFakeTimers();
+        const item = toDo('Shot', '', '', null, 0);
+        item.id = 'todo-pick-2';
+        const { row } = mountRow(item, '');
+        row.querySelector('.descScreenshotIdle').click();
+        expect(isScreenshotPickInFlight()).toBe(true);
+
+        document.dispatchEvent(new Event('visibilitychange'));
+        vi.advanceTimersByTime(SCREENSHOT_PICK_RETURN_MS - 1);
+        expect(isScreenshotPickInFlight()).toBe(true);
+        vi.advanceTimersByTime(1);
+        expect(isScreenshotPickInFlight()).toBe(false);
+    });
+
+    it('a rehydrateUnlessEditing-style guard skips while a pick is in flight', () => {
+        const hydrate = vi.fn();
+        const rehydrate = () => { if (isScreenshotPickInFlight()) return; hydrate(); };
+        const item = toDo('Shot', '', '', null, 0);
+        item.id = 'todo-pick-3';
+        const { row, fileInput } = mountRow(item, '');
+
+        row.querySelector('.descScreenshotIdle').click();
+        rehydrate();
+        expect(hydrate).not.toHaveBeenCalled();
+        fileInput.dispatchEvent(new Event('change'));
+        rehydrate();
+        expect(hydrate).toHaveBeenCalledTimes(1);
+    });
+
+    it('index.js rehydrateUnlessEditing returns early on a pick in flight', () => {
+        const here = dirname(fileURLToPath(import.meta.url));
+        const src = readFileSync(resolve(here, '../src/index.js'), 'utf8');
+        expect(src).toMatch(/import \{ isScreenshotPickInFlight \} from '\.\/entryScreenshot\.js';/);
+        const body = src.slice(src.indexOf('function rehydrateUnlessEditing()'));
+        const fn = body.slice(0, body.indexOf('\n}\n'));
+        expect(fn).toMatch(/if \(isScreenshotPickInFlight\(\)\) return;/);
+        expect(fn.indexOf('isScreenshotPickInFlight')).toBeLessThan(fn.indexOf('hydrateFromSupabase'));
+    });
+
+    it('toDoRow.js fills the textarea before mounting the screenshot row', () => {
+        const here = dirname(fileURLToPath(import.meta.url));
+        const src = readFileSync(resolve(here, '../src/toDoRow.js'), 'utf8');
+        const fill = src.indexOf('descInput.value = item["desc"] || "";');
+        const mount = src.indexOf('mountDescScreenshotRow(descSibling, footer, descInput, item, projectName, injectBtn);');
+        expect(fill).toBeGreaterThan(-1);
+        expect(mount).toBeGreaterThan(fill);
     });
 });

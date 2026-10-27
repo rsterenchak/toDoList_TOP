@@ -158,6 +158,7 @@ describe('appLockUnlocked wake recovery — src/index.js', () => {
         const factory = new Function(
             'document', 'listLogic',
             'function isEditableElementFocused(){' + guardBody + '}\n' +
+                'function isScreenshotPickInFlight(){ return false; }\n' +
             'function rehydrateUnlessEditing(){' + rehydrateBody + '}\n' +
             'function wakeRecoverRealtime(){ try { listLogic.resubscribeToRealtime(); } catch (_) {} }\n' +
             'return function onUnlocked(){' + handlerBody + '};'
