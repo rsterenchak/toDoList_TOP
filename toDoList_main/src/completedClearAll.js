@@ -54,6 +54,26 @@ export function confirmClearCompleted(projectName) {
     });
 }
 
+// The pill's leading 13×13 trash glyph, stroked in the pill's text colour.
+function buildTrashIcon() {
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.createElementNS(NS, 'svg');
+    svg.setAttribute('class', 'completedClearAllIcon');
+    svg.setAttribute('width', '13');
+    svg.setAttribute('height', '13');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('stroke', 'currentColor');
+    svg.setAttribute('stroke-width', '2');
+    svg.setAttribute('stroke-linecap', 'round');
+    svg.setAttribute('stroke-linejoin', 'round');
+    svg.setAttribute('aria-hidden', 'true');
+    const path = document.createElementNS(NS, 'path');
+    path.setAttribute('d', 'M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3');
+    svg.appendChild(path);
+    return svg;
+}
+
 // Build the pill. Its click stops propagation so the inline accordion header
 // (or the sheet header's swipe wiring) never sees it as a toggle.
 export function buildClearCompletedPill() {
@@ -61,7 +81,11 @@ export function buildClearCompletedPill() {
     btn.type = 'button';
     btn.className = 'completedClearAllBtn';
     btn.setAttribute('aria-label', 'Delete all completed tasks');
-    btn.textContent = 'Clear all';
+    btn.appendChild(buildTrashIcon());
+    const label = document.createElement('span');
+    label.className = 'completedClearAllLabel';
+    label.textContent = 'Clear all';
+    btn.appendChild(label);
     btn.addEventListener('click', function(event) {
         event.preventDefault();
         event.stopPropagation();
