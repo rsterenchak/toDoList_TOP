@@ -37,13 +37,18 @@ describe('theme toggle — sun/moon icon button', () => {
 
     it('exposes the theme switch as a Theme item inside the settings dropdown', () => {
         // The standalone theme button has been replaced by an item inside the
-        // new settings dropdown. main.js wires the menu item to the same
-        // applyTheme + THEME_KEY persistence flow theme.js's button used.
+        // new settings dropdown, which goes through the same switchTheme
+        // (applyTheme + THEME_KEY persistence) flow theme.js's button uses.
         expect(settingsMenu).toMatch(/buildSettingsMenuItem\(\s*'Theme'/);
-        expect(settingsMenu).toMatch(/applyTheme\s*\(\s*next\s*\)/);
-        expect(settingsMenu).toMatch(/localStorage\.setItem\s*\(\s*THEME_KEY/);
+        expect(settingsMenu).toMatch(/switchTheme\s*\(/);
         // No longer appended directly to the nav as a standalone button.
         expect(main).not.toMatch(/nav\.appendChild\s*\(\s*themeToggle\s*\)/);
+    });
+
+    it('flips to light from a dark theme and back to the last dark theme from light', () => {
+        const themeBlock = theme.slice(theme.indexOf("themeToggle.addEventListener('click'"));
+        expect(themeBlock.slice(0, 400)).toMatch(/getCurrentTheme\(\)\s*===\s*'light'\s*\?\s*getLastDarkTheme\(\)\s*:\s*'light'/);
+        expect(themeBlock.slice(0, 400)).toMatch(/switchTheme\s*\(\s*next\s*\)/);
     });
 
     function extractTopLevelRule(selector) {

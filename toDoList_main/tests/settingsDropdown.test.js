@@ -130,17 +130,17 @@ describe('ghost menu — top-nav trigger + dropdown', () => {
         expect(slice).toMatch(/destroyCompanion\s*\(\s*\)/);
     });
 
-    it('Theme item flips data-theme via applyTheme and persists under THEME_KEY', () => {
+    it('Theme item cycles Dark → Light → Phosphor through the shared switchTheme', () => {
         const idx = settings.indexOf("'Theme'");
         expect(idx).toBeGreaterThan(-1);
         const slice = settings.slice(idx, idx + 1000);
-        expect(slice).toMatch(/applyTheme\s*\(\s*next\s*\)/);
-        expect(slice).toMatch(/localStorage\.setItem\s*\(\s*THEME_KEY/);
+        expect(slice).toMatch(/switchTheme\s*\(\s*nextThemeInCycle\s*\(\s*getCurrentTheme\(\)\s*\)\s*\)/);
     });
 
-    it('shows the current state on the toggle items — ON/OFF for floating ghost, Light/Dark for theme', () => {
+    it('shows the current state on the toggle items — ON/OFF for floating ghost, the current theme name for theme', () => {
         expect(settings).toMatch(/isCompanionEnabled\(\)\s*\?\s*'ON'\s*:\s*'OFF'/);
-        expect(settings).toMatch(/getCurrentTheme\(\)\s*===\s*'light'\s*\?\s*'Light'\s*:\s*'Dark'/);
+        expect(settings).toMatch(/\{\s*dark:\s*'Dark',\s*light:\s*'Light',\s*phosphor:\s*'Phosphor'\s*\}/);
+        expect(settings).toMatch(/themeLabels\[getCurrentTheme\(\)\]/);
     });
 
     it('closes the dropdown on selection, outside click, and Escape', () => {

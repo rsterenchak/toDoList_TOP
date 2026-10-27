@@ -6,7 +6,7 @@
 // circular) and returns the menu's public methods { open, close, toggle }.
 //
 // The menu items delegate to existing modules, so those are imported here
-// directly rather than injected: Theme flips through theme.js, the floating
+// directly rather than injected: Theme cycles through theme.js, the floating
 // ghost toggle through companion.js, Help/Export/Import/Configure-inject/
 // Sign-out through modals.js / jsonImportExport.js / inject.js / migration.js /
 // supabaseClient.js, and the replay-tour entry through coachmark.js +
@@ -21,9 +21,9 @@ import {
     destroyCompanion,
 } from './companion.js';
 import {
-    applyTheme,
     getCurrentTheme,
-    THEME_KEY,
+    nextThemeInCycle,
+    switchTheme,
 } from './theme.js';
 import { showHelpModal, confirmClearCaches } from './modals.js';
 import { appStorageBytes, formatBytes } from './storage.js';
@@ -177,20 +177,15 @@ export function createSettingsMenu(deps) {
         menu.id = 'settingsMenu';
         menu.setAttribute('role', 'menu');
 
-        // Theme — flips light ↔ dark and persists. Mirrors the inline toggle
-        // logic that previously lived in theme.js's createThemeToggleButton:
-        // brief `theme-transitioning` class drives the cross-fade timing.
+        // Theme — cycles Dark → Light → Phosphor and persists, labelling the
+        // current one. switchTheme (theme.js) owns the `theme-transitioning`
+        // cross-fade and the THEME_KEY write shared by every theme control.
+        const themeLabels = { dark: 'Dark', light: 'Light', phosphor: 'Phosphor' };
         const themeItem = buildSettingsMenuItem(
             'Theme',
-            getCurrentTheme() === 'light' ? 'Light' : 'Dark',
+            themeLabels[getCurrentTheme()],
             function() {
-                const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
-                document.documentElement.classList.add('theme-transitioning');
-                applyTheme(next);
-                try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
-                setTimeout(function() {
-                    document.documentElement.classList.remove('theme-transitioning');
-                }, 220);
+                switchTheme(nextThemeInCycle(getCurrentTheme()));
             }
         );
         menu.appendChild(themeItem);

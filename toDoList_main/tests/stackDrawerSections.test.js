@@ -111,14 +111,14 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
             expect(slice).toMatch(/toggleBulkDescriptions\(\s*\)/);
         });
 
-        it('Dark theme toggle uses the same applyTheme + localStorage write as the settings menu', () => {
-            expect(drawerRows).toMatch(/createDrawerToggleRow\(\s*['"]Dark theme['"]/);
-            const themeBlockStart = drawerRows.indexOf("'Dark theme'");
+        it('Theme row is a Void / Light / Phosphor segmented control on the shared switchTheme path', () => {
+            const themeBlockStart = drawerRows.indexOf('export function buildThemeSelectorRow()');
             expect(themeBlockStart).toBeGreaterThan(-1);
-            const slice = drawerRows.slice(themeBlockStart, themeBlockStart + 600);
-            expect(slice).toMatch(/applyTheme\(/);
-            expect(slice).toMatch(/THEME_KEY/);
-            expect(slice).toMatch(/theme-transitioning/);
+            const slice = drawerRows.slice(themeBlockStart, themeBlockStart + 1600);
+            expect(slice).toMatch(/\{\s*dark:\s*'Void',\s*light:\s*'Light',\s*phosphor:\s*'Phosphor'\s*\}/);
+            expect(slice).toMatch(/role',\s*'radiogroup'/);
+            expect(slice).toMatch(/switchTheme\(\s*theme\s*\)/);
+            expect(drawerRows).not.toMatch(/['"]Dark theme['"]/);
         });
 
         it('Companion ghost toggle dispatches setCompanionEnabled + ensure/destroy', () => {
@@ -140,7 +140,7 @@ describe('STACK mobile drawer — Settings entry + modal', () => {
             // All four toggle builders mount into the modal body.
             expect(slice).toMatch(/buildShowCompletedToggle\(\s*\)/);
             expect(slice).toMatch(/buildExpandAllToggle\(\s*\)/);
-            expect(slice).toMatch(/buildDarkThemeToggle\(\s*\)/);
+            expect(slice).toMatch(/buildThemeSelectorRow\(\s*\)/);
             expect(slice).toMatch(/buildCompanionToggle\(\s*\)/);
         });
 

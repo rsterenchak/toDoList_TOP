@@ -12,7 +12,7 @@ import {
     createDrawerInfoRow,
     createDrawerActionRow,
     buildShowCompletedToggle,
-    buildDarkThemeToggle,
+    buildThemeSelectorRow,
     buildAppLockToggle,
 } from './drawerRows.js';
 import { paintAboutVersionUpdateCue } from './aboutVersionCue.js';
@@ -107,7 +107,7 @@ export function createSettingsModal({
         appearanceHeading.className = 'settingsSectionHeading';
         appearanceHeading.textContent = 'Appearance';
         appearanceSection.appendChild(appearanceHeading);
-        appearanceSection.appendChild(buildDarkThemeToggle().row);
+        appearanceSection.appendChild(buildThemeSelectorRow().row);
         appearanceSection.appendChild(buildCompanionToggle().row);
         // App lock (PIN) — mobile counterpart to the settings-menu row. The
         // row reports ON/OFF but opens the PIN setup dialog on tap, which

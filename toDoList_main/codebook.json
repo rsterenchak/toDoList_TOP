@@ -415,7 +415,7 @@
         "exportImport.js:parseAndValidateExport": "18fee81a45b22328.da39a3ee5e6b4b0d",
         "ghostTalk.js": "469ab3380a7584a4.504147a3a4fc6f99",
         "ghostTalk.js:askGhost": "59981aac37589d09.504147a3a4fc6f99",
-        "theme.js:applyTheme": "817969419c2f91cb.e37db15949f55089",
+        "theme.js:applyTheme": "817969419c2f91cb.c4a4248f7568c9e4",
         "theme.js:resolveInitialTheme": "117f0f379e6f9404.c4a4248f7568c9e4"
       }
     }
