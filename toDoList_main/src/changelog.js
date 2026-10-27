@@ -13,12 +13,14 @@ export const changelog = [
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
         ],
+        changed: [
+            'The Completed section\'s "Clear all" button is now a borderless red pill with a trash icon and a softer hover tint.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-10-26',
         fixed: [
-            'Purple accents across the app, including todo row and header borders and the Claude chat pane, now switch to the deeper light-theme violets in light mode instead of staying on the dark-theme shades.',
             'The Phosphor theme no longer shows stray violet-grey: the Completed header, the COVERAGE tab, the TODO.md card buttons and the rest of the app now follow the green palette.',
         ],
     },

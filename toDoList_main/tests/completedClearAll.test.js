@@ -137,6 +137,42 @@ describe('Clear all — confirm guards', () => {
     });
 });
 
+describe('Clear all — ghost pill markup', () => {
+    it('renders a leading trash glyph before a separate "Clear all" label', () => {
+        const pill = buildClearCompletedPill();
+        expect(pill.type).toBe('button');
+        expect(pill.className).toBe('completedClearAllBtn');
+        expect(pill.getAttribute('aria-label')).toBe('Delete all completed tasks');
+        const [icon, label] = pill.children;
+        expect(icon.namespaceURI).toBe('http://www.w3.org/2000/svg');
+        expect(icon.tagName.toLowerCase()).toBe('svg');
+        expect(icon.getAttribute('viewBox')).toBe('0 0 24 24');
+        expect(icon.getAttribute('width')).toBe('13');
+        expect(icon.getAttribute('stroke')).toBe('currentColor');
+        expect(icon.getAttribute('fill')).toBe('none');
+        expect(icon.querySelector('path').getAttribute('d')).toBe('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3');
+        expect(label.tagName).toBe('SPAN');
+        expect(label.textContent).toBe('Clear all');
+        expect(pill.textContent).toBe('Clear all');
+    });
+
+    it('styles the pill borderless with a soft hover tint and an un-uppercased header variant', () => {
+        const here = dirname(fileURLToPath(import.meta.url));
+        const css = readFileSync(resolve(here, '../src/style.css'), 'utf8');
+        const base = css.match(/\n\.completedClearAllBtn \{([^}]*)\}/)[1];
+        expect(base).toMatch(/border: none;/);
+        expect(base).toMatch(/background: transparent;/);
+        expect(base).toMatch(/display: inline-flex;/);
+        const hover = css.match(/\.completedClearAllBtn:hover \{([^}]*)\}/)[1];
+        expect(hover).toMatch(/var\(--text-danger\) 14%/);
+        expect(hover).not.toMatch(/border-color/);
+        const header = css.match(/#completedHeader \.completedClearAllBtn \{\n([^}]*)\}/)[1];
+        expect(header).toMatch(/text-transform: none;/);
+        expect(header).toMatch(/padding: 0 10px 0 8px;/);
+        expect(css).toMatch(/#completedHeader \.completedClearAllBtn::after \{\s*inset: -10px -4px;/);
+    });
+});
+
 describe('Clear all — desktop wiring (source pins)', () => {
     const here = dirname(fileURLToPath(import.meta.url));
     const read = rel => readFileSync(resolve(here, '../src', rel), 'utf8');

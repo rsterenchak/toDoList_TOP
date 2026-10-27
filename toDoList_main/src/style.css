@@ -16912,19 +16912,23 @@ body.row-dragging * { cursor: grabbing !important; }
   gap: 8px;
 }
 
-/* COMPLETED "Clear all" pill — danger-tinted, in the mobile sheet header (left
-   of the X) and at the right end of the desktop #completedHeader. 32px tall;
+/* COMPLETED "Clear all" pill — a borderless danger-text ghost pill with a
+   leading trash glyph, in the mobile sheet header (left of the X) and at the
+   right end of the desktop #completedHeader. 32px tall;
    the ::after extends the hit area to a 44px tap target without growing the
    header row. */
 .completedClearAllBtn {
   position: relative;
   appearance: none;
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   height: 32px;
-  padding: 0 12px;
-  border: 1px solid color-mix(in srgb, var(--text-danger) 45%, transparent);
+  padding: 0 12px 0 10px;
+  border: none;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--text-danger) 12%, transparent);
+  background: transparent;
   color: var(--text-danger);
   font-family: inherit;
   font-size: 12px;
@@ -16934,7 +16938,12 @@ body.row-dragging * { cursor: grabbing !important; }
   white-space: nowrap;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.12s ease, border-color 0.12s ease;
+  transition: background 0.12s ease;
+}
+.completedClearAllIcon {
+  flex: 0 0 auto;
+  width: 13px;
+  height: 13px;
 }
 .completedClearAllBtn::after {
   content: '';
@@ -16945,8 +16954,7 @@ body.row-dragging * { cursor: grabbing !important; }
   display: none;
 }
 .completedClearAllBtn:hover {
-  background: color-mix(in srgb, var(--text-danger) 22%, transparent);
-  border-color: var(--text-danger);
+  background: color-mix(in srgb, var(--text-danger) 14%, transparent);
 }
 .completedClearAllBtn:focus-visible {
   outline: 2px solid var(--text-danger);
@@ -16957,6 +16965,9 @@ body.row-dragging * { cursor: grabbing !important; }
 #completedHeader .completedClearAllBtn {
   margin-left: auto;
   height: 24px;
+  padding: 0 10px 0 8px;
+  text-transform: none;
+  letter-spacing: 0.02em;
 }
 #completedHeader .completedClearAllBtn::after {
   inset: -10px -4px;
