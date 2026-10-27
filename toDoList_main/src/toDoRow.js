@@ -77,6 +77,7 @@ import { buildAuthoringModeStrip, setAuthoringModeStripActive } from './authorin
 import { parsePastedEntry, recognizedEntryFields } from './entryParse.js';
 import { buildMockupSecondary } from './mockupFlow.js';
 import { createStatsDrawer } from './statsDrawerPanel.js';
+import { hasAccount } from './accessMode.js';
 
 
 // The row-side "Discuss" action opens the Claude sheet scoped to this task.
@@ -3816,6 +3817,8 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
     // Mount every panel child once the panel is in its host. Placement is
     // handled by placeDescPanel (pane vs inline); this only fills the panel.
     function mountPanelContents() {
+        // Offline mode keeps only the textarea + MANUAL STATUS.
+        const pipeline = hasAccount();
         // Every child is placed explicitly via CSS grid-column (see
         // #descInput / #descSibling in style.css), so mount order no longer
         // affects layout — the two gutter-filler spacers this panel used to
@@ -3877,7 +3880,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // `- File:` line so the target is visible without scrolling the textarea.
         // Committed rows only (a placeholder has no entry to target). Reuse the
         // persistent node across reopens, then populate from the entry text.
-        if (item.tit) {
+        if (pipeline && item.tit) {
             let fileReadout = descSibling.querySelector('.descFileReadout');
             if (!fileReadout) fileReadout = buildFileReadout();
             footer.appendChild(fileReadout);
@@ -3888,7 +3891,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // staged image is keyed by the todo id). Reuse the persistent node and its
         // hidden file input across reopens; re-wiring only refreshes the options.
         // Mounted after the textarea is filled so the row never sees a stale value.
-        if (item.tit && item.id) {
+        if (pipeline && item.tit && item.id) {
             mountDescScreenshotRow(descSibling, footer, descInput, item, projectName, injectBtn);
         }
         // Trigger the textarea's auto-grow handler now that it's in the
@@ -3899,42 +3902,44 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // cheap even in the `done` phase where applyPhaseLayout hides it below:
         // a hidden picker never opens, so nothing loads, and the element is
         // present to un-hide if the panel later leaves `done`.
-        mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
-        // Mount the read-only phase rail + THE ENTRY label at the head of the
-        // panel (the desktop counterpart to the mobile modal's rail), driven
-        // by the shared phaseRail.js builder. Runs before the ASKING/STUCK
-        // syncs so those blocks land immediately after the rail via
-        // descPanelTopAnchor.
-        mountDescRail(descSibling, item);
-        // Mount triage's ASKING question + answer block right after the rail
-        // when this task's linked agent_queue row is in needs_words. No-op for
-        // every other row.
-        syncAskingPanel(toDoChild, item, projectName);
-        // Mount triage's STUCK failure-reason block at the top of the panel
-        // when this task's linked agent_queue row is in failed / no_change —
-        // the chevron-path equivalent of the modal's stuck block. No-op for
-        // every other row (and mutually exclusive with the ASKING block).
-        syncStuckPanel(toDoChild, item);
-        // Mount the Dispatch (drafted) / Retry (stuck) action so a draft can be
-        // shipped and a failed run retried without leaving the row. No-op in every
-        // other phase; runs the shared dispatch the Agent board uses.
-        syncDispatchPanel(toDoChild, item);
-        // Mount the REVIEW (accept-phase) decision surface — the WHAT CHANGED card
-        // plus Accept / Revert / Open-in-TODO.md — so a shipped change can be
-        // decided from the detail pane. Desktop-pane-only and accept-phase-only;
-        // reuses the viewer's acknowledge writer and the shared revert route.
-        syncReviewPanel(toDoChild, item, projectName);
-        // Mount the MOCKUP-phase A/B/C flow — the shared board flow laid out three
-        // variants across — above the authoring region for a `needs_mockup` task,
-        // so a visual direction can be chosen from the detail pane. Desktop-pane-only
-        // and mockup-phase-only; a no-op in every other phase and below the breakpoint.
-        syncMockupPanel(toDoChild, item);
-        // Mount the WRITE / PASTE / GENERATE authoring mode strip above the entry
-        // region and its PASTE / GENERATE bodies beside the textarea. Committed
-        // rows only — a blank placeholder has no task to paste into or generate
-        // from. Resets to WRITE on every open (the mode is transient view state).
-        if (item.id) {
-            mountAuthoringModeStrip(descSibling, descInput, item, projectName, injectBtn, generateBtn);
+        if (pipeline) {
+            mountDescFilePicker(descSibling, descInput, item, projectName, injectBtn);
+            // Mount the read-only phase rail + THE ENTRY label at the head of the
+            // panel (the desktop counterpart to the mobile modal's rail), driven
+            // by the shared phaseRail.js builder. Runs before the ASKING/STUCK
+            // syncs so those blocks land immediately after the rail via
+            // descPanelTopAnchor.
+            mountDescRail(descSibling, item);
+            // Mount triage's ASKING question + answer block right after the rail
+            // when this task's linked agent_queue row is in needs_words. No-op for
+            // every other row.
+            syncAskingPanel(toDoChild, item, projectName);
+            // Mount triage's STUCK failure-reason block at the top of the panel
+            // when this task's linked agent_queue row is in failed / no_change —
+            // the chevron-path equivalent of the modal's stuck block. No-op for
+            // every other row (and mutually exclusive with the ASKING block).
+            syncStuckPanel(toDoChild, item);
+            // Mount the Dispatch (drafted) / Retry (stuck) action so a draft can be
+            // shipped and a failed run retried without leaving the row. No-op in every
+            // other phase; runs the shared dispatch the Agent board uses.
+            syncDispatchPanel(toDoChild, item);
+            // Mount the REVIEW (accept-phase) decision surface — the WHAT CHANGED card
+            // plus Accept / Revert / Open-in-TODO.md — so a shipped change can be
+            // decided from the detail pane. Desktop-pane-only and accept-phase-only;
+            // reuses the viewer's acknowledge writer and the shared revert route.
+            syncReviewPanel(toDoChild, item, projectName);
+            // Mount the MOCKUP-phase A/B/C flow — the shared board flow laid out three
+            // variants across — above the authoring region for a `needs_mockup` task,
+            // so a visual direction can be chosen from the detail pane. Desktop-pane-only
+            // and mockup-phase-only; a no-op in every other phase and below the breakpoint.
+            syncMockupPanel(toDoChild, item);
+            // Mount the WRITE / PASTE / GENERATE authoring mode strip above the entry
+            // region and its PASTE / GENERATE bodies beside the textarea. Committed
+            // rows only — a blank placeholder has no task to paste into or generate
+            // from. Resets to WRITE on every open (the mode is transient view state).
+            if (item.id) {
+                mountAuthoringModeStrip(descSibling, descInput, item, projectName, injectBtn, generateBtn);
+            }
         }
         // Gate the authoring controls by the derived phase — hidden in `done`,
         // fully shown everywhere else. Runs after every authoring control it
@@ -3946,7 +3951,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // in the authoring group). In `done` AND `accept` the whole group stays
         // hidden — the decision surface owns the space — so skip, or applyAuthoringMode
         // would re-show the textarea/picker/Generate the phase gate just hid.
-        if (item.id && derivedPhase !== PHASE.DONE && derivedPhase !== PHASE.ACCEPT) {
+        if (pipeline && item.id && derivedPhase !== PHASE.DONE && derivedPhase !== PHASE.ACCEPT) {
             applyAuthoringMode(descSibling, 'write');
             syncGenerateBody(descSibling, item, projectName);
         }
@@ -3957,7 +3962,7 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
         // overwrite text typed mid-flight. Runs AFTER applyAuthoringMode so its
         // entry-region hide wins; a no-op in every non-triaging state. Committed
         // rows only — a blank placeholder has no queue row to be triaging.
-        if (item.id) {
+        if (pipeline && item.id) {
             syncTriageBlock(toDoChild, item);
         }
         // Mount the shared MANUAL STATUS control at the FOOT of the footer stack,
@@ -4493,7 +4498,13 @@ export function buildToDoRow(item, toDoName) {
     wireSubControlBackspaceExit(copyBtn, toDoChild);
 
     // wire helpers
-    wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn, generateBtn, discussBtn, item, toDoName);
+    // Offline (no-account) mode hands the panel no pipeline actions.
+    const pipelineActions = hasAccount();
+    wireDescToggle(descToggle, toDoChild, descSibling, descInput,
+        pipelineActions ? injectBtn : null,
+        pipelineActions ? generateBtn : null,
+        pipelineActions ? discussBtn : null,
+        item, toDoName);
     wireSubControlBackspaceExit(descToggle, toDoChild);
     wireStatsToggle(statsToggle, toDoChild, item);
     wireSubControlBackspaceExit(statsToggle, toDoChild);

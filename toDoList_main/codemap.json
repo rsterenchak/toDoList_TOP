@@ -151,6 +151,7 @@
       "files": [
         "supabaseClient.js",
         "auth.js",
+        "accessMode.js",
         "migration.js",
         "prefs.js",
         "storage.js",

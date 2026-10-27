@@ -26,6 +26,8 @@ import { openModelsPanel } from './modelsPanel.js';
 import { buildSettingsDiagnosticsSection } from './settingsDiagnostics.js';
 import { wipeLocalUserDataOnSignOut } from './migration.js';
 import { supabase } from './supabaseClient.js';
+import { hasAccount } from './accessMode.js';
+import { showAuthModal } from './auth.js';
 import { confirmClearCaches } from './modals.js';
 import { appStorageBytes, formatBytes } from './storage.js';
 
@@ -42,6 +44,22 @@ function appendStorageRows(section, close) {
         close();
         confirmClearCaches();
     }));
+}
+
+// Repo setup, Models and Diagnostics point the app at a repo and the Worker —
+// none of which exists in offline (no-account) mode, so they stay out there.
+function appendPipelineSections(body, sections) {
+    if (!hasAccount()) return;
+    sections.forEach(function(section) { body.appendChild(section); });
+}
+
+// Offline (no-account) mode's Account row: Sign in raises the gate, and a
+// session landing then reloads the app signed in (index.js).
+function buildSignInRow(close) {
+    return createDrawerActionRow('Sign in', function() {
+        close();
+        showAuthModal();
+    });
 }
 
 export function createSettingsModal({
@@ -303,16 +321,14 @@ export function createSettingsModal({
             close();
             wipeLocalUserDataOnSignOut().then(function() { supabase.auth.signOut(); });
         });
-        accountSection.appendChild(signOutRow);
+        accountSection.appendChild(hasAccount() ? signOutRow : buildSignInRow(close));
 
         body.appendChild(viewSection);
         body.appendChild(appearanceSection);
         body.appendChild(aboutSection);
         body.appendChild(helpSection);
         body.appendChild(dataSection);
-        body.appendChild(repoSetupSection);
-        body.appendChild(modelsSection);
-        body.appendChild(diagnosticsSection);
+        appendPipelineSections(body, [repoSetupSection, modelsSection, diagnosticsSection]);
         body.appendChild(accountSection);
 
         dialog.appendChild(header);

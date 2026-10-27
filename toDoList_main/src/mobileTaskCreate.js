@@ -23,6 +23,7 @@ import { mountMicButton, isDictating, stopDictation } from './voiceInput.js';
 import { listLogic } from './listLogic.js';
 import { activeProjectNameForViewer } from './runState.js';
 import { rebuildSelectedList } from './dispatchDraft.js';
+import { hasAccount } from './accessMode.js';
 
 // Re-exported so existing importers (and tests) can keep reaching the parser
 // through this module; the single implementation now lives in entryParse.js,
@@ -880,7 +881,9 @@ export function attachMobileCreateChips(toDoChild, item) {
     // Quick-capture sits before the description toggle so the toggle keeps the
     // strip's trailing edge (.createDescChip has margin-left: auto). Mobile
     // only — the panel behind it is a dictation surface, gated the same way.
-    if (isMobileViewport()) {
+    // Its split-into-tasks step goes through the Worker, so offline
+    // (no-account) mode leaves it out; plain add is unaffected.
+    if (isMobileViewport() && hasAccount()) {
         chips.appendChild(createCaptureChip(toDoChild, item));
     }
     chips.appendChild(descChip);

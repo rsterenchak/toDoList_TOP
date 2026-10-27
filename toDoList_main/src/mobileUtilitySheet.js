@@ -20,6 +20,7 @@
 // sheet gated off — it still drives the tab bar's own hide rules.
 import { nextSuggestedMode } from './pomodoro.js';
 import { parseYouTubeUrl } from './music.js';
+import { hasAccount } from './accessMode.js';
 
 // ── Bottom-sheet gate ──
 // The pomodoro/music bottom sheet is not mounted. Pomodoro and music are used
@@ -156,9 +157,12 @@ export function createMobileUtilitySheet(deps) {
     mobileTabProjectsWorkingDot.setAttribute('aria-hidden', 'true');
     mobileTabProjects.appendChild(mobileTabProjectsWorkingDot);
 
+    // Offline (no-account) mode has no repo to read, so Stream is the only tab.
     mobileTabBar.appendChild(mobileTabProjects);
-    mobileTabBar.appendChild(mobileTabUnderstanding);
-    mobileTabBar.appendChild(mobileTabStructure);
+    if (hasAccount()) {
+        mobileTabBar.appendChild(mobileTabUnderstanding);
+        mobileTabBar.appendChild(mobileTabStructure);
+    }
     base.appendChild(mobileTabBar);
 
     // Mirror refreshSheetVisibility for the tab bar — hide it whenever

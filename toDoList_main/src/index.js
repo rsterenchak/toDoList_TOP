@@ -16,6 +16,15 @@ import { listLogic } from './listLogic.js';
 import { maybeStartFirstRunCarousel } from './welcomeCarousel.js';
 import { supabase } from './supabaseClient.js';
 import { showAuthModal, hideAuthModal } from './auth.js';
+import {
+    getAccessMode,
+    hasAccount,
+    applyAccessMode,
+    chooseAccountMode,
+    setLiveSession,
+    setLocalModeBoot,
+    switchToAccountAndReload,
+} from './accessMode.js';
 import { maybeMigrateLocalToSupabase, maybeSkipFirstRunForCloudUser } from './migration.js';
 import { initViewportHeal } from './viewportHeal.js';
 import { initViewportSettle } from './viewportSettle.js';
@@ -24,6 +33,11 @@ import { initInjectTargets } from './inject.js';
 import { isScreenshotPickInFlight } from './entryScreenshot.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
+
+// Stamp the access mode before the shell builds, so an offline boot's mount
+// guards (hasAccount) and the html[data-access="local"] CSS apply from the
+// first paint.
+applyAccessMode(getAccessMode());
 
 document.body.appendChild(component()); // build and attach DOM
 
@@ -163,9 +177,12 @@ function bootApp(userId) {
             maybeStartFirstRunCarousel(sampleJustSeeded);
             // Mount the desktop ghost now that a session exists and the
             // dashboard has rendered — never on the sign-in screen. The mount
-            // itself is deferred a tick so the dashboard is in place.
-            ghostMountable = true;
-            ensureGhostForSession();
+            // itself is deferred a tick so the dashboard is in place. Offline
+            // mode has no ghost talk, so it never mounts.
+            if (hasAccount()) {
+                ghostMountable = true;
+                ensureGhostForSession();
+            }
         } catch (e) {
             reportBootFailure();
             console.warn('[bootApp] render step failed:', e);
@@ -173,6 +190,8 @@ function bootApp(userId) {
         }
         rendered = true;
 
+        // Offline mode boots with no user: localStorage is the whole store.
+        if (!userId) return;
         return bootSyncPipeline(userId, cloudHasData);
     }).catch(function(e) {
         // Split by how far the boot got. Pre-render (rendered === false) means
@@ -221,29 +240,67 @@ function bootSyncPipeline(userId, cloudHasData) {
         });
 }
 
+// The gate's "Use offline on this device" door boots the app with no user
+// (auth.js has already written the flag and dismissed itself by then). An
+// already-booted shell — Settings' Sign in reopened the gate — is a no-op.
+setLocalModeBoot(function() { bootApp(null); });
+
+// A session always wins over the offline flag. One that is live on a shell
+// built under the flag (signed in from Settings, or in another tab) flips the
+// device to 'account' and reloads so every surface remounts signed in.
+// Returns true when that reload was triggered.
+let reloadingForAccount = false;
+function adoptSession() {
+    if (!hasAccount()) {
+        if (!reloadingForAccount) {
+            reloadingForAccount = true;
+            switchToAccountAndReload();
+        }
+        return true;
+    }
+    setLiveSession(true);
+    chooseAccountMode();
+    return false;
+}
+
+// No session: an offline device boots straight into local mode, anyone else
+// gets the sign-in gate.
+function bootWithoutSession() {
+    if (getAccessMode() === 'local') {
+        bootApp(null);
+        return;
+    }
+    showAuthModal();
+    markAppBooted();                   // auth front door is up — stand the watchdog down
+}
+
 supabase.auth.getSession().then(function(result) {
     const session = result && result.data && result.data.session;
     if (session) {
+        if (adoptSession()) return;
         bootApp(session.user && session.user.id);
     } else {
-        showAuthModal();
-        markAppBooted();               // auth front door is up — stand the watchdog down
+        bootWithoutSession();
     }
 }).catch(function() {
     // Network failure on initial session probe — render the modal so
     // the user can manually authenticate; the same probe runs again
     // on the magic-link callback when the URL hash carries the
     // exchanged tokens.
-    showAuthModal();
-    markAppBooted();                   // auth front door is up — stand the watchdog down
+    bootWithoutSession();
 });
 
 supabase.auth.onAuthStateChange(function(_event, session) {
     if (session) {
+        if (adoptSession()) return;
         hideAuthModal();
         bootApp(session.user && session.user.id);
         if (ghostMountable) ensureGhostForSession();
     } else {
+        setLiveSession(false);
+        // Offline mode has no session to lose — the listener's initial
+        // no-session call must not raise the gate over the local shell.
+        if (getAccessMode() === 'local') return;
         // Sign-out (or initial-load with no session). Re-render the
         // modal so the chrome behind it stays gated, and let
         // listLogic tear down its realtime subscriptions + clear
