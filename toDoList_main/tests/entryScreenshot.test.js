@@ -334,3 +334,103 @@ describe('entry screenshot — surviving the pick and a reopen', () => {
         expect(mount).toBeGreaterThan(fill);
     });
 });
+
+describe('entry screenshot — pasting an image into the description', () => {
+    let editSpy;
+    beforeEach(() => {
+        editSpy = vi.spyOn(listLogic, 'editToDoItem').mockImplementation(() => {});
+    });
+    afterEach(() => { editSpy.mockRestore(); });
+
+    function mountRow(item, textarea) {
+        const row = buildScreenshotRow();
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        row.appendChild(fileInput);
+        wireScreenshotRow(row, { item, fileInput, textarea, projectName: 'P' });
+        return row;
+    }
+
+    function paste(target, clipboardData) {
+        const event = new Event('paste', { bubbles: true, cancelable: true });
+        Object.defineProperty(event, 'clipboardData', { value: clipboardData });
+        target.dispatchEvent(event);
+        return event;
+    }
+
+    it('stages a pasted image file and keeps any filename out of the text', async () => {
+        const item = toDo('Paste', '  - Type: bug', '', null, 0);
+        item.id = 'todo-paste-1';
+        const textarea = document.createElement('textarea');
+        textarea.value = item.desc;
+        const row = mountRow(item, textarea);
+
+        const event = paste(textarea, { files: [file()], items: [] });
+        expect(event.defaultPrevented).toBe(true);
+        await row.screenshotStagePromise;
+
+        expect(getEntryScreenshot(item)).toBeTruthy();
+        expect(row.classList.contains('descScreenshotRow--staged')).toBe(true);
+        expect(textarea.value).toContain('- Screenshot: docs/context/' + item.entryId + '.png');
+        expect(textarea.value).not.toContain('shot.png');
+        expect(textarea.value).not.toContain('data:');
+        removeEntryScreenshot(item);
+    });
+
+    it('falls back to clipboard items when files is empty', async () => {
+        const item = toDo('Paste', '', '', null, 0);
+        item.id = 'todo-paste-2';
+        const textarea = document.createElement('textarea');
+        const row = mountRow(item, textarea);
+        const f = file();
+        const event = paste(textarea, {
+            files: [],
+            items: [{ kind: 'string', type: 'text/plain' }, { kind: 'file', type: 'image/png', getAsFile: () => f }],
+        });
+        expect(event.defaultPrevented).toBe(true);
+        await row.screenshotStagePromise;
+        expect(getEntryScreenshot(item)).toBeTruthy();
+        removeEntryScreenshot(item);
+    });
+
+    it('does not intercept a text-only paste', () => {
+        const item = toDo('Paste', '', '', null, 0);
+        item.id = 'todo-paste-3';
+        const textarea = document.createElement('textarea');
+        const row = mountRow(item, textarea);
+        const event = paste(textarea, {
+            files: [],
+            items: [{ kind: 'string', type: 'text/plain' }],
+            getData: () => 'hello',
+        });
+        expect(event.defaultPrevented).toBe(false);
+        expect(row.screenshotStagePromise).toBeUndefined();
+        expect(getEntryScreenshot(item)).toBeNull();
+    });
+
+    it('re-wiring on every open attaches one paste listener and replaces the staged image', async () => {
+        const item = toDo('Paste', '', '', null, 0);
+        item.id = 'todo-paste-4';
+        const textarea = document.createElement('textarea');
+        const first = mountRow(item, textarea);
+        const second = mountRow(item, textarea);
+        const spy = vi.spyOn(listLogic, 'editToDoItem');
+        spy.mockClear();
+
+        paste(textarea, { files: [file()], items: [] });
+        expect(first.screenshotStagePromise).toBeUndefined();
+        await second.screenshotStagePromise;
+        const firstRecord = getEntryScreenshot(item);
+        expect(firstRecord).toBeTruthy();
+        const stagesAfterOne = spy.mock.calls.length;
+
+        prepareImage.mockResolvedValueOnce({ media_type: 'image/webp', data: 'UklGRg==' });
+        paste(textarea, { files: [file()], items: [] });
+        await second.screenshotStagePromise;
+        expect(spy.mock.calls.length).toBe(stagesAfterOne * 2);
+        expect(getEntryScreenshot(item)).not.toBe(firstRecord);
+        expect(textarea.value.match(/Screenshot:/g)).toHaveLength(1);
+        expect(textarea.value).toContain('docs/context/' + item.entryId + '.webp');
+        removeEntryScreenshot(item);
+    });
+});
