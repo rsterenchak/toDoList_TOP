@@ -456,7 +456,7 @@ describe('Claude sheet — module surface and styling', () => {
         expect(pill).toMatch(/bottom:\s*100%/);
         expect(pill).toMatch(/translateX\(-50%\)/);
         // Purple accent palette: #2a2560 fill, #6C5DF5 border, #9D93EE arrow.
-        expect(pill).toMatch(/background:\s*#2a2560/i);
+        expect(pill).toMatch(/background:\s*color-mix\(in srgb, var\(--accent-strong\) 30%, var\(--bg-base\)\)/);
         expect(pill).toMatch(/border:[^;]*var\(--accent-strong\)/i);
         expect(pill).toMatch(/color:\s*var\(--accent-soft\)/i);
         // The base rule sets a flex display, so the [hidden] state needs an

@@ -96,7 +96,7 @@ describe('Mobile sidebar — projects list overflows internally', () => {
                 /\*::-webkit-scrollbar[^{]*\{[^}]*width:\s*4px/
             );
             expect(css).toMatch(
-                /\*::-webkit-scrollbar-thumb[^{]*\{[^}]*#3a3a48/i
+                /\*::-webkit-scrollbar-thumb[^{]*\{[^}]*color-mix\(in srgb, var\(--border-bright\) 70%/i
             );
             expect(css).not.toMatch(/#sideMa::-webkit-scrollbar/);
         });

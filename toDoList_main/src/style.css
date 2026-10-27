@@ -2695,7 +2695,7 @@ body:has(#settingsMenu) #claudeLauncher {
    purple accent palette to read as a conversation-wiping action, honoring both
    themes through the hardcoded values below. */
 .claudeClearChat {
-  background: #2a2560;
+  background: color-mix(in srgb, var(--accent-strong) 30%, var(--bg-base));
   color: var(--accent-soft);
   border: 1px solid var(--accent-strong);
   border-radius: 6px;
@@ -2708,7 +2708,7 @@ body:has(#settingsMenu) #claudeLauncher {
   cursor: pointer;
 }
 .claudeClearChat:hover {
-  background: #34307a;
+  background: color-mix(in srgb, var(--accent-strong) 40%, var(--bg-base));
 }
 .claudeClearChat[hidden] { display: none; }
 
@@ -2944,7 +2944,7 @@ body:has(#settingsMenu) #claudeLauncher {
   width: 32px;
   height: 32px;
   border-radius: 16px;
-  background: #2a2560;
+  background: color-mix(in srgb, var(--accent-strong) 30%, var(--bg-base));
   border: 1px solid var(--accent-strong);
   color: var(--accent-soft);
   font-size: 16px;
@@ -2970,7 +2970,7 @@ body:has(#settingsMenu) #claudeLauncher {
 .claudeComposerInput {
   flex: 1;
   resize: none;
-  background: #15151e;
+  background: var(--bg-elevated);
   color: var(--text-primary);
   border: 0.5px solid var(--border-mid);
   border-radius: 6px;
@@ -3304,7 +3304,7 @@ body:has(#settingsMenu) #claudeLauncher {
   justify-content: center;
   gap: 16px;
   padding: 24px;
-  background: rgba(8, 9, 13, 0.62);
+  background: color-mix(in srgb, var(--bg-base) 62%, transparent);
   backdrop-filter: blur(6px);
   -webkit-backdrop-filter: blur(6px);
   cursor: pointer;
@@ -3707,7 +3707,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
 .claudeGhostChip:hover { opacity: 1; }
 .claudeGhostChip.is-active {
   opacity: 1;
-  filter: drop-shadow(0 0 6px rgba(122, 108, 240, 0.75));
+  filter: drop-shadow(0 0 6px color-mix(in srgb, var(--accent-strong) 75%, transparent));
 }
 /* The chip is MOBILE's door only. Desktop possesses by clicking the wandering
    companion, so the chip is hidden there — see the `.claudeGhostChip` rule in
@@ -3740,9 +3740,9 @@ button.claudeAttachChipLabel { cursor: pointer; }
    right outlined — the same two-weight split the work thread uses. */
 .claudeGhostRow--ghost {
   align-self: flex-start;
-  background: #191434;
-  border: 1px solid rgba(122, 108, 240, 0.35);
-  color: #cfc9ff;
+  background: color-mix(in srgb, var(--accent-strong) 12%, var(--bg-base));
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 35%, transparent);
+  color: color-mix(in srgb, var(--accent-soft) 40%, var(--text-primary));
 }
 .claudeGhostRow--user {
   align-self: flex-end;
@@ -3754,13 +3754,13 @@ button.claudeAttachChipLabel { cursor: pointer; }
 /* The composer goes ghostly: violet edge, inset glow, and the 16px floor kept
    explicit because this is the field a phone keyboard opens onto. */
 #claudeSheetBody.is-possessed .claudeComposerInput {
-  border-color: rgba(122, 108, 240, 0.55);
-  box-shadow: inset 0 0 12px rgba(122, 108, 240, 0.2);
+  border-color: color-mix(in srgb, var(--accent-strong) 55%, transparent);
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--accent-strong) 20%, transparent);
   font-size: 16px;
 }
 #claudeSheetBody.is-possessed .claudeComposerInput:focus {
-  border-color: rgba(122, 108, 240, 0.85);
-  box-shadow: inset 0 0 12px rgba(122, 108, 240, 0.28);
+  border-color: color-mix(in srgb, var(--accent-strong) 85%, transparent);
+  box-shadow: inset 0 0 12px color-mix(in srgb, var(--accent-strong) 28%, transparent);
 }
 
 /* Everything that belongs to the work chat steps aside: the model toggle and its
@@ -3785,9 +3785,9 @@ button.claudeAttachChipLabel { cursor: pointer; }
   align-items: center;
   padding: 3px 10px;
   border-radius: 12px;
-  background: #191434;
-  border: 1px solid rgba(122, 108, 240, 0.35);
-  color: #cfc9ff;
+  background: color-mix(in srgb, var(--accent-strong) 12%, var(--bg-base));
+  border: 1px solid color-mix(in srgb, var(--accent-strong) 35%, transparent);
+  color: color-mix(in srgb, var(--accent-soft) 40%, var(--text-primary));
   font-size: 12px;
 }
 
@@ -4396,7 +4396,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   flex: none;
   min-height: 32px;
   padding: 6px 14px;
-  background: #2a2560;
+  background: color-mix(in srgb, var(--accent-strong) 30%, var(--bg-base));
   color: var(--accent-soft);
   border: 0.5px solid var(--accent-strong);
   border-radius: var(--radius-sm);
@@ -4497,8 +4497,8 @@ button.claudeAttachChipLabel { cursor: pointer; }
   justify-content: space-between;
   gap: 6px;
   padding: 3px 6px;
-  background: #111218;
-  color: #cfd0da;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 9px;
   line-height: 1.4;
@@ -4522,7 +4522,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   font-family: "SpaceMono", monospace;
   font-size: 12px;
   line-height: 1.5;
-  color: #b9b2ee;
+  color: color-mix(in srgb, var(--accent-soft) 60%, var(--text-primary));
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -4559,7 +4559,7 @@ button.claudeAttachChipLabel { cursor: pointer; }
   height: 26px;
   padding: 0;
   margin-left: 6px;
-  background: #161622;
+  background: var(--bg-elevated);
   color: var(--text-warning);
   border: 0.5px solid var(--border-mid);
   border-radius: var(--radius-sm);
@@ -5377,7 +5377,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.08em;
-  color: #8b8da0;
+  color: var(--text-secondary);
 }
 
 .understandingGoDeeperList {
@@ -5693,7 +5693,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   font-family: 'SpaceMono', monospace;
   font-size: 11px;
   letter-spacing: 0.04em;
-  color: #8b8da0;
+  color: var(--text-secondary);
 }
 
 /* A stale chapter's tag, plus a chip per symbol whose code drifted. */
@@ -5838,15 +5838,15 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   width: 100%;
   margin: 2px 0 10px;
   padding: 8px 8px 8px 12px;
-  background: #15161d;
+  background: var(--bg-elevated);
   border-left: 2px solid var(--accent-soft);
   border-radius: 0 8px 8px 0;
-  color: #8b8da0;
+  color: var(--text-secondary);
   font-size: 14px;
   line-height: 1.5;
 }
 .understandingParaNote.is-open { color: var(--text-primary); }
-.understandingParaNote:hover { background: color-mix(in srgb, var(--accent-soft) 8%, #15161d); }
+.understandingParaNote:hover { background: color-mix(in srgb, var(--accent-soft) 8%, var(--bg-elevated)); }
 .understandingParaNoteText {
   flex: 1 1 auto;
   min-width: 0;
@@ -6078,7 +6078,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   border: 1px solid var(--border-mid);
   border-radius: 4px;
   background: var(--bg-surface);
-  color: #8b8da0;
+  color: var(--text-secondary);
   font-family: 'SpaceMono', monospace;
   font-size: 11px;
   line-height: 1.4;
@@ -6087,11 +6087,11 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
 }
 .bookCite:hover { border-color: var(--accent); color: var(--accent-text); }
 .bookCite.is-unverified { border-style: dashed; cursor: help; }
-.bookCite.is-unverified:hover { border-color: var(--border-mid); color: #8b8da0; }
+.bookCite.is-unverified:hover { border-color: var(--border-mid); color: var(--text-secondary); }
 .why--inferred {
-  color: #9a9bb0;
+  color: var(--text-secondary);
   text-decoration: underline dotted;
-  text-decoration-color: color-mix(in srgb, #9a9bb0 60%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--text-secondary) 60%, transparent);
   text-underline-offset: 3px;
   cursor: help;
 }
@@ -6323,7 +6323,7 @@ body.agentWorking #viewPillProjects .agentWorkingMarker {
   padding: 0 4px;
   border-radius: 8px;
   background: #ffbd5e;
-  color: #14151b;
+  color: var(--bg-elevated);
   font-family: 'SpaceMono', monospace;
   font-size: 10px;
   font-weight: 700;
@@ -6804,7 +6804,7 @@ span.understandingFlagBtnRow { cursor: default; }
    sit on an even darker ground in SpaceMono so captured output reads as a
    console. */
 .captureCard {
-  background: #101119;
+  background: color-mix(in srgb, var(--bg-base) 50%, var(--bg-elevated));
   border: 1px solid var(--border-dim);
   border-radius: 10px;
   padding: 12px 14px;
@@ -6869,7 +6869,7 @@ span.understandingFlagBtnRow { cursor: default; }
   font-size: 16px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   color: var(--text-primary);
-  background: #0a0b0f;
+  background: color-mix(in srgb, var(--bg-base) 70%, black);
   border: 1px solid var(--border-mid);
   border-radius: 6px;
   padding: 8px 10px;
@@ -6915,7 +6915,7 @@ span.understandingFlagBtnRow { cursor: default; }
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 12px;
   color: var(--text-primary);
-  background: #0a0b0f;
+  background: color-mix(in srgb, var(--bg-base) 70%, black);
   border: 1px solid var(--border-dim);
   border-radius: 6px;
   padding: 8px 10px;
@@ -7413,7 +7413,7 @@ span.understandingFlagBtnRow { cursor: default; }
 }
 
 .structureMapRailRow.is-open {
-  background: #221e44;
+  background: color-mix(in srgb, var(--accent-strong) 20%, var(--bg-base));
   color: #fff;
 }
 
@@ -7711,7 +7711,7 @@ span.understandingFlagBtnRow { cursor: default; }
   white-space: pre;
 }
 .tourSnippetRow.is-hi {
-  background: #221e44;
+  background: color-mix(in srgb, var(--accent-strong) 20%, var(--bg-base));
   color: #fff;
 }
 
@@ -8350,8 +8350,8 @@ span.understandingFlagBtnRow { cursor: default; }
   align-items: center;
   padding: 1px 6px;
   border-radius: 5px;
-  background: #1c1e27;
-  border: 0.5px solid #23242e;
+  background: var(--bg-raised);
+  border: 0.5px solid var(--border-mid);
   font-family: 'SpaceMono', monospace;
   font-size: 10px;
   letter-spacing: 0.02em;
@@ -8647,7 +8647,7 @@ span.understandingFlagBtnRow { cursor: default; }
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  background: #0a0b0f;
+  background: color-mix(in srgb, var(--bg-base) 70%, black);
   border: 1px solid var(--border-dim);
   border-radius: 6px;
 }
@@ -8700,7 +8700,7 @@ span.understandingFlagBtnRow { cursor: default; }
   padding: 0 8px 0 4px;
   text-align: right;
   color: var(--text-muted);
-  background: #0a0b0f;
+  background: color-mix(in srgb, var(--bg-base) 70%, black);
   user-select: none;
 }
 
@@ -8735,7 +8735,7 @@ button.codeViewerGutter:focus-visible {
    band or the number would sit on a dark notch. */
 .codeViewerLine--selected,
 .codeViewerLine--selected > .codeViewerGutter {
-  background: #191a22;
+  background: var(--bg-surface);
 }
 .codeViewerLine--selected > .codeViewerGutter { color: var(--text-primary); }
 
@@ -8923,14 +8923,14 @@ button.codeViewerGutter:focus-visible {
   font-family: 'Trebuchet MS', 'Lucida Grande', sans-serif;
   font-size: 12px;
   line-height: 1.45;
-  color: #8b8da0;
+  color: var(--text-secondary);
 }
 .codeViewerNoteBody {
   box-sizing: border-box;
   padding: 1px 0 1px 8px;
-  border-left: 2px solid #2a2b36;
+  border-left: 2px solid var(--border-bright);
 }
-.codeViewerNote--active { color: #c9cad6; }
+.codeViewerNote--active { color: color-mix(in srgb, var(--text-primary) 80%, var(--text-secondary)); }
 .codeViewerNote--active > .codeViewerNoteBody { border-left-color: var(--accent-strong); }
 .codeViewerNoteText {
   display: inline;
@@ -8944,7 +8944,7 @@ button.codeViewerGutter:focus-visible {
   white-space: normal;
   cursor: pointer;
 }
-.codeViewerNoteText:hover { color: #c9cad6; }
+.codeViewerNoteText:hover { color: color-mix(in srgb, var(--text-primary) 80%, var(--text-secondary)); }
 .codeViewerNoteRefs {
   display: inline-flex;
   flex-wrap: wrap;
@@ -8974,7 +8974,7 @@ button.codeViewerGutter:focus-visible {
   z-index: 2;
   width: auto;
   padding: 0 10px 0 0;
-  background: #0a0b0f;
+  background: color-mix(in srgb, var(--bg-base) 70%, black);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -8991,7 +8991,7 @@ button.codeViewerGutter:focus-visible {
 .codeViewerNote--user {
   padding-top: 4px;
   padding-bottom: 6px;
-  color: #8b8da0;
+  color: var(--text-secondary);
 }
 .codeViewerNote--user.is-open { color: var(--text-primary); }
 .codeViewerNote--user > .codeViewerNoteBody {
@@ -8999,7 +8999,7 @@ button.codeViewerGutter:focus-visible {
   align-items: flex-start;
   gap: 6px;
   padding: 6px 6px 6px 10px;
-  background: #15161d;
+  background: var(--bg-elevated);
   border-left-color: var(--accent-soft);
   border-radius: 0 6px 6px 0;
 }
@@ -9074,7 +9074,7 @@ button.codeViewerGutter:focus-visible {
   font: inherit;
   color: inherit;
   white-space: pre;
-  text-decoration: underline dotted #6f6a9e;
+  text-decoration: underline dotted color-mix(in srgb, var(--accent-soft) 35%, var(--text-muted));
   text-decoration-thickness: 1px;
   text-underline-offset: 2px;
   cursor: pointer;
@@ -9198,7 +9198,7 @@ button.codeViewerGutter:focus-visible {
   min-height: 0;
   overflow: auto;
   -webkit-overflow-scrolling: touch;
-  background: #0a0b0f;
+  background: color-mix(in srgb, var(--bg-base) 70%, black);
   border: 1px solid var(--border-dim);
   border-radius: 6px;
 }
@@ -9358,8 +9358,8 @@ button.codeViewerGutter:focus-visible {
   color: #fff;
 }
 .structureCodeSheet .codeViewerExplain:hover:not(:disabled) {
-  background: #7d70f7;
-  border-color: #7d70f7;
+  background: color-mix(in srgb, var(--accent-strong) 50%, var(--accent));
+  border-color: color-mix(in srgb, var(--accent-strong) 50%, var(--accent));
 }
 .structureCodeSheet .codeViewerSize {
   order: 1;
@@ -10053,8 +10053,8 @@ button.codeViewerGutter:focus-visible {
 }
 
 .structureReferenceBtn:hover {
-  background: #5a4bd8;
-  border-color: #5a4bd8;
+  background: color-mix(in srgb, var(--accent-strong) 88%, black);
+  border-color: color-mix(in srgb, var(--accent-strong) 88%, black);
 }
 
 .structureCopyBtn {
@@ -15173,7 +15173,7 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 .todoStatusLabel[data-status="active"]      { color: var(--accent-strong); }
 .todoStatusLabel[data-status="in_progress"] { color: var(--accent-soft); }
-.todoStatusLabel[data-status="idea"]        { color: #5a5a6a; }
+.todoStatusLabel[data-status="idea"]        { color: var(--text-muted); }
 .todoStatusLabel[data-status="review"]      { color: #ffbd5e; }
 /* ASKING — triage has a pending question. Same amber as REVIEW; the derived
    overlays all signal "your input is needed". */
@@ -15291,7 +15291,7 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 /* IDEA — muted background + muted title text. */
 #toDoChild.todo-row--idea {
-  background: rgba(90, 90, 106, 0.10);
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
 }
 #toDoChild.todo-row--idea #toDoInput,
 #toDoChild.todo-row--idea .toDoTitleDisplay {
@@ -15392,7 +15392,7 @@ body.row-dragging * { cursor: grabbing !important; }
   /* Receded utility chrome — the calendar pill sits at a dim neutral by
      default so it stops competing with the task title. Urgency (overdue)
      is the only state that pulls it back to an attention color, below. */
-  color: #4a4b58;
+  color: color-mix(in srgb, var(--text-muted) 60%, var(--border-bright));
   line-height: 1;
   border-radius: var(--radius-sm);
   transition: color 0.12s ease, background 0.12s ease, border-color 0.12s ease;
@@ -16391,7 +16391,7 @@ body.row-dragging * { cursor: grabbing !important; }
    base idea rule). The right-edge marker still carries selection, so both axes
    stay readable on a selected idea row. */
 #mainList #toDoChild.todo-detail-open.todo-row--idea {
-  background: rgba(90, 90, 106, 0.10);
+  background: color-mix(in srgb, var(--text-muted) 10%, transparent);
 }
 
 /* DESCRIPTION ROW */
@@ -16773,7 +16773,7 @@ body.row-dragging * { cursor: grabbing !important; }
   user-select: none;
   /* A passive collapsible divider — muted neutral/purple so it doesn't pull
      caution-level attention the way a brighter accent did. */
-  color: #7a74a8;
+  color: color-mix(in srgb, var(--accent-soft) 45%, var(--text-muted));
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 0.14em;
@@ -17300,7 +17300,7 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 11px;
   height: 11px;
   border-radius: 50%;
-  border: 2px solid #2a2440;
+  border: 2px solid color-mix(in srgb, var(--accent-strong) 12%, var(--border-mid));
   border-top-color: var(--accent-soft);
   animation: todoMdViewerSyncSpin 0.7s linear infinite;
 }
@@ -17449,9 +17449,9 @@ body.row-dragging * { cursor: grabbing !important; }
   gap: 4px;
   flex: none;
   margin-left: auto;
-  background: #161622;
+  background: var(--bg-elevated);
   color: var(--accent-soft);
-  border: 1px solid #2a2a38;
+  border: 1px solid var(--border-bright);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
   font: inherit;
@@ -17503,9 +17503,9 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 24px;
   height: 22px;
   padding: 0;
-  background: #161622;
-  color: #8a8699;
-  border: 1px solid #2a2a38;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-bright);
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
@@ -17545,9 +17545,9 @@ body.row-dragging * { cursor: grabbing !important; }
   gap: 4px;
   flex: none;
   margin-left: auto;
-  background: #161622;
+  background: var(--bg-elevated);
   color: var(--text-warning);
-  border: 1px solid #2a2a38;
+  border: 1px solid var(--border-bright);
   border-radius: var(--radius-sm);
   padding: 2px 8px;
   font: inherit;
@@ -17629,8 +17629,8 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 36px;
   height: 36px;
   padding: 0;
-  background: #15161d;
-  color: #8b8c99;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
   border: 1px solid color-mix(in srgb, var(--accent-soft) 25%, transparent);
   border-radius: 10px;
   font-size: 18px;
@@ -17639,8 +17639,8 @@ body.row-dragging * { cursor: grabbing !important; }
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .todoMdViewerOverflowBtn:hover {
-  background: #1c1d27;
-  color: #cfd0da;
+  background: var(--bg-raised);
+  color: var(--text-primary);
   border-color: color-mix(in srgb, var(--accent-soft) 45%, transparent);
 }
 /* Open-menu affordance kept distinct from the neutral resting/hover chrome so
@@ -17771,9 +17771,9 @@ body.row-dragging * { cursor: grabbing !important; }
   justify-content: center;
   gap: 6px;
   height: 36px;
-  background: #161622;
-  color: #8a8699;
-  border: 1px solid #2a2a38;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-bright);
   border-radius: 10px;
   padding: 0 12px;
   font: inherit;
@@ -17832,7 +17832,7 @@ body.row-dragging * { cursor: grabbing !important; }
   color: #f09595;
 }
 .todoMdViewerRunPill--timeout {
-  background: #161622;
+  background: var(--bg-elevated);
   border-color: #444441;
   color: #888780;
 }
@@ -17951,16 +17951,16 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 36px;
   height: 36px;
   padding: 0;
-  background: #15161d;
-  color: #8b8c99;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
   border: 1px solid color-mix(in srgb, var(--accent-soft) 25%, transparent);
   border-radius: 10px;
   cursor: pointer;
   transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .todoMdViewerCollapseBtn:hover {
-  background: #1c1d27;
-  color: #cfd0da;
+  background: var(--bg-raised);
+  color: var(--text-primary);
   border-color: color-mix(in srgb, var(--accent-soft) 45%, transparent);
 }
 .todoMdViewerCollapseBtn:focus-visible {
@@ -18094,7 +18094,7 @@ body.row-dragging * { cursor: grabbing !important; }
   width: 14px;
   height: 14px;
   margin-top: 2px;
-  border: 1px solid #1e1e2a;
+  border: 1px solid var(--border-dim);
   border-radius: 3px;
   font-size: 10px;
   color: var(--accent-soft);
@@ -18166,7 +18166,7 @@ body.row-dragging * { cursor: grabbing !important; }
    scrollbar-width:none. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3a3a48 transparent;
+  scrollbar-color: color-mix(in srgb, var(--border-bright) 70%, var(--text-muted)) transparent;
 }
 *::-webkit-scrollbar {
   width: 4px;
@@ -18176,11 +18176,11 @@ body.row-dragging * { cursor: grabbing !important; }
   background: transparent;
 }
 *::-webkit-scrollbar-thumb {
-  background: #3a3a48;
+  background: color-mix(in srgb, var(--border-bright) 70%, var(--text-muted));
   border-radius: 2px;
 }
 *::-webkit-scrollbar-thumb:hover {
-  background: #4a4a58;
+  background: color-mix(in srgb, var(--border-bright) 35%, var(--text-muted));
 }
 
 /* OVERLAY — only used on touch/mobile */
@@ -20120,7 +20120,7 @@ body.row-dragging * { cursor: grabbing !important; }
     content: '›' / '';
     font-size: 14px;
     line-height: 1;
-    color: #7a74a8;
+    color: color-mix(in srgb, var(--accent-soft) 45%, var(--text-muted));
     margin-left: 2px;
     pointer-events: none;
     order: -1;
@@ -20900,7 +20900,7 @@ body.row-dragging * { cursor: grabbing !important; }
      after the base name/chevron rules so their declarations win the cascade
      tie only on :hover. */
   #mobileProjHeader:hover #mobileProjName {
-    color: #b3abf2;
+    color: color-mix(in srgb, var(--accent-soft) 70%, var(--text-primary));
   }
   #mobileProjHeader:hover .mobileProjDropdownChev {
     color: var(--accent);
@@ -20936,8 +20936,8 @@ body.row-dragging * { cursor: grabbing !important; }
   max-width: 280px;
   max-height: 60vh;
   overflow-y: auto;
-  background: #15151e;
-  border: 1px solid #3a3a50;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-bright);
   border-radius: 8px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   z-index: 100;
@@ -20958,7 +20958,7 @@ body.row-dragging * { cursor: grabbing !important; }
   font-size: 10px;
   text-transform: uppercase;
   letter-spacing: 0.12em;
-  color: #5a5a6a;
+  color: var(--text-muted);
 }
 
 .projectPickerHeaderLabel {
@@ -20988,7 +20988,7 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 .projectPickerAddBtn:hover {
-  background: #7d6ff7;
+  background: color-mix(in srgb, var(--accent-strong) 50%, var(--accent));
 }
 
 .projectPickerAddBtn:focus-visible {
@@ -21014,7 +21014,7 @@ body.row-dragging * { cursor: grabbing !important; }
 
 .projectPickerName {
   font-size: 13px;
-  color: #e8e8f0;
+  color: var(--text-primary);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -21027,12 +21027,12 @@ body.row-dragging * { cursor: grabbing !important; }
 
 .projectPickerCount {
   font-size: 12px;
-  color: #8a8a99;
+  color: var(--text-secondary);
   flex: 0 0 auto;
 }
 
 .projectPickerCount.zero {
-  color: #5a5a6a;
+  color: var(--text-muted);
 }
 
 /* Per-project "running" spinner in the desktop dropdown rows. A small purple
@@ -21085,7 +21085,7 @@ body.row-dragging * { cursor: grabbing !important; }
   padding: 0 6px;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 13px;
-  color: #e8e8f0;
+  color: var(--text-primary);
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--accent-strong);
   border-radius: 4px;
@@ -21146,7 +21146,7 @@ body.row-dragging * { cursor: grabbing !important; }
   flex: 0 0 auto;
   font-size: 14px;
   line-height: 1;
-  color: #6f6f80;
+  color: color-mix(in srgb, var(--text-muted) 60%, var(--text-secondary));
   user-select: none;
 }
 
@@ -21161,7 +21161,7 @@ body.row-dragging * { cursor: grabbing !important; }
   padding: 0;
   font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
   font-size: 16px;
-  color: #e8e8f0;
+  color: var(--text-primary);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 4px;
@@ -21195,7 +21195,7 @@ body.row-dragging * { cursor: grabbing !important; }
 }
 
 .projectPickerCreateConfirm:hover {
-  background: #7d6ff7;
+  background: color-mix(in srgb, var(--accent-strong) 50%, var(--accent));
 }
 
 .projectPickerCreateConfirm:focus-visible {
@@ -21452,9 +21452,9 @@ body.row-dragging * { cursor: grabbing !important; }
     flex: 0 0 auto;
     align-items: stretch;
     width: 152px;
-    border: 1px solid #3a3a50;
+    border: 1px solid var(--border-bright);
     border-radius: 13px;
-    background: #15151e;
+    background: var(--bg-elevated);
     overflow: hidden;
   }
   #desktopChatPane .claudeTabGroup .claudeTab {
@@ -21464,13 +21464,13 @@ body.row-dragging * { cursor: grabbing !important; }
     background: transparent;
     border: none;
     border-radius: 12px;
-    color: #8a8a99;
+    color: var(--text-secondary);
     font-weight: 600;
     transition: background 0.15s ease;
   }
   #desktopChatPane .claudeTabGroup .claudeTab[aria-selected="true"] {
     background: var(--accent-strong);
-    color: #e8e8f0;
+    color: var(--text-primary);
     font-weight: 700;
   }
   /* Light theme: the segmented control's hardcoded dark palette is invisible
@@ -21505,15 +21505,15 @@ body.row-dragging * { cursor: grabbing !important; }
     width: auto;
     margin-left: 8px;
     padding: 6px 12px;
-    border: 1px solid #3a3a50;
+    border: 1px solid var(--border-bright);
     border-radius: 13px;
-    background: #15151e;
-    color: #8a8a99;
+    background: var(--bg-elevated);
+    color: var(--text-secondary);
   }
   #desktopChatPane #claudeTabCoverage[aria-selected="true"] {
     background: var(--accent-strong);
     border-color: var(--accent-strong);
-    color: #e8e8f0;
+    color: var(--text-primary);
     font-weight: 700;
   }
   :root[data-theme="light"] #desktopChatPane #claudeTabCoverage {
@@ -22242,7 +22242,7 @@ body.row-dragging * { cursor: grabbing !important; }
   position: fixed;
   inset: 0;
   z-index: 200;
-  background: rgba(14, 15, 20, 0.72);
+  background: color-mix(in srgb, var(--bg-base) 72%, transparent);
   backdrop-filter: blur(2px);
   -webkit-backdrop-filter: blur(2px);
   pointer-events: none;
@@ -22629,7 +22629,7 @@ body.row-dragging * { cursor: grabbing !important; }
   position: fixed;
   inset: 0;
   z-index: 650;
-  background: var(--bg-canvas, #0f0f17);
+  background: var(--bg-base);
   display: flex;
   align-items: stretch;
   justify-content: center;
@@ -23610,7 +23610,7 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   overflow: hidden;
   /* Deep purple void backdrop so the styles read against a uniform
      surface regardless of theme. */
-  background: radial-gradient(circle at 50% 50%, #1a0d2e 0%, #0a0518 100%);
+  background: radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--accent-strong) 20%, black) 0%, color-mix(in srgb, var(--accent-strong) 8%, black) 100%);
 }
 /* Pause animations when music is paused / idle — the controller toggles
    the `--playing` class so all descendants freeze in place rather than
@@ -23628,9 +23628,9 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
 .musicVizStar {
   position: absolute;
   left: -4px;
-  background: #d9c8ff;
+  background: color-mix(in srgb, var(--accent-soft) 50%, #fff);
   border-radius: 50%;
-  box-shadow: 0 0 4px rgba(217, 200, 255, 0.6);
+  box-shadow: 0 0 4px color-mix(in srgb, var(--accent-soft) 60%, transparent);
   animation: musicVizStarDrift 12s linear infinite;
 }
 @keyframes musicVizStarDrift {
@@ -23649,17 +23649,17 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   opacity: 0.65;
 }
 .musicVizBlob--1 {
-  background: #7b4ec9;
+  background: var(--accent-strong);
   top: 20%; left: 10%;
   animation: musicVizBlobOne 14s ease-in-out infinite alternate;
 }
 .musicVizBlob--2 {
-  background: #b388ff;
+  background: var(--accent);
   top: 40%; left: 60%;
   animation: musicVizBlobTwo 17s ease-in-out infinite alternate;
 }
 .musicVizBlob--3 {
-  background: #4b2e8f;
+  background: color-mix(in srgb, var(--accent-strong) 55%, black);
   top: 5%; left: 35%;
   animation: musicVizBlobThree 20s ease-in-out infinite alternate;
 }
@@ -23674,7 +23674,7 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   width: 24px;
   height: 24px;
   margin: -12px 0 0 -12px;
-  border: 1.5px solid #b388ff;
+  border: 1.5px solid var(--accent);
   border-radius: 50%;
   opacity: 0;
   animation: musicVizRingPulse 4s ease-out infinite;
@@ -23705,7 +23705,7 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
 }
 .musicVizBar {
   flex: 1 1 auto;
-  background: linear-gradient(to top, #4b2e8f, #b388ff);
+  background: linear-gradient(to top, color-mix(in srgb, var(--accent-strong) 55%, black), var(--accent));
   border-radius: 2px;
   transform-origin: bottom;
   animation: musicVizBarPulse 1.4s ease-in-out infinite;
@@ -23741,14 +23741,14 @@ body:has(#pomodoroPopover) #helpFab { display: none; }
   width: 40px;
   height: 50px;
   margin-left: -20px;
-  background: radial-gradient(circle at 50% 35%, #d9c8ff 0%, #9d7ee8 60%, transparent 100%);
+  background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--accent-soft) 50%, #fff) 0%, var(--accent-soft) 60%, transparent 100%);
   border-radius: 50% 50% 35% 35% / 60% 60% 40% 40%;
   animation: musicVizGhostBob 3.5s ease-in-out infinite;
 }
 .musicVizNote {
   position: absolute;
   bottom: 30%;
-  color: #d9c8ff;
+  color: color-mix(in srgb, var(--accent-soft) 50%, #fff);
   font-size: 14px;
   animation: musicVizNoteFloat 4s ease-in infinite;
 }
@@ -23927,7 +23927,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     height: 4px;
     margin-bottom: 4px;
     border-radius: 2px;
-    background: var(--border-mid, #2a2c3a);
+    background: var(--border-mid);
     transition: background 0.12s ease;
   }
   #bottomSheetNub:hover .sheetNubBar,
@@ -23970,9 +23970,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     right: 0;
     height: 48px;
     border: none;
-    border-top: 1px solid var(--border-mid, #2a2c3a);
-    background: var(--bg-surface, #191a22);
-    color: var(--text-primary, #e9eaf5);
+    border-top: 1px solid var(--border-mid);
+    background: var(--bg-surface);
+    color: var(--text-primary);
     padding: 0 16px;
     pointer-events: auto;
     cursor: pointer;
@@ -23991,7 +23991,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     width: 36px;
     height: 3px;
     border-radius: 2px;
-    background: var(--border-mid, #2a2c3a);
+    background: var(--border-mid);
   }
   .sheetPeekContent {
     flex: 1 1 auto;
@@ -24021,16 +24021,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   }
   .sheetPeekTime {
     font-feature-settings: 'tnum';
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
   }
   .sheetPeekDivider {
     width: 1px;
     height: 18px;
-    background: var(--border-mid, #2a2c3a);
+    background: var(--border-mid);
   }
   .sheetPeekNote { color: var(--accent, var(--accent)); flex: 0 0 auto; }
   .sheetPeekStation {
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -24056,7 +24056,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .sheetPeekBar:nth-child(4) { animation-duration: 1.0s; animation-delay: 0.3s; }
   .sheetPeekMusic:not(.active) .sheetPeekBar { animation-play-state: paused; height: 20%; }
   .sheetPeekChevron {
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     font-size: 14px;
     line-height: 1;
     flex: 0 0 auto;
@@ -24074,7 +24074,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     left: 0;
     right: 0;
     height: min(50dvh, 320px);
-    background: var(--bg-surface, #191a22);
+    background: var(--bg-surface);
     border-top: 1px solid var(--accent, var(--accent));
     border-radius: 14px 14px 0 0;
     box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.3);
@@ -24106,7 +24106,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     width: 40px;
     height: 4px;
     border-radius: 2px;
-    background: var(--border-mid, #2a2c3a);
+    background: var(--border-mid);
     flex: 0 0 4px;
     cursor: grab;
     touch-action: none;
@@ -24131,7 +24131,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .sheetSectionHeading {
     font-size: 11px;
     letter-spacing: 0.12em;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     margin: 0;
     text-transform: uppercase;
   }
@@ -24142,7 +24142,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     font-weight: 600;
     font-feature-settings: 'tnum';
     text-align: center;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
   }
   .sheetPomTabs {
     display: flex;
@@ -24154,9 +24154,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     min-height: 36px;
     padding: 0 10px;
     background: transparent;
-    border: 1px solid var(--border-mid, #2a2c3a);
+    border: 1px solid var(--border-mid);
     border-radius: 999px;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     font-size: 13px;
     cursor: pointer;
   }
@@ -24175,16 +24175,16 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .sheetPomPrimary {
     min-height: 44px;
     border-radius: 999px;
-    border: 1px solid var(--border-mid, #2a2c3a);
+    border: 1px solid var(--border-mid);
     background: transparent;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
     font-size: 14px;
     cursor: pointer;
   }
   .sheetPomPrimary {
     background: var(--accent, var(--accent));
     border-color: var(--accent, var(--accent));
-    color: var(--bg-base, #0d0e15);
+    color: var(--bg-base);
     font-weight: 600;
   }
 
@@ -24195,21 +24195,21 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     align-items: center;
     gap: 10px;
     padding: 10px 12px;
-    background: var(--bg-elevated, #20212c);
-    border: 1px solid var(--border-mid, #2a2c3a);
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-mid);
     border-radius: 10px;
   }
   .sheetMusicInfo { min-width: 0; }
   .sheetMusicStation {
     font-size: 14px;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .sheetMusicTitle {
     font-size: 12px;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -24219,9 +24219,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    border: 1px solid var(--border-mid, #2a2c3a);
+    border: 1px solid var(--border-mid);
     background: transparent;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
     font-size: 18px;
     cursor: pointer;
     display: flex;
@@ -24231,7 +24231,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .sheetMusicPlayPause {
     background: var(--accent, var(--accent));
     border-color: var(--accent, var(--accent));
-    color: var(--bg-base, #0d0e15);
+    color: var(--bg-base);
   }
 
   /* Picker view (station drilldown) */
@@ -24244,9 +24244,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 1px solid var(--border-mid, #2a2c3a);
+    border: 1px solid var(--border-mid);
     background: transparent;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
     font-size: 20px;
     line-height: 1;
     cursor: pointer;
@@ -24254,13 +24254,13 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .sheetPickerTitle {
     margin: 0;
     font-size: 16px;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
   }
   .sheetShowVideoRow {
     display: flex;
     align-items: center;
     gap: 8px;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     font-size: 13px;
   }
   .sheetPlayerWrap {
@@ -24285,7 +24285,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     font-size: 10px;
     letter-spacing: 0.12em;
     text-transform: uppercase;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     margin-top: 6px;
   }
   .sheetStationRow {
@@ -24294,7 +24294,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     gap: 8px;
     min-height: 44px;
     padding: 0 4px;
-    border-bottom: 1px solid var(--border-mid, #2a2c3a);
+    border-bottom: 1px solid var(--border-mid);
   }
   .sheetStationRow.active .sheetStationName { color: var(--accent, var(--accent)); }
   .sheetStationName {
@@ -24302,7 +24302,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     text-align: left;
     background: transparent;
     border: none;
-    color: var(--text-primary, #e9eaf5);
+    color: var(--text-primary);
     font-size: 14px;
     cursor: pointer;
     min-height: 44px;
@@ -24310,14 +24310,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   .sheetStationGenre {
     font-size: 10px;
     letter-spacing: 0.1em;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
   }
   .sheetStationRemove {
     width: 36px;
     height: 36px;
     border: none;
     background: transparent;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     font-size: 18px;
     cursor: pointer;
   }
@@ -24329,9 +24329,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   }
   .sheetPasteBtn {
     background: transparent;
-    border: 1px dashed var(--border-mid, #2a2c3a);
+    border: 1px dashed var(--border-mid);
     border-radius: 8px;
-    color: var(--text-muted, #9b9eb4);
+    color: var(--text-muted);
     min-height: 44px;
     font-size: 13px;
     cursor: pointer;
@@ -24347,9 +24347,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     font-size: 16px !important;
     padding: 8px 10px;
     border-radius: 8px;
-    border: 1px solid var(--border-mid, #2a2c3a);
-    background: var(--bg-elevated, #20212c);
-    color: var(--text-primary, #e9eaf5);
+    border: 1px solid var(--border-mid);
+    background: var(--bg-elevated);
+    color: var(--text-primary);
   }
   .sheetPasteError {
     color: var(--type-bug, #e48a96);
@@ -24367,7 +24367,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     min-height: 44px;
     padding-top: 8px;
     margin-top: 4px;
-    border-top: 1px solid var(--border-mid, #2a2c3a);
+    border-top: 1px solid var(--border-mid);
   }
   .sheetVolumeIcon {
     width: 36px;
@@ -24383,7 +24383,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     cursor: pointer;
   }
   .sheetVolumeIcon:hover { background: color-mix(in srgb, var(--accent-strong) 12%, transparent); }
-  .sheetVolumeRow.muted .sheetVolumeIcon { color: var(--text-muted, #9b9eb4); }
+  .sheetVolumeRow.muted .sheetVolumeIcon { color: var(--text-muted); }
   .sheetVolumeSlider {
     flex: 1 1 auto;
     -webkit-appearance: none;
@@ -24444,7 +24444,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      mobile-dark override further below lifts dark theme to var(--text-secondary),
      exactly as before. */
   .copyTitleBtn {
-    color: #4a4b58;
+    color: color-mix(in srgb, var(--text-muted) 60%, var(--border-bright));
   }
 
   /* BARE-ICON MOBILE DUE PILL — strip the filled outline / uppercase
@@ -24472,11 +24472,11 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     min-width: 32px;
     min-height: 32px;
     justify-content: center;
-    color: #4a4b58;
+    color: color-mix(in srgb, var(--text-muted) 60%, var(--border-bright));
   }
   #duePill:hover,
   #duePill:focus { background: transparent; border: none; }
-  #duePill[data-empty="true"] { color: #5A5A6A; }
+  #duePill[data-empty="true"] { color: var(--text-muted); }
   #duePill .duePillLabel { display: none; }
   #duePill .duePillChevron { display: none; }
   #duePill .duePillIcon { width: 16px; height: 16px; }
@@ -24512,7 +24512,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
      these come later in source order so they win inside the breakpoint. */
   #toDoChild.due-soon    #duePill { color: #EF9F27; }
   #toDoChild.due-overdue #duePill { color: #ff5d7a; }
-  #toDoChild.completed   #duePill { color: #5A5A6A; }
+  #toDoChild.completed   #duePill { color: var(--text-muted); }
 
   /* Hide the IDLE nub chrome on mobile — the bottom tab bar is the
      visual bottom-of-screen anchor and `.sheetSwipeZone` already covers
@@ -24548,9 +24548,9 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   max-width: calc(100vw - 32px);
   padding: 10px 12px 10px 16px;
   border-radius: 10px;
-  background: var(--bg-elevated, #20212c);
-  color: var(--text-primary, #e9eaf5);
-  border: 1px solid var(--border-mid, #2a2c3a);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-mid);
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
   font-size: 14px;
   line-height: 1.2;
@@ -24566,7 +24566,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   flex: 0 0 auto;
   background: transparent;
   border: none;
-  color: var(--accent, #b29cff);
+  color: var(--accent);
   font-weight: 700;
   letter-spacing: 0.5px;
   cursor: pointer;
@@ -24648,7 +24648,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     max-width: calc(100vw - 24px);
     padding: 8px 8px 8px 14px;
     border-radius: 999px;
-    background: #191a22;
+    background: var(--bg-surface);
     border: 0.5px solid var(--border-mid);
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
     font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
@@ -24663,7 +24663,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   }
 
   .mobileUpdatePillLabel {
-    color: #e8e8f0;
+    color: var(--text-primary);
     font-size: 13px;
     white-space: nowrap;
   }
@@ -24694,7 +24694,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
     border-radius: 50%;
     border: none;
     background: transparent;
-    color: #8a8a99;
+    color: var(--text-secondary);
     font-size: 20px;
     line-height: 1;
     cursor: pointer;
@@ -26475,7 +26475,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   color: #fff;
 }
 #descEditorModalActions .injectBtn:not(.injectBtn--unconfigured):not(.injectBtn--no-target):not(.injectBtn--injected):hover:not(:disabled) {
-  background: #5b4ce0;
+  background: color-mix(in srgb, var(--accent-strong) 88%, black);
 }
 
 /* Typographic conversion of the four action controls (Generate, Inject, Clear,
@@ -27645,7 +27645,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   z-index: 10002;
   /* Full-bleed near-black space base. Theme-independent — the scene is its
      own world, not tied to the dashboard's dark/light palette. */
-  background: #050507;
+  background: color-mix(in srgb, var(--accent-strong) 3%, black);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -27684,14 +27684,14 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   background-image:
     radial-gradient(1px 1px at 20px 30px, rgba(255,255,255,0.55), transparent),
     radial-gradient(1px 1px at 80px 120px, rgba(255,255,255,0.40), transparent),
-    radial-gradient(1px 1px at 140px 60px, rgba(200,210,255,0.45), transparent),
+    radial-gradient(1px 1px at 140px 60px, color-mix(in srgb, var(--accent-soft) 8%, rgba(255, 255, 255, 0.4)), transparent),
     radial-gradient(1px 1px at 50px 160px, rgba(255,255,255,0.35), transparent);
   background-size: 180px 180px;
 }
 .focusStars--near {
   background-image:
     radial-gradient(1.6px 1.6px at 60px 40px, rgba(255,255,255,0.85), transparent),
-    radial-gradient(1.4px 1.4px at 200px 150px, rgba(220,225,255,0.70), transparent),
+    radial-gradient(1.4px 1.4px at 200px 150px, color-mix(in srgb, var(--accent-soft) 12%, rgba(255, 255, 255, 0.66)), transparent),
     radial-gradient(1.6px 1.6px at 120px 220px, rgba(255,255,255,0.75), transparent);
   background-size: 300px 300px;
 }
@@ -27723,7 +27723,7 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
 .focusNebula--3 {
   width: 30vw; height: 30vw;
   left: 30%; bottom: 4%;
-  background: radial-gradient(circle, rgba(94,78,210,0.45), rgba(94,78,210,0) 70%);
+  background: radial-gradient(circle, color-mix(in srgb, var(--accent-strong) 45%, transparent), color-mix(in srgb, var(--accent-strong) 0%, transparent) 70%);
 }
 .focusModeOverlay--active .focusNebula--1 { animation: focusNebulaDrift1 64s ease-in-out infinite; }
 .focusModeOverlay--active .focusNebula--2 { animation: focusNebulaDrift2 78s ease-in-out infinite; }

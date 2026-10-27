@@ -157,7 +157,7 @@ describe('Mobile TODO.md launcher — surface step and chevron affordance', () =
         // A right-pointing chevron glyph, not an empty decorative box.
         expect(hit.body).toMatch(/content:\s*'[›❯▸>]'/);
         expect(hit.body).toMatch(/font-size:\s*14px/);
-        expect(hit.body).toMatch(/color:\s*#7a74a8/);
+        expect(hit.body).toMatch(/color:\s*color-mix\(in srgb, var\(--accent-soft\) 45%, var\(--text-muted\)\)/);
         // A small gap so it doesn't butt against the label.
         expect(hit.body).toMatch(/margin-left:\s*\d/);
     });
