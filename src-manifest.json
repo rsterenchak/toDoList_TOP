@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-27T08:11:49.815Z",
-  "sha": "4781f6acd55b33943510e679d9f10dfd8c0b5a51",
+  "generatedAt": "2026-10-27T08:24:52.677Z",
+  "sha": "1fd49042c0bd2a17414b8ffea7a1deb14336f300",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -30969,7 +30969,7 @@
     },
     {
       "path": "entryScreenshot.js",
-      "lines": 349,
+      "lines": 387,
       "imports": [
         "imagePrep.js",
         "inject.js",
