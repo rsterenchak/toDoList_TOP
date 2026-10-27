@@ -1605,6 +1605,81 @@ body {
   flex-shrink: 0;
 }
 
+/* AGENT accordion sections (modals.js syncAgentSections) — each mounted phase
+   block sits in a collapsible section behind a 36px header: status dot,
+   SpaceMono uppercase label, right-aligned short status, chevron. Only the
+   section that needs the user opens by default, so the pane leads with options
+   instead of a scroll. */
+.agentSection {
+  display: flex;
+  flex-direction: column;
+  border: 0.5px solid var(--border-dim);
+  border-radius: 8px;
+}
+.agentSectionHeader {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  min-height: 36px;
+  padding: 0 10px;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-muted);
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-align: left;
+  cursor: pointer;
+}
+.agentSectionHeader:hover { background: var(--bg-hover); }
+.agentSectionHeader:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -2px; }
+.agentSection--open > .agentSectionHeader {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.agentSectionDot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--text-muted);
+}
+.agentSection--needsUser .agentSectionDot {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+}
+.agentSectionLabel {
+  font-size: 11px;
+}
+.agentSection--open .agentSectionLabel,
+.agentSection--needsUser .agentSectionLabel {
+  color: var(--accent-text);
+}
+.agentSectionStatus {
+  margin-left: auto;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+}
+.agentSectionChevron {
+  flex: 0 0 auto;
+  width: 12px;
+  text-align: center;
+  font-size: 11px;
+}
+.agentSectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 8px 8px;
+}
+.agentSectionBody[hidden] {
+  display: none;
+}
+
 /* THE ENTRY label above the textarea — the SpaceMono uppercase accent label
    shared with the eyebrow and the status row. Both hosts share one declaration
    (the modal id and the desktop panel's .descSiblingEntryLabel) so the two can't

@@ -7,8 +7,8 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-27',
         added: [
-            'A todo\'s description panel and mobile editor now have a Screenshot row where you can attach one image, which Inject commits alongside the entry so the run that ships it can see it.',
             'Pasting an image into a todo\'s description now attaches it as the entry\'s screenshot instead of dropping text into the description.',
+            'The phone editor\'s Agent tab now shows each agent step as a collapsible section, with only the one waiting on you opened, so its options are visible without scrolling.',
         ],
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
