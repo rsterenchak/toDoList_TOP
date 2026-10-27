@@ -225,8 +225,10 @@ describe('ghost companion — periodic blink', () => {
     it('swaps to a closed-eyes sprite while .blinking is applied — true eye-only blink, not a body transform', () => {
         // The blink is a sprite-swap, not an animation. The .blinking rule
         // overrides background-image to a separate "closed eyes" SVG so only
-        // the eye region changes during the 120ms the class is on.
-        expect(css).toMatch(/\.companion\.blinking\s*\{[^}]*background-image:\s*url\([^)]*companion-ghost-blink\.svg[^)]*\)[^}]*\}/);
+        // the eye region changes during the 120ms the class is on. The asset
+        // is named once in --ghost-sprite-blink so each theme can recolor it.
+        expect(css).toMatch(/\.companion\.blinking\s*\{[^}]*background-image:\s*var\(\s*--ghost-sprite-blink\s*\)[^}]*\}/);
+        expect(css).toMatch(/--ghost-sprite-blink:\s*url\(\s*['"]?\.\/assets\/companion-ghost-blink\.svg/);
     });
 
     it('keeps the blink running under prefers-reduced-motion — same policy as the JS wander loop', () => {

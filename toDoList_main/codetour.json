@@ -3479,12 +3479,10 @@
           "symbol": "showSettingsMenu",
           "parent": "createSettingsMenu",
           "match": [
-            "const next = getCurrentTheme() === 'light' ? 'dark' : 'light';",
-            "applyTheme(next);",
-            "localStorage.setItem(THEME_KEY, next);"
+            "switchTheme(nextThemeInCycle(getCurrentTheme()));"
           ],
-          "title": "The settings menu flips and saves it.",
-          "why": "It flips light and dark on <html> and saves the choice for the next load."
+          "title": "The settings menu cycles and saves it.",
+          "why": "It cycles Dark, Light and Phosphor on <html> and saves the choice for the next load."
         },
         {
           "file": "main.js",

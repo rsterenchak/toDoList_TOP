@@ -87,6 +87,9 @@
      natively; any box pointing at it must keep that aspect and set
      image-rendering: pixelated. */
   --ghost-sprite: url('./assets/companion-ghost.svg');
+  /* Closed-eyes frame the companion swaps to for each blink. Themed beside
+     --ghost-sprite so a theme that recolors the body recolors the blink too. */
+  --ghost-sprite-blink: url('./assets/companion-ghost-blink.svg');
 }
 
 /* ── LIGHT THEME ──
@@ -124,6 +127,57 @@
   --type-feature:  #317a4c;
   --type-bug:      #b13a4a;
   --type-modify:   #8a6119;
+}
+
+/* ── PHOSPHOR THEME ──
+   Green CRT variant of the dark scheme — near-black green base, phosphor
+   green accent ramp. A dark theme, so none of the light overrides apply;
+   amber warnings and red danger/urgent stay legible against the green. */
+:root[data-theme="phosphor"] {
+  --bg-base:       #07100b;
+  --bg-elevated:   #0b1610;
+  --bg-raised:     #102018;
+  --bg-surface:    #0d1a13;
+  --bg-row:        #0e1b14;
+  --bg-hover:      #13261b;
+  --bg-active:     #112118;
+
+  --border-dim:    #14261b;
+  --border-mid:    #1b3324;
+  --border-bright: #275238;
+
+  --accent:        #5ce08f;
+  --accent-dim:    rgba(92, 224, 143, 0.12);
+  --accent-text:   #6ff0a0;
+  --accent-glow:   rgba(92, 224, 143, 0.5);
+  --accent-strong: #3fc475;
+  --accent-soft:   #8fe8b0;
+
+  --text-primary:  #c9f7d8;
+  --text-secondary:#7fb593;
+  --text-muted:    #55836a;
+  --text-danger:   #ff6b6b;
+  --text-warning:  #e8c45a;
+  --text-urgent:   #ff6b6b;
+
+  --type-feature:  #8ff0b0;
+  --type-bug:      #ff8a80;
+  --type-modify:   #e8c45a;
+
+  --ghost-sprite:       url('./assets/companion-ghost-phosphor.svg');
+  --ghost-sprite-blink: url('./assets/companion-ghost-phosphor-blink.svg');
+}
+
+/* Phosphor-only CRT touches: faint scanlines over the app background and a
+   phosphor glow on the active project title (mobile header and desktop pill). */
+:root[data-theme="phosphor"] body {
+  background:
+    repeating-linear-gradient(0deg, rgba(92, 224, 143, 0.035) 0 1px, transparent 1px 3px),
+    var(--bg-base);
+}
+
+:root[data-theme="phosphor"] #mobileProjName {
+  text-shadow: 0 0 8px rgba(92, 224, 143, 0.55);
 }
 
 /* While a theme swap is in progress, animate bg/border/color across the tree
@@ -2941,6 +2995,11 @@ body:has(#settingsMenu) #claudeLauncher {
 }
 :root[data-theme="light"] #claudeComposerInput::placeholder {
   color: #8a8a99;
+}
+/* Phosphor: the same hardcoded dark fill is Void's violet-tinted neutral, so
+   move it onto the theme's surface token. */
+:root[data-theme="phosphor"] #claudeComposerInput {
+  background: var(--bg-surface);
 }
 /* Send — a fully-rounded accent pill at the far end of the control row. The
    auto left margin is what pushes it there, so the toggle and the attach circles
@@ -20408,6 +20467,60 @@ body.row-dragging * { cursor: grabbing !important; }
   border-radius: var(--radius-sm);
 }
 
+/* Theme row — label on the left, a three-segment Void / Light / Phosphor
+   control on the right. Same 44px row height as the toggle rows; the active
+   segment reads in --accent-text on --bg-raised. */
+.drawerThemeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 0;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 16px;
+}
+
+.drawerThemeControl {
+  display: flex;
+  flex-shrink: 0;
+  border: 0.5px solid var(--border-bright);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.drawerThemeSeg {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 32px;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-left: 0.5px solid var(--border-bright);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.drawerThemeSeg:first-child { border-left: none; }
+.drawerThemeSeg:hover { background: var(--bg-hover); }
+.drawerThemeSeg.selected {
+  background: var(--bg-raised);
+  color: var(--accent-text);
+}
+.drawerThemeSeg:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* Action row — same shape as a drawer toggle row but the right-side slot
    carries a static chevron instead of an ON/OFF pill. Used by the Help
    section's Replay welcome tour entry to signal "tap to start a flow"
@@ -21374,6 +21487,15 @@ body.row-dragging * { cursor: grabbing !important; }
     background: var(--accent-strong);
     color: #ffffff;
   }
+  /* Phosphor: swap the Void-tinted container fill, border and idle label for
+     the theme's green ramp; the selected half already reads --accent-strong. */
+  :root[data-theme="phosphor"] #desktopChatPane .claudeTabGroup {
+    background: var(--bg-surface);
+    border-color: var(--border-bright);
+  }
+  :root[data-theme="phosphor"] #desktopChatPane .claudeTabGroup .claudeTab:not([aria-selected="true"]) {
+    color: var(--text-secondary);
+  }
   /* COVERAGE sits as its own rounded pill next to the CHAT / RUNS segmented
      control (not inside it), so the two-half control never reflows as this
      conditional tab appears and disappears. Matches the segmented control's
@@ -22013,7 +22135,7 @@ body.row-dragging * { cursor: grabbing !important; }
    class is applied. Keeps the body identical and only the eyes change, so
    the result reads as a real blink rather than a body squish. */
 .companion.blinking {
-  background-image: url('./assets/companion-ghost-blink.svg');
+  background-image: var(--ghost-sprite-blink);
 }
 
 @keyframes companionIdle {
@@ -27959,6 +28081,14 @@ body.focusVideoOn .musicViz {
     --bg-row:    #20222e;
     --bg-hover:  #262838;
     --bg-active: #232535;
+  }
+
+  /* Phosphor shares the lift (it matches the :not(light) guard above), so
+     re-declare the ramp in green — otherwise its rows pick up Void's grey. */
+  :root[data-theme="phosphor"] {
+    --bg-row:    #112219;
+    --bg-hover:  #162c20;
+    --bg-active: #13271c;
   }
 
   /* Row separators: swap the faint purple hairline for the theme's mid

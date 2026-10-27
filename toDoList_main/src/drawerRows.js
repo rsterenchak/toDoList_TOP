@@ -6,7 +6,7 @@
 // buildCompanionToggle takes applyCompanionGhostPreference as a parameter
 // because that helper is local to main.js and cannot be imported here.
 import { isCompletedSectionOpen, setCompletedSectionOpen } from './prefs.js';
-import { applyTheme, getCurrentTheme, THEME_KEY } from './theme.js';
+import { THEMES, getCurrentTheme, switchTheme } from './theme.js';
 import {
     isCompanionEnabled,
     setCompanionEnabled,
@@ -112,23 +112,49 @@ export function buildShowCompletedToggle() {
     );
 }
 
-// Dark theme — mirrors the settings-menu Theme item. Same
-// theme-transitioning class + applyTheme + localStorage write so the
-// 220ms cross-fade is identical to the menu path.
-export function buildDarkThemeToggle() {
-    return createDrawerToggleRow(
-        'Dark theme',
-        function() { return getCurrentTheme() === 'dark'; },
-        function() {
-            const next = getCurrentTheme() === 'light' ? 'dark' : 'light';
-            document.documentElement.classList.add('theme-transitioning');
-            applyTheme(next);
-            try { localStorage.setItem(THEME_KEY, next); } catch (e) { /* quota/private-mode */ }
-            setTimeout(function() {
-                document.documentElement.classList.remove('theme-transitioning');
-            }, 220);
-        }
-    );
+// Theme — a three-option segmented control (Void / Light / Phosphor) that
+// mirrors the settings-menu Theme item. Selection goes through the shared
+// switchTheme so the 220ms cross-fade and the THEME_KEY write are identical
+// to the menu path. The segments form a radiogroup; the active one is marked
+// aria-checked and styled via .selected.
+export function buildThemeSelectorRow() {
+    const labels = { dark: 'Void', light: 'Light', phosphor: 'Phosphor' };
+    const row = document.createElement('div');
+    row.className = 'drawerThemeRow';
+    const labelEl = document.createElement('span');
+    labelEl.className = 'drawerToggleLabel';
+    labelEl.id = 'drawerThemeLabel';
+    labelEl.textContent = 'Theme';
+    const control = document.createElement('div');
+    control.className = 'drawerThemeControl';
+    control.setAttribute('role', 'radiogroup');
+    control.setAttribute('aria-labelledby', 'drawerThemeLabel');
+    const segs = THEMES.map(function(theme) {
+        const seg = document.createElement('button');
+        seg.type = 'button';
+        seg.className = 'drawerThemeSeg';
+        seg.setAttribute('role', 'radio');
+        seg.dataset.theme = theme;
+        seg.textContent = labels[theme];
+        seg.addEventListener('click', function() {
+            if (getCurrentTheme() !== theme) switchTheme(theme);
+            refresh();
+        });
+        control.appendChild(seg);
+        return seg;
+    });
+    function refresh() {
+        const current = getCurrentTheme();
+        segs.forEach(function(seg) {
+            const on = seg.dataset.theme === current;
+            seg.classList.toggle('selected', on);
+            seg.setAttribute('aria-checked', on ? 'true' : 'false');
+        });
+    }
+    row.appendChild(labelEl);
+    row.appendChild(control);
+    refresh();
+    return { row: row, refresh: refresh };
 }
 
 // Companion ghost — mirrors the settings-menu Toggle floating ghost.
