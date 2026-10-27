@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-27T11:23:00.714Z",
-  "sha": "c6e78fd51dc7a17176540413e893a2747314542f",
+  "generatedAt": "2026-10-27T11:27:11.922Z",
+  "sha": "65a92706bac3739868696cfb2fcf2c5a051fd598",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -115,11 +115,11 @@
       "selector": "#addGlyph",
       "label": "Add Glyph",
       "file": "toDoRow.js",
-      "line": 4146,
+      "line": 4150,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4146
+          "line": 4150
         },
         {
           "file": "style.css",
@@ -159,11 +159,11 @@
       "selector": "#addTaskMic",
       "label": "Add Task Mic",
       "file": "toDoRow.js",
-      "line": 4197,
+      "line": 4201,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4197
+          "line": 4201
         }
       ]
     },
@@ -171,11 +171,11 @@
       "selector": "#agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 1753,
+      "line": 1755,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1753
+          "line": 1755
         }
       ]
     },
@@ -183,11 +183,11 @@
       "selector": "#agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 232,
+      "line": 233,
       "files": [
         {
           "file": "agentView.js",
-          "line": 232
+          "line": 233
         }
       ]
     },
@@ -987,11 +987,11 @@
       "selector": "#checkToDo",
       "label": "Check To Do",
       "file": "toDoRow.js",
-      "line": 3032,
+      "line": 3036,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 3032
+          "line": 3036
         },
         {
           "file": "style.css",
@@ -1663,11 +1663,11 @@
       "selector": "#closeButtonToDo",
       "label": "Close Button To Do",
       "file": "toDoRow.js",
-      "line": 4219,
+      "line": 4223,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4219
+          "line": 4223
         },
         {
           "file": "style.css",
@@ -1883,11 +1883,11 @@
       "selector": "#copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 4244,
+      "line": 4248,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4244
+          "line": 4248
         }
       ]
     },
@@ -2731,11 +2731,11 @@
       "selector": "#descIndicator",
       "label": "Desc Indicator",
       "file": "toDoRow.js",
-      "line": 4400,
+      "line": 4404,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4400
+          "line": 4404
         },
         {
           "file": "style.css",
@@ -2747,11 +2747,11 @@
       "selector": "#descInput",
       "label": "Desc Input",
       "file": "toDoRow.js",
-      "line": 4279,
+      "line": 4283,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4279
+          "line": 4283
         },
         {
           "file": "style.css",
@@ -2763,11 +2763,11 @@
       "selector": "#descSibling",
       "label": "Desc Sibling",
       "file": "toDoRow.js",
-      "line": 4278,
+      "line": 4282,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4278
+          "line": 4282
         },
         {
           "file": "style.css",
@@ -2787,7 +2787,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4253
+          "line": 4257
         },
         {
           "file": "style.css",
@@ -2943,7 +2943,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 4090
+          "line": 4094
         },
         {
           "file": "style.css",
@@ -4699,11 +4699,11 @@
       "selector": "#modelsPanelBack",
       "label": "Models Panel Back",
       "file": "modelsPanel.js",
-      "line": 528,
+      "line": 536,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 528
+          "line": 536
         },
         {
           "file": "style.css",
@@ -4715,11 +4715,11 @@
       "selector": "#modelsPanelBackdrop",
       "label": "Models Panel Backdrop",
       "file": "modelsPanel.js",
-      "line": 513,
+      "line": 521,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 513
+          "line": 521
         },
         {
           "file": "style.css",
@@ -4731,11 +4731,11 @@
       "selector": "#modelsPanelBody",
       "label": "Models Panel Body",
       "file": "modelsPanel.js",
-      "line": 580,
+      "line": 588,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 580
+          "line": 588
         },
         {
           "file": "style.css",
@@ -4747,11 +4747,11 @@
       "selector": "#modelsPanelClose",
       "label": "Models Panel Close",
       "file": "modelsPanel.js",
-      "line": 569,
+      "line": 577,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 569
+          "line": 577
         },
         {
           "file": "style.css",
@@ -4763,11 +4763,11 @@
       "selector": "#modelsPanelEyebrow",
       "label": "Models Panel Eyebrow",
       "file": "modelsPanel.js",
-      "line": 537,
+      "line": 545,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 537
+          "line": 545
         },
         {
           "file": "style.css",
@@ -4779,11 +4779,11 @@
       "selector": "#modelsPanelHeader",
       "label": "Models Panel Header",
       "file": "modelsPanel.js",
-      "line": 522,
+      "line": 530,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 522
+          "line": 530
         },
         {
           "file": "style.css",
@@ -4795,11 +4795,11 @@
       "selector": "#modelsPanelModal",
       "label": "Models Panel Modal",
       "file": "modelsPanel.js",
-      "line": 516,
+      "line": 524,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 516
+          "line": 524
         },
         {
           "file": "style.css",
@@ -4811,11 +4811,11 @@
       "selector": "#modelsPanelScope",
       "label": "Models Panel Scope",
       "file": "modelsPanel.js",
-      "line": 551,
+      "line": 559,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 551
+          "line": 559
         },
         {
           "file": "style.css",
@@ -4827,11 +4827,11 @@
       "selector": "#modelsPanelTitle",
       "label": "Models Panel Title",
       "file": "modelsPanel.js",
-      "line": 535,
+      "line": 543,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 535
+          "line": 543
         },
         {
           "file": "style.css",
@@ -4843,11 +4843,11 @@
       "selector": "#modelsPanelTitleText",
       "label": "Models Panel Title Text",
       "file": "modelsPanel.js",
-      "line": 540,
+      "line": 548,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 540
+          "line": 548
         },
         {
           "file": "style.css",
@@ -6323,11 +6323,11 @@
       "selector": "#spacer",
       "label": "Spacer",
       "file": "toDoRow.js",
-      "line": 4095,
+      "line": 4099,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4095
+          "line": 4099
         },
         {
           "file": "style.css",
@@ -6495,11 +6495,11 @@
       "selector": "#statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 4269,
+      "line": 4273,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4269
+          "line": 4273
         },
         {
           "file": "style.css",
@@ -6691,11 +6691,11 @@
       "selector": "#toDoChild",
       "label": "To Do Child",
       "file": "toDoRow.js",
-      "line": 4074,
+      "line": 4078,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4074
+          "line": 4078
         },
         {
           "file": "style.css",
@@ -6707,11 +6707,11 @@
       "selector": "#toDoInput",
       "label": "To Do Input",
       "file": "toDoRow.js",
-      "line": 4110,
+      "line": 4114,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4110
+          "line": 4114
         },
         {
           "file": "style.css",
@@ -6723,11 +6723,11 @@
       "selector": "#toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 4103,
+      "line": 4107,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4103
+          "line": 4107
         }
       ]
     },
@@ -6855,11 +6855,11 @@
       "selector": "#todoRowToast",
       "label": "Todo Row Toast",
       "file": "toDoRow.js",
-      "line": 288,
+      "line": 289,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 288
+          "line": 289
         }
       ]
     },
@@ -7343,11 +7343,11 @@
       "selector": ".agentAcceptButton",
       "label": "Agent Accept Button",
       "file": "agentView.js",
-      "line": 750,
+      "line": 752,
       "files": [
         {
           "file": "agentView.js",
-          "line": 750
+          "line": 752
         },
         {
           "file": "style.css",
@@ -7359,11 +7359,11 @@
       "selector": ".agentAnswerActions",
       "label": "Agent Answer Actions",
       "file": "agentView.js",
-      "line": 415,
+      "line": 416,
       "files": [
         {
           "file": "agentView.js",
-          "line": 415
+          "line": 416
         },
         {
           "file": "style.css",
@@ -7375,11 +7375,11 @@
       "selector": ".agentAnswerError",
       "label": "Agent Answer Error",
       "file": "agentView.js",
-      "line": 418,
+      "line": 419,
       "files": [
         {
           "file": "agentView.js",
-          "line": 418
+          "line": 419
         },
         {
           "file": "style.css",
@@ -7391,11 +7391,11 @@
       "selector": ".agentAnswerInput",
       "label": "Agent Answer Input",
       "file": "agentView.js",
-      "line": 397,
+      "line": 398,
       "files": [
         {
           "file": "agentView.js",
-          "line": 397
+          "line": 398
         },
         {
           "file": "style.css",
@@ -7407,11 +7407,11 @@
       "selector": ".agentAnswerSend",
       "label": "Agent Answer Send",
       "file": "agentView.js",
-      "line": 432,
+      "line": 433,
       "files": [
         {
           "file": "agentView.js",
-          "line": 432
+          "line": 433
         },
         {
           "file": "style.css",
@@ -7423,11 +7423,11 @@
       "selector": ".agentAnswerWithWords",
       "label": "Agent Answer With Words",
       "file": "agentView.js",
-      "line": 1131,
+      "line": 1133,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1131
+          "line": 1133
         },
         {
           "file": "style.css",
@@ -7567,11 +7567,11 @@
       "selector": ".agentBoard",
       "label": "Agent Board",
       "file": "agentView.js",
-      "line": 1809,
+      "line": 1811,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1809
+          "line": 1811
         },
         {
           "file": "style.css",
@@ -7583,11 +7583,11 @@
       "selector": ".agentBucket",
       "label": "Agent Bucket",
       "file": "agentView.js",
-      "line": 1569,
+      "line": 1571,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1569
+          "line": 1571
         },
         {
           "file": "style.css",
@@ -7599,11 +7599,11 @@
       "selector": ".agentBucketCaret",
       "label": "Agent Bucket Caret",
       "file": "agentView.js",
-      "line": 1522,
+      "line": 1524,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1522
+          "line": 1524
         },
         {
           "file": "style.css",
@@ -7615,11 +7615,11 @@
       "selector": ".agentBucketCount",
       "label": "Agent Bucket Count",
       "file": "agentView.js",
-      "line": 1533,
+      "line": 1535,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1533
+          "line": 1535
         },
         {
           "file": "style.css",
@@ -7631,11 +7631,11 @@
       "selector": ".agentBucketHeader",
       "label": "Agent Bucket Header",
       "file": "agentView.js",
-      "line": 1519,
+      "line": 1521,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1519
+          "line": 1521
         },
         {
           "file": "style.css",
@@ -7647,11 +7647,11 @@
       "selector": ".agentBucketLabel",
       "label": "Agent Bucket Label",
       "file": "agentView.js",
-      "line": 1528,
+      "line": 1530,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1528
+          "line": 1530
         },
         {
           "file": "style.css",
@@ -7663,11 +7663,11 @@
       "selector": ".agentBucketList",
       "label": "Agent Bucket List",
       "file": "agentView.js",
-      "line": 1573,
+      "line": 1575,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1573
+          "line": 1575
         },
         {
           "file": "style.css",
@@ -7679,11 +7679,11 @@
       "selector": ".agentCard",
       "label": "Agent Card",
       "file": "agentView.js",
-      "line": 901,
+      "line": 903,
       "files": [
         {
           "file": "agentView.js",
-          "line": 901
+          "line": 903
         },
         {
           "file": "style.css",
@@ -7695,11 +7695,11 @@
       "selector": ".agentCardBody",
       "label": "Agent Card Body",
       "file": "agentView.js",
-      "line": 1424,
+      "line": 1426,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1424
+          "line": 1426
         },
         {
           "file": "style.css",
@@ -7711,11 +7711,11 @@
       "selector": ".agentCardHead",
       "label": "Agent Card Head",
       "file": "agentView.js",
-      "line": 912,
+      "line": 914,
       "files": [
         {
           "file": "agentView.js",
-          "line": 912
+          "line": 914
         },
         {
           "file": "style.css",
@@ -7727,11 +7727,11 @@
       "selector": ".agentCardRemove",
       "label": "Agent Card Remove",
       "file": "agentView.js",
-      "line": 967,
+      "line": 969,
       "files": [
         {
           "file": "agentView.js",
-          "line": 967
+          "line": 969
         },
         {
           "file": "style.css",
@@ -7743,11 +7743,11 @@
       "selector": ".agentCardTitle",
       "label": "Agent Card Title",
       "file": "agentView.js",
-      "line": 915,
+      "line": 917,
       "files": [
         {
           "file": "agentView.js",
-          "line": 915
+          "line": 917
         },
         {
           "file": "style.css",
@@ -7759,11 +7759,11 @@
       "selector": ".agentChip",
       "label": "Agent Chip",
       "file": "agentView.js",
-      "line": 348,
+      "line": 349,
       "files": [
         {
           "file": "agentView.js",
-          "line": 348
+          "line": 349
         },
         {
           "file": "style.css",
@@ -7775,11 +7775,11 @@
       "selector": ".agentContinueChat",
       "label": "Agent Continue Chat",
       "file": "agentView.js",
-      "line": 1110,
+      "line": 1112,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1110
+          "line": 1112
         },
         {
           "file": "style.css",
@@ -7791,11 +7791,11 @@
       "selector": ".agentCounts",
       "label": "Agent Counts",
       "file": "agentView.js",
-      "line": 1799,
+      "line": 1801,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1799
+          "line": 1801
         },
         {
           "file": "style.css",
@@ -7903,11 +7903,11 @@
       "selector": ".agentDiscussLink",
       "label": "Agent Discuss Link",
       "file": "agentView.js",
-      "line": 1080,
+      "line": 1082,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1080
+          "line": 1082
         },
         {
           "file": "style.css",
@@ -7919,11 +7919,11 @@
       "selector": ".agentDispatchButton",
       "label": "Agent Dispatch Button",
       "file": "agentView.js",
-      "line": 678,
+      "line": 680,
       "files": [
         {
           "file": "agentView.js",
-          "line": 678
+          "line": 680
         },
         {
           "file": "style.css",
@@ -7935,11 +7935,11 @@
       "selector": ".agentDraftActions",
       "label": "Agent Draft Actions",
       "file": "agentView.js",
-      "line": 668,
+      "line": 670,
       "files": [
         {
           "file": "agentView.js",
-          "line": 668
+          "line": 670
         },
         {
           "file": "style.css",
@@ -7951,11 +7951,11 @@
       "selector": ".agentDraftBlock",
       "label": "Agent Draft Block",
       "file": "agentView.js",
-      "line": 661,
+      "line": 663,
       "files": [
         {
           "file": "agentView.js",
-          "line": 661
+          "line": 663
         },
         {
           "file": "mockupFlow.js",
@@ -7971,11 +7971,11 @@
       "selector": ".agentDraftError",
       "label": "Agent Draft Error",
       "file": "agentView.js",
-      "line": 671,
+      "line": 673,
       "files": [
         {
           "file": "agentView.js",
-          "line": 671
+          "line": 673
         },
         {
           "file": "style.css",
@@ -7987,11 +7987,11 @@
       "selector": ".agentEmptyGlyph",
       "label": "Agent Empty Glyph",
       "file": "agentView.js",
-      "line": 1706,
+      "line": 1708,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1706
+          "line": 1708
         },
         {
           "file": "style.css",
@@ -8003,11 +8003,11 @@
       "selector": ".agentEmptyState",
       "label": "Agent Empty State",
       "file": "agentView.js",
-      "line": 1690,
+      "line": 1692,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1690
+          "line": 1692
         },
         {
           "file": "style.css",
@@ -8019,11 +8019,11 @@
       "selector": ".agentFailure",
       "label": "Agent Failure",
       "file": "agentView.js",
-      "line": 803,
+      "line": 805,
       "files": [
         {
           "file": "agentView.js",
-          "line": 803
+          "line": 805
         },
         {
           "file": "style.css",
@@ -8035,11 +8035,11 @@
       "selector": ".agentGiveButton",
       "label": "Agent Give Button",
       "file": "agentView.js",
-      "line": 1410,
+      "line": 1412,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1410
+          "line": 1412
         },
         {
           "file": "style.css",
@@ -8051,11 +8051,11 @@
       "selector": ".agentGiveButtonLabel",
       "label": "Agent Give Button Label",
       "file": "agentView.js",
-      "line": 1414,
+      "line": 1416,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1414
+          "line": 1416
         }
       ]
     },
@@ -8063,11 +8063,11 @@
       "selector": ".agentGiveError",
       "label": "Agent Give Error",
       "file": "agentView.js",
-      "line": 1433,
+      "line": 1435,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1433
+          "line": 1435
         },
         {
           "file": "style.css",
@@ -8079,11 +8079,11 @@
       "selector": ".agentHeaderControls",
       "label": "Agent Header Controls",
       "file": "agentView.js",
-      "line": 1746,
+      "line": 1748,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1746
+          "line": 1748
         },
         {
           "file": "style.css",
@@ -8095,11 +8095,11 @@
       "selector": ".agentIdentity",
       "label": "Agent Identity",
       "file": "agentView.js",
-      "line": 1727,
+      "line": 1729,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1727
+          "line": 1729
         },
         {
           "file": "style.css",
@@ -8111,11 +8111,11 @@
       "selector": ".agentIdentityBadge",
       "label": "Agent Identity Badge",
       "file": "agentView.js",
-      "line": 1729,
+      "line": 1731,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1729
+          "line": 1731
         },
         {
           "file": "style.css",
@@ -8127,11 +8127,11 @@
       "selector": ".agentIdentityLabel",
       "label": "Agent Identity Label",
       "file": "agentView.js",
-      "line": 1733,
+      "line": 1735,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1733
+          "line": 1735
         },
         {
           "file": "style.css",
@@ -8579,11 +8579,11 @@
       "selector": ".agentPasteCopy",
       "label": "Agent Paste Copy",
       "file": "agentView.js",
-      "line": 1048,
+      "line": 1050,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1048
+          "line": 1050
         },
         {
           "file": "style.css",
@@ -8595,11 +8595,11 @@
       "selector": ".agentPasteHandoff",
       "label": "Agent Paste Handoff",
       "file": "agentView.js",
-      "line": 1039,
+      "line": 1041,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1039
+          "line": 1041
         },
         {
           "file": "style.css",
@@ -8611,11 +8611,11 @@
       "selector": ".agentPasteOpen",
       "label": "Agent Paste Open",
       "file": "agentView.js",
-      "line": 1057,
+      "line": 1059,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1057
+          "line": 1059
         },
         {
           "file": "style.css",
@@ -8627,11 +8627,11 @@
       "selector": ".agentPasteTag",
       "label": "Agent Paste Tag",
       "file": "agentView.js",
-      "line": 1042,
+      "line": 1044,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1042
+          "line": 1044
         },
         {
           "file": "style.css",
@@ -8643,11 +8643,11 @@
       "selector": ".agentProposedActions",
       "label": "Agent Proposed Actions",
       "file": "agentView.js",
-      "line": 740,
+      "line": 742,
       "files": [
         {
           "file": "agentView.js",
-          "line": 740
+          "line": 742
         },
         {
           "file": "style.css",
@@ -8659,11 +8659,11 @@
       "selector": ".agentProposedError",
       "label": "Agent Proposed Error",
       "file": "agentView.js",
-      "line": 743,
+      "line": 745,
       "files": [
         {
           "file": "agentView.js",
-          "line": 743
+          "line": 745
         },
         {
           "file": "style.css",
@@ -8675,11 +8675,11 @@
       "selector": ".agentQuestion",
       "label": "Agent Question",
       "file": "agentView.js",
-      "line": 392,
+      "line": 393,
       "files": [
         {
           "file": "agentView.js",
-          "line": 392
+          "line": 393
         },
         {
           "file": "style.css",
@@ -8691,11 +8691,11 @@
       "selector": ".agentRunBtn",
       "label": "Agent Run Btn",
       "file": "agentView.js",
-      "line": 1769,
+      "line": 1771,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1769
+          "line": 1771
         },
         {
           "file": "style.css",
@@ -8707,11 +8707,11 @@
       "selector": ".agentSecondary",
       "label": "Agent Secondary",
       "file": "agentView.js",
-      "line": 389,
+      "line": 390,
       "files": [
         {
           "file": "agentView.js",
-          "line": 389
+          "line": 390
         },
         {
           "file": "mockupFlow.js",
@@ -8727,11 +8727,11 @@
       "selector": ".agentSecondaryMuted",
       "label": "Agent Secondary Muted",
       "file": "agentView.js",
-      "line": 734,
+      "line": 736,
       "files": [
         {
           "file": "agentView.js",
-          "line": 734
+          "line": 736
         },
         {
           "file": "style.css",
@@ -8855,11 +8855,11 @@
       "selector": ".agentShippedGlyph",
       "label": "Agent Shipped Glyph",
       "file": "agentView.js",
-      "line": 364,
+      "line": 365,
       "files": [
         {
           "file": "agentView.js",
-          "line": 364
+          "line": 365
         },
         {
           "file": "style.css",
@@ -8871,11 +8871,11 @@
       "selector": ".agentShippedRow",
       "label": "Agent Shipped Row",
       "file": "agentView.js",
-      "line": 543,
+      "line": 545,
       "files": [
         {
           "file": "agentView.js",
-          "line": 543
+          "line": 545
         },
         {
           "file": "style.css",
@@ -8887,11 +8887,11 @@
       "selector": ".agentStatusDot",
       "label": "Agent Status Dot",
       "file": "agentView.js",
-      "line": 1756,
+      "line": 1758,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1756
+          "line": 1758
         },
         {
           "file": "style.css",
@@ -8903,11 +8903,11 @@
       "selector": ".agentStatusLabel",
       "label": "Agent Status Label",
       "file": "agentView.js",
-      "line": 1759,
+      "line": 1761,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1759
+          "line": 1761
         }
       ]
     },
@@ -8915,11 +8915,11 @@
       "selector": ".agentStatusPill",
       "label": "Agent Status Pill",
       "file": "agentView.js",
-      "line": 299,
+      "line": 300,
       "files": [
         {
           "file": "agentView.js",
-          "line": 299
+          "line": 300
         },
         {
           "file": "style.css",
@@ -8931,11 +8931,11 @@
       "selector": ".agentStuckActions",
       "label": "Agent Stuck Actions",
       "file": "agentView.js",
-      "line": 808,
+      "line": 810,
       "files": [
         {
           "file": "agentView.js",
-          "line": 808
+          "line": 810
         },
         {
           "file": "style.css",
@@ -8947,11 +8947,11 @@
       "selector": ".agentStuckError",
       "label": "Agent Stuck Error",
       "file": "agentView.js",
-      "line": 811,
+      "line": 813,
       "files": [
         {
           "file": "agentView.js",
-          "line": 811
+          "line": 813
         },
         {
           "file": "style.css",
@@ -8963,11 +8963,11 @@
       "selector": ".agentStuckRetry",
       "label": "Agent Stuck Retry",
       "file": "agentView.js",
-      "line": 820,
+      "line": 822,
       "files": [
         {
           "file": "agentView.js",
-          "line": 820
+          "line": 822
         },
         {
           "file": "style.css",
@@ -8979,11 +8979,11 @@
       "selector": ".agentViewHeader",
       "label": "Agent View Header",
       "file": "agentView.js",
-      "line": 1721,
+      "line": 1723,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1721
+          "line": 1723
         },
         {
           "file": "style.css",
@@ -8995,15 +8995,15 @@
       "selector": ".agentViewToast",
       "label": "Agent View Toast",
       "file": "agentView.js",
-      "line": 233,
+      "line": 234,
       "files": [
         {
           "file": "agentView.js",
-          "line": 233
+          "line": 234
         },
         {
           "file": "toDoRow.js",
-          "line": 289
+          "line": 290
         },
         {
           "file": "style.css",
@@ -9115,11 +9115,11 @@
       "selector": ".askingAnswerActions",
       "label": "Asking Answer Actions",
       "file": "toDoRow.js",
-      "line": 804,
+      "line": 805,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 804
+          "line": 805
         },
         {
           "file": "style.css",
@@ -9131,11 +9131,11 @@
       "selector": ".askingAnswerError",
       "label": "Asking Answer Error",
       "file": "toDoRow.js",
-      "line": 807,
+      "line": 808,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 807
+          "line": 808
         },
         {
           "file": "style.css",
@@ -9147,11 +9147,11 @@
       "selector": ".askingAnswerInput",
       "label": "Asking Answer Input",
       "file": "toDoRow.js",
-      "line": 790,
+      "line": 791,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 790
+          "line": 791
         },
         {
           "file": "style.css",
@@ -9163,11 +9163,11 @@
       "selector": ".askingAnswerSend",
       "label": "Asking Answer Send",
       "file": "toDoRow.js",
-      "line": 814,
+      "line": 815,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 814
+          "line": 815
         },
         {
           "file": "style.css",
@@ -9179,11 +9179,11 @@
       "selector": ".askingBlock",
       "label": "Asking Block",
       "file": "toDoRow.js",
-      "line": 778,
+      "line": 779,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 778
+          "line": 779
         },
         {
           "file": "style.css",
@@ -9195,11 +9195,11 @@
       "selector": ".askingQuestion",
       "label": "Asking Question",
       "file": "toDoRow.js",
-      "line": 784,
+      "line": 785,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 784
+          "line": 785
         },
         {
           "file": "style.css",
@@ -11903,11 +11903,11 @@
       "selector": ".claudeRunRevertBtn",
       "label": "Claude Run Revert Btn",
       "file": "agentView.js",
-      "line": 578,
+      "line": 580,
       "files": [
         {
           "file": "agentView.js",
-          "line": 578
+          "line": 580
         },
         {
           "file": "claudeSheet.js",
@@ -11923,11 +11923,11 @@
       "selector": ".claudeRunRevertIcon",
       "label": "Claude Run Revert Icon",
       "file": "agentView.js",
-      "line": 585,
+      "line": 587,
       "files": [
         {
           "file": "agentView.js",
-          "line": 585
+          "line": 587
         },
         {
           "file": "claudeSheet.js",
@@ -14307,11 +14307,11 @@
       "selector": ".copyTitleBtn",
       "label": "Copy Title Btn",
       "file": "toDoRow.js",
-      "line": 4246,
+      "line": 4250,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4246
+          "line": 4250
         },
         {
           "file": "style.css",
@@ -14323,11 +14323,11 @@
       "selector": ".copyTitleIcon",
       "label": "Copy Title Icon",
       "file": "toDoRow.js",
-      "line": 150,
+      "line": 151,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 150
+          "line": 151
         },
         {
           "file": "style.css",
@@ -14979,11 +14979,11 @@
       "selector": ".descActionsRow",
       "label": "Desc Actions Row",
       "file": "toDoRow.js",
-      "line": 3845,
+      "line": 3849,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 3845
+          "line": 3849
         },
         {
           "file": "style.css",
@@ -15011,11 +15011,11 @@
       "selector": ".descDetailHeader",
       "label": "Desc Detail Header",
       "file": "toDoRow.js",
-      "line": 367,
+      "line": 368,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 367
+          "line": 368
         },
         {
           "file": "style.css",
@@ -15027,11 +15027,11 @@
       "selector": ".descDetailHeaderMarker",
       "label": "Desc Detail Header Marker",
       "file": "toDoRow.js",
-      "line": 371,
+      "line": 372,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 371
+          "line": 372
         },
         {
           "file": "style.css",
@@ -15043,11 +15043,11 @@
       "selector": ".descDetailHeaderMarkerId",
       "label": "Desc Detail Header Marker Id",
       "file": "toDoRow.js",
-      "line": 390,
+      "line": 391,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 390
+          "line": 391
         },
         {
           "file": "style.css",
@@ -15059,11 +15059,11 @@
       "selector": ".descDetailHeaderMarkerLabel",
       "label": "Desc Detail Header Marker Label",
       "file": "toDoRow.js",
-      "line": 385,
+      "line": 386,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 385
+          "line": 386
         },
         {
           "file": "style.css",
@@ -15075,11 +15075,11 @@
       "selector": ".descDetailHeaderMarkerNone",
       "label": "Desc Detail Header Marker None",
       "file": "toDoRow.js",
-      "line": 395,
+      "line": 396,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 395
+          "line": 396
         },
         {
           "file": "style.css",
@@ -15091,11 +15091,11 @@
       "selector": ".descDetailHeaderTitle",
       "label": "Desc Detail Header Title",
       "file": "toDoRow.js",
-      "line": 369,
+      "line": 370,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 369
+          "line": 370
         },
         {
           "file": "style.css",
@@ -15107,11 +15107,11 @@
       "selector": ".descDispatchActions",
       "label": "Desc Dispatch Actions",
       "file": "toDoRow.js",
-      "line": 992,
+      "line": 993,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 992
+          "line": 993
         },
         {
           "file": "style.css",
@@ -15123,11 +15123,11 @@
       "selector": ".descDispatchBlock",
       "label": "Desc Dispatch Block",
       "file": "toDoRow.js",
-      "line": 987,
+      "line": 988,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 987
+          "line": 988
         },
         {
           "file": "style.css",
@@ -15139,11 +15139,11 @@
       "selector": ".descDispatchButton",
       "label": "Desc Dispatch Button",
       "file": "toDoRow.js",
-      "line": 1002,
+      "line": 1003,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1002
+          "line": 1003
         },
         {
           "file": "style.css",
@@ -15155,11 +15155,11 @@
       "selector": ".descDispatchError",
       "label": "Desc Dispatch Error",
       "file": "toDoRow.js",
-      "line": 995,
+      "line": 996,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 995
+          "line": 996
         },
         {
           "file": "style.css",
@@ -15307,7 +15307,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 918
+          "line": 919
         },
         {
           "file": "style.css",
@@ -15327,7 +15327,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 922
+          "line": 923
         },
         {
           "file": "style.css",
@@ -15347,7 +15347,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 927
+          "line": 928
         },
         {
           "file": "style.css",
@@ -15391,11 +15391,11 @@
       "selector": ".descFileReadout",
       "label": "Desc File Readout",
       "file": "toDoRow.js",
-      "line": 2208,
+      "line": 2209,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2208
+          "line": 2209
         },
         {
           "file": "style.css",
@@ -15407,11 +15407,11 @@
       "selector": ".descFileReadoutEmpty",
       "label": "Desc File Readout Empty",
       "file": "toDoRow.js",
-      "line": 2239,
+      "line": 2240,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2239
+          "line": 2240
         },
         {
           "file": "style.css",
@@ -15431,7 +15431,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 2210
+          "line": 2211
         },
         {
           "file": "style.css",
@@ -15443,11 +15443,11 @@
       "selector": ".descFileReadoutPath",
       "label": "Desc File Readout Path",
       "file": "toDoRow.js",
-      "line": 2245,
+      "line": 2246,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2245
+          "line": 2246
         },
         {
           "file": "style.css",
@@ -15459,11 +15459,11 @@
       "selector": ".descFileReadoutPaths",
       "label": "Desc File Readout Paths",
       "file": "toDoRow.js",
-      "line": 2213,
+      "line": 2214,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2213
+          "line": 2214
         },
         {
           "file": "style.css",
@@ -15475,11 +15475,11 @@
       "selector": ".descGenerateAction",
       "label": "Desc Generate Action",
       "file": "toDoRow.js",
-      "line": 2440,
+      "line": 2441,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2440
+          "line": 2441
         },
         {
           "file": "style.css",
@@ -15491,11 +15491,11 @@
       "selector": ".descGenerateBody",
       "label": "Desc Generate Body",
       "file": "toDoRow.js",
-      "line": 2431,
+      "line": 2432,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2431
+          "line": 2432
         },
         {
           "file": "style.css",
@@ -15507,11 +15507,11 @@
       "selector": ".descGenerateState",
       "label": "Desc Generate State",
       "file": "toDoRow.js",
-      "line": 2435,
+      "line": 2436,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2435
+          "line": 2436
         },
         {
           "file": "style.css",
@@ -15523,11 +15523,11 @@
       "selector": ".descMockupBlock",
       "label": "Desc Mockup Block",
       "file": "toDoRow.js",
-      "line": 1895,
+      "line": 1896,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1895
+          "line": 1896
         },
         {
           "file": "style.css",
@@ -15539,11 +15539,11 @@
       "selector": ".descMockupIntro",
       "label": "Desc Mockup Intro",
       "file": "toDoRow.js",
-      "line": 1899,
+      "line": 1900,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1899
+          "line": 1900
         },
         {
           "file": "style.css",
@@ -15587,11 +15587,11 @@
       "selector": ".descPanelFooter",
       "label": "Desc Panel Footer",
       "file": "toDoRow.js",
-      "line": 3832,
+      "line": 3836,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 3832
+          "line": 3836
         },
         {
           "file": "style.css",
@@ -15603,11 +15603,11 @@
       "selector": ".descPasteActions",
       "label": "Desc Paste Actions",
       "file": "toDoRow.js",
-      "line": 2397,
+      "line": 2398,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2397
+          "line": 2398
         },
         {
           "file": "style.css",
@@ -15619,11 +15619,11 @@
       "selector": ".descPasteBody",
       "label": "Desc Paste Body",
       "file": "toDoRow.js",
-      "line": 2380,
+      "line": 2381,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2380
+          "line": 2381
         },
         {
           "file": "style.css",
@@ -15635,11 +15635,11 @@
       "selector": ".descPasteInput",
       "label": "Desc Paste Input",
       "file": "toDoRow.js",
-      "line": 2384,
+      "line": 2385,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2384
+          "line": 2385
         },
         {
           "file": "style.css",
@@ -15651,11 +15651,11 @@
       "selector": ".descPasteParse",
       "label": "Desc Paste Parse",
       "file": "toDoRow.js",
-      "line": 2407,
+      "line": 2408,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2407
+          "line": 2408
         },
         {
           "file": "style.css",
@@ -15667,11 +15667,11 @@
       "selector": ".descPasteReport",
       "label": "Desc Paste Report",
       "file": "toDoRow.js",
-      "line": 2400,
+      "line": 2401,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2400
+          "line": 2401
         },
         {
           "file": "style.css",
@@ -15683,11 +15683,11 @@
       "selector": ".descReviewActions",
       "label": "Desc Review Actions",
       "file": "toDoRow.js",
-      "line": 1382,
+      "line": 1383,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1382
+          "line": 1383
         },
         {
           "file": "style.css",
@@ -15699,11 +15699,11 @@
       "selector": ".descReviewActionsDivider",
       "label": "Desc Review Actions Divider",
       "file": "toDoRow.js",
-      "line": 1398,
+      "line": 1399,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1398
+          "line": 1399
         },
         {
           "file": "style.css",
@@ -15715,11 +15715,11 @@
       "selector": ".descReviewActionsPrimary",
       "label": "Desc Review Actions Primary",
       "file": "toDoRow.js",
-      "line": 1394,
+      "line": 1395,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1394
+          "line": 1395
         },
         {
           "file": "style.css",
@@ -15731,11 +15731,11 @@
       "selector": ".descReviewActionsTertiary",
       "label": "Desc Review Actions Tertiary",
       "file": "toDoRow.js",
-      "line": 1403,
+      "line": 1404,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1403
+          "line": 1404
         },
         {
           "file": "style.css",
@@ -15747,11 +15747,11 @@
       "selector": ".descReviewBlock",
       "label": "Desc Review Block",
       "file": "toDoRow.js",
-      "line": 1220,
+      "line": 1221,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1220
+          "line": 1221
         },
         {
           "file": "style.css",
@@ -15763,11 +15763,11 @@
       "selector": ".descReviewBtn",
       "label": "Desc Review Btn",
       "file": "toDoRow.js",
-      "line": 1408,
+      "line": 1409,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1408
+          "line": 1409
         },
         {
           "file": "style.css",
@@ -15779,11 +15779,11 @@
       "selector": ".descReviewEntryView",
       "label": "Desc Review Entry View",
       "file": "toDoRow.js",
-      "line": 1280,
+      "line": 1281,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1280
+          "line": 1281
         },
         {
           "file": "style.css",
@@ -15795,11 +15795,11 @@
       "selector": ".descReviewEntryViewEyebrow",
       "label": "Desc Review Entry View Eyebrow",
       "file": "toDoRow.js",
-      "line": 1283,
+      "line": 1284,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1283
+          "line": 1284
         },
         {
           "file": "style.css",
@@ -15811,11 +15811,11 @@
       "selector": ".descReviewEntryViewText",
       "label": "Desc Review Entry View Text",
       "file": "toDoRow.js",
-      "line": 1291,
+      "line": 1292,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1291
+          "line": 1292
         },
         {
           "file": "style.css",
@@ -15827,11 +15827,11 @@
       "selector": ".descReviewError",
       "label": "Desc Review Error",
       "file": "toDoRow.js",
-      "line": 1388,
+      "line": 1389,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1388
+          "line": 1389
         },
         {
           "file": "style.css",
@@ -15843,11 +15843,11 @@
       "selector": ".descReviewHeading",
       "label": "Desc Review Heading",
       "file": "toDoRow.js",
-      "line": 1223,
+      "line": 1224,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1223
+          "line": 1224
         },
         {
           "file": "style.css",
@@ -15859,11 +15859,11 @@
       "selector": ".descReviewNote",
       "label": "Desc Review Note",
       "file": "toDoRow.js",
-      "line": 1257,
+      "line": 1258,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1257
+          "line": 1258
         },
         {
           "file": "style.css",
@@ -15875,11 +15875,11 @@
       "selector": ".descReviewPr",
       "label": "Desc Review Pr",
       "file": "toDoRow.js",
-      "line": 1231,
+      "line": 1232,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1231
+          "line": 1232
         },
         {
           "file": "style.css",
@@ -15891,11 +15891,11 @@
       "selector": ".descReviewSummary",
       "label": "Desc Review Summary",
       "file": "toDoRow.js",
-      "line": 1251,
+      "line": 1252,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1251
+          "line": 1252
         },
         {
           "file": "style.css",
@@ -15907,11 +15907,11 @@
       "selector": ".descRunReportBlock",
       "label": "Desc Run Report Block",
       "file": "toDoRow.js",
-      "line": 1664,
+      "line": 1665,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1664
+          "line": 1665
         },
         {
           "file": "style.css",
@@ -15923,11 +15923,11 @@
       "selector": ".descRunReportBody",
       "label": "Desc Run Report Body",
       "file": "toDoRow.js",
-      "line": 1689,
+      "line": 1690,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1689
+          "line": 1690
         },
         {
           "file": "style.css",
@@ -15939,11 +15939,11 @@
       "selector": ".descRunReportDetail",
       "label": "Desc Run Report Detail",
       "file": "toDoRow.js",
-      "line": 1703,
+      "line": 1704,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1703
+          "line": 1704
         },
         {
           "file": "style.css",
@@ -15955,11 +15955,11 @@
       "selector": ".descRunReportFollowups",
       "label": "Desc Run Report Followups",
       "file": "toDoRow.js",
-      "line": 1694,
+      "line": 1695,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1694
+          "line": 1695
         },
         {
           "file": "style.css",
@@ -15971,11 +15971,11 @@
       "selector": ".descRunReportHeading",
       "label": "Desc Run Report Heading",
       "file": "toDoRow.js",
-      "line": 1667,
+      "line": 1668,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1667
+          "line": 1668
         },
         {
           "file": "style.css",
@@ -15987,11 +15987,11 @@
       "selector": ".descRunReportToggle",
       "label": "Desc Run Report Toggle",
       "file": "toDoRow.js",
-      "line": 1674,
+      "line": 1675,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 1674
+          "line": 1675
         },
         {
           "file": "style.css",
@@ -16027,7 +16027,7 @@
         },
         {
           "file": "toDoRow.js",
-          "line": 2268
+          "line": 2269
         }
       ]
     },
@@ -16147,11 +16147,11 @@
       "selector": ".descSiblingEntryLabel",
       "label": "Desc Sibling Entry Label",
       "file": "toDoRow.js",
-      "line": 659,
+      "line": 660,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 659
+          "line": 660
         },
         {
           "file": "style.css",
@@ -16163,11 +16163,11 @@
       "selector": ".descTriageBar",
       "label": "Desc Triage Bar",
       "file": "toDoRow.js",
-      "line": 2060,
+      "line": 2061,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2060
+          "line": 2061
         },
         {
           "file": "style.css",
@@ -16179,11 +16179,11 @@
       "selector": ".descTriageBarFill",
       "label": "Desc Triage Bar Fill",
       "file": "toDoRow.js",
-      "line": 2063,
+      "line": 2064,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2063
+          "line": 2064
         },
         {
           "file": "style.css",
@@ -16195,11 +16195,11 @@
       "selector": ".descTriageBlock",
       "label": "Desc Triage Block",
       "file": "toDoRow.js",
-      "line": 2047,
+      "line": 2048,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2047
+          "line": 2048
         },
         {
           "file": "style.css",
@@ -16211,11 +16211,11 @@
       "selector": ".descTriageElapsed",
       "label": "Desc Triage Elapsed",
       "file": "toDoRow.js",
-      "line": 2068,
+      "line": 2069,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2068
+          "line": 2069
         },
         {
           "file": "style.css",
@@ -16227,11 +16227,11 @@
       "selector": ".descTriageHeading",
       "label": "Desc Triage Heading",
       "file": "toDoRow.js",
-      "line": 2052,
+      "line": 2053,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2052
+          "line": 2053
         },
         {
           "file": "style.css",
@@ -16243,11 +16243,11 @@
       "selector": ".descTriageMeta",
       "label": "Desc Triage Meta",
       "file": "toDoRow.js",
-      "line": 2057,
+      "line": 2058,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2057
+          "line": 2058
         },
         {
           "file": "style.css",
@@ -16259,11 +16259,11 @@
       "selector": ".descTriageSpend",
       "label": "Desc Triage Spend",
       "file": "toDoRow.js",
-      "line": 2076,
+      "line": 2077,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2076
+          "line": 2077
         },
         {
           "file": "style.css",
@@ -16371,11 +16371,11 @@
       "selector": ".discussBtn",
       "label": "Discuss Btn",
       "file": "toDoRow.js",
-      "line": 4337,
+      "line": 4341,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4337
+          "line": 4341
         },
         {
           "file": "style.css",
@@ -16387,11 +16387,11 @@
       "selector": ".discussBtnGlyph",
       "label": "Discuss Btn Glyph",
       "file": "toDoRow.js",
-      "line": 4340,
+      "line": 4344,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4340
+          "line": 4344
         }
       ]
     },
@@ -16399,11 +16399,11 @@
       "selector": ".discussBtnLabel",
       "label": "Discuss Btn Label",
       "file": "toDoRow.js",
-      "line": 4340,
+      "line": 4344,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4340
+          "line": 4344
         }
       ]
     },
@@ -16411,11 +16411,11 @@
       "selector": ".divider",
       "label": "Divider",
       "file": "agentView.js",
-      "line": 1153,
+      "line": 1155,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1153
+          "line": 1155
         },
         {
           "file": "style.css",
@@ -17611,11 +17611,11 @@
       "selector": ".generateBtn",
       "label": "Generate Btn",
       "file": "toDoRow.js",
-      "line": 2726,
+      "line": 2730,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2726
+          "line": 2730
         },
         {
           "file": "style.css",
@@ -17627,11 +17627,11 @@
       "selector": ".generateBtnIcon",
       "label": "Generate Btn Icon",
       "file": "toDoRow.js",
-      "line": 2542,
+      "line": 2543,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2542
+          "line": 2543
         },
         {
           "file": "style.css",
@@ -17643,11 +17643,11 @@
       "selector": ".generateBtnLabel",
       "label": "Generate Btn Label",
       "file": "toDoRow.js",
-      "line": 2568,
+      "line": 2571,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2568
+          "line": 2571
         },
         {
           "file": "style.css",
@@ -17659,11 +17659,11 @@
       "selector": ".generateBtnSpinner",
       "label": "Generate Btn Spinner",
       "file": "toDoRow.js",
-      "line": 2568,
+      "line": 2571,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2568
+          "line": 2571
         },
         {
           "file": "style.css",
@@ -17675,11 +17675,11 @@
       "selector": ".generateFailure",
       "label": "Generate Failure",
       "file": "toDoRow.js",
-      "line": 2610,
+      "line": 2614,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2610
+          "line": 2614
         },
         {
           "file": "style.css",
@@ -17691,11 +17691,11 @@
       "selector": ".generateFailureDismiss",
       "label": "Generate Failure Dismiss",
       "file": "toDoRow.js",
-      "line": 2621,
+      "line": 2625,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2621
+          "line": 2625
         },
         {
           "file": "style.css",
@@ -17707,11 +17707,11 @@
       "selector": ".generateFailureText",
       "label": "Generate Failure Text",
       "file": "toDoRow.js",
-      "line": 2615,
+      "line": 2619,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 2615
+          "line": 2619
         },
         {
           "file": "style.css",
@@ -17787,11 +17787,11 @@
       "selector": ".iconBtn",
       "label": "Icon Btn",
       "file": "agentView.js",
-      "line": 1172,
+      "line": 1174,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1172
+          "line": 1174
         },
         {
           "file": "style.css",
@@ -19171,11 +19171,11 @@
       "selector": ".modelsAutoLabel",
       "label": "Models Auto Label",
       "file": "modelsPanel.js",
-      "line": 718,
+      "line": 726,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 718
+          "line": 726
         },
         {
           "file": "style.css",
@@ -19187,11 +19187,11 @@
       "selector": ".modelsAutoRow",
       "label": "Models Auto Row",
       "file": "modelsPanel.js",
-      "line": 713,
+      "line": 721,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 713
+          "line": 721
         },
         {
           "file": "style.css",
@@ -19203,11 +19203,11 @@
       "selector": ".modelsAutoSub",
       "label": "Models Auto Sub",
       "file": "modelsPanel.js",
-      "line": 721,
+      "line": 729,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 721
+          "line": 729
         },
         {
           "file": "style.css",
@@ -19219,11 +19219,11 @@
       "selector": ".modelsAutoText",
       "label": "Models Auto Text",
       "file": "modelsPanel.js",
-      "line": 716,
+      "line": 724,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 716
+          "line": 724
         },
         {
           "file": "style.css",
@@ -19235,11 +19235,11 @@
       "selector": ".modelsAutoToggle",
       "label": "Models Auto Toggle",
       "file": "modelsPanel.js",
-      "line": 729,
+      "line": 737,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 729
+          "line": 737
         },
         {
           "file": "style.css",
@@ -19251,11 +19251,11 @@
       "selector": ".modelsDivider",
       "label": "Models Divider",
       "file": "modelsPanel.js",
-      "line": 641,
+      "line": 649,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 641
+          "line": 649
         },
         {
           "file": "style.css",
@@ -19267,11 +19267,11 @@
       "selector": ".modelsLegend",
       "label": "Models Legend",
       "file": "modelsPanel.js",
-      "line": 648,
+      "line": 656,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 648
+          "line": 656
         },
         {
           "file": "style.css",
@@ -19283,11 +19283,11 @@
       "selector": ".modelsMatrix",
       "label": "Models Matrix",
       "file": "modelsPanel.js",
-      "line": 633,
+      "line": 641,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 633
+          "line": 641
         },
         {
           "file": "style.css",
@@ -19299,11 +19299,11 @@
       "selector": ".modelsPanelError",
       "label": "Models Panel Error",
       "file": "modelsPanel.js",
-      "line": 491,
+      "line": 499,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 491
+          "line": 499
         },
         {
           "file": "style.css",
@@ -19315,11 +19315,11 @@
       "selector": ".modelsPanelLoading",
       "label": "Models Panel Loading",
       "file": "modelsPanel.js",
-      "line": 474,
+      "line": 482,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 474
+          "line": 482
         },
         {
           "file": "style.css",
@@ -19331,11 +19331,11 @@
       "selector": ".modelsPanelLoadingLabel",
       "label": "Models Panel Loading Label",
       "file": "modelsPanel.js",
-      "line": 478,
+      "line": 486,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 478
+          "line": 486
         },
         {
           "file": "style.css",
@@ -19347,11 +19347,11 @@
       "selector": ".modelsPicker",
       "label": "Models Picker",
       "file": "modelsPanel.js",
-      "line": 363,
+      "line": 371,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 363
+          "line": 371
         },
         {
           "file": "style.css",
@@ -19363,11 +19363,11 @@
       "selector": ".modelsPickerCheck",
       "label": "Models Picker Check",
       "file": "modelsPanel.js",
-      "line": 323,
+      "line": 331,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 323
+          "line": 331
         },
         {
           "file": "style.css",
@@ -19379,11 +19379,11 @@
       "selector": ".modelsPickerHeading",
       "label": "Models Picker Heading",
       "file": "modelsPanel.js",
-      "line": 311,
+      "line": 319,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 311
+          "line": 319
         },
         {
           "file": "style.css",
@@ -19395,11 +19395,11 @@
       "selector": ".modelsPickerHint",
       "label": "Models Picker Hint",
       "file": "modelsPanel.js",
-      "line": 334,
+      "line": 342,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 334
+          "line": 342
         },
         {
           "file": "style.css",
@@ -19411,11 +19411,11 @@
       "selector": ".modelsPickerLabel",
       "label": "Models Picker Label",
       "file": "modelsPanel.js",
-      "line": 329,
+      "line": 337,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 329
+          "line": 337
         },
         {
           "file": "style.css",
@@ -19427,11 +19427,11 @@
       "selector": ".modelsPickerNote",
       "label": "Models Picker Note",
       "file": "modelsPanel.js",
-      "line": 772,
+      "line": 780,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 772
+          "line": 780
         },
         {
           "file": "style.css",
@@ -19443,11 +19443,11 @@
       "selector": ".modelsPickerRow",
       "label": "Models Picker Row",
       "file": "modelsPanel.js",
-      "line": 319,
+      "line": 327,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 319
+          "line": 327
         },
         {
           "file": "style.css",
@@ -19459,11 +19459,11 @@
       "selector": ".modelsRow",
       "label": "Models Row",
       "file": "modelsPanel.js",
-      "line": 658,
+      "line": 666,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 658
+          "line": 666
         },
         {
           "file": "style.css",
@@ -19475,11 +19475,11 @@
       "selector": ".modelsRowBadge",
       "label": "Models Row Badge",
       "file": "modelsPanel.js",
-      "line": 688,
+      "line": 696,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 688
+          "line": 696
         },
         {
           "file": "style.css",
@@ -19491,11 +19491,11 @@
       "selector": ".modelsRowChip",
       "label": "Models Row Chip",
       "file": "modelsPanel.js",
-      "line": 677,
+      "line": 685,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 677
+          "line": 685
         },
         {
           "file": "style.css",
@@ -19507,11 +19507,11 @@
       "selector": ".modelsRowChipWrap",
       "label": "Models Row Chip Wrap",
       "file": "modelsPanel.js",
-      "line": 675,
+      "line": 683,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 675
+          "line": 683
         },
         {
           "file": "style.css",
@@ -19523,11 +19523,11 @@
       "selector": ".modelsRowDot",
       "label": "Models Row Dot",
       "file": "modelsPanel.js",
-      "line": 665,
+      "line": 673,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 665
+          "line": 673
         },
         {
           "file": "style.css",
@@ -19539,11 +19539,11 @@
       "selector": ".modelsRowLabel",
       "label": "Models Row Label",
       "file": "modelsPanel.js",
-      "line": 670,
+      "line": 678,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 670
+          "line": 678
         },
         {
           "file": "style.css",
@@ -19555,11 +19555,11 @@
       "selector": ".modelsRowLock",
       "label": "Models Row Lock",
       "file": "modelsPanel.js",
-      "line": 696,
+      "line": 704,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 696
+          "line": 704
         },
         {
           "file": "style.css",
@@ -19571,11 +19571,11 @@
       "selector": ".modelsRowSource",
       "label": "Models Row Source",
       "file": "modelsPanel.js",
-      "line": 682,
+      "line": 690,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 682
+          "line": 690
         },
         {
           "file": "style.css",
@@ -19587,11 +19587,11 @@
       "selector": ".modelsRowSubline",
       "label": "Models Row Subline",
       "file": "modelsPanel.js",
-      "line": 703,
+      "line": 711,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 703
+          "line": 711
         },
         {
           "file": "style.css",
@@ -19603,11 +19603,11 @@
       "selector": ".modelsScopeSeg",
       "label": "Models Scope Seg",
       "file": "modelsPanel.js",
-      "line": 557,
+      "line": 565,
       "files": [
         {
           "file": "modelsPanel.js",
-          "line": 557
+          "line": 565
         },
         {
           "file": "style.css",
@@ -20507,11 +20507,11 @@
       "selector": ".pill",
       "label": "Pill",
       "file": "agentView.js",
-      "line": 1426,
+      "line": 1428,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1426
+          "line": 1428
         },
         {
           "file": "style.css",
@@ -21051,7 +21051,7 @@
         },
         {
           "file": "modelsPanel.js",
-          "line": 476
+          "line": 484
         },
         {
           "file": "projectRow.js",
@@ -23795,11 +23795,11 @@
       "selector": ".statsGridWrapper",
       "label": "Stats Grid Wrapper",
       "file": "toDoRow.js",
-      "line": 3548,
+      "line": 3552,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 3548
+          "line": 3552
         },
         {
           "file": "style.css",
@@ -23931,11 +23931,11 @@
       "selector": ".statsToggle",
       "label": "Stats Toggle",
       "file": "toDoRow.js",
-      "line": 4270,
+      "line": 4274,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4270
+          "line": 4274
         }
       ]
     },
@@ -23975,11 +23975,11 @@
       "selector": ".stripe",
       "label": "Stripe",
       "file": "agentView.js",
-      "line": 1395,
+      "line": 1397,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1395
+          "line": 1397
         },
         {
           "file": "style.css",
@@ -26515,11 +26515,11 @@
       "selector": ".swipeActionGlyph",
       "label": "Swipe Action Glyph",
       "file": "toDoRow.js",
-      "line": 4412,
+      "line": 4416,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4412
+          "line": 4416
         },
         {
           "file": "style.css",
@@ -26531,11 +26531,11 @@
       "selector": ".swipeActionPane",
       "label": "Swipe Action Pane",
       "file": "toDoRow.js",
-      "line": 4409,
+      "line": 4413,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4409
+          "line": 4413
         },
         {
           "file": "style.css",
@@ -27031,11 +27031,11 @@
       "selector": ".thinActions",
       "label": "Thin Actions",
       "file": "agentView.js",
-      "line": 1168,
+      "line": 1170,
       "files": [
         {
           "file": "agentView.js",
-          "line": 1168
+          "line": 1170
         },
         {
           "file": "style.css",
@@ -27047,11 +27047,11 @@
       "selector": ".toDoTitleDisplay",
       "label": "To Do Title Display",
       "file": "toDoRow.js",
-      "line": 4104,
+      "line": 4108,
       "files": [
         {
           "file": "toDoRow.js",
-          "line": 4104
+          "line": 4108
         },
         {
           "file": "style.css",
@@ -30917,7 +30917,7 @@
     },
     {
       "path": "agentQueueStore.js",
-      "lines": 1809,
+      "lines": 1821,
       "imports": [
         "listLogic.js",
         "supabaseClient.js"
@@ -30926,7 +30926,7 @@
     },
     {
       "path": "agentView.js",
-      "lines": 1937,
+      "lines": 1939,
       "imports": [
         "agentQueueStore.js",
         "assignmentCoverage.js",
@@ -31512,7 +31512,7 @@
     },
     {
       "path": "modelsPanel.js",
-      "lines": 914,
+      "lines": 922,
       "imports": [
         "claudeSheet.js",
         "inject.js",
@@ -31856,7 +31856,7 @@
     },
     {
       "path": "toDoRow.js",
-      "lines": 5366,
+      "lines": 5370,
       "imports": [
         "agentQueueStore.js",
         "authoringModeStrip.js",
