@@ -56,7 +56,9 @@
         "undoToast.js",
         "statsDrawerPanel.js",
         "mobileTaskCreate.js",
-        "mobileProjSwipeNav.js"
+        "mobileProjSwipeNav.js",
+        "entryScreenshot.js",
+        "imagePrep.js"
       ]
     },
     {

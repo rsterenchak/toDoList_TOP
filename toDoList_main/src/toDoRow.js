@@ -70,6 +70,7 @@ import { dismissDesktopTodoViewer } from './todoMdViewer.js';
 import { promptRunInjectedEntry } from './todoMdViewer.js';
 import { mountMicButton } from './voiceInput.js';
 import { createFilePicker, parseFilePathsFromEntry } from './filePicker.js';
+import { buildScreenshotRow, refreshScreenshotRow, wireScreenshotRow } from './entryScreenshot.js';
 import { buildPhaseRail, paintPhaseRail } from './phaseRail.js';
 import { buildAuthoringModeStrip, setAuthoringModeStripActive } from './authoringModeStrip.js';
 import { parsePastedEntry, recognizedEntryFields } from './entryParse.js';
@@ -687,6 +688,7 @@ export const DESC_PANEL_CHILD_SELECTORS = Object.freeze([
     '#descSibling .filePickPanel',
     '#descSibling .descActionsRow',
     '#descSibling .descFileReadout',
+    '#descSibling .descScreenshotRow',
     '#descSibling .generateFailure',
     '#descSibling #descEditorModalStatusRow',
     '#descSibling .descModeStrip',
@@ -721,6 +723,7 @@ const DESC_AUTHORING_GROUP_SELECTORS = Object.freeze([
     '.descPasteBody',
     '.descGenerateBody',
     '.descTriageBlock',
+    '.descScreenshotRow',
 ]);
 
 
@@ -2245,6 +2248,37 @@ export function refreshFileReadout(descSibling, text) {
         });
     }
     refreshViewerExpandedHeight();
+}
+
+
+// ── SCREENSHOT ROW ───────────────────────────────────────────────────────
+// The desktop host of entryScreenshot.js's row: appended to the docked footer
+// after the FILE readout (filter → actions → FILE → SCREENSHOT → status). The row
+// owns the panel's hidden image input, so a reopen reuses both. After a stage or
+// a remove the textarea fires `input` (repainting FILE + this row); persist and
+// refresh Inject here, as the file picker's onInsert does.
+function mountDescScreenshotRow(descSibling, footer, descInput, item, projectName, injectBtn) {
+    let row = descSibling.querySelector('.descScreenshotRow');
+    if (!row) {
+        row = buildScreenshotRow();
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/*';
+        fileInput.hidden = true;
+        fileInput.className = 'descScreenshotInput';
+        row.appendChild(fileInput);
+    }
+    footer.appendChild(row);
+    wireScreenshotRow(row, {
+        item: item,
+        fileInput: row.querySelector('.descScreenshotInput'),
+        textarea: descInput,
+        projectName: projectName,
+        onChange: function () {
+            if (injectBtn) refreshInjectButton(injectBtn, item, projectName);
+            refreshViewerExpandedHeight();
+        },
+    });
 }
 
 
@@ -3844,6 +3878,13 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             if (!fileReadout) fileReadout = buildFileReadout();
             footer.appendChild(fileReadout);
         }
+        // SCREENSHOT row directly beneath the FILE readout: one image the Inject
+        // POST commits to docs/context/ beside the entry. Committed rows only (the
+        // staged image is keyed by the todo id). Reuse the persistent node and its
+        // hidden file input across reopens; re-wiring only refreshes the options.
+        if (item.tit && item.id) {
+            mountDescScreenshotRow(descSibling, footer, descInput, item, projectName, injectBtn);
+        }
         descInput.value = item["desc"] || "";
         // Trigger the textarea's auto-grow handler now that it's in the
         // DOM — scrollHeight is only meaningful for an attached element.
@@ -4345,6 +4386,7 @@ export function buildToDoRow(item, toDoName) {
     // height only when the parsed File: path set actually changes.
     descInput.addEventListener("input", function() {
         refreshFileReadout(descSibling, descInput.value);
+        refreshScreenshotRow(descSibling, item, descInput.value);
     });
 
     // Run-status indicator — occupies the leading slot between the checkbox and

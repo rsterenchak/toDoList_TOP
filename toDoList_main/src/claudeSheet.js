@@ -86,6 +86,7 @@ import { setChatPaneCollapsed, getUsageBudget, setUsageBudget, getChatBookScope,
 import { loadSymbols, getLoadedSymbols, isTraceable, resolveName } from './codeTrace.js';
 import { wireModalDismiss } from './modalDismiss.js';
 import { serializeLayout } from './layoutInspect.js';
+import { prepareImage } from './imagePrep.js';
 import { applyPendingUpdate, hasPendingUpdate, showConfirmModal } from './modals.js';
 import {
     materializeEntryTodo,
@@ -263,8 +264,6 @@ let pendingImages = [];
 // Worker's 5MB/image cap so a phone screenshot never trips its 400; only the
 // four still-image formats the model accepts are allowed.
 const IMAGE_MAX_COUNT = 4;
-const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-const IMAGE_MAX_DIMENSION = 1568;
 const IMAGE_ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
 // The chat-level "workspace": the repo the whole conversation is framed
 // around. Sent as `repo` on every turn so the Worker reframes its system
@@ -2845,91 +2844,6 @@ function buildImageAttach() {
     wrap.appendChild(btn);
     wrap.appendChild(fileInput);
     return wrap;
-}
-
-// Read a File to a `data:` URL via FileReader, resolving the URL string.
-function readFileAsDataURL(file) {
-    return new Promise(function(resolve, reject) {
-        const reader = new FileReader();
-        reader.onload = function() { resolve(String(reader.result || '')); };
-        reader.onerror = function() { reject(reader.error || new Error('read failed')); };
-        try { reader.readAsDataURL(file); } catch (e) { reject(e); }
-    });
-}
-
-// Split a base64 `data:` URL into { media_type, data }, or null if it isn't one.
-function parseImageDataUrl(url) {
-    const m = /^data:([^;,]+);base64,([\s\S]+)$/.exec(String(url || ''));
-    if (!m) return null;
-    return { media_type: m[1], data: m[2] };
-}
-
-// Approximate decoded byte length of a base64 string (used to compare against
-// the 5MB cap without decoding).
-function base64ByteLength(b64) {
-    const s = String(b64 || '');
-    if (!s) return 0;
-    let padding = 0;
-    if (s.charAt(s.length - 1) === '=') padding = s.charAt(s.length - 2) === '=' ? 2 : 1;
-    return Math.floor(s.length * 3 / 4) - padding;
-}
-
-// Downscale + re-encode an image so its base64 payload lands under the 5MB cap.
-// Loads the source into an <img>, draws it into a <canvas> at a reduced size, and
-// re-encodes as JPEG (much smaller than PNG for photos/screenshots, which are
-// the only things that exceed 5MB), shrinking further across a bounded set of
-// attempts until under budget. Resolves { media_type, data } or null when the
-// canvas isn't usable (e.g. no 2d context) so the caller can fall back to the
-// original bytes; the Worker enforces the same cap as a backstop.
-function downscaleImage(dataUrl) {
-    return new Promise(function(resolve) {
-        let img;
-        try { img = new Image(); } catch (e) { resolve(null); return; }
-        img.onload = function() {
-            try {
-                const canvas = document.createElement('canvas');
-                const ctx = canvas.getContext && canvas.getContext('2d');
-                const width = img.naturalWidth || img.width;
-                const height = img.naturalHeight || img.height;
-                if (!ctx || !width || !height) { resolve(null); return; }
-                let scale = Math.min(1, IMAGE_MAX_DIMENSION / Math.max(width, height));
-                let quality = 0.85;
-                for (let attempt = 0; attempt < 6; attempt++) {
-                    const w = Math.max(1, Math.round(width * scale));
-                    const h = Math.max(1, Math.round(height * scale));
-                    canvas.width = w;
-                    canvas.height = h;
-                    ctx.clearRect(0, 0, w, h);
-                    ctx.drawImage(img, 0, 0, w, h);
-                    const out = canvas.toDataURL('image/jpeg', quality);
-                    const parsed = parseImageDataUrl(out);
-                    if (parsed && base64ByteLength(parsed.data) <= IMAGE_MAX_BYTES) {
-                        resolve(parsed);
-                        return;
-                    }
-                    scale *= 0.75;
-                    quality = Math.max(0.5, quality - 0.1);
-                }
-                resolve(null);
-            } catch (e) { resolve(null); }
-        };
-        img.onerror = function() { resolve(null); };
-        img.src = dataUrl;
-    });
-}
-
-// Read one picked File into a staged image { media_type, data }. Images already
-// under the cap keep their original bytes (preserves animated GIFs and avoids a
-// needless re-encode); oversized ones are downscaled, falling back to the raw
-// bytes if the canvas path can't run. Returns null for an unreadable/unparsable
-// file.
-async function prepareImage(file) {
-    const dataUrl = await readFileAsDataURL(file);
-    const parsed = parseImageDataUrl(dataUrl);
-    if (!parsed) return null;
-    if (base64ByteLength(parsed.data) <= IMAGE_MAX_BYTES) return parsed;
-    const shrunk = await downscaleImage(dataUrl);
-    return shrunk || parsed;
 }
 
 // Handle a batch of picked files: filter to the allowed still-image types, prep
