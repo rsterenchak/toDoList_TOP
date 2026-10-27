@@ -410,6 +410,7 @@ export function showDescEditorModal(item, options) {
         renderReviewBlock(phase);
         applyPhaseChrome(phase);
         renderEntryDisclosure(phase);
+        syncAgentTabs();
     }
 
     // Repaint when the phase changes while the modal is open — an entry can ship
@@ -427,26 +428,115 @@ export function showDescEditorModal(item, options) {
     const body = document.createElement('div');
     body.id = 'descEditorModalBody';
 
+    // ── NOTES / AGENT PANES ──
+    // The stacked agent decision blocks (ASKING, STUCK, MOCKUP, Dispatch / Retry,
+    // REVIEW) plus THE ENTRY textarea's min-height floor used to push the modal
+    // past its height cap on a phone. The body now holds two panes behind a small
+    // tab bar: "Notes" (THE ENTRY — label, disclosure, file picker, textarea) and
+    // "Agent" (every phase block, with a count badge). Each pane scrolls on its
+    // own (`flex: 1; min-height: 0; overflow-y: auto` in style.css), so the agent
+    // buttons scroll inside the pane rather than growing the dialog, and
+    // #descEditorModalActions stays a sibling outside the scroll region. With no
+    // agent block mounted the tab bar and Agent pane hide and Notes is the whole
+    // body — the plain layout, unchanged. Switching only toggles `hidden` /
+    // aria-selected; the block builders and their handlers are untouched.
+    const tabBar = document.createElement('div');
+    tabBar.id = 'descEditorModalTabs';
+    tabBar.setAttribute('role', 'tablist');
+    tabBar.hidden = true;
+
+    const notesTab = document.createElement('button');
+    notesTab.id = 'descEditorModalNotesTab';
+    notesTab.type = 'button';
+    notesTab.className = 'descEditorModalTab';
+    notesTab.setAttribute('role', 'tab');
+    notesTab.setAttribute('aria-controls', 'descEditorModalNotesPane');
+    notesTab.textContent = 'Notes';
+
+    const agentTab = document.createElement('button');
+    agentTab.id = 'descEditorModalAgentTab';
+    agentTab.type = 'button';
+    agentTab.className = 'descEditorModalTab';
+    agentTab.setAttribute('role', 'tab');
+    agentTab.setAttribute('aria-controls', 'descEditorModalAgentPane');
+    const agentTabLabel = document.createElement('span');
+    agentTabLabel.textContent = 'Agent';
+    const agentTabBadge = document.createElement('span');
+    agentTabBadge.className = 'descEditorModalTabBadge';
+    agentTab.appendChild(agentTabLabel);
+    agentTab.appendChild(agentTabBadge);
+
+    tabBar.appendChild(notesTab);
+    tabBar.appendChild(agentTab);
+
+    const notesPane = document.createElement('div');
+    notesPane.id = 'descEditorModalNotesPane';
+    notesPane.className = 'descEditorModalPane';
+    notesPane.setAttribute('role', 'tabpanel');
+    notesPane.setAttribute('aria-labelledby', 'descEditorModalNotesTab');
+
+    const agentPane = document.createElement('div');
+    agentPane.id = 'descEditorModalAgentPane';
+    agentPane.className = 'descEditorModalPane';
+    agentPane.setAttribute('role', 'tabpanel');
+    agentPane.setAttribute('aria-labelledby', 'descEditorModalAgentTab');
+    agentPane.hidden = true;
+
+    body.appendChild(tabBar);
+    body.appendChild(notesPane);
+    body.appendChild(agentPane);
+
+    function selectPaneTab(which) {
+        const agent = which === 'agent';
+        notesTab.setAttribute('aria-selected', agent ? 'false' : 'true');
+        agentTab.setAttribute('aria-selected', agent ? 'true' : 'false');
+        notesPane.hidden = agent;
+        agentPane.hidden = !agent;
+    }
+    notesTab.addEventListener('click', function () { selectPaneTab('notes'); });
+    agentTab.addEventListener('click', function () { selectPaneTab('agent'); });
+
+    // Count the mounted phase blocks (the REVIEW card's action row and run report
+    // belong to its one block) for the badge. The first time blocks appear —
+    // on open, or mid-session via a repaint — lead with the Agent tab, since that
+    // is what the user opened the modal to act on; later repaints keep whichever
+    // tab the user last chose. No blocks → tabs hide and Notes is the whole body.
+    const AGENT_BLOCK_SELECTOR = '.askingBlock, #descEditorModalStuck, #descEditorModalMockup, '
+        + '.descDispatchBlock, .descReviewBlock';
+    function syncAgentTabs() {
+        const count = agentPane.querySelectorAll(AGENT_BLOCK_SELECTOR).length;
+        agentTabBadge.textContent = String(count);
+        if (count === 0) {
+            tabBar.hidden = true;
+            selectPaneTab('notes');
+            return;
+        }
+        if (tabBar.hidden) {
+            tabBar.hidden = false;
+            selectPaneTab('agent');
+        }
+    }
+
     // Label the entry field with the same SpaceMono uppercase treatment the rest
     // of the pipeline surfaces use, so the textarea reads as THE ENTRY panel of an
     // instrument, not an unlabelled form field.
     const entryLabel = document.createElement('span');
     entryLabel.id = 'descEditorModalEntryLabel';
     entryLabel.textContent = 'The entry';
-    body.appendChild(entryLabel);
+    notesPane.appendChild(entryLabel);
 
     // ── ASKING QUESTION BLOCK ──
     // When the task's derived phase is `asking` (its linked agent_queue row is in
     // needs_words), triage has a pending question. Mount the SHARED ASKING block —
     // buildAskingBlock from toDoRow.js, the same builder the desktop `#descSibling`
-    // panel uses — at the top of the body: triage's question, the answer textarea
+    // panel uses — at the top of the Agent pane: triage's question, the answer textarea
     // (16px, iOS-zoom-safe), and the Send control that routes the answer through
     // listLogic.answerAgentTask. Idempotent, mirroring renderStuckBlock: mount only
     // in the asking phase and clear the moment the queue row moves on, but KEEP an
     // already-mounted block for the SAME queue row (data-answer-row guard) so a live
     // repaint doesn't drop the user's unsent answer text.
     function renderAskingBlock(phase) {
-        const existing = body.querySelector('.askingBlock');
+        const existing = agentPane.querySelector('.askingBlock');
         const queueRow = (phase === PHASE.ASKING && item && item.id)
             ? getQueueRowForTodo(item.id) : null;
         if (!queueRow) {
@@ -455,7 +545,7 @@ export function showDescEditorModal(item, options) {
         }
         if (existing && existing.getAttribute('data-answer-row') === String(queueRow.id)) return;
         if (existing) existing.remove();
-        body.insertBefore(buildAskingBlock(item, opts.projectName || '', queueRow), body.firstChild);
+        agentPane.insertBefore(buildAskingBlock(item, opts.projectName || '', queueRow), agentPane.firstChild);
     }
 
     // ── STUCK REASON BLOCK ──
@@ -469,7 +559,7 @@ export function showDescEditorModal(item, options) {
     // refreshPhaseUI (which runs on both TODO_RUN_STATUS_EVENT and onQueueChange).
     // Idempotent: it refreshes the mounted block's text rather than rebuilding.
     function renderStuckBlock(phase) {
-        const existing = body.querySelector('#descEditorModalStuck');
+        const existing = agentPane.querySelector('#descEditorModalStuck');
         if (phase !== PHASE.STUCK) {
             if (existing) existing.remove();
             return;
@@ -496,14 +586,14 @@ export function showDescEditorModal(item, options) {
         reasonEl.textContent = reason;
         block.appendChild(reasonEl);
 
-        body.insertBefore(block, body.firstChild);
+        agentPane.insertBefore(block, agentPane.firstChild);
     }
 
     // ── MOCKUP FLOW BLOCK ──
     // When the task's derived phase is `mockup` (its linked agent_queue row is in
     // needs_mockup), the run is waiting on a visual direction before its entry can
-    // be authored. Mount the SHARED A/B/C mockup flow at the top of the body, above
-    // the authoring textarea — mirroring the desktop pane — but in the TABBED layout
+    // be authored. Mount the SHARED A/B/C mockup flow at the top of the Agent pane —
+    // mirroring the desktop pane — but in the TABBED layout
     // (options.tabbed): three OPTION A/B/C tabs above a single scaled preview, since
     // three frames across at phone width are unreadable and stacking them would blow
     // the modal's height cap. Choosing a variant produces its finished entry and
@@ -514,10 +604,10 @@ export function showDescEditorModal(item, options) {
     // the SAME queue row so a live repaint (refreshPhaseUI runs on every
     // TODO_RUN_STATUS_EVENT / onQueueChange) never wipes an in-flight Generate or the
     // rendered previews — buildMockupSecondary repaints its own previews internally.
-    // The block sits at body.firstChild; STUCK and MOCKUP are different phases, so
+    // The block sits at agentPane.firstChild; STUCK and MOCKUP are different phases, so
     // the two blocks never contend for that slot.
     function renderMockupBlock(phase) {
-        const existing = body.querySelector('#descEditorModalMockup');
+        const existing = agentPane.querySelector('#descEditorModalMockup');
         const queueRow = (phase === PHASE.MOCKUP && item && item.id)
             ? getQueueRowForTodo(item.id) : null;
         if (!queueRow) {
@@ -542,7 +632,7 @@ export function showDescEditorModal(item, options) {
 
         block.appendChild(buildMockupSecondary(queueRow, { tabbed: true }));
 
-        body.insertBefore(block, body.firstChild);
+        agentPane.insertBefore(block, agentPane.firstChild);
     }
 
     // ── DISPATCH / RETRY ACTION ──
@@ -558,7 +648,7 @@ export function showDescEditorModal(item, options) {
     // failure this codebase pins deliberately). Idempotent: keep an in-flight
     // (pending) button across a repaint when the row + mode are unchanged.
     function renderDispatchBlock() {
-        const existing = body.querySelector('.descDispatchBlock');
+        const existing = agentPane.querySelector('.descDispatchBlock');
         const queueRow = item && item.id ? getQueueRowForTodo(item.id) : null;
         const state = queueRow && queueRow.state;
         const baseMode = state === 'drafted' ? 'dispatch'
@@ -577,19 +667,19 @@ export function showDescEditorModal(item, options) {
             existing.remove();
         }
         const block = buildDispatchBlock(item, queueRow, mode, opts.projectName || '');
-        // Retry and Retry triage sit beneath the STUCK reason card; Dispatch beneath
-        // the entry textarea. Fall back to appending at the body's end.
+        // Retry and Retry triage sit beneath the STUCK reason card; Dispatch (and a
+        // Retry with no card to follow) append at the end of the Agent pane.
         const anchorAfter = mode !== 'dispatch'
-            ? body.querySelector('#descEditorModalStuck')
-            : body.querySelector('#descEditorModalTextarea');
-        if (anchorAfter) body.insertBefore(block, anchorAfter.nextSibling);
-        else body.appendChild(block);
+            ? agentPane.querySelector('#descEditorModalStuck')
+            : null;
+        if (anchorAfter) agentPane.insertBefore(block, anchorAfter.nextSibling);
+        else agentPane.appendChild(block);
     }
 
     // ── REVIEW (ACCEPT-PHASE) DECISION SURFACE ──
     // When the task's derived phase is `accept` (shipped, not yet acknowledged),
     // mount the SHARED WHAT CHANGED card (buildReviewBlock) and the ACCEPT / REVERT /
-    // OPEN IN TODO.MD action row (buildReviewActions) at the top of the body — the
+    // OPEN IN TODO.MD action row (buildReviewActions) at the top of the Agent pane — the
     // touch home for the decide surface the desktop detail pane mounts inline.
     // OPEN IN TODO.MD hands buildReviewActions an onOpenInViewer that dismisses this
     // modal FIRST, then defers the anchored viewer open a tick (an open modal over
@@ -598,8 +688,8 @@ export function showDescEditorModal(item, options) {
     // the mounted controls (and any in-flight Revert) when the same entry is already
     // shown so a live repaint doesn't thrash the DOM.
     function renderReviewBlock(phase) {
-        const existingBlock = body.querySelector('.descReviewBlock');
-        const existingActions = body.querySelector('.descReviewActions');
+        const existingBlock = agentPane.querySelector('.descReviewBlock');
+        const existingActions = agentPane.querySelector('.descReviewActions');
         if (phase !== PHASE.ACCEPT) {
             if (existingBlock) existingBlock.remove();
             if (existingActions) existingActions.remove();
@@ -631,14 +721,14 @@ export function showDescEditorModal(item, options) {
             },
         });
         // WHAT CHANGED card first, the action row right after it.
-        body.insertBefore(actionsRow, body.firstChild);
-        body.insertBefore(buildReviewBlock(item, queueRow), body.firstChild);
+        agentPane.insertBefore(actionsRow, agentPane.firstChild);
+        agentPane.insertBefore(buildReviewBlock(item, queueRow), agentPane.firstChild);
         // The run's closing summary is fetched async and mounted BETWEEN the WHAT
-        // CHANGED card and the action row once (if) it resolves. The modal body
-        // already scrolls under its 92vh cap, so no expanded-height re-snapshot is
+        // CHANGED card and the action row once (if) it resolves. The Agent pane
+        // already scrolls under the modal height cap, so no expanded-height re-snapshot is
         // needed here (that is the desktop viewer's concern). A run with no summary,
         // or a failed fetch, mounts nothing.
-        mountRunReportBlock(body, item, queueRow, actionsRow, null);
+        mountRunReportBlock(agentPane, item, queueRow, actionsRow, null);
     }
 
     // ── PHASE CHROME (blocked-phase eyebrow + dialog accent) ──
@@ -685,14 +775,14 @@ export function showDescEditorModal(item, options) {
         if (collapsed) filePicker.panel.hidden = true;
     }
     function paintDisclosure() {
-        const btn = body.querySelector('#descEditorModalEntryDisclosure');
+        const btn = notesPane.querySelector('#descEditorModalEntryDisclosure');
         if (!btn) return;
         const hint = btn.querySelector('.descEditorModalEntryDisclosureHint');
         btn.setAttribute('aria-expanded', entryExpanded ? 'true' : 'false');
         if (hint) hint.textContent = entryExpanded ? 'tap to collapse ▴' : 'tap to expand ▾';
     }
     function renderEntryDisclosure(phase) {
-        const existing = body.querySelector('#descEditorModalEntryDisclosure');
+        const existing = notesPane.querySelector('#descEditorModalEntryDisclosure');
         if (!isBlockedPhase(phase)) {
             if (existing) existing.remove();
             applyEntryVisibility(false);
@@ -725,10 +815,9 @@ export function showDescEditorModal(item, options) {
                     try { textarea.scrollIntoView({ block: 'nearest' }); } catch (e) { /* defensive */ }
                 }
             });
-            // Sits right above the entry region so an expand reveals it directly
-            // beneath the disclosure, and below any phase block (which mount at
-            // body.firstChild), so the phase block keeps the top of the body.
-            body.insertBefore(btn, entryLabel);
+            // Sits right above the entry region in the Notes pane so an expand
+            // reveals it directly beneath the disclosure.
+            notesPane.insertBefore(btn, entryLabel);
             paintDisclosure();
         }
         applyEntryVisibility(!entryExpanded);
@@ -750,7 +839,7 @@ export function showDescEditorModal(item, options) {
     // user is drafting for paste into TODO.md.
     textarea.setAttribute('autocorrect', 'off');
     textarea.value = (item && typeof item.desc === 'string') ? item.desc : '';
-    body.appendChild(textarea);
+    notesPane.appendChild(textarea);
 
     // ── FILE:-PATH PICKER ──
     // A target-picker chip beside THE ENTRY that lists the active project's
@@ -770,8 +859,8 @@ export function showDescEditorModal(item, options) {
         panelId: 'descEditorModalTargetPanel',
         onInsert: function () { listLogic.saveToStorage(); },
     });
-    body.insertBefore(filePicker.trigger, textarea);
-    body.appendChild(filePicker.panel);
+    notesPane.insertBefore(filePicker.trigger, textarea);
+    notesPane.appendChild(filePicker.panel);
 
     const actions = document.createElement('div');
     actions.id = 'descEditorModalActions';
@@ -837,7 +926,7 @@ export function showDescEditorModal(item, options) {
 
     // The REVIEW (accept-phase) decide surface no longer lives in the actions row.
     // In the `accept` phase renderReviewBlock mounts the WHAT CHANGED card plus the
-    // ACCEPT / REVERT / OPEN IN TODO.MD action row at the TOP of the body (the shared
+    // ACCEPT / REVERT / OPEN IN TODO.MD action row at the TOP of the Agent pane (the shared
     // buildReviewBlock / buildReviewActions the desktop detail pane uses), so the
     // mobile user can decide in place rather than only routing out to the viewer.
 

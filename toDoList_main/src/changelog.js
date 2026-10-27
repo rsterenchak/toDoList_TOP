@@ -12,16 +12,10 @@ export const changelog = [
         ],
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
+            'The phone todo editor now fits on screen when agent controls are showing, with the entry and the agent controls on separate Notes and Agent tabs that scroll on their own.',
         ],
         changed: [
             'The Completed section\'s "Clear all" button is now a borderless red pill with a trash icon and a softer hover tint.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-26',
-        fixed: [
-            'The Phosphor theme no longer shows stray violet-grey: the Completed header, the COVERAGE tab, the TODO.md card buttons and the rest of the app now follow the green palette.',
         ],
     },
 ];

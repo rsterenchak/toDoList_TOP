@@ -115,8 +115,8 @@ describe('mobile desc editor — THE ENTRY label + Generate spend caption', () =
         expect(tail).toMatch(/textContent\s*=\s*['"]The entry['"]/);
         // The label is appended before the textarea build.
         const fn = modals.slice(modals.indexOf('function showDescEditorModal('));
-        const labelAppend = fn.search(/body\.appendChild\(\s*entryLabel\s*\)/);
-        const textareaAppend = fn.search(/body\.appendChild\(\s*textarea\s*\)/);
+        const labelAppend = fn.search(/notesPane\.appendChild\(\s*entryLabel\s*\)/);
+        const textareaAppend = fn.search(/notesPane\.appendChild\(\s*textarea\s*\)/);
         expect(labelAppend).toBeGreaterThan(-1);
         expect(textareaAppend).toBeGreaterThan(-1);
         expect(labelAppend).toBeLessThan(textareaAppend);

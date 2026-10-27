@@ -323,7 +323,7 @@ describe('run-report block — source-pinned wiring', () => {
 
     it('mounts on both hosts — the desktop pane (syncReviewPanel) and the mobile modal', () => {
         expect(toDoRow).toMatch(/mountRunReportBlock\(panel, item, queueRow, reviewActions,/);
-        expect(modals).toMatch(/mountRunReportBlock\(body, item, queueRow, actionsRow,/);
+        expect(modals).toMatch(/mountRunReportBlock\(agentPane, item, queueRow, actionsRow,/);
     });
 
     it('is NOT swept into the done-phase authoring hide', () => {
