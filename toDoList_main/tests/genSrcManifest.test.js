@@ -7,6 +7,27 @@ import gen from '../scripts/gen-src-manifest.js';
 
 const { scanRegions } = gen;
 
+// The real repo's index — every src/ module scanned for symbols, plus the
+// compiled tours — built ONCE per test file and shared by the real-codetour,
+// real-codebook and real-symbols suites below. Scanning ~100 modules and
+// compiling the tours is the slow part (about 2s on a dev machine, several
+// times that on a loaded CI runner), and six tests used to each rebuild it from
+// scratch; the last of them tripped vitest's 5s per-test default in CI. The
+// cache keeps every real-repo test to the milliseconds its own assertions take.
+// `tourWarnings` captures what buildWebTours reported so the tours suite can
+// still assert a clean compile.
+const REAL_SRC_DIR = require('path').resolve(__dirname, '..', 'src');
+let _realIndex = null;
+function realIndex() {
+    if (!_realIndex) {
+        const tourWarnings = [];
+        const symbols = gen.buildWebSymbols({ srcDir: REAL_SRC_DIR });
+        const tours = gen.buildWebTours({ srcDir: REAL_SRC_DIR, symbols, warn: (m) => tourWarnings.push(m) });
+        _realIndex = { symbols, tours, tourWarnings };
+    }
+    return _realIndex;
+}
+
 function src(name, text, isJs) {
     return { name, isJs: isJs === undefined ? /\.(jsx?|tsx?)$/.test(name) : isJs, text };
 }
@@ -380,7 +401,7 @@ describe('gen-src-manifest real src/ symbols', () => {
     const fs = require('fs');
     const path = require('path');
     const srcDir = path.resolve(__dirname, '..', 'src');
-    const symbols = buildWebSymbols({ srcDir });
+    const symbols = realIndex().symbols;
 
     it('resolves listLogic.getProjectTargetId inside the listLogic IIFE', () => {
         const hit = defsNamed(symbols.files['listLogic.js'].defs, 'getProjectTargetId');
@@ -649,18 +670,18 @@ describe('gen-src-manifest writeWebTours', () => {
 // update codetour.json in the same PR.
 describe('gen-src-manifest real codetour.json', () => {
     const path = require('path');
-    const warn = vi.fn();
     const doc = require('../codetour.json');
-    const tours = buildWebTours({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+    const tours = realIndex().tours;
+    const warnings = realIndex().tourWarnings;
 
     it('resolves every tour and step with zero warnings', () => {
-        expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
+        expect(warnings).toEqual([]);
         expect(tours.tours.length).toBe(doc.tours.length);
         tours.tours.forEach((t, i) => expect(t.steps.length).toBe(doc.tours[i].steps.length));
     });
 
     it('compiles every recap with zero recap warnings', () => {
-        expect(warn.mock.calls.map((c) => c[0]).filter((m) => /recap/.test(m))).toEqual([]);
+        expect(warnings.filter((m) => /recap/.test(m))).toEqual([]);
         tours.tours.forEach((t, i) => expect(t.recap.length).toBe((doc.tours[i].recap || []).length));
     });
 
@@ -1285,7 +1306,7 @@ describe('gen-src-manifest real codebook.json', () => {
     const warn = vi.fn();
     const doc = require('../codebook.json');
     const tourDoc = require('../codetour.json');
-    const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+    const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), symbols: realIndex().symbols, tours: realIndex().tours, warn });
 
     // Drift is the stale book run's job, not a reason to fail a code PR: a
     // change to described code flags its chapter for the book to catch up.
@@ -1306,7 +1327,7 @@ describe('gen-src-manifest real codebook.json', () => {
         const tmp = require('fs').mkdtempSync(path.join(require('os').tmpdir(), 'gsr-'));
         const bookPath = path.join(tmp, 'codebook.json');
         require('fs').writeFileSync(bookPath, JSON.stringify(fresh));
-        const again = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), bookPath, warn: vi.fn() });
+        const again = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), bookPath, symbols: realIndex().symbols, tours: realIndex().tours, warn: vi.fn() });
         require('fs').rmSync(tmp, { recursive: true, force: true });
         again.chapters.forEach((c) => {
             expect(c.drift).toEqual([]);
@@ -1359,7 +1380,7 @@ describe('gen-src-manifest real codebook.json', () => {
     });
 
     it('names files and tours that exist, and areas from codemap.json', () => {
-        const symbols = buildWebSymbols({ srcDir: path.resolve(__dirname, '..', 'src') });
+        const symbols = realIndex().symbols;
         const tourIds = new Set(tourDoc.tours.map((t) => t.id));
         const areaIds = new Set(require('../codemap.json').areas.map((a) => a.id));
         doc.chapters.forEach((c) => {
@@ -1769,7 +1790,7 @@ describe('gen-src-manifest cited versus inferred rationale', () => {
     it('the real codebook.json cites or hedges every rationale sentence', () => {
         const path = require('path');
         const warn = vi.fn();
-        const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), warn });
+        const book = buildWebBook({ srcDir: path.resolve(__dirname, '..', 'src'), symbols: realIndex().symbols, tours: realIndex().tours, warn });
         expect(warn.mock.calls.map((c) => c[0])).toEqual([]);
         const total = book.chapters.reduce((n, c) => n + c.rationale.cited + c.rationale.inferred, 0);
         expect(total).toBeGreaterThan(0);
