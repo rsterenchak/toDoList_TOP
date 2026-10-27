@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-10-27',
         added: [
             'A todo\'s description panel and mobile editor now have a Screenshot row where you can attach one image, which Inject commits alongside the entry so the run that ships it can see it.',
+            'Pasting an image into a todo\'s description now attaches it as the entry\'s screenshot instead of dropping text into the description.',
         ],
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
@@ -17,7 +18,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-26',
         fixed: [
-            'A dictated todo can always be added by tap: when the phone stops listening the overlay stays up paused with Tap to add and a Discard button, and the + on the Add a task row turns into a tappable add button once the row has text.',
             'Purple accents across the app, including todo row and header borders and the Claude chat pane, now switch to the deeper light-theme violets in light mode instead of staying on the dark-theme shades.',
             'The Phosphor theme no longer shows stray violet-grey: the Completed header, the COVERAGE tab, the TODO.md card buttons and the rest of the app now follow the green palette.',
         ],

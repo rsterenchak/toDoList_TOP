@@ -287,6 +287,7 @@ export function wireScreenshotRow(row, opts) {
     // line" would drop a staged image the entry still names. Later `input`
     // events pass the live text, so deleting the line by hand still drops it.
     refreshScreenshotRow(row, opts.item);
+    wirePasteTarget(row, opts.textarea);
     if (row.__screenshotWired) return;
     row.__screenshotWired = true;
 
@@ -310,6 +311,7 @@ export function wireScreenshotRow(row, opts) {
         const record = await stageEntryScreenshot(o.item, file, { projectName: o.projectName });
         if (record) syncTextarea(o);
     }
+    row.__screenshotStage = stage;
 
     row.querySelector('.descScreenshotIdle').addEventListener('click', function(event) {
         event.stopPropagation();
@@ -346,4 +348,40 @@ export function wireScreenshotRow(row, opts) {
         row.screenshotStagePromise = stage(input.files && input.files[0]);
     });
     opts.fileInput.addEventListener('cancel', endScreenshotPick);
+}
+
+// The first image file a paste carries, or null. `files` is the common path;
+// some browsers only expose a pasted image through `items`.
+function pastedImage(clipboardData) {
+    if (!clipboardData) return null;
+    const files = clipboardData.files || [];
+    for (let i = 0; i < files.length; i++) {
+        if (/^image\//.test(files[i].type || '')) return files[i];
+    }
+    const items = clipboardData.items || [];
+    for (let i = 0; i < items.length; i++) {
+        const it = items[i];
+        if (it && it.kind === 'file' && /^image\//.test(it.type || '')) {
+            const f = it.getAsFile && it.getAsFile();
+            if (f) return f;
+        }
+    }
+    return null;
+}
+
+// A pasted image stages exactly as a pick does. One listener per textarea (a
+// host re-wires on every open); it stages through whichever row last wired it.
+// A paste with no image passes through to the textarea untouched.
+function wirePasteTarget(row, textarea) {
+    if (!textarea) return;
+    textarea.__screenshotRow = row;
+    if (textarea.__screenshotPasteWired) return;
+    textarea.__screenshotPasteWired = true;
+    textarea.addEventListener('paste', function(event) {
+        const file = pastedImage(event.clipboardData);
+        const target = textarea.__screenshotRow;
+        if (!file || !target || typeof target.__screenshotStage !== 'function') return;
+        event.preventDefault();
+        target.screenshotStagePromise = target.__screenshotStage(file);
+    });
 }
