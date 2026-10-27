@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-27T04:53:33.266Z",
-  "sha": "8ec3ec16fd2821661f9729fd3bd3f8200b5dea93",
+  "generatedAt": "2026-10-27T06:18:43.936Z",
+  "sha": "dfb9de11a4eedbd442a15fb99297832342f4e483",
   "files": [
     "aboutVersionCue.js",
     "agentQueueStore.js",
@@ -9781,11 +9781,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 68,
+      "line": 66,
       "files": [
         {
           "file": "changelog.js",
-          "line": 68
+          "line": 66
         },
         {
           "file": "style.css",
@@ -9797,11 +9797,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 37,
+      "line": 35,
       "files": [
         {
           "file": "changelog.js",
-          "line": 37
+          "line": 35
         },
         {
           "file": "style.css",
@@ -9813,11 +9813,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 47,
+      "line": 45,
       "files": [
         {
           "file": "changelog.js",
-          "line": 47
+          "line": 45
         },
         {
           "file": "style.css",
@@ -9829,11 +9829,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 40,
+      "line": 38,
       "files": [
         {
           "file": "changelog.js",
-          "line": 40
+          "line": 38
         },
         {
           "file": "style.css",
@@ -9845,11 +9845,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 43,
+      "line": 41,
       "files": [
         {
           "file": "changelog.js",
-          "line": 43
+          "line": 41
         },
         {
           "file": "style.css",
@@ -9861,11 +9861,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 64,
+      "line": 62,
       "files": [
         {
           "file": "changelog.js",
-          "line": 64
+          "line": 62
         },
         {
           "file": "style.css",
@@ -30625,7 +30625,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 82,
+      "lines": 80,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
