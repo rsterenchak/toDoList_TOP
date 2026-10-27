@@ -543,6 +543,7 @@ describe('supabase re-hydrate triggers — src/index.js', () => {
             const factory = new Function(
                 'document', 'listLogic',
                 'function isEditableElementFocused(){' + guardBody + '}\n' +
+                'function isScreenshotPickInFlight(){ return false; }\n' +
                 'function rehydrateUnlessEditing(){' + rehydrateBody + '}\n' +
                 'function wakeRecoverRealtime(){ try { listLogic.resubscribeToRealtime(); } catch (_) {} }\n' +
                 'return function onFocus(){' + focusBody + '};'
@@ -616,12 +617,14 @@ describe('supabase re-hydrate triggers — src/index.js', () => {
             const fakeListLogic = { hydrateFromSupabase: () => { hydrateCalls++; } };
 
             // Build rehydrateUnlessEditing with isEditableElementFocused in scope.
+            let pickInFlight = false;
             const factory = new Function(
-                'document', 'listLogic',
+                'document', 'listLogic', 'pickState',
                 'function isEditableElementFocused(){' + guardBody + '}\n' +
+                'function isScreenshotPickInFlight(){ return pickState(); }\n' +
                 'return function rehydrateUnlessEditing(){' + rehydrateBody + '};'
             );
-            const rehydrate = factory(fakeDocument, fakeListLogic);
+            const rehydrate = factory(fakeDocument, fakeListLogic, () => pickInFlight);
 
             // Non-editable focus → hydrate runs.
             rehydrate();
@@ -647,6 +650,14 @@ describe('supabase re-hydrate triggers — src/index.js', () => {
             activeContentEditable = false;
             rehydrate();
             expect(hydrateCalls).toBe(2);
+
+            // A screenshot pick in flight (native picker up) → skip.
+            pickInFlight = true;
+            rehydrate();
+            expect(hydrateCalls).toBe(2);
+            pickInFlight = false;
+            rehydrate();
+            expect(hydrateCalls).toBe(3);
         });
     });
 });

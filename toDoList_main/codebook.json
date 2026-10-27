@@ -198,7 +198,7 @@
       "fingerprint": {
         "auth.js:sendCode": "5980fd6c09c4398c.da39a3ee5e6b4b0d",
         "auth.js:verifyCode": "c1b4e353a694a3a5.da39a3ee5e6b4b0d",
-        "index.js:rehydrateUnlessEditing": "06119726c66d8c4d.da39a3ee5e6b4b0d",
+        "index.js:rehydrateUnlessEditing": "3c6d691d99d21ea7.da39a3ee5e6b4b0d",
         "listLogic.js": "3da570150344d322.dbb35aa43fbdf470",
         "listLogic.js:listLogic.handleTodosRealtime": "f852170e4b3b4bd1.dbb35aa43fbdf470",
         "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.dbb35aa43fbdf470",

@@ -3878,14 +3878,15 @@ function wireDescToggle(descToggle, toDoChild, descSibling, descInput, injectBtn
             if (!fileReadout) fileReadout = buildFileReadout();
             footer.appendChild(fileReadout);
         }
+        descInput.value = item["desc"] || "";
         // SCREENSHOT row directly beneath the FILE readout: one image the Inject
         // POST commits to docs/context/ beside the entry. Committed rows only (the
         // staged image is keyed by the todo id). Reuse the persistent node and its
         // hidden file input across reopens; re-wiring only refreshes the options.
+        // Mounted after the textarea is filled so the row never sees a stale value.
         if (item.tit && item.id) {
             mountDescScreenshotRow(descSibling, footer, descInput, item, projectName, injectBtn);
         }
-        descInput.value = item["desc"] || "";
         // Trigger the textarea's auto-grow handler now that it's in the
         // DOM — scrollHeight is only meaningful for an attached element.
         descInput.dispatchEvent(new Event("input"));

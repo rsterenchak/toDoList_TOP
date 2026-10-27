@@ -21,6 +21,7 @@ import { initViewportHeal } from './viewportHeal.js';
 import { initViewportSettle } from './viewportSettle.js';
 import { enforceAppLockIdle } from './appLock.js';
 import { initInjectTargets } from './inject.js';
+import { isScreenshotPickInFlight } from './entryScreenshot.js';
 import Icon from './icon.png';
 import button from './addProj_button.svg';
 
@@ -423,8 +424,12 @@ function isEditableElementFocused() {
     return tag === 'INPUT' || tag === 'TEXTAREA' || el.matches('[contenteditable]');
 }
 
+// A screenshot pick backgrounds the page on a phone and moves focus off the
+// textarea, so the editable-focus guard alone would rebuild the list (and the
+// open description) under the native picker; entryScreenshot.js holds the flag.
 function rehydrateUnlessEditing() {
     if (isEditableElementFocused()) return;
+    if (isScreenshotPickInFlight()) return;
     try {
         listLogic.hydrateFromSupabase();
     } catch (_) { /* hydrate guards its own errors; belt-and-suspenders */ }
