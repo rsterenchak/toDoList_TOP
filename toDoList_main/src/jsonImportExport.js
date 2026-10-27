@@ -8,12 +8,33 @@
 // snapshot), this module reads and writes Supabase directly so the file
 // reflects authoritative server state — important when local state has
 // drifted from the cloud or when the user wants an off-app backup.
+//
+// With no account (offline mode, accessMode.js) there is no Supabase to read
+// or write, so the same two entry points route to exportImport.js instead:
+// export builds the file from the in-memory snapshot (tagged `mode: 'local'`)
+// and import replaces the tree through listLogic.replaceAllProjects.
 
 import { supabase } from './supabaseClient.js';
 import { showConfirmModal } from './modals.js';
 import { listLogic } from './listLogic.js';
+import { hasAccount } from './accessMode.js';
+import {
+    buildExportPayload as buildSnapshotPayload,
+    importFromFile,
+    importTodosFromString,
+} from './exportImport.js';
 
 const EXPORT_VERSION = 1;
+
+// When this device last downloaded an export, offline or signed in. The
+// offline backup nudge (backupNudge.js) reads it to decide whether to ask.
+export const LAST_EXPORT_KEY = 'todoapp_lastExportAt';
+
+export function stampLastExport(now) {
+    try {
+        localStorage.setItem(LAST_EXPORT_KEY, String((now || new Date()).getTime()));
+    } catch (_) { /* storage denied (private mode) */ }
+}
 
 
 // ── PURE HELPERS ──
@@ -106,11 +127,33 @@ function triggerDownload(blob, filename) {
 
 // ── EXPORT ──
 
+// Offline export: the in-memory snapshot under the same filename convention
+// as the Supabase export. `mode: 'local'` tells importFromJson to replay it
+// through replaceAllProjects after sign-in rather than as Supabase rows.
+export function exportLocalToJson(now) {
+    try {
+        const payload = buildSnapshotPayload(now);
+        payload.mode = 'local';
+        const json = JSON.stringify(payload, null, 2);
+        const blob = new Blob([json], { type: 'application/json' });
+        triggerDownload(blob, 'todolist-export-' + todayDateString(now) + '.json');
+        stampLastExport(now);
+        return true;
+    } catch (_e) {
+        showToast('Export failed — try again');
+        return false;
+    }
+}
+
 // Read the user's projects + todos directly from Supabase and trigger a
 // browser download of the JSON envelope. Returns a Promise that resolves
 // once the download has been triggered (or rejected silently on failure
 // — the toast carries the user-facing signal).
 export async function exportToJson() {
+    if (!hasAccount()) {
+        exportLocalToJson();
+        return;
+    }
     try {
         const sessionResult = await supabase.auth.getSession();
         const session = sessionResult
@@ -147,6 +190,7 @@ export async function exportToJson() {
         const json = JSON.stringify(payload, null, 2);
         const blob = new Blob([json], { type: 'application/json' });
         triggerDownload(blob, 'todolist-export-' + todayDateString() + '.json');
+        stampLastExport();
     } catch (_e) {
         showToast('Export failed — try again');
     }
@@ -173,6 +217,12 @@ export function readAndValidateFile(file) {
                 parsed = JSON.parse(text);
             } catch (_e) {
                 reject(new Error('Invalid export file — could not parse'));
+                return;
+            }
+            // An offline export holds snapshot projects, not Supabase rows;
+            // importFromJson hands it to exportImport.js, which validates it.
+            if (parsed && parsed.mode === 'local') {
+                resolve(parsed);
                 return;
             }
             const validation = validateImportShape(parsed);
@@ -204,6 +254,13 @@ export async function importFromJson(file, onAfterImport) {
         parsed = await readAndValidateFile(file);
     } catch (e) {
         showToast((e && e.message) || 'Invalid export file — could not parse');
+        return;
+    }
+
+    // A file made offline replaces the tree through replaceAllProjects, which
+    // mirrors the rebuilt tree up to Supabase while a session is live.
+    if (parsed.mode === 'local') {
+        importTodosFromString(JSON.stringify(parsed), onAfterImport);
         return;
     }
 
@@ -285,7 +342,8 @@ async function performImport(parsed, onAfterImport) {
 
 
 // Open a hidden native file picker filtered to .json files. On selection,
-// hand the chosen file off to importFromJson.
+// hand the chosen file off to importFromJson — or, with no account, to
+// exportImport.js's importFromFile, which writes localStorage only.
 export function openImportPicker(onAfterImport) {
     const input = document.createElement('input');
     input.type = 'file';
@@ -295,7 +353,9 @@ export function openImportPicker(onAfterImport) {
     input.addEventListener('change', function() {
         const file = input.files && input.files[0];
         if (input.parentNode) input.parentNode.removeChild(input);
-        if (file) importFromJson(file, onAfterImport);
+        if (!file) return;
+        if (hasAccount()) importFromJson(file, onAfterImport);
+        else importFromFile(file, onAfterImport);
     });
     input.click();
 }
