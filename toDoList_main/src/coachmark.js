@@ -6,7 +6,8 @@
 // overlay, cuts a hole around one target element at a time via a four-
 // rect mask, and anchors a callout next to the spotlight that walks
 // through the sample project row, the blank add-a-task row, a due-date
-// pill, the description chevron, the sidebar "+" project button, the
+// pill, a committed task row (which opens the detail pane), the sidebar
+// "+" project button, the
 // Pomodoro toggle, the music toggle, the Focus mode toggle, and the
 // settings toggle in the navbar.
 //
@@ -55,7 +56,8 @@ const SIDEBAR_TRANSITION_MS = 250;
 // first-run flow writes a "Getting started" project into the data model
 // before the tour mounts so the target always exists. Step 2 points at the
 // blank placeholder row and steps 3 and 4 at seeded todo rows for the same
-// reason. The replay path (no re-seed)
+// reason. The drawer slides in from the RIGHT edge, so the two drawer steps
+// place their callout to the left of the spotlight. The replay path (no re-seed)
 // falls back gracefully if the user deleted the sample: the layout helper
 // renders a centered callout when target() returns null.
 const STEPS = [
@@ -74,7 +76,7 @@ const STEPS = [
         },
         sidebar: true,
         advanceOn: ['click'],
-        placement: 'right',
+        placement: 'left',
     },
     {
         id: 'addTask',
@@ -114,14 +116,17 @@ const STEPS = [
     {
         id: 'descToggle',
         title: 'Notes and details',
-        body: "The chevron opens a notes panel under the task — links, longer thoughts, anything that doesn't fit on one line. Ctrl/Cmd + Enter opens every panel at once.",
+        body: 'Click a task to open it in the detail pane on the right — notes, links, longer thoughts. Ctrl/Cmd + Enter opens every panel at once.',
         target: function() {
             const main = document.getElementById('mainList');
             if (!main) return null;
+            // #descToggle is headless (display:none) at every width, so
+            // spotlight the first committed row — clicking it opens the
+            // task in #descDetailPane.
             const rows = main.querySelectorAll('#toDoChild');
             for (let i = 0; i < rows.length; i++) {
-                const tog = rows[i].querySelector('#descToggle');
-                if (tog && tog.style.display !== 'none') return tog;
+                const input = rows[i].querySelector('#toDoInput');
+                if (input && input.value !== '') return rows[i];
             }
             return null;
         },
@@ -131,11 +136,11 @@ const STEPS = [
     {
         id: 'addProject',
         title: 'Create a project',
-        body: 'The + at the top of the drawer starts a project of your own. Each project keeps its own list; the drawer opens from ☰ in the top-left.',
+        body: 'The + at the bottom of the drawer starts a project of your own. Each project keeps its own list; open the drawer any time from the project name ▾ at the top-left.',
         target: function() { return document.getElementById('projButton'); },
         sidebar: true,
         advanceOn: ['click'],
-        placement: 'right',
+        placement: 'left',
     },
     {
         id: 'pomodoro',
@@ -496,18 +501,24 @@ function computePlacement(placement, cutout, cw, ch) {
     return { top: top, left: left };
 }
 
-function fitsInViewport(pos, cw, ch) {
-    return pos.left >= CALLOUT_MARGIN
-        && pos.top >= CALLOUT_MARGIN
-        && pos.left + cw <= window.innerWidth - CALLOUT_MARGIN
+// Checks only the placement axis — horizontal span for left/right, vertical
+// span for top/bottom. Cross-axis overflow is left to the final clamp in
+// placeCallout, which can always fix it without covering the cut-out.
+function fitsOnAxis(pos, placement, cw, ch) {
+    if (placement === 'left' || placement === 'right') {
+        return pos.left >= CALLOUT_MARGIN
+            && pos.left + cw <= window.innerWidth - CALLOUT_MARGIN;
+    }
+    return pos.top >= CALLOUT_MARGIN
         && pos.top + ch <= window.innerHeight - CALLOUT_MARGIN;
 }
 
 // Collision-aware placement: try the preferred side first; if it would
-// clip the viewport, flip to the opposite side. Whichever side wins, a
-// final clamp catches edge cases (a callout taller than the viewport,
-// a target right against the edge) by pinning the callout inside the
-// margins. Recentering on missing-target is handled separately in
+// clip the viewport on the placement axis, flip to the opposite side. A
+// candidate is never discarded for a cross-axis overflow. Whichever side
+// wins, a final clamp catches edge cases (a callout taller than the
+// viewport, a target right against the edge) by pinning the callout
+// inside the margins. Recentering on missing-target is handled separately in
 // layoutStep before this helper is even called.
 function placeCallout(callout, cutout, placement) {
     const cw = callout.offsetWidth || 280;
@@ -516,9 +527,9 @@ function placeCallout(callout, cutout, placement) {
     const opposite = { right: 'left', left: 'right', top: 'bottom', bottom: 'top' };
     const primary = computePlacement(placement, cutout, cw, ch);
     let chosen = primary;
-    if (!fitsInViewport(primary, cw, ch) && opposite[placement]) {
+    if (opposite[placement] && !fitsOnAxis(primary, placement, cw, ch)) {
         const flipped = computePlacement(opposite[placement], cutout, cw, ch);
-        if (fitsInViewport(flipped, cw, ch)) chosen = flipped;
+        if (fitsOnAxis(flipped, placement, cw, ch)) chosen = flipped;
     }
 
     let top = chosen.top;

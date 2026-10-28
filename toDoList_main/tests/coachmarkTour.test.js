@@ -330,6 +330,88 @@ describe('coachmark tour — module', () => {
         expect(document.getElementById(COACHMARK_CUTOUT_ID).style.display).toBe('none');
     });
 
+    it('spotlights the first committed task row on step 4 with the detail-pane copy', () => {
+        const { blankRow, row } = buildSkeletonDOM();
+        // jsdom resolves a scoped '#toDoInput' lookup through the document's
+        // first element with that id, so only the first row's input is
+        // reachable — drop the blank row so the committed row comes first.
+        blankRow.remove();
+        row.getBoundingClientRect = function() {
+            return { top: 300, left: 300, right: 900, bottom: 340, width: 600, height: 40, x: 300, y: 300 };
+        };
+        startCoachmarkTour();
+        for (let i = 0; i < 3; i++) document.querySelector('.coachmarkNext').click();
+        expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 4 OF 9');
+        expect(document.getElementById('coachmarkTitle').textContent).toBe('Notes and details');
+        expect(document.querySelector('.coachmarkBody').textContent).toBe(
+            'Click a task to open it in the detail pane on the right — notes, links, longer thoughts. Ctrl/Cmd + Enter opens every panel at once.'
+        );
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(cutout.style.display).toBe('block');
+        expect(parseInt(cutout.style.top, 10)).toBe(294);
+        expect(parseInt(cutout.style.left, 10)).toBe(294);
+        // Callout sits below the row (placement: bottom).
+        const callout = document.getElementById(COACHMARK_CALLOUT_ID);
+        expect(parseInt(callout.style.top, 10)).toBe(346 + 12);
+        row.click();
+        return new Promise(function(done) {
+            setTimeout(function() {
+                expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 5 OF 9');
+                done();
+            }, 0);
+        });
+    });
+
+    it('step 5 copy points at the + at the foot of the drawer and the project name opener', () => {
+        startCoachmarkTour();
+        for (let i = 0; i < 4; i++) document.querySelector('.coachmarkNext').click();
+        expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 5 OF 9');
+        expect(document.querySelector('.coachmarkBody').textContent).toBe(
+            'The + at the bottom of the drawer starts a project of your own. Each project keeps its own list; open the drawer any time from the project name ▾ at the top-left.'
+        );
+    });
+
+    it('places the drawer-row callout to the LEFT of the right-edge drawer', () => {
+        // The drawer slides in from the right edge; at 1300x900 the selected
+        // row spans 1001–1300 × 48–92. The callout must sit to its left and
+        // never overlap the cut-out.
+        Object.defineProperty(window, 'innerWidth', { value: 1300, configurable: true });
+        Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
+        const { projChild } = buildSkeletonDOM();
+        projChild.getBoundingClientRect = function() {
+            return { top: 48, left: 1001, right: 1300, bottom: 92, width: 299, height: 44, x: 1001, y: 48 };
+        };
+        startCoachmarkTour();
+        const callout = document.getElementById(COACHMARK_CALLOUT_ID);
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        const calloutLeft = parseInt(callout.style.left, 10);
+        const cutoutLeft = parseInt(cutout.style.left, 10);
+        expect(calloutLeft + 280).toBeLessThan(cutoutLeft);
+        expect(calloutLeft + 280).toBeLessThan(995);
+        expect(parseInt(callout.style.top, 10)).toBeGreaterThanOrEqual(8);
+    });
+
+    it('flips to the opposite side when the primary is off-screen even if the flip overflows on the cross axis', () => {
+        // Step 1 prefers `left`. With the row hugging the left edge, the
+        // primary side is off-screen; the flipped (right) side fits
+        // horizontally but its vertically-centred top would sit above the
+        // margin. The flip must still win, with top clamped to the margin,
+        // so the callout never lands on top of the cut-out.
+        const { projChild } = buildSkeletonDOM();
+        projChild.getBoundingClientRect = function() {
+            return { top: 6, left: 0, right: 200, bottom: 30, width: 200, height: 24, x: 0, y: 6 };
+        };
+        startCoachmarkTour();
+        const callout = document.getElementById(COACHMARK_CALLOUT_ID);
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        const cutRight = parseInt(cutout.style.left, 10) + parseInt(cutout.style.width, 10);
+        const left = parseInt(callout.style.left, 10);
+        const top = parseInt(callout.style.top, 10);
+        expect(left).toBe(cutRight + 12);
+        expect(top).toBe(8);
+        expect(left).toBeGreaterThanOrEqual(cutRight);
+    });
+
     it('positions the cutout over the target via fixed coordinates', () => {
         const { projChild } = buildSkeletonDOM();
         // Step 1's target is the selected sidebar project row, so the
@@ -416,6 +498,13 @@ describe('coachmark tour — wired into the app', () => {
         // Pointer events stay off the ring so the user can click through to
         // the highlighted control.
         expect(css).toMatch(/#coachmarkCutout\s*\{[^}]*pointer-events:\s*none/);
+    });
+
+    it('stacks the desktop drawer above the nav bar so the step-1 row is not covered', () => {
+        const navZ = parseInt(css.match(/#navBar\s*\{[^}]*z-index:\s*(\d+)/)[1], 10);
+        const desktop = css.slice(css.indexOf('@media (min-width: 1024px)'));
+        const sideZ = parseInt(desktop.match(/#sideBar\s*\{[^}]*z-index:\s*(\d+)/)[1], 10);
+        expect(sideZ).toBeGreaterThan(navZ);
     });
 
     it('styles the callout dots so the active step is accent-coloured', () => {
@@ -565,6 +654,10 @@ describe('coachmark tour — opens the projects drawer for sidebar steps', () =>
         mainList.id = 'mainList';
         const row = document.createElement('div');
         row.id = 'toDoChild';
+        const input = document.createElement('input');
+        input.id = 'toDoInput';
+        input.value = 'Committed task';
+        row.appendChild(input);
         const duePill = document.createElement('button');
         duePill.id = 'duePill';
         row.appendChild(duePill);
@@ -619,7 +712,7 @@ describe('coachmark tour — opens the projects drawer for sidebar steps', () =>
         // Advance to step 5 (addProject), which targets #projButton in drawer.
         clickNext(); // -> step 2 (addTask)
         clickNext(); // -> step 3 (duePill)
-        clickNext(); // -> step 4 (descToggle)
+        clickNext(); // -> step 4 (committed task row)
         clickNext(); // -> step 5 (addProject)
         const label = document.querySelector('.coachmarkStepLabel');
         expect(label.textContent).toBe('STEP 5 OF 9');
