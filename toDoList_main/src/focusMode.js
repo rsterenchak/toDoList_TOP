@@ -22,9 +22,32 @@
 // singletons, so no paint or work is incurred while off — mirroring
 // companion's "no work when disabled" approach. Focus mode is session-only
 // and never persisted, so a page refresh always returns to the dashboard.
+//
+// A fourth corner control opens a small popover for picking the scene
+// itself — the star field or a "matrix" rain of falling glyphs. Both variants
+// live in `.focusScene` and a modifier class shows one; the choice is the one
+// piece of focus mode that IS persisted (`todoapp_focusTheme`, via prefs.js),
+// read when the overlay is built.
 
 import { ensureMusic, getMusicPlayerFrame } from './music.js';
 import { ensurePomodoro } from './pomodoro.js';
+import { getFocusTheme, setFocusTheme, FOCUS_THEMES } from './prefs.js';
+
+const FOCUS_THEME_LABELS = { stars: 'Stars', matrix: 'Matrix' };
+
+// Matrix rain: a fixed set of glyph columns, each falling at its own pace.
+// Half-width katakana plus digits and a few latin capitals, the classic mix.
+const MATRIX_COLUMNS = 28;
+const MATRIX_GLYPHS_PER_COLUMN = 26;
+const MATRIX_GLYPHS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789ZXEKTRAQ';
+
+function randomGlyphs(n) {
+    let out = '';
+    for (let i = 0; i < n; i++) {
+        out += MATRIX_GLYPHS.charAt(Math.floor(Math.random() * MATRIX_GLYPHS.length));
+    }
+    return out;
+}
 
 // Gate: focus mode only runs on desktop-class viewports with a fine pointer —
 // the same gate companion.js uses. On mobile the toggle button is hidden and
@@ -52,6 +75,13 @@ export function createFocusMode(doc) {
     let brightenId   = null;   // timer clearing the completion brighten pulse
     let lastPomStatus = null;  // tracks transitions for the completion cue
     let onKeydown    = null;
+    let sceneEl      = null;   // .focusScene — carries the theme modifier
+    let themeWrap    = null;   // anchor for the theme button + popover
+    let themeBtn     = null;   // round icon-only theme picker button
+    let themePopover = null;   // two-card scene picker
+    let themeOpen    = false;
+    let onThemeOutside = null; // outside-click closer, bound only while open
+    let theme        = 'stars';
 
     function build() {
         if (overlay) return;
@@ -78,7 +108,22 @@ export function createFocusMode(doc) {
             '<div class="focusTwinkle focusTwinkle--2"></div>' +
             '<div class="focusTwinkle focusTwinkle--3"></div>' +
             '<div class="focusShootingStar"></div>' +
+            '<div class="focusMatrix"></div>' +
             '<div class="focusVignette"></div>';
+        // Matrix columns: per-column position, speed and delay are computed
+        // here (custom properties), the fall itself is a CSS keyframe gated
+        // on the active class like the star drift.
+        const matrix = scene.querySelector('.focusMatrix');
+        for (let i = 0; i < MATRIX_COLUMNS; i++) {
+            const col = doc.createElement('span');
+            col.className = 'focusMatrixCol';
+            col.textContent = randomGlyphs(MATRIX_GLYPHS_PER_COLUMN);
+            col.style.setProperty('--matrix-x', ((i + 0.5) / MATRIX_COLUMNS * 100).toFixed(2) + '%');
+            col.style.setProperty('--matrix-dur', (7 + Math.random() * 9).toFixed(2) + 's');
+            col.style.setProperty('--matrix-delay', (-Math.random() * 16).toFixed(2) + 's');
+            matrix.appendChild(col);
+        }
+        sceneEl = scene;
         overlay.appendChild(scene);
 
         // ── Corner controls — no countdown ──
@@ -136,8 +181,58 @@ export function createFocusMode(doc) {
 
         corner.appendChild(chipEl);
         corner.appendChild(sessionBtn);
+        // Scene picker: a round button opening a two-card popover anchored
+        // above it. Closes on picking a card, clicking outside, or Escape.
+        themeWrap = doc.createElement('div');
+        themeWrap.className = 'focusThemeWrap';
+        themeBtn = doc.createElement('button');
+        themeBtn.type = 'button';
+        themeBtn.className = 'focusThemeBtn';
+        themeBtn.setAttribute('aria-haspopup', 'true');
+        themeBtn.setAttribute('aria-expanded', 'false');
+        themeBtn.setAttribute('aria-label', 'Choose focus scene');
+        themeBtn.title = 'Choose focus scene';
+        themeBtn.innerHTML =
+            '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" ' +
+            'stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/>' +
+            '<rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/>' +
+            '<rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/>' +
+            '<rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/></svg>';
+        themeBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (themeOpen) closeThemePicker();
+            else openThemePicker();
+        });
+
+        themePopover = doc.createElement('div');
+        themePopover.className = 'focusThemePopover';
+        themePopover.setAttribute('role', 'menu');
+        themePopover.setAttribute('aria-label', 'Focus scene');
+        FOCUS_THEMES.forEach(function(name) {
+            const card = doc.createElement('button');
+            card.type = 'button';
+            card.className = 'focusThemeCard';
+            card.setAttribute('role', 'menuitemradio');
+            card.setAttribute('data-focus-theme', name);
+            card.innerHTML =
+                '<span class="focusThemeThumb focusThemeThumb--' + name + '" aria-hidden="true"></span>' +
+                '<span class="focusThemeCardLabel">' + FOCUS_THEME_LABELS[name] + '</span>';
+            card.addEventListener('click', function(e) {
+                e.stopPropagation();
+                setTheme(name);
+                closeThemePicker();
+            });
+            themePopover.appendChild(card);
+        });
+        themeWrap.appendChild(themeBtn);
+        themeWrap.appendChild(themePopover);
+
         corner.appendChild(videoBtn);
+        corner.appendChild(themeWrap);
         overlay.appendChild(corner);
+
+        applyFocusTheme(getFocusTheme());
 
         // ── Exit affordance ──
         // A dim "exit · esc" pill, top-right. Clicking the scene itself does
@@ -155,6 +250,51 @@ export function createFocusMode(doc) {
         overlay.appendChild(exitPill);
 
         doc.body.appendChild(overlay);
+    }
+
+    // ── Scene theme — stars ⇄ matrix ──
+    function applyFocusTheme(name) {
+        theme = FOCUS_THEMES.indexOf(name) !== -1 ? name : 'stars';
+        if (sceneEl) {
+            FOCUS_THEMES.forEach(function(t) {
+                sceneEl.classList.toggle('focusScene--' + t, t === theme);
+            });
+        }
+        if (themePopover) {
+            themePopover.querySelectorAll('.focusThemeCard').forEach(function(card) {
+                const on = card.getAttribute('data-focus-theme') === theme;
+                card.classList.toggle('focusThemeCard--active', on);
+                card.setAttribute('aria-checked', on ? 'true' : 'false');
+            });
+        }
+    }
+
+    function setTheme(name) {
+        applyFocusTheme(name);
+        setFocusTheme(theme);
+    }
+
+    function openThemePicker() {
+        if (themeOpen || !themePopover) return;
+        themeOpen = true;
+        themePopover.classList.add('focusThemePopover--open');
+        themeBtn.setAttribute('aria-expanded', 'true');
+        onThemeOutside = function(e) {
+            if (themeWrap && themeWrap.contains(e.target)) return;
+            closeThemePicker();
+        };
+        doc.addEventListener('mousedown', onThemeOutside, true);
+    }
+
+    function closeThemePicker() {
+        if (!themeOpen) return;
+        themeOpen = false;
+        if (themePopover) themePopover.classList.remove('focusThemePopover--open');
+        if (themeBtn) themeBtn.setAttribute('aria-expanded', 'false');
+        if (onThemeOutside) {
+            doc.removeEventListener('mousedown', onThemeOutside, true);
+            onThemeOutside = null;
+        }
     }
 
     // ── Scene swap — star field ⇄ the live video ──
@@ -282,9 +422,11 @@ export function createFocusMode(doc) {
         }
 
         // Esc exits. Bound on the document so it works regardless of focus.
+        // With the scene picker open, Esc closes just the picker first.
         onKeydown = function(e) {
             if (e.key === 'Escape' || e.key === 'Esc') {
                 e.preventDefault();
+                if (themeOpen) { closeThemePicker(); return; }
                 deactivate();
             }
         };
@@ -296,6 +438,7 @@ export function createFocusMode(doc) {
         active = false;
         // Always drop the video promotion, even mid-swap.
         hideVideoScene();
+        closeThemePicker();
         if (overlay) {
             overlay.classList.remove('focusModeOverlay--active');
             overlay.classList.remove('focusModeOverlay--complete');
@@ -320,6 +463,10 @@ export function createFocusMode(doc) {
         stationLabel = null;
         sessionBtn = null;
         videoBtn = null;
+        sceneEl = null;
+        themeWrap = null;
+        themeBtn = null;
+        themePopover = null;
         lastPomStatus = null;
     }
 
