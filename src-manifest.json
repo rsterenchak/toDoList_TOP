@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-28T09:20:48.788Z",
-  "sha": "9db78b244acf3a9bfbfe54fa6a19cb5df09be33c",
+  "generatedAt": "2026-10-28T11:20:45.910Z",
+  "sha": "7e010d9bbebd3050e4f8d925cd4af0b47f9ea437",
   "files": [
     "aboutVersionCue.js",
     "accessMode.js",
@@ -149,11 +149,27 @@
       "selector": "#addProject",
       "label": "Add Project",
       "file": "coachmark.js",
-      "line": 112,
+      "line": 132,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 112
+          "line": 132
+        }
+      ]
+    },
+    {
+      "selector": "#addTask",
+      "label": "Add Task",
+      "file": "coachmark.js",
+      "line": 80,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 80
+        },
+        {
+          "file": "welcomeCarousel.js",
+          "line": 44
         }
       ]
     },
@@ -570,6 +586,18 @@
         {
           "file": "auth.js",
           "line": 285
+        }
+      ]
+    },
+    {
+      "selector": "#backup",
+      "label": "Backup",
+      "file": "welcomeCarousel.js",
+      "line": 56,
+      "files": [
+        {
+          "file": "welcomeCarousel.js",
+          "line": 56
         }
       ]
     },
@@ -1709,11 +1737,11 @@
       "selector": "#closer",
       "label": "Closer",
       "file": "welcomeCarousel.js",
-      "line": 56,
+      "line": 62,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 56
+          "line": 62
         }
       ]
     },
@@ -1721,11 +1749,11 @@
       "selector": "#coachmarkTitle",
       "label": "Coachmark Title",
       "file": "coachmark.js",
-      "line": 294,
+      "line": 322,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 294
+          "line": 322
         }
       ]
     },
@@ -2813,11 +2841,11 @@
       "selector": "#descToggle",
       "label": "Desc Toggle",
       "file": "coachmark.js",
-      "line": 95,
+      "line": 115,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 95
+          "line": 115
         },
         {
           "file": "toDoRow.js",
@@ -2969,11 +2997,11 @@
       "selector": "#duePill",
       "label": "Due Pill",
       "file": "coachmark.js",
-      "line": 78,
+      "line": 98,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 78
+          "line": 98
         },
         {
           "file": "toDoRow.js",
@@ -3030,6 +3058,18 @@
         {
           "file": "style.css",
           "line": 14965
+        }
+      ]
+    },
+    {
+      "selector": "#focusMode",
+      "label": "Focus Mode",
+      "file": "coachmark.js",
+      "line": 157,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 157
         }
       ]
     },
@@ -4278,18 +4318,6 @@
       ]
     },
     {
-      "selector": "#menu",
-      "label": "Menu",
-      "file": "welcomeCarousel.js",
-      "line": 50,
-      "files": [
-        {
-          "file": "welcomeCarousel.js",
-          "line": 50
-        }
-      ]
-    },
-    {
       "selector": "#missedDatesModal",
       "label": "Missed Dates Modal",
       "file": "modals.js",
@@ -4897,11 +4925,11 @@
       "selector": "#music",
       "label": "Music",
       "file": "coachmark.js",
-      "line": 129,
+      "line": 149,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 129
+          "line": 149
         }
       ]
     },
@@ -5205,11 +5233,11 @@
       "selector": "#pomodoro",
       "label": "Pomodoro",
       "file": "coachmark.js",
-      "line": 121,
+      "line": 141,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 121
+          "line": 141
         }
       ]
     },
@@ -5345,11 +5373,11 @@
       "selector": "#projects",
       "label": "Projects",
       "file": "welcomeCarousel.js",
-      "line": 44,
+      "line": 50,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 44
+          "line": 50
         }
       ]
     },
@@ -5829,11 +5857,11 @@
       "selector": "#sampleProject",
       "label": "Sample Project",
       "file": "coachmark.js",
-      "line": 61,
+      "line": 63,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 61
+          "line": 63
         }
       ]
     },
@@ -5977,11 +6005,11 @@
       "selector": "#settings",
       "label": "Settings",
       "file": "coachmark.js",
-      "line": 137,
+      "line": 165,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 137
+          "line": 165
         }
       ]
     },
@@ -12773,11 +12801,11 @@
       "selector": ".coachmarkBody",
       "label": "Coachmark Body",
       "file": "coachmark.js",
-      "line": 299,
+      "line": 327,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 299
+          "line": 327
         },
         {
           "file": "style.css",
@@ -12789,11 +12817,11 @@
       "selector": ".coachmarkDot",
       "label": "Coachmark Dot",
       "file": "coachmark.js",
-      "line": 316,
+      "line": 344,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 316
+          "line": 344
         },
         {
           "file": "style.css",
@@ -12805,11 +12833,11 @@
       "selector": ".coachmarkDots",
       "label": "Coachmark Dots",
       "file": "coachmark.js",
-      "line": 312,
+      "line": 340,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 312
+          "line": 340
         },
         {
           "file": "style.css",
@@ -12821,11 +12849,11 @@
       "selector": ".coachmarkFooter",
       "label": "Coachmark Footer",
       "file": "coachmark.js",
-      "line": 303,
+      "line": 331,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 303
+          "line": 331
         },
         {
           "file": "style.css",
@@ -12837,11 +12865,11 @@
       "selector": ".coachmarkNext",
       "label": "Coachmark Next",
       "file": "coachmark.js",
-      "line": 322,
+      "line": 350,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 322
+          "line": 350
         },
         {
           "file": "style.css",
@@ -12853,11 +12881,11 @@
       "selector": ".coachmarkPanel",
       "label": "Coachmark Panel",
       "file": "coachmark.js",
-      "line": 182,
+      "line": 210,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 182
+          "line": 210
         },
         {
           "file": "style.css",
@@ -12869,11 +12897,11 @@
       "selector": ".coachmarkSkip",
       "label": "Coachmark Skip",
       "file": "coachmark.js",
-      "line": 307,
+      "line": 335,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 307
+          "line": 335
         },
         {
           "file": "style.css",
@@ -12885,11 +12913,11 @@
       "selector": ".coachmarkStepLabel",
       "label": "Coachmark Step Label",
       "file": "coachmark.js",
-      "line": 290,
+      "line": 318,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 290
+          "line": 318
         },
         {
           "file": "style.css",
@@ -12901,11 +12929,11 @@
       "selector": ".coachmarkTitle",
       "label": "Coachmark Title",
       "file": "coachmark.js",
-      "line": 295,
+      "line": 323,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 295
+          "line": 323
         },
         {
           "file": "style.css",
@@ -30997,11 +31025,11 @@
       "selector": ".welcomeCarouselBody",
       "label": "Welcome Carousel Body",
       "file": "welcomeCarousel.js",
-      "line": 163,
+      "line": 169,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 163
+          "line": 169
         },
         {
           "file": "style.css",
@@ -31013,11 +31041,11 @@
       "selector": ".welcomeCarouselDot",
       "label": "Welcome Carousel Dot",
       "file": "welcomeCarousel.js",
-      "line": 182,
+      "line": 188,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 182
+          "line": 188
         },
         {
           "file": "style.css",
@@ -31029,11 +31057,11 @@
       "selector": ".welcomeCarouselDots",
       "label": "Welcome Carousel Dots",
       "file": "welcomeCarousel.js",
-      "line": 178,
+      "line": 184,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 178
+          "line": 184
         },
         {
           "file": "style.css",
@@ -31045,11 +31073,11 @@
       "selector": ".welcomeCarouselFooter",
       "label": "Welcome Carousel Footer",
       "file": "welcomeCarousel.js",
-      "line": 175,
+      "line": 181,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 175
+          "line": 181
         },
         {
           "file": "style.css",
@@ -31061,11 +31089,11 @@
       "selector": ".welcomeCarouselIllustration",
       "label": "Welcome Carousel Illustration",
       "file": "welcomeCarousel.js",
-      "line": 154,
+      "line": 160,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 154
+          "line": 160
         },
         {
           "file": "style.css",
@@ -31077,11 +31105,11 @@
       "selector": ".welcomeCarouselNext",
       "label": "Welcome Carousel Next",
       "file": "welcomeCarousel.js",
-      "line": 189,
+      "line": 195,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 189
+          "line": 195
         },
         {
           "file": "style.css",
@@ -31093,11 +31121,11 @@
       "selector": ".welcomeCarouselSkip",
       "label": "Welcome Carousel Skip",
       "file": "welcomeCarousel.js",
-      "line": 135,
+      "line": 141,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 135
+          "line": 141
         },
         {
           "file": "style.css",
@@ -31109,11 +31137,11 @@
       "selector": ".welcomeCarouselSlide",
       "label": "Welcome Carousel Slide",
       "file": "welcomeCarousel.js",
-      "line": 149,
+      "line": 155,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 149
+          "line": 155
         },
         {
           "file": "style.css",
@@ -31125,11 +31153,11 @@
       "selector": ".welcomeCarouselTitle",
       "label": "Welcome Carousel Title",
       "file": "welcomeCarousel.js",
-      "line": 158,
+      "line": 164,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 158
+          "line": 164
         },
         {
           "file": "style.css",
@@ -31141,11 +31169,11 @@
       "selector": ".welcomeCarouselTrack",
       "label": "Welcome Carousel Track",
       "file": "welcomeCarousel.js",
-      "line": 145,
+      "line": 151,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 145
+          "line": 151
         },
         {
           "file": "style.css",
@@ -31157,11 +31185,11 @@
       "selector": ".welcomeCarouselViewport",
       "label": "Welcome Carousel Viewport",
       "file": "welcomeCarousel.js",
-      "line": 141,
+      "line": 147,
       "files": [
         {
           "file": "welcomeCarousel.js",
-          "line": 141
+          "line": 147
         },
         {
           "file": "style.css",
@@ -31385,7 +31413,7 @@
     },
     {
       "path": "coachmark.js",
-      "lines": 534,
+      "lines": 562,
       "imports": [
         "prefs.js"
       ],
@@ -32319,7 +32347,7 @@
     },
     {
       "path": "welcomeCarousel.js",
-      "lines": 326,
+      "lines": 332,
       "imports": [
         "prefs.js"
       ],
