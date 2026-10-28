@@ -5,9 +5,10 @@
 // node to anchor against. This module dims the page with a full-viewport
 // overlay, cuts a hole around one target element at a time via a four-
 // rect mask, and anchors a callout next to the spotlight that walks
-// through the sample project row, a due-date pill, the description
-// chevron, the sidebar "+" project button, the Pomodoro toggle, the
-// music toggle, and the settings toggle in the navbar.
+// through the sample project row, the blank add-a-task row, a due-date
+// pill, the description chevron, the sidebar "+" project button, the
+// Pomodoro toggle, the music toggle, the Focus mode toggle, and the
+// settings toggle in the navbar.
 //
 // State is local to the module — only the persisted flag in prefs.js
 // (`todoapp_onboardingComplete`) survives between sessions. Calling
@@ -52,15 +53,16 @@ const SIDEBAR_TRANSITION_MS = 250;
 //
 // Step 1 anchors against the seeded sample project in the sidebar — the
 // first-run flow writes a "Getting started" project into the data model
-// before the tour mounts so the target always exists. Steps 2 and 3 point
-// at seeded todo rows for the same reason. The replay path (no re-seed)
+// before the tour mounts so the target always exists. Step 2 points at the
+// blank placeholder row and steps 3 and 4 at seeded todo rows for the same
+// reason. The replay path (no re-seed)
 // falls back gracefully if the user deleted the sample: the layout helper
 // renders a centered callout when target() returns null.
 const STEPS = [
     {
         id: 'sampleProject',
         title: 'This is a project',
-        body: "Projects group your todos. We seeded \"Getting started\" so you can poke around — rename or delete it any time.",
+        body: "Projects group your tasks. We seeded \"Getting started\" so you can poke around — rename or delete it from its row whenever you like.",
         target: function() {
             const sideMa = document.getElementById('sideMa');
             if (!sideMa) return null;
@@ -75,9 +77,27 @@ const STEPS = [
         placement: 'right',
     },
     {
+        id: 'addTask',
+        title: 'Add a task',
+        body: 'Type here and press Enter. Each Enter commits the task and gives you a fresh line for the next one.',
+        target: function() {
+            const main = document.getElementById('mainList');
+            if (!main) return null;
+            // The blank placeholder row is the one whose input is empty.
+            const rows = main.querySelectorAll('#toDoChild');
+            for (let i = 0; i < rows.length; i++) {
+                const input = rows[i].querySelector('#toDoInput');
+                if (input && input.value === '') return rows[i];
+            }
+            return null;
+        },
+        advanceOn: ['click'],
+        placement: 'bottom',
+    },
+    {
         id: 'duePill',
         title: 'Set a due date',
-        body: 'Every committed todo gets a date pill — click it to pick a due date or recurrence.',
+        body: "Every task gets a date pill once it's committed — click it to pick a due date or make it repeat.",
         target: function() {
             const main = document.getElementById('mainList');
             if (!main) return null;
@@ -93,8 +113,8 @@ const STEPS = [
     },
     {
         id: 'descToggle',
-        title: 'Expand for details',
-        body: 'The chevron next to each todo opens a description panel — great for notes or links.',
+        title: 'Notes and details',
+        body: "The chevron opens a notes panel under the task — links, longer thoughts, anything that doesn't fit on one line. Ctrl/Cmd + Enter opens every panel at once.",
         target: function() {
             const main = document.getElementById('mainList');
             if (!main) return null;
@@ -111,7 +131,7 @@ const STEPS = [
     {
         id: 'addProject',
         title: 'Create a project',
-        body: 'Use the + in the sidebar to start a project of your own. Each project keeps its own list of todos.',
+        body: 'The + at the top of the drawer starts a project of your own. Each project keeps its own list; the drawer opens from ☰ in the top-left.',
         target: function() { return document.getElementById('projButton'); },
         sidebar: true,
         advanceOn: ['click'],
@@ -120,7 +140,7 @@ const STEPS = [
     {
         id: 'pomodoro',
         title: 'Stay focused',
-        body: 'The clock opens a Pomodoro timer to keep work and break intervals on track.',
+        body: 'The stopwatch opens a Pomodoro timer; the countdown shows right here on the button while a session runs.',
         target: function() { return document.getElementById('pomodoroToggle'); },
         advanceOn: ['click'],
         placement: 'bottom',
@@ -128,15 +148,23 @@ const STEPS = [
     {
         id: 'music',
         title: 'Focus music',
-        body: 'The note icon plays ambient focus stations you can run alongside the timer.',
+        body: 'The bars play ambient focus stations you can run alongside the timer.',
         target: function() { return document.getElementById('musicToggle'); },
         advanceOn: ['click'],
         placement: 'bottom',
     },
     {
+        id: 'focusMode',
+        title: 'Focus mode',
+        body: 'The sparkle hides everything but a calm drifting space scene — timer and music ride along in the corner. Press Esc to come back.',
+        target: function() { return document.getElementById('focusModeToggle'); },
+        advanceOn: ['click'],
+        placement: 'bottom',
+    },
+    {
         id: 'settings',
-        title: 'Settings and more',
-        body: 'The menu hides theme, import / export, and the option to replay this welcome tour whenever you want.',
+        title: 'Settings and backup',
+        body: 'The gear holds theme, app lock, Export / Import to JSON, and Replay welcome tour. Your tasks live in this browser — export a JSON copy now and then.',
         target: function() { return document.getElementById('settingsToggle'); },
         advanceOn: ['click'],
         placement: 'bottom',

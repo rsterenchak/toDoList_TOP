@@ -3,9 +3,9 @@
 // On a fresh install on a touch viewport the welcome flow seeds a
 // "Getting started" sample project (via listLogic.seedSampleProject, the
 // same seed used by the desktop coachmark) and runs a full-screen
-// four-card carousel that orients the user on projects, the slide-out
-// menu, and where the music and settings toggles live before dropping
-// them into the seeded project. The cards live inside a single fixed-
+// five-card carousel that orients the user on adding a task, opening the
+// projects drawer from the project name, and where settings and backup
+// live before dropping them into the seeded project. The cards live inside a single fixed-
 // position container; horizontal navigation is a CSS translateX on the
 // track. Forward/back uses the Next button or a horizontal swipe — the
 // only dismissals are Escape and the Skip link in the corner. There is
@@ -38,25 +38,31 @@ const CARDS = [
         id: 'welcome',
         illustration: 'ghost',
         title: 'Welcome to Void',
-        body: "A calm place to keep your todos. Three quick cards and you're in.",
+        body: "A calm place to keep your tasks. Four quick cards and you're in.",
+    },
+    {
+        id: 'addTask',
+        illustration: 'projects',
+        title: 'Add a task',
+        body: 'Tap "+ Add a task…" at the top of the list, type, and hit Return. Pick Today or Tomorrow from the chips, or the calendar for any date. Tap a task later to edit it or add notes.',
     },
     {
         id: 'projects',
-        illustration: 'projects',
-        title: 'Projects & todos',
-        body: 'Tap the box to check a task off, tap the date pill to reschedule, and tap the ▾ chevron to expand notes.',
+        illustration: 'menu',
+        title: 'Projects',
+        body: 'Tap the project name at the top to open your projects, then + for a new one. Swipe left or right on the name to jump between projects.',
     },
     {
-        id: 'menu',
-        illustration: 'menu',
-        title: 'Menu, music & settings',
-        body: 'Open the ≡ menu in the top corner — your projects, focus music, and settings all live inside.',
+        id: 'backup',
+        illustration: 'sample',
+        title: 'Settings & backup',
+        body: 'Settings is the last row in the projects drawer — theme, app lock, Export / Import. Your tasks live on this device, so export a JSON copy now and then.',
     },
     {
         id: 'closer',
         illustration: 'sample',
         title: "You're set",
-        body: "We've dropped you into a sample 'Getting started' project. Rename or delete it whenever you're ready.",
+        body: "We've dropped you into a sample \"Getting started\" project. Rename or delete it whenever you're ready.",
     },
 ];
 

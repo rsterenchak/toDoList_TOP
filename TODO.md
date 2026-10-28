@@ -3106,7 +3106,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-02-14 (PR #<number>)
   <!-- id: 4700e8c6-89ed-40ed-82e3-34e1d3660883 -->
 
-- [ ] **[MEDIUM]** Update the first-run tours to match the current app
+- [x] **[MEDIUM]** Update the first-run tours to match the current app — Completed: 2026-10-28
   - Type: feature
   - Description: Both first-run tours describe chrome that no longer exists. The desktop spotlight tour (`coachmark.js`, 7 steps) calls the music button a "note icon" (it is the `.musicVizBars` equalizer), calls the gear "the menu", never shows how to add a task, and skips Focus mode; the mobile carousel (`welcomeCarousel.js`, 4 cards) tells the user to "open the ≡ menu in the top corner" (`#sidebarToggle` is `display:none` ≤1023px — the drawer opens from the project name + ▾ in `#mobileProjTitleRow`), says focus music lives there (pomodoro/music are desktop-only now), and says to "tap the ▾ chevron to expand notes" (on coarse-pointer a row tap opens the editor modal via `openDescEditorForRow`). Rewrite both step lists to the copy below; keep the overlay/callout/carousel chrome, the seeding, gating and replay paths exactly as they are. The only people who hit first-run now are offline visitors, so neither tour mentions Understanding, Structure, the assistant or the TODO.md viewer (all hidden by `LOCAL_HIDDEN_SELECTORS`).
   - Desktop steps (`STEPS` in `coachmark.js`, 9 steps, same shape as today — `target`, `sidebar`, `advanceOn`, `placement`):

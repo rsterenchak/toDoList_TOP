@@ -89,8 +89,8 @@ describe('welcome carousel — module', () => {
         }
     });
 
-    it('exposes four cards and stable ids', () => {
-        expect(getWelcomeCarouselCardCount()).toBe(4);
+    it('exposes five cards and stable ids', () => {
+        expect(getWelcomeCarouselCardCount()).toBe(5);
         expect(CAROUSEL_BACKDROP_ID).toBe('welcomeCarouselBackdrop');
         expect(CAROUSEL_ID).toBe('welcomeCarousel');
         expect(CAROUSEL_SKIP_ID).toBe('welcomeCarouselSkip');
@@ -99,7 +99,7 @@ describe('welcome carousel — module', () => {
         expect(ONBOARDING_COMPLETE_KEY).toBe('todoapp_onboardingComplete');
     });
 
-    it('mounts the backdrop, container, four slides, Skip link, and Next button', () => {
+    it('mounts the backdrop, container, five slides, Skip link, and Next button', () => {
         startWelcomeCarousel();
         const backdrop = document.getElementById(CAROUSEL_BACKDROP_ID);
         const container = document.getElementById(CAROUSEL_ID);
@@ -111,7 +111,7 @@ describe('welcome carousel — module', () => {
         expect(skip).not.toBeNull();
         expect(next).not.toBeNull();
         expect(track).not.toBeNull();
-        expect(track.querySelectorAll('.welcomeCarouselSlide').length).toBe(4);
+        expect(track.querySelectorAll('.welcomeCarouselSlide').length).toBe(5);
     });
 
     it('renders a dialog role and pagination dots with the first dot active', () => {
@@ -121,7 +121,7 @@ describe('welcome carousel — module', () => {
         expect(container.getAttribute('aria-modal')).toBe('true');
         expect(container.getAttribute('aria-labelledby')).toBe('welcomeCarouselTitle');
         const dots = document.querySelectorAll('.welcomeCarouselDot');
-        expect(dots.length).toBe(4);
+        expect(dots.length).toBe(5);
         expect(dots[0].classList.contains('active')).toBe(true);
         for (let i = 1; i < dots.length; i++) {
             expect(dots[i].classList.contains('active')).toBe(false);
@@ -153,14 +153,14 @@ describe('welcome carousel — module', () => {
         startWelcomeCarousel();
         const next = document.getElementById(CAROUSEL_NEXT_ID);
         expect(next.textContent).toBe('Next ›');
-        for (let i = 0; i < 3; i++) next.click();
+        for (let i = 0; i < 4; i++) next.click();
         expect(next.textContent).toBe("Let's go");
     });
 
     it("'Let's go' on the closer card finishes the carousel and persists the flag", () => {
         startWelcomeCarousel();
         const next = document.getElementById(CAROUSEL_NEXT_ID);
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 5; i++) {
             document.getElementById(CAROUSEL_NEXT_ID).click();
         }
         expect(document.getElementById(CAROUSEL_BACKDROP_ID)).toBeNull();
