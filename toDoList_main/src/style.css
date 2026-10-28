@@ -28080,6 +28080,8 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   /* Full-bleed near-black space base. Theme-independent — the scene is its
      own world, not tied to the dashboard's dark/light palette. */
   background: color-mix(in srgb, var(--accent-strong) 3%, black);
+  /* Matrix scene glyph colour — the scene and its picker thumbnail share it. */
+  --focus-matrix-glyph: #4dff88;
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -28205,6 +28207,51 @@ body:has(#musicPopover.open) #claudeLauncher { display: none; }
   background: radial-gradient(ellipse at center, rgba(0,0,0,0) 45%, rgba(0,0,0,0.55) 100%);
 }
 
+/* ── Matrix variant — columns of falling glyphs ──
+   The second scene theme, picked from the corner cluster. `.focusScene--matrix`
+   hides the star layers and shows the glyph rain; `.focusScene--stars` (the
+   default) does the reverse. Hidden layers are display:none, so only the
+   visible variant animates. Like the star scene this is its own world —
+   classic terminal green, not tied to the dashboard palette. Each column's
+   x position, speed and phase arrive as custom properties computed in
+   focusMode.js; the fall runs only under `.focusModeOverlay--active`. */
+.focusMatrix {
+  position: absolute;
+  inset: 0;
+  display: none;
+  overflow: hidden;
+}
+.focusScene--matrix .focusMatrix { display: block; }
+.focusScene--matrix .focusStars,
+.focusScene--matrix .focusNebula,
+.focusScene--matrix .focusTwinkle,
+.focusScene--matrix .focusShootingStar {
+  display: none;
+}
+.focusMatrixCol {
+  position: absolute;
+  top: 0;
+  left: var(--matrix-x, 50%);
+  writing-mode: vertical-rl;
+  text-orientation: upright;
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 18px;
+  line-height: 1;
+  letter-spacing: 4px;
+  white-space: nowrap;
+  color: var(--focus-matrix-glyph);
+  opacity: 0.75;
+  text-shadow: 0 0 8px color-mix(in srgb, var(--focus-matrix-glyph) 70%, transparent);
+  /* Fade the trail so each column reads as a falling head with a tail. */
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 85%);
+  mask-image: linear-gradient(to bottom, transparent, black 85%);
+  transform: translateY(-100%);
+  user-select: none;
+}
+.focusModeOverlay--active .focusScene--matrix .focusMatrixCol {
+  animation: focusMatrixFall var(--matrix-dur, 10s) linear infinite var(--matrix-delay, 0s);
+}
+
 /* ── Scene swap — the live video, full-bleed ──
    The player iframe is NEVER moved. Moving an iframe in the DOM reloads its
    document, which severs the handshake with the YT.Player instance in
@@ -28268,8 +28315,8 @@ body.focusVideoOn .musicViz {
 }
 
 /* ── Corner controls — no countdown ──
-   A now-playing chip plus one icon-only session control, bottom-left. Kept
-   simple and inline so they introduce no new anchored popovers. */
+   A now-playing chip plus round icon-only controls (session, video swap,
+   scene picker), bottom-left. Only the scene picker anchors a popover. */
 .focusCorner {
   position: absolute;
   left: 28px;
@@ -28396,6 +28443,103 @@ body.focusVideoOn .musicViz {
   cursor: default;
 }
 
+/* Scene picker — round button matching the session/video geometry, opening a
+   small two-card popover anchored above it (the cluster sits bottom-left, so
+   upward keeps it on screen). */
+.focusThemeWrap {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+}
+.focusThemeBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.9);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.focusThemeBtn:hover,
+.focusThemeBtn[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.focusThemeBtn:focus { outline: none; }
+.focusThemeBtn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.focusThemePopover {
+  position: absolute;
+  left: 0;
+  bottom: calc(100% + 10px);
+  display: none;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 12px;
+  background: rgba(10, 10, 10, 0.88);
+  border: 0.5px solid rgba(255,255,255,0.16);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+}
+.focusThemePopover--open { display: flex; }
+.focusThemeCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  padding: 4px;
+  border-radius: 8px;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.7);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.focusThemeCard:hover { border-color: rgba(255,255,255,0.4); color: rgba(255,255,255,0.9); }
+.focusThemeCard:focus { outline: none; }
+.focusThemeCard:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.focusThemeCard--active {
+  border-color: var(--accent-soft);
+  color: var(--accent-soft);
+}
+.focusThemeThumb {
+  display: block;
+  width: 96px;
+  height: 60px;
+  border-radius: 5px;
+  overflow: hidden;
+  background-color: color-mix(in srgb, var(--accent-strong) 3%, black);
+}
+.focusThemeThumb--stars {
+  background-image:
+    radial-gradient(1.2px 1.2px at 14px 12px, rgba(255,255,255,0.85), transparent),
+    radial-gradient(1px 1px at 52px 30px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1.2px 1.2px at 80px 14px, rgba(255,255,255,0.75), transparent),
+    radial-gradient(1px 1px at 30px 46px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(circle at 70% 70%, color-mix(in srgb, var(--accent) 45%, transparent), transparent 55%);
+}
+.focusThemeThumb--matrix {
+  background-image: repeating-linear-gradient(90deg,
+    transparent 0 9px,
+    color-mix(in srgb, var(--focus-matrix-glyph) 55%, transparent) 9px 11px,
+    transparent 11px 16px);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,0.25), black);
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,0.25), black);
+}
+.focusThemeCardLabel {
+  font-family: 'SpaceMono', ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  text-align: center;
+}
+
 /* ── Exit affordance — dim "exit · esc" pill, top-right ── */
 .focusExitPill {
   position: absolute;
@@ -28469,6 +28613,10 @@ body.focusVideoOn .musicViz {
   90%      { opacity: 1; }
   100%     { opacity: 0; transform: translate(120vw, 38vh) rotate(18deg); }
 }
+@keyframes focusMatrixFall {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(100vh); }
+}
 @keyframes focusEq {
   0%, 100% { transform: scaleY(0.25); }
   50%      { transform: scaleY(1); }
@@ -28494,9 +28642,12 @@ body.focusVideoOn .musicViz {
   .focusModeOverlay--active .focusTwinkle--2,
   .focusModeOverlay--active .focusTwinkle--3,
   .focusModeOverlay--active .focusShootingStar,
+  .focusModeOverlay--active .focusScene--matrix .focusMatrixCol,
   .focusModeOverlay--complete .focusScene {
     animation: none;
   }
+  /* Held still, the matrix columns rest on screen rather than above it. */
+  .focusScene--matrix .focusMatrixCol { transform: none; }
 }
 
 /* ── MOBILE INTERACTIVE-LAYER CONTRAST (dark theme) ──

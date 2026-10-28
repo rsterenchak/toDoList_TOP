@@ -5,9 +5,15 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-28',
+        added: [
+            'Focus mode has a scene picker in its corner controls, letting you switch between the star field and a falling-glyph Matrix scene, and it remembers your choice.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-27',
         added: [
-            'The sign-in screen offers "Use offline on this device", which opens the app without an account for projects and tasks only, saved in this browser, with Sign in available from Settings later.',
             'Export and Import from JSON now work without an account, and offline users see a quiet reminder above their tasks to export a backup when they haven\'t in a week.',
         ],
         fixed: [

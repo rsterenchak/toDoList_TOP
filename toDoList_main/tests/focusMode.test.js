@@ -514,3 +514,132 @@ describe('focus mode — video scene CSS hooks', () => {
         expect(css).toMatch(/\.focusVideoBtn:disabled\s*\{/);
     });
 });
+
+describe('focus mode — scene theme picker', () => {
+    beforeEach(() => {
+        localStorage.removeItem('todoapp_focusTheme');
+    });
+    afterEach(() => {
+        destroyFocusMode();
+        const stray = document.getElementById('focusModeOverlay');
+        if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
+        document.body.classList.remove('focusModeOpen');
+        localStorage.removeItem('todoapp_focusTheme');
+        delete window.matchMedia;
+    });
+
+    function open() {
+        stubMatchMedia(true);
+        const f = createFocusMode(document);
+        f.activate();
+        return f;
+    }
+
+    it('adds a fourth round control after the video button in the corner cluster', () => {
+        const f = open();
+        const corner = document.querySelector('.focusCorner');
+        const kids = Array.from(corner.children);
+        const wrap = corner.querySelector('.focusThemeWrap');
+        expect(kids.length).toBe(4);
+        expect(kids.indexOf(wrap)).toBe(kids.indexOf(corner.querySelector('.focusVideoBtn')) + 1);
+        const btn = wrap.querySelector('.focusThemeBtn');
+        expect(btn.getAttribute('aria-expanded')).toBe('false');
+        expect(btn.textContent.trim()).toBe('');
+        f.destroy();
+    });
+
+    it('defaults to the stars scene with both variants present and the vignette on top', () => {
+        const f = open();
+        const scene = document.querySelector('.focusScene');
+        expect(scene.classList.contains('focusScene--stars')).toBe(true);
+        expect(scene.classList.contains('focusScene--matrix')).toBe(false);
+        expect(scene.querySelector('.focusMatrix .focusMatrixCol')).not.toBeNull();
+        expect(scene.querySelector('.focusStars--far')).not.toBeNull();
+        expect(scene.lastElementChild.classList.contains('focusVignette')).toBe(true);
+        f.destroy();
+    });
+
+    it('falls back to stars when the stored theme is invalid', () => {
+        localStorage.setItem('todoapp_focusTheme', 'lava');
+        const f = open();
+        expect(document.querySelector('.focusScene').classList.contains('focusScene--stars')).toBe(true);
+        f.destroy();
+    });
+
+    it('opens a two-card popover; picking Matrix swaps the scene, marks the card and persists', () => {
+        const f = open();
+        const btn = document.querySelector('.focusThemeBtn');
+        const pop = document.querySelector('.focusThemePopover');
+        btn.click();
+        expect(pop.classList.contains('focusThemePopover--open')).toBe(true);
+        expect(btn.getAttribute('aria-expanded')).toBe('true');
+        const cards = pop.querySelectorAll('.focusThemeCard');
+        expect(Array.from(cards).map(c => c.textContent.trim())).toEqual(['Stars', 'Matrix']);
+        pop.querySelector('[data-focus-theme="matrix"]').click();
+        const scene = document.querySelector('.focusScene');
+        expect(scene.classList.contains('focusScene--matrix')).toBe(true);
+        expect(scene.classList.contains('focusScene--stars')).toBe(false);
+        expect(pop.querySelector('[data-focus-theme="matrix"]').classList.contains('focusThemeCard--active')).toBe(true);
+        expect(pop.querySelector('[data-focus-theme="stars"]').classList.contains('focusThemeCard--active')).toBe(false);
+        expect(localStorage.getItem('todoapp_focusTheme')).toBe('matrix');
+        // Selecting a card closes the popover.
+        expect(pop.classList.contains('focusThemePopover--open')).toBe(false);
+        f.destroy();
+    });
+
+    it('reads the persisted theme when the overlay is built', () => {
+        localStorage.setItem('todoapp_focusTheme', 'matrix');
+        const f = open();
+        expect(document.querySelector('.focusScene').classList.contains('focusScene--matrix')).toBe(true);
+        expect(document.querySelector('[data-focus-theme="matrix"]').getAttribute('aria-checked')).toBe('true');
+        f.destroy();
+    });
+
+    it('closes on an outside click without exiting focus mode', () => {
+        const f = open();
+        document.querySelector('.focusThemeBtn').click();
+        const pop = document.querySelector('.focusThemePopover');
+        document.querySelector('.focusScene').dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+        expect(pop.classList.contains('focusThemePopover--open')).toBe(false);
+        expect(f.isActive()).toBe(true);
+        f.destroy();
+    });
+
+    it('Escape closes the picker first, then a second Escape exits focus mode', () => {
+        const f = open();
+        document.querySelector('.focusThemeBtn').click();
+        const pop = document.querySelector('.focusThemePopover');
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(pop.classList.contains('focusThemePopover--open')).toBe(false);
+        expect(f.isActive()).toBe(true);
+        document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+        expect(f.isActive()).toBe(false);
+        f.destroy();
+    });
+
+    it('exiting focus mode closes an open picker', () => {
+        const f = open();
+        document.querySelector('.focusThemeBtn').click();
+        f.deactivate();
+        expect(document.querySelector('.focusThemePopover').classList.contains('focusThemePopover--open')).toBe(false);
+        f.destroy();
+    });
+});
+
+describe('focus mode — scene theme CSS hooks', () => {
+    const css = read('style.css');
+
+    it('gates the matrix fall on the active overlay class', () => {
+        expect(css).toMatch(/\.focusModeOverlay--active\s+\.focusScene--matrix\s+\.focusMatrixCol\s*\{\s*animation:\s*focusMatrixFall/);
+    });
+
+    it('shows the matrix only under its modifier and hides the star layers there', () => {
+        expect(css).toMatch(/\.focusScene--matrix\s+\.focusMatrix\s*\{\s*display:\s*block/);
+        expect(css).toMatch(/\.focusScene--matrix\s+\.focusStars,/);
+    });
+
+    it('disables the matrix fall under prefers-reduced-motion', () => {
+        const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {\n  .focusModeOverlay--active { animation: none; }'));
+        expect(block).toMatch(/\.focusModeOverlay--active\s+\.focusScene--matrix\s+\.focusMatrixCol,/);
+    });
+});

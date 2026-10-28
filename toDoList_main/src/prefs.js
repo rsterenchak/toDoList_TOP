@@ -340,6 +340,30 @@ export function setStructureLens(lens) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
+// ── Focus mode scene theme (stars / matrix) ──
+// Focus mode's ambient scene comes in two variants picked from its corner
+// cluster. The choice persists so focus mode reopens on the scene you last
+// used; it is read once when the overlay is built. Default is 'stars' — any
+// stored value other than the known tokens falls back to it.
+export const FOCUS_THEME_KEY = 'todoapp_focusTheme';
+export const FOCUS_THEMES = ['stars', 'matrix'];
+
+export function getFocusTheme() {
+    try {
+        const v = localStorage.getItem(FOCUS_THEME_KEY);
+        return FOCUS_THEMES.indexOf(v) !== -1 ? v : 'stars';
+    } catch (e) {
+        return 'stars';
+    }
+}
+
+export function setFocusTheme(theme) {
+    try {
+        const stored = FOCUS_THEMES.indexOf(theme) !== -1 ? theme : 'stars';
+        localStorage.setItem(FOCUS_THEME_KEY, stored);
+    } catch (e) { /* ignore quota/private-mode */ }
+}
+
 // ── Structure tab open/closed tree state (per repo + lens) ──
 // The Structure tab's tree (Code-lens folders, published-map file groups, live-
 // map regions) otherwise resets to its default expansion on every reload. We
