@@ -3105,3 +3105,31 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/focusMode.js`, `toDoList_main/src/style.css`
   - Completed: 2026-02-14 (PR #<number>)
   <!-- id: 4700e8c6-89ed-40ed-82e3-34e1d3660883 -->
+
+- [ ] **[MEDIUM]** Update the first-run tours to match the current app
+  - Type: feature
+  - Description: Both first-run tours describe chrome that no longer exists. The desktop spotlight tour (`coachmark.js`, 7 steps) calls the music button a "note icon" (it is the `.musicVizBars` equalizer), calls the gear "the menu", never shows how to add a task, and skips Focus mode; the mobile carousel (`welcomeCarousel.js`, 4 cards) tells the user to "open the ≡ menu in the top corner" (`#sidebarToggle` is `display:none` ≤1023px — the drawer opens from the project name + ▾ in `#mobileProjTitleRow`), says focus music lives there (pomodoro/music are desktop-only now), and says to "tap the ▾ chevron to expand notes" (on coarse-pointer a row tap opens the editor modal via `openDescEditorForRow`). Rewrite both step lists to the copy below; keep the overlay/callout/carousel chrome, the seeding, gating and replay paths exactly as they are. The only people who hit first-run now are offline visitors, so neither tour mentions Understanding, Structure, the assistant or the TODO.md viewer (all hidden by `LOCAL_HIDDEN_SELECTORS`).
+  - Desktop steps (`STEPS` in `coachmark.js`, 9 steps, same shape as today — `target`, `sidebar`, `advanceOn`, `placement`):
+    1. `sampleProject` — target/sidebar/placement unchanged. Title "This is a project". Body: "Projects group your tasks. We seeded \"Getting started\" so you can poke around — rename or delete it from its row whenever you like."
+    2. `addTask` (new) — target: the first `#toDoChild` in `#mainList` whose `#toDoInput` value is empty (the blank placeholder row); spotlight the whole row, placement `bottom`, `advanceOn: ['click']` on the row. Title "Add a task". Body: "Type here and press Enter. Each Enter commits the task and gives you a fresh line for the next one."
+    3. `duePill` — target unchanged. Title "Set a due date". Body: "Every task gets a date pill once it's committed — click it to pick a due date or make it repeat."
+    4. `descToggle` — target unchanged. Title "Notes and details". Body: "The chevron opens a notes panel under the task — links, longer thoughts, anything that doesn't fit on one line. Ctrl/Cmd + Enter opens every panel at once."
+    5. `addProject` — target/sidebar unchanged. Title "Create a project". Body: "The + at the top of the drawer starts a project of your own. Each project keeps its own list; the drawer opens from ☰ in the top-left."
+    6. `pomodoro` — target unchanged. Title "Stay focused". Body: "The stopwatch opens a Pomodoro timer; the countdown shows right here on the button while a session runs."
+    7. `music` — target unchanged. Title "Focus music". Body: "The bars play ambient focus stations you can run alongside the timer."
+    8. `focusMode` (new) — target `#focusModeToggle`, placement `bottom`, `advanceOn: ['click']`. Title "Focus mode". Body: "The sparkle hides everything but a calm drifting space scene — timer and music ride along in the corner. Press Esc to come back."
+    9. `settings` — target unchanged. Title "Settings and backup". Body: "The gear holds theme, app lock, Export / Import to JSON, and Replay welcome tour. Your tasks live in this browser — export a JSON copy now and then."
+  - Mobile cards (`CARDS` in `welcomeCarousel.js`, 5 cards; reuse the existing illustration classes — no new SVGs):
+    1. `welcome` (`ghost`) — "Welcome to Void" / "A calm place to keep your tasks. Four quick cards and you're in."
+    2. `addTask` (`projects`) — "Add a task" / "Tap \"+ Add a task…\" at the top of the list, type, and hit Return. Pick Today or Tomorrow from the chips, or the calendar for any date. Tap a task later to edit it or add notes."
+    3. `projects` (`menu`) — "Projects" / "Tap the project name at the top to open your projects, then + for a new one. Swipe left or right on the name to jump between projects."
+    4. `backup` (`sample`) — "Settings & backup" / "Settings is the last row in the projects drawer — theme, app lock, Export / Import. Your tasks live on this device, so export a JSON copy now and then."
+    5. `closer` (`sample`) — "You're set" / "We've dropped you into a sample \"Getting started\" project. Rename or delete it whenever you're ready."
+  - Implementation notes:
+    - The step/card ids are referenced by `data-card` on carousel slides and by nothing else; `getCoachmarkStepCount()` / `getWelcomeCarouselCardCount()` stay exported and now return 9 and 5.
+    - `tests/coachmarkTour.test.js` pins `STEP N OF 7`, 7 dots and the step-2/4/6/7 labels; `tests/welcomeCarousel.test.js` pins 4 slides/dots. Update those assertions to the new counts and add the new `addTask` and `focusMode` targets to the test DOM skeleton (a blank `#toDoChild` with an empty `#toDoInput`, and a `#focusModeToggle` button) so the step-2 advance-on-click case still passes. The desktop `addTask` target must fall back to the centered no-target callout when no blank row exists, like every other step.
+    - Update the purpose comments at the top of both modules (they list the stops). No changes to `prefs.js`, the seeding in `listLogic.js`, the replay rows in `settingsMenu.js` / `settingsModal.js`, or `style.css`.
+    - At 1300x900 on a fresh render (empty storage → first run) the spotlight tour mounts on step 1 with the drawer open and "STEP 1 OF 9"; at 390x844 the carousel mounts on card 1 with five dots.
+  - File: `toDoList_main/src/coachmark.js`, `toDoList_main/src/welcomeCarousel.js`, `toDoList_main/tests/coachmarkTour.test.js`, `toDoList_main/tests/welcomeCarousel.test.js`
+  - Verify: 1300x900, 390x844 → /
+  <!-- id: f9b31d9a-99ab-4c1e-bae4-2435a51ef43f -->
