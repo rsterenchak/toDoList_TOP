@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             'Focus mode has a scene picker in its corner controls, letting you switch between the star field and a falling-glyph Matrix scene, and it remembers your choice.',
         ],
+        changed: [
+            'The first-run welcome tour and phone welcome cards now match the current app, covering adding a task, Focus mode, opening projects from the project name, and backing up with Export.',
+        ],
     },
     {
         version: '1.1',
         date: '2026-10-27',
-        added: [
-            'Export and Import from JSON now work without an account, and offline users see a quiet reminder above their tasks to export a backup when they haven\'t in a week.',
-        ],
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
             'The phone todo editor now fits on screen when agent controls are showing, with the entry and the agent controls on separate Notes and Agent tabs that scroll on their own.',

@@ -55,16 +55,28 @@ function buildSkeletonDOM() {
     musicToggle.id = 'musicToggle';
     document.body.appendChild(musicToggle);
 
+    const focusModeToggle = document.createElement('button');
+    focusModeToggle.id = 'focusModeToggle';
+    document.body.appendChild(focusModeToggle);
+
     const settingsToggle = document.createElement('button');
     settingsToggle.id = 'settingsToggle';
     document.body.appendChild(settingsToggle);
 
     const mainList = document.createElement('div');
     mainList.id = 'mainList';
+    // The blank placeholder row the addTask step spotlights.
+    const blankRow = document.createElement('div');
+    blankRow.id = 'toDoChild';
+    const blankInput = document.createElement('input');
+    blankInput.id = 'toDoInput';
+    blankRow.appendChild(blankInput);
+    mainList.appendChild(blankRow);
     const row = document.createElement('div');
     row.id = 'toDoChild';
     const input = document.createElement('input');
     input.id = 'toDoInput';
+    input.value = 'Committed task';
     row.appendChild(input);
     const duePill = document.createElement('button');
     duePill.id = 'duePill';
@@ -74,7 +86,7 @@ function buildSkeletonDOM() {
     row.appendChild(descToggle);
     mainList.appendChild(row);
     document.body.appendChild(mainList);
-    return { sideMa, projChild, projButton, pomodoroToggle, musicToggle, settingsToggle, mainList, row, input, duePill, descToggle };
+    return { sideMa, projChild, projButton, pomodoroToggle, musicToggle, focusModeToggle, settingsToggle, mainList, blankRow, row, input, duePill, descToggle };
 }
 
 function ensureDesktopViewport() {
@@ -106,8 +118,8 @@ describe('coachmark tour — module', () => {
         }
     });
 
-    it('exposes seven steps and stable ids', () => {
-        expect(getCoachmarkStepCount()).toBe(7);
+    it('exposes nine steps and stable ids', () => {
+        expect(getCoachmarkStepCount()).toBe(9);
         expect(COACHMARK_OVERLAY_ID).toBe('coachmarkOverlay');
         expect(COACHMARK_CALLOUT_ID).toBe('coachmarkCallout');
         expect(COACHMARK_CUTOUT_ID).toBe('coachmarkCutout');
@@ -132,13 +144,13 @@ describe('coachmark tour — module', () => {
         startCoachmarkTour();
         const label = document.querySelector('.coachmarkStepLabel');
         expect(label).not.toBeNull();
-        expect(label.textContent).toBe('STEP 1 OF 7');
+        expect(label.textContent).toBe('STEP 1 OF 9');
     });
 
     it('renders pagination dots, Skip / Next buttons, and a dialog role', () => {
         startCoachmarkTour();
         const dots = document.querySelectorAll('.coachmarkDot');
-        expect(dots.length).toBe(7);
+        expect(dots.length).toBe(9);
         expect(dots[0].classList.contains('active')).toBe(true);
         expect(document.querySelector('.coachmarkSkip')).not.toBeNull();
         const next = document.querySelector('.coachmarkNext');
@@ -154,12 +166,12 @@ describe('coachmark tour — module', () => {
         const next = document.querySelector('.coachmarkNext');
         next.click();
         const label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 2 OF 7');
+        expect(label.textContent).toBe('STEP 2 OF 9');
     });
 
     it('switches the Next button to "You\'re set" on the final step', () => {
         startCoachmarkTour();
-        for (let i = 0; i < 6; i++) {
+        for (let i = 0; i < 8; i++) {
             document.querySelector('.coachmarkNext').click();
         }
         const next = document.querySelector('.coachmarkNext');
@@ -170,7 +182,7 @@ describe('coachmark tour — module', () => {
 
     it('clicking "You\'re set" finishes the tour and persists the completion flag', () => {
         startCoachmarkTour();
-        for (let i = 0; i < 7; i++) {
+        for (let i = 0; i < 9; i++) {
             document.querySelector('.coachmarkNext').click();
         }
         expect(document.getElementById(COACHMARK_OVERLAY_ID)).toBeNull();
@@ -212,7 +224,7 @@ describe('coachmark tour — module', () => {
         return new Promise(function(done) {
             setTimeout(function() {
                 const label = document.querySelector('.coachmarkStepLabel');
-                expect(label.textContent).toBe('STEP 2 OF 7');
+                expect(label.textContent).toBe('STEP 2 OF 9');
                 done();
             }, 0);
         });
@@ -253,29 +265,69 @@ describe('coachmark tour — module', () => {
         expect(isOnboardingComplete()).toBe(false);
     });
 
-    it('walks through the music toggle on step 6 and the settings toggle on step 7', () => {
-        const { musicToggle, settingsToggle } = buildSkeletonDOM();
+    it('walks through music on step 7, focus mode on step 8 and settings on step 9', () => {
+        const { musicToggle, focusModeToggle, settingsToggle } = buildSkeletonDOM();
         musicToggle.getBoundingClientRect = function() {
             return { top: 20, left: 600, right: 640, bottom: 60, width: 40, height: 40, x: 600, y: 20 };
+        };
+        focusModeToggle.getBoundingClientRect = function() {
+            return { top: 20, left: 630, right: 670, bottom: 60, width: 40, height: 40, x: 630, y: 20 };
         };
         settingsToggle.getBoundingClientRect = function() {
             return { top: 20, left: 660, right: 700, bottom: 60, width: 40, height: 40, x: 660, y: 20 };
         };
         startCoachmarkTour();
-        // Advance to step 6 (music) and verify the cutout tracks #musicToggle.
-        for (let i = 0; i < 5; i++) {
+        // Advance to step 7 (music) and verify the cutout tracks #musicToggle.
+        for (let i = 0; i < 6; i++) {
             document.querySelector('.coachmarkNext').click();
         }
         let label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 6 OF 7');
+        expect(label.textContent).toBe('STEP 7 OF 9');
         let cutout = document.getElementById(COACHMARK_CUTOUT_ID);
         expect(parseInt(cutout.style.left, 10)).toBe(594);
-        // Advance to step 7 (settings) and verify the cutout tracks #settingsToggle.
+        // Advance to step 8 (focus mode) and verify the cutout tracks #focusModeToggle.
         document.querySelector('.coachmarkNext').click();
         label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 7 OF 7');
+        expect(label.textContent).toBe('STEP 8 OF 9');
+        cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.left, 10)).toBe(624);
+        // Advance to step 9 (settings) and verify the cutout tracks #settingsToggle.
+        document.querySelector('.coachmarkNext').click();
+        label = document.querySelector('.coachmarkStepLabel');
+        expect(label.textContent).toBe('STEP 9 OF 9');
         cutout = document.getElementById(COACHMARK_CUTOUT_ID);
         expect(parseInt(cutout.style.left, 10)).toBe(654);
+    });
+
+    it('spotlights the blank placeholder row on step 2 and advances when it is clicked', () => {
+        const { blankRow } = buildSkeletonDOM();
+        blankRow.getBoundingClientRect = function() {
+            return { top: 200, left: 300, right: 900, bottom: 240, width: 600, height: 40, x: 300, y: 200 };
+        };
+        startCoachmarkTour();
+        document.querySelector('.coachmarkNext').click();
+        expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 2 OF 9');
+        expect(document.getElementById('coachmarkTitle').textContent).toBe('Add a task');
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.left, 10)).toBe(294);
+        blankRow.click();
+        return new Promise(function(done) {
+            setTimeout(function() {
+                expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 3 OF 9');
+                done();
+            }, 0);
+        });
+    });
+
+    it('falls back to the centered callout on step 2 when no blank row exists', () => {
+        const { blankRow } = buildSkeletonDOM();
+        blankRow.remove();
+        startCoachmarkTour();
+        document.querySelector('.coachmarkNext').click();
+        expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 2 OF 9');
+        expect(document.getElementById(COACHMARK_CALLOUT_ID)).not.toBeNull();
+        expect(document.getElementById(COACHMARK_OVERLAY_ID).classList.contains('noTarget')).toBe(true);
+        expect(document.getElementById(COACHMARK_CUTOUT_ID).style.display).toBe('none');
     });
 
     it('positions the cutout over the target via fixed coordinates', () => {
@@ -552,10 +604,10 @@ describe('coachmark tour — opens the projects drawer for sidebar steps', () =>
 
     it('closes the drawer when advancing to a non-sidebar step', () => {
         startCoachmarkTour();
-        // Step 1 (sampleProject) is a sidebar step; step 2 (duePill) is not.
+        // Step 1 (sampleProject) is a sidebar step; step 2 (addTask) is not.
         clickNext();
         const label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 2 OF 7');
+        expect(label.textContent).toBe('STEP 2 OF 9');
         const sideBar = document.getElementById('sideBar');
         const overlay = document.getElementById('sidebarOverlay');
         expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(false);
@@ -564,12 +616,13 @@ describe('coachmark tour — opens the projects drawer for sidebar steps', () =>
 
     it('reopens the drawer on the add-project sidebar step', () => {
         startCoachmarkTour();
-        // Advance to step 4 (addProject), which targets #projButton in drawer.
-        clickNext(); // -> step 2 (duePill)
-        clickNext(); // -> step 3 (descToggle)
-        clickNext(); // -> step 4 (addProject)
+        // Advance to step 5 (addProject), which targets #projButton in drawer.
+        clickNext(); // -> step 2 (addTask)
+        clickNext(); // -> step 3 (duePill)
+        clickNext(); // -> step 4 (descToggle)
+        clickNext(); // -> step 5 (addProject)
         const label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 4 OF 7');
+        expect(label.textContent).toBe('STEP 5 OF 9');
         const sideBar = document.getElementById('sideBar');
         expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
     });
