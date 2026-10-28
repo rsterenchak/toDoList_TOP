@@ -12,6 +12,9 @@ export const changelog = [
         changed: [
             'The first-run welcome tour and phone welcome cards now match the current app, covering adding a task, Focus mode, opening projects from the project name, and backing up with Export.',
         ],
+        fixed: [
+            'The desktop welcome tour\'s callouts now sit beside the projects drawer instead of covering it, and the notes step points at a real task row.',
+        ],
     },
     {
         version: '1.1',
@@ -19,9 +22,6 @@ export const changelog = [
         fixed: [
             'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
             'The phone todo editor now fits on screen when agent controls are showing, with the entry and the agent controls on separate Notes and Agent tabs that scroll on their own.',
-        ],
-        changed: [
-            'The Completed section\'s "Clear all" button is now a borderless red pill with a trash icon and a softer hover tint.',
         ],
     },
 ];
