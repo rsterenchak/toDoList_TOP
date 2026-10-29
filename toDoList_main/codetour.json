@@ -3521,11 +3521,11 @@
           "file": "coachmark.js",
           "symbol": "finish",
           "match": [
-            "if (active.openedSidebar) {",
+            "if (isPickerOpen()) clickPickerPill();",
             "setOnboardingComplete(true);"
           ],
           "title": "Finishing sets the shared done flag.",
-          "why": "The drawer is closed if the tour opened it. The carousel sets the same flag, so neither plays again."
+          "why": "The project picker is closed if it's still open. The carousel sets the same flag, so neither plays again."
         }
       ]
     },

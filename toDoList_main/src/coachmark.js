@@ -5,9 +5,9 @@
 // node to anchor against. This module dims the page with a full-viewport
 // overlay, cuts a hole around one target element at a time via a four-
 // rect mask, and anchors a callout next to the spotlight that walks
-// through the sample project row, the blank add-a-task row, a due-date
-// pill, a committed task row (which opens the detail pane), the sidebar
-// "+" project button, the
+// through the header project pill, the blank add-a-task row, a due-date
+// pill, a committed task row (which opens the detail pane), the project
+// picker's "+" new-project button, the
 // Pomodoro toggle, the music toggle, the Focus mode toggle, and the
 // settings toggle in the navbar.
 //
@@ -29,20 +29,15 @@ const CUTOUT_PADDING = 6;
 const CALLOUT_GAP = 12;
 const CALLOUT_MARGIN = 8;
 
-// Since D1b the projects sidebar is a slide-in overlay drawer that is closed
-// by default at every breakpoint (#sideBar.sidebar-open toggles the slide,
-// #sidebarOverlay.visible toggles the backdrop). While shut, the drawer's
-// contents — the sample project row and the "+" add-project button — sit
-// off-screen via transform: translateX(100%). Steps that spotlight those
-// controls (`sidebar: true`) open the drawer first so the cut-out lands on
-// the real, on-screen control, then close it again when the tour advances
-// past them or finishes. The slide animation runs ~0.25s, so the spotlight
-// is re-measured once it settles.
-const SIDEBAR_ID = 'sideBar';
-const SIDEBAR_OVERLAY_ID = 'sidebarOverlay';
-const SIDEBAR_OPEN_CLASS = 'sidebar-open';
-const SIDEBAR_OVERLAY_VISIBLE_CLASS = 'visible';
-const SIDEBAR_TRANSITION_MS = 250;
+// On desktop the project control is the header pill (#mobileProjPill), which
+// opens the anchored #projectPickerDropdown (projectPicker.js) — switching,
+// rename, delete and the "+" new-project button all live there. Steps that
+// spotlight a control inside the dropdown (`picker: true`) open it by
+// clicking the pill — the pill's own handler toggles the picker, so no
+// parallel open path exists — and every other step closes it again.
+const PICKER_PILL_ID = 'mobileProjPill';
+const PICKER_DROPDOWN_ID = 'projectPickerDropdown';
+const PICKER_OPEN_CLASS = 'open';
 
 // Each step describes one stop on the tour. `target` is a function returning
 // the DOM element to spotlight (or null when unavailable) — resolved fresh
@@ -52,31 +47,32 @@ const SIDEBAR_TRANSITION_MS = 250;
 // the explicit Next button; the listener is attached at spotlight time and
 // removed when the step changes.
 //
-// Step 1 anchors against the seeded sample project in the sidebar — the
-// first-run flow writes a "Getting started" project into the data model
-// before the tour mounts so the target always exists. Step 2 points at the
+// Step 1 anchors against the header pill showing the seeded "Getting
+// started" project — the first-run flow writes it into the data model before
+// the tour mounts so the pill names a real project. Step 2 points at the
 // blank placeholder row and steps 3 and 4 at seeded todo rows for the same
-// reason. The drawer slides in from the RIGHT edge, so the two drawer steps
-// place their callout to the left of the spotlight. The replay path (no re-seed)
-// falls back gracefully if the user deleted the sample: the layout helper
-// renders a centered callout when target() returns null.
+// reason. Step 5 opens the project picker and spotlights its "+". The replay
+// path (no re-seed) falls back gracefully if a target is missing: the layout
+// helper renders a centered callout when target() returns null.
 const STEPS = [
     {
-        id: 'sampleProject',
-        title: 'This is a project',
-        body: "Projects group your tasks. We seeded \"Getting started\" so you can poke around — rename or delete it from its row whenever you like.",
+        id: 'project',
+        title: 'This is your project',
+        body: "The pill shows the project you're in. Click it to switch projects, rename or delete one, or start a new one. We seeded \"Getting started\" so you can poke around.",
         target: function() {
-            const sideMa = document.getElementById('sideMa');
-            if (!sideMa) return null;
-            // Prefer the currently-selected row; on first run that's the
-            // sample project. Falls back to the first project row so a
-            // replay tour with a different selection still has a target.
-            return sideMa.querySelector('.selectedProject')
-                || sideMa.querySelector('#projChild');
+            const pill = document.getElementById(PICKER_PILL_ID);
+            if (!pill) return null;
+            // At desktop the pill node is display:contents (no box of its
+            // own) and the padded pill the user sees is #mobileProjHeader,
+            // so spotlight that when the pill itself measures empty.
+            const rect = pill.getBoundingClientRect();
+            if (rect.width === 0 && rect.height === 0) {
+                return pill.closest('#mobileProjHeader') || pill;
+            }
+            return pill;
         },
-        sidebar: true,
         advanceOn: ['click'],
-        placement: 'left',
+        placement: 'bottom',
     },
     {
         id: 'addTask',
@@ -136,11 +132,13 @@ const STEPS = [
     {
         id: 'addProject',
         title: 'Create a project',
-        body: 'The + at the bottom of the drawer starts a project of your own. Each project keeps its own list; open the drawer any time from the project name ▾ at the top-left.',
-        target: function() { return document.getElementById('projButton'); },
-        sidebar: true,
+        body: 'Hit + in the picker to start a project of your own. Each project keeps its own list.',
+        target: function() {
+            return document.querySelector('#' + PICKER_DROPDOWN_ID + ' .projectPickerAddBtn');
+        },
+        picker: true,
         advanceOn: ['click'],
-        placement: 'left',
+        placement: 'right',
     },
     {
         id: 'pomodoro',
@@ -245,7 +243,6 @@ export function startCoachmarkTour() {
         currentTarget: null,
         currentEventHandler: null,
         currentEventNames: null,
-        openedSidebar: false,
     };
 
     window.addEventListener('resize', onWindowChange);
@@ -279,34 +276,45 @@ function onOverlayClick(event) {
     finish();
 }
 
-// Toggle the projects drawer open/closed by mirroring main.js's drawer
-// classes directly (#sideBar.sidebar-open + #sidebarOverlay.visible). Both
-// nodes are looked up fresh and guarded so the helper is a no-op when the
-// drawer chrome isn't present (e.g. the test skeleton or a replay before the
-// app shell mounts).
-function setDrawerOpen(open) {
-    const sideBar = document.getElementById(SIDEBAR_ID);
-    const overlay = document.getElementById(SIDEBAR_OVERLAY_ID);
-    if (sideBar) sideBar.classList.toggle(SIDEBAR_OPEN_CLASS, open);
-    if (overlay) overlay.classList.toggle(SIDEBAR_OVERLAY_VISIBLE_CLASS, open);
+function isPickerOpen() {
+    const dropdown = document.getElementById(PICKER_DROPDOWN_ID);
+    return !!dropdown && dropdown.classList.contains(PICKER_OPEN_CLASS);
 }
 
-// Open the drawer for sidebar-targeted steps; close it again on any step that
-// isn't. `active.openedSidebar` records whether the tour was the one that
-// opened it, so a drawer the user already had open is never yanked shut and
-// the tour only undoes its own opening.
-function syncSidebarForStep(step) {
+// Route through the pill's own click handler, which toggles the picker. The
+// document-level dismisser ignores clicks inside #mobileProjHeader, so the
+// synthetic click never reads as an outside-click. Guarded so the helper is
+// a no-op when the header chrome isn't present (e.g. a test skeleton).
+function clickPickerPill() {
+    const pill = document.getElementById(PICKER_PILL_ID);
+    if (pill) pill.click();
+}
+
+// Open the picker for picker-targeted steps; close it on any other step.
+// Closing is unconditional rather than tracking who opened it: the user
+// advancing step 1 by clicking the pill leaves the picker open over step 2,
+// and closeProjectPicker also cancels an inline create started by the "+"
+// click that advances step 5.
+//
+// Opening waits one frame: when Next triggers the step, that same click is
+// still bubbling and would reach the document-level outside-click dismisser
+// after the picker opened, shutting it again. The picker rebuilds its rows
+// (and so its "+") on every open, so the advance listener is re-attached to
+// the fresh node and the spotlight re-measured.
+function syncPickerForStep(step) {
     if (!active) return;
-    if (step && step.sidebar) {
-        const sideBar = document.getElementById(SIDEBAR_ID);
-        if (sideBar && !sideBar.classList.contains(SIDEBAR_OPEN_CLASS)) {
-            setDrawerOpen(true);
-            active.openedSidebar = true;
-        }
-    } else if (active.openedSidebar) {
-        setDrawerOpen(false);
-        active.openedSidebar = false;
+    if (!step || !step.picker) {
+        if (isPickerOpen()) clickPickerPill();
+        return;
     }
+    const stepAtSchedule = active.index;
+    requestAnimationFrame(function() {
+        if (!active || active.index !== stepAtSchedule) return;
+        if (!isPickerOpen()) clickPickerPill();
+        detachTargetListener();
+        attachTargetListener(step);
+        layoutStep();
+    });
 }
 
 function renderStep() {
@@ -314,7 +322,7 @@ function renderStep() {
     const step = STEPS[active.index];
 
     detachTargetListener();
-    syncSidebarForStep(step);
+    syncPickerForStep(step);
 
     const callout = active.callout;
     while (callout.firstChild) callout.removeChild(callout.firstChild);
@@ -368,15 +376,14 @@ function renderStep() {
     layoutStep();
     attachTargetListener(step);
 
-    // The drawer slides in over ~0.25s, so the rect measured synchronously
-    // above reflects the mid-slide (off-screen) transform. Re-measure once
-    // the animation settles, but only if the tour is still on this same step.
-    if (step.sidebar && active.openedSidebar) {
-        const stepAtSchedule = active.index;
-        setTimeout(function() {
-            if (active && active.index === stepAtSchedule) layoutStep();
-        }, SIDEBAR_TRANSITION_MS);
-    }
+    // Re-measure after one frame once layout has settled — on first run the
+    // tour mounts while the app shell is still being revealed, so the
+    // synchronous rect can be empty. Only if the tour is still on this same
+    // step.
+    const stepAtSchedule = active.index;
+    requestAnimationFrame(function() {
+        if (active && active.index === stepAtSchedule) layoutStep();
+    });
 
     next.focus();
 }
@@ -428,7 +435,7 @@ function detachTargetListener() {
 // Compute the cut-out rectangle around the current target and the position
 // of the callout. Falls back to a centered callout with no cut-out when the
 // target is missing — keeps the tour navigable even if the user closed the
-// sidebar between steps.
+// picker between steps.
 function layoutStep() {
     if (!active) return;
     const step = STEPS[active.index];
@@ -552,12 +559,8 @@ function finish() {
     if (!active) return;
     detachTargetListener();
 
-    // Leave the drawer the way we found it — close it only if the tour was
-    // the one that opened it for a sidebar step.
-    if (active.openedSidebar) {
-        setDrawerOpen(false);
-        active.openedSidebar = false;
-    }
+    // Never leave the picker open behind a finished tour.
+    if (isPickerOpen()) clickPickerPill();
 
     window.removeEventListener('resize', onWindowChange);
     window.removeEventListener('scroll', onWindowChange, true);

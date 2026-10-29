@@ -33,19 +33,9 @@ function read(relative) {
 function buildSkeletonDOM() {
     document.body.innerHTML = '';
     // Targets that STEPS look up by id / selector inside the module.
-    // sideMa carries the project rows; step 1 anchors against a selected
-    // project entry inside it (the seeded sample on first run).
-    const sideMa = document.createElement('div');
-    sideMa.id = 'sideMa';
-    const projChild = document.createElement('div');
-    projChild.id = 'projChild';
-    projChild.className = 'selectedProject';
-    sideMa.appendChild(projChild);
-    document.body.appendChild(sideMa);
-
-    const projButton = document.createElement('div');
-    projButton.id = 'projButton';
-    document.body.appendChild(projButton);
+    // Step 1 anchors against the header project pill; step 5 against the
+    // "+" in the project picker dropdown the pill opens.
+    const { pill, dropdown, addBtn } = buildPickerChrome();
 
     const pomodoroToggle = document.createElement('button');
     pomodoroToggle.id = 'pomodoroToggle';
@@ -86,7 +76,39 @@ function buildSkeletonDOM() {
     row.appendChild(descToggle);
     mainList.appendChild(row);
     document.body.appendChild(mainList);
-    return { sideMa, projChild, projButton, pomodoroToggle, musicToggle, focusModeToggle, settingsToggle, mainList, blankRow, row, input, duePill, descToggle };
+    return { pill, dropdown, addBtn, pomodoroToggle, musicToggle, focusModeToggle, settingsToggle, mainList, blankRow, row, input, duePill, descToggle };
+}
+
+// Header pill + project picker dropdown. The pill's real handler (main.js)
+// toggles the picker; the stub mirrors that by toggling .open.
+function buildPickerChrome() {
+    const header = document.createElement('div');
+    header.id = 'mobileProjHeader';
+    const pill = document.createElement('div');
+    pill.id = 'mobileProjPill';
+    header.appendChild(pill);
+    document.body.appendChild(header);
+
+    const dropdown = document.createElement('div');
+    dropdown.id = 'projectPickerDropdown';
+    const pickerHeader = document.createElement('div');
+    pickerHeader.className = 'projectPickerHeader';
+    const addBtn = document.createElement('button');
+    addBtn.className = 'projectPickerAddBtn';
+    pickerHeader.appendChild(addBtn);
+    dropdown.appendChild(pickerHeader);
+    document.body.appendChild(dropdown);
+
+    pill.addEventListener('click', function() {
+        dropdown.classList.toggle('open');
+    });
+    return { header, pill, dropdown, addBtn };
+}
+
+// The tour opens the picker one frame after a step renders; resolves after
+// that frame has run.
+function nextFrame() {
+    return new Promise(function(done) { requestAnimationFrame(function() { done(); }); });
 }
 
 function ensureDesktopViewport() {
@@ -215,10 +237,9 @@ describe('coachmark tour — module', () => {
 
     it('clicking the highlighted target advances the step', () => {
         startCoachmarkTour();
-        // Step 1's target is the selected sidebar project row (the
-        // seeded sample on first run). Click it to verify the advance.
-        const projChild = document.querySelector('.selectedProject');
-        projChild.click();
+        // Step 1's target is the header project pill. Click it to verify
+        // the advance.
+        document.getElementById('mobileProjPill').click();
         // The advance handler defers by one tick so the underlying click
         // can settle before the next target() resolves.
         return new Promise(function(done) {
@@ -362,61 +383,74 @@ describe('coachmark tour — module', () => {
         });
     });
 
-    it('step 5 copy points at the + at the foot of the drawer and the project name opener', () => {
+    it('step 1 spotlights the header pill with the callout below it', () => {
+        const { pill } = buildSkeletonDOM();
+        pill.getBoundingClientRect = function() {
+            return { top: 60, left: 40, right: 240, bottom: 92, width: 200, height: 32, x: 40, y: 60 };
+        };
+        startCoachmarkTour();
+        expect(document.getElementById('coachmarkTitle').textContent).toBe('This is your project');
+        expect(document.querySelector('.coachmarkBody').textContent).toBe(
+            "The pill shows the project you're in. Click it to switch projects, rename or delete one, or start a new one. We seeded \"Getting started\" so you can poke around."
+        );
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.top, 10)).toBe(54);
+        expect(parseInt(cutout.style.left, 10)).toBe(34);
+        const callout = document.getElementById(COACHMARK_CALLOUT_ID);
+        expect(parseInt(callout.style.top, 10)).toBe(98 + 12);
+    });
+
+    it('step 5 copy points at the + in the project picker', () => {
         startCoachmarkTour();
         for (let i = 0; i < 4; i++) document.querySelector('.coachmarkNext').click();
         expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 5 OF 9');
+        expect(document.getElementById('coachmarkTitle').textContent).toBe('Create a project');
         expect(document.querySelector('.coachmarkBody').textContent).toBe(
-            'The + at the bottom of the drawer starts a project of your own. Each project keeps its own list; open the drawer any time from the project name ▾ at the top-left.'
+            'Hit + in the picker to start a project of your own. Each project keeps its own list.'
         );
     });
 
-    it('places the drawer-row callout to the LEFT of the right-edge drawer', () => {
-        // The drawer slides in from the right edge; at 1300x900 the selected
-        // row spans 1001–1300 × 48–92. The callout must sit to its left and
-        // never overlap the cut-out.
-        Object.defineProperty(window, 'innerWidth', { value: 1300, configurable: true });
-        Object.defineProperty(window, 'innerHeight', { value: 900, configurable: true });
-        const { projChild } = buildSkeletonDOM();
-        projChild.getBoundingClientRect = function() {
-            return { top: 48, left: 1001, right: 1300, bottom: 92, width: 299, height: 44, x: 1001, y: 48 };
+    it('step 5 places the callout to the RIGHT of the picker +', async () => {
+        const { addBtn } = buildSkeletonDOM();
+        addBtn.getBoundingClientRect = function() {
+            return { top: 110, left: 300, right: 324, bottom: 134, width: 24, height: 24, x: 300, y: 110 };
         };
         startCoachmarkTour();
-        const callout = document.getElementById(COACHMARK_CALLOUT_ID);
+        for (let i = 0; i < 4; i++) document.querySelector('.coachmarkNext').click();
+        await nextFrame();
         const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
-        const calloutLeft = parseInt(callout.style.left, 10);
-        const cutoutLeft = parseInt(cutout.style.left, 10);
-        expect(calloutLeft + 280).toBeLessThan(cutoutLeft);
-        expect(calloutLeft + 280).toBeLessThan(995);
-        expect(parseInt(callout.style.top, 10)).toBeGreaterThanOrEqual(8);
+        const callout = document.getElementById(COACHMARK_CALLOUT_ID);
+        const cutRight = parseInt(cutout.style.left, 10) + parseInt(cutout.style.width, 10);
+        expect(parseInt(callout.style.left, 10)).toBe(cutRight + 12);
     });
 
     it('flips to the opposite side when the primary is off-screen even if the flip overflows on the cross axis', () => {
-        // Step 1 prefers `left`. With the row hugging the left edge, the
-        // primary side is off-screen; the flipped (right) side fits
-        // horizontally but its vertically-centred top would sit above the
-        // margin. The flip must still win, with top clamped to the margin,
-        // so the callout never lands on top of the cut-out.
-        const { projChild } = buildSkeletonDOM();
-        projChild.getBoundingClientRect = function() {
-            return { top: 6, left: 0, right: 200, bottom: 30, width: 200, height: 24, x: 0, y: 6 };
+        // Step 1 prefers `bottom`. With the pill hugging the bottom-left
+        // corner, the primary side is off-screen; the flipped (top) side
+        // fits vertically but its horizontally-centred left would sit left
+        // of the margin. The flip must still win, with left clamped to the
+        // margin, so the callout never lands on top of the cut-out.
+        const { pill } = buildSkeletonDOM();
+        pill.getBoundingClientRect = function() {
+            return { top: 760, left: 0, right: 100, bottom: 790, width: 100, height: 30, x: 0, y: 760 };
         };
         startCoachmarkTour();
         const callout = document.getElementById(COACHMARK_CALLOUT_ID);
         const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
-        const cutRight = parseInt(cutout.style.left, 10) + parseInt(cutout.style.width, 10);
-        const left = parseInt(callout.style.left, 10);
+        const cutTop = parseInt(cutout.style.top, 10);
         const top = parseInt(callout.style.top, 10);
-        expect(left).toBe(cutRight + 12);
-        expect(top).toBe(8);
-        expect(left).toBeGreaterThanOrEqual(cutRight);
+        const left = parseInt(callout.style.left, 10);
+        // jsdom has no layout, so the callout falls back to 280×160.
+        expect(top).toBe(cutTop - 12 - 160);
+        expect(left).toBe(8);
+        expect(top + 160).toBeLessThanOrEqual(cutTop);
     });
 
     it('positions the cutout over the target via fixed coordinates', () => {
-        const { projChild } = buildSkeletonDOM();
-        // Step 1's target is the selected sidebar project row, so the
-        // cutout should track its bounding rect (plus the 6px padding).
-        projChild.getBoundingClientRect = function() {
+        const { pill } = buildSkeletonDOM();
+        // Step 1's target is the header project pill, so the cutout should
+        // track its bounding rect (plus the 6px padding).
+        pill.getBoundingClientRect = function() {
             return { top: 100, left: 50, right: 150, bottom: 140, width: 100, height: 40, x: 50, y: 100 };
         };
         startCoachmarkTour();
@@ -603,43 +637,24 @@ describe('coachmark tour — wired into the app', () => {
 });
 
 
-// Since D1b the projects sidebar is a slide-in overlay drawer that is closed
-// by default, so the steps that spotlight controls inside it (the sample
-// project row, the "+" add-project button) would otherwise land their cut-out
-// against the off-screen drawer. The tour opens the drawer for those steps
-// and closes it again when it moves past them or finishes — without yanking
-// shut a drawer the user already had open.
-describe('coachmark tour — opens the projects drawer for sidebar steps', () => {
-    const SIDEBAR_OPEN_CLASS = 'sidebar-open';
-
-    function buildDrawerDOM() {
+// On desktop the project control is the header pill and its anchored picker
+// dropdown, not the slide-in drawer. Step 1 spotlights the pill; step 5 opens
+// the picker (through the pill's own click handler) and spotlights its "+".
+// Every other step, and finish, closes the picker — even one the user opened
+// by clicking the pill to advance step 1. The drawer is never touched.
+describe('coachmark tour — opens the project picker for picker steps', () => {
+    function buildPickerDOM() {
         document.body.innerHTML = '';
 
-        // The projects drawer (#sideBar) wraps the sidebar targets and is
-        // closed by default — exactly the post-D1b shell. #sidebarOverlay is
-        // its dismiss backdrop.
         const sideBar = document.createElement('div');
         sideBar.id = 'sideBar';
-
-        const sideMa = document.createElement('div');
-        sideMa.id = 'sideMa';
-        const projChild = document.createElement('div');
-        projChild.id = 'projChild';
-        projChild.className = 'selectedProject';
-        sideMa.appendChild(projChild);
-        sideBar.appendChild(sideMa);
-
-        const projButton = document.createElement('div');
-        projButton.id = 'projButton';
-        sideBar.appendChild(projButton);
-
         document.body.appendChild(sideBar);
-
         const overlay = document.createElement('div');
         overlay.id = 'sidebarOverlay';
         document.body.appendChild(overlay);
 
-        // Right-side chrome + main-list rows the non-sidebar steps anchor on.
+        const chrome = buildPickerChrome();
+
         const pomodoroToggle = document.createElement('button');
         pomodoroToggle.id = 'pomodoroToggle';
         document.body.appendChild(pomodoroToggle);
@@ -661,24 +676,28 @@ describe('coachmark tour — opens the projects drawer for sidebar steps', () =>
         const duePill = document.createElement('button');
         duePill.id = 'duePill';
         row.appendChild(duePill);
-        const descToggle = document.createElement('div');
-        descToggle.id = 'descToggle';
-        row.appendChild(descToggle);
         mainList.appendChild(row);
         document.body.appendChild(mainList);
 
-        return { sideBar, overlay, projChild, projButton };
+        return { sideBar, overlay, ...chrome };
     }
 
     function clickNext() {
         document.querySelector('.coachmarkNext').click();
     }
 
+    function goToStep(n) {
+        for (let i = 1; i < n; i++) clickNext();
+        expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP ' + n + ' OF 9');
+    }
+
+    let dom;
+
     beforeEach(() => {
         localStorage.clear();
         Object.defineProperty(window, 'innerWidth', { value: 1200, configurable: true });
         Object.defineProperty(window, 'innerHeight', { value: 800, configurable: true });
-        buildDrawerDOM();
+        dom = buildPickerDOM();
     });
 
     afterEach(() => {
@@ -687,74 +706,129 @@ describe('coachmark tour — opens the projects drawer for sidebar steps', () =>
         }
     });
 
-    it('opens the drawer on the first sidebar step', () => {
+    it('step 1 leaves the drawer and picker untouched and wraps the pill', () => {
+        dom.pill.getBoundingClientRect = function() {
+            return { top: 60, left: 40, right: 240, bottom: 92, width: 200, height: 32, x: 40, y: 60 };
+        };
         startCoachmarkTour();
-        const sideBar = document.getElementById('sideBar');
-        const overlay = document.getElementById('sidebarOverlay');
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
-        expect(overlay.classList.contains('visible')).toBe(true);
+        expect(dom.sideBar.classList.contains('sidebar-open')).toBe(false);
+        expect(dom.overlay.classList.contains('visible')).toBe(false);
+        expect(dom.dropdown.classList.contains('open')).toBe(false);
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.top, 10)).toBe(54);
+        expect(parseInt(cutout.style.left, 10)).toBe(34);
+        expect(parseInt(cutout.style.width, 10)).toBe(212);
     });
 
-    it('closes the drawer when advancing to a non-sidebar step', () => {
+    it('falls back to the padded header when the pill itself has no box (display:contents at desktop)', () => {
+        dom.header.getBoundingClientRect = function() {
+            return { top: 34, left: 41, right: 209, bottom: 74, width: 168, height: 40, x: 41, y: 34 };
+        };
         startCoachmarkTour();
-        // Step 1 (sampleProject) is a sidebar step; step 2 (addTask) is not.
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(parseInt(cutout.style.top, 10)).toBe(28);
+        expect(parseInt(cutout.style.left, 10)).toBe(35);
+        expect(parseInt(cutout.style.width, 10)).toBe(180);
+    });
+
+    it('closes the picker on step 2 when the user advanced step 1 by clicking the pill', () => {
+        startCoachmarkTour();
+        dom.pill.click();
+        expect(dom.dropdown.classList.contains('open')).toBe(true);
+        return new Promise(function(done) {
+            setTimeout(function() {
+                expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 2 OF 9');
+                expect(dom.dropdown.classList.contains('open')).toBe(false);
+                done();
+            }, 0);
+        });
+    });
+
+    it('opens the picker on step 5 and spotlights its +', async () => {
+        dom.addBtn.getBoundingClientRect = function() {
+            return { top: 110, left: 300, right: 324, bottom: 134, width: 24, height: 24, x: 300, y: 110 };
+        };
+        const pillClick = vi.fn();
+        dom.pill.addEventListener('click', pillClick);
+        startCoachmarkTour();
+        goToStep(5);
+        await nextFrame();
+        expect(dom.dropdown.classList.contains('open')).toBe(true);
+        expect(pillClick).toHaveBeenCalledTimes(1);
+        expect(dom.sideBar.classList.contains('sidebar-open')).toBe(false);
+        const cutout = document.getElementById(COACHMARK_CUTOUT_ID);
+        expect(cutout.style.display).toBe('block');
+        expect(parseInt(cutout.style.left, 10)).toBe(294);
+        expect(parseInt(cutout.style.top, 10)).toBe(104);
+    });
+
+    it('keeps the picker open when the Next click reaches the document-level outside-click dismisser', async () => {
+        // Mirrors main.js: any click outside the dropdown and the header
+        // closes the picker. The Next click that enters step 5 bubbles there.
+        function dismiss(e) {
+            if (dom.dropdown.contains(e.target) || dom.header.contains(e.target)) return;
+            dom.dropdown.classList.remove('open');
+        }
+        document.addEventListener('click', dismiss);
+        try {
+            startCoachmarkTour();
+            goToStep(5);
+            await nextFrame();
+            expect(dom.dropdown.classList.contains('open')).toBe(true);
+        } finally {
+            document.removeEventListener('click', dismiss);
+        }
+    });
+
+    it('does not toggle an already-open picker shut on step 5', async () => {
+        startCoachmarkTour();
+        goToStep(4);
+        dom.dropdown.classList.add('open');
         clickNext();
-        const label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 2 OF 9');
-        const sideBar = document.getElementById('sideBar');
-        const overlay = document.getElementById('sidebarOverlay');
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(false);
-        expect(overlay.classList.contains('visible')).toBe(false);
+        await nextFrame();
+        expect(dom.dropdown.classList.contains('open')).toBe(true);
     });
 
-    it('reopens the drawer on the add-project sidebar step', () => {
+    it('clicking the picker + advances to step 6, which closes the picker', async () => {
         startCoachmarkTour();
-        // Advance to step 5 (addProject), which targets #projButton in drawer.
-        clickNext(); // -> step 2 (addTask)
-        clickNext(); // -> step 3 (duePill)
-        clickNext(); // -> step 4 (committed task row)
-        clickNext(); // -> step 5 (addProject)
-        const label = document.querySelector('.coachmarkStepLabel');
-        expect(label.textContent).toBe('STEP 5 OF 9');
-        const sideBar = document.getElementById('sideBar');
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+        goToStep(5);
+        await nextFrame();
+        dom.addBtn.click();
+        return new Promise(function(done) {
+            setTimeout(function() {
+                expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 6 OF 9');
+                expect(dom.dropdown.classList.contains('open')).toBe(false);
+                done();
+            }, 0);
+        });
     });
 
-    it('closes a tour-opened drawer when the tour finishes', () => {
+    it('closes the picker when advancing from step 5 with Next', async () => {
         startCoachmarkTour();
-        const sideBar = document.getElementById('sideBar');
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
+        goToStep(5);
+        await nextFrame();
+        expect(dom.dropdown.classList.contains('open')).toBe(true);
+        clickNext();
+        expect(document.querySelector('.coachmarkStepLabel').textContent).toBe('STEP 6 OF 9');
+        expect(dom.dropdown.classList.contains('open')).toBe(false);
+    });
+
+    it('closes the picker when the tour finishes on the picker step', async () => {
+        startCoachmarkTour();
+        goToStep(5);
+        await nextFrame();
+        expect(dom.dropdown.classList.contains('open')).toBe(true);
         document.querySelector('.coachmarkSkip').click();
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(false);
+        expect(document.getElementById(COACHMARK_OVERLAY_ID)).toBeNull();
+        expect(dom.dropdown.classList.contains('open')).toBe(false);
     });
 
-    it('leaves a user-opened drawer open after the tour finishes', () => {
-        // The user already has the drawer open; the tour must not yank it
-        // shut on finish since it wasn't the one that opened it.
-        const sideBar = document.getElementById('sideBar');
-        const overlay = document.getElementById('sidebarOverlay');
-        sideBar.classList.add(SIDEBAR_OPEN_CLASS);
-        overlay.classList.add('visible');
-        startCoachmarkTour();
-        document.querySelector('.coachmarkSkip').click();
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
-        expect(overlay.classList.contains('visible')).toBe(true);
-    });
-
-    it('keeps a user-opened drawer open even when advancing past sidebar steps', () => {
-        const sideBar = document.getElementById('sideBar');
-        sideBar.classList.add(SIDEBAR_OPEN_CLASS);
-        startCoachmarkTour();
-        clickNext(); // -> step 2 (non-sidebar): tour must not close a drawer it didn't open
-        expect(sideBar.classList.contains(SIDEBAR_OPEN_CLASS)).toBe(true);
-    });
-
-    it('does not throw when the drawer chrome is absent', () => {
-        // Replay before the app shell mounts (or the test skeleton without a
-        // #sideBar) must still run — the drawer helper is a guarded no-op.
-        document.getElementById('sideBar').remove();
-        document.getElementById('sidebarOverlay').remove();
+    it('does not throw when the picker chrome is absent', async () => {
+        document.getElementById('mobileProjHeader').remove();
+        document.getElementById('projectPickerDropdown').remove();
         expect(() => startCoachmarkTour()).not.toThrow();
-        expect(document.getElementById(COACHMARK_OVERLAY_ID)).not.toBeNull();
+        expect(() => goToStep(5)).not.toThrow();
+        await nextFrame();
+        expect(document.getElementById(COACHMARK_OVERLAY_ID).classList.contains('noTarget')).toBe(true);
     });
 });
