@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-29',
+        fixed: [
+            'The desktop welcome tour now points at the project name pill and the + in its project picker instead of opening the projects drawer.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-28',
         added: [
             'Focus mode has a scene picker in its corner controls, letting you switch between the star field and a falling-glyph Matrix scene, and it remembers your choice.',
@@ -20,7 +27,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-10-27',
         fixed: [
-            'Picking a screenshot on a phone no longer collapses the open todo, and a staged screenshot stays attached when you close and reopen its description.',
             'The phone todo editor now fits on screen when agent controls are showing, with the entry and the agent controls on separate Notes and Agent tabs that scroll on their own.',
         ],
     },
