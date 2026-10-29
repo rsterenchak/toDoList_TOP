@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-10-28T13:19:49.376Z",
-  "sha": "79f85922d6f6308cdcd8a1cf59141119951d1e2f",
+  "generatedAt": "2026-10-29T08:34:48.786Z",
+  "sha": "de7987b06e73f391dc7a55786248b496f9c49554",
   "files": [
     "aboutVersionCue.js",
     "accessMode.js",
@@ -149,11 +149,11 @@
       "selector": "#addProject",
       "label": "Add Project",
       "file": "coachmark.js",
-      "line": 137,
+      "line": 133,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 137
+          "line": 133
         }
       ]
     },
@@ -161,11 +161,11 @@
       "selector": "#addTask",
       "label": "Add Task",
       "file": "coachmark.js",
-      "line": 82,
+      "line": 78,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 82
+          "line": 78
         },
         {
           "file": "welcomeCarousel.js",
@@ -1749,11 +1749,11 @@
       "selector": "#coachmarkTitle",
       "label": "Coachmark Title",
       "file": "coachmark.js",
-      "line": 327,
+      "line": 335,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 327
+          "line": 335
         }
       ]
     },
@@ -2841,11 +2841,11 @@
       "selector": "#descToggle",
       "label": "Desc Toggle",
       "file": "coachmark.js",
-      "line": 117,
+      "line": 113,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 117
+          "line": 113
         },
         {
           "file": "toDoRow.js",
@@ -2997,11 +2997,11 @@
       "selector": "#duePill",
       "label": "Due Pill",
       "file": "coachmark.js",
-      "line": 100,
+      "line": 96,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 100
+          "line": 96
         },
         {
           "file": "toDoRow.js",
@@ -3065,11 +3065,11 @@
       "selector": "#focusMode",
       "label": "Focus Mode",
       "file": "coachmark.js",
-      "line": 162,
+      "line": 160,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 162
+          "line": 160
         }
       ]
     },
@@ -4925,11 +4925,11 @@
       "selector": "#music",
       "label": "Music",
       "file": "coachmark.js",
-      "line": 154,
+      "line": 152,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 154
+          "line": 152
         }
       ]
     },
@@ -5233,11 +5233,11 @@
       "selector": "#pomodoro",
       "label": "Pomodoro",
       "file": "coachmark.js",
-      "line": 146,
+      "line": 144,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 146
+          "line": 144
         }
       ]
     },
@@ -5350,6 +5350,18 @@
         {
           "file": "style.css",
           "line": 887
+        }
+      ]
+    },
+    {
+      "selector": "#project",
+      "label": "Project",
+      "file": "coachmark.js",
+      "line": 59,
+      "files": [
+        {
+          "file": "coachmark.js",
+          "line": 59
         }
       ]
     },
@@ -5854,18 +5866,6 @@
       ]
     },
     {
-      "selector": "#sampleProject",
-      "label": "Sample Project",
-      "file": "coachmark.js",
-      "line": 65,
-      "files": [
-        {
-          "file": "coachmark.js",
-          "line": 65
-        }
-      ]
-    },
-    {
       "selector": "#seedTasksModal",
       "label": "Seed Tasks Modal",
       "file": "seedTasksModal.js",
@@ -6005,11 +6005,11 @@
       "selector": "#settings",
       "label": "Settings",
       "file": "coachmark.js",
-      "line": 170,
+      "line": 168,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 170
+          "line": 168
         }
       ]
     },
@@ -10177,11 +10177,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 76,
+      "line": 82,
       "files": [
         {
           "file": "changelog.js",
-          "line": 76
+          "line": 82
         },
         {
           "file": "style.css",
@@ -10193,11 +10193,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 45,
+      "line": 51,
       "files": [
         {
           "file": "changelog.js",
-          "line": 45
+          "line": 51
         },
         {
           "file": "style.css",
@@ -10209,11 +10209,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 55,
+      "line": 61,
       "files": [
         {
           "file": "changelog.js",
-          "line": 55
+          "line": 61
         },
         {
           "file": "style.css",
@@ -10225,11 +10225,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 48,
+      "line": 54,
       "files": [
         {
           "file": "changelog.js",
-          "line": 48
+          "line": 54
         },
         {
           "file": "style.css",
@@ -10241,11 +10241,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 51,
+      "line": 57,
       "files": [
         {
           "file": "changelog.js",
-          "line": 51
+          "line": 57
         },
         {
           "file": "style.css",
@@ -10257,11 +10257,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 72,
+      "line": 78,
       "files": [
         {
           "file": "changelog.js",
-          "line": 72
+          "line": 78
         },
         {
           "file": "style.css",
@@ -12801,11 +12801,11 @@
       "selector": ".coachmarkBody",
       "label": "Coachmark Body",
       "file": "coachmark.js",
-      "line": 332,
+      "line": 340,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 332
+          "line": 340
         },
         {
           "file": "style.css",
@@ -12817,11 +12817,11 @@
       "selector": ".coachmarkDot",
       "label": "Coachmark Dot",
       "file": "coachmark.js",
-      "line": 349,
+      "line": 357,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 349
+          "line": 357
         },
         {
           "file": "style.css",
@@ -12833,11 +12833,11 @@
       "selector": ".coachmarkDots",
       "label": "Coachmark Dots",
       "file": "coachmark.js",
-      "line": 345,
+      "line": 353,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 345
+          "line": 353
         },
         {
           "file": "style.css",
@@ -12849,11 +12849,11 @@
       "selector": ".coachmarkFooter",
       "label": "Coachmark Footer",
       "file": "coachmark.js",
-      "line": 336,
+      "line": 344,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 336
+          "line": 344
         },
         {
           "file": "style.css",
@@ -12865,11 +12865,11 @@
       "selector": ".coachmarkNext",
       "label": "Coachmark Next",
       "file": "coachmark.js",
-      "line": 355,
+      "line": 363,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 355
+          "line": 363
         },
         {
           "file": "style.css",
@@ -12881,11 +12881,11 @@
       "selector": ".coachmarkPanel",
       "label": "Coachmark Panel",
       "file": "coachmark.js",
-      "line": 215,
+      "line": 213,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 215
+          "line": 213
         },
         {
           "file": "style.css",
@@ -12897,11 +12897,11 @@
       "selector": ".coachmarkSkip",
       "label": "Coachmark Skip",
       "file": "coachmark.js",
-      "line": 340,
+      "line": 348,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 340
+          "line": 348
         },
         {
           "file": "style.css",
@@ -12913,11 +12913,11 @@
       "selector": ".coachmarkStepLabel",
       "label": "Coachmark Step Label",
       "file": "coachmark.js",
-      "line": 323,
+      "line": 331,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 323
+          "line": 331
         },
         {
           "file": "style.css",
@@ -12929,11 +12929,11 @@
       "selector": ".coachmarkTitle",
       "label": "Coachmark Title",
       "file": "coachmark.js",
-      "line": 328,
+      "line": 336,
       "files": [
         {
           "file": "coachmark.js",
-          "line": 328
+          "line": 336
         },
         {
           "file": "style.css",
@@ -31374,7 +31374,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 90,
+      "lines": 96,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -31413,7 +31413,7 @@
     },
     {
       "path": "coachmark.js",
-      "lines": 573,
+      "lines": 576,
       "imports": [
         "prefs.js"
       ],
