@@ -13,6 +13,7 @@ Built and maintained solo. It's a daily-driver tool first and a sandbox for full
 
 ## Contents
 
+- [Signed in vs offline](#signed-in-vs-offline)
 - [The three tabs](#the-three-tabs)
 - [The agent pipeline](#the-agent-pipeline)
 - [Tech stack](#tech-stack)
@@ -22,6 +23,26 @@ Built and maintained solo. It's a daily-driver tool first and a sandbox for full
 - [Testing](#testing)
 - [PWA update contract](#pwa-update-contract)
 - [Related repositories](#related-repositories)
+
+---
+
+## Signed in vs offline
+
+The sign-in gate has two doors, and which one you take decides how much of the app you get.
+
+| | Signed in | Offline (no account) |
+|---|---|---|
+| How you get in | Passwordless magic link to an e-mail on the allowlist — sign-up is restricted | **Use offline on this device**, the outlined button under the sign-in form |
+| Where your data lives | Supabase, with a localStorage cache; edits sync across devices in realtime | This browser's localStorage only — nothing leaves the device, nothing syncs |
+| What you see | All three tabs, the assistant, the agent pipeline, Models, the TODO.md viewer, the ghost | The **Stream** tab only: projects, tasks, filters and sort, Today and Calendar, plain quick capture, and the focus tools (Pomodoro, focus mode, music, the footer companion) |
+| Backup | The cloud is the copy | **Settings → Export to JSON**; a one-line reminder appears above the list after 7 days without an export |
+| Remembered? | Yes — the device boots signed in until you sign out | Yes — the device skips the gate and boots straight into offline mode |
+
+**Switching.** From offline, **Settings → Sign in** raises the gate again; when a session lands, the device flips to account mode, reloads, and the first signed-in boot migrates the offline projects and tasks up to Supabase (cloud wins on conflict). **Sign out** wipes that user's data from the device, keeps device preferences, and shows the gate — from there either door is open again. Exports made offline can be imported into a signed-in device and vice versa.
+
+**What offline hides, and why.** Everything that reads or writes through the Worker or a linked repo — Understanding, Structure, chat, Generate / Inject / Discuss on a task, the Runs and Models panels, repo setup, split-into-tasks capture — is absent, not merely greyed out: none of it mounts, and no request fires. Signed-in use of those surfaces is additionally admin-only on the Worker side; a signed-in account that isn't an admin sees them but gets *Your account isn't an admin* when it tries.
+
+**Two meanings of "offline".** This section is about running *without an account*. Separately, the installed app works *without a network* in either mode: the service worker precaches the shell, a signed-in device renders its cached snapshot and reconciles when it reconnects — see [PWA update contract](#pwa-update-contract).
 
 ---
 
@@ -110,7 +131,7 @@ Every project can be linked to a GitHub repo that has been onboarded with [`clau
 
 **Sync.** On load the cached snapshot renders immediately, then reconciles against Supabase (last-write-wins on `updated_at`), then subscribes to a realtime channel so edits from other devices appear without a refresh; the client filters echoes of its own writes. Returning to the tab re-hydrates and re-subscribes unless an edit is in progress. The agent queue (`agent_queue`), run outputs, book progress and bookmarks ride the same channel.
 
-**Auth.** A passwordless magic-link sign-in gates the app; an optional PIN lock covers a shared device. First sign-in on a device migrates any pre-auth local data up (cloud wins on conflict); sign-out wipes that user's data and keeps device prefs.
+**Auth and access mode.** A passwordless magic-link sign-in gates the app; an optional PIN lock covers a shared device. First sign-in on a device migrates any pre-auth local data up (cloud wins on conflict); sign-out wipes that user's data and keeps device prefs. The gate's second door, offline mode, is one switch rather than per-feature patches: `accessMode.js` stamps `data-access` on `<html>`, `style.css` hides every Worker-backed surface under `html[data-access="local"]`, and mount sites check `hasAccount()` so nothing in that list is built or requested — a test pins the CSS block and the selector list together. See [Signed in vs offline](#signed-in-vs-offline).
 
 **The Worker.** All Worker calls funnel through `postToWorker` in `inject.js`, carrying the shared secret and the user's Supabase session; the Worker admits PWA routes only for e-mails in its `ADMIN_EMAILS` list, while CI routes stay on the secret alone. The set of repos it may touch is the Supabase `inject_targets` registry, read live — registering a repo needs no redeploy. Chat context layers three mechanisms: an active-repo reframe (`repo`), attached source files (`attach_files`), and an iterate seed (`entry_id` → the merged PR's diff).
 
