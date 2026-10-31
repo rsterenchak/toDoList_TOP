@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-10-31',
+        fixed: [
+            'Model names in the Models panel now show in full, with each workflow\'s note on its own line beneath the model instead of squeezing it.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-29',
         fixed: [
             'The desktop welcome tour now points at the project name pill and the + in its project picker instead of opening the projects drawer.',
@@ -21,13 +28,6 @@ export const changelog = [
         ],
         fixed: [
             'The desktop welcome tour\'s callouts now sit beside the projects drawer instead of covering it, and the notes step points at a real task row.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-27',
-        fixed: [
-            'The phone todo editor now fits on screen when agent controls are showing, with the entry and the agent controls on separate Notes and Agent tabs that scroll on their own.',
         ],
     },
 ];
