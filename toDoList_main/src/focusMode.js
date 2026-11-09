@@ -165,10 +165,11 @@ export function createFocusMode(doc) {
             if (pom) pom.toggle();
         });
 
-        // Mode selector beneath the session button: ◀ / ▶ step through
-        // Focus → Short break → Long break (wrapping) via pomodoro.setMode,
-        // a two-line label names the armed mode and its length in whole
-        // minutes (never a ticking MM:SS), and three dots mark which is armed.
+        // Mode selector: one horizontal pill with the session button flush at
+        // its left edge, then ◀ / ▶ stepping Focus → Short break → Long break
+        // (wrapping) via pomodoro.setMode around a two-line label naming the
+        // armed mode and its length in whole minutes (never a ticking MM:SS),
+        // then three dots marking which is armed.
         const pomoWrap = doc.createElement('div');
         pomoWrap.className = 'focusPomoWrap';
         const stepper = doc.createElement('div');
@@ -201,6 +202,12 @@ export function createFocusMode(doc) {
         pomoWrap.appendChild(stepper);
         pomoWrap.appendChild(dots);
 
+        // Thin vertical divider between the pomodoro pill and the round
+        // video / scene buttons.
+        const pomoSep = doc.createElement('span');
+        pomoSep.className = 'focusPomoSep';
+        pomoSep.setAttribute('aria-hidden', 'true');
+
         // Scene swap: star field ⇄ the live video, full-bleed. Disabled until
         // a player iframe exists (music never started this session), in which
         // case clicking is a no-op.
@@ -220,6 +227,7 @@ export function createFocusMode(doc) {
 
         corner.appendChild(chipEl);
         corner.appendChild(pomoWrap);
+        corner.appendChild(pomoSep);
         // Scene picker: a round button opening a two-card popover anchored
         // above it. Closes on picking a card, clicking outside, or Escape.
         themeWrap = doc.createElement('div');

@@ -28422,19 +28422,53 @@ body.focusVideoOn .musicViz {
 .focusSessionBtn[data-pomo-status="RUNNING"] .focusSessionPlay  { display: none; }
 .focusSessionBtn[data-pomo-status="RUNNING"] .focusSessionPause { display: block; }
 
-/* Pomodoro mode selector stacked under the session button: ◀ name/duration ▶
-   plus three dots marking the armed mode. Compact so the stack stays in the
-   corner; shows the mode's length in minutes, never a ticking MM:SS. */
+/* Pomodoro mode selector: one 42px horizontal pill in the corner row — the
+   session button flush at the left edge, then ◀ name/duration ▶ and three dots
+   marking the armed mode. Shows the mode's length in minutes, never a ticking
+   MM:SS. */
 .focusPomoWrap {
   display: inline-flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  height: 42px;
+  box-sizing: border-box;
+  padding: 0 14px 0 0;
+  border-radius: 21px;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.14);
+  flex: 0 0 auto;
+}
+.focusPomoWrap .focusSessionBtn {
+  flex: 0 0 auto;
+  margin-left: -0.5px;
+}
+.focusPomoWrap .focusSessionBtn[data-pomo-status="RUNNING"] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
 }
 .focusPomoStepper {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+}
+/* Below the desktop breakpoint the row is wider than the viewport can hold:
+   let the now-playing chip wrap onto its own line above the pill instead of
+   running off the right edge. */
+@media (max-width: 1023px) {
+  .focusCorner {
+    flex-wrap: wrap;
+    right: 28px;
+  }
+}
+/* 1px × 26px divider between the pill and the round video / scene buttons. */
+.focusPomoSep {
+  display: block;
+  flex: 0 0 auto;
+  width: 1px;
+  height: 26px;
+  background: rgba(255,255,255,0.18);
 }
 .focusPomoStep {
   display: inline-flex;
@@ -28480,6 +28514,7 @@ body.focusVideoOn .musicViz {
 }
 .focusPomoDots {
   display: inline-flex;
+  align-items: center;
   gap: 4px;
 }
 .focusPomoDot {

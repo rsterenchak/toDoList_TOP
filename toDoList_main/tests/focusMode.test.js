@@ -298,11 +298,15 @@ describe('focus mode — video scene swap', () => {
         const corner = document.querySelector('.focusCorner');
         const videoBtn = corner.querySelector('.focusVideoBtn');
         expect(videoBtn).not.toBeNull();
-        // Order: chip, session button (in its mode-selector stack), then the scene swap.
+        // Order: chip, session button (in its mode-selector pill), the
+        // divider, then the scene swap.
         const kids = Array.from(corner.children);
         const pomoWrap = corner.querySelector('.focusSessionBtn').parentElement;
         expect(pomoWrap.classList.contains('focusPomoWrap')).toBe(true);
-        expect(kids.indexOf(videoBtn)).toBe(kids.indexOf(pomoWrap) + 1);
+        const sep = kids[kids.indexOf(pomoWrap) + 1];
+        expect(sep.classList.contains('focusPomoSep')).toBe(true);
+        expect(sep.getAttribute('aria-hidden')).toBe('true');
+        expect(kids.indexOf(videoBtn)).toBe(kids.indexOf(pomoWrap) + 2);
         // Icon-only, inline stroke SVG — no text label.
         expect(videoBtn.querySelector('svg[stroke="currentColor"]')).not.toBeNull();
         expect(videoBtn.textContent.trim()).toBe('');
@@ -548,7 +552,7 @@ describe('focus mode — scene theme picker', () => {
         const corner = document.querySelector('.focusCorner');
         const kids = Array.from(corner.children);
         const wrap = corner.querySelector('.focusThemeWrap');
-        expect(kids.length).toBe(4);
+        expect(kids.length).toBe(5); // chip, pomodoro pill, divider, video, scene
         expect(kids.indexOf(wrap)).toBe(kids.indexOf(corner.querySelector('.focusVideoBtn')) + 1);
         const btn = wrap.querySelector('.focusThemeBtn');
         expect(btn.getAttribute('aria-expanded')).toBe('false');
@@ -752,9 +756,26 @@ describe('focus mode — pomodoro mode selector', () => {
         f.destroy();
     });
 
+    it('lays the selector out as one 42px pill with label aria-live intact', () => {
+        const f = open();
+        const wrap = q('.focusPomoWrap');
+        expect(wrap.nextElementSibling.classList.contains('focusPomoSep')).toBe(true);
+        expect(wrap.nextElementSibling.nextElementSibling.classList.contains('focusVideoBtn')).toBe(true);
+        expect(q('.focusPomoLabel').getAttribute('aria-live')).toBe('polite');
+        expect(q('.focusPomoLabel').contains(q('.focusPomoName'))).toBe(true);
+        expect(q('.focusPomoLabel').contains(q('.focusPomoDuration'))).toBe(true);
+        f.destroy();
+    });
+
     it('styles the selector with theme tokens', () => {
         const css = read('style.css');
-        expect(css).toMatch(/\.focusPomoWrap\s*\{[^}]*flex-direction:\s*column/);
+        expect(css).toMatch(/\.focusPomoWrap\s*\{[^}]*flex-direction:\s*row/);
+        expect(css).toMatch(/\.focusPomoWrap\s*\{[^}]*height:\s*42px/);
+        expect(css).toMatch(/\.focusPomoWrap\s*\{[^}]*border-radius:\s*21px/);
+        expect(css).toMatch(/\.focusPomoWrap\s*\{[^}]*padding:\s*0 14px 0 0/);
+        expect(css).toMatch(/\.focusPomoSep\s*\{[^}]*width:\s*1px[^}]*height:\s*26px/);
+        expect(css).toMatch(/\.focusPomoLabel\s*\{[^}]*width:\s*72px/);
+        expect(css).toMatch(/\.focusPomoWrap \.focusSessionBtn\[data-pomo-status="RUNNING"\]\s*\{[^}]*background:\s*var\(--accent\)/);
         expect(css).toMatch(/\.focusPomoDot--active\s*\{[^}]*var\(--accent\)/);
     });
 });
