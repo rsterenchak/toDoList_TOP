@@ -3,6 +3,12 @@ import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
 import {
+    ensurePomodoro,
+    destroyPomodoro,
+    DEFAULT_DURATIONS,
+    POMODORO_STATE_KEY,
+} from '../src/pomodoro.js';
+import {
     supportsDesktopFocusMode,
     createFocusMode,
     ensureFocusMode,
@@ -292,9 +298,11 @@ describe('focus mode — video scene swap', () => {
         const corner = document.querySelector('.focusCorner');
         const videoBtn = corner.querySelector('.focusVideoBtn');
         expect(videoBtn).not.toBeNull();
-        // Order: chip, session button, then the scene swap.
+        // Order: chip, session button (in its mode-selector stack), then the scene swap.
         const kids = Array.from(corner.children);
-        expect(kids.indexOf(videoBtn)).toBe(kids.indexOf(corner.querySelector('.focusSessionBtn')) + 1);
+        const pomoWrap = corner.querySelector('.focusSessionBtn').parentElement;
+        expect(pomoWrap.classList.contains('focusPomoWrap')).toBe(true);
+        expect(kids.indexOf(videoBtn)).toBe(kids.indexOf(pomoWrap) + 1);
         // Icon-only, inline stroke SVG — no text label.
         expect(videoBtn.querySelector('svg[stroke="currentColor"]')).not.toBeNull();
         expect(videoBtn.textContent.trim()).toBe('');
@@ -641,5 +649,112 @@ describe('focus mode — scene theme CSS hooks', () => {
     it('disables the matrix fall under prefers-reduced-motion', () => {
         const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {\n  .focusModeOverlay--active { animation: none; }'));
         expect(block).toMatch(/\.focusModeOverlay--active\s+\.focusScene--matrix\s+\.focusMatrixCol,/);
+    });
+});
+
+describe('focus mode — pomodoro mode selector', () => {
+    beforeEach(() => {
+        destroyPomodoro();
+        localStorage.removeItem(POMODORO_STATE_KEY);
+    });
+    afterEach(() => {
+        destroyFocusMode();
+        destroyPomodoro();
+        localStorage.removeItem(POMODORO_STATE_KEY);
+        const stray = document.getElementById('focusModeOverlay');
+        if (stray && stray.parentNode) stray.parentNode.removeChild(stray);
+        document.body.classList.remove('focusModeOpen');
+        delete window.matchMedia;
+    });
+
+    function open() {
+        stubMatchMedia(true);
+        const f = createFocusMode(document);
+        f.activate();
+        return f;
+    }
+    const q = (sel) => document.querySelector('#focusModeOverlay ' + sel);
+    const activeDot = () => q('.focusPomoDot--active').getAttribute('data-pomo-mode');
+
+    it('stacks the session button, a ◀ label ▶ stepper and three dots', () => {
+        const f = open();
+        const wrap = q('.focusPomoWrap');
+        expect(wrap.children[0].classList.contains('focusSessionBtn')).toBe(true);
+        const stepper = wrap.querySelector('.focusPomoStepper');
+        expect(stepper.children[0].classList.contains('focusPomoStep--prev')).toBe(true);
+        expect(stepper.children[1].classList.contains('focusPomoLabel')).toBe(true);
+        expect(stepper.children[2].classList.contains('focusPomoStep--next')).toBe(true);
+        expect(stepper.children[0].getAttribute('aria-label')).toBe('Previous pomodoro mode');
+        expect(stepper.children[2].getAttribute('aria-label')).toBe('Next pomodoro mode');
+        expect(wrap.querySelectorAll('.focusPomoDots .focusPomoDot').length).toBe(3);
+        f.destroy();
+    });
+
+    it('labels the armed mode with its duration from DEFAULT_DURATIONS, never MM:SS', () => {
+        const f = open();
+        expect(q('.focusPomoName').textContent).toBe('Focus');
+        expect(q('.focusPomoDuration').textContent).toBe((DEFAULT_DURATIONS.focus / 60) + ' min');
+        expect(activeDot()).toBe('focus');
+        expect(q('.focusSessionBtn').getAttribute('aria-label')).toBe('Start focus session');
+        expect(document.getElementById('focusModeOverlay').textContent).not.toMatch(/\d{1,2}:\d{2}/);
+        f.destroy();
+    });
+
+    it('▶ cycles Focus → Short break → Long break → Focus through setMode', () => {
+        const f = open();
+        const next = q('.focusPomoStep--next');
+        next.click();
+        expect(ensurePomodoro().getState().mode).toBe('short');
+        expect(q('.focusPomoName').textContent).toBe('Short break');
+        expect(q('.focusPomoDuration').textContent).toBe((DEFAULT_DURATIONS.short / 60) + ' min');
+        expect(activeDot()).toBe('short');
+        expect(q('.focusSessionBtn').getAttribute('aria-label')).toBe('Start short break');
+        next.click();
+        expect(ensurePomodoro().getState().mode).toBe('long');
+        expect(q('.focusPomoDuration').textContent).toBe((DEFAULT_DURATIONS.long / 60) + ' min');
+        expect(activeDot()).toBe('long');
+        expect(q('.focusSessionBtn').getAttribute('aria-label')).toBe('Start long break');
+        next.click();
+        expect(ensurePomodoro().getState().mode).toBe('focus');
+        expect(activeDot()).toBe('focus');
+        f.destroy();
+    });
+
+    it('◀ wraps from Focus back to Long break', () => {
+        const f = open();
+        q('.focusPomoStep--prev').click();
+        expect(ensurePomodoro().getState().mode).toBe('long');
+        expect(q('.focusPomoName').textContent).toBe('Long break');
+        q('.focusPomoStep--prev').click();
+        expect(ensurePomodoro().getState().mode).toBe('short');
+        f.destroy();
+    });
+
+    it('step clicks do not toggle the session or exit focus mode', () => {
+        const f = open();
+        q('.focusPomoStep--next').click();
+        expect(ensurePomodoro().getState().status).toBe('IDLE');
+        expect(f.isActive()).toBe(true);
+        f.destroy();
+    });
+
+    it('the round button names the active mode in its Pause / Resume label', () => {
+        const f = open();
+        q('.focusPomoStep--next').click();
+        const btn = q('.focusSessionBtn');
+        btn.click();
+        expect(ensurePomodoro().getState().status).toBe('RUNNING');
+        expect(btn.getAttribute('data-pomo-status')).toBe('RUNNING');
+        expect(btn.getAttribute('aria-label')).toBe('Pause short break');
+        btn.click();
+        expect(btn.getAttribute('aria-label')).toBe('Resume short break');
+        ensurePomodoro().reset();
+        f.destroy();
+    });
+
+    it('styles the selector with theme tokens', () => {
+        const css = read('style.css');
+        expect(css).toMatch(/\.focusPomoWrap\s*\{[^}]*flex-direction:\s*column/);
+        expect(css).toMatch(/\.focusPomoDot--active\s*\{[^}]*var\(--accent\)/);
     });
 });

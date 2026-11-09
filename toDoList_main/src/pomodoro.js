@@ -33,6 +33,9 @@ export const DEFAULT_DURATIONS = {
 export const DEFAULT_VOLUME = 0.6;
 
 const VALID_MODES   = ['focus', 'short', 'long'];
+
+// The cycle order a mode stepper walks (Focus → Short break → Long break).
+export const POMODORO_MODES = VALID_MODES.slice();
 const VALID_STATUS  = ['IDLE', 'RUNNING', 'PAUSED', 'COMPLETE_UNACKED'];
 
 // Mode → user-facing copy used by the popover, alert title, and Notification.

@@ -3,8 +3,8 @@
 // NO timer or countdown shown anywhere — the goal is to study without
 // watching the clock. Music and the Pomodoro session stay reachable through a
 // minimal corner cluster (a now-playing chip plus a single icon-only session
-// control) that drives the existing music.js / pomodoro.js singletons, so the
-// session keeps running silently.
+// control with a pomodoro mode selector beneath it) that drives the existing
+// music.js / pomodoro.js singletons, so the session keeps running silently.
 //
 // A third corner control swaps the star scene for the currently-playing
 // YouTube video, full-bleed. The swap NEVER touches the DOM the player lives
@@ -30,7 +30,7 @@
 // read when the overlay is built.
 
 import { ensureMusic, getMusicPlayerFrame } from './music.js';
-import { ensurePomodoro } from './pomodoro.js';
+import { ensurePomodoro, DEFAULT_DURATIONS, MODE_LABEL, POMODORO_MODES } from './pomodoro.js';
 import { getFocusTheme, setFocusTheme, FOCUS_THEMES } from './prefs.js';
 
 const FOCUS_THEME_LABELS = { stars: 'Stars', matrix: 'Matrix' };
@@ -67,6 +67,9 @@ export function createFocusMode(doc) {
     let chipEl       = null;   // now-playing chip (data-music-status drives the eq)
     let stationLabel = null;   // station name text inside the chip
     let sessionBtn   = null;   // single icon-only pomodoro control
+    let pomoNameEl   = null;   // mode selector: active mode name
+    let pomoDurEl    = null;   // mode selector: active mode duration ("25 min")
+    let pomoDots     = [];     // mode selector: one dot per mode, active one lit
     let videoBtn     = null;   // icon-only star-scene ⇄ video toggle
     let videoOn      = false;  // session-only; never persisted, resets on exit
     let active       = false;
@@ -162,6 +165,42 @@ export function createFocusMode(doc) {
             if (pom) pom.toggle();
         });
 
+        // Mode selector beneath the session button: ◀ / ▶ step through
+        // Focus → Short break → Long break (wrapping) via pomodoro.setMode,
+        // a two-line label names the armed mode and its length in whole
+        // minutes (never a ticking MM:SS), and three dots mark which is armed.
+        const pomoWrap = doc.createElement('div');
+        pomoWrap.className = 'focusPomoWrap';
+        const stepper = doc.createElement('div');
+        stepper.className = 'focusPomoStepper';
+        const prevBtn = makeStepBtn('prev', 'Previous pomodoro mode', 'M15 6l-6 6 6 6');
+        const nextBtn = makeStepBtn('next', 'Next pomodoro mode', 'M9 6l6 6-6 6');
+        const label = doc.createElement('div');
+        label.className = 'focusPomoLabel';
+        label.setAttribute('aria-live', 'polite');
+        pomoNameEl = doc.createElement('span');
+        pomoNameEl.className = 'focusPomoName';
+        pomoDurEl = doc.createElement('span');
+        pomoDurEl.className = 'focusPomoDuration';
+        label.appendChild(pomoNameEl);
+        label.appendChild(pomoDurEl);
+        stepper.appendChild(prevBtn);
+        stepper.appendChild(label);
+        stepper.appendChild(nextBtn);
+        const dots = doc.createElement('div');
+        dots.className = 'focusPomoDots';
+        dots.setAttribute('aria-hidden', 'true');
+        pomoDots = POMODORO_MODES.map(function(mode) {
+            const dot = doc.createElement('span');
+            dot.className = 'focusPomoDot';
+            dot.setAttribute('data-pomo-mode', mode);
+            dots.appendChild(dot);
+            return dot;
+        });
+        pomoWrap.appendChild(sessionBtn);
+        pomoWrap.appendChild(stepper);
+        pomoWrap.appendChild(dots);
+
         // Scene swap: star field ⇄ the live video, full-bleed. Disabled until
         // a player iframe exists (music never started this session), in which
         // case clicking is a no-op.
@@ -180,7 +219,7 @@ export function createFocusMode(doc) {
         });
 
         corner.appendChild(chipEl);
-        corner.appendChild(sessionBtn);
+        corner.appendChild(pomoWrap);
         // Scene picker: a round button opening a two-card popover anchored
         // above it. Closes on picking a card, clicking outside, or Escape.
         themeWrap = doc.createElement('div');
@@ -364,17 +403,54 @@ export function createFocusMode(doc) {
         if (stationLabel) stationLabel.textContent = playing ? label : (label || 'Music paused');
     }
 
+    // Small round ◀ / ▶ button for the mode selector.
+    function makeStepBtn(dir, label, path) {
+        const btn = doc.createElement('button');
+        btn.type = 'button';
+        btn.className = 'focusPomoStep focusPomoStep--' + dir;
+        btn.setAttribute('aria-label', label);
+        btn.title = label;
+        btn.innerHTML =
+            '<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" ' +
+            'stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="' + path + '"/></svg>';
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            stepMode(dir === 'next' ? 1 : -1);
+        });
+        return btn;
+    }
+
+    function stepMode(delta) {
+        const pom = ensurePomodoro();
+        if (!pom) return;
+        const n = POMODORO_MODES.length;
+        const i = POMODORO_MODES.indexOf(pom.getState().mode);
+        pom.setMode(POMODORO_MODES[((i === -1 ? 0 : i) + delta + n) % n]);
+    }
+
     // ── Pomodoro state → session control ──
     function syncPomodoro(snap) {
         if (!sessionBtn) return;
         const status = (snap && snap.status) || 'IDLE';
+        const mode = (snap && POMODORO_MODES.indexOf(snap.mode) !== -1) ? snap.mode : 'focus';
         sessionBtn.setAttribute('data-pomo-status', status);
-        const running = status === 'RUNNING';
-        const lbl = running ? 'Pause focus session'
-                  : status === 'PAUSED' ? 'Resume focus session'
-                  : 'Start focus session';
+        sessionBtn.setAttribute('data-pomo-mode', mode);
+        const noun = mode === 'focus' ? 'focus session' : MODE_LABEL[mode].toLowerCase();
+        const verb = status === 'RUNNING' ? 'Pause'
+                   : status === 'PAUSED' ? 'Resume'
+                   : 'Start';
+        const lbl = verb + ' ' + noun;
         sessionBtn.setAttribute('aria-label', lbl);
         sessionBtn.title = lbl;
+        // Mode selector label + dots. Duration comes from the controller
+        // (seeded from DEFAULT_DURATIONS), in whole minutes — no countdown.
+        const secs = (snap && snap.durations && snap.durations[mode]) || DEFAULT_DURATIONS[mode];
+        if (pomoNameEl) pomoNameEl.textContent = MODE_LABEL[mode];
+        if (pomoDurEl) pomoDurEl.textContent = Math.round(secs / 60) + ' min';
+        pomoDots.forEach(function(dot) {
+            dot.classList.toggle('focusPomoDot--active', dot.getAttribute('data-pomo-mode') === mode);
+        });
         // Completion cue: a brief ambient brighten/pulse as the session
         // completes (the global alerts — sound, notification, favicon/tab
         // flash — still fire from pomodoro.js). No number is surfaced.
@@ -462,6 +538,9 @@ export function createFocusMode(doc) {
         chipEl = null;
         stationLabel = null;
         sessionBtn = null;
+        pomoNameEl = null;
+        pomoDurEl = null;
+        pomoDots = [];
         videoBtn = null;
         sceneEl = null;
         themeWrap = null;

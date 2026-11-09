@@ -28422,6 +28422,77 @@ body.focusVideoOn .musicViz {
 .focusSessionBtn[data-pomo-status="RUNNING"] .focusSessionPlay  { display: none; }
 .focusSessionBtn[data-pomo-status="RUNNING"] .focusSessionPause { display: block; }
 
+/* Pomodoro mode selector stacked under the session button: ◀ name/duration ▶
+   plus three dots marking the armed mode. Compact so the stack stays in the
+   corner; shows the mode's length in minutes, never a ticking MM:SS. */
+.focusPomoWrap {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.focusPomoStepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.focusPomoStep {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  background: transparent;
+  border: 0.5px solid transparent;
+  color: rgba(255,255,255,0.6);
+  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
+}
+.focusPomoStep:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.focusPomoStep:focus { outline: none; }
+.focusPomoStep:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--accent);
+}
+.focusPomoLabel {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  width: 72px;
+  line-height: 1.2;
+  text-align: center;
+}
+.focusPomoName {
+  font-size: 11px;
+  color: rgba(255,255,255,0.85);
+  white-space: nowrap;
+}
+.focusPomoDuration {
+  font-size: 10px;
+  color: rgba(255,255,255,0.5);
+  white-space: nowrap;
+}
+.focusPomoDots {
+  display: inline-flex;
+  gap: 4px;
+}
+.focusPomoDot {
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  transition: background 0.15s ease;
+}
+.focusPomoDot--active {
+  background: var(--accent);
+}
+
 /* Round icon-only scene-swap control, matching the session button's geometry.
    Purple while the video scene is showing; dimmed and inert until a player
    iframe exists (i.e. until music has played this session). */

@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-08',
+        changed: [
+            'Focus mode\'s session button now has a mode selector beneath it, letting you step between Focus, Short break and Long break with arrows, see the armed mode and its length, and track it with three dots.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-10-31',
         fixed: [
             'Model names in the Models panel now show in full, with each workflow\'s note on its own line beneath the model instead of squeezing it.',
@@ -20,9 +27,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-10-28',
-        added: [
-            'Focus mode has a scene picker in its corner controls, letting you switch between the star field and a falling-glyph Matrix scene, and it remembers your choice.',
-        ],
         changed: [
             'The first-run welcome tour and phone welcome cards now match the current app, covering adding a task, Focus mode, opening projects from the project name, and backing up with Export.',
         ],
