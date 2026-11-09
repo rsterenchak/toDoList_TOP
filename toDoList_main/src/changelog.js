@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-11-08',
         changed: [
             'Focus mode\'s session button now has a mode selector beneath it, letting you step between Focus, Short break and Long break with arrows, see the armed mode and its length, and track it with three dots.',
+            'Focus mode\'s pomodoro selector now sits in a single horizontal pill beside the other corner buttons, with the play button, arrows, mode name and dots in one line.',
         ],
     },
     {
@@ -27,9 +28,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-10-28',
-        changed: [
-            'The first-run welcome tour and phone welcome cards now match the current app, covering adding a task, Focus mode, opening projects from the project name, and backing up with Export.',
-        ],
         fixed: [
             'The desktop welcome tour\'s callouts now sit beside the projects drawer instead of covering it, and the notes step points at a real task row.',
         ],
