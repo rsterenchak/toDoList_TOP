@@ -3176,9 +3176,9 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: 2026-11-10
   <!-- id: bf6a834b-4c76-485c-8a44-9ae71165a882 -->
 
-- [ ] **[MEDIUM]** Add tap-to-play/pause on the focus page now-playing chip with a centered transient glyph
+- [x] **[MEDIUM]** Add tap-to-play/pause on the focus page now-playing chip with a centered transient glyph — Completed: 2026-11-11
   - Type: feature
   - Description: Clicking the `.focusNowPlaying` chip in `.focusCorner` on the focus overlay should toggle music play/pause (via the existing music module play/pause API) instead of only revealing the volume popover, and each toggle should briefly fade a subtle play or pause glyph in and out at the center of the focus page (84px circle, `rgba(255,255,255,0.06)` bg, `0.5px` `rgba(255,255,255,0.14)` border, glyph in `var(--text-primary)` at ~0.85 opacity), auto-dismissing after roughly 700ms with a `transition`-based fade so rapid toggles just restart the fade rather than stacking elements. Reconcile the existing tap and long-press behavior so tap-to-reveal is not lost: keep the volume popover revealing on hover and on keyboard focus/Enter, keep the ~500ms long-press revealing it on touch, and keep `aria-expanded`, `data-music-status`, `title`, and `role="button"` in sync — update `title`/`aria-label` to reflect the current action (Play or Pause) so screen readers announce the toggle. Nothing else about the chip's geometry (radius 999px, padding 8px 14px, max-width 320px) or the EQ bars changes, and the centered glyph must not block pointer events on the task text underneath (`pointer-events: none`).
   - File: `toDoList_main/src/focusMode.js`, `toDoList_main/src/style.css`, `toDoList_main/src/music.js`
-  - Completed: YYYY-MM-DD (PR #<number>)
+  - Completed: 2026-11-11
   <!-- id: b17da482-cc6d-4ad3-bfbe-3f0ddc4786af -->
