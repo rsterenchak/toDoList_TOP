@@ -28772,6 +28772,42 @@ body.focusVideoOn .musicViz {
   text-align: center;
 }
 
+/* Transient play / pause glyph — flashed at the centre of the focus page each
+   time the now-playing chip toggles music. One reused element: the show class
+   fades it in, and removing it ~700ms later fades it out, so rapid toggles
+   just restart the fade. Never intercepts pointer events. */
+.focusPlayGlyph {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 0.5px solid rgba(255,255,255,0.14);
+  color: var(--text-primary);
+  opacity: 0;
+  transform: scale(0.92);
+  pointer-events: none;
+  transition: opacity 260ms ease-out, transform 260ms ease-out;
+}
+.focusPlayGlyph--show {
+  opacity: 0.85;
+  transform: scale(1);
+  transition-duration: 120ms;
+}
+/* The scene is near-black in every theme, so light mode's dark text token
+   would vanish — keep the glyph light there, matching the corner chrome. */
+:root[data-theme="light"] .focusPlayGlyph { color: rgba(255,255,255,0.92); }
+.focusPlayGlyph svg { display: none; }
+.focusPlayGlyph[data-glyph="play"]  .focusPlayGlyphPlay,
+.focusPlayGlyph[data-glyph="pause"] .focusPlayGlyphPause { display: block; }
+
 /* ── Exit affordance — dim "exit · esc" pill, top-right ── */
 .focusExitPill {
   position: absolute;

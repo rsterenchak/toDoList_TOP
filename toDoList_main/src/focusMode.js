@@ -23,10 +23,13 @@
 // companion's "no work when disabled" approach. Focus mode is session-only
 // and never persisted, so a page refresh always returns to the dashboard.
 //
-// Hovering, keyboard-focusing, tapping or long-pressing the now-playing chip
+// Hovering, keyboard-focusing (Enter) or long-pressing the now-playing chip
 // reveals a slim vertical volume popover above it — percent readout, a
 // draggable track and a mute toggle — driving the music singleton's
-// setVolume / toggleMute and re-syncing from every music update.
+// setVolume / toggleMute and re-syncing from every music update. Clicking or
+// tapping the chip (or Space on it) toggles music play/pause instead, and
+// each toggle briefly fades a play / pause glyph in and out at the centre of
+// the page — one reused element, so rapid toggles restart the fade.
 //
 // A fourth corner control opens a small popover for picking the scene
 // itself — the star field or a "matrix" rain of falling glyphs. Both variants
@@ -103,6 +106,8 @@ export function createFocusMode(doc) {
     let suppressChipClick = false; // swallow the click ending a long-press
     let lastTouchAt  = 0;      // ignore emulated mouse hover right after touch
     let dragEnd      = null;   // tears down an in-flight track drag
+    let playGlyph    = null;   // centred transient play / pause glyph
+    let glyphTimerId = null;   // hides the glyph again after its flash
 
     function build() {
         if (overlay) return;
@@ -162,7 +167,8 @@ export function createFocusMode(doc) {
         chipEl.setAttribute('role', 'button');
         chipEl.setAttribute('aria-haspopup', 'true');
         chipEl.setAttribute('aria-expanded', 'false');
-        chipEl.title = 'Volume';
+        chipEl.setAttribute('aria-label', 'Play music');
+        chipEl.title = 'Play music';
         chipEl.innerHTML =
             '<span class="focusEqBars" aria-hidden="true">' +
             '<span></span><span></span><span></span><span></span><span></span>' +
@@ -303,6 +309,20 @@ export function createFocusMode(doc) {
         corner.appendChild(videoBtn);
         corner.appendChild(themeWrap);
         overlay.appendChild(corner);
+
+        // Transient play / pause glyph flashed at the centre of the page on
+        // each chip toggle. Decorative (the chip's label announces the
+        // action) and never intercepts pointer events.
+        playGlyph = doc.createElement('div');
+        playGlyph.className = 'focusPlayGlyph';
+        playGlyph.setAttribute('aria-hidden', 'true');
+        playGlyph.setAttribute('data-glyph', 'play');
+        playGlyph.innerHTML =
+            '<svg class="focusPlayGlyphPlay" viewBox="0 0 24 24" width="30" height="30">' +
+            '<path fill="currentColor" d="M8 5v14l11-7z"/></svg>' +
+            '<svg class="focusPlayGlyphPause" viewBox="0 0 24 24" width="30" height="30">' +
+            '<path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
+        overlay.appendChild(playGlyph);
 
         applyFocusTheme(getFocusTheme());
 
@@ -448,23 +468,57 @@ export function createFocusMode(doc) {
         chipEl.addEventListener('touchmove', clearLongPress, { passive: true });
         chipEl.addEventListener('touchend', function() { lastTouchAt = Date.now(); clearLongPress(); });
         chipEl.addEventListener('touchcancel', clearLongPress);
+        // Click / tap toggles play / pause; the popover stays reachable via
+        // hover, keyboard focus / Enter and the long-press above.
         chipEl.addEventListener('click', function(e) {
             e.stopPropagation();
             if (suppressChipClick) { suppressChipClick = false; return; }
-            // A mouse click lands while hover already opened it — keep it
-            // open rather than toggling it shut under the pointer.
-            const fromTouch = Date.now() - lastTouchAt < 800;
-            if (!fromTouch && e.detail > 0) { openVolume(); return; }
-            if (volumeOpen) closeVolume();
-            else openVolume();
+            toggleMusicPlayback();
         });
         chipEl.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ' ') {
+            if (e.key === 'Enter') {
                 e.preventDefault();
                 if (volumeOpen) closeVolume();
                 else openVolume();
+            } else if (e.key === ' ') {
+                e.preventDefault();
+                toggleMusicPlayback();
             }
         });
+    }
+
+    // Plays or pauses through the music singleton, then flashes the glyph
+    // for the action just taken. With no player yet, the dashboard popover's
+    // player target hosts the lazily-created embed.
+    function toggleMusicPlayback() {
+        const music = ensureMusic();
+        if (!music) return;
+        const status = music.getState().status;
+        if (status === 'PLAYING' || status === 'BUFFERING') {
+            music.pause();
+            flashPlayGlyph('pause');
+        } else {
+            music.play(doc.getElementById('musicPlayerTarget'));
+            flashPlayGlyph('play');
+        }
+    }
+
+    // Fades the centred glyph in, then out after ~700ms. A repeat toggle
+    // restarts the fade on the same element instead of stacking new ones.
+    function flashPlayGlyph(kind) {
+        if (!playGlyph) return;
+        playGlyph.setAttribute('data-glyph', kind);
+        if (glyphTimerId) clearTimeout(glyphTimerId);
+        playGlyph.classList.add('focusPlayGlyph--show');
+        glyphTimerId = setTimeout(function() {
+            glyphTimerId = null;
+            if (playGlyph) playGlyph.classList.remove('focusPlayGlyph--show');
+        }, 700);
+    }
+
+    function clearPlayGlyph() {
+        if (glyphTimerId) { clearTimeout(glyphTimerId); glyphTimerId = null; }
+        if (playGlyph) playGlyph.classList.remove('focusPlayGlyph--show');
     }
 
     function clearLongPress() {
@@ -669,6 +723,10 @@ export function createFocusMode(doc) {
             else if (snap.activeStation && snap.activeStation.name) label = snap.activeStation.name;
         }
         if (stationLabel) stationLabel.textContent = playing ? label : (label || 'Music paused');
+        // Name the action a click / tap takes, so screen readers announce it.
+        const action = playing ? 'Pause music' : 'Play music';
+        chipEl.setAttribute('aria-label', action);
+        chipEl.title = action;
     }
 
     // Small round ◀ / ▶ button for the mode selector.
@@ -786,6 +844,7 @@ export function createFocusMode(doc) {
         closeThemePicker();
         closeVolume();
         clearLongPress();
+        clearPlayGlyph();
         if (overlay) {
             overlay.classList.remove('focusModeOverlay--active');
             overlay.classList.remove('focusModeOverlay--complete');
@@ -824,6 +883,7 @@ export function createFocusMode(doc) {
         volumeThumb = null;
         volumePct = null;
         muteBtn = null;
+        playGlyph = null;
         lastPomStatus = null;
     }
 

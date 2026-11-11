@@ -89,15 +89,15 @@ describe('focus mode — volume popover on the now-playing chip', () => {
         expect(f.isActive()).toBe(true);
     });
 
-    it('tap toggles and a ~500ms long-press opens on touch', () => {
+    it('tap toggles playback (not the popover) and a ~500ms long-press opens on touch', () => {
         vi.useFakeTimers();
+        const m = ensureMusic();
+        const pause = vi.spyOn(m, 'pause');
+        m._setStatus('PLAYING');
         chip().dispatchEvent(new Event('touchstart'));
         chip().dispatchEvent(new Event('touchend'));
         chip().dispatchEvent(new MouseEvent('click', { detail: 1 }));
-        expect(isOpen()).toBe(true);
-        chip().dispatchEvent(new Event('touchstart'));
-        chip().dispatchEvent(new Event('touchend'));
-        chip().dispatchEvent(new MouseEvent('click', { detail: 1 }));
+        expect(pause).toHaveBeenCalledTimes(1);
         expect(isOpen()).toBe(false);
 
         chip().dispatchEvent(new Event('touchstart'));

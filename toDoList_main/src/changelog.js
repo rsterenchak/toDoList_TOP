@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-11',
+        added: [
+            'Tapping focus mode\'s now-playing chip plays or pauses the music, with a brief play or pause icon fading in and out at the centre of the page.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-10',
         added: [
             'Hovering, tapping or long-pressing focus mode\'s now-playing chip reveals a volume slider with a mute toggle.',
@@ -23,13 +30,6 @@ export const changelog = [
         date: '2026-10-31',
         fixed: [
             'Model names in the Models panel now show in full, with each workflow\'s note on its own line beneath the model instead of squeezing it.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-29',
-        fixed: [
-            'The desktop welcome tour now points at the project name pill and the + in its project picker instead of opening the projects drawer.',
         ],
     },
 ];
