@@ -349,6 +349,11 @@ export function createMusic(doc) {
         notify();
     }
 
+    // Flips the current mute state — the one-tap mute control's entry point.
+    function toggleMute() {
+        setMuted(!state.muted);
+    }
+
     function setStation(id) {
         const station = getStationById(state, id);
         if (!station) return;
@@ -552,6 +557,7 @@ export function createMusic(doc) {
         setStation:                 setStation,
         setVolume:                  setVolume,
         setMuted:                   setMuted,
+        toggleMute:                 toggleMute,
         addCustomStation:           addCustomStation,
         removeCustomStation:        removeCustomStation,
         subscribe:                  subscribe,

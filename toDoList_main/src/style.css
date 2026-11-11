@@ -28388,6 +28388,117 @@ body.focusVideoOn .musicViz {
   animation-play-state: running;
 }
 
+/* Volume popover — revealed above the now-playing chip on hover, keyboard
+   focus, tap or long-press. A slim ~44px pill: percent readout, a 4px
+   vertical track with accent fill + 14px thumb, and a circular mute toggle. */
+.focusVolumeWrap {
+  position: relative;
+  display: inline-flex;
+  min-width: 0;
+}
+.focusNowPlaying {
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+.focusNowPlaying[aria-expanded="true"] { border-color: var(--accent); }
+.focusNowPlaying:focus { outline: none; }
+.focusNowPlaying:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.focusVolumePopover {
+  position: absolute;
+  left: 18px;
+  bottom: calc(100% + 8px);
+  width: 44px;
+  box-sizing: border-box;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0 6px;
+  border-radius: 999px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-mid);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  z-index: 3;
+}
+/* Invisible bridge over the 8px gap so moving the pointer from the chip up
+   into the panel doesn't drop the hover. */
+.focusVolumePopover::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 10px;
+}
+.focusVolumePopover--open { display: flex; }
+.focusVolumePct {
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-primary, rgba(255,255,255,0.9));
+  font-variant-numeric: tabular-nums;
+}
+.focusVolumeTrack {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 28px;
+  height: 110px;
+  cursor: pointer;
+  touch-action: none;
+}
+.focusVolumeTrack:focus { outline: none; }
+.focusVolumeTrack:focus-visible { box-shadow: 0 0 0 2px var(--accent); border-radius: 8px; }
+.focusVolumeRail {
+  position: relative;
+  display: block;
+  width: 4px;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--border-mid);
+}
+.focusVolumeFill {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: 2px;
+  background: var(--accent);
+}
+.focusVolumeThumb {
+  position: absolute;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 2px var(--bg-elevated);
+  transform: translate(-50%, 50%);
+}
+.focusMuteBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border-radius: 50%;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--border-mid);
+  color: var(--accent);
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.focusMuteBtn:hover { border-color: var(--accent); }
+.focusMuteBtn:focus { outline: none; }
+.focusMuteBtn:focus-visible { box-shadow: 0 0 0 2px var(--accent); }
+.focusMuteIconOff { display: none; }
+.focusVolumePopover--muted .focusMuteIconOn { display: none; }
+.focusVolumePopover--muted .focusMuteIconOff { display: block; }
+.focusVolumePopover--muted .focusMuteBtn {
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border-color: var(--accent);
+}
+
 /* Single round icon-only session control — start when idle, pause/resume when
    running. Never shows MM:SS. */
 .focusSessionBtn {

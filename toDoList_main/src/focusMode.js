@@ -23,6 +23,11 @@
 // companion's "no work when disabled" approach. Focus mode is session-only
 // and never persisted, so a page refresh always returns to the dashboard.
 //
+// Hovering, keyboard-focusing, tapping or long-pressing the now-playing chip
+// reveals a slim vertical volume popover above it — percent readout, a
+// draggable track and a mute toggle — driving the music singleton's
+// setVolume / toggleMute and re-syncing from every music update.
+//
 // A fourth corner control opens a small popover for picking the scene
 // itself — the star field or a "matrix" rain of falling glyphs. Both variants
 // live in `.focusScene` and a modifier class shows one; the choice is the one
@@ -85,6 +90,19 @@ export function createFocusMode(doc) {
     let themeOpen    = false;
     let onThemeOutside = null; // outside-click closer, bound only while open
     let theme        = 'stars';
+    let volumeWrap   = null;   // anchor for the chip + volume popover
+    let volumePop    = null;   // vertical volume popover above the chip
+    let volumeTrack  = null;   // role=slider hit area around the 4px rail
+    let volumeFill   = null;   // accent fill, height = volume
+    let volumeThumb  = null;   // 14px thumb riding the fill's top
+    let volumePct    = null;   // percent readout
+    let muteBtn      = null;   // circular mute toggle
+    let volumeOpen   = false;
+    let onVolumeOutside = null; // outside-press closer, bound only while open
+    let longPressId  = null;   // ~500ms touch long-press timer on the chip
+    let suppressChipClick = false; // swallow the click ending a long-press
+    let lastTouchAt  = 0;      // ignore emulated mouse hover right after touch
+    let dragEnd      = null;   // tears down an in-flight track drag
 
     function build() {
         if (overlay) return;
@@ -134,17 +152,24 @@ export function createFocusMode(doc) {
         corner.className = 'focusCorner';
 
         // Now-playing chip: station name + animated equalizer reflecting the
-        // music singleton's state. Display only — tapping the chip does
-        // nothing (the full music controls live in the dashboard popover).
+        // music singleton's state. Hover / focus / tap / long-press reveals
+        // the volume popover anchored above it (the full music controls still
+        // live in the dashboard popover).
         chipEl = doc.createElement('div');
         chipEl.className = 'focusNowPlaying';
         chipEl.setAttribute('data-music-status', 'IDLE');
+        chipEl.setAttribute('tabindex', '0');
+        chipEl.setAttribute('role', 'button');
+        chipEl.setAttribute('aria-haspopup', 'true');
+        chipEl.setAttribute('aria-expanded', 'false');
+        chipEl.title = 'Volume';
         chipEl.innerHTML =
             '<span class="focusEqBars" aria-hidden="true">' +
             '<span></span><span></span><span></span><span></span><span></span>' +
             '</span>' +
             '<span class="focusStationLabel"></span>';
         stationLabel = chipEl.querySelector('.focusStationLabel');
+        buildVolumePopover();
 
         // Single icon-only session control: start when idle, pause/resume when
         // running — never displaying MM:SS. Drives pomodoro.toggle().
@@ -225,7 +250,7 @@ export function createFocusMode(doc) {
             toggleVideoScene();
         });
 
-        corner.appendChild(chipEl);
+        corner.appendChild(volumeWrap);
         corner.appendChild(pomoWrap);
         corner.appendChild(pomoSep);
         // Scene picker: a round button opening a two-card popover anchored
@@ -297,6 +322,240 @@ export function createFocusMode(doc) {
         overlay.appendChild(exitPill);
 
         doc.body.appendChild(overlay);
+    }
+
+    // ── Volume popover — hover-revealed above the now-playing chip ──
+    // Built once with the chip; wraps it so hovering either keeps it open.
+    function buildVolumePopover() {
+        volumeWrap = doc.createElement('div');
+        volumeWrap.className = 'focusVolumeWrap';
+
+        volumePop = doc.createElement('div');
+        volumePop.className = 'focusVolumePopover';
+        volumePop.setAttribute('role', 'group');
+        volumePop.setAttribute('aria-label', 'Music volume');
+
+        volumePct = doc.createElement('span');
+        volumePct.className = 'focusVolumePct';
+
+        volumeTrack = doc.createElement('div');
+        volumeTrack.className = 'focusVolumeTrack';
+        volumeTrack.setAttribute('role', 'slider');
+        volumeTrack.setAttribute('tabindex', '0');
+        volumeTrack.setAttribute('aria-label', 'Volume');
+        volumeTrack.setAttribute('aria-orientation', 'vertical');
+        volumeTrack.setAttribute('aria-valuemin', '0');
+        volumeTrack.setAttribute('aria-valuemax', '100');
+        const rail = doc.createElement('span');
+        rail.className = 'focusVolumeRail';
+        volumeFill = doc.createElement('span');
+        volumeFill.className = 'focusVolumeFill';
+        volumeThumb = doc.createElement('span');
+        volumeThumb.className = 'focusVolumeThumb';
+        rail.appendChild(volumeFill);
+        rail.appendChild(volumeThumb);
+        volumeTrack.appendChild(rail);
+
+        muteBtn = doc.createElement('button');
+        muteBtn.type = 'button';
+        muteBtn.className = 'focusMuteBtn';
+        muteBtn.setAttribute('aria-pressed', 'false');
+        muteBtn.setAttribute('aria-label', 'Mute music');
+        muteBtn.title = 'Mute music';
+        muteBtn.innerHTML =
+            '<svg class="focusMuteIconOn" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
+            'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>' +
+            '<path d="M15.5 9a4 4 0 0 1 0 6"/><path d="M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>' +
+            '<svg class="focusMuteIconOff" viewBox="0 0 24 24" width="16" height="16" fill="none" ' +
+            'stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+            '<path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/>' +
+            '<path d="M16 9.5l5 5M21 9.5l-5 5"/></svg>';
+        muteBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const music = ensureMusic();
+            if (music && typeof music.toggleMute === 'function') music.toggleMute();
+        });
+
+        volumePop.appendChild(volumePct);
+        volumePop.appendChild(volumeTrack);
+        volumePop.appendChild(muteBtn);
+        volumeWrap.appendChild(chipEl);
+        volumeWrap.appendChild(volumePop);
+
+        // Track: press / drag (mouse + touch) and keyboard set the volume.
+        volumeTrack.addEventListener('mousedown', function(e) {
+            if (e.button !== undefined && e.button !== 0) return;
+            e.preventDefault();
+            e.stopPropagation();
+            startDrag(e.clientY, 'mousemove', 'mouseup', function(ev) { return ev.clientY; });
+        });
+        volumeTrack.addEventListener('touchstart', function(e) {
+            const t = e.touches && e.touches[0];
+            if (!t) return;
+            e.preventDefault();
+            e.stopPropagation();
+            lastTouchAt = Date.now();
+            startDrag(t.clientY, 'touchmove', 'touchend', function(ev) {
+                const tt = ev.touches && ev.touches[0];
+                return tt ? tt.clientY : null;
+            });
+        }, { passive: false });
+        volumeTrack.addEventListener('click', function(e) { e.stopPropagation(); });
+        volumeTrack.addEventListener('keydown', function(e) {
+            const music = ensureMusic();
+            if (!music) return;
+            const cur = Math.round(((music.getState().volume) || 0) * 100);
+            let next = null;
+            if (e.key === 'ArrowUp' || e.key === 'ArrowRight') next = cur + 5;
+            else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') next = cur - 5;
+            else if (e.key === 'PageUp') next = cur + 10;
+            else if (e.key === 'PageDown') next = cur - 10;
+            else if (e.key === 'Home') next = 0;
+            else if (e.key === 'End') next = 100;
+            if (next === null) return;
+            e.preventDefault();
+            music.setVolume(Math.max(0, Math.min(100, next)) / 100);
+        });
+
+        // Reveal: mouse hover and keyboard focus open; leaving closes.
+        volumeWrap.addEventListener('mouseenter', function() {
+            if (Date.now() - lastTouchAt < 800) return;
+            openVolume();
+        });
+        volumeWrap.addEventListener('mouseleave', function() {
+            if (Date.now() - lastTouchAt < 800) return;
+            if (dragEnd) return; // keep open while a drag strays outside
+            closeVolume();
+        });
+        volumeWrap.addEventListener('focusin', function() { openVolume(); });
+        volumeWrap.addEventListener('focusout', function(e) {
+            if (e.relatedTarget && volumeWrap.contains(e.relatedTarget)) return;
+            if (dragEnd) return;
+            closeVolume();
+        });
+
+        // Touch: tap toggles, ~500ms long-press opens.
+        chipEl.addEventListener('touchstart', function() {
+            lastTouchAt = Date.now();
+            clearLongPress();
+            longPressId = setTimeout(function() {
+                longPressId = null;
+                suppressChipClick = true;
+                openVolume();
+            }, 500);
+        }, { passive: true });
+        chipEl.addEventListener('touchmove', clearLongPress, { passive: true });
+        chipEl.addEventListener('touchend', function() { lastTouchAt = Date.now(); clearLongPress(); });
+        chipEl.addEventListener('touchcancel', clearLongPress);
+        chipEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (suppressChipClick) { suppressChipClick = false; return; }
+            // A mouse click lands while hover already opened it — keep it
+            // open rather than toggling it shut under the pointer.
+            const fromTouch = Date.now() - lastTouchAt < 800;
+            if (!fromTouch && e.detail > 0) { openVolume(); return; }
+            if (volumeOpen) closeVolume();
+            else openVolume();
+        });
+        chipEl.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (volumeOpen) closeVolume();
+                else openVolume();
+            }
+        });
+    }
+
+    function clearLongPress() {
+        if (longPressId) { clearTimeout(longPressId); longPressId = null; }
+    }
+
+    // Maps a client Y to 0..1 along the track (bottom = 0, top = 1).
+    function volumeFromY(clientY) {
+        if (!volumeTrack) return null;
+        const rect = volumeTrack.getBoundingClientRect();
+        if (!rect || !rect.height) return null;
+        return Math.max(0, Math.min(1, (rect.bottom - clientY) / rect.height));
+    }
+
+    function applyVolumeAtY(clientY) {
+        if (clientY === null || clientY === undefined) return;
+        const v = volumeFromY(clientY);
+        if (v === null) return;
+        const music = ensureMusic();
+        if (music) music.setVolume(Math.round(v * 100) / 100);
+    }
+
+    function startDrag(clientY, moveEvt, endEvt, readY) {
+        if (dragEnd) dragEnd();
+        applyVolumeAtY(clientY);
+        const onMove = function(ev) {
+            if (moveEvt === 'touchmove') ev.preventDefault();
+            applyVolumeAtY(readY(ev));
+        };
+        const onEnd = function() { if (dragEnd) dragEnd(); };
+        doc.addEventListener(moveEvt, onMove, moveEvt === 'touchmove' ? { passive: false } : false);
+        doc.addEventListener(endEvt, onEnd);
+        if (endEvt === 'touchend') doc.addEventListener('touchcancel', onEnd);
+        if (volumeWrap) volumeWrap.classList.add('focusVolumeWrap--dragging');
+        dragEnd = function() {
+            doc.removeEventListener(moveEvt, onMove, moveEvt === 'touchmove' ? { passive: false } : false);
+            doc.removeEventListener(endEvt, onEnd);
+            if (endEvt === 'touchend') doc.removeEventListener('touchcancel', onEnd);
+            if (volumeWrap) volumeWrap.classList.remove('focusVolumeWrap--dragging');
+            dragEnd = null;
+        };
+    }
+
+    function openVolume() {
+        if (volumeOpen || !volumePop) return;
+        volumeOpen = true;
+        volumePop.classList.add('focusVolumePopover--open');
+        if (chipEl) chipEl.setAttribute('aria-expanded', 'true');
+        const music = ensureMusic();
+        if (music) syncVolume(music.getState());
+        onVolumeOutside = function(e) {
+            if (volumeWrap && volumeWrap.contains(e.target)) return;
+            closeVolume();
+        };
+        doc.addEventListener('mousedown', onVolumeOutside, true);
+        doc.addEventListener('touchstart', onVolumeOutside, true);
+    }
+
+    function closeVolume() {
+        if (!volumeOpen) return;
+        volumeOpen = false;
+        if (dragEnd) dragEnd();
+        if (volumePop) volumePop.classList.remove('focusVolumePopover--open');
+        if (chipEl) chipEl.setAttribute('aria-expanded', 'false');
+        if (onVolumeOutside) {
+            doc.removeEventListener('mousedown', onVolumeOutside, true);
+            doc.removeEventListener('touchstart', onVolumeOutside, true);
+            onVolumeOutside = null;
+        }
+    }
+
+    // ── Music state → volume popover ──
+    function syncVolume(snap) {
+        if (!volumePop) return;
+        const muted = !!(snap && snap.muted);
+        const vol = snap && typeof snap.volume === 'number' ? Math.max(0, Math.min(1, snap.volume)) : 0;
+        const pct = Math.round(vol * 100);
+        if (volumePct) volumePct.textContent = pct + '%';
+        if (volumeFill) volumeFill.style.height = pct + '%';
+        if (volumeThumb) volumeThumb.style.bottom = pct + '%';
+        if (volumeTrack) {
+            volumeTrack.setAttribute('aria-valuenow', String(pct));
+            volumeTrack.setAttribute('aria-valuetext', muted ? 'Muted' : pct + '%');
+        }
+        volumePop.classList.toggle('focusVolumePopover--muted', muted);
+        if (muteBtn) {
+            muteBtn.setAttribute('aria-pressed', muted ? 'true' : 'false');
+            const lbl = muted ? 'Unmute music' : 'Mute music';
+            muteBtn.setAttribute('aria-label', lbl);
+            muteBtn.title = lbl;
+        }
     }
 
     // ── Scene theme — stars ⇄ matrix ──
@@ -399,6 +658,7 @@ export function createFocusMode(doc) {
         // The player iframe is created lazily by music.js, so every music
         // update is also when the swap control can become available.
         syncVideoBtn();
+        syncVolume(snap);
         if (!chipEl) return;
         const status = (snap && snap.status) || 'IDLE';
         chipEl.setAttribute('data-music-status', status);
@@ -506,11 +766,12 @@ export function createFocusMode(doc) {
         }
 
         // Esc exits. Bound on the document so it works regardless of focus.
-        // With the scene picker open, Esc closes just the picker first.
+        // With the scene picker or volume popover open, Esc closes just that first.
         onKeydown = function(e) {
             if (e.key === 'Escape' || e.key === 'Esc') {
                 e.preventDefault();
                 if (themeOpen) { closeThemePicker(); return; }
+                if (volumeOpen) { closeVolume(); return; }
                 deactivate();
             }
         };
@@ -523,6 +784,8 @@ export function createFocusMode(doc) {
         // Always drop the video promotion, even mid-swap.
         hideVideoScene();
         closeThemePicker();
+        closeVolume();
+        clearLongPress();
         if (overlay) {
             overlay.classList.remove('focusModeOverlay--active');
             overlay.classList.remove('focusModeOverlay--complete');
@@ -554,6 +817,13 @@ export function createFocusMode(doc) {
         themeWrap = null;
         themeBtn = null;
         themePopover = null;
+        volumeWrap = null;
+        volumePop = null;
+        volumeTrack = null;
+        volumeFill = null;
+        volumeThumb = null;
+        volumePct = null;
+        muteBtn = null;
         lastPomStatus = null;
     }
 

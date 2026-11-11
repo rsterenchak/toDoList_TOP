@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-10',
+        added: [
+            'Hovering, tapping or long-pressing focus mode\'s now-playing chip reveals a volume slider with a mute toggle.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-08',
         changed: [
             'Focus mode\'s session button now has a mode selector beneath it, letting you step between Focus, Short break and Long break with arrows, see the armed mode and its length, and track it with three dots.',
@@ -23,13 +30,6 @@ export const changelog = [
         date: '2026-10-29',
         fixed: [
             'The desktop welcome tour now points at the project name pill and the + in its project picker instead of opening the projects drawer.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-28',
-        fixed: [
-            'The desktop welcome tour\'s callouts now sit beside the projects drawer instead of covering it, and the notes step points at a real task row.',
         ],
     },
 ];
