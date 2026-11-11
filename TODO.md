@@ -3168,3 +3168,10 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/focusMode.js`, `toDoList_main/src/style.css`
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 7aa13e04-b748-42b4-93ce-a80d27f97133 -->
+
+- [ ] **[MEDIUM]** Add a hover-revealed volume slider with mute toggle to the focus page now-playing chip
+  - Type: feature
+  - Description: On the focus page, hovering (or keyboard-focusing) the `.focusNowPlaying` chip inside `.focusCorner` should reveal a vertical popover anchored above the chip, styled with the existing tokens (`--bg-elevated`, `--border-mid`, `--accent`, 999px pill chip, 13px label) matching the approved variant-B mockup: a stack of percent readout, a 4px vertical volume track with accent fill and a 14px thumb, a circular mute toggle SVG, all in a ~44px wide rounded panel with `bottom: calc(100% + 8px)`. Dragging the track and clicking it must set the music volume through the `music.js` singleton's `setVolume`, and the mute button must call its `toggleMute`, with the thumb, fill height, percent readout and a muted icon state staying in sync with the current volume/mute state on every change (including changes made elsewhere). Because hover does not exist on touch, tapping the chip must toggle the same panel on mobile and a ~500ms long-press must work as the alternative affordance per the repo's touch conventions, and the panel must dismiss on outside click and Escape. Hovering/focusing must not break the existing `data-music-status` / equalizer-bars behavior or the separate icon-only pomodoro session control beside it.
+  - File: `toDoList_main/src/focusMode.js`, `toDoList_main/src/music.js`, `toDoList_main/src/style.css`
+  - Completed: YYYY-MM-DD (PR #TBD)
+  <!-- id: bf6a834b-4c76-485c-8a44-9ae71165a882 -->
