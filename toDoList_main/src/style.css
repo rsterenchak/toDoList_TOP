@@ -28549,6 +28549,47 @@ body.focusVideoOn .musicViz {
   background: rgba(255,255,255,0.06);
   border: 0.5px solid rgba(255,255,255,0.14);
   flex: 0 0 auto;
+  transition: padding 0.25s ease, gap 0.25s ease;
+}
+/* Details (stepper + dots) collapse behind hover / keyboard focus / the tap
+   fallback's --open class, leaving the pill a clean 42px circle around the
+   session button. The 2px inner padding (offset by negative margin) keeps the
+   step buttons' focus rings from being clipped by overflow: hidden. */
+.focusPomoDetails {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  max-width: 180px;
+  padding: 3px 2px;
+  margin: 0 -2px;
+  opacity: 1;
+  visibility: visible;
+  transition: max-width 0.25s ease, padding 0.25s ease, margin 0.25s ease, opacity 0.2s ease, visibility 0s linear 0s;
+}
+.focusPomoWrap:not(:hover):not(:focus-within):not(.focusPomoWrap--open) {
+  padding-right: 0;
+  gap: 0;
+}
+/* Pull the pill's right edge onto the button so the 0.5px borders (which
+   round up to 1px at 1x DPR) don't stretch the circle into a 43.5px oval. */
+.focusPomoWrap:not(:hover):not(:focus-within):not(.focusPomoWrap--open) .focusSessionBtn {
+  margin-right: -1.5px;
+}
+.focusPomoWrap:not(:hover):not(:focus-within):not(.focusPomoWrap--open) .focusPomoDetails {
+  max-width: 0;
+  padding: 0;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: max-width 0.25s ease, padding 0.25s ease, margin 0.25s ease, opacity 0.15s ease, visibility 0s linear 0.25s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .focusPomoWrap,
+  .focusPomoDetails,
+  .focusPomoWrap:not(:hover):not(:focus-within):not(.focusPomoWrap--open) .focusPomoDetails {
+    transition: none;
+  }
 }
 .focusPomoWrap .focusSessionBtn {
   flex: 0 0 auto;

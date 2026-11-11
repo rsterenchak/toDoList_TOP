@@ -108,6 +108,10 @@ export function createFocusMode(doc) {
     let dragEnd      = null;   // tears down an in-flight track drag
     let playGlyph    = null;   // centred transient play / pause glyph
     let glyphTimerId = null;   // hides the glyph again after its flash
+    let pomoWrap     = null;   // pomodoro pill — details collapse behind hover
+    let pomoOpen     = false;  // tap-expanded state (touch fallback for :hover)
+    let onPomoOutside = null;  // outside-press collapser, bound only while open
+    let pomoTouchAt  = 0;      // last touch on the pill, to tell taps from clicks
 
     function build() {
         if (overlay) return;
@@ -192,17 +196,35 @@ export function createFocusMode(doc) {
             '<path fill="currentColor" d="M6 5h4v14H6zM14 5h4v14h-4z"/></svg>';
         sessionBtn.addEventListener('click', function(e) {
             e.stopPropagation();
+            // Touch has no hover: the first tap on the collapsed pill opens
+            // its details instead of starting the session.
+            if (!pomoOpen && Date.now() - pomoTouchAt < 800) {
+                openPomoDetails();
+                return;
+            }
             const pom = ensurePomodoro();
             if (pom) pom.toggle();
+            closePomoDetails();
         });
 
         // Mode selector: one horizontal pill with the session button flush at
         // its left edge, then ◀ / ▶ stepping Focus → Short break → Long break
         // (wrapping) via pomodoro.setMode around a two-line label naming the
         // armed mode and its length in whole minutes (never a ticking MM:SS),
-        // then three dots marking which is armed.
-        const pomoWrap = doc.createElement('div');
+        // then three dots marking which is armed. Everything but the session
+        // button sits in .focusPomoDetails, collapsed until the pill is
+        // hovered, keyboard-focused, or tap-opened (.focusPomoWrap--open).
+        pomoWrap = doc.createElement('div');
         pomoWrap.className = 'focusPomoWrap';
+        pomoWrap.addEventListener('touchstart', function() {
+            pomoTouchAt = Date.now();
+        }, { passive: true });
+        // Taps on the pill outside its buttons toggle the details.
+        pomoWrap.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (pomoOpen) closePomoDetails();
+            else openPomoDetails();
+        });
         const stepper = doc.createElement('div');
         stepper.className = 'focusPomoStepper';
         const prevBtn = makeStepBtn('prev', 'Previous pomodoro mode', 'M15 6l-6 6 6 6');
@@ -229,9 +251,12 @@ export function createFocusMode(doc) {
             dots.appendChild(dot);
             return dot;
         });
+        const details = doc.createElement('div');
+        details.className = 'focusPomoDetails';
+        details.appendChild(stepper);
+        details.appendChild(dots);
         pomoWrap.appendChild(sessionBtn);
-        pomoWrap.appendChild(stepper);
-        pomoWrap.appendChild(dots);
+        pomoWrap.appendChild(details);
 
         // Thin vertical divider between the pomodoro pill and the round
         // video / scene buttons.
@@ -747,6 +772,29 @@ export function createFocusMode(doc) {
         return btn;
     }
 
+    function openPomoDetails() {
+        if (pomoOpen || !pomoWrap) return;
+        pomoOpen = true;
+        pomoWrap.classList.add('focusPomoWrap--open');
+        onPomoOutside = function(e) {
+            if (pomoWrap && pomoWrap.contains(e.target)) return;
+            closePomoDetails();
+        };
+        doc.addEventListener('mousedown', onPomoOutside, true);
+        doc.addEventListener('touchstart', onPomoOutside, true);
+    }
+
+    function closePomoDetails() {
+        if (!pomoOpen) return;
+        pomoOpen = false;
+        if (pomoWrap) pomoWrap.classList.remove('focusPomoWrap--open');
+        if (onPomoOutside) {
+            doc.removeEventListener('mousedown', onPomoOutside, true);
+            doc.removeEventListener('touchstart', onPomoOutside, true);
+            onPomoOutside = null;
+        }
+    }
+
     function stepMode(delta) {
         const pom = ensurePomodoro();
         if (!pom) return;
@@ -843,6 +891,7 @@ export function createFocusMode(doc) {
         hideVideoScene();
         closeThemePicker();
         closeVolume();
+        closePomoDetails();
         clearLongPress();
         clearPlayGlyph();
         if (overlay) {
@@ -868,6 +917,7 @@ export function createFocusMode(doc) {
         chipEl = null;
         stationLabel = null;
         sessionBtn = null;
+        pomoWrap = null;
         pomoNameEl = null;
         pomoDurEl = null;
         pomoDots = [];
