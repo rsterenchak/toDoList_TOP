@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-11T08:42:56.712Z",
-  "sha": "14dc55c77c92bb21a27e8b59f33324fefc799296",
+  "generatedAt": "2026-11-11T09:37:07.644Z",
+  "sha": "f5b2cc435e08ce0fa262c8ecf839ca732457e1d0",
   "files": [
     "aboutVersionCue.js",
     "accessMode.js",
@@ -3077,11 +3077,11 @@
       "selector": "#focusModeOverlay",
       "label": "Focus Mode Overlay",
       "file": "focusMode.js",
-      "line": 115,
+      "line": 119,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 115
+          "line": 119
         }
       ]
     },
@@ -5069,7 +5069,7 @@
         },
         {
           "file": "style.css",
-          "line": 29541
+          "line": 29582
         }
       ]
     },
@@ -5085,7 +5085,7 @@
         },
         {
           "file": "style.css",
-          "line": 29444
+          "line": 29485
         }
       ]
     },
@@ -5101,7 +5101,7 @@
         },
         {
           "file": "style.css",
-          "line": 29495
+          "line": 29536
         }
       ]
     },
@@ -5129,7 +5129,7 @@
         },
         {
           "file": "style.css",
-          "line": 29481
+          "line": 29522
         }
       ]
     },
@@ -5157,7 +5157,7 @@
         },
         {
           "file": "style.css",
-          "line": 29469
+          "line": 29510
         }
       ]
     },
@@ -5173,7 +5173,7 @@
         },
         {
           "file": "style.css",
-          "line": 29403
+          "line": 29444
         }
       ]
     },
@@ -5213,7 +5213,7 @@
         },
         {
           "file": "style.css",
-          "line": 29477
+          "line": 29518
         }
       ]
     },
@@ -5653,7 +5653,7 @@
         },
         {
           "file": "style.css",
-          "line": 28989
+          "line": 29030
         }
       ]
     },
@@ -5669,7 +5669,7 @@
         },
         {
           "file": "style.css",
-          "line": 29033
+          "line": 29074
         }
       ]
     },
@@ -5685,7 +5685,7 @@
         },
         {
           "file": "style.css",
-          "line": 29020
+          "line": 29061
         }
       ]
     },
@@ -5701,7 +5701,7 @@
         },
         {
           "file": "style.css",
-          "line": 29086
+          "line": 29127
         }
       ]
     },
@@ -5717,7 +5717,7 @@
         },
         {
           "file": "style.css",
-          "line": 29040
+          "line": 29081
         }
       ]
     },
@@ -5733,7 +5733,7 @@
         },
         {
           "file": "style.css",
-          "line": 29300
+          "line": 29341
         }
       ]
     },
@@ -5761,7 +5761,7 @@
         },
         {
           "file": "style.css",
-          "line": 29009
+          "line": 29050
         }
       ]
     },
@@ -5777,7 +5777,7 @@
         },
         {
           "file": "style.css",
-          "line": 29098
+          "line": 29139
         }
       ]
     },
@@ -5793,7 +5793,7 @@
         },
         {
           "file": "style.css",
-          "line": 28998
+          "line": 29039
         }
       ]
     },
@@ -5821,7 +5821,7 @@
         },
         {
           "file": "style.css",
-          "line": 29080
+          "line": 29121
         }
       ]
     },
@@ -5837,7 +5837,7 @@
         },
         {
           "file": "style.css",
-          "line": 29016
+          "line": 29057
         }
       ]
     },
@@ -9121,7 +9121,7 @@
         },
         {
           "file": "style.css",
-          "line": 29599
+          "line": 29640
         }
       ]
     },
@@ -9137,7 +9137,7 @@
         },
         {
           "file": "style.css",
-          "line": 29626
+          "line": 29667
         }
       ]
     },
@@ -9153,7 +9153,7 @@
         },
         {
           "file": "style.css",
-          "line": 29621
+          "line": 29662
         }
       ]
     },
@@ -9169,7 +9169,7 @@
         },
         {
           "file": "style.css",
-          "line": 29613
+          "line": 29654
         }
       ]
     },
@@ -9185,7 +9185,7 @@
         },
         {
           "file": "style.css",
-          "line": 29617
+          "line": 29658
         }
       ]
     },
@@ -10177,11 +10177,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 84,
+      "line": 80,
       "files": [
         {
           "file": "changelog.js",
-          "line": 84
+          "line": 80
         },
         {
           "file": "style.css",
@@ -10193,11 +10193,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 53,
+      "line": 49,
       "files": [
         {
           "file": "changelog.js",
-          "line": 53
+          "line": 49
         },
         {
           "file": "style.css",
@@ -10209,11 +10209,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 63,
+      "line": 59,
       "files": [
         {
           "file": "changelog.js",
-          "line": 63
+          "line": 59
         },
         {
           "file": "style.css",
@@ -10225,11 +10225,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 56,
+      "line": 52,
       "files": [
         {
           "file": "changelog.js",
-          "line": 56
+          "line": 52
         },
         {
           "file": "style.css",
@@ -10241,11 +10241,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 59,
+      "line": 55,
       "files": [
         {
           "file": "changelog.js",
-          "line": 59
+          "line": 55
         },
         {
           "file": "style.css",
@@ -10257,11 +10257,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 80,
+      "line": 76,
       "files": [
         {
           "file": "changelog.js",
-          "line": 80
+          "line": 76
         },
         {
           "file": "style.css",
@@ -11477,7 +11477,7 @@
         },
         {
           "file": "style.css",
-          "line": 29742
+          "line": 29783
         }
       ]
     },
@@ -11493,7 +11493,7 @@
         },
         {
           "file": "style.css",
-          "line": 29802
+          "line": 29843
         }
       ]
     },
@@ -11509,7 +11509,7 @@
         },
         {
           "file": "style.css",
-          "line": 29790
+          "line": 29831
         }
       ]
     },
@@ -11525,7 +11525,7 @@
         },
         {
           "file": "style.css",
-          "line": 29797
+          "line": 29838
         }
       ]
     },
@@ -11749,7 +11749,7 @@
         },
         {
           "file": "style.css",
-          "line": 29857
+          "line": 29898
         }
       ]
     },
@@ -11765,7 +11765,7 @@
         },
         {
           "file": "style.css",
-          "line": 29831
+          "line": 29872
         }
       ]
     },
@@ -11797,7 +11797,7 @@
         },
         {
           "file": "style.css",
-          "line": 29889
+          "line": 29930
         }
       ]
     },
@@ -11813,7 +11813,7 @@
         },
         {
           "file": "style.css",
-          "line": 29936
+          "line": 29977
         }
       ]
     },
@@ -11829,7 +11829,7 @@
         },
         {
           "file": "style.css",
-          "line": 29916
+          "line": 29957
         }
       ]
     },
@@ -11845,7 +11845,7 @@
         },
         {
           "file": "style.css",
-          "line": 29915
+          "line": 29956
         }
       ]
     },
@@ -11861,7 +11861,7 @@
         },
         {
           "file": "style.css",
-          "line": 29896
+          "line": 29937
         }
       ]
     },
@@ -11877,7 +11877,7 @@
         },
         {
           "file": "style.css",
-          "line": 29895
+          "line": 29936
         }
       ]
     },
@@ -11893,7 +11893,7 @@
         },
         {
           "file": "style.css",
-          "line": 29918
+          "line": 29959
         }
       ]
     },
@@ -11909,7 +11909,7 @@
         },
         {
           "file": "style.css",
-          "line": 29917
+          "line": 29958
         }
       ]
     },
@@ -11925,7 +11925,7 @@
         },
         {
           "file": "style.css",
-          "line": 29908
+          "line": 29949
         }
       ]
     },
@@ -17501,11 +17501,11 @@
       "selector": ".focusCorner",
       "label": "Focus Corner",
       "file": "focusMode.js",
-      "line": 157,
+      "line": 161,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 157
+          "line": 161
         },
         {
           "file": "style.css",
@@ -17517,11 +17517,11 @@
       "selector": ".focusEqBars",
       "label": "Focus Eq Bars",
       "file": "focusMode.js",
-      "line": 173,
+      "line": 177,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 173
+          "line": 177
         },
         {
           "file": "style.css",
@@ -17533,15 +17533,15 @@
       "selector": ".focusExitDot",
       "label": "Focus Exit Dot",
       "file": "focusMode.js",
-      "line": 337,
+      "line": 362,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 337
+          "line": 362
         },
         {
           "file": "style.css",
-          "line": 28831
+          "line": 28872
         }
       ]
     },
@@ -17549,15 +17549,15 @@
       "selector": ".focusExitPill",
       "label": "Focus Exit Pill",
       "file": "focusMode.js",
-      "line": 335,
+      "line": 360,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 335
+          "line": 360
         },
         {
           "file": "style.css",
-          "line": 28812
+          "line": 28853
         }
       ]
     },
@@ -17565,11 +17565,11 @@
       "selector": ".focusMatrix",
       "label": "Focus Matrix",
       "file": "focusMode.js",
-      "line": 137,
+      "line": 141,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 137
+          "line": 141
         },
         {
           "file": "style.css",
@@ -17581,11 +17581,11 @@
       "selector": ".focusMatrixCol",
       "label": "Focus Matrix Col",
       "file": "focusMode.js",
-      "line": 145,
+      "line": 149,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 145
+          "line": 149
         },
         {
           "file": "style.css",
@@ -17609,11 +17609,11 @@
       "selector": ".focusModeOverlay",
       "label": "Focus Mode Overlay",
       "file": "focusMode.js",
-      "line": 116,
+      "line": 120,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 116
+          "line": 120
         },
         {
           "file": "style.css",
@@ -17625,11 +17625,11 @@
       "selector": ".focusMuteBtn",
       "label": "Focus Mute Btn",
       "file": "focusMode.js",
-      "line": 381,
+      "line": 406,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 381
+          "line": 406
         },
         {
           "file": "style.css",
@@ -17641,11 +17641,11 @@
       "selector": ".focusMuteIconOff",
       "label": "Focus Mute Icon Off",
       "file": "focusMode.js",
-      "line": 390,
+      "line": 415,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 390
+          "line": 415
         },
         {
           "file": "style.css",
@@ -17657,11 +17657,11 @@
       "selector": ".focusMuteIconOn",
       "label": "Focus Mute Icon On",
       "file": "focusMode.js",
-      "line": 386,
+      "line": 411,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 386
+          "line": 411
         },
         {
           "file": "style.css",
@@ -17673,11 +17673,11 @@
       "selector": ".focusNebula",
       "label": "Focus Nebula",
       "file": "focusMode.js",
-      "line": 130,
+      "line": 134,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 130
+          "line": 134
         },
         {
           "file": "style.css",
@@ -17689,11 +17689,11 @@
       "selector": ".focusNowPlaying",
       "label": "Focus Now Playing",
       "file": "focusMode.js",
-      "line": 164,
+      "line": 168,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 164
+          "line": 168
         },
         {
           "file": "style.css",
@@ -17705,15 +17705,15 @@
       "selector": ".focusPlayGlyph",
       "label": "Focus Play Glyph",
       "file": "focusMode.js",
-      "line": 317,
+      "line": 342,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 317
+          "line": 342
         },
         {
           "file": "style.css",
-          "line": 28779
+          "line": 28820
         }
       ]
     },
@@ -17721,15 +17721,15 @@
       "selector": ".focusPlayGlyphPause",
       "label": "Focus Play Glyph Pause",
       "file": "focusMode.js",
-      "line": 323,
+      "line": 348,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 323
+          "line": 348
         },
         {
           "file": "style.css",
-          "line": 28809
+          "line": 28850
         }
       ]
     },
@@ -17737,15 +17737,31 @@
       "selector": ".focusPlayGlyphPlay",
       "label": "Focus Play Glyph Play",
       "file": "focusMode.js",
-      "line": 321,
+      "line": 346,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 321
+          "line": 346
         },
         {
           "file": "style.css",
-          "line": 28808
+          "line": 28849
+        }
+      ]
+    },
+    {
+      "selector": ".focusPomoDetails",
+      "label": "Focus Pomo Details",
+      "file": "focusMode.js",
+      "line": 255,
+      "files": [
+        {
+          "file": "focusMode.js",
+          "line": 255
+        },
+        {
+          "file": "style.css",
+          "line": 28558
         }
       ]
     },
@@ -17753,15 +17769,15 @@
       "selector": ".focusPomoDot",
       "label": "Focus Pomo Dot",
       "file": "focusMode.js",
-      "line": 227,
+      "line": 249,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 227
+          "line": 249
         },
         {
           "file": "style.css",
-          "line": 28631
+          "line": 28672
         }
       ]
     },
@@ -17769,15 +17785,15 @@
       "selector": ".focusPomoDots",
       "label": "Focus Pomo Dots",
       "file": "focusMode.js",
-      "line": 223,
+      "line": 245,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 223
+          "line": 245
         },
         {
           "file": "style.css",
-          "line": 28626
+          "line": 28667
         }
       ]
     },
@@ -17785,15 +17801,15 @@
       "selector": ".focusPomoDuration",
       "label": "Focus Pomo Duration",
       "file": "focusMode.js",
-      "line": 216,
+      "line": 238,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 216
+          "line": 238
         },
         {
           "file": "style.css",
-          "line": 28621
+          "line": 28662
         }
       ]
     },
@@ -17801,15 +17817,15 @@
       "selector": ".focusPomoLabel",
       "label": "Focus Pomo Label",
       "file": "focusMode.js",
-      "line": 211,
+      "line": 233,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 211
+          "line": 233
         },
         {
           "file": "style.css",
-          "line": 28608
+          "line": 28649
         }
       ]
     },
@@ -17817,15 +17833,15 @@
       "selector": ".focusPomoName",
       "label": "Focus Pomo Name",
       "file": "focusMode.js",
-      "line": 214,
+      "line": 236,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 214
+          "line": 236
         },
         {
           "file": "style.css",
-          "line": 28616
+          "line": 28657
         }
       ]
     },
@@ -17833,15 +17849,15 @@
       "selector": ".focusPomoSep",
       "label": "Focus Pomo Sep",
       "file": "focusMode.js",
-      "line": 239,
+      "line": 264,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 239
+          "line": 264
         },
         {
           "file": "style.css",
-          "line": 28577
+          "line": 28618
         }
       ]
     },
@@ -17849,15 +17865,15 @@
       "selector": ".focusPomoStep",
       "label": "Focus Pomo Step",
       "file": "focusMode.js",
-      "line": 736,
+      "line": 761,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 736
+          "line": 761
         },
         {
           "file": "style.css",
-          "line": 28584
+          "line": 28625
         }
       ]
     },
@@ -17865,15 +17881,15 @@
       "selector": ".focusPomoStepper",
       "label": "Focus Pomo Stepper",
       "file": "focusMode.js",
-      "line": 207,
+      "line": 229,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 207
+          "line": 229
         },
         {
           "file": "style.css",
-          "line": 28562
+          "line": 28603
         }
       ]
     },
@@ -17881,11 +17897,11 @@
       "selector": ".focusPomoWrap",
       "label": "Focus Pomo Wrap",
       "file": "focusMode.js",
-      "line": 205,
+      "line": 218,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 205
+          "line": 218
         },
         {
           "file": "style.css",
@@ -17897,11 +17913,11 @@
       "selector": ".focusScene",
       "label": "Focus Scene",
       "file": "focusMode.js",
-      "line": 125,
+      "line": 129,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 125
+          "line": 129
         },
         {
           "file": "style.css",
@@ -17913,11 +17929,11 @@
       "selector": ".focusSessionBtn",
       "label": "Focus Session Btn",
       "file": "focusMode.js",
-      "line": 184,
+      "line": 188,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 184
+          "line": 188
         },
         {
           "file": "style.css",
@@ -17929,11 +17945,11 @@
       "selector": ".focusSessionPause",
       "label": "Focus Session Pause",
       "file": "focusMode.js",
-      "line": 191,
+      "line": 195,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 191
+          "line": 195
         },
         {
           "file": "style.css",
@@ -17945,11 +17961,11 @@
       "selector": ".focusSessionPlay",
       "label": "Focus Session Play",
       "file": "focusMode.js",
-      "line": 189,
+      "line": 193,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 189
+          "line": 193
         },
         {
           "file": "style.css",
@@ -17961,11 +17977,11 @@
       "selector": ".focusShootingStar",
       "label": "Focus Shooting Star",
       "file": "focusMode.js",
-      "line": 136,
+      "line": 140,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 136
+          "line": 140
         },
         {
           "file": "style.css",
@@ -17977,11 +17993,11 @@
       "selector": ".focusStars",
       "label": "Focus Stars",
       "file": "focusMode.js",
-      "line": 128,
+      "line": 132,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 128
+          "line": 132
         },
         {
           "file": "style.css",
@@ -17993,11 +18009,11 @@
       "selector": ".focusStationLabel",
       "label": "Focus Station Label",
       "file": "focusMode.js",
-      "line": 176,
+      "line": 180,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 176
+          "line": 180
         },
         {
           "file": "style.css",
@@ -18009,22 +18025,6 @@
       "selector": ".focusThemeBtn",
       "label": "Focus Theme Btn",
       "file": "focusMode.js",
-      "line": 268,
-      "files": [
-        {
-          "file": "focusMode.js",
-          "line": 268
-        },
-        {
-          "file": "style.css",
-          "line": 28686
-        }
-      ]
-    },
-    {
-      "selector": ".focusThemeCard",
-      "label": "Focus Theme Card",
-      "file": "focusMode.js",
       "line": 293,
       "files": [
         {
@@ -18033,7 +18033,23 @@
         },
         {
           "file": "style.css",
-          "line": 28723
+          "line": 28727
+        }
+      ]
+    },
+    {
+      "selector": ".focusThemeCard",
+      "label": "Focus Theme Card",
+      "file": "focusMode.js",
+      "line": 318,
+      "files": [
+        {
+          "file": "focusMode.js",
+          "line": 318
+        },
+        {
+          "file": "style.css",
+          "line": 28764
         }
       ]
     },
@@ -18041,15 +18057,15 @@
       "selector": ".focusThemeCardLabel",
       "label": "Focus Theme Card Label",
       "file": "focusMode.js",
-      "line": 298,
+      "line": 323,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 298
+          "line": 323
         },
         {
           "file": "style.css",
-          "line": 28767
+          "line": 28808
         }
       ]
     },
@@ -18057,15 +18073,15 @@
       "selector": ".focusThemePopover",
       "label": "Focus Theme Popover",
       "file": "focusMode.js",
-      "line": 287,
+      "line": 312,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 287
+          "line": 312
         },
         {
           "file": "style.css",
-          "line": 28710
+          "line": 28751
         }
       ]
     },
@@ -18073,15 +18089,15 @@
       "selector": ".focusThemeThumb",
       "label": "Focus Theme Thumb",
       "file": "focusMode.js",
-      "line": 297,
+      "line": 322,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 297
+          "line": 322
         },
         {
           "file": "style.css",
-          "line": 28743
+          "line": 28784
         }
       ]
     },
@@ -18089,15 +18105,15 @@
       "selector": ".focusThemeWrap",
       "label": "Focus Theme Wrap",
       "file": "focusMode.js",
-      "line": 265,
+      "line": 290,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 265
+          "line": 290
         },
         {
           "file": "style.css",
-          "line": 28681
+          "line": 28722
         }
       ]
     },
@@ -18105,11 +18121,11 @@
       "selector": ".focusTwinkle",
       "label": "Focus Twinkle",
       "file": "focusMode.js",
-      "line": 133,
+      "line": 137,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 133
+          "line": 137
         },
         {
           "file": "style.css",
@@ -18121,15 +18137,15 @@
       "selector": ".focusVideoBtn",
       "label": "Focus Video Btn",
       "file": "focusMode.js",
-      "line": 247,
+      "line": 272,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 247
+          "line": 272
         },
         {
           "file": "style.css",
-          "line": 28645
+          "line": 28686
         }
       ]
     },
@@ -18137,11 +18153,11 @@
       "selector": ".focusVignette",
       "label": "Focus Vignette",
       "file": "focusMode.js",
-      "line": 138,
+      "line": 142,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 138
+          "line": 142
         },
         {
           "file": "style.css",
@@ -18153,11 +18169,11 @@
       "selector": ".focusVolumeFill",
       "label": "Focus Volume Fill",
       "file": "focusMode.js",
-      "line": 372,
+      "line": 397,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 372
+          "line": 397
         },
         {
           "file": "style.css",
@@ -18169,11 +18185,11 @@
       "selector": ".focusVolumePct",
       "label": "Focus Volume Pct",
       "file": "focusMode.js",
-      "line": 359,
+      "line": 384,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 359
+          "line": 384
         },
         {
           "file": "style.css",
@@ -18185,11 +18201,11 @@
       "selector": ".focusVolumePopover",
       "label": "Focus Volume Popover",
       "file": "focusMode.js",
-      "line": 354,
+      "line": 379,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 354
+          "line": 379
         },
         {
           "file": "style.css",
@@ -18201,11 +18217,11 @@
       "selector": ".focusVolumeRail",
       "label": "Focus Volume Rail",
       "file": "focusMode.js",
-      "line": 370,
+      "line": 395,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 370
+          "line": 395
         },
         {
           "file": "style.css",
@@ -18217,11 +18233,11 @@
       "selector": ".focusVolumeThumb",
       "label": "Focus Volume Thumb",
       "file": "focusMode.js",
-      "line": 374,
+      "line": 399,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 374
+          "line": 399
         },
         {
           "file": "style.css",
@@ -18233,11 +18249,11 @@
       "selector": ".focusVolumeTrack",
       "label": "Focus Volume Track",
       "file": "focusMode.js",
-      "line": 362,
+      "line": 387,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 362
+          "line": 387
         },
         {
           "file": "style.css",
@@ -18249,11 +18265,11 @@
       "selector": ".focusVolumeWrap",
       "label": "Focus Volume Wrap",
       "file": "focusMode.js",
-      "line": 351,
+      "line": 376,
       "files": [
         {
           "file": "focusMode.js",
-          "line": 351
+          "line": 376
         },
         {
           "file": "style.css",
@@ -21201,7 +21217,7 @@
         },
         {
           "file": "style.css",
-          "line": 29421
+          "line": 29462
         }
       ]
     },
@@ -21217,7 +21233,7 @@
         },
         {
           "file": "style.css",
-          "line": 29416
+          "line": 29457
         }
       ]
     },
@@ -21233,7 +21249,7 @@
         },
         {
           "file": "style.css",
-          "line": 29549
+          "line": 29590
         }
       ]
     },
@@ -21249,7 +21265,7 @@
         },
         {
           "file": "style.css",
-          "line": 29504
+          "line": 29545
         }
       ]
     },
@@ -21265,7 +21281,7 @@
         },
         {
           "file": "style.css",
-          "line": 29550
+          "line": 29591
         }
       ]
     },
@@ -21281,7 +21297,7 @@
         },
         {
           "file": "style.css",
-          "line": 29534
+          "line": 29575
         }
       ]
     },
@@ -21297,7 +21313,7 @@
         },
         {
           "file": "style.css",
-          "line": 29510
+          "line": 29551
         }
       ]
     },
@@ -21313,7 +21329,7 @@
         },
         {
           "file": "style.css",
-          "line": 29519
+          "line": 29560
         }
       ]
     },
@@ -22525,7 +22541,7 @@
         },
         {
           "file": "style.css",
-          "line": 29216
+          "line": 29257
         }
       ]
     },
@@ -22541,7 +22557,7 @@
         },
         {
           "file": "style.css",
-          "line": 29211
+          "line": 29252
         }
       ]
     },
@@ -22557,7 +22573,7 @@
         },
         {
           "file": "style.css",
-          "line": 29260
+          "line": 29301
         }
       ]
     },
@@ -22573,7 +22589,7 @@
         },
         {
           "file": "style.css",
-          "line": 29181
+          "line": 29222
         }
       ]
     },
@@ -22589,7 +22605,7 @@
         },
         {
           "file": "style.css",
-          "line": 29204
+          "line": 29245
         }
       ]
     },
@@ -22605,7 +22621,7 @@
         },
         {
           "file": "style.css",
-          "line": 29186
+          "line": 29227
         }
       ]
     },
@@ -22621,7 +22637,7 @@
         },
         {
           "file": "style.css",
-          "line": 29306
+          "line": 29347
         }
       ]
     },
@@ -22637,7 +22653,7 @@
         },
         {
           "file": "style.css",
-          "line": 29314
+          "line": 29355
         }
       ]
     },
@@ -22653,7 +22669,7 @@
         },
         {
           "file": "style.css",
-          "line": 29328
+          "line": 29369
         }
       ]
     },
@@ -22669,7 +22685,7 @@
         },
         {
           "file": "style.css",
-          "line": 29324
+          "line": 29365
         }
       ]
     },
@@ -22685,7 +22701,7 @@
         },
         {
           "file": "style.css",
-          "line": 29335
+          "line": 29376
         }
       ]
     },
@@ -22701,7 +22717,7 @@
         },
         {
           "file": "style.css",
-          "line": 29348
+          "line": 29389
         }
       ]
     },
@@ -22717,7 +22733,7 @@
         },
         {
           "file": "style.css",
-          "line": 29092
+          "line": 29133
         }
       ]
     },
@@ -22733,7 +22749,7 @@
         },
         {
           "file": "style.css",
-          "line": 29056
+          "line": 29097
         }
       ]
     },
@@ -22749,7 +22765,7 @@
         },
         {
           "file": "style.css",
-          "line": 29285
+          "line": 29326
         }
       ]
     },
@@ -22765,7 +22781,7 @@
         },
         {
           "file": "style.css",
-          "line": 29280
+          "line": 29321
         }
       ]
     },
@@ -22781,7 +22797,7 @@
         },
         {
           "file": "style.css",
-          "line": 29176
+          "line": 29217
         }
       ]
     },
@@ -22797,7 +22813,7 @@
         },
         {
           "file": "style.css",
-          "line": 29104
+          "line": 29145
         }
       ]
     },
@@ -22813,7 +22829,7 @@
         },
         {
           "file": "style.css",
-          "line": 29169
+          "line": 29210
         }
       ]
     },
@@ -22829,7 +22845,7 @@
         },
         {
           "file": "style.css",
-          "line": 29113
+          "line": 29154
         }
       ]
     },
@@ -22845,7 +22861,7 @@
         },
         {
           "file": "style.css",
-          "line": 29141
+          "line": 29182
         }
       ]
     },
@@ -22861,7 +22877,7 @@
         },
         {
           "file": "style.css",
-          "line": 29134
+          "line": 29175
         }
       ]
     },
@@ -22877,7 +22893,7 @@
         },
         {
           "file": "style.css",
-          "line": 29161
+          "line": 29202
         }
       ]
     },
@@ -22893,7 +22909,7 @@
         },
         {
           "file": "style.css",
-          "line": 29048
+          "line": 29089
         }
       ]
     },
@@ -22909,7 +22925,7 @@
         },
         {
           "file": "style.css",
-          "line": 29273
+          "line": 29314
         }
       ]
     },
@@ -22925,7 +22941,7 @@
         },
         {
           "file": "style.css",
-          "line": 29247
+          "line": 29288
         }
       ]
     },
@@ -22941,7 +22957,7 @@
         },
         {
           "file": "style.css",
-          "line": 29241
+          "line": 29282
         }
       ]
     },
@@ -22973,7 +22989,7 @@
         },
         {
           "file": "style.css",
-          "line": 29253
+          "line": 29294
         }
       ]
     },
@@ -22989,7 +23005,7 @@
         },
         {
           "file": "style.css",
-          "line": 29265
+          "line": 29306
         }
       ]
     },
@@ -23021,7 +23037,7 @@
         },
         {
           "file": "style.css",
-          "line": 29230
+          "line": 29271
         }
       ]
     },
@@ -31726,7 +31742,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 98,
+      "lines": 94,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -31950,7 +31966,7 @@
     },
     {
       "path": "focusMode.js",
-      "lines": 917,
+      "lines": 967,
       "imports": [
         "music.js",
         "pomodoro.js",
