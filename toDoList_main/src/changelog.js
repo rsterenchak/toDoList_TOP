@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             'Tapping focus mode\'s now-playing chip plays or pauses the music, with a brief play or pause icon fading in and out at the centre of the page.',
         ],
+        changed: [
+            'Focus mode\'s pomodoro pill now shrinks to just its play button, revealing the mode arrows, name and dots when you hover or focus it, or tap it on touch screens.',
+        ],
     },
     {
         version: '1.1',
@@ -23,13 +26,6 @@ export const changelog = [
         changed: [
             'Focus mode\'s session button now has a mode selector beneath it, letting you step between Focus, Short break and Long break with arrows, see the armed mode and its length, and track it with three dots.',
             'Focus mode\'s pomodoro selector now sits in a single horizontal pill beside the other corner buttons, with the play button, arrows, mode name and dots in one line.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-10-31',
-        fixed: [
-            'Model names in the Models panel now show in full, with each workflow\'s note on its own line beneath the model instead of squeezing it.',
         ],
     },
 ];
