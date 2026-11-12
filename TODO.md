@@ -3190,7 +3190,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Completed: YYYY-MM-DD (PR #<number>)
   <!-- id: 98062320-7394-4ff3-9af3-f94367b163df -->
 
-- [ ] **[MEDIUM]** Add "Rainforest" night-rainforest focus scene as a third focus theme
+- [x] **[MEDIUM]** Add "Rainforest" night-rainforest focus scene as a third focus theme — Completed: 2026-11-11
   - Type: feature
   - Description: Add `'rainforest'` as a third entry in `FOCUS_THEMES` in `toDoList_main/src/prefs.js` (after `'stars'` and `'matrix'`), and add its label ("Rainforest") to `FOCUS_THEME_LABELS` in `toDoList_main/src/focusMode.js`. In `buildOverlay()` in `focusMode.js`, add rainforest layers to the `scene.innerHTML` markup — a dark sky gradient, a star field in the upper half, layered jungle-ridge SVG silhouettes (trunks + foliage), a bottom water/ground pool with ripple rings, and two rotated rain sheets with a vertical mask animation — plus a `'rainforest'` thumbnail class on the generated picker card. In `toDoList_main/src/style.css`, add a `.focusScene--rainforest` ruleset and `.focusThemeThumb--rainforest` thumb, and hide the star-only, nebula, twinkle, shooting-star, and matrix layers when the rainforest scene is active (mirroring the existing `.focusScene--matrix` hiding rules) so the two scenes never overlap. Keep it pure CSS/SVG with no new dependencies, use only existing CSS variables and dark-theme-appropriate colors, and honor `@media (prefers-reduced-motion: reduce)` by disabling the rain, ripple, and lightning animations.
   - File: `toDoList_main/src/focusMode.js`, `toDoList_main/src/prefs.js`, `toDoList_main/src/style.css`
