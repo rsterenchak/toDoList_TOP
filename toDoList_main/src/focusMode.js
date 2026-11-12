@@ -32,7 +32,8 @@
 // the page — one reused element, so rapid toggles restart the fade.
 //
 // A fourth corner control opens a small popover for picking the scene
-// itself — the star field or a "matrix" rain of falling glyphs. Both variants
+// itself — the star field, a "matrix" rain of falling glyphs, or a night
+// rainforest (jungle silhouettes, rain sheets, a rippling pool). All variants
 // live in `.focusScene` and a modifier class shows one; the choice is the one
 // piece of focus mode that IS persisted (`todoapp_focusTheme`, via prefs.js),
 // read when the overlay is built.
@@ -41,13 +42,51 @@ import { ensureMusic, getMusicPlayerFrame } from './music.js';
 import { ensurePomodoro, DEFAULT_DURATIONS, MODE_LABEL, POMODORO_MODES } from './pomodoro.js';
 import { getFocusTheme, setFocusTheme, FOCUS_THEMES } from './prefs.js';
 
-const FOCUS_THEME_LABELS = { stars: 'Stars', matrix: 'Matrix' };
+const FOCUS_THEME_LABELS = { stars: 'Stars', matrix: 'Matrix', rainforest: 'Rainforest' };
 
 // Matrix rain: a fixed set of glyph columns, each falling at its own pace.
 // Half-width katakana plus digits and a few latin capitals, the classic mix.
 const MATRIX_COLUMNS = 28;
 const MATRIX_GLYPHS_PER_COLUMN = 26;
 const MATRIX_GLYPHS = 'ｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ0123456789ZXEKTRAQ';
+
+// Rainforest scene: a night sky with its own upper-half star field, two
+// layered jungle ridges (trunks + canopy) as inline SVG silhouettes, a dark
+// pool with ripple rings at the bottom, an occasional lightning wash, and two
+// rotated rain sheets. Everything animates in CSS, gated on the active class.
+const RAINFOREST_RIDGE_FAR =
+    '<svg class="focusRfRidge focusRfRidge--far" viewBox="0 0 1200 300" preserveAspectRatio="none">' +
+    '<path d="M0 300V170c40-30 80-46 120-34 30-40 80-58 130-36 40-34 96-40 140-8 36-30 92-36 130-4 ' +
+    '44-38 104-44 150-10 40-28 96-30 136 2 46-34 110-36 150 0 44-26 100-26 144 8 40-24 80-20 100 4V300Z"/>' +
+    '<rect x="208" y="40" width="5" height="90"/><ellipse cx="210" cy="40" rx="46" ry="16"/>' +
+    '<rect x="736" y="26" width="5" height="90"/><ellipse cx="738" cy="28" rx="54" ry="18"/>' +
+    '<rect x="1046" y="50" width="4" height="70"/><ellipse cx="1048" cy="50" rx="40" ry="14"/>' +
+    '</svg>';
+const RAINFOREST_RIDGE_NEAR =
+    '<svg class="focusRfRidge focusRfRidge--near" viewBox="0 0 1200 300" preserveAspectRatio="none">' +
+    '<path d="M0 300V200c30-46 90-70 140-44 20-52 96-70 140-26 30-30 80-34 110 0 34-60 118-74 170-24 ' +
+    '30-26 76-26 104 6 40-56 128-64 176-14 26-22 70-22 96 8 34-44 104-52 150-12 30-24 74-24 104 6l10 4V300Z"/>' +
+    '<rect x="420" y="40" width="9" height="110"/><ellipse cx="424" cy="42" rx="60" ry="20"/>' +
+    '<ellipse cx="392" cy="56" rx="34" ry="12"/><ellipse cx="458" cy="58" rx="36" ry="12"/>' +
+    '<rect x="1000" y="64" width="8" height="80"/><ellipse cx="1004" cy="64" rx="50" ry="17"/>' +
+    '<path d="M60 300c10-40 30-70 56-84-6 30-4 60 8 84Z"/><path d="M560 300c12-46 36-74 64-86-8 34-6 62 6 86Z"/>' +
+    '<path d="M1020 300c8-36 26-62 50-74-4 28-2 52 8 74Z"/>' +
+    '</svg>';
+const RAINFOREST_MARKUP =
+    '<div class="focusRainforest">' +
+        '<div class="focusRfSky"></div>' +
+        '<div class="focusRfStars"></div>' +
+        '<div class="focusRfLightning"></div>' +
+        RAINFOREST_RIDGE_FAR +
+        RAINFOREST_RIDGE_NEAR +
+        '<div class="focusRfPool">' +
+            '<span class="focusRfRipple focusRfRipple--1"></span>' +
+            '<span class="focusRfRipple focusRfRipple--2"></span>' +
+            '<span class="focusRfRipple focusRfRipple--3"></span>' +
+        '</div>' +
+        '<div class="focusRfRain focusRfRain--1"></div>' +
+        '<div class="focusRfRain focusRfRain--2"></div>' +
+    '</div>';
 
 function randomGlyphs(n) {
     let out = '';
@@ -89,7 +128,7 @@ export function createFocusMode(doc) {
     let sceneEl      = null;   // .focusScene — carries the theme modifier
     let themeWrap    = null;   // anchor for the theme button + popover
     let themeBtn     = null;   // round icon-only theme picker button
-    let themePopover = null;   // two-card scene picker
+    let themePopover = null;   // scene picker cards
     let themeOpen    = false;
     let onThemeOutside = null; // outside-click closer, bound only while open
     let theme        = 'stars';
@@ -139,6 +178,7 @@ export function createFocusMode(doc) {
             '<div class="focusTwinkle focusTwinkle--3"></div>' +
             '<div class="focusShootingStar"></div>' +
             '<div class="focusMatrix"></div>' +
+            RAINFOREST_MARKUP +
             '<div class="focusVignette"></div>';
         // Matrix columns: per-column position, speed and delay are computed
         // here (custom properties), the fall itself is a CSS keyframe gated
@@ -284,7 +324,7 @@ export function createFocusMode(doc) {
         corner.appendChild(volumeWrap);
         corner.appendChild(pomoWrap);
         corner.appendChild(pomoSep);
-        // Scene picker: a round button opening a two-card popover anchored
+        // Scene picker: a round button opening a card popover anchored
         // above it. Closes on picking a card, clicking outside, or Escape.
         themeWrap = doc.createElement('div');
         themeWrap.className = 'focusThemeWrap';
@@ -637,7 +677,7 @@ export function createFocusMode(doc) {
         }
     }
 
-    // ── Scene theme — stars ⇄ matrix ──
+    // ── Scene theme — stars / matrix / rainforest ──
     function applyFocusTheme(name) {
         theme = FOCUS_THEMES.indexOf(name) !== -1 ? name : 'stars';
         if (sceneEl) {
