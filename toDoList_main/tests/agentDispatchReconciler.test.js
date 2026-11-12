@@ -8,11 +8,15 @@ import { vi, beforeEach, afterEach, describe, it, expect } from 'vitest';
 // spies (the same setDispatchReconcilerDeps seam inject.js registers in
 // production), so no board and no network is involved.
 
+// Rows the stubbed all-projects select returns — empty by default; the
+// give-up-window tests seed it so the interval's in-flight read sees a row.
+const mockDb = vi.hoisted(() => ({ rows: [] }));
+
 vi.mock('../src/supabaseClient.js', () => ({
     supabase: {
         from: () => ({
             select: () => {
-                const result = Promise.resolve({ data: [], error: null });
+                const result = Promise.resolve({ data: mockDb.rows, error: null });
                 result.eq = () => Promise.resolve({ data: [], error: null });
                 return result;
             },
@@ -30,6 +34,7 @@ import {
     settleShippedRows,
     evaluateReconciler,
     isReconcilePollerActive,
+    loadAllQueueRows,
     stopDispatchReconciler,
 } from '../src/agentQueueStore.js';
 
@@ -64,6 +69,8 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+    vi.useRealTimers();
+    mockDb.rows = [];
     stopDispatchReconciler();
     setDispatchReconcilerDeps(null);
     vi.restoreAllMocks();
@@ -289,5 +296,55 @@ describe('evaluateReconciler — the interval follows what is in flight', () => 
     it('does not arm the poller for a row missing its dispatch ids', () => {
         evaluateReconciler([{ id: 'r1', state: 'dispatched' }]);
         expect(isReconcilePollerActive()).toBe(false);
+    });
+});
+
+describe('reconcileTick — sliding give-up window', () => {
+    const POLL_MS = 5000;
+    const GIVE_UP_MS = 15 * 60 * 1000;
+    const row = { id: 'r1', state: 'running', entry_id: 'e1', correlation_id: 'c1' };
+
+    async function armWith(rows) {
+        vi.useFakeTimers();
+        mockDb.rows = rows;
+        await loadAllQueueRows();
+        evaluateReconciler();
+    }
+
+    it('keeps polling a run that reports in_progress past 15 minutes, then settles it to shipped', async () => {
+        deps.pollRunStatus.mockResolvedValue({ ok: true, found: true, status: 'in_progress' });
+        await armWith([row]);
+        expect(isReconcilePollerActive()).toBe(true);
+
+        // A healthy build running well past the old fixed 15-minute window.
+        await vi.advanceTimersByTimeAsync(GIVE_UP_MS + 5 * 60 * 1000);
+        const callsAfterLongRun = deps.pollRunStatus.mock.calls.length;
+        evaluateReconciler();
+        expect(isReconcilePollerActive()).toBe(true);
+
+        // Still polled on the next tick — not added to the given-up set.
+        await vi.advanceTimersByTimeAsync(POLL_MS);
+        expect(deps.pollRunStatus.mock.calls.length).toBeGreaterThan(callsAfterLongRun);
+
+        // The run completes: it settles to shipped within one poll cycle, no reload.
+        deps.pollRunStatus.mockResolvedValue({ ok: true, found: true, status: 'completed', conclusion: 'success', runId: 42 });
+        deps.resolveEntryRunState.mockReturnValue('shipped');
+        await vi.advanceTimersByTimeAsync(POLL_MS);
+        expect(shippedCalls('r1')).toHaveLength(1);
+        expect(findCall('r1', 'shipped')[1].run_id).toBe(42);
+    });
+
+    it('still gives up on a row with no alive signal for 15 minutes', async () => {
+        deps.pollRunStatus.mockResolvedValue({ ok: true, found: false });
+        await armWith([row]);
+
+        await vi.advanceTimersByTimeAsync(GIVE_UP_MS + POLL_MS);
+        const callsAtGiveUp = deps.pollRunStatus.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(10 * POLL_MS);
+        expect(deps.pollRunStatus.mock.calls.length).toBe(callsAtGiveUp);
+
+        evaluateReconciler();
+        expect(isReconcilePollerActive()).toBe(false);
+        expect(shippedCalls('r1')).toHaveLength(0);
     });
 });

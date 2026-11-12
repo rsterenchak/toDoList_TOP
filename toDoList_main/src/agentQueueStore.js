@@ -544,8 +544,9 @@ const RECONCILE_FAILURE_CONCLUSIONS = ['failure', 'cancelled', 'timed_out'];
 
 let _reconcilerStarted = false;
 let _reconcilePoller = null;
-// rowId → ms first watched; the give-up window's anchor. Set the first tick a row
-// is seen in flight (its real dispatch time is unknown for a stranded row).
+// rowId → ms of the last alive signal; the give-up window's anchor. Set the first
+// tick a row is seen in flight (its real dispatch time is unknown for a stranded
+// row), then refreshed whenever a poll reports the run queued or in progress.
 const _rowStartedAt = new Map();
 // rowIds past the give-up window: skip status-polling them, but the checkbox
 // backlog pass can still settle a genuinely-shipped one.
@@ -761,6 +762,10 @@ export function reconcileDispatchRow(row) {
                 }
                 return; // neutral / skipped / no conclusion — keep polling
             }
+            // The run is alive (queued / in progress): slide the give-up window
+            // forward so a healthy long build never ages out. The window only trips
+            // after RECONCILE_GIVE_UP_MS with no alive signal.
+            _rowStartedAt.set(rowId, Date.now());
             const desired = res.status === 'queued' ? 'dispatched' : 'running';
             if (row.state !== desired) {
                 return listLogic.setAgentRunState(rowId, { state: desired }).then(refreshQueueAndNotify);
