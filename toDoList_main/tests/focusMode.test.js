@@ -578,7 +578,7 @@ describe('focus mode — scene theme picker', () => {
         f.destroy();
     });
 
-    it('opens a two-card popover; picking Matrix swaps the scene, marks the card and persists', () => {
+    it('opens a three-card popover; picking Matrix swaps the scene, marks the card and persists', () => {
         const f = open();
         const btn = document.querySelector('.focusThemeBtn');
         const pop = document.querySelector('.focusThemePopover');
@@ -586,7 +586,7 @@ describe('focus mode — scene theme picker', () => {
         expect(pop.classList.contains('focusThemePopover--open')).toBe(true);
         expect(btn.getAttribute('aria-expanded')).toBe('true');
         const cards = pop.querySelectorAll('.focusThemeCard');
-        expect(Array.from(cards).map(c => c.textContent.trim())).toEqual(['Stars', 'Matrix']);
+        expect(Array.from(cards).map(c => c.textContent.trim())).toEqual(['Stars', 'Matrix', 'Rainforest']);
         pop.querySelector('[data-focus-theme="matrix"]').click();
         const scene = document.querySelector('.focusScene');
         expect(scene.classList.contains('focusScene--matrix')).toBe(true);
@@ -596,6 +596,45 @@ describe('focus mode — scene theme picker', () => {
         expect(localStorage.getItem('todoapp_focusTheme')).toBe('matrix');
         // Selecting a card closes the popover.
         expect(pop.classList.contains('focusThemePopover--open')).toBe(false);
+        f.destroy();
+    });
+
+    it('picking Rainforest swaps the scene to the rainforest layers, marks the card and persists', () => {
+        const f = open();
+        document.querySelector('.focusThemeBtn').click();
+        const pop = document.querySelector('.focusThemePopover');
+        const card = pop.querySelector('[data-focus-theme="rainforest"]');
+        expect(card.querySelector('.focusThemeThumb--rainforest')).not.toBeNull();
+        card.click();
+        const scene = document.querySelector('.focusScene');
+        expect(scene.classList.contains('focusScene--rainforest')).toBe(true);
+        expect(scene.classList.contains('focusScene--stars')).toBe(false);
+        expect(scene.classList.contains('focusScene--matrix')).toBe(false);
+        expect(card.classList.contains('focusThemeCard--active')).toBe(true);
+        expect(card.getAttribute('aria-checked')).toBe('true');
+        expect(localStorage.getItem('todoapp_focusTheme')).toBe('rainforest');
+        expect(pop.classList.contains('focusThemePopover--open')).toBe(false);
+        f.destroy();
+    });
+
+    it('builds the rainforest layers beneath the vignette', () => {
+        const f = open();
+        const scene = document.querySelector('.focusScene');
+        const rf = scene.querySelector('.focusRainforest');
+        expect(rf).not.toBeNull();
+        ['.focusRfSky', '.focusRfStars', '.focusRfLightning', '.focusRfRidge--far',
+            '.focusRfRidge--near', '.focusRfPool', '.focusRfRain--1', '.focusRfRain--2'].forEach(sel => {
+            expect(rf.querySelector(sel)).not.toBeNull();
+        });
+        expect(rf.querySelectorAll('.focusRfPool .focusRfRipple').length).toBe(3);
+        expect(scene.lastElementChild.classList.contains('focusVignette')).toBe(true);
+        f.destroy();
+    });
+
+    it('reads a persisted rainforest theme when the overlay is built', () => {
+        localStorage.setItem('todoapp_focusTheme', 'rainforest');
+        const f = open();
+        expect(document.querySelector('.focusScene').classList.contains('focusScene--rainforest')).toBe(true);
         f.destroy();
     });
 
@@ -653,6 +692,37 @@ describe('focus mode — scene theme CSS hooks', () => {
     it('disables the matrix fall under prefers-reduced-motion', () => {
         const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {\n  .focusModeOverlay--active { animation: none; }'));
         expect(block).toMatch(/\.focusModeOverlay--active\s+\.focusScene--matrix\s+\.focusMatrixCol,/);
+    });
+});
+
+describe('focus mode — rainforest scene CSS hooks', () => {
+    const css = read('style.css');
+
+    it('shows the rainforest only under its modifier and hides the other scenes there', () => {
+        expect(css).toMatch(/\.focusScene--rainforest\s+\.focusRainforest\s*\{\s*display:\s*block/);
+        const hide = css.match(/(\.focusScene--rainforest\s+\.focus\w+,\s*)+\.focusScene--rainforest\s+\.focus\w+\s*\{\s*display:\s*none/);
+        expect(hide).not.toBeNull();
+        ['focusStars', 'focusNebula', 'focusTwinkle', 'focusShootingStar', 'focusMatrix'].forEach(cls => {
+            expect(hide[0]).toMatch(new RegExp('\\.focusScene--rainforest\\s+\\.' + cls + '\\b'));
+        });
+    });
+
+    it('gates the rain, ripple and lightning animations on the active overlay class', () => {
+        expect(css).toMatch(/\.focusModeOverlay--active\s+\.focusRfRain--1\s*\{\s*animation:/);
+        expect(css).toMatch(/\.focusModeOverlay--active\s+\.focusRfRipple--1\s*\{\s*animation:/);
+        expect(css).toMatch(/\.focusModeOverlay--active\s+\.focusRfLightning\s*\{\s*animation:/);
+    });
+
+    it('styles a rainforest picker thumbnail', () => {
+        expect(css).toMatch(/\.focusThemeThumb--rainforest\s*\{/);
+    });
+
+    it('disables the rain, ripple and lightning animations under prefers-reduced-motion', () => {
+        const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {\n  .focusModeOverlay--active { animation: none; }'));
+        const rule = block.slice(0, block.indexOf('animation: none;\n  }'));
+        ['focusRfRain--1', 'focusRfRain--2', 'focusRfRipple--1', 'focusRfRipple--2', 'focusRfRipple--3', 'focusRfLightning'].forEach(cls => {
+            expect(rule).toMatch(new RegExp('\\.focusModeOverlay--active\\s+\\.' + cls + '[,\\s]'));
+        });
     });
 });
 
