@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-12',
+        fixed: [
+            'Tasks whose agent run takes longer than 15 minutes now flip to Review on their own when the run finishes, without needing a page reload.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-11',
         added: [
             'Tapping focus mode\'s now-playing chip plays or pauses the music, with a brief play or pause icon fading in and out at the centre of the page.',
@@ -13,13 +20,6 @@ export const changelog = [
         ],
         changed: [
             'Focus mode\'s pomodoro pill now shrinks to just its play button, revealing the mode arrows, name and dots when you hover or focus it, or tap it on touch screens.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-11-10',
-        added: [
-            'Hovering, tapping or long-pressing focus mode\'s now-playing chip reveals a volume slider with a mute toggle.',
         ],
     },
 ];
