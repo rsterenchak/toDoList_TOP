@@ -9,6 +9,7 @@ export const changelog = [
         added: [
             'Tapping focus mode\'s now-playing chip plays or pauses the music, with a brief play or pause icon fading in and out at the centre of the page.',
             'Focus mode has a new Rainforest scene — a rainy night jungle with drifting rain, rippling water and the odd flash of lightning — alongside Stars and Matrix.',
+            'Focus mode has a new Aurora scene — slow-drifting teal and violet light bands over layered mountain ridges under the stars.',
         ],
         changed: [
             'Focus mode\'s pomodoro pill now shrinks to just its play button, revealing the mode arrows, name and dots when you hover or focus it, or tap it on touch screens.',
@@ -19,13 +20,6 @@ export const changelog = [
         date: '2026-11-10',
         added: [
             'Hovering, tapping or long-pressing focus mode\'s now-playing chip reveals a volume slider with a mute toggle.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-11-08',
-        changed: [
-            'Focus mode\'s pomodoro selector now sits in a single horizontal pill beside the other corner buttons, with the play button, arrows, mode name and dots in one line.',
         ],
     },
 ];
