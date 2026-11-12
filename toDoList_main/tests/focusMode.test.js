@@ -578,7 +578,7 @@ describe('focus mode — scene theme picker', () => {
         f.destroy();
     });
 
-    it('opens a three-card popover; picking Matrix swaps the scene, marks the card and persists', () => {
+    it('opens a four-card popover; picking Matrix swaps the scene, marks the card and persists', () => {
         const f = open();
         const btn = document.querySelector('.focusThemeBtn');
         const pop = document.querySelector('.focusThemePopover');
@@ -586,7 +586,7 @@ describe('focus mode — scene theme picker', () => {
         expect(pop.classList.contains('focusThemePopover--open')).toBe(true);
         expect(btn.getAttribute('aria-expanded')).toBe('true');
         const cards = pop.querySelectorAll('.focusThemeCard');
-        expect(Array.from(cards).map(c => c.textContent.trim())).toEqual(['Stars', 'Matrix', 'Rainforest']);
+        expect(Array.from(cards).map(c => c.textContent.trim())).toEqual(['Stars', 'Matrix', 'Rainforest', 'Aurora']);
         pop.querySelector('[data-focus-theme="matrix"]').click();
         const scene = document.querySelector('.focusScene');
         expect(scene.classList.contains('focusScene--matrix')).toBe(true);
@@ -635,6 +635,48 @@ describe('focus mode — scene theme picker', () => {
         localStorage.setItem('todoapp_focusTheme', 'rainforest');
         const f = open();
         expect(document.querySelector('.focusScene').classList.contains('focusScene--rainforest')).toBe(true);
+        f.destroy();
+    });
+
+    it('picking Aurora swaps the scene to the aurora layers, marks the card and persists', () => {
+        const f = open();
+        document.querySelector('.focusThemeBtn').click();
+        const pop = document.querySelector('.focusThemePopover');
+        const card = pop.querySelector('[data-focus-theme="aurora"]');
+        expect(card.querySelector('.focusThemeThumb--aurora')).not.toBeNull();
+        card.click();
+        const scene = document.querySelector('.focusScene');
+        expect(scene.classList.contains('focusScene--aurora')).toBe(true);
+        ['stars', 'matrix', 'rainforest'].forEach(t => {
+            expect(scene.classList.contains('focusScene--' + t)).toBe(false);
+        });
+        expect(card.classList.contains('focusThemeCard--active')).toBe(true);
+        expect(card.getAttribute('aria-checked')).toBe('true');
+        expect(localStorage.getItem('todoapp_focusTheme')).toBe('aurora');
+        expect(pop.classList.contains('focusThemePopover--open')).toBe(false);
+        f.destroy();
+    });
+
+    it('builds the aurora layers above the shared star field and beneath the vignette', () => {
+        const f = open();
+        const scene = document.querySelector('.focusScene');
+        const au = scene.querySelector('.focusAurora');
+        expect(au).not.toBeNull();
+        ['.focusAuroraBase', '.focusAuroraBand--1', '.focusAuroraBand--2',
+            '.focusAuroraRidge--back', '.focusAuroraRidge--front'].forEach(sel => {
+            expect(au.querySelector(sel)).not.toBeNull();
+        });
+        expect(scene.querySelector('.focusStars')).not.toBeNull();
+        expect(scene.lastElementChild.classList.contains('focusVignette')).toBe(true);
+        expect(scene.lastElementChild.previousElementSibling).toBe(au);
+        f.destroy();
+    });
+
+    it('reads a persisted aurora theme when the overlay is built', () => {
+        localStorage.setItem('todoapp_focusTheme', 'aurora');
+        const f = open();
+        expect(document.querySelector('.focusScene').classList.contains('focusScene--aurora')).toBe(true);
+        expect(document.querySelector('[data-focus-theme="aurora"]').getAttribute('aria-checked')).toBe('true');
         f.destroy();
     });
 
@@ -721,6 +763,55 @@ describe('focus mode — rainforest scene CSS hooks', () => {
         const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {\n  .focusModeOverlay--active { animation: none; }'));
         const rule = block.slice(0, block.indexOf('animation: none;\n  }'));
         ['focusRfRain--1', 'focusRfRain--2', 'focusRfRipple--1', 'focusRfRipple--2', 'focusRfRipple--3', 'focusRfLightning'].forEach(cls => {
+            expect(rule).toMatch(new RegExp('\\.focusModeOverlay--active\\s+\\.' + cls + '[,\\s]'));
+        });
+    });
+});
+
+describe('focus mode — aurora scene CSS hooks', () => {
+    const css = read('style.css');
+
+    it('shows the aurora only under its modifier and hides the other scenes but keeps the stars', () => {
+        expect(css).toMatch(/\.focusScene--aurora\s+\.focusAurora\s*\{\s*display:\s*block/);
+        const hide = css.match(/(\.focusScene--aurora\s+\.focus\w+,\s*)+\.focusScene--aurora\s+\.focus\w+\s*\{\s*display:\s*none/);
+        expect(hide).not.toBeNull();
+        ['focusNebula', 'focusTwinkle', 'focusShootingStar', 'focusMatrix', 'focusRainforest'].forEach(cls => {
+            expect(hide[0]).toMatch(new RegExp('\\.focusScene--aurora\\s+\\.' + cls + '\\b'));
+        });
+        expect(hide[0]).not.toMatch(/\.focusScene--aurora\s+\.focusStars\b/);
+    });
+
+    it('keeps the aurora hidden by default so other scenes never show it', () => {
+        expect(css).toMatch(/\.focusAurora\s*\{[^}]*display:\s*none/);
+    });
+
+    it('drifts the bands with a translate keyframe gated on the active overlay class', () => {
+        expect(css).toMatch(/\.focusModeOverlay--active\s+\.focusAuroraBand--1\s*\{\s*animation:\s*focusAuroraDrift/);
+        expect(css).toMatch(/\.focusModeOverlay--active\s+\.focusAuroraBand--2\s*\{\s*animation:\s*focusAuroraDrift/);
+        const kf = css.slice(css.indexOf('@keyframes focusAuroraDrift'));
+        expect(kf.slice(0, kf.indexOf('}\n}'))).toMatch(/translate:/);
+        expect(css).not.toMatch(/^\.focusAuroraBand[^{]*\{[^}]*animation:/m);
+    });
+
+    it('cuts the ridges with clip-path polygons', () => {
+        expect(css).toMatch(/\.focusAuroraRidge--back\s*\{[^}]*clip-path:\s*polygon\(/);
+        expect(css).toMatch(/\.focusAuroraRidge--front\s*\{[^}]*clip-path:\s*polygon\(/);
+    });
+
+    it('colours the scene from aurora tokens that the light theme overrides', () => {
+        expect(css).toMatch(/:root\[data-theme="light"\]\s+\.focusModeOverlay\s*\{[^}]*--focus-aurora-night:/);
+        const block = css.slice(css.indexOf('.focusAuroraBase {'), css.indexOf('.focusModeOverlay--active .focusAuroraBand--1'));
+        expect(block).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
+    });
+
+    it('styles an aurora picker thumbnail', () => {
+        expect(css).toMatch(/\.focusThemeThumb--aurora\s*\{/);
+    });
+
+    it('disables the band drift under prefers-reduced-motion', () => {
+        const block = css.slice(css.lastIndexOf('@media (prefers-reduced-motion: reduce) {\n  .focusModeOverlay--active { animation: none; }'));
+        const rule = block.slice(0, block.indexOf('animation: none;\n  }'));
+        ['focusAuroraBand--1', 'focusAuroraBand--2'].forEach(cls => {
             expect(rule).toMatch(new RegExp('\\.focusModeOverlay--active\\s+\\.' + cls + '[,\\s]'));
         });
     });

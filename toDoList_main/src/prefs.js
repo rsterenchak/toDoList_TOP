@@ -340,13 +340,13 @@ export function setStructureLens(lens) {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// ── Focus mode scene theme (stars / matrix / rainforest) ──
+// ── Focus mode scene theme (stars / matrix / rainforest / aurora) ──
 // Focus mode's ambient scene comes in three variants picked from its corner
 // cluster. The choice persists so focus mode reopens on the scene you last
 // used; it is read once when the overlay is built. Default is 'stars' — any
 // stored value other than the known tokens falls back to it.
 export const FOCUS_THEME_KEY = 'todoapp_focusTheme';
-export const FOCUS_THEMES = ['stars', 'matrix', 'rainforest'];
+export const FOCUS_THEMES = ['stars', 'matrix', 'rainforest', 'aurora'];
 
 export function getFocusTheme() {
     try {

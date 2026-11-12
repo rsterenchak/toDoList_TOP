@@ -33,7 +33,8 @@
 //
 // A fourth corner control opens a small popover for picking the scene
 // itself — the star field, a "matrix" rain of falling glyphs, or a night
-// rainforest (jungle silhouettes, rain sheets, a rippling pool). All variants
+// rainforest (jungle silhouettes, rain sheets, a rippling pool), or an aurora
+// (drifting light bands over layered ridges). All variants
 // live in `.focusScene` and a modifier class shows one; the choice is the one
 // piece of focus mode that IS persisted (`todoapp_focusTheme`, via prefs.js),
 // read when the overlay is built.
@@ -42,7 +43,7 @@ import { ensureMusic, getMusicPlayerFrame } from './music.js';
 import { ensurePomodoro, DEFAULT_DURATIONS, MODE_LABEL, POMODORO_MODES } from './pomodoro.js';
 import { getFocusTheme, setFocusTheme, FOCUS_THEMES } from './prefs.js';
 
-const FOCUS_THEME_LABELS = { stars: 'Stars', matrix: 'Matrix', rainforest: 'Rainforest' };
+const FOCUS_THEME_LABELS = { stars: 'Stars', matrix: 'Matrix', rainforest: 'Rainforest', aurora: 'Aurora' };
 
 // Matrix rain: a fixed set of glyph columns, each falling at its own pace.
 // Half-width katakana plus digits and a few latin capitals, the classic mix.
@@ -86,6 +87,20 @@ const RAINFOREST_MARKUP =
         '</div>' +
         '<div class="focusRfRain focusRfRain--1"></div>' +
         '<div class="focusRfRain focusRfRain--2"></div>' +
+    '</div>';
+
+// Aurora scene: a warm-to-night base gradient, two blurred, skewed light bands
+// (teal → sky → violet; the second narrower and drifting out of phase) and a
+// back and front ridge cut with clip-path polygons. The shared star field and
+// vignette stay visible for depth; the band drift is a CSS translate keyframe
+// gated on the active class.
+const AURORA_MARKUP =
+    '<div class="focusAurora">' +
+        '<div class="focusAuroraBase"></div>' +
+        '<div class="focusAuroraBand focusAuroraBand--1"></div>' +
+        '<div class="focusAuroraBand focusAuroraBand--2"></div>' +
+        '<div class="focusAuroraRidge focusAuroraRidge--back"></div>' +
+        '<div class="focusAuroraRidge focusAuroraRidge--front"></div>' +
     '</div>';
 
 function randomGlyphs(n) {
@@ -179,6 +194,7 @@ export function createFocusMode(doc) {
             '<div class="focusShootingStar"></div>' +
             '<div class="focusMatrix"></div>' +
             RAINFOREST_MARKUP +
+            AURORA_MARKUP +
             '<div class="focusVignette"></div>';
         // Matrix columns: per-column position, speed and delay are computed
         // here (custom properties), the fall itself is a CSS keyframe gated
@@ -677,7 +693,7 @@ export function createFocusMode(doc) {
         }
     }
 
-    // ── Scene theme — stars / matrix / rainforest ──
+    // ── Scene theme — stars / matrix / rainforest / aurora ──
     function applyFocusTheme(name) {
         theme = FOCUS_THEMES.indexOf(name) !== -1 ? name : 'stars';
         if (sceneEl) {
