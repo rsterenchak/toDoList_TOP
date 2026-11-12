@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-12T07:59:47.268Z",
-  "sha": "ce563847c7a4b9705d6de647a17274c188aa9233",
+  "generatedAt": "2026-11-12T09:16:44.093Z",
+  "sha": "2f2040327c4c709108e2f536ee282c7429c8f5f1",
   "files": [
     "aboutVersionCue.js",
     "accessMode.js",
@@ -31801,7 +31801,7 @@
     },
     {
       "path": "agentQueueStore.js",
-      "lines": 1821,
+      "lines": 1826,
       "imports": [
         "listLogic.js",
         "supabaseClient.js"
