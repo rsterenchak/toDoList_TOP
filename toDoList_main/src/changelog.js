@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-16',
+        added: [
+            'The Understanding book has a new Signing in chapter, with step-through tours for signing in with a code, a refused email or code, using the app offline, and signing out.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-12',
         fixed: [
             'Tasks whose agent run takes longer than 15 minutes now flip to Review on their own when the run finishes, without needing a page reload.',
@@ -14,7 +21,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-11-11',
         added: [
-            'Tapping focus mode\'s now-playing chip plays or pauses the music, with a brief play or pause icon fading in and out at the centre of the page.',
             'Focus mode has a new Rainforest scene — a rainy night jungle with drifting rain, rippling water and the odd flash of lightning — alongside Stars and Matrix.',
             'Focus mode has a new Aurora scene — slow-drifting teal and violet light bands over layered mountain ridges under the stars.',
         ],

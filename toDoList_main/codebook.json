@@ -159,11 +159,11 @@
       "area": "shell",
       "files": ["index.js", "main.js", "sw.js", "modals.js"],
       "tours": ["app-starts", "app-updates"],
-      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from, and how it merges with this device's, is the next chapter.", "promises": ["hydrateFromSupabase", "maybeMigrateLocalToSupabase"] },
+      "ahead": { "chapter": "data", "note": "Where the cloud copy comes from, and how it merges with this device's, is the chapter after sign-in.", "promises": ["hydrateFromSupabase", "maybeMigrateLocalToSupabase"] },
       "body": [
         "Everything begins in `index.js`. Its top-level code runs once when the page loads: it builds the page, checks whether a saved session exists, and registers the service worker. There is no framework underneath it, just plain JavaScript creating DOM nodes and wiring listeners.",
         "The page is built skeleton first. `component` in `main.js` creates the nav bar, the project sidebar, the task list and the footer, all still empty. Nothing in that step knows about your data yet, which keeps the shape of the screen separate from what fills it.",
-        "The saved session then decides the path. With no session, the sign-in form covers the page. With one, `bootApp` starts the app, and it guards itself so a second auth event can never boot twice. The first thing it does is paint from this device's own copy: `restoreFromStorage` adds one sidebar row per project and draws the selected project's tasks, so the app opens instantly even before the network answers.",
+        "The saved session then decides the path. With none, `bootWithoutSession` boots a device that chose offline straight into local mode, and everyone else gets the sign-in gate. With one, `bootApp` starts the app, and it guards itself so a second auth event can never boot twice. The first thing it does is paint from this device's own copy: `restoreFromStorage` adds one sidebar row per project and draws the selected project's tasks, so the app opens instantly even before the network answers.",
         "Only after that first paint does `bootSyncPipeline` reach for the cloud: upload any old local data once, pull everything from the database, then listen for live changes. Local first, cloud second is the rhythm the whole app follows.",
         "The app also keeps itself current. `sw.js` is the service worker: it caches the built files so the app opens offline, while the page itself always tries the network first. When a new build is deployed, the new worker installs in the background and waits rather than taking over mid-session.",
         "A waiting worker is surfaced as an update cue, on a pill above the mobile nav or on the Version row in About. Both end in `applyPendingUpdate`, which marks the tapping tab as the one that asked and tells the waiting worker to take over. Only that tab reloads; any other open tab is told to reload when it suits you."
@@ -172,6 +172,7 @@
         "index.js": "84eb72e509410b35.da39a3ee5e6b4b0d",
         "index.js:bootApp": "4138eeb41d92e90b.da39a3ee5e6b4b0d",
         "index.js:bootSyncPipeline": "adf66a4968a12cc9.da39a3ee5e6b4b0d",
+        "index.js:bootWithoutSession": "933ff6cfbc779311.da39a3ee5e6b4b0d",
         "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.1c5dfd17700ed819",
         "main.js": "a1aacda74687c942.6eae4807b0f1ccfc",
         "main.js:component": "0b14fde4ab3ba803.a77b15c0d64cf611",
@@ -179,6 +180,48 @@
         "migration.js:maybeMigrateLocalToSupabase": "6f1e10efa2d06321.a77b15c0d64cf611",
         "modals.js:applyPendingUpdate": "895775e1a371e73d.496eaf50e99c72fc",
         "sw.js": "20bf16e2fd0055d5.da39a3ee5e6b4b0d"
+      }
+    },
+    {
+      "id": "sign-in",
+      "title": "Signing in and the gate",
+      "area": "data",
+      "files": ["auth.js", "accessMode.js", "index.js", "settingsMenu.js", "migration.js", "inject.js"],
+      "tours": ["sign-in-code", "sign-in-refused", "use-offline", "sign-out"],
+      "body": [
+        "Before the app shows you anything of yours, it decides who you are. `auth.js` is the front door: `showAuthModal` mounts a full-screen gate over the page that is already built, and `hideAuthModal` tears it down, both safe to call from any state. `index.js` decides when each one runs, and `accessMode.js` remembers whether this device chose to work without an account.",
+        "The gate has two screens. `renderSignInScreen` asks for an email, and submitting it calls `sendCode`, which asks Supabase for a one-time code without ever creating an account. On success `renderConfirmationScreen` swaps in a code field, and `verifyCode` exchanges the code for a session. A code is used instead of a magic link because a link opens in the system browser, a separate storage jar on iOS, which would leave the installed app signed out [src: auth.js:11].",
+        "Neither screen boots the app. Once `verifyCode` succeeds, the auth listener in `index.js` fires with the new session: `adoptSession` records that a session is live and that this device now uses its account, the gate is hidden, and `bootApp` runs. The initial session probe and the listener can both call `bootApp` safely because the `booted` latch turns every call after the first into a no-op [src: index.js:68].",
+        "Below the email form sits the offline door. Its button calls `chooseLocalMode`, which stores the choice and stamps it on the page through `applyAccessMode`, then `bootLocalMode` runs the boot `index.js` registered: `bootApp` with no user, which paints from localStorage and returns before `bootSyncPipeline`. From then on `hasAccount` is false, so mount sites skip every Worker- or pipeline-backed surface and the stylesheet hides the rest. On the next load `bootWithoutSession` sees the stored choice and skips the gate.",
+        "An offline device can still sign in later. Its Settings menu shows Sign in where Sign out would be, and that simply reopens the gate. When the session arrives, `adoptSession` sees a shell built offline and calls `switchToAccountAndReload` instead of booting in place. A reload is needed because `bootApp` is latched and cannot remount every surface on the running page; the signed-in boot after it then migrates the offline data up [src: accessMode.js:138].",
+        "Signing out starts from the Account row in Settings. `wipeLocalUserDataOnSignOut` removes this device's cached projects and the user's migration marker while the session can still be read, then Supabase signs out. The auth listener's no-session branch does the rest: `listLogic.handleSignOut` closes the realtime channels and empties the in-memory model, `releaseGhostForSignOut` unmounts the ghost, and `showAuthModal` raises the gate again. A device in offline mode has no session to lose, and the branch returns early for it.",
+        "After sign-in the session keeps working quietly. Every Worker call in `inject.js` carries it: `readSessionToken` reads the current access token, or sends nothing when there is no session, and the Worker decides who may use each route. When it refuses, `describeError` turns its two answers into Sign in to use this and Your account isn't an admin. Four tours walk the outcomes: signing in with a code, being refused, using the app offline, and signing out."
+      ],
+      "fingerprint": {
+        "accessMode.js": "5eb563f735ce4ca8.1a386ffc80e40ab5",
+        "accessMode.js:applyAccessMode": "866b4a83486f6dc6.a77b15c0d64cf611",
+        "accessMode.js:bootLocalMode": "82d5b8fd6f5721cc.36a76196f995205c",
+        "accessMode.js:chooseLocalMode": "68f9135984978932.36a76196f995205c",
+        "accessMode.js:hasAccount": "f9e6f30ba440a8ff.a851d74544027d88",
+        "accessMode.js:switchToAccountAndReload": "e00d4629a03d0f3e.a77b15c0d64cf611",
+        "auth.js": "909eaf5d3254ec25.b316fbac44ec067b",
+        "auth.js:hideAuthModal": "5658810d222507c1.a77b15c0d64cf611",
+        "auth.js:renderConfirmationScreen": "462a27ae48254f88.da39a3ee5e6b4b0d",
+        "auth.js:renderSignInScreen": "73718c06a25f8e9a.da39a3ee5e6b4b0d",
+        "auth.js:sendCode": "5980fd6c09c4398c.da39a3ee5e6b4b0d",
+        "auth.js:showAuthModal": "eff00cd47f07a285.b316fbac44ec067b",
+        "auth.js:verifyCode": "c1b4e353a694a3a5.da39a3ee5e6b4b0d",
+        "index.js": "84eb72e509410b35.da39a3ee5e6b4b0d",
+        "index.js:adoptSession": "1c485dae172a9cf3.da39a3ee5e6b4b0d",
+        "index.js:bootApp": "4138eeb41d92e90b.da39a3ee5e6b4b0d",
+        "index.js:bootSyncPipeline": "adf66a4968a12cc9.da39a3ee5e6b4b0d",
+        "index.js:bootWithoutSession": "933ff6cfbc779311.da39a3ee5e6b4b0d",
+        "inject.js": "eba14f2e2366013a.5ea4d41b10043cd7",
+        "inject.js:describeError": "569fd375db963570.da39a3ee5e6b4b0d",
+        "inject.js:readSessionToken": "bff84af49d81d35a.da39a3ee5e6b4b0d",
+        "listLogic.js:listLogic.handleSignOut": "ef05f3a6df7ad20c.1c5dfd17700ed819",
+        "main.js:releaseGhostForSignOut": "6acfb2568bf5d4ba.a77b15c0d64cf611",
+        "migration.js:wipeLocalUserDataOnSignOut": "b1106bc33ebc79b0.4cba82907f447dd3"
       }
     },
     {

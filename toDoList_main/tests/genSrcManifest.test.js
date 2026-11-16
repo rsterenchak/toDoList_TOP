@@ -697,10 +697,10 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('compiles the six Foundations tours first, in order', () => {
-        expect(tours.tours.slice(0, 6).map((t) => t.id)).toEqual(['app-starts', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'app-updates']);
-        expect(tours.tours.slice(0, 6).every((t) => t.section === 'foundations')).toBe(true);
-        tours.tours.slice(0, 6).forEach((t) => {
+    it('compiles the ten Foundations tours first, in order', () => {
+        expect(tours.tours.slice(0, 10).map((t) => t.id)).toEqual(['app-starts', 'sign-in-code', 'sign-in-refused', 'use-offline', 'sign-out', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'app-updates']);
+        expect(tours.tours.slice(0, 10).every((t) => t.section === 'foundations')).toBe(true);
+        tours.tours.slice(0, 10).forEach((t) => {
             expect(t.recap.length).toBeGreaterThanOrEqual(3);
             expect(t.recap.length).toBeLessThanOrEqual(5);
         });
@@ -740,8 +740,8 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('completes the 35-tour catalog with no empty section', () => {
-        expect(tours.tours.length).toBe(35);
+    it('completes the 39-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(39);
         doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
     });
 
@@ -1368,9 +1368,9 @@ describe('gen-src-manifest real codebook.json', () => {
         expect(Object.keys(doc.chapters[0].roles).sort()).toEqual(roled.slice().sort());
     });
 
-    it('has 8–10 prose chapters, titles ≤ 60 chars and 3–8 paragraphs each', () => {
+    it('has 8–12 prose chapters, titles ≤ 60 chars and 3–8 paragraphs each', () => {
         expect(prose.length).toBeGreaterThanOrEqual(8);
-        expect(prose.length).toBeLessThanOrEqual(10);
+        expect(prose.length).toBeLessThanOrEqual(12);
         doc.chapters.forEach((c) => expect(c.title.length).toBeLessThanOrEqual(60));
         prose.forEach((c) => {
             expect(c.title.length).toBeLessThanOrEqual(60);

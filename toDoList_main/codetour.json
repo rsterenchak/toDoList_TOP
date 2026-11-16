@@ -76,10 +76,10 @@
           "match": [
             "supabase.auth.getSession().then",
             "bootApp(session.user && session.user.id);",
-            "showAuthModal();"
+            "bootWithoutSession();"
           ],
-          "title": "Signed in? Boot. Otherwise, the sign-in modal.",
-          "why": "The saved session decides the path. No session means the sign-in form covers the page."
+          "title": "Signed in? Boot. Otherwise, offline or the gate.",
+          "why": "A saved session boots the app. Without one, a device that chose offline boots into local mode; everyone else gets the gate."
         },
         {
           "file": "index.js",
@@ -113,6 +113,483 @@
           ],
           "title": "Then sync: migrate, hydrate, subscribe.",
           "why": "Upload old local data once, pull everything from Supabase, then listen for live changes."
+        }
+      ]
+    },
+    {
+      "id": "sign-in-code",
+      "section": "foundations",
+      "title": "Signing in with an emailed code",
+      "recap": [
+        {
+          "title": "Two screens, one gate",
+          "body": "Email first, then the code. Both live inside the full-screen modal auth.js mounts."
+        },
+        {
+          "title": "A code, not a link",
+          "body": "Entering the code inside the app keeps the session in the app's own storage."
+        },
+        {
+          "title": "The listener boots, not the form",
+          "body": "verifyCode only reports success. The auth listener in index.js adopts the session and calls bootApp."
+        },
+        {
+          "title": "Booting is latched",
+          "body": "The session probe and the listener may both call bootApp. Only the first call does anything."
+        }
+      ],
+      "steps": [
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "supabase.auth.getSession().then",
+            "bootWithoutSession();"
+          ],
+          "title": "No saved session: no boot yet.",
+          "why": "This tour follows a successful sign-in. The first visit has no session, and you land on the Welcome screen."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootWithoutSession",
+          "match": [
+            "if (getAccessMode() === 'local') {",
+            "showAuthModal();"
+          ],
+          "title": "No offline choice either, so the gate goes up.",
+          "why": "Only a device that chose offline skips it. Everyone else gets the full-screen sign-in form."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "showAuthModal",
+          "match": [
+            "hideAuthModal();",
+            "document.body.appendChild(backdrop);",
+            "renderSignInScreen(dialog, '');"
+          ],
+          "title": "The gate covers the page.",
+          "why": "Any earlier gate is torn down first, then screen 1 renders with an empty email field."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "renderSignInScreen",
+          "match": [
+            "form.addEventListener('submit', function(event) {",
+            "sendCode(email).then(function(result) {",
+            "renderConfirmationScreen(dialog, email);"
+          ],
+          "title": "Continue asks for a code.",
+          "why": "The button stays disabled while the request is out. Success swaps in the code screen."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "sendCode",
+          "match": [
+            "return supabase.auth.signInWithOtp({",
+            "if (!error) return { ok: true };"
+          ],
+          "title": "Supabase emails a one-time code.",
+          "why": "Only an existing account gets one. No error means the code is on its way to your inbox."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "renderConfirmationScreen",
+          "match": [
+            "verifyCode(email, token).then(function(result) {",
+            "if (result.ok) {",
+            "return;"
+          ],
+          "title": "Verify sends the code you typed.",
+          "why": "On success this screen does nothing more. The auth listener in index.js takes over from here."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "verifyCode",
+          "match": [
+            "return supabase.auth.verifyOtp({",
+            "type: 'email',",
+            "if (!error) return { ok: true };"
+          ],
+          "title": "The code becomes a session.",
+          "why": "Supabase checks the code and stores the session in the installed app's own storage."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "supabase.auth.onAuthStateChange(function(_event, session) {",
+            "if (adoptSession()) return;",
+            "hideAuthModal();"
+          ],
+          "title": "The auth listener hears the new session.",
+          "why": "Supabase announces the sign-in. The listener adopts the session, hides the gate and boots."
+        },
+        {
+          "file": "index.js",
+          "symbol": "adoptSession",
+          "match": [
+            "setLiveSession(true);",
+            "chooseAccountMode();",
+            "return false;"
+          ],
+          "title": "The session is adopted.",
+          "why": "This device is marked as using its account. Returning false tells the listener to boot here."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "if (booted) return;",
+            "booted = true;"
+          ],
+          "title": "bootApp runs, once.",
+          "why": "The latch makes any later call a no-op. The app paints locally, then syncs, as the first chapter showed."
+        }
+      ]
+    },
+    {
+      "id": "sign-in-refused",
+      "section": "foundations",
+      "title": "When the email or code is refused",
+      "recap": [
+        {
+          "title": "Three ways sendCode says no",
+          "body": "No account for that email, too many tries, or couldn't send: each is a short message on screen 1."
+        },
+        {
+          "title": "No sign-ups from the gate",
+          "body": "shouldCreateUser: false means an unknown email fails instead of creating an account."
+        },
+        {
+          "title": "Retries stay on their screen",
+          "body": "A refused email or code re-enables the button where you are. Nothing navigates away."
+        },
+        {
+          "title": "Resend waits 60 seconds",
+          "body": "The countdown matches Supabase's per-address limit and restarts on every resend."
+        }
+      ],
+      "steps": [
+        {
+          "file": "auth.js",
+          "symbol": "renderSignInScreen",
+          "match": [
+            "if (!email) {",
+            "showError(errorEl, 'Enter an email address.');"
+          ],
+          "title": "An empty email never leaves the form.",
+          "why": "This tour follows the refusals. The first is local: no address, no request, just a message."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "sendCode",
+          "match": [
+            "options: {",
+            "shouldCreateUser: false,"
+          ],
+          "title": "The gate never creates an account.",
+          "why": "Sign-ups are closed. An unknown address fails instead of quietly making a new user [src: auth.js:383]."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "sendCode",
+          "match": [
+            "if (status === 429 || msg.indexOf('rate') !== -1) {",
+            "return { ok: false, message: 'Too many tries — wait a moment' };"
+          ],
+          "title": "Too many requests: wait a moment.",
+          "why": "Supabase rate-limits codes per address. A 429 or a rate hint reads as a calm wait message."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "sendCode",
+          "match": [
+            "return { ok: false, message: 'No account for that email' };"
+          ],
+          "title": "Unknown address: no account.",
+          "why": "The sign-ups-disabled error is named plainly, and reads as a missing account rather than a fault."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "sendCode",
+          "match": [
+            "}, function() {",
+            "return { ok: false, message: \"Couldn't send code — try again\" };"
+          ],
+          "title": "Anything else, or no network: try again.",
+          "why": "Any other error, and a request that never got an answer, share one generic message."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "renderSignInScreen",
+          "match": [
+            "sendCode(email).then(function(result) {",
+            "submit.disabled = false;",
+            "showError(errorEl, result.message);"
+          ],
+          "title": "A refusal re-enables Continue.",
+          "why": "You stay on screen 1 with sendCode's message under the field. Fixing the address and retrying happens here."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "verifyCode",
+          "match": [
+            "return { ok: false, message: \"That code didn't work — check it or resend\" };"
+          ],
+          "title": "A wrong or expired code is refused.",
+          "why": "Any verify error means the code didn't match. The message points you at checking it or resending."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "renderConfirmationScreen",
+          "match": [
+            "verify.disabled = false;",
+            "showError(errorEl, result.message);",
+            "try { codeInput.focus(); }"
+          ],
+          "title": "The code screen lets you try again.",
+          "why": "Verify re-enables and focus returns to the code field. The retry happens on this screen."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "renderConfirmationScreen",
+          "match": [
+            "resend.addEventListener('click', function() {",
+            "startResendCooldown(resend);",
+            "sendCode(email).then(function(result) {"
+          ],
+          "title": "Resend restarts the wait and sends again.",
+          "why": "The countdown restarts at once. A rate-limit refusal still shows its message under the buttons."
+        },
+        {
+          "file": "auth.js",
+          "symbol": "startResendCooldown",
+          "match": [
+            "resend.disabled = true;",
+            "resend.textContent = 'Resend code (' + remaining + 's)';",
+            "resend.disabled = false;"
+          ],
+          "title": "Resend waits out a 60-second window.",
+          "why": "Supabase allows one code per address a minute; a shorter wait would make each resend fail [src: auth.js:35]."
+        }
+      ]
+    },
+    {
+      "id": "use-offline",
+      "section": "foundations",
+      "title": "Using the app offline, then signing in later",
+      "recap": [
+        {
+          "title": "Offline is one stored choice",
+          "body": "chooseLocalMode writes todoapp_accessMode and stamps data-access on the page."
+        },
+        {
+          "title": "Offline boots with no user",
+          "body": "bootApp(null) paints from localStorage and never starts the sync pipeline."
+        },
+        {
+          "title": "hasAccount is the switch",
+          "body": "Mount sites and the stylesheet both hide Worker and pipeline surfaces when it is false."
+        },
+        {
+          "title": "Signing in later reloads",
+          "body": "A session on an offline shell flips the mode to account and reloads; the signed-in boot uploads your data."
+        }
+      ],
+      "steps": [
+        {
+          "file": "auth.js",
+          "symbol": "renderSignInScreen",
+          "match": [
+            "offline.textContent = 'Use offline on this device';",
+            "chooseLocalMode();",
+            "bootLocalMode();"
+          ],
+          "title": "The gate's second door: use offline.",
+          "why": "This tour follows a visitor with no account. One tap stores the choice, hides the gate and boots."
+        },
+        {
+          "file": "accessMode.js",
+          "symbol": "chooseLocalMode",
+          "match": [
+            "writeFlag('local');",
+            "applyAccessMode('local');"
+          ],
+          "title": "The choice is saved and stamped on the page.",
+          "why": "Stored under todoapp_accessMode, and set on the html element, where the stylesheet hides pipeline surfaces."
+        },
+        {
+          "file": "accessMode.js",
+          "symbol": "bootLocalMode",
+          "match": [
+            "if (typeof localModeBoot === 'function') localModeBoot();"
+          ],
+          "title": "bootLocalMode runs a boot index.js lent it.",
+          "why": "auth.js can't import the entry module, and index.js registers its boot here instead [src: accessMode.js:129]."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "setLocalModeBoot(function() { bootApp(null); });"
+          ],
+          "title": "That boot is bootApp with no user.",
+          "why": "A shell that already booted ignores it, since bootApp is latched."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "if (hasAccount()) {",
+            "ensureGhostForSession();",
+            "if (!userId) return;"
+          ],
+          "title": "No user: paint locally, then stop.",
+          "why": "The ghost is not mounted offline, and with no user bootApp returns before bootSyncPipeline runs."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootWithoutSession",
+          "match": [
+            "if (getAccessMode() === 'local') {",
+            "bootApp(null);"
+          ],
+          "title": "After a reload, the gate is skipped.",
+          "why": "With no session but the offline choice stored, the next load boots straight into local mode."
+        },
+        {
+          "file": "settingsMenu.js",
+          "symbol": "showSettingsMenu",
+          "parent": "createSettingsMenu",
+          "match": [
+            "const local = !hasAccount();",
+            "'Sign in',",
+            "showAuthModal();"
+          ],
+          "title": "Settings offers Sign in instead of Sign out.",
+          "why": "Offline, the Account row reopens the same gate. Signing in then follows the code tour's path."
+        },
+        {
+          "file": "index.js",
+          "symbol": "adoptSession",
+          "match": [
+            "if (!hasAccount()) {",
+            "reloadingForAccount = true;",
+            "switchToAccountAndReload();"
+          ],
+          "title": "A session on an offline shell means a reload.",
+          "why": "The running page was built offline, and every surface must remount signed in [src: index.js:250]."
+        },
+        {
+          "file": "accessMode.js",
+          "symbol": "switchToAccountAndReload",
+          "match": [
+            "chooseAccountMode();",
+            "reloader();"
+          ],
+          "title": "Flip to account, then reload.",
+          "why": "bootApp is latched and cannot remount in place; the signed-in boot after the reload migrates offline data up."
+        }
+      ]
+    },
+    {
+      "id": "sign-out",
+      "section": "foundations",
+      "title": "Signing out",
+      "recap": [
+        {
+          "title": "Wipe, then sign out",
+          "body": "wipeLocalUserDataOnSignOut runs while the session still exists, then Supabase ends it."
+        },
+        {
+          "title": "The listener does the teardown",
+          "body": "The auth listener's no-session branch empties listLogic, unmounts the ghost and shows the gate."
+        },
+        {
+          "title": "Device prefs survive",
+          "body": "Only user data is removed. Theme, sidebar width and other preferences stay on the device."
+        },
+        {
+          "title": "Offline mode is untouched",
+          "body": "With no session to lose, a local-mode device skips the teardown."
+        }
+      ],
+      "steps": [
+        {
+          "file": "settingsMenu.js",
+          "symbol": "showSettingsMenu",
+          "parent": "createSettingsMenu",
+          "match": [
+            "'Sign out',",
+            "wipeLocalUserDataOnSignOut().then(function() { supabase.auth.signOut(); });"
+          ],
+          "title": "Sign out starts in Settings.",
+          "why": "This tour follows signing out (mobile's Settings has the same row). The device is wiped, then the session ends."
+        },
+        {
+          "file": "migration.js",
+          "symbol": "wipeLocalUserDataOnSignOut",
+          "match": [
+            "const sessionResult = await supabase.auth.getSession();",
+            "try { localStorage.removeItem(ALL_PROJECTS_KEY); }",
+            "localStorage.removeItem(markerKey(userId));"
+          ],
+          "title": "This device's cached data is removed.",
+          "why": "It runs while the session still exists, to read the user id. Theme and other device prefs stay."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "supabase.auth.onAuthStateChange(function(_event, session) {",
+            "setLiveSession(false);",
+            "if (getAccessMode() === 'local') return;"
+          ],
+          "title": "The listener hears the session end.",
+          "why": "Its no-session branch runs. An offline device has no session to lose and returns here."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "try { listLogic.handleSignOut(); }"
+          ],
+          "title": "listLogic is told to forget.",
+          "why": "The data model is emptied before the gate returns, and the next person sees none of it."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "handleSignOut",
+          "parent": "listLogic",
+          "match": [
+            "_realtimeChannels.forEach(function(ch) {",
+            "_realtimeWanted = false;",
+            "Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });"
+          ],
+          "title": "Realtime closes and memory empties.",
+          "why": "No more live changes arrive, and the in-memory projects and their cached copy are cleared."
+        },
+        {
+          "file": "main.js",
+          "symbol": "releaseGhostForSignOut",
+          "match": [
+            "clearGhostMountTimers();",
+            "if (isSheetPossessed()) togglePossession();",
+            "destroyCompanion();"
+          ],
+          "title": "The ghost is unmounted.",
+          "why": "A possessed sheet is handed back first. Signed out, the ghost can't be clicked or talk."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "try { releaseGhostForSignOut(); }",
+            "showAuthModal();",
+            "markAppBooted();"
+          ],
+          "title": "The gate goes back up.",
+          "why": "The page behind stays built, now empty and covered by the sign-in form."
         }
       ]
     },
@@ -221,7 +698,7 @@
     {
       "id": "first-sign-in",
       "section": "foundations",
-      "title": "Signing in for the first time",
+      "title": "What a first sign-in does to this device's data",
       "recap": [
         {
           "title": "Ask the cloud before onboarding",
