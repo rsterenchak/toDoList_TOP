@@ -3213,7 +3213,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/agentQueueStore.js`, `toDoList_main/tests/agentDispatchReconciler.test.js`
   <!-- id: f9b6cede-8da4-4cfb-afca-76de3a9e28ba -->
 
-- [ ] **[MEDIUM]** Add a sign-in chapter and four outcome tours to the Understanding book
+- [x] **[MEDIUM]** Add a sign-in chapter and four outcome tours to the Understanding book — Completed: 2026-11-16
   - Type: feature
   - Description: The book has no chapter for sign-in: `toDoList_main/codebook.json` gives it one sentence in `app-starts` and one in `data`, and the tour titled "Signing in for the first time" never opens `auth.js`. Offline mode is missing entirely — `bootWithoutSession`, `adoptSession`, `chooseLocalMode` and `bootLocalMode` appear in neither file, and `app-starts` still says "With no session, the sign-in form covers the page", which is wrong for a device that chose offline. Add a prose chapter `sign-in` ("Signing in and the gate") as the second prose chapter, between `app-starts` and `data`, with four tours that each follow one outcome, and correct the stale sentences. Write every sentence from the code it describes, following the chapter, reference, rationale and tour rules in `.claude/book.md`.
   - Behavior:
