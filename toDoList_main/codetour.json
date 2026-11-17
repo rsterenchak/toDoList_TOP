@@ -893,8 +893,8 @@
           "body": "A re-sync is skipped while an input has focus."
         },
         {
-          "title": "Last write wins",
-          "body": "When both sides changed, the newer updated_at is kept."
+          "title": "Server rows rebuild tasks",
+          "body": "A synced project takes its tasks from the server. Newer updated_at decides project fields only."
         }
       ],
       "steps": [
@@ -952,8 +952,8 @@
             "if (localEntry && localUpdatedAt > remoteUpdatedAt) {",
             "if (!_pendingTodoInserts.has(it.id)) return;"
           ],
-          "title": "Merge: last write wins.",
-          "why": "The newer side wins. Local todos the server hasn't confirmed yet are kept, not lost."
+          "title": "Merge: server rows, pending inserts kept.",
+          "why": "Newer updated_at picks project fields only. Tasks come from server rows; local ones stay only while pending."
         },
         {
           "file": "main.js",
@@ -964,6 +964,311 @@
           ],
           "title": "The screen repaints, same project selected.",
           "why": "Sidebar and list are rebuilt from the merged data, keeping the project you had open."
+        }
+      ]
+    },
+    {
+      "id": "write-fails",
+      "section": "foundations",
+      "title": "When a save doesn't reach the server",
+      "recap": [
+        {
+          "title": "Fire-and-forget",
+          "body": "persistMutation logs a failed write and never tries it again."
+        },
+        {
+          "title": "No session, no write",
+          "body": "Without a session the write stops before anything is sent."
+        },
+        {
+          "title": "The server copy wins",
+          "body": "A synced project's tasks are rebuilt from server rows, so an unsent edit is replaced."
+        },
+        {
+          "title": "Pending until reload",
+          "body": "An unconfirmed new task is carried over only while its id is in the in-memory pending set."
+        }
+      ],
+      "steps": [
+        {
+          "file": "listLogic.js",
+          "symbol": "editToDoItem",
+          "parent": "listLogic",
+          "match": [
+            "persistMutation({",
+            "op: 'update',"
+          ],
+          "title": "An edit is sent to the server, not awaited.",
+          "why": "This follows a save that fails. Memory and localStorage already hold the edit; nothing on screen changes."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "trackPendingTodoWrite",
+          "parent": "listLogic",
+          "match": [
+            "if (req.op === 'insert' && payload.title) {",
+            "_pendingTodoInserts.add(payload.id);"
+          ],
+          "title": "A new task's id is noted as unconfirmed.",
+          "why": "Edits and deletes are not tracked here. The set is in memory only, so a reload empties it."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "trackPendingTodoWrite(req);",
+            "if (!session) return;"
+          ],
+          "title": "No session: the write simply stops.",
+          "why": "Nothing is sent and nothing is queued. The change exists on this device only."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "console.warn('[persistMutation] update error:', result.error);",
+            "console.warn('[persistMutation] failed:', e);"
+          ],
+          "title": "A server error is logged, not retried.",
+          "why": "The warning goes to the console. Nothing rolls back the edit and nothing tries the write again."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "window.addEventListener('online', function () {",
+            "rehydrateUnlessEditing();"
+          ],
+          "title": "Back online triggers a full re-sync.",
+          "why": "This re-reads the server. It does not replay the write that failed."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            "const merged = {};",
+            "items: [],",
+            "tit: t.title || '',"
+          ],
+          "title": "Tasks are rebuilt from the server's rows.",
+          "why": "A project on both sides takes its tasks' fields from server rows, so an edit that never arrived is replaced."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            "localItems.forEach(function(it) {",
+            "if (!_pendingTodoInserts.has(it.id)) return;"
+          ],
+          "title": "Only pending inserts are carried over.",
+          "why": "A local-only task survives while its id is in the pending set. After a reload it is gone."
+        }
+      ]
+    },
+    {
+      "id": "realtime-recovers",
+      "section": "foundations",
+      "title": "When live updates drop and come back",
+      "recap": [
+        {
+          "title": "Two channels, opened once",
+          "body": "Projects and todos each get a channel after sign-in."
+        },
+        {
+          "title": "Four wake triggers",
+          "body": "Visible, online, focus and app-lock unlock each re-sync and reopen."
+        },
+        {
+          "title": "Reopen is teardown plus subscribe",
+          "body": "Old channels are removed and the list emptied before subscribing again."
+        },
+        {
+          "title": "The re-sync fills the gap",
+          "body": "Changes missed while the socket was dead come from the paired re-sync."
+        },
+        {
+          "title": "Signed out is a no-op",
+          "body": "Without a session nothing is reopened."
+        }
+      ],
+      "steps": [
+        {
+          "file": "listLogic.js",
+          "symbol": "subscribeToRealtime",
+          "parent": "listLogic",
+          "match": [
+            "if (_realtimeChannels.length > 0) return;",
+            ".channel('public:projects')",
+            "_realtimeWanted = true;"
+          ],
+          "title": "Two channels open once, after sign-in.",
+          "why": "This follows live updates dying and recovering. Calling this again while channels exist does nothing."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "if (document.visibilityState === 'visible') wakeRecoverRealtime();"
+          ],
+          "title": "Tab visible again: re-sync and reopen.",
+          "why": "A backgrounded phone or sleeping tab can drop the socket silently, with no error on screen."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "window.addEventListener('online', function () {",
+            "window.addEventListener('focus', function () {",
+            "document.addEventListener('appLockUnlocked', function () {"
+          ],
+          "title": "Online, focus and unlock run the same pair.",
+          "why": "Each wake trigger calls rehydrateUnlessEditing and wakeRecoverRealtime together."
+        },
+        {
+          "file": "index.js",
+          "symbol": "wakeRecoverRealtime",
+          "match": [
+            "listLogic.resubscribeToRealtime();"
+          ],
+          "title": "The wake hands off to listLogic.",
+          "why": "Any error is swallowed here; resubscribeToRealtime guards its own."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "resubscribeToRealtime",
+          "parent": "listLogic",
+          "match": [
+            "if (!_realtimeWanted) return;"
+          ],
+          "title": "Signed out? Nothing reopens.",
+          "why": "The flag is set when channels open after sign-in and cleared on sign-out."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "resubscribeToRealtime",
+          "parent": "listLogic",
+          "match": [
+            "_realtimeChannels.forEach(function(ch) {",
+            "_realtimeChannels = [];",
+            "subscribeToRealtime();"
+          ],
+          "title": "Old channels go, new ones open.",
+          "why": "The list is emptied first; otherwise subscribeToRealtime would return without reopening."
+        },
+        {
+          "file": "index.js",
+          "symbol": "rehydrateUnlessEditing",
+          "match": [
+            "if (isEditableElementFocused()) return;",
+            "listLogic.hydrateFromSupabase();"
+          ],
+          "title": "The paired re-sync backfills the gap.",
+          "why": "Changes made while the socket was dead arrive here, unless you are typing in an input."
+        }
+      ]
+    },
+    {
+      "id": "project-deleted-elsewhere",
+      "section": "foundations",
+      "title": "When a project is deleted on another device",
+      "recap": [
+        {
+          "title": "Delete is local first",
+          "body": "removeProject drops the project from memory and storage, then sends one delete."
+        },
+        {
+          "title": "Open devices drop it live",
+          "body": "handleProjectsRealtime removes the project with that id."
+        },
+        {
+          "title": "Closed devices use a snapshot",
+          "body": "An id seen on the last sync but missing now is dropped, not uploaded."
+        },
+        {
+          "title": "New offline projects still upload",
+          "body": "An id never seen on the server is treated as local-only and inserted."
+        }
+      ],
+      "steps": [
+        {
+          "file": "projectRow.js",
+          "symbol": "onConfirm",
+          "parent": "deleteProjectFlow",
+          "match": [
+            "listLogic.removeProject(projectName);"
+          ],
+          "title": "You confirm the delete.",
+          "why": "This follows a project deleted on one device. Its row leaves the sidebar here."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "removeProject",
+          "parent": "listLogic",
+          "match": [
+            "delete allProjects[projectDes];",
+            "saveToStorage();",
+            "op: 'delete',"
+          ],
+          "title": "The project leaves memory, then the server.",
+          "why": "Memory and localStorage change first; the delete request follows, not awaited."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "if (op === 'delete') {",
+            "noteSelfEcho(payload.id);",
+            ".eq('id', payload.id);"
+          ],
+          "title": "One delete request, noted as our own echo.",
+          "why": "The id is noted so this device ignores the server's echo of its own delete."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "handleProjectsRealtime",
+          "parent": "listLogic",
+          "match": [
+            "if (_selfEchoIds.has(row.id)) {",
+            "} else if (evt.eventType === 'DELETE') {",
+            "if (allProjects[name].id === oldId) delete allProjects[name];"
+          ],
+          "title": "Open devices drop it live.",
+          "why": "The sender skips its echo. Every other open device removes the project with that id and saves."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            "const lastSeenServerProjectIds = readLastSeenServerProjectIds();"
+          ],
+          "title": "A closed device reads its last-seen ids.",
+          "why": "The snapshot holds the project ids the server returned on the previous successful sync."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            "if (local.id && lastSeenServerProjectIds.has(local.id) && !remoteById[local.id]) {"
+          ],
+          "title": "Seen before, gone now: drop, don't upload.",
+          "why": "Without this check the project would look local-only and be inserted again, undoing the delete."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "hydrateFromSupabase",
+          "parent": "listLogic",
+          "match": [
+            "writeLastSeenServerProjectIds(remoteProjects.map("
+          ],
+          "title": "The snapshot is refreshed for next time.",
+          "why": "The next sync measures deletions against the ids this one saw."
         }
       ]
     },

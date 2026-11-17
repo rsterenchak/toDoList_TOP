@@ -697,10 +697,10 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('compiles the ten Foundations tours first, in order', () => {
-        expect(tours.tours.slice(0, 10).map((t) => t.id)).toEqual(['app-starts', 'sign-in-code', 'sign-in-refused', 'use-offline', 'sign-out', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'app-updates']);
-        expect(tours.tours.slice(0, 10).every((t) => t.section === 'foundations')).toBe(true);
-        tours.tours.slice(0, 10).forEach((t) => {
+    it('compiles the thirteen Foundations tours first, in order', () => {
+        expect(tours.tours.slice(0, 13).map((t) => t.id)).toEqual(['app-starts', 'sign-in-code', 'sign-in-refused', 'use-offline', 'sign-out', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'write-fails', 'realtime-recovers', 'project-deleted-elsewhere', 'app-updates']);
+        expect(tours.tours.slice(0, 13).every((t) => t.section === 'foundations')).toBe(true);
+        tours.tours.slice(0, 13).forEach((t) => {
             expect(t.recap.length).toBeGreaterThanOrEqual(3);
             expect(t.recap.length).toBeLessThanOrEqual(5);
         });
@@ -740,8 +740,8 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('completes the 39-tour catalog with no empty section', () => {
-        expect(tours.tours.length).toBe(39);
+    it('completes the 42-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(42);
         doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
     });
 
