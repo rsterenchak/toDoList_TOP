@@ -3253,7 +3253,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 1e236571-92a7-4300-a941-c6e45d833c80 -->
 
-- [ ] **[MEDIUM]** Replace the Agent board in the pipeline chapters with the live row surfaces and add three run-outcome tours
+- [x] **[MEDIUM]** Replace the Agent board in the pipeline chapters with the live row surfaces and add three run-outcome tours — Completed: 2026-11-17
   - Type: feature
   - Description: The `pipeline-ship` and `pipeline-follow` chapters in `toDoList_main/codebook.json` and three tours describe the Agent board, which the running app no longer mounts: nothing imports `agentView.js`, and its header comment says so. Tour `agent-board` has five steps in that file, `ship-run` starts on `buildDraftedSecondary`, and `follow-run` ends on `buildShippedGlyph`. Tour `generate-tasks` walks `openSeedTasksModal`, which has no caller in `src/`. Rewrite the prose and tours so every step sits on code the running app reaches, which for dispatch, retry and review is the row's description panel in `toDoRow.js`, and add three tours that each follow one outcome of a dispatched run. Do not change any source file.
   - Behavior:
