@@ -3234,7 +3234,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 3a3ee284-d4ce-4e9c-a76c-df9e517528d4 -->
 
-- [ ] **[MEDIUM]** Correct the sync chapter and add three failure-path tours to the Understanding book
+- [x] **[MEDIUM]** Correct the sync chapter and add three failure-path tours to the Understanding book — Completed: 2026-11-16
   - Type: feature
   - Description: The `data` chapter in `toDoList_main/codebook.json` and the `devices-sync` tour overstate what a sync protects. They say the newer `updated_at` wins and unconfirmed local tasks are kept, but in `hydrateFromSupabase` last-write-wins applies to project fields only (colour, stages, lifecycle, hide-dates), and a project that exists on both sides has its task list rebuilt from the server's rows. `persistMutation` is fire-and-forget: a failed write is logged and nothing retries it. Correct the prose to say what the code does, without softening it, and add three tours to the `data` chapter that each follow one outcome. Describe the behaviour as it is today; do not change any source file.
   - Behavior:
