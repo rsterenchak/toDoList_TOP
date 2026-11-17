@@ -3274,7 +3274,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 12a54501-f29d-4b23-acd5-f02bc83da92d -->
 
-- [ ] **[MEDIUM]** Add a triage chapter and three outcome tours to the Understanding book
+- [x] **[MEDIUM]** Add a triage chapter and three outcome tours to the Understanding book — Completed: 2026-11-17
   - Type: feature
   - Description: The pipeline's first step has no walkthrough. `toDoList_main/codebook.json` starts the pipeline at inject and dispatch, but a task reaches a draft through Generate: `onGenerateClick` in `toDoRow.js` flags the task, a triage run is dispatched, and the queue row comes back as a draft, a question, or stuck. None of `onGenerateClick`, `flagTaskForAgent`, `answerAgentTask`, `syncGenerateControl`, `verifyThenReconcile`, `reconcileStuckTriaging` or `noteStrandedTriaging` appears in the book. Add a prose chapter `triage` ("From an idea to a draft") directly before `pipeline-ship`, with three tours that each follow one outcome. Write every sentence from the code it describes, following `.claude/book.md`. Do not change any source file.
   - Behavior:

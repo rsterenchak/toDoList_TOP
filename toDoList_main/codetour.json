@@ -2388,6 +2388,364 @@
       ]
     },
     {
+      "id": "triage-drafts",
+      "section": "pipeline",
+      "title": "Generate: from a task to a draft",
+      "recap": [
+        {
+          "title": "Flagging is one insert",
+          "body": "flagTaskForAgent adds one agent_queue row in state triaging and writes nothing else."
+        },
+        {
+          "title": "The row never imports the view",
+          "body": "The store fires the sweep through a dispatcher agentWiring.js registers at boot."
+        },
+        {
+          "title": "One call leaves the app",
+          "body": "dispatchTriage is the single request that starts the sweep; the result comes back through the queue."
+        },
+        {
+          "title": "The row is the state",
+          "body": "syncGenerateControl re-derives the button from the queue row on every push."
+        },
+        {
+          "title": "A draft lands once",
+          "body": "A drafted row is written into the description exactly once, then shows DRAFTED."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "onGenerateClick",
+          "match": [
+            "btn.disabled = true;",
+            "Promise.resolve(listLogic.flagTaskForAgent(item.id))"
+          ],
+          "title": "Tap Generate: disable, then flag.",
+          "why": "This tour follows Generate succeeding: a draft fills the description. The button disables first so a double tap cannot flag twice."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "flagTaskForAgent",
+          "match": [
+            "state: 'triaging',",
+            "supabase.from('agent_queue').insert(row)"
+          ],
+          "title": "Flagging is a single queue insert.",
+          "why": "The row starts in triaging with the title and description as context. A failed insert returns ok: false instead of throwing."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "fireTriageSweep",
+          "match": [
+            "if (_triageDispatcher) return Promise.resolve(_triageDispatcher(projectName));"
+          ],
+          "title": "The store hands off to a registered dispatcher.",
+          "why": "With no dispatcher registered this resolves null, a no-op. The row layer calls this, never the wiring module directly."
+        },
+        {
+          "file": "agentWiring.js",
+          "symbol": "@file",
+          "match": [
+            "setTriageDispatcher(fireTriageSweep);"
+          ],
+          "title": "The dispatcher is registered at boot.",
+          "why": "main.js imports this module on load, so the registration runs whether or not any view ever mounts."
+        },
+        {
+          "file": "agentWiring.js",
+          "symbol": "fireTriageSweep",
+          "match": [
+            "if (isTriageInFlight()) return Promise.resolve(null);",
+            "setTriageInFlight(true);",
+            "startSweepTracking(false);"
+          ],
+          "title": "Guard, then start tracking.",
+          "why": "A second call while one dispatch is in flight returns null. Tracking starts optimistically, before the dispatch returns."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "startSweepTracking",
+          "match": [
+            "_sweepActive = true;",
+            "_sweepPoller = setInterval(pollSweepOnce, SWEEP_POLL_MS);"
+          ],
+          "title": "The sweep tracker starts polling.",
+          "why": "It drives the working indicator until the triage run is seen to finish, then reloads the swept project's rows."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "dispatchTriage",
+          "match": [
+            "dispatch_triage: true,",
+            "project_id: projectId,"
+          ],
+          "title": "The triage request leaves the app.",
+          "why": "One POST to the Worker, which starts the triage workflow for the whole project. Errors come back as ok: false."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "syncGenerateControl",
+          "match": [
+            "const generating = isGeneratingState(state);",
+            "if (textarea) textarea.readOnly = generating;",
+            "setGenerateVisual(btn, inDescPanel ? 'hidden' : 'generating', state === 'escalated');"
+          ],
+          "title": "Triaging reads as Generating.",
+          "why": "triaging or escalated counts as generating: Inject is disabled and the description read-only until the row moves on."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "landGeneratedDraft",
+          "match": [
+            "item.desc = draft;",
+            "listLogic.editToDoItem(projectName, item);"
+          ],
+          "title": "The draft lands in the description.",
+          "why": "syncGenerateControl calls this once per drafted row, so a later repaint cannot overwrite your edits [src: toDoRow.js:2549]."
+        },
+        {
+          "file": "phase.js",
+          "symbol": "derivePhase",
+          "match": [
+            "if (queueRow && queueRow.state === 'drafted' && !item.draftSeenAt) return PHASE.DRAFTED;"
+          ],
+          "title": "A drafted row shows DRAFTED.",
+          "why": "Until you have looked at the draft, the task reads DRAFTED, and its panel offers Dispatch."
+        }
+      ]
+    },
+    {
+      "id": "triage-asks",
+      "section": "pipeline",
+      "title": "When triage asks a question",
+      "recap": [
+        {
+          "title": "needs_words is ASKING",
+          "body": "A row triage could not draft without more words shows ASKING with its question."
+        },
+        {
+          "title": "Empty answers go nowhere",
+          "body": "Send ignores blank text, and answerAgentTask rejects it before any write."
+        },
+        {
+          "title": "An answer re-queues the row",
+          "body": "The reply is appended to the thread and the row goes back to triaging."
+        },
+        {
+          "title": "The sweep fires again",
+          "body": "The same dispatcher Generate uses runs the next sweep, behind the same guard."
+        },
+        {
+          "title": "Unsent text survives",
+          "body": "pendingAnswers keeps what you typed across a rebuild until a send succeeds."
+        }
+      ],
+      "steps": [
+        {
+          "file": "phase.js",
+          "symbol": "derivePhase",
+          "match": [
+            "if (queueRow && queueRow.state === 'needs_words') return PHASE.ASKING;"
+          ],
+          "title": "needs_words reads as ASKING.",
+          "why": "This tour follows triage asking a question: the task shows ASKING with an answer box. It is checked before every other state."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildAskingBlock",
+          "match": [
+            "const question = (queueRow.question || '').trim();",
+            "input.placeholder = 'Answer to continue…';"
+          ],
+          "title": "The question sits above an answer box.",
+          "why": "The block shows the question triage stored on the row, a textarea and a Send button."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildAskingBlock",
+          "match": [
+            "if (pendingAnswers.has(queueRow.id)) input.value = pendingAnswers.get(queueRow.id);",
+            "pendingAnswers.set(queueRow.id, input.value);"
+          ],
+          "title": "Typing is mirrored into pendingAnswers.",
+          "why": "A repaint rebuilds the textarea, so every keystroke is kept in the shared map and restored [src: agentQueueStore.js:77]."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildAskingBlock",
+          "match": [
+            "const text = (input.value || '').trim();",
+            "if (!text) return;"
+          ],
+          "title": "Send ignores an empty reply.",
+          "why": "Blank or whitespace-only text does nothing: no write, no error."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "answerAgentTask",
+          "match": [
+            "if (!text) return { ok: false, error: 'Empty answer.' };",
+            "{ role: 'user', text: text, ts: new Date().toISOString() },",
+            ".update({ thread: thread, state: 'triaging' })"
+          ],
+          "title": "The answer joins the thread; the row re-queues.",
+          "why": "The reply is appended to the existing thread and the state goes back to triaging in the same update."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildAskingBlock",
+          "match": [
+            "pendingAnswers.delete(queueRow.id);",
+            "Promise.resolve(loadQueueRows(projectName)).then(refreshDescStatusDots);"
+          ],
+          "title": "A saved answer clears the draft text.",
+          "why": "Only a successful send drops the kept text. The rows reload so ASKING clears even without a realtime push."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildAskingBlock",
+          "match": [
+            "Promise.resolve(fireTriageSweep(projectName)).then(function(tr) {",
+            "if (tr && tr.ok === false) {"
+          ],
+          "title": "The sweep fires again.",
+          "why": "The answer is already saved, so a failed dispatch only shows a toast. A null result shows nothing."
+        },
+        {
+          "file": "agentWiring.js",
+          "symbol": "fireTriageSweep",
+          "match": [
+            "if (isTriageInFlight()) return Promise.resolve(null);",
+            "startSweepTracking(false);"
+          ],
+          "title": "Same dispatcher, same guard.",
+          "why": "Answers and Generate share one in-flight flag, so two answers in the same tick fire one sweep [src: agentQueueStore.js:66]."
+        }
+      ]
+    },
+    {
+      "id": "triage-stuck",
+      "section": "pipeline",
+      "title": "When triage fails or never starts",
+      "recap": [
+        {
+          "title": "A failed flag never queued",
+          "body": "The button returns to idle with the reason beside it, and nothing else changed."
+        },
+        {
+          "title": "A failed dispatch leaves triaging",
+          "body": "The row exists with no run behind it; a toast says so."
+        },
+        {
+          "title": "Stuck waits out a quiet window",
+          "body": "Rows are only failed after 90 seconds of confirmed inactivity."
+        },
+        {
+          "title": "Two reapers, one reconcile",
+          "body": "The dispatching session and the working watch both end in reconcileStuckTriaging."
+        },
+        {
+          "title": "Retry triage re-queues",
+          "body": "The row goes back to triaging and the sweep fires again."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "onGenerateClick",
+          "match": [
+            "if (!res || res.ok === false) {",
+            "showGenerateFailure(btn, (res && res.error) || 'Could not start. Try again.', 'flag-error');"
+          ],
+          "title": "The flag fails: back to idle.",
+          "why": "This tour follows triage that fails or never starts. A failed insert, offline or already queued, shows its reason by the button."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onGenerateClick",
+          "match": [
+            "if (tr == null || tr.ok === false) {",
+            "showRowToast("
+          ],
+          "title": "The flag lands but no run starts.",
+          "why": "A null result counts as a failure too. The row stays triaging with no run behind it, and a toast says so."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "verifyThenReconcile",
+          "match": [
+            "const deadline = Date.now() + SWEEP_RECONCILE_QUIET_MS;",
+            "if (res.active) {",
+            "if (sawInactive) reconcileStuckTriaging(projectName);"
+          ],
+          "title": "Wait out the quiet window first.",
+          "why": "A queued run can appear late [src: agentQueueStore.js:1119]. Only confirmed inactivity across the window reconciles."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "reconcileStuckTriaging",
+          "match": [
+            "const rows = await fetchQueueRows(projectId);",
+            "return r && isGeneratingState(r.state);",
+            "state: 'failed',"
+          ],
+          "title": "Still-triaging rows are marked failed.",
+          "why": "The queue is read fresh, so a row the sweep did resolve is never overwritten. The reason names Retry triage."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "noteStrandedTriaging",
+          "match": [
+            "reading.projectTriaging && !reading.repoActive && reading.probeOk &&",
+            "if (Date.now() - _watchStrandedSince < SWEEP_RECONCILE_QUIET_MS) return;",
+            "Promise.resolve(reconcileStuckTriaging(projectName))"
+          ],
+          "title": "A stranded row is reaped by the watch.",
+          "why": "The reconcile above only runs where the sweep was dispatched [src: agentQueueStore.js:1572]. This catches the rest."
+        },
+        {
+          "file": "phase.js",
+          "symbol": "derivePhase",
+          "match": [
+            "(queueRow.state === 'failed' || queueRow.state === 'no_change')) return PHASE.STUCK;"
+          ],
+          "title": "Failed reads as STUCK.",
+          "why": "The task shows STUCK with the failure reason, and its panel offers Retry triage."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildDispatchBlock",
+          "match": [
+            "if (isRetriage) { startPending(); runRetriage(); return; }"
+          ],
+          "title": "Retry triage skips dispatch.",
+          "why": "A row with no entry and no draft has nothing to ship, so it re-runs triage instead [src: toDoRow.js:1039]."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildDispatchBlock",
+          "match": [
+            "state: 'triaging',",
+            "failure_reason: null,",
+            "return Promise.resolve(fireTriageSweep(projectName)).then(function (tr) {"
+          ],
+          "title": "Back to triaging, then fire the sweep.",
+          "why": "The state write comes first and clears the reason. Only then is the project-wide sweep fired."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildDispatchBlock",
+          "match": [
+            "if (tr == null) {",
+            "if (tr.ok === false) {"
+          ],
+          "title": "A sweep that does not start is noted.",
+          "why": "The row is already triaging, so the message is shown without undoing it. The reapers fail it again if nothing picks it up."
+        }
+      ]
+    },
+    {
       "id": "inject-entry",
       "section": "pipeline",
       "title": "Injecting a task into TODO.md",

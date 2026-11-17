@@ -8,6 +8,7 @@ export const changelog = [
         date: '2026-11-17',
         added: [
             'The Understanding book\'s pipeline chapters now walk the task row\'s own Dispatch, Retry and review controls, with new tours for a run that fails, a run that lands while the app is closed, and accepting or reverting a shipped change.',
+            'The Understanding book has a new chapter on how Generate turns a task into a draft, with tours for a task that drafts, a triage that asks you a question, and one that fails or never starts.',
         ],
     },
     {
@@ -23,13 +24,6 @@ export const changelog = [
         date: '2026-11-12',
         fixed: [
             'Tasks whose agent run takes longer than 15 minutes now flip to Review on their own when the run finishes, without needing a page reload.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-11-11',
-        changed: [
-            'Focus mode\'s pomodoro pill now shrinks to just its play button, revealing the mode arrows, name and dots when you hover or focus it, or tap it on touch screens.',
         ],
     },
 ];
