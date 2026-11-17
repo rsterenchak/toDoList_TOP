@@ -34,7 +34,7 @@
         "showInjectToast": "The single toast the pipeline uses to report what just happened, replacing any toast already showing.",
         "mintEntryId": "Mints the stable id an entry carries in its marker, so a TODO.md entry traces back to the PR that ships it.",
         "onQueueChange": "Subscribes a view to the agent queue so it repaints when a realtime push reloads the rows.",
-        "fireTriageSweep": "Asks the Agent board to triage a project's waiting rows, quietly doing nothing when the board isn't loaded.",
+        "fireTriageSweep": "Fires a triage sweep through the dispatcher agentWiring.js registers at boot; resolves null when none is registered.",
         "stuckReasonText": "The one wording for why a run got stuck, shared by every surface that shows a stuck row.",
         "dispatchDraft": "Ships a drafted entry: writes it to TODO.md, starts the run and records it on the queue row.",
         "resolveDispatchTarget": "The repo the selected project's runs go to, so every ship button targets the same place.",
@@ -328,6 +328,41 @@
       }
     },
     {
+      "id": "triage",
+      "title": "From an idea to a draft",
+      "area": "pipeline",
+      "files": ["toDoRow.js", "listLogic.js", "agentQueueStore.js", "agentWiring.js", "inject.js", "phase.js"],
+      "tours": ["triage-drafts", "triage-asks", "triage-stuck"],
+      "ahead": { "chapter": "pipeline-ship", "note": "How Dispatch turns a draft into a run and a pull request is the next chapter.", "promises": ["dispatchDraft"] },
+      "body": [
+        "A task usually starts as a title and a few loose words. Generate is how it becomes an entry worth building. The button sits beside Inject in the task's description panel, and in the description editor on mobile; both are built by `makeGenerateButton`. Tapping it runs `onGenerateClick`, which disables the button straight away. Generate never injects anything: the draft it produces lands in the description, so you read it before it becomes an entry [src: toDoRow.js:2530].",
+        "Flagging is the whole of the local work. `flagTaskForAgent` in listLogic finds the task and its project, then makes one insert into the agent queue: a row in state triaging that carries the task's title and description as context. If that insert fails, say offline or with the task already queued, `onGenerateClick` puts the button back to idle and shows the error beside it. On success it reloads the queue rows and fires a triage sweep for the project.",
+        "The row layer does not import the code that dispatches the sweep, so the call goes through the store instead [src: agentQueueStore.js:85]. `agentQueueStore.js:fireTriageSweep` calls whatever dispatcher was registered through `setTriageDispatcher`, and resolves null when none was. At boot `agentWiring.js` registers its own `agentWiring.js:fireTriageSweep`. That one returns null while a dispatch is already in flight, starts `startSweepTracking`, then calls `dispatchTriage`, the single request that leaves the app and starts the triage run.",
+        "The verdict never comes back through that call. The sweep writes to the queue rows, the queue store reloads them, and `syncGenerateControl` re-derives each Generate button from its task's row. While the row is triaging or escalated it reads as Generating [src: agentQueueStore.js:33]: Inject is disabled and the description is read-only. When the row turns drafted, `landGeneratedDraft` writes the draft into the description through listLogic, once per row, so a later repaint cannot overwrite your edits [src: toDoRow.js:2549].",
+        "`derivePhase` turns the row into what the task shows. A needs_words row means triage has a question, and the task reads ASKING with an answer box; `answerAgentTask` appends your reply and sets the row back to triaging. A drafted row reads DRAFTED until you have seen the draft. A failed or no_change row reads STUCK. These queue states are checked before the TODO.md markers, so a task stuck in triage never passes for an ordinary draft.",
+        "Triage can also stop without a verdict. `verifyThenReconcile` waits out a quiet window after a sweep settles and only then lets `reconcileStuckTriaging` mark leftover rows failed, while `noteStrandedTriaging` catches rows whose sweep was dispatched in another session. A drafted task is where this chapter hands over: its panel offers Dispatch. The tours follow each outcome: a task that drafts, a triage that asks a question, and one that fails or never starts."
+      ],
+      "fingerprint": {
+        "agentQueueStore.js:fireTriageSweep": "cbb150cee5588551.6fdcb1da7f0b4298",
+        "agentQueueStore.js:noteStrandedTriaging": "735394a7d13ced91.da39a3ee5e6b4b0d",
+        "agentQueueStore.js:reconcileStuckTriaging": "de199670c276f7f5.da39a3ee5e6b4b0d",
+        "agentQueueStore.js:setTriageDispatcher": "7830d0a9eb523f2c.4905e3a1d3c8a748",
+        "agentQueueStore.js:startSweepTracking": "d589a7817347b1f2.4905e3a1d3c8a748",
+        "agentQueueStore.js:verifyThenReconcile": "d6e26dcf1660284b.da39a3ee5e6b4b0d",
+        "agentWiring.js": "0a3f4ca77f4747d2.da39a3ee5e6b4b0d",
+        "agentWiring.js:fireTriageSweep": "a9d79b749830565f.da39a3ee5e6b4b0d",
+        "dispatchDraft.js:dispatchDraft": "167f30af36d2a203.62c88aa457ee1fcf",
+        "inject.js:dispatchTriage": "7ac59ad11f157e96.4905e3a1d3c8a748",
+        "listLogic.js:listLogic.answerAgentTask": "140d6f15dfd7419a.1c5dfd17700ed819",
+        "listLogic.js:listLogic.flagTaskForAgent": "e076ceeba141829a.1c5dfd17700ed819",
+        "phase.js:derivePhase": "16b8d67aded8810f.15dd79678516ef46",
+        "toDoRow.js:landGeneratedDraft": "9b38d5adcaa2f91e.da39a3ee5e6b4b0d",
+        "toDoRow.js:makeGenerateButton": "22b814e7b3848b38.91be5ad223753378",
+        "toDoRow.js:onGenerateClick": "b2655f21f8437dda.da39a3ee5e6b4b0d",
+        "toDoRow.js:syncGenerateControl": "bb48e4931a9a4725.91be5ad223753378"
+      }
+    },
+    {
       "id": "pipeline-ship",
       "title": "From a task to a pull request",
       "area": "pipeline",
@@ -335,7 +370,7 @@
       "tours": ["inject-entry", "ship-run"],
       "ahead": { "chapter": "pipeline-follow", "note": "How a dispatched run is followed until its PR merges is the next chapter.", "promises": ["startAgentQueueSubscription", "derivePhase"] },
       "body": [
-        "Void can hand a task to Claude to build. The task's description becomes an entry in a repository's TODO.md, a GitHub Actions run picks that entry up, and a pull request comes back. The app itself never talks to GitHub: every call goes to a Cloudflare Worker you configure, and `postToWorker` in `inject.js` is the single funnel for those calls.",
+        "The previous chapter ended with a draft in the task's description; this one ships it. Void can hand a task to Claude to build. The task's description becomes an entry in a repository's TODO.md, a GitHub Actions run picks that entry up, and a pull request comes back. The app itself never talks to GitHub: every call goes to a Cloudflare Worker you configure, and `postToWorker` in `inject.js` is the single funnel for those calls.",
         "Injecting is the first half. Each row carries an inject button made by `makeInjectButton`, which disables itself first to stop a double tap. `injectDescription` mints an entry id once and reuses it, so re-injecting the same task never makes a second copy, and that id travels inside the entry as a marker comment. After the Worker appends the entry, `stampTodoEntryId` saves the id with the task so other devices can link it too.",
         "That id marker is the thread the rest of the pipeline follows. It is how a run finds its entry, how a merged pull request is traced back to the task that asked for it, and later how a shipped change can be reverted or iterated on.",
         "Shipping is the second half. Once a task has a ready draft, its description panel shows a Dispatch button built by `buildDispatchBlock`, which calls `dispatchDraft` with the row's existing entry id. It picks the repo from the selected project's target and hands the real work to `shipEntryForTodo`. That function injects the entry, waits for its marker to appear in TODO.md, then calls `dispatchRun` with a fresh correlation id in entry mode, which starts the claude-run workflow for exactly that one entry.",
