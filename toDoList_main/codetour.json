@@ -2490,7 +2490,7 @@
       "recap": [
         {
           "title": "One ship core",
-          "body": "Agent board and description panel both go through dispatchDraft and shipEntryForTodo."
+          "body": "The row's Dispatch and Retry buttons both go through dispatchDraft and shipEntryForTodo."
         },
         {
           "title": "Inject, then dispatch",
@@ -2507,14 +2507,14 @@
       ],
       "steps": [
         {
-          "file": "agentView.js",
-          "symbol": "buildDraftedSecondary",
+          "file": "toDoRow.js",
+          "symbol": "buildDispatchBlock",
           "match": [
-            "dispatch.textContent = 'Dispatching…';",
-            "dispatchDraft(row, draftText, row.entry_id, boardDispatchTail)"
+            "const idleLabel = isRetriage ? 'Retry triage' : (isRetry ? 'Retry' : 'Dispatch');",
+            "Promise.resolve(dispatchDraft(queueRow, draftText, queueRow.entry_id))"
           ],
-          "title": "Dispatch on a drafted card.",
-          "why": "The button shows Dispatching… and hands the card's draft to dispatchDraft."
+          "title": "Dispatch from the task's description panel.",
+          "why": "A drafted task shows Dispatch beneath its entry. It hands the draft and the row's existing entry id to dispatchDraft."
         },
         {
           "file": "dispatchDraft.js",
@@ -2684,121 +2684,353 @@
           "why": "A shipped entry shows REVIEW until you mark it reviewed. Then it moves to DONE."
         },
         {
-          "file": "agentView.js",
-          "symbol": "buildShippedGlyph",
+          "file": "toDoRow.js",
+          "symbol": "syncReviewPanel",
           "match": [
-            "glyph.title = 'Shipped';",
-            "glyph.innerHTML = SHIPPED_GLYPH_SVG;"
+            "const wantReview = phase === PHASE.ACCEPT;",
+            "panel.insertBefore(buildReviewBlock(item, queueRow), anchor);"
           ],
-          "title": "The board card gets a check mark.",
-          "why": "Shipped cards swap their text chip for a filled check icon titled Shipped."
+          "title": "The open row offers a review.",
+          "why": "On desktop, a shipped entry awaiting review mounts a What changed card and Accept and Revert buttons in its panel."
         }
       ]
     },
     {
-      "id": "agent-board",
+      "id": "run-fails",
       "section": "pipeline",
-      "title": "The Agent board",
+      "title": "When a run fails",
       "recap": [
         {
-          "title": "Rows live in memory",
-          "body": "loadQueueRows caches the selected project's queue rows. Renders read the cache."
+          "title": "One poller for every row",
+          "body": "reconcileTick polls every in-flight row across all projects, whatever is on screen."
         },
         {
-          "title": "One card per row",
-          "body": "A title, a chip or check, and content that depends on the state."
+          "title": "Only real failures fail",
+          "body": "failure, cancelled and timed_out write failed. Other conclusions keep polling."
         },
         {
-          "title": "Every action ships the same way",
-          "body": "Dispatch, Accept and Retry all go through dispatchDraft."
+          "title": "The summary is the reason",
+          "body": "The run's closing summary is stored as the row's failure reason."
         },
         {
-          "title": "Triage runs elsewhere",
-          "body": "The app only asks the Worker to start it. Results come back as queue rows."
+          "title": "Retry reuses the id",
+          "body": "The same entry id goes back out, so TODO.md never gets a second copy."
+        },
+        {
+          "title": "Silence has a limit",
+          "body": "A row with no alive signal for RECONCILE_GIVE_UP_MS stops being polled."
+        }
+      ],
+      "steps": [
+        {
+          "file": "dispatchDraft.js",
+          "symbol": "dispatchDraft",
+          "match": [
+            "Promise.resolve(kickDispatchReconciler()).catch(function () {});"
+          ],
+          "title": "Every dispatch kicks the reconciler.",
+          "why": "This tour follows a run that fails: the task ends STUCK with the reason and a Retry. It starts when dispatch arms the poller."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "kickDispatchReconciler",
+          "match": [
+            "return loadAllQueueRows().then(function () {",
+            "evaluateReconciler();",
+            "reconcileTick();"
+          ],
+          "title": "Reload rows, arm the interval, tick once.",
+          "why": "The interval only runs while some row is in flight, and one tick fires right away instead of waiting."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "reconcileTick",
+          "match": [
+            "const rows = getInFlightRows();",
+            "if (!_rowStartedAt.has(row.id)) _rowStartedAt.set(row.id, now);"
+          ],
+          "title": "Each tick walks every in-flight row.",
+          "why": "Rows from every project are polled, not just the selected one. A row first seen starts its give-up clock."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "reconcileTick",
+          "match": [
+            "if (now - _rowStartedAt.get(row.id) >= RECONCILE_GIVE_UP_MS) {",
+            "_rowGaveUp.add(row.id);"
+          ],
+          "title": "A silent row is given up on.",
+          "why": "No alive signal for 15 minutes and the row stops being polled. Only the checkbox pass can still settle it."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "reconcileDispatchRow",
+          "match": [
+            "_reconcilerDeps.pollRunStatus({ correlationId: row.correlation_id",
+            "if (res.status === 'completed') {"
+          ],
+          "title": "Ask how the run is doing.",
+          "why": "The row is looked up by its correlation id. An error or a run not found yet just waits for the next tick."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "pollRunStatus",
+          "match": [
+            "status: true,",
+            "correlation_id: opts.correlationId,"
+          ],
+          "title": "The status request leaves the app.",
+          "why": "One POST to the Worker, which finds the run by correlation id and returns its status and conclusion."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "reconcileDispatchRow",
+          "match": [
+            "RECONCILE_FAILURE_CONCLUSIONS.indexOf(res.conclusion) !== -1",
+            "state: 'failed',",
+            "failure_reason: summary || 'The run failed.',"
+          ],
+          "title": "A failure conclusion writes failed.",
+          "why": "failure, cancelled or timed_out stores failed, with the run's closing summary as the reason you will read."
+        },
+        {
+          "file": "phase.js",
+          "symbol": "derivePhase",
+          "match": [
+            "(queueRow.state === 'failed' || queueRow.state === 'no_change')) return PHASE.STUCK;"
+          ],
+          "title": "Failed reads as STUCK.",
+          "why": "A failed or no_change row outranks the TODO.md markers, so the task shows STUCK rather than DRAFT."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildDispatchBlock",
+          "match": [
+            "const canRun = isRetriage ? true",
+            "Promise.resolve(dispatchDraft(queueRow, draftText, queueRow.entry_id))"
+          ],
+          "title": "Retry ships the same entry again.",
+          "why": "Retry passes the stored entry id, so injecting skips the marker already in TODO.md [src: toDoRow.js:972]."
+        }
+      ]
+    },
+    {
+      "id": "run-lands-unwatched",
+      "section": "pipeline",
+      "title": "A run that merged while the app was closed",
+      "recap": [
+        {
+          "title": "Checkboxes, not polls",
+          "body": "A checked entry on main proves the ship, even for a run too old to poll."
+        },
+        {
+          "title": "One read per repo",
+          "body": "Markers refresh once per project, then every row reads from the cache."
+        },
+        {
+          "title": "Unchecked waits",
+          "body": "A row whose entry is still unchecked is left to the poller."
+        },
+        {
+          "title": "Shipped is stamped",
+          "body": "The task gets shipped_at, so REVIEW survives a TODO.md rewrite."
         }
       ],
       "steps": [
         {
           "file": "agentQueueStore.js",
-          "symbol": "loadQueueRows",
+          "symbol": "startDispatchReconciler",
           "match": [
-            "_loadedProjectName = projectName;",
-            "if (_loadedProjectName === projectName) {"
+            "if (_reconcilerStarted) return;",
+            "kickDispatchReconciler();"
           ],
-          "title": "Only the current project's rows are kept.",
-          "why": "If you switch projects mid-fetch, the late answer is thrown away instead of overwriting."
+          "title": "App start runs the backlog pass.",
+          "why": "This tour follows a run that merged while the app was closed: on the next open the task moves to REVIEW with no polling."
         },
         {
-          "file": "agentView.js",
-          "symbol": "buildCard",
+          "file": "agentQueueStore.js",
+          "symbol": "kickDispatchReconciler",
           "match": [
-            "const thin = THIN_STATES.indexOf(row.state) !== -1;",
-            "buildShippedGlyph() : buildChip(row.state)",
-            "const secondary = buildSecondary(row);"
+            "return settleShippedRows(getInFlightRows());"
           ],
-          "title": "Each row becomes a card.",
-          "why": "Running rows stay thin. Others get a state chip (a check if shipped) plus state-specific content."
+          "title": "Settle what already shipped first.",
+          "why": "Before any poll, every dispatched or running row across all projects is checked against TODO.md."
         },
         {
-          "file": "agentView.js",
-          "symbol": "buildDraftedSecondary",
+          "file": "agentQueueStore.js",
+          "symbol": "settleShippedRows",
           "match": [
-            "block.textContent = draftText || 'No draft text available.';",
-            "dispatchDraft(row, draftText, row.entry_id, boardDispatchTail)"
+            "return r && r.entry_id && (r.state === 'dispatched' || r.state === 'running');"
           ],
-          "title": "Drafted: read it, then Dispatch.",
-          "why": "The draft entry is shown in full. Dispatch sends it off as a run."
+          "title": "Only in-flight rows with an entry.",
+          "why": "A row needs an entry id to have a checkbox to read. Everything else is left alone."
         },
         {
-          "file": "agentView.js",
-          "symbol": "buildProposedSecondary",
+          "file": "agentQueueStore.js",
+          "symbol": "settleShippedRows",
           "match": [
-            "preview.textContent = description;",
-            "accept.textContent = 'Accept';",
-            "dispatchDraft(row, draftText, row.entry_id, boardDispatchTail)"
+            "projectNames.forEach(function (n) {",
+            "refreshShippedMarkersForProject(n, true)"
           ],
-          "title": "Proposed: Accept ships the proposal.",
-          "why": "You see a short description. Accept uses the same dispatch path as a draft."
+          "title": "Refresh each repo’s markers once.",
+          "why": "One TODO.md read per project, not one per row [src: agentQueueStore.js:799]."
         },
         {
-          "file": "agentView.js",
-          "symbol": "buildStuckSecondary",
+          "file": "agentQueueStore.js",
+          "symbol": "settleShippedRows",
           "match": [
-            "p.textContent = stuckReasonText(row);",
-            "const canRetry = !!(row.entry_id || draftText);"
+            "if (_reconcilerDeps.resolveEntryRunState(row.entry_id) !== 'shipped') return;"
           ],
-          "title": "Stuck: see why, then Retry.",
-          "why": "The reason is shown. Retry only works if there's an entry id or draft to send again."
+          "title": "Unchecked rows are left to the poller.",
+          "why": "A row whose entry is still unchecked may simply still be running [src: agentQueueStore.js:801]."
         },
         {
-          "file": "agentView.js",
-          "symbol": "buildShippedSecondary",
+          "file": "agentQueueStore.js",
+          "symbol": "settleShippedRows",
           "match": [
-            "a.href = row.pr_url;",
-            "if (row.entry_id && !_revertedEntries.has(row.entry_id)) {"
+            "settles.push(withSettleGuard(row.id, function () {",
+            "return settleShipped(row, row.entry_id, row.run_id);"
           ],
-          "title": "Shipped: a PR link and a Revert.",
-          "why": "The merged PR is one tap away. Revert hides once this entry was reverted this session."
+          "title": "Checked rows settle as shipped.",
+          "why": "The settle guard stops a poll tick from settling the same row twice while this pass runs."
+        },
+        {
+          "file": "agentQueueStore.js",
+          "symbol": "settleShipped",
+          "match": [
+            "const patch = { state: 'shipped' };",
+            "stampShippedTodo(row.todo_id);",
+            "return listLogic.setAgentRunState(row.id, patch);"
+          ],
+          "title": "The row ships and the task is stamped.",
+          "why": "A best-effort PR link rides along, and shipped_at keeps REVIEW after a TODO.md rewrite [src: agentQueueStore.js:697]."
+        }
+      ]
+    },
+    {
+      "id": "review-accept-revert",
+      "section": "pipeline",
+      "title": "Reviewing a shipped change: accept or revert",
+      "recap": [
+        {
+          "title": "Review lives in the row",
+          "body": "On desktop, a shipped, unreviewed task mounts the review card and actions in its panel."
+        },
+        {
+          "title": "Accept is one stamp",
+          "body": "markEntryReviewed sets entry_reviewed_at and the task moves to DONE."
+        },
+        {
+          "title": "Revert has three results",
+          "body": "Merged, revert PR left open, or failed. Each is handled differently."
+        },
+        {
+          "title": "Only a merge unships",
+          "body": "unshipEntry runs only after the revert merged. The other two leave records as they were."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "syncReviewPanel",
+          "match": [
+            "if (!isDetailPaneMode()) return;",
+            "const wantReview = phase === PHASE.ACCEPT;",
+            "const reviewActions = buildReviewActions(item, projectName);"
+          ],
+          "title": "A shipped task gets a review panel.",
+          "why": "This tour follows reviewing a shipped change: Accept moves the task to DONE, Revert rolls the code back."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildReviewActions",
+          "match": [
+            "listLogic.markEntryReviewed(item.id);",
+            "document.dispatchEvent(new CustomEvent(TODO_RUN_STATUS_EVENT));"
+          ],
+          "title": "Accept & close stamps the review.",
+          "why": "The same writer the TODO.md viewer uses. The status event re-derives the phase, which clears the panel."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "markEntryReviewed",
+          "match": [
+            "found.entryReviewedAt = new Date().toISOString();",
+            "saveToStorage();",
+            "op: 'update',"
+          ],
+          "title": "The stamp is saved and synced.",
+          "why": "entryReviewedAt is stored locally, then sent as an update so other devices see DONE too."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "buildReviewActions",
+          "match": [
+            "message: revertConfirmMessage(item.entryId),",
+            "onConfirm: function () { performReviewRevert(item, revert, errorEl); },"
+          ],
+          "title": "Revert asks first.",
+          "why": "The confirm says what happens to the entry: back to proposals, or reopened in TODO.md."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "performReviewRevert",
+          "match": [
+            "btn.textContent = 'Reverting…';",
+            "return Promise.resolve(revertEntry(item.entryId, resolveDispatchTarget()))"
+          ],
+          "title": "Ask for the rollback.",
+          "why": "The button shows Reverting… and asks for a revert of this entry against the project's target."
         },
         {
           "file": "inject.js",
-          "symbol": "dispatchTriage",
+          "symbol": "revertEntry",
           "match": [
-            "dispatch_triage: true,",
-            "project_id: projectId,",
-            "return Object.assign({ ok: true }, res || {});"
+            "const payload = { revert: true, entry_id: entryId };",
+            "const res = await postToWorker(payload);"
           ],
-          "title": "Triage is handed to the Worker.",
-          "why": "The Worker starts a triage run on GitHub for this project. The app just gets back ok or not."
+          "title": "The revert request leaves the app.",
+          "why": "The Worker finds the merged PR by its marker, opens a revert PR and tries to merge it."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "performReviewRevert",
+          "match": [
+            "if (res && res.ok && res.merged === false) {",
+            "window.open(res.revert_pr_url, '_blank', 'noopener');"
+          ],
+          "title": "Not merged: open the revert PR.",
+          "why": "The revert PR opened but did not merge. It opens for you to finish, and the button can be tried again."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "performReviewRevert",
+          "match": [
+            "errorEl.textContent = (res && res.reason) ? ('Revert failed: ' + res.reason) : 'Revert failed';"
+          ],
+          "title": "Failed: show why.",
+          "why": "An error comes back as Revert failed with its reason, and nothing about the task changes."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "performReviewRevert",
+          "match": [
+            "if (res && res.ok && res.merged === true) {",
+            "return Promise.resolve(unshipEntry(item.entryId, {"
+          ],
+          "title": "Merged: roll the bookkeeping back.",
+          "why": "Only a merged revert unships, and the button stays disabled [src: toDoRow.js:1318]."
         },
         {
           "file": "dispatchDraft.js",
-          "symbol": "isDeriveProposalRow",
+          "symbol": "unshipEntry",
           "match": [
-            "return !!(row && row.aspect && (row.draft || '').toString().trim());"
+            "const toProposals = isDeriveProposalRow(row);",
+            "await rewriteTodoMd(target, 'delete_entry', id);",
+            "todoMdUpdated = await reopenEntryInTodoMd(target, id);"
           ],
-          "title": "Derive proposals carry an aspect and a draft.",
-          "why": "A row needs both an aspect tag and real draft text to count as born from a derive pass."
+          "title": "Return the work or reopen the entry.",
+          "why": "A derived proposal goes back to the list. A hand-written entry is reopened unchecked in TODO.md."
         }
       ]
     },
@@ -2908,117 +3140,6 @@
           ],
           "title": "The pick is stored on the queue row.",
           "why": "draft and state are written to the task's agent_queue row. Keys not on the allowed list are dropped."
-        }
-      ]
-    },
-    {
-      "id": "generate-tasks",
-      "section": "pipeline",
-      "title": "Generating tasks from a project plan",
-      "recap": [
-        {
-          "title": "One stage makes tasks",
-          "body": "Only the actionable stage is decomposed. Other stages are background."
-        },
-        {
-          "title": "Each task comes with an entry",
-          "body": "The reply is a JSON list of a title plus a TODO.md entry."
-        },
-        {
-          "title": "You choose what lands",
-          "body": "A checklist shows every task. Duplicates are locked off."
-        },
-        {
-          "title": "Normal add path",
-          "body": "Accepted rows go through listLogic.addToDo, like typing them in."
-        }
-      ],
-      "steps": [
-        {
-          "file": "seedTasksModal.js",
-          "symbol": "openSeedTasksModal",
-          "match": [
-            "const actionableLabel = actionableStageLabelForStages(",
-            "listLogic.getProjectLifecycle(projectName)"
-          ],
-          "title": "Find the stage that holds the work.",
-          "why": "It's picked from the project's stage labels, with its lifecycle as the fallback."
-        },
-        {
-          "file": "seedTasksModal.js",
-          "symbol": "buildPrompt",
-          "match": [
-            "lines.push('## Project context (background only",
-            "lines.push('## ' + actionableLabel + ' (the ONLY source of tasks)');"
-          ],
-          "title": "Only the actionable stage becomes tasks.",
-          "why": "Other filled-in stages ride along, labeled as background, never as a task source."
-        },
-        {
-          "file": "seedTasksModal.js",
-          "symbol": "buildPrompt",
-          "match": [
-            "'Return ONLY a JSON array of objects",
-            "lines.push('  { \"title\":"
-          ],
-          "title": "Each task asks for a ready entry.",
-          "why": "Every item is a short title plus a TODO.md entry, so it's pipeline-ready."
-        },
-        {
-          "file": "seedTasksModal.js",
-          "symbol": "run",
-          "parent": "openSeedTasksModal",
-          "match": [
-            "chatWithWorker([{ role: 'user', content: prompt }]",
-            "const tasks = parseTasks(reply);"
-          ],
-          "title": "One private chat call.",
-          "why": "A one-off message, so your open chat isn't touched. The reply is parsed into tasks."
-        },
-        {
-          "file": "inject.js",
-          "symbol": "chatWithWorker",
-          "match": [
-            "if (deepThink) payload.deep_think = true;",
-            "const res = await postToWorker(payload, postOpts);"
-          ],
-          "title": "The prompt leaves the app.",
-          "why": "The Worker runs it on a heavier model, since deep_think is set, and returns the reply text."
-        },
-        {
-          "file": "seedTasksModal.js",
-          "symbol": "renderChecklist",
-          "parent": "openSeedTasksModal",
-          "match": [
-            "const isDup = existing.has(key) || seenInList.has(key);",
-            "cb.checked = !isDup;",
-            "cb.disabled = isDup;"
-          ],
-          "title": "You review a checklist.",
-          "why": "New tasks start checked. Titles already in the project, or repeated, are locked off."
-        },
-        {
-          "file": "seedTasksModal.js",
-          "symbol": "openSeedTasksModal",
-          "match": [
-            "listLogic.addToDo(projectName, r.title);",
-            "item.desc = r.entry;",
-            "listLogic.editToDoItem(projectName, item);"
-          ],
-          "title": "Checked rows become tasks.",
-          "why": "Each is added by title, then its TODO.md entry is saved as the description."
-        },
-        {
-          "file": "listLogic.js",
-          "symbol": "addToDo",
-          "parent": "listLogic",
-          "match": [
-            "arr.push(listItem);",
-            "saveToStorage();",
-            "op: 'insert',"
-          ],
-          "title": "Saved like any other task.",
-          "why": "The item is stored locally first, then queued as an insert to the database."
         }
       ]
     },

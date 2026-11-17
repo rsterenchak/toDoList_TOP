@@ -717,7 +717,7 @@ describe('gen-src-manifest real codetour.json', () => {
 
     it('compiles the Pipeline tours in order, each with a 3–5 card recap', () => {
         const pipeline = tours.tours.filter((t) => t.section === 'pipeline');
-        expect(pipeline.map((t) => t.id)).toEqual(['inject-entry', 'ship-run', 'follow-run', 'agent-board', 'mockups', 'generate-tasks', 'coverage', 'todo-md-viewer']);
+        expect(pipeline.map((t) => t.id)).toEqual(['inject-entry', 'ship-run', 'follow-run', 'run-fails', 'run-lands-unwatched', 'review-accept-revert', 'mockups', 'coverage', 'todo-md-viewer']);
         pipeline.forEach((t) => {
             expect(t.recap.length).toBeGreaterThanOrEqual(3);
             expect(t.recap.length).toBeLessThanOrEqual(5);
@@ -740,15 +740,15 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('completes the 42-tour catalog with no empty section', () => {
-        expect(tours.tours.length).toBe(42);
+    it('completes the 43-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(43);
         doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
     });
 
     // Tours only see src/, so a step that talks about the Worker or a workflow
     // must sit on the call that leaves the app.
     it('anchors every Worker or workflow step on the call that leaves the app', () => {
-        const exits = ['postToWorker', 'chatWithWorker', 'dispatchRun', 'dispatchTriage', 'readTodoMdFromWorker', 'readAssignmentFromWorker', 'generateMockupsFromWorker'];
+        const exits = ['postToWorker', 'chatWithWorker', 'dispatchRun', 'dispatchTriage', 'readTodoMdFromWorker', 'readAssignmentFromWorker', 'generateMockupsFromWorker', 'pollRunStatus', 'revertEntry'];
         const pipeline = doc.tours.filter((t) => t.section === 'pipeline');
         pipeline.forEach((t) => t.steps.forEach((s) => {
             if (/worker|workflow|github actions|claude-run/i.test(s.why)) expect(exits).toContain(s.symbol);
