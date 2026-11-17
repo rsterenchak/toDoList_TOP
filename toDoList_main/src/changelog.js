@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-17',
+        added: [
+            'The Understanding book\'s pipeline chapters now walk the task row\'s own Dispatch, Retry and review controls, with new tours for a run that fails, a run that lands while the app is closed, and accepting or reverting a shipped change.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-16',
         added: [
             'The Understanding book has a new Signing in chapter, with step-through tours for signing in with a code, a refused email or code, using the app offline, and signing out.',
@@ -21,9 +28,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-11-11',
-        added: [
-            'Focus mode has a new Aurora scene — slow-drifting teal and violet light bands over layered mountain ridges under the stars.',
-        ],
         changed: [
             'Focus mode\'s pomodoro pill now shrinks to just its play button, revealing the mode arrows, name and dots when you hover or focus it, or tap it on touch screens.',
         ],

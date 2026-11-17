@@ -331,14 +331,14 @@
       "id": "pipeline-ship",
       "title": "From a task to a pull request",
       "area": "pipeline",
-      "files": ["inject.js", "shipEntry.js", "dispatchDraft.js", "agentView.js"],
+      "files": ["inject.js", "shipEntry.js", "dispatchDraft.js", "toDoRow.js"],
       "tours": ["inject-entry", "ship-run"],
       "ahead": { "chapter": "pipeline-follow", "note": "How a dispatched run is followed until its PR merges is the next chapter.", "promises": ["startAgentQueueSubscription", "derivePhase"] },
       "body": [
         "Void can hand a task to Claude to build. The task's description becomes an entry in a repository's TODO.md, a GitHub Actions run picks that entry up, and a pull request comes back. The app itself never talks to GitHub: every call goes to a Cloudflare Worker you configure, and `postToWorker` in `inject.js` is the single funnel for those calls.",
         "Injecting is the first half. Each row carries an inject button made by `makeInjectButton`, which disables itself first to stop a double tap. `injectDescription` mints an entry id once and reuses it, so re-injecting the same task never makes a second copy, and that id travels inside the entry as a marker comment. After the Worker appends the entry, `stampTodoEntryId` saves the id with the task so other devices can link it too.",
         "That id marker is the thread the rest of the pipeline follows. It is how a run finds its entry, how a merged pull request is traced back to the task that asked for it, and later how a shipped change can be reverted or iterated on.",
-        "Shipping is the second half. The Agent board's Dispatch button and the description panel both go through `dispatchDraft`, which picks the repo from the selected project's target and hands the real work to `shipEntryForTodo`. That function injects the entry, waits for its marker to appear in TODO.md, then calls `dispatchRun` with a fresh correlation id in entry mode, which starts the claude-run workflow for exactly that one entry.",
+        "Shipping is the second half. Once a task has a ready draft, its description panel shows a Dispatch button built by `buildDispatchBlock`, which calls `dispatchDraft` with the row's existing entry id. It picks the repo from the selected project's target and hands the real work to `shipEntryForTodo`. That function injects the entry, waits for its marker to appear in TODO.md, then calls `dispatchRun` with a fresh correlation id in entry mode, which starts the claude-run workflow for exactly that one entry.",
         "Before it returns, `dispatchDraft` records the change through listLogic and adds a run record, so the run is tracked straight away rather than after a reload. A retry passes the old entry id instead of minting a new one, so a failed attempt never leaves a duplicate entry behind."
       ],
       "fingerprint": {
@@ -351,37 +351,48 @@
         "inject.js:postToWorker": "8b52cb77eed7e6dc.0459a228d960df88",
         "listLogic.js:listLogic.stampTodoEntryId": "1c003040f8d8a085.1c5dfd17700ed819",
         "phase.js:derivePhase": "16b8d67aded8810f.15dd79678516ef46",
-        "shipEntry.js:shipEntryForTodo": "ad8b7129666e156f.9f8129dc1e9c7dfa"
+        "shipEntry.js:shipEntryForTodo": "ad8b7129666e156f.9f8129dc1e9c7dfa",
+        "toDoRow.js:buildDispatchBlock": "d4e3383c8ce63d9f.91be5ad223753378"
       }
     },
     {
       "id": "pipeline-follow",
       "title": "Following runs until they land",
       "area": "pipeline",
-      "files": ["agentQueueStore.js", "phase.js", "phaseRail.js", "runState.js", "agentView.js", "todoMdViewer.js", "mockupFlow.js", "seedTasksModal.js", "assignmentCoverage.js"],
-      "tours": ["follow-run", "agent-board", "mockups", "generate-tasks", "coverage", "todo-md-viewer"],
+      "files": ["agentQueueStore.js", "phase.js", "phaseRail.js", "runState.js", "toDoRow.js", "todoMdViewer.js", "mockupFlow.js", "assignmentCoverage.js"],
+      "tours": ["follow-run", "run-fails", "run-lands-unwatched", "review-accept-revert", "mockups", "coverage", "todo-md-viewer"],
       "body": [
         "Once a run is dispatched, the app watches it through the agent queue, one row per task in the database. `startAgentQueueSubscription` listens for pushes on that table and triggers a single reload through `reloadAndNotifyQueue`, and every surface repaints from the cached rows rather than fetching on its own.",
         "Each task has exactly one phase, and `derivePhase` is where it is decided. It combines the queue state with the id markers found in TODO.md: a dispatched or running row shows RUNNING, a checked-off marker means shipped and shows REVIEW until you mark it reviewed, and then DONE. `paintPhaseRail` draws the four nodes IDEA, DRAFT, REVIEW and DONE, folding queue states into DRAFT.",
         "Run state that more than one surface cares about lives in `runState.js`. `emitChange` fires one DOM event naming the project, so the TODO.md viewer's pill and the chat ship path stay in agreement, and a project only ever runs one thing at a time.",
-        "The Agent board draws one card per queue row with `buildCard`: drafted rows show their entry and a Dispatch button, proposed rows can be accepted, stuck rows explain why and offer a retry, and shipped rows link to the merged PR. Every one of those actions ships through `dispatchDraft`, so there is only one way work leaves the app.",
-        "Around that core sit a few ways to create work. `buildMockupSecondary` asks the Worker for three A/B/C HTML mockups of a task and turns your pick into a TODO.md entry. `openSeedTasksModal` breaks a project plan into a checklist of tasks, each with its own entry. `computeCoverage` measures how much of an assignment's rubric has shipped.",
-        "The TODO.md viewer shows the target repo's file as it really is. `readTodoMdFromWorker` fetches it fresh on each sync and `parseTodoMdChecklist` finds each entry's id, which is what Run and Revert act on. A revert only counts once it merges: `performRevert` then marks the entry so it can't fire twice, and `unshipEntry` rolls the task's bookkeeping back to match the code."
+        "Settling a run is the store's job, not a screen's: one poller in `agentQueueStore.js` works whatever is on screen [src: agentQueueStore.js:520]. Every dispatch calls `kickDispatchReconciler`, and each `reconcileTick` asks after every in-flight row across all projects through `inject.js:pollRunStatus`. `reconcileDispatchRow` turns a finished run into shipped, no_change or failed. A failed or no_change row derives as STUCK, and its panel offers Retry, which reuses the entry id. A run that merged while the app was closed is caught by `settleShippedRows`, which reads checkboxes instead of polling.",
+        "A shipped task waits in REVIEW until you decide. On desktop, `syncReviewPanel` mounts a What changed card and the action row from `buildReviewActions` in the open row's panel. Accept goes through `markEntryReviewed` and moves the task to DONE. Revert confirms first, then `performReviewRevert` calls `revertEntry`. Only a merged revert runs `unshipEntry`; an open revert PR or a failure leaves every record as it was, because the code they describe is still deployed [src: dispatchDraft.js:265].",
+        "Around that core sit two more surfaces. `buildMockupSecondary` asks the Worker for three A/B/C HTML mockups of a task and turns your pick into a TODO.md entry. `computeCoverage` measures how much of an assignment's rubric has shipped.",
+        "The TODO.md viewer shows the target repo's file as it really is. `readTodoMdFromWorker` fetches it fresh on each sync and `parseTodoMdChecklist` finds each entry's id, which is what Run and Revert act on. A revert only counts once it merges: `performRevert` then marks the entry so it can't fire twice, and `unshipEntry` rolls the task's bookkeeping back to match the code.",
+        "The tours go deeper on each ending of a dispatched run: following it to a merged PR, a run that fails, a run that lands while the app is closed, and accepting or reverting what shipped."
       ],
       "fingerprint": {
+        "agentQueueStore.js": "36a561e094533fe3.299ab1b98d5f5f1d",
+        "agentQueueStore.js:kickDispatchReconciler": "913c7795f392aac5.7d058cb5a8b38212",
+        "agentQueueStore.js:reconcileDispatchRow": "3e655874a3125133.da39a3ee5e6b4b0d",
+        "agentQueueStore.js:reconcileTick": "984e2567c2809bdb.da39a3ee5e6b4b0d",
         "agentQueueStore.js:reloadAndNotifyQueue": "d677304d44d58c7a.da39a3ee5e6b4b0d",
+        "agentQueueStore.js:settleShippedRows": "45690735f878866b.da39a3ee5e6b4b0d",
         "agentQueueStore.js:startAgentQueueSubscription": "886402eb1acdefb2.4d1f988ecd123e57",
-        "agentView.js:buildCard": "930dfe3610caeb20.da39a3ee5e6b4b0d",
         "assignmentCoverage.js:computeCoverage": "6c7d4460f2950ffb.da39a3ee5e6b4b0d",
-        "dispatchDraft.js:dispatchDraft": "167f30af36d2a203.62c88aa457ee1fcf",
         "dispatchDraft.js:unshipEntry": "ed71f0be4be796ac.0c612d75a602ee49",
+        "inject.js:pollRunStatus": "4a06efcd3c129215.ac589e2223b5adb3",
         "inject.js:readTodoMdFromWorker": "b750cdb3b9a82795.c365cfa1104215f8",
+        "inject.js:revertEntry": "a7dfa7843eed938a.66b6f876f4e8806e",
+        "listLogic.js:listLogic.markEntryReviewed": "81c45e66c8a564d0.1c5dfd17700ed819",
         "mockupFlow.js:buildMockupSecondary": "6f448a840ca0b2db.f1007c1ba6ac4ebc",
         "phase.js:derivePhase": "16b8d67aded8810f.15dd79678516ef46",
         "phaseRail.js:paintPhaseRail": "4a23e59dab0a5fac.529989ddedef22c1",
         "runState.js": "006e44d30d1171f0.34f1d777697dae4a",
         "runState.js:emitChange": "15642cf5cdd08f83.da39a3ee5e6b4b0d",
-        "seedTasksModal.js:openSeedTasksModal": "23d762ea6b691274.da39a3ee5e6b4b0d",
+        "toDoRow.js:buildReviewActions": "9a555cbf1a77d148.91be5ad223753378",
+        "toDoRow.js:performReviewRevert": "df87ede22086f1a8.da39a3ee5e6b4b0d",
+        "toDoRow.js:syncReviewPanel": "e1be7c31b36f25b5.da39a3ee5e6b4b0d",
         "todoMdViewer.js:buildTodoMdViewerCard.performRevert": "efe6aa191902fa70.da39a3ee5e6b4b0d",
         "todoMdViewer.js:parseTodoMdChecklist": "6eeb00008652061d.da39a3ee5e6b4b0d"
       }
