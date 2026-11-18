@@ -708,7 +708,7 @@ describe('gen-src-manifest real codetour.json', () => {
 
     it('compiles the Tasks & projects tours in order, each with a 3–5 card recap', () => {
         const tasks = tours.tours.filter((t) => t.section === 'tasks');
-        expect(tasks.map((t) => t.id)).toEqual(['add-task', 'edit-task', 'task-status', 'due-date', 'delete-task', 'reorder', 'create-project', 'filter-sort', 'mobile-add']);
+        expect(tasks.map((t) => t.id)).toEqual(['add-task', 'edit-task', 'task-status', 'due-date', 'delete-task', 'recurring-complete', 'swipe-right', 'clear-completed', 'reorder', 'create-project', 'delete-project', 'rename-project', 'filter-sort', 'mobile-add']);
         tasks.forEach((t) => {
             expect(t.recap.length).toBeGreaterThanOrEqual(3);
             expect(t.recap.length).toBeLessThanOrEqual(5);
@@ -740,8 +740,8 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('completes the 46-tour catalog with no empty section', () => {
-        expect(tours.tours.length).toBe(46);
+    it('completes the 51-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(51);
         doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
     });
 

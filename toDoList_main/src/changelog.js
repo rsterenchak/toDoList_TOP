@@ -9,6 +9,7 @@ export const changelog = [
         added: [
             'The Understanding book\'s pipeline chapters now walk the task row\'s own Dispatch, Retry and review controls, with new tours for a run that fails, a run that lands while the app is closed, and accepting or reverting a shipped change.',
             'The Understanding book has a new chapter on how Generate turns a task into a draft, with tours for a task that drafts, a triage that asks you a question, and one that fails or never starts.',
+            'The Understanding book now walks completing a repeating task, swiping a task right, clearing completed tasks, and deleting or renaming a project.',
         ],
         fixed: [
             'Renaming a project from the sidebar now keeps it in its place in the list instead of moving it to the bottom after a sync or reload.',
@@ -18,7 +19,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-11-16',
         added: [
-            'The Understanding book has a new Signing in chapter, with step-through tours for signing in with a code, a refused email or code, using the app offline, and signing out.',
             'The Understanding book\'s data chapter now explains what a sync does and doesn\'t protect, with new tours for a save that never reaches the server, live updates dropping and recovering, and a project deleted on another device.',
         ],
     },
