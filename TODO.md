@@ -3349,7 +3349,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 0e4286a7-0397-43b3-9a0a-4d0974747fed -->
 
-- [ ] **[MEDIUM]** Add five outcome tours to the chat chapter of the Understanding book
+- [x] **[MEDIUM]** Add five outcome tours to the chat chapter of the Understanding book — Completed: 2026-11-18
   - Type: feature
   - Description: The `chat` chapter in `toDoList_main/codebook.json` walks sending a message, attaching context and choosing a model, but nothing that happens after a reply arrives or when one does not. None of `renderAskChips`, `sendAskAnswer`, `extractDraftedEntry`, `renderDraftedEntryCard`, `shipDraftedEntry`, `seedIterateSession`, `hydrateChatTurnsFromRemote` or `clearChatConversation` appears in the book, and the catch branch of `requestAssistantReply` is not walked. Add five tours, each following one outcome, and the prose that introduces them. Write every sentence from the code it describes, following `.claude/book.md`. Do not change any source file.
   - Behavior:
