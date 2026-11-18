@@ -157,15 +157,17 @@
       "id": "app-starts",
       "title": "How the app starts and updates itself",
       "area": "shell",
-      "files": ["index.js", "main.js", "sw.js", "modals.js"],
-      "tours": ["app-starts", "app-updates"],
+      "files": ["index.js", "main.js", "sw.js", "modals.js", "migration.js"],
+      "tours": ["app-starts", "boot-fails", "opens-offline", "app-updates"],
       "ahead": { "chapter": "data", "note": "Where the cloud copy comes from, and how it merges with this device's, is the chapter after sign-in.", "promises": ["hydrateFromSupabase", "maybeMigrateLocalToSupabase"] },
       "body": [
         "Everything begins in `index.js`. Its top-level code runs once when the page loads: it builds the page, checks whether a saved session exists, and registers the service worker. There is no framework underneath it, just plain JavaScript creating DOM nodes and wiring listeners.",
         "The page is built skeleton first. `component` in `main.js` creates the nav bar, the project sidebar, the task list and the footer, all still empty. Nothing in that step knows about your data yet, which keeps the shape of the screen separate from what fills it.",
-        "The saved session then decides the path. With none, `bootWithoutSession` boots a device that chose offline straight into local mode, and everyone else gets the sign-in gate. With one, `bootApp` starts the app, and it guards itself so a second auth event can never boot twice. The first thing it does is paint from this device's own copy: `restoreFromStorage` adds one sidebar row per project and draws the selected project's tasks, so the app opens instantly even before the network answers.",
+        "The saved session then decides the path. With none, `bootWithoutSession` boots a device that chose offline straight into local mode, and everyone else gets the sign-in gate. With one, `bootApp` starts the app, guarded so a second auth event can never boot twice. It paints after a short bounded wait: `maybeSkipFirstRunForCloudUser` in `migration.js`, skipped on an onboarded device and otherwise capped by `FIRST_RUN_PROBE_TIMEOUT_MS`, and, when signed in, `warmTargetsForBoot`, capped by `BOOT_TARGETS_WAIT_MS`. Then `restoreFromStorage` draws one sidebar row per project and the selected project's tasks from this device's own copy.",
         "Only after that first paint does `bootSyncPipeline` reach for the cloud: upload any old local data once, pull everything from the database, then listen for live changes. Local first, cloud second is the rhythm the whole app follows.",
-        "The app also keeps itself current. `sw.js` is the service worker: it caches the built files so the app opens offline, while the page itself always tries the network first. When a new build is deployed, the new worker installs in the background and waits rather than taking over mid-session.",
+        "A first paint can fail. The render step has its own try/catch because `markAppBooted` has already stood the page's boot watchdog down by then [src: index.js:93]. A throw there leaves an empty shell, so `reportBootFailure` hands the failure back to the watchdog through a hook the page exposes, and the sync pipeline never runs. The terminal catch escalates only when nothing rendered; a failed background sync after the paint stays a warning, because escalating it would reload-loop you through a database outage [src: index.js:202].",
+        "The watchdog is inline in the page itself, outside the bundle. Each failure climbs one rung of a ladder it remembers across reloads: the first nudges the service worker to update and reloads quietly, the second clears every cache and unregisters the workers before reloading, and the third stops and shows a Reload prompt. Its own timer covers a page whose script never ran at all: with no boot signal after about ten seconds, it climbs the same ladder.",
+        "`sw.js` is the service worker. It precaches the built files, while a page load tries the network first for four seconds, then falls back to the last cached shell and then the precached one. So with no network the app still opens: `bootApp` waits out its bounds and paints from this device's copy, `bootSyncPipeline` fails and only logs it, and the browser's online event re-syncs once the network returns. A new build installs in the background and waits rather than taking over mid-session.",
         "A waiting worker is surfaced as an update cue, on a pill above the mobile nav or on the Version row in About. Both end in `applyPendingUpdate`, which marks the tapping tab as the one that asked and tells the waiting worker to take over. Only that tab reloads; any other open tab is told to reload when it suits you."
       ],
       "fingerprint": {
@@ -173,11 +175,16 @@
         "index.js:bootApp": "4138eeb41d92e90b.da39a3ee5e6b4b0d",
         "index.js:bootSyncPipeline": "adf66a4968a12cc9.da39a3ee5e6b4b0d",
         "index.js:bootWithoutSession": "933ff6cfbc779311.da39a3ee5e6b4b0d",
+        "index.js:markAppBooted": "7537375a33ab718c.da39a3ee5e6b4b0d",
+        "index.js:reportBootFailure": "32d9cc2c148ba040.da39a3ee5e6b4b0d",
+        "index.js:warmTargetsForBoot": "4bdda93796cba42c.da39a3ee5e6b4b0d",
         "listLogic.js:listLogic.hydrateFromSupabase": "322c65e40d6734b2.1c5dfd17700ed819",
         "main.js": "a1aacda74687c942.6eae4807b0f1ccfc",
         "main.js:component": "0b14fde4ab3ba803.a77b15c0d64cf611",
         "main.js:restoreFromStorage": "7734ab5e1f8d2df0.a77b15c0d64cf611",
+        "migration.js": "1c1c61e53a447d0e.b316fbac44ec067b",
         "migration.js:maybeMigrateLocalToSupabase": "6f1e10efa2d06321.a77b15c0d64cf611",
+        "migration.js:maybeSkipFirstRunForCloudUser": "d4678780a3abd4ad.a77b15c0d64cf611",
         "modals.js:applyPendingUpdate": "895775e1a371e73d.496eaf50e99c72fc",
         "sw.js": "20bf16e2fd0055d5.da39a3ee5e6b4b0d"
       }
