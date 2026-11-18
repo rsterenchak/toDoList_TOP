@@ -4559,6 +4559,179 @@
       ]
     },
     {
+      "id": "chat-fails",
+      "section": "chat",
+      "title": "When a chat turn fails",
+      "recap": [
+        {
+          "title": "The composer locks for the turn",
+          "body": "Send, the mode toggle and the input are disabled, and a pending bubble shows until the turn settles."
+        },
+        {
+          "title": "Failures carry a reason",
+          "body": "chatWithWorker throws an error with readable text and, when there is one, the HTTP status."
+        },
+        {
+          "title": "The error is drawn, not saved",
+          "body": "The bubble reads Chat failed with the reason. Your message is in history; the error is not."
+        },
+        {
+          "title": "A dead seed is a note",
+          "body": "A 404 on a turn with an entry id clears the stored iterate id and shows a note instead of an error."
+        }
+      ],
+      "steps": [
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "if (send) send.disabled = true;",
+            "chatTurnInFlight = true;",
+            "let pending = appendMessageBubble('assistant',"
+          ],
+          "title": "The composer locks and a placeholder shows.",
+          "why": "This tour follows a turn that fails. Send, the toggle and the input are disabled while a pending bubble waits."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "chatWithWorker",
+          "match": [
+            "} catch (e) {",
+            "err.reason = describeError(e);",
+            "if (e && typeof e.status === 'number') err.status = e.status;"
+          ],
+          "title": "A failed request throws with a reason.",
+          "why": "describeError turns the failure into readable text. The HTTP status rides along when there is one."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "pending.classList.add('claudeMsg--error');",
+            "pending.textContent = 'Chat failed — '"
+          ],
+          "title": "The placeholder becomes the error.",
+          "why": "It reads Chat failed with the reason. The bubble is only drawn; nothing is added to history."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "if (entryId && e && e.status === 404) {",
+            "activeIterateEntry = null;",
+            "pending.classList.add('claudeMsg--note');"
+          ],
+          "title": "A dead iterate seed is a note.",
+          "why": "A 404 with an entry id means no merged change carries it. The stored iterate id is cleared and a note shows."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "} finally {",
+            "chatTurnInFlight = false;",
+            "input.disabled = false;"
+          ],
+          "title": "The composer unlocks either way.",
+          "why": "The finally runs after success and failure alike, so you can send again straight away."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "sendChatTurn",
+          "match": [
+            "appendChatTurn(turn);",
+            "await requestAssistantReply(activeIterateEntry, deep);"
+          ],
+          "title": "Your message was saved before the send.",
+          "why": "appendChatTurn ran first, so your message stays in history after a failure. After a reload, the error bubble is gone."
+        }
+      ]
+    },
+    {
+      "id": "chat-ask",
+      "section": "chat",
+      "title": "When a reply asks you to choose",
+      "recap": [
+        {
+          "title": "ASK is a hidden line",
+          "body": "A reply line of the form ASK: question :: option | option carries the choice."
+        },
+        {
+          "title": "A bad line stays text",
+          "body": "No ' :: ', no question or no options, and extractAskDirective returns null."
+        },
+        {
+          "title": "You see the question, not the line",
+          "body": "The visible reply keeps only the question. The saved turn keeps the raw reply."
+        },
+        {
+          "title": "Answered once",
+          "body": "A tap disables the whole row and sends the label as an ordinary turn, Fast or Deep as set."
+        }
+      ],
+      "steps": [
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "const ask = extractAskDirective(reply);"
+          ],
+          "title": "Each reply is checked for an ASK line.",
+          "why": "This tour follows a reply that asks you to pick. You see its question with a row of chips under it."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "extractAskDirective",
+          "match": [
+            "const sep = body.indexOf(' :: ');",
+            "if (!question || !options.length) return null;"
+          ],
+          "title": "The line splits into a question and options.",
+          "why": "Text before ' :: ' is the question and the rest splits on ' | '. A malformed line returns null."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "if (ask) visible = stripAskDirective(visible, ask);"
+          ],
+          "title": "The ASK line leaves the visible reply.",
+          "why": "stripAskDirective swaps the line for its question text. History still holds the raw reply."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "renderAskChips",
+          "match": [
+            "ask.options.forEach(function(label) {",
+            "chip.textContent = label;"
+          ],
+          "title": "One chip per option.",
+          "why": "Each option becomes a button under the reply, in the order the line listed them."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "renderAskChips",
+          "match": [
+            "if (row.classList.contains('claudeAskChips--answered')) return;",
+            "c.disabled = true;",
+            "sendAskAnswer(label);"
+          ],
+          "title": "A tap answers once.",
+          "why": "The row is marked answered and every chip disabled before the send, so a second tap does nothing."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "sendAskAnswer",
+          "match": [
+            "appendChatTurn({ role: 'user', content: label });",
+            "await requestAssistantReply(activeIterateEntry, chatMode === 'deep');"
+          ],
+          "title": "The label goes out as your next message.",
+          "why": "It takes the typed-message path, with the iterate id and the current Fast or Deep mode."
+        }
+      ]
+    },
+    {
       "id": "chat-context",
       "section": "chat",
       "title": "Attaching files and layout context",
@@ -4775,6 +4948,307 @@
           ],
           "title": "The composer reads settings back per repo.",
           "why": "Fetched once per repo and cached, so the Fast / Deep chip can name each mode's model."
+        }
+      ]
+    },
+    {
+      "id": "chat-draft-ship",
+      "section": "chat",
+      "title": "From a reply to a running entry",
+      "recap": [
+        {
+          "title": "A md fence is a draft",
+          "body": "extractDraftedEntry finds the first ```md block in a reply. No fence, no card."
+        },
+        {
+          "title": "Two taps to ship",
+          "body": "Inject & run only opens a confirm. Ship it is what calls shipDraftedEntry."
+        },
+        {
+          "title": "Inject, then dispatch",
+          "body": "Each step stops on a refusal with its own message: Inject failed or Run failed."
+        },
+        {
+          "title": "The Runs tab takes over",
+          "body": "A run record is saved and polled, and the sheet switches to Runs. The pipeline chapter follows it."
+        }
+      ],
+      "steps": [
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "const draft = extractDraftedEntry(reply);",
+            "if (draft) renderDraftedEntryCard(draft);"
+          ],
+          "title": "A reply is checked for a drafted entry.",
+          "why": "This tour follows a reply that drafts a task you ship. A green card appears under the reply."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "extractDraftedEntry",
+          "match": [
+            "if (!m) return null;",
+            "return entry.trim() ? entry : null;"
+          ],
+          "title": "A fenced md block is the draft.",
+          "why": "Only a ```md fence counts. An empty fence yields nothing, so no card is drawn."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "renderDraftedEntryCard",
+          "match": [
+            "pre.textContent = entryText;",
+            "injectBtn.textContent = 'Inject & run';"
+          ],
+          "title": "The card shows the entry and one action.",
+          "why": "The entry is shown as written, with Inject & run beside a model chip for this ship."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "renderDraftedEntryCard",
+          "match": [
+            "injectBtn.addEventListener('click', function() {",
+            "confirm.hidden = false;",
+            "shipDraftedEntry(entryText, card, modelOverride);"
+          ],
+          "title": "Nothing ships without a second tap.",
+          "why": "Inject & run swaps to a confirm. Only Ship it calls shipDraftedEntry; Cancel brings the button back."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "shipDraftedEntry",
+          "match": [
+            "const injectResult = await injectEntry(",
+            "markDraftCardError(card, 'Inject failed — '"
+          ],
+          "title": "Inject first; a refusal stops here.",
+          "why": "The entry gets a fresh id marker and goes to the workspace repo. The inject-entry tour covers the rest."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "shipDraftedEntry",
+          "match": [
+            "const dispatchResult = await dispatchRun({",
+            "markDraftCardError(card, 'Run failed — '"
+          ],
+          "title": "Then dispatch; a refusal stops here.",
+          "why": "The run targets the same repo. The entry is already injected when Run failed shows. See the ship-run tour."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "shipDraftedEntry",
+          "match": [
+            "runRecords.unshift(record);",
+            "startRunPoller(record);",
+            "setActiveTab('runs');"
+          ],
+          "title": "The run is handed to the Runs tab.",
+          "why": "A run record is saved and polled, the card reads Shipped and the sheet switches to Runs."
+        }
+      ]
+    },
+    {
+      "id": "chat-iterate",
+      "section": "chat",
+      "title": "Iterating on a shipped change",
+      "recap": [
+        {
+          "title": "Two ways in, one seed",
+          "body": "A SHIPPED run in the Runs tab and a task's Iterate control both call seedIterateSession."
+        },
+        {
+          "title": "The thread is replaced",
+          "body": "The old conversation is cleared on this device and on the server before the seed turn."
+        },
+        {
+          "title": "The id sticks after a reply",
+          "body": "Only a successful turn stores the entry id; every later turn re-sends it."
+        },
+        {
+          "title": "New Chat ends it",
+          "body": "clearChatConversation clears the stored id along with the thread."
+        }
+      ],
+      "steps": [
+        {
+          "file": "claudeSheet.js",
+          "symbol": "startIterateFromRun",
+          "match": [
+            "if (!rec || rec.status !== 'SHIPPED' || !rec.entryId) return;",
+            "await seedIterateSession(rec.entryId,"
+          ],
+          "title": "From a shipped run in the Runs tab.",
+          "why": "This tour follows iterating on a shipped change. Only a SHIPPED run with an entry id opens it."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "openIterateForEntry",
+          "match": [
+            "if (repo && repo !== activeChatRepo) setChatWorkspaceRepo(repo);",
+            "const p = seedIterateSession(entryId,"
+          ],
+          "title": "Or from a task's Iterate control.",
+          "why": "The chat switches to the task's repo first, then the same seed runs."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "seedIterateSession",
+          "match": [
+            "chatHistory = [];",
+            "deleteChatHistory(activeChatRepo);",
+            "clearRemoteChatTurns(activeChatRepo);"
+          ],
+          "title": "Seeding replaces the thread.",
+          "why": "The old conversation is cleared here and on the server, or the next sync would merge it back."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "seedIterateSession",
+          "match": [
+            "const seedPrompt = ",
+            "await requestAssistantReply(entryId);"
+          ],
+          "title": "The seed turn carries the entry id.",
+          "why": "A written opening question goes out with the id, and the reply walks through what shipped."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "requestAssistantReply",
+          "match": [
+            "if (entryId) {",
+            "activeIterateEntry = entryId;",
+            "saveIterateEntry();"
+          ],
+          "title": "The id is kept only after a reply.",
+          "why": "On success it becomes the active iterate id, stored per repo. A 404 clears it instead."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "sendChatTurn",
+          "match": [
+            "await requestAssistantReply(activeIterateEntry, deep);"
+          ],
+          "title": "Every follow-up re-sends the id.",
+          "why": "While the session is active each turn carries the entry id, so the shipped diff stays in context."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "clearChatConversation",
+          "match": [
+            "activeIterateEntry = null;",
+            "deleteIterateEntry(activeChatRepo);"
+          ],
+          "title": "New Chat ends the session.",
+          "why": "The stored id is cleared with the thread, so later turns stop sending it."
+        }
+      ]
+    },
+    {
+      "id": "chat-sync",
+      "section": "chat",
+      "title": "A conversation on two devices",
+      "recap": [
+        {
+          "title": "Local first, server behind",
+          "body": "appendChatTurn saves to localStorage, then writes a server row in the background."
+        },
+        {
+          "title": "Merged by turn id",
+          "body": "The server row wins a conflict; images stay from the local copy."
+        },
+        {
+          "title": "Cleared elsewhere means gone here",
+          "body": "A turn that synced before and is missing on the server is dropped. One that never synced is kept."
+        },
+        {
+          "title": "Never during a turn",
+          "body": "The merge skips while a turn is in flight or the workspace changed."
+        },
+        {
+          "title": "Capped and replayed",
+          "body": "The merged thread is cut to the last turns, saved and redrawn."
+        }
+      ],
+      "steps": [
+        {
+          "file": "claudeSheet.js",
+          "symbol": "appendChatTurn",
+          "match": [
+            "if (!turn.id) turn.id = mintEntryId();",
+            "saveChatHistory();",
+            "listLogic.insertChatTurn(row)"
+          ],
+          "title": "Each turn is saved here, then on the server.",
+          "why": "This tour follows a conversation on two devices. Each turn gets an id and is written locally first."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "appendChatTurn",
+          "match": [
+            "return listLogic.pruneChatTurns(repo, CHAT_HISTORY_CAP);"
+          ],
+          "title": "The server copy is trimmed to the cap.",
+          "why": "After an insert succeeds, older rows past the cap are pruned. A failed write raises nothing."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "hydrateChatTurnsFromRemote",
+          "match": [
+            "result = await listLogic.fetchChatTurns(repo, CHAT_HISTORY_CAP);",
+            "if (!result || result.ok === false) return;"
+          ],
+          "title": "The server rows are fetched.",
+          "why": "A failed read leaves the thread as it is. Zero rows is a real answer and runs the merge."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "hydrateChatTurnsFromRemote",
+          "match": [
+            "if (repo !== activeChatRepo) return;",
+            "if (chatTurnInFlight) return;"
+          ],
+          "title": "The merge stands aside while you're busy.",
+          "why": "Its replay would wipe a pending bubble, so a turn in flight or a workspace swap skips it."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "hydrateChatTurnsFromRemote",
+          "match": [
+            "if (chatTurnWasPersisted(turn) && !Object.prototype.hasOwnProperty.call(remoteIds, turn.id)) return;"
+          ],
+          "title": "Synced turns missing on the server go.",
+          "why": "That turn was cleared on another device. A turn that never synced is kept; its insert may be on the way."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "chatTurnWasPersisted",
+          "match": [
+            "return !!(turn && turn.created_at"
+          ],
+          "title": "created_at marks a synced turn.",
+          "why": "Only the merge sets created_at, from the server row. A turn without it has never come back."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "hydrateChatTurnsFromRemote",
+          "match": [
+            "if (prior && prior.images && !turn.images) turn.images = prior.images;",
+            "merged[indexById[id]] = turn;"
+          ],
+          "title": "Merged by id, the server row wins.",
+          "why": "Local turns go in first, so a server row with the same id replaces them. Images stay from the local copy."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "hydrateChatTurnsFromRemote",
+          "match": [
+            "chatHistory = merged.slice(-CHAT_HISTORY_CAP);",
+            "saveChatHistory();",
+            "replayChatHistory();"
+          ],
+          "title": "Capped, saved and replayed.",
+          "why": "Sorted by server time or local stamp, the last turns are kept, saved locally and redrawn."
         }
       ]
     },
