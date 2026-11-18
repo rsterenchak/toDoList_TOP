@@ -504,16 +504,63 @@
         "The Map lens draws areas as circles and imports as edges. `deriveAreaGraph` assigns each file to its area, sums lines per area and counts imports that cross between areas, so a bigger circle holds more code and a thicker edge carries more imports. Opening an area lists its files, sorted by how many other files use them.",
         "Any file can be read in place. `openFileInCodeViewer` picks the detail column on wide screens or a full-screen sheet on phones, and `renderCodeViewer` fetches the source once through the Worker and caches it. Only a window of lines is painted, with more added as you scroll, so very large files stay quick, and a generation counter drops any read that arrives after you've moved on.",
         "The UI lens maps the running screen itself. For this repo, regions are read live from the page; other repos use regions published in their manifest. `renderStructureCanvas` draws a stored snapshot of each screen size, and the deployed page can be loaded as a live view on request, then removed again when you leave.",
-        "The tours you may have followed alongside this book live here too. They are compiled at deploy from a committed file, with every step anchored to a named definition rather than a line number, so they keep pointing at the right code as the code changes."
+        "The Structure tab keeps one piece of the tours: opening an area on the Map lens shows a row from `buildMapTourRow` listing the tours whose steps mostly fall in that area, and a card plays one through the same player the book uses. Where the tours are read, followed and resumed is the next chapter's subject."
       ],
       "fingerprint": {
         "codeMapModel.js:deriveAreaGraph": "c35ac083f7f17217.7b82e55669ffbf2e",
         "codeViewer.js:renderCodeViewer": "f074adb389b7c010.ae5985518e4ffade",
         "structureCanvas.js:renderStructureCanvas": "6ac54f62ddb0da36.7b82e55669ffbf2e",
+        "structureView.js:buildMapTourRow": "cd5326b84d95bb31.da39a3ee5e6b4b0d",
         "structureView.js:ensureRegionsLoaded": "ef9a95cecfeeb1a5.da39a3ee5e6b4b0d",
         "structureView.js:openFileInCodeViewer": "9307c7491390686d.da39a3ee5e6b4b0d",
         "structureView.js:renderLens": "09cfa139a8696bdc.da39a3ee5e6b4b0d",
         "structureView.js:renderStructureView": "cdf4c34ed693537a.c4a4248f7568c9e4"
+      }
+    },
+    {
+      "id": "understanding",
+      "title": "Reading the code as a book",
+      "area": "structure",
+      "files": ["understandingView.js", "codeBook.js", "codeTours.js", "tourPlayer.js", "bookProgress.js", "codeSheet.js", "inject.js"],
+      "tours": ["book-open", "book-read", "book-regenerate", "book-tours"],
+      "body": [
+        "The Understanding tab reads a repo's code as a book, and `understandingView.js` is its front door. The book is never written in the app: a committed file is compiled at deploy and published beside the source manifest, and `loadBook` fetches that copy once per repo per session. Any failure on the way, a missing file, a network error or unreadable JSON, resolves to null, and null simply means there is no book.",
+        "`renderUnderstandingView` resolves the selected project's repo the same way the Structure tab does, with the same two empty states: no project selected, or a project with no linked repo. With a repo, `paintShelf` draws the shelf: a header whose chapter count and minutes come from `bookStats`, the control `buildControl` picks for the book's state, a Continue card and the chapter list. On entry `probeForRun` asks once whether a book run is already active, so that a run started on another device still reads as Generating here [src: understandingView.js:305].",
+        "A chapter row or the Continue card's Read button calls `openReader`, which swaps the shelf for the reader, and `showChapter` paints one chapter at a time above a prev/next bar. Every backticked name in the prose is a chip: `openRef` opens it in a code pane beside the column on wide screens, or in the full-screen sheet `createCodeSheet` builds on phones. That sheet stays in the page while hidden, which is why closing it returns to the reader with the viewer's selection intact [src: codeSheet.js:11].",
+        "Sentences that give a reason carry their evidence. A cited one ends in a § chip that opens the commented line in the code, or opens `openCiteSheet` for a rule or requirement; an inferred one is only muted, with a hover note saying so. A forward reference becomes the callout `buildAhead` builds: following it remembers where you were, and the back chip returns there before it returns to the shelf. Paragraphs can also be bookmarked, flagged and annotated, which this chapter leaves aside.",
+        "Your reading position is the topmost paragraph on screen. `recordProgress` writes it to this device at once and upserts it to Supabase only after it has settled for two seconds, and `flushProgress` sends whatever is still waiting when you leave the reader. The next shelf render keeps the newer of the two copies, this device winning a tie. Signed out or offline the sync is skipped or swallowed, so that a sync miss never blocks the reader [src: bookProgress.js:9].",
+        "Generating runs through the Worker. `startBookRun` hands `dispatchBook` a scope, all for Generate and Regenerate or stale for the stale count, and when the run cannot start it shows what went wrong under the header. `startTracking` then has `pollOnce` ask every five seconds whether the run is still active, until it ends or a deadline passes. `settleRun` hands over to a watch that re-checks the published book every thirty seconds for up to ten minutes, in order to absorb the deploy and the Pages lag [src: understandingView.js:57].",
+        "`revalidateBook` is how the tab learns the book has changed: a conditional fetch on the stored ETag, falling back to comparing a hash of the body. Besides the post-run watch, it runs on entering the tab, on returning from the reader and when you tap the repo chip. A changed book goes through `applyBookChange`, which repaints the shelf with a toast but never interrupts an open reader; the back chip gets a dot instead, and the new book applies on return.",
+        "Tours load beside the book through `loadTours` and are offered in the reader: `fillGoDeeper` lists a chapter's tours under its last paragraph, and `openAllToursSheet` lists them all. Either starts `startReaderTour`, and `openTourPlayer` plays the tour as a full-screen sheet on phones or, on desktop, as the code viewer itself with a banner above the code. Every move is saved, and Done marks the tour finished. The tours open the tab, read a chapter, regenerate the book and follow a tour."
+      ],
+      "fingerprint": {
+        "bookProgress.js:flushProgress": "4a3e4c1ca7f0570b.c9b5f5f2471863f6",
+        "bookProgress.js:recordProgress": "1631fa0335499931.c9b5f5f2471863f6",
+        "codeBook.js:bookStats": "0a50f5760f60b034.c9b5f5f2471863f6",
+        "codeBook.js:loadBook": "4683f69a1a1dd997.c9b5f5f2471863f6",
+        "codeBook.js:revalidateBook": "db0faab8cc06b253.c9b5f5f2471863f6",
+        "codeSheet.js:createCodeSheet": "be9f17b734d3bb90.41a9b7d4066a6c4e",
+        "codeTours.js:loadTours": "bea748450cba60e4.af17595d2c06d647",
+        "inject.js:dispatchBook": "788c8292338a7812.c9b5f5f2471863f6",
+        "tourPlayer.js:openTourPlayer": "7bea62ce5aeed8b9.af17595d2c06d647",
+        "understandingView.js": "1fed2c37b8f7920f.c4a4248f7568c9e4",
+        "understandingView.js:applyBookChange": "3446d824f325cfdd.da39a3ee5e6b4b0d",
+        "understandingView.js:buildAhead": "5eff30b724945e09.da39a3ee5e6b4b0d",
+        "understandingView.js:buildControl": "195866217005917b.da39a3ee5e6b4b0d",
+        "understandingView.js:fillGoDeeper": "7b02c092d5d2270f.da39a3ee5e6b4b0d",
+        "understandingView.js:openAllToursSheet": "36bf8ba031719d69.da39a3ee5e6b4b0d",
+        "understandingView.js:openCiteSheet": "6c6161cfe2a307f7.da39a3ee5e6b4b0d",
+        "understandingView.js:openReader": "f6d3e2724f5b8070.da39a3ee5e6b4b0d",
+        "understandingView.js:openRef": "48393050f2539bf4.da39a3ee5e6b4b0d",
+        "understandingView.js:paintShelf": "87bfaa0765577e5c.da39a3ee5e6b4b0d",
+        "understandingView.js:pollOnce": "a230c027ca1c6d17.da39a3ee5e6b4b0d",
+        "understandingView.js:probeForRun": "8fe7c46170a7c068.da39a3ee5e6b4b0d",
+        "understandingView.js:renderUnderstandingView": "05a0fdde1049da09.c4a4248f7568c9e4",
+        "understandingView.js:settleRun": "8cd54bc46d75af9f.da39a3ee5e6b4b0d",
+        "understandingView.js:showChapter": "57e492eb4673801c.da39a3ee5e6b4b0d",
+        "understandingView.js:startBookRun": "04db1a5c324d4644.da39a3ee5e6b4b0d",
+        "understandingView.js:startReaderTour": "461382c770dd3d8a.da39a3ee5e6b4b0d",
+        "understandingView.js:startTracking": "a2a4563bfe1d5bd3.da39a3ee5e6b4b0d"
       }
     },
     {

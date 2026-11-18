@@ -9,13 +9,13 @@ export const changelog = [
         added: [
             'The Understanding book\'s app-start chapter now walks a first paint that fails and opening the app with no network, and says how long the app waits before drawing your projects.',
             'The Understanding book\'s chat chapter now walks a chat turn that fails, a reply that asks you to choose, shipping a drafted entry, iterating on a shipped change, and a conversation kept on two devices.',
+            'The Understanding book has a new chapter on the Understanding tab itself, with tours for opening the tab, reading a chapter, generating or regenerating the book, and following a tour.',
         ],
     },
     {
         version: '1.1',
         date: '2026-11-17',
         added: [
-            'The Understanding book has a new chapter on how Generate turns a task into a draft, with tours for a task that drafts, a triage that asks you a question, and one that fails or never starts.',
             'The Understanding book now walks completing a repeating task, swiping a task right, clearing completed tasks, and deleting or renaming a project.',
         ],
         fixed: [

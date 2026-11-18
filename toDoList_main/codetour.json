@@ -5688,6 +5688,502 @@
       ]
     },
     {
+      "id": "book-open",
+      "section": "structure",
+      "title": "Opening the Understanding tab",
+      "recap": [
+        {
+          "title": "The repo comes from the selected project",
+          "body": "No project, or no linked repo, shows an empty state instead of a shelf."
+        },
+        {
+          "title": "No book is just null",
+          "body": "A missing, unreachable or unreadable book resolves to null and the shelf says No book yet."
+        },
+        {
+          "title": "The header reads the book",
+          "body": "Chapter count and minutes come from bookStats; the control follows the book’s state."
+        },
+        {
+          "title": "A run elsewhere still shows",
+          "body": "One probe on entry picks up a book run started on another device."
+        }
+      ],
+      "steps": [
+        {
+          "file": "understandingView.js",
+          "symbol": "renderUnderstandingView",
+          "match": [
+            "if (!projectName) {",
+            "appendEmptyState(view, 'Select a project to read its code book.');"
+          ],
+          "title": "No project selected, no shelf.",
+          "why": "This tour follows opening the tab onto a repo’s shelf. With no project selected you see a one-line empty state."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "renderUnderstandingView",
+          "match": [
+            "const repo = resolveProjectRepo(projectName);",
+            "if (!targetsLoaded()) {",
+            "LINK_OFF_GLYPH"
+          ],
+          "title": "A project with no repo gets the second.",
+          "why": "A cold, empty targets cache shows Loading… and waits; only a loaded cache with no repo asks you to link one."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "renderUnderstandingView",
+          "match": [
+            "else probeForRun(repo);",
+            "loadTourData(repo, seq);",
+            "return Promise.resolve(loadBook(repo)).then(function (book) {"
+          ],
+          "title": "Probe for a run, start the tours, load the book.",
+          "why": "The tours load beside the book so the reader has them ready."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "probeForRun",
+          "match": [
+            "fetchActiveRuns(resolveTarget(repo), 'book')",
+            "startTracking(repo, true);"
+          ],
+          "title": "A run started elsewhere reads as Generating.",
+          "why": "One probe per entry; an active book run found here is tracked as if this device had started it."
+        },
+        {
+          "file": "codeBook.js",
+          "symbol": "loadBook",
+          "match": [
+            "if (bookCache.has(repo)) return bookCache.get(repo);",
+            "if (!res || !res.ok) return null;",
+            ".catch(function () { return null; })"
+          ],
+          "title": "A missing or unreadable book is null.",
+          "why": "The fetch is cached per repo for the session. A 404, a network error or bad JSON all end as null."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "paintShelf",
+          "match": [
+            "const stats = bookStats(hasBook ? book : null);",
+            "header.appendChild(buildControl(repo, hasBook ? book : null, stats, note));"
+          ],
+          "title": "The header: counts, then the control.",
+          "why": "bookStats sums chapters, minutes and stale chapters; buildControl turns that into Generate, a stale count or Regenerate."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "paintShelf",
+          "match": [
+            "if (!hasBook) {",
+            "shelf.appendChild(buildContinueCard(view, repo, book, stats, pos));",
+            "shelf.appendChild(buildChapterList(view, repo, book, pos));"
+          ],
+          "title": "No book yet, or Continue and the chapters.",
+          "why": "Without a book the shelf stops at an empty state with a hint; with one it adds the Continue card and the chapter list."
+        }
+      ]
+    },
+    {
+      "id": "book-read",
+      "section": "structure",
+      "title": "Reading a chapter",
+      "recap": [
+        {
+          "title": "One chapter at a time",
+          "body": "The reader replaces the shelf and paints a chapter above a prev/next bar."
+        },
+        {
+          "title": "Chips open the code",
+          "body": "A pane beside the column on wide screens, a full-screen sheet on phones."
+        },
+        {
+          "title": "Reasons show their backing",
+          "body": "Cited reasons open their source; inferred ones are only muted."
+        },
+        {
+          "title": "Ahead links remember the way back",
+          "body": "The back chip returns to where you followed the link from."
+        },
+        {
+          "title": "Position saves twice",
+          "body": "Locally at once, to the server after two quiet seconds or on leaving."
+        }
+      ],
+      "steps": [
+        {
+          "file": "understandingView.js",
+          "symbol": "buildContinueCard",
+          "match": [
+            "read.addEventListener('click', function () {",
+            "openReader(view, repo, book, at, pos ? pos.paraIndex : 0);"
+          ],
+          "title": "Read opens the reader where you left off.",
+          "why": "This tour follows reading a chapter. The Continue card resumes at the saved paragraph; a chapter row opens at the top."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "openReader",
+          "match": [
+            "teardownShelf();",
+            "view.classList.add('is-reading');",
+            "showChapter(index, paraIndex);"
+          ],
+          "title": "The shelf is swapped for the reader.",
+          "why": "The reader builds its top bar, progress, column and nav, then shows the chapter."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "showChapter",
+          "match": [
+            "const ahead = ch.ahead && typeof ch.ahead === 'object' ? buildAhead(r.book, ch.ahead) : null;",
+            "const p = buildParagraph(segs, i);",
+            "if (ahead && i === aheadAfter) r.column.appendChild(ahead);"
+          ],
+          "title": "Paragraphs, with the ahead callout inside.",
+          "why": "The forward reference sits after the second paragraph, or at the end of a short chapter."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "openRef",
+          "match": [
+            "const host = understandingIsDesktop() ? ensureCodePane() : codeSheet.ensure();",
+            "renderCodeViewer(host, opts);"
+          ],
+          "title": "A chip opens the code, in a pane or a sheet.",
+          "why": "Above 1023px the pane opens beside the column; below it the sheet from codeSheet.js fills the screen."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildCiteChip",
+          "match": [
+            "if (cite.type === 'src') openRef(",
+            "else openCiteSheet(cite);"
+          ],
+          "title": "A cited reason opens its source.",
+          "why": "A code comment opens at its line in the viewer; a rule or requirement opens the citation sheet."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildWhy",
+          "match": [
+            "if (kind === 'inferred') span.title",
+            "if (kind !== 'inferred' && why.cite && typeof why.cite === 'object') {"
+          ],
+          "title": "An inferred reason is only muted.",
+          "why": "It gets no chip, just a hover note saying nothing backs it."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "followAhead",
+          "match": [
+            "r.backStack.push({ index: r.index, paraIndex: r.paraIndex });",
+            "showChapter(index, paraIndex);"
+          ],
+          "title": "Following ahead remembers where you were.",
+          "why": "A promise chip jumps to the paragraph of the later chapter that covers it."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "goBack",
+          "match": [
+            "const from = r.backStack.pop();",
+            "if (!from) { leaveReader(); return; }",
+            "showChapter(from.index, from.paraIndex);"
+          ],
+          "title": "The back chip returns there first.",
+          "why": "With nothing left to pop it goes back to the shelf."
+        },
+        {
+          "file": "bookProgress.js",
+          "symbol": "recordProgress",
+          "match": [
+            "setBookProgress(repo, record);",
+            "timer = setTimeout(flushProgress, BOOK_PROGRESS_DEBOUNCE_MS);"
+          ],
+          "title": "Position saves locally now, remotely later.",
+          "why": "Each change restarts the two-second timer, so only a settled position is upserted."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "teardownReader",
+          "match": [
+            "departChapter();",
+            "flushProgress();"
+          ],
+          "title": "Leaving the reader flushes the position.",
+          "why": "Whatever is still waiting is sent now instead of after the timer."
+        }
+      ]
+    },
+    {
+      "id": "book-regenerate",
+      "section": "structure",
+      "title": "Generating or regenerating the book",
+      "recap": [
+        {
+          "title": "Three states, one control",
+          "body": "Generate with no book, a stale count for stale chapters, Regenerate behind a confirm."
+        },
+        {
+          "title": "A failed start says why",
+          "body": "The reason appears under the header and the button comes back."
+        },
+        {
+          "title": "Polling ends the run",
+          "body": "Every five seconds until the run is gone or a deadline passes."
+        },
+        {
+          "title": "Then the published copy is watched",
+          "body": "Every thirty seconds for ten minutes, until it differs."
+        },
+        {
+          "title": "A changed book never interrupts reading",
+          "body": "The shelf repaints with a toast; an open reader only gets a dot."
+        }
+      ],
+      "steps": [
+        {
+          "file": "understandingView.js",
+          "symbol": "buildControl",
+          "match": [
+            "if (!book) {",
+            "startBookRun(repo, 'all', btn, note);"
+          ],
+          "title": "No book: Generate writes all of it.",
+          "why": "This tour follows a book run from the header control to the new book on the shelf."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildControl",
+          "match": [
+            "} else if (stats.stale > 0) {",
+            "startBookRun(repo, 'stale', btn, note);"
+          ],
+          "title": "Stale chapters: regenerate only those.",
+          "why": "The button shows the stale count and dispatches with the stale scope."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildControl",
+          "match": [
+            "showConfirmModal({",
+            "onConfirm: function () { startBookRun(repo, 'all', btn, note); },"
+          ],
+          "title": "Regenerating everything asks first.",
+          "why": "Every chapter is rewritten, so the confirm says so."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "startBookRun",
+          "match": [
+            "const res = await dispatchBook(scope, mintEntryId(), resolveTarget(repo));",
+            "note.textContent = 'Couldn",
+            "startTracking(repo, false);"
+          ],
+          "title": "Dispatch, or say why it could not start.",
+          "why": "dispatchBook posts the scope to the Worker. A refusal re-enables the button and shows the reason under the header."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "startTracking",
+          "match": [
+            "graceDeadline: now + BOOK_GRACE_MS,",
+            "hardDeadline: now + BOOK_HARD_CAP_MS,",
+            "ensurePolling();"
+          ],
+          "title": "Track the run with two deadlines.",
+          "why": "A grace period for the run to appear, and a hard cap on the whole wait."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "pollOnce",
+          "match": [
+            "if (Date.now() >= run.hardDeadline) { settleRun(); return; }",
+            "if (res.active) { run.seenActive = true; return; }",
+            "if (run.seenActive || Date.now() >= run.graceDeadline) settleRun();"
+          ],
+          "title": "Poll until the run is gone.",
+          "why": "A run seen active and now gone has ended; one never seen settles after the grace period."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "settleRun",
+          "match": [
+            "finishedRepo = repo;",
+            "if (repo) startBookWatch(repo);"
+          ],
+          "title": "Settle, then watch the published book.",
+          "why": "The shelf notes the run finished and that the published copy lags by a deploy."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "watchOnce",
+          "match": [
+            "if (Date.now() >= watch.deadline) { endBookWatch(); return; }",
+            "revalidateBook(watch.repo).then(function (res) {",
+            "applyBookChange(watch.repo, res.book);"
+          ],
+          "title": "Re-check until the book changes.",
+          "why": "Each tick re-checks the published copy; the watch ends on a change or at its ten-minute cap."
+        },
+        {
+          "file": "codeBook.js",
+          "symbol": "revalidateBook",
+          "match": [
+            "if (meta.etag) init.headers = { 'If-None-Match': meta.etag };",
+            "if (res && res.status === 304) return same;",
+            "bookCache.set(repo, Promise.resolve(book));"
+          ],
+          "title": "A cheap check, then swap the cache.",
+          "why": "An ETag answers 304 when nothing changed; otherwise a body hash decides, and a different book replaces the cached one."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "applyBookChange",
+          "match": [
+            "if (reader.repo === repo) markReaderUpdated(book);",
+            "renderUnderstandingView();",
+            "showInjectToast('Book updated');"
+          ],
+          "title": "Repaint the shelf, or just mark the reader.",
+          "why": "An open reader keeps its chapter and gets a dot on the back chip; the shelf repaints with a toast."
+        }
+      ]
+    },
+    {
+      "id": "book-tours",
+      "section": "structure",
+      "title": "Following a tour",
+      "recap": [
+        {
+          "title": "Tours load once per repo",
+          "body": "A missing or unreadable file means no tours, and the tour surfaces stay hidden."
+        },
+        {
+          "title": "Two ways in from the reader",
+          "body": "GO DEEPER under a chapter, or the All tours sheet."
+        },
+        {
+          "title": "One player, two shapes",
+          "body": "A full-screen sheet on phones; the code viewer itself, under a banner, on desktop."
+        },
+        {
+          "title": "Every move is saved",
+          "body": "Starting a part-done tour resumes at its saved step; Done marks it finished."
+        }
+      ],
+      "steps": [
+        {
+          "file": "codeTours.js",
+          "symbol": "loadTours",
+          "match": [
+            "if (tourCache.has(repo)) return tourCache.get(repo);",
+            "fetch(base + 'src-tours.json', { cache: 'no-cache' })",
+            ".catch(function () { return null; });"
+          ],
+          "title": "The compiled tours load once per repo.",
+          "why": "This tour follows starting a tour from the reader to Done. Any failure resolves to null, and no tour surface shows."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "fillGoDeeper",
+          "match": [
+            "return byId.get(ref && typeof ref === 'object' ? ref.id : ref);",
+            "startReaderTour(t, rec && !rec.done ? rec.step : 0);"
+          ],
+          "title": "GO DEEPER lists the chapter’s tours.",
+          "why": "Only tours the chapter names and the loaded file resolves. A part-done tour starts at its saved step."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "openAllToursSheet",
+          "match": [
+            "const ordered = orderedTours(data);",
+            "row.addEventListener('click', function () {",
+            "startReaderTour(t, rec && !rec.done ? rec.step : 0);"
+          ],
+          "title": "All tours lists every tour by section.",
+          "why": "The reader’s All tours chip opens it; a row closes the sheet and starts the tour the same way."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "startReaderTour",
+          "match": [
+            "const docked = understandingIsDesktop() ? ensureCodePane() : null;",
+            "openTourPlayer({",
+            "host: docked,"
+          ],
+          "title": "Desktop docks it in the code pane.",
+          "why": "On phones there is no host, so the player opens as a sheet; the reader keeps its chapter either way."
+        },
+        {
+          "file": "tourPlayer.js",
+          "symbol": "openTourPlayer",
+          "match": [
+            "const viewer = !!host;",
+            "const root = el('div', viewer ? 'tourPlayer tourPlayerBanner' : 'tourPlayer tourPlayer--sheet');"
+          ],
+          "title": "Sheet or banner, decided by the host.",
+          "why": "With a host the player is a banner region; without one it is a full-screen dialog."
+        },
+        {
+          "file": "tourPlayer.js",
+          "symbol": "openTourPlayer",
+          "match": [
+            "function showInViewer(step) {",
+            "renderCodeViewer(host, opts);",
+            "setBanner(host, root);"
+          ],
+          "title": "On desktop the player is the code viewer.",
+          "why": "Each step’s file renders with its span highlighted and the banner pinned above it."
+        },
+        {
+          "file": "tourPlayer.js",
+          "symbol": "saveProgress",
+          "match": [
+            "const prev = map[tourId] || { step: 0, done: false };",
+            "setTourProgress(repo, map);"
+          ],
+          "title": "Every move saves the step.",
+          "why": "Opening and each go() store the step, which is what lets a later start resume there."
+        },
+        {
+          "file": "tourPlayer.js",
+          "symbol": "openTourPlayer",
+          "match": [
+            "function renderRecap() {",
+            "c.appendChild(el('div', 'tourRecapTitle', card && card.title ? card.title : ''));"
+          ],
+          "title": "After the last step comes the recap.",
+          "why": "Its cards are the things you should now be able to say; the next button reads Done."
+        },
+        {
+          "file": "tourPlayer.js",
+          "symbol": "openTourPlayer",
+          "match": [
+            "function finish() {",
+            "saveProgress(repo, tour.id, { step: index, done: true });",
+            "close();"
+          ],
+          "title": "Done marks the tour finished.",
+          "why": "Closing puts back the file the viewer showed before the tour."
+        },
+        {
+          "file": "codeTours.js",
+          "symbol": "nextUnfinished",
+          "match": [
+            "const list = orderedTours(data);",
+            "if (!rec || !rec.done) return list[i];"
+          ],
+          "title": "A finished tour is skipped as next.",
+          "why": "Walking tours in section order, the first one not done is the next one."
+        }
+      ]
+    },
+    {
       "id": "app-lock",
       "section": "more",
       "title": "App lock (PIN)",
