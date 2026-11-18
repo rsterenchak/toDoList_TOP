@@ -3294,3 +3294,15 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: Any change under `toDoList_main/src/`. Derive proposals and the proposal review modal. Repo setup and Worker configuration. `scripts/gen-src-manifest.js`, `.claude/book.md`, `codemap.json`. Chapters other than `triage`, the map's one role, and `pipeline-ship`'s opening sentence.
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: a5a483a8-1b34-48c8-85bb-04d96ac569cc -->
+
+- [ ] **[MEDIUM]** Fix a sidebar rename moving the project to the bottom of the list
+  - Type: bug
+  - Description: Renaming a project from the sidebar (context menu → Edit, then Enter or blur) leaves its row in place on screen, but on the next sync or reload the project drops to the bottom of the sidebar. Expected: a renamed project keeps its place. Cause: project order is the key order of `allProjects`, and `editProject` in `toDoList_main/src/listLogic.js` renames with `allProjects[trimmed] = allProjects[currentProperty]` followed by a delete, which appends the new key at the end and then sends that last index as the row's `position`. `projectPicker.js` works around it by calling `reorderProject` after the rename; the two sidebar commit paths in `main.js` do not. Fix it at the source: make `editProject` put the renamed key in the slot the old key held, using the same in-place key rebuild `reorderProject` uses, so every caller is correct and the `position` it sends is the original index.
+  - Implementation notes:
+    - Write the regression test first in `toDoList_main/tests/listLogic.test.js`: with three projects, rename the first and the middle one in turn and assert `listProjectsArray()` keeps the order with the new name in the old slot, and that items, stages and lifecycle still travel with the project.
+    - Mutate `allProjects` in place; other modules hold a reference to the same object.
+    - Leave the `reorderProject` call in `projectPicker.js` as it is. After this fix it finds the project already in its slot and does nothing, and `tests/projectContextMenu.test.js` asserts the call is present.
+    - A rename to the same name, and the empty-name early return, behave exactly as before.
+  - Out of scope: `main.js` and `projectPicker.js`. The two `it.skip` cases near the `editProject edge cases` block (renaming onto an existing name, renaming a nonexistent project). `codebook.json` and `codetour.json`.
+  - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
+  <!-- id: b5153d6b-cb38-4c29-a16f-984b62001632 -->
