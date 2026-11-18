@@ -66,6 +66,35 @@ describe('listLogic — projects', () => {
         expect(titles).toContain('Milk');
     });
 
+    // Project order is the key order of allProjects, so a rename must put
+    // the new key in the slot the old one held — otherwise the project drops
+    // to the bottom of the sidebar on the next sync or reload.
+    it('editProject keeps the renamed project in its original slot', () => {
+        listLogic.addProject('Alpha');
+        listLogic.addProject('Beta');
+        listLogic.addProject('Gamma');
+        listLogic.addToDo('Alpha', 'Milk');
+        listLogic.addToDo('Beta', 'Eggs');
+        const alphaStageId = listLogic.getProjectStages('Alpha')[0].id;
+        listLogic.setProjectStageBody('Alpha', alphaStageId, 'alpha why');
+
+        listLogic.editProject('Alpha', 'First');
+        expect(listLogic.listProjectsArray()).toEqual(['First', 'Beta', 'Gamma']);
+
+        listLogic.editProject('Beta', 'Middle');
+        expect(listLogic.listProjectsArray()).toEqual(['First', 'Middle', 'Gamma']);
+
+        expect(listLogic.listItems('First').map(i => i.tit)).toContain('Milk');
+        expect(listLogic.listItems('Middle').map(i => i.tit)).toContain('Eggs');
+        expect(listLogic.getProjectStages('First').find(s => s.id === alphaStageId).body).toBe('alpha why');
+        expect(listLogic.getProjectLifecycle('First')).toBe('iterative');
+        expect(listLogic.getProjectLifecycle('Middle')).toBe('iterative');
+
+        // The order survives a reload through the persisted snapshot.
+        expect(Object.keys(JSON.parse(localStorage.getItem('allProjects'))))
+            .toEqual(['First', 'Middle', 'Gamma']);
+    });
+
     it('projectLength returns 0 for a missing project', () => {
         expect(listLogic.projectLength('DoesNotExist')).toBe(0);
     });

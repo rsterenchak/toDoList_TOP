@@ -3295,7 +3295,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: a5a483a8-1b34-48c8-85bb-04d96ac569cc -->
 
-- [ ] **[MEDIUM]** Fix a sidebar rename moving the project to the bottom of the list
+- [x] **[MEDIUM]** Fix a sidebar rename moving the project to the bottom of the list — Completed: 2026-11-17
   - Type: bug
   - Description: Renaming a project from the sidebar (context menu → Edit, then Enter or blur) leaves its row in place on screen, but on the next sync or reload the project drops to the bottom of the sidebar. Expected: a renamed project keeps its place. Cause: project order is the key order of `allProjects`, and `editProject` in `toDoList_main/src/listLogic.js` renames with `allProjects[trimmed] = allProjects[currentProperty]` followed by a delete, which appends the new key at the end and then sends that last index as the row's `position`. `projectPicker.js` works around it by calling `reorderProject` after the rename; the two sidebar commit paths in `main.js` do not. Fix it at the source: make `editProject` put the renamed key in the slot the old key held, using the same in-place key rebuild `reorderProject` uses, so every caller is correct and the `position` it sends is the original index.
   - Implementation notes:
