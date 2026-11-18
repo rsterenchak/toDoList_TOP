@@ -3370,7 +3370,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: d3f5a186-ecde-484a-bcf0-b59bb1b6175f -->
 
-- [ ] **[MEDIUM]** Add an Understanding tab chapter and four outcome tours to the Understanding book
+- [x] **[MEDIUM]** Add an Understanding tab chapter and four outcome tours to the Understanding book — Completed: 2026-11-18
   - Type: feature
   - Description: The book has no chapter about the tab that shows it. `toDoList_main/codebook.json` covers the Structure tab in `structure`, whose last paragraph says the tours "live here too", but the shelf, the reader, generating a book and the tour player all live in `understandingView.js`, `codeBook.js`, `codeTours.js`, `tourPlayer.js` and `bookProgress.js`, and none of `renderUnderstandingView`, `paintShelf`, `openReader`, `showChapter`, `startBookRun`, `revalidateBook` or `openTourPlayer` appears in the book. Add a prose chapter `understanding` ("Reading the code as a book") directly after `structure`, with four tours that each follow one outcome. Write every sentence from the code it describes, following `.claude/book.md`. Do not change any source file.
   - Behavior:
