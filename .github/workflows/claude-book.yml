@@ -224,7 +224,7 @@ jobs:
           fi
           rm -f gen.out gen.err
 
-      # Commit the book. Two things about the push:
+      # Commit the book. Three things about the push:
       #   1. claude-code-action rewrites the checkout's remote URL with its own
       #      app token and REVOKES that token in its post step, so a plain
       #      `git push` here fails with "Invalid username or token". Point the
@@ -232,6 +232,15 @@ jobs:
       #   2. A GITHUB_TOKEN push does not trigger other workflows, so the
       #      republish (manifest.yml / deploy.yml) is dispatched explicitly in
       #      the next step rather than relied on as a push trigger.
+      #   3. A pass runs for minutes and main can move under it (a manifest
+      #      commit, a merged entry). A push from the checkout's commit is then
+      #      rejected and the whole pass is lost. So the book is committed on
+      #      top of whatever main is NOW: the two authored files are set aside,
+      #      the checkout is moved to the fetched tip, the files are put back
+      #      and the commit is made there. A push that still loses a race is
+      #      retried on the newer tip. The one case that is refused is main
+      #      having changed the book itself during the pass: putting this
+      #      pass's copy back would silently drop that change.
       - name: Commit codebook.json if it changed
         id: commit
         working-directory: toDoList_main
@@ -249,26 +258,108 @@ jobs:
           fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add $changed
-          # Repos that serve the manifest outputs from the repo root (the
-          # served-from-source and .NET shapes carry manifest.yml) get them
-          # regenerated into this same commit: a book run IS a manifest publish,
-          # so src-symbols.json can never lag the chapters and there is no
-          # separate "Update source manifest" step to remember. Build-pipeline
-          # repos keep theirs under dist/ via deploy.yml, dispatched below.
-          if [ -f "$GITHUB_WORKSPACE/.github/workflows/manifest.yml" ]; then
-            ( cd "$GITHUB_WORKSPACE" && MANIFEST_OUT_DIR=. MANIFEST_DETERMINISTIC=true \
-                MANIFEST_LANG='' MANIFEST_SRC_ROOT='toDoList_main/src' \
-                node "toDoList_main/scripts/$MANIFEST_VARIANT" )
-            for f in src-manifest.json src-symbols.json src-tours.json src-book.json; do
-              [ -f "$GITHUB_WORKSPACE/$f" ] && git add "$GITHUB_WORKSPACE/$f"
-            done
-            echo "published=1" >> "$GITHUB_OUTPUT"
-          fi
-          git commit -m "Update code book (${{ inputs.scope || 'stale' }}) [skip ci]"
           git remote set-url origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
-          git push origin HEAD:main
+
+          base="$(git rev-parse HEAD)"
+          keep="$RUNNER_TEMP/book-keep"
+          rm -rf "$keep" && mkdir -p "$keep"
+          for f in $changed; do cp "$f" "$keep/$f"; done
+
+          pushed=0
+          for attempt in 1 2 3; do
+            git fetch --quiet --depth 1 origin main
+            if ! git diff --quiet "$base" FETCH_HEAD -- codebook.json codetour.json; then
+              echo "main changed codebook.json or codetour.json while this pass ran."
+              echo "Refusing to overwrite that change — run the book pass again."
+              exit 1
+            fi
+            git reset --quiet --hard FETCH_HEAD
+            for f in $changed; do cp "$keep/$f" "$f"; done
+            git add $changed
+            # Repos that serve the manifest outputs from the repo root (the
+            # served-from-source and .NET shapes carry manifest.yml) get them
+            # regenerated into this same commit: a book run IS a manifest
+            # publish, so src-symbols.json can never lag the chapters and there
+            # is no separate "Update source manifest" step to remember. They
+            # are regenerated here, after the move to main's tip, so they
+            # describe the source this commit actually sits on. Build-pipeline
+            # repos keep theirs under dist/ via deploy.yml, dispatched below.
+            published=0
+            if [ -f "$GITHUB_WORKSPACE/.github/workflows/manifest.yml" ]; then
+              ( cd "$GITHUB_WORKSPACE" && MANIFEST_OUT_DIR=. MANIFEST_DETERMINISTIC=true \
+                  MANIFEST_LANG='' MANIFEST_SRC_ROOT='toDoList_main/src' \
+                  node "toDoList_main/scripts/$MANIFEST_VARIANT" )
+              for f in src-manifest.json src-symbols.json src-tours.json src-book.json; do
+                [ -f "$GITHUB_WORKSPACE/$f" ] && git add "$GITHUB_WORKSPACE/$f"
+              done
+              published=1
+            fi
+            if git diff --cached --quiet; then
+              echo "main already holds this book — nothing to commit."
+              echo "changed=0" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            git commit --quiet -m "Update code book (${{ inputs.scope || 'stale' }}) [skip ci]"
+            if git push origin HEAD:main; then
+              pushed=1
+              break
+            fi
+            echo "Push rejected (attempt ${attempt}/3) — main moved again; retrying on its new tip."
+            sleep 3
+          done
+          if [ "$pushed" != "1" ]; then
+            echo "Could not push the book after 3 attempts."
+            exit 1
+          fi
+          if [ "$published" = "1" ]; then echo "published=1" >> "$GITHUB_OUTPUT"; fi
           echo "changed=1" >> "$GITHUB_OUTPUT"
+
+      # .NET shapes serve Pages from the gh-pages branch, which holds only the
+      # generated files (manifest.yml there explains why: a Pages site is public
+      # even for a private repo). The commit above put the regenerated outputs
+      # on main with [skip ci], so manifest.yml will not run for it — publish
+      # the same files to gh-pages here, or the Understanding tab would keep
+      # showing the previous book. Every other shape skips this step.
+      - name: Publish manifest outputs to gh-pages (.NET shapes)
+        if: steps.commit.outputs.published == '1'
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          MANIFEST_LANG: ''
+        run: |
+          set -euo pipefail
+          if [ "$MANIFEST_LANG" != "csharp" ]; then
+            echo "Not a .NET shape — Pages serves this repo from where it always has."
+            exit 0
+          fi
+          out="$RUNNER_TEMP/pages-out"
+          rm -rf "$out" && mkdir -p "$out"
+          n=0
+          for f in src-manifest.json src-symbols.json src-tours.json src-book.json; do
+            if [ -f "$f" ]; then cp "$f" "$out/$f"; n=$((n+1)); fi
+          done
+          if [ "$n" -eq 0 ]; then
+            echo "No manifest outputs to publish."
+            exit 0
+          fi
+          : > "$out/.nojekyll"
+          remote="https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          cd "$out"
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish manifest outputs"
+          new_tree="$(git rev-parse 'HEAD^{tree}')"
+          old_tree=""
+          if git fetch -q --depth 1 "$remote" gh-pages 2>/dev/null; then
+            old_tree="$(git rev-parse 'FETCH_HEAD^{tree}')"
+          fi
+          if [ "$new_tree" = "$old_tree" ]; then
+            echo "gh-pages already holds these outputs — nothing to publish."
+            exit 0
+          fi
+          git push -q -f "$remote" gh-pages:gh-pages
+          echo "Published ${n} file(s) to gh-pages."
 
       # Build-pipeline repos publish from dist/ via deploy.yml, which a
       # GITHUB_TOKEN push does not trigger — dispatch it. Root-served repos
