@@ -1931,6 +1931,311 @@
       ]
     },
     {
+      "id": "recurring-complete",
+      "section": "tasks",
+      "title": "Completing a repeating task",
+      "recap": [
+        {
+          "title": "Repeating tasks advance",
+          "body": "Ticking one moves its due date on instead of completing it."
+        },
+        {
+          "title": "History is a clone",
+          "body": "A completed copy with no recurrence records the occurrence just done."
+        },
+        {
+          "title": "Two writes",
+          "body": "An insert for the clone and an update for the original."
+        },
+        {
+          "title": "The end completes it",
+          "body": "No next date, or one past the end date, and it completes like any task."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "wireCheckbox",
+          "match": [
+            "if (checkToDo.checked && !wasCompleted && item.tit && item.recurrence && projectName) {",
+            "const advanced = listLogic.advanceRecurringTodo(projectName, item, new Date());"
+          ],
+          "title": "Ticking a repeating task takes its own branch.",
+          "why": "This follows ticking a task that repeats: the row flashes, the box clears and the due date moves on."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "advanceRecurringTodo",
+          "parent": "listLogic",
+          "match": [
+            "const next = nextDueDate(item.due, item.recurrence, completionDate || new Date());",
+            "if (endDate && next > endDate) return false;"
+          ],
+          "title": "advanceRecurringTodo works out the next date.",
+          "why": "No next date, or one past the end date, returns false and nothing is changed."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "advanceRecurringTodo",
+          "parent": "listLogic",
+          "match": [
+            "const completedClone = {",
+            "recurrence: null,",
+            "arr.push(completedClone);"
+          ],
+          "title": "A completed clone records this occurrence.",
+          "why": "The clone keeps the due date just met and has no recurrence of its own."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "advanceRecurringTodo",
+          "parent": "listLogic",
+          "match": [
+            "item.due = formatDueParts(next);",
+            "item.completed = false;",
+            "saveToStorage();"
+          ],
+          "title": "The original moves on to its next date.",
+          "why": "It stays open and keeps its recurrence; only its due date changes before the local save."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "advanceRecurringTodo",
+          "parent": "listLogic",
+          "match": [
+            "op: 'insert',",
+            "op: 'update',"
+          ],
+          "title": "Two writes: an insert and an update.",
+          "why": "The clone goes to the server as a new row and the original is updated with its new due date."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "wireCheckbox",
+          "match": [
+            "toDoChild.classList.add('recurring-flash');",
+            "checkToDo.checked = false;",
+            "reorderToDoDOM(projectName);"
+          ],
+          "title": "The row flashes and the box clears.",
+          "why": "After a short flash the checkbox unticks and the list re-sorts; with reduced motion it happens at once."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "wireCheckbox",
+          "match": [
+            "listLogic.setToDoCompleted(projectName, item, checkToDo.checked);"
+          ],
+          "title": "Otherwise it completes like any task.",
+          "why": "When advanceRecurringTodo returns false the handler falls through, and setToDoCompleted marks it done."
+        }
+      ]
+    },
+    {
+      "id": "swipe-right",
+      "section": "tasks",
+      "title": "Swiping right: review first, complete, or undo a completion",
+      "recap": [
+        {
+          "title": "Review comes first",
+          "body": "A shipped task not yet reviewed opens in the TODO.md viewer instead."
+        },
+        {
+          "title": "A swipe is a tap",
+          "body": "It toggles the checkbox and fires the same change event."
+        },
+        {
+          "title": "Saved through listLogic",
+          "body": "setToDoCompleted writes locally every time, then updates the server row."
+        },
+        {
+          "title": "Flash on complete only",
+          "body": "Swiping a completed row right unticks it without the confirmation flash."
+        }
+      ],
+      "steps": [
+        {
+          "file": "toDoRow.js",
+          "symbol": "onRight",
+          "parent": "attachToDoDrag",
+          "match": [
+            "const cb = swipeTargets.checkToDo;",
+            "if (!cb || cb.style.display === 'none') return;"
+          ],
+          "title": "A right swipe reaches onRight.",
+          "why": "This follows swiping a task row right on a touch screen. A blank row has no checkbox to change."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onRight",
+          "parent": "attachToDoDrag",
+          "match": [
+            "if (reviewItem && derivePhase(reviewItem) === PHASE.ACCEPT) {",
+            "invokeReviewBadgeTap(reviewItem.entryId, reviewProject);",
+            "return;"
+          ],
+          "title": "A row waiting for review opens the viewer.",
+          "why": "A shipped task nobody has reviewed is not completed; the checkbox is left alone [src: toDoRow.js:5206]."
+        },
+        {
+          "file": "todoStatus.js",
+          "symbol": "invokeReviewBadgeTap",
+          "match": [
+            "if (!reviewBadgeTapHandler) return false;",
+            "reviewBadgeTapHandler(entryId, projectName);"
+          ],
+          "title": "invokeReviewBadgeTap hands off to the viewer.",
+          "why": "It calls the handler the REVIEW badge registered, the same place a badge tap goes."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onRight",
+          "parent": "attachToDoDrag",
+          "match": [
+            "const willComplete = !cb.checked;",
+            "cb.checked = !cb.checked;",
+            "cb.dispatchEvent(new Event('change'));"
+          ],
+          "title": "Otherwise the swipe toggles the checkbox.",
+          "why": "It fires the same change event a tap does, so the rest of the path is shared."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "wireCheckbox",
+          "match": [
+            "listLogic.setToDoCompleted(projectName, item, checkToDo.checked);",
+            "toDoChild.classList.add(\"completed\");"
+          ],
+          "title": "The change handler saves through setToDoCompleted.",
+          "why": "The row gains or loses its completed class to match the checkbox."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "setToDoCompleted",
+          "parent": "listLogic",
+          "match": [
+            "if (item.completed === next) return;",
+            "saveToStorage();",
+            "op: 'update',"
+          ],
+          "title": "setToDoCompleted saves locally, then updates.",
+          "why": "The local write always happens, then the server row gets the new completed value."
+        },
+        {
+          "file": "toDoRow.js",
+          "symbol": "onRight",
+          "parent": "attachToDoDrag",
+          "match": [
+            "if (willComplete) {",
+            "document.dispatchEvent(new CustomEvent('todoSwipeRightComplete'));"
+          ],
+          "title": "Only completing shows the flash.",
+          "why": "Swiping a completed row right unticks it silently; the confirmation flash is for completing only."
+        }
+      ]
+    },
+    {
+      "id": "clear-completed",
+      "section": "tasks",
+      "title": "Clearing completed tasks",
+      "recap": [
+        {
+          "title": "One pill, two places",
+          "body": "The desktop Completed header and the mobile sheet both carry Clear all."
+        },
+        {
+          "title": "Zero means nothing",
+          "body": "With no completed tasks there is no prompt at all."
+        },
+        {
+          "title": "One pass, one request",
+          "body": "removeCompletedToDos saves once and sends one batched delete."
+        },
+        {
+          "title": "No undo",
+          "body": "Unlike a swipe delete, the toast only reports how many went."
+        }
+      ],
+      "steps": [
+        {
+          "file": "main.js",
+          "symbol": "@file",
+          "match": [
+            "document.addEventListener('mainListRendered', function() {",
+            "header.appendChild(buildClearCompletedPill());"
+          ],
+          "title": "Desktop adds the pill to the Completed header.",
+          "why": "This follows Clear all. The header is rebuilt on every render, and the pill is added again each time."
+        },
+        {
+          "file": "mobileSheets.js",
+          "symbol": "openCompletedMobileSheet",
+          "match": [
+            "const clearAll = buildClearCompletedPill();",
+            "clearAll.hidden = initialCount === 0;"
+          ],
+          "title": "The mobile sheet carries its own pill.",
+          "why": "On phones the Completed sheet header holds the same pill, hidden when nothing is completed."
+        },
+        {
+          "file": "completedClearAll.js",
+          "symbol": "buildClearCompletedPill",
+          "match": [
+            "btn.addEventListener('click', function(event) {",
+            "event.stopPropagation();",
+            "confirmClearCompleted(completedSectionProjectName());"
+          ],
+          "title": "A tap asks confirmClearCompleted.",
+          "why": "The click stops at the pill, so the header underneath does not toggle."
+        },
+        {
+          "file": "completedClearAll.js",
+          "symbol": "confirmClearCompleted",
+          "match": [
+            "if (!projectName || n === 0) return;",
+            "confirmLabel: 'Delete ' + n,"
+          ],
+          "title": "No completed tasks, no prompt.",
+          "why": "With zero it returns; otherwise the confirm names the count and the project."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "removeCompletedToDos",
+          "parent": "listLogic",
+          "match": [
+            "const removed = arr.filter(function(i) { return i.tit !== '' && !!i.completed; });",
+            "saveToStorage();",
+            "payload: { ids: ids },"
+          ],
+          "title": "removeCompletedToDos drops them in one pass.",
+          "why": "One filter and one local save, then every saved id goes into a single delete [src: listLogic.js:823]."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "persistMutation",
+          "parent": "listLogic",
+          "match": [
+            "if (Array.isArray(payload.ids)) {",
+            "payload.ids.forEach(function(id) { noteSelfEcho(id); });",
+            ".in('id', payload.ids);"
+          ],
+          "title": "persistMutation deletes them in one request.",
+          "why": "Each id is noted as our own echo, then one request deletes them all."
+        },
+        {
+          "file": "completedClearAll.js",
+          "symbol": "confirmClearCompleted",
+          "match": [
+            "const removed = listLogic.removeCompletedToDos(projectName);",
+            "addAllToDo_DOM(listLogic.listItems(projectName), projectName);",
+            "showInjectToast(completedTaskPhrase(removed) + ' deleted');"
+          ],
+          "title": "The list redraws and a toast counts them.",
+          "why": "There is no undo here, unlike a swipe delete: the toast only reports what went."
+        }
+      ]
+    },
+    {
       "id": "reorder",
       "section": "tasks",
       "title": "Reordering by drag and swipe",
@@ -2157,6 +2462,242 @@
           ],
           "title": "selectProjectRow highlights the new row.",
           "why": "The old selection is cleared and the list takes the project's accent color."
+        }
+      ]
+    },
+    {
+      "id": "delete-project",
+      "section": "tasks",
+      "title": "Deleting a project",
+      "recap": [
+        {
+          "title": "Unnamed rows just go",
+          "body": "A row never named is not in the data model and leaves without a prompt."
+        },
+        {
+          "title": "The confirm counts tasks",
+          "body": "It names the project and how many tasks go with it."
+        },
+        {
+          "title": "One delete by id",
+          "body": "removeProject drops the key, saves, and sends one delete."
+        },
+        {
+          "title": "Offboard comes last",
+          "body": "An offboard chosen in the confirm is dispatched after the project is gone."
+        }
+      ],
+      "steps": [
+        {
+          "file": "projectRow.js",
+          "symbol": "onDelete",
+          "parent": "attachProjectContextMenu",
+          "match": [
+            "deleteProjectFlow(projChild, titleInput.value);"
+          ],
+          "title": "Delete in the context menu starts the flow.",
+          "why": "This follows deleting a project from its right-click or long-press menu on this device."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "deleteProjectFlow",
+          "match": [
+            "if (!projectName) {",
+            "projChild.parentNode.removeChild(projChild);",
+            "btn.style.pointerEvents = 'auto';"
+          ],
+          "title": "An unnamed row just disappears.",
+          "why": "A row never named is not in the data model, so it is removed without a prompt [src: projectRow.js:212]."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "deleteProjectFlow",
+          "match": [
+            "const count = countRealToDos(projectName);",
+            "\" and its ' + count + ' todo item'"
+          ],
+          "title": "The confirm says how many tasks go with it.",
+          "why": "The message names the project and its task count, and warns that it cannot be undone."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "deleteProjectFlow",
+          "match": [
+            "const routed = resolveProjectTarget(projectName);",
+            "if (routed && routed.others === 0) {",
+            "offboard = buildOffboardChoice(routed.target, {"
+          ],
+          "title": "A target used only here adds a choice.",
+          "why": "Only a target no other project uses can go too; a shared one is named and left alone [src: projectRow.js:226]."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "onConfirm",
+          "parent": "deleteProjectFlow",
+          "match": [
+            "const choice = offboard ? offboard.read() : null;",
+            "listLogic.removeProject(projectName);"
+          ],
+          "title": "Confirming removes the row, then the project.",
+          "why": "The offboard choice is read first, while the confirm is still there to read [src: projectRow.js:251]."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "removeProject",
+          "parent": "listLogic",
+          "match": [
+            "delete allProjects[projectDes];",
+            "saveToStorage();",
+            "payload: { id: doomed.id },"
+          ],
+          "title": "removeProject deletes the key and sends one delete.",
+          "why": "The key leaves memory, the cache is saved, and one delete by id goes to the server."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "onConfirm",
+          "parent": "deleteProjectFlow",
+          "match": [
+            "if (wasSelected) {",
+            "const nextRow = document.querySelector('#projChild');",
+            "updateEmptyState(mainListEl);"
+          ],
+          "title": "The next project is selected, or the empty state.",
+          "why": "When the deleted project was selected, the first one left takes over; with none left the empty state shows."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "onConfirm",
+          "parent": "deleteProjectFlow",
+          "match": [
+            "if (choice && choice.offboard) {",
+            "offboardAndDeleteTarget(target, choice.purge, choice.force).then(function(r) {"
+          ],
+          "title": "The offboard runs after the project is gone.",
+          "why": "If it fails a toast says so, but the project stays deleted [src: projectRow.js:252]."
+        }
+      ]
+    },
+    {
+      "id": "rename-project",
+      "section": "tasks",
+      "title": "Renaming a project",
+      "recap": [
+        {
+          "title": "Edit opens the name",
+          "body": "beginProjectRename selects the project and focuses its title."
+        },
+        {
+          "title": "Enter and blur differ",
+          "body": "Enter turns a duplicate red; leaving the field reverts it."
+        },
+        {
+          "title": "Same slot, same row",
+          "body": "editProject keeps the place in the list and updates the row by id."
+        },
+        {
+          "title": "One rename mutation",
+          "body": "The project picker commits through the same editProject."
+        }
+      ],
+      "steps": [
+        {
+          "file": "projectRow.js",
+          "symbol": "onEdit",
+          "parent": "attachProjectContextMenu",
+          "match": [
+            "beginProjectRename(projChild, titleInput);"
+          ],
+          "title": "Edit in the context menu starts a rename.",
+          "why": "This follows renaming a project from the sidebar: its name becomes editable in place."
+        },
+        {
+          "file": "projectRow.js",
+          "symbol": "beginProjectRename",
+          "match": [
+            "selectProjectRow(projChild, titleInput);",
+            "titleInput.style.pointerEvents = 'auto';",
+            "titleInput.select();"
+          ],
+          "title": "beginProjectRename opens the name for editing.",
+          "why": "The project is selected first if needed, then its title is focused with the text selected."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "if (event.key !== \"Enter\") return;",
+            "if (newName.length === 0) {",
+            "titleInput.value = currentProperty;"
+          ],
+          "title": "Enter refuses an empty name.",
+          "why": "An empty name snaps back to the last good one and nothing is saved."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "titleInput.style.color = \"red\";",
+            "listLogic.editProject(currentProperty, newName);"
+          ],
+          "title": "A duplicate turns red; a new name commits.",
+          "why": "A name already in use stays in the input in red. Any other new name goes to editProject."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "if (renameHandledByEnter) {",
+            "if (duplicate) {",
+            "titleInput.value = currentProperty;"
+          ],
+          "title": "Clicking away commits, but reverts a duplicate.",
+          "why": "The blur skips a rename Enter already made; a duplicate goes back to the old name instead of turning red."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "editProject",
+          "parent": "listLogic",
+          "match": [
+            "const keys = Object.keys(allProjects);",
+            "if (k === currentProperty) allProjects[trimmed] = snapshot[k];"
+          ],
+          "title": "editProject re-keys it in its old slot.",
+          "why": "Order is the key order of allProjects, which is why the keys are rebuilt in place [src: listLogic.js:1035]."
+        },
+        {
+          "file": "listLogic.js",
+          "symbol": "editProject",
+          "parent": "listLogic",
+          "match": [
+            "op: 'update',",
+            "table: 'projects',",
+            "Object.keys(allProjects).indexOf(trimmed)"
+          ],
+          "title": "The update carries the new name and position.",
+          "why": "The row is updated by id with the new name and the index it already had."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "titleInput.value = newName;",
+            "if (projChild.classList.contains('selectedProject')) {",
+            "addToDos_restore(items, newName);"
+          ],
+          "title": "The task list redraws under the new name.",
+          "why": "When the renamed project is selected, its tasks are drawn again under the new name."
+        },
+        {
+          "file": "projectPicker.js",
+          "symbol": "commit",
+          "parent": "enterRowEditMode",
+          "match": [
+            "if (names.indexOf(trimmed) !== -1) { rejectAndStayOpen(); return; }",
+            "listLogic.editProject(projectName, trimmed);"
+          ],
+          "title": "The project picker commits the same way.",
+          "why": "Its inline rename refuses empty and duplicate names, then calls the same editProject."
         }
       ]
     },
