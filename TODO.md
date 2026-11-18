@@ -3328,7 +3328,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 834b6238-636a-4564-a633-0f5f64b7f987 -->
 
-- [ ] **[MEDIUM]** Add boot-failure and no-network tours to the app-start chapter of the Understanding book
+- [x] **[MEDIUM]** Add boot-failure and no-network tours to the app-start chapter of the Understanding book — Completed: 2026-11-18
   - Type: feature
   - Description: The `app-starts` chapter in `toDoList_main/codebook.json` walks a healthy start and an update, but not a start that fails or a start with no network, and neither `markAppBooted` nor `reportBootFailure` appears in the book. It also says `bootApp` paints from this device's copy first so the app opens instantly; in `index.js` the first render waits on `Promise.all` of `maybeSkipFirstRunForCloudUser` (skipped on an onboarded device, otherwise bounded by `FIRST_RUN_PROBE_TIMEOUT_MS`) and, when signed in, `warmTargetsForBoot` (bounded by `BOOT_TARGETS_WAIT_MS`). Correct that sentence and the matching step in the `app-starts` tour, and add two tours that each follow one outcome. Write every sentence from the code it describes, following `.claude/book.md`. Do not change any source file.
   - Behavior:
