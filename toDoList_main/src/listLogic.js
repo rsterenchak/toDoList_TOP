@@ -1032,8 +1032,28 @@ export const listLogic = (function () {
             };
         }
 
-        allProjects[trimmed] = allProjects[currentProperty];
-        if (trimmed !== currentProperty) delete allProjects[currentProperty];
+        // Project order is the key order of allProjects, so a plain
+        // assign-then-delete would append the new key at the end and the
+        // project would drop to the bottom of the sidebar. When the rename
+        // is an ordinary one (old key exists, new name is free), rebuild the
+        // keys in place — the same way reorderProject does — with the new
+        // name in the old slot. Mutate in place: other modules hold a
+        // reference to this same object.
+        const keys = Object.keys(allProjects);
+        if (trimmed !== currentProperty
+            && keys.indexOf(currentProperty) !== -1
+            && keys.indexOf(trimmed) === -1) {
+            const snapshot = {};
+            keys.forEach(function(k) { snapshot[k] = allProjects[k]; });
+            Object.keys(allProjects).forEach(function(k) { delete allProjects[k]; });
+            keys.forEach(function(k) {
+                if (k === currentProperty) allProjects[trimmed] = snapshot[k];
+                else allProjects[k] = snapshot[k];
+            });
+        } else {
+            allProjects[trimmed] = allProjects[currentProperty];
+            if (trimmed !== currentProperty) delete allProjects[currentProperty];
+        }
 
         allProjectsTotal = Object.keys(allProjects).length;
 
