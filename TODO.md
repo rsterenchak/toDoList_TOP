@@ -3307,7 +3307,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/listLogic.js`, `toDoList_main/tests/listLogic.test.js`
   <!-- id: b5153d6b-cb38-4c29-a16f-984b62001632 -->
 
-- [ ] **[MEDIUM]** Add five outcome tours to the tasks and projects chapters of the Understanding book
+- [x] **[MEDIUM]** Add five outcome tours to the tasks and projects chapters of the Understanding book — Completed: 2026-11-17
   - Type: feature
   - Description: The `tasks` and `projects-and-list` chapters in `toDoList_main/codebook.json` cover adding, editing, status, due dates, deleting a task, reordering and creating a project, but several outcomes with their own code have no walkthrough: completing a repeating task, swiping right, clearing completed tasks, deleting a project and renaming one. None of `advanceRecurringTodo`, `removeCompletedToDos`, `confirmClearCompleted`, `deleteProjectFlow`, `beginProjectRename` or `editProject` appears in the book. Add five tours, each following one outcome, and the prose that introduces them. Write every sentence from the code it describes, following `.claude/book.md`. Do not change any source file.
   - Behavior:
