@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-18',
+        added: [
+            'The Understanding book\'s app-start chapter now walks a first paint that fails and opening the app with no network, and says how long the app waits before drawing your projects.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-17',
         added: [
             'The Understanding book\'s pipeline chapters now walk the task row\'s own Dispatch, Retry and review controls, with new tours for a run that fails, a run that lands while the app is closed, and accepting or reverting a shipped change.',
@@ -13,13 +20,6 @@ export const changelog = [
         ],
         fixed: [
             'Renaming a project from the sidebar now keeps it in its place in the list instead of moving it to the bottom after a sync or reload.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-11-16',
-        added: [
-            'The Understanding book\'s data chapter now explains what a sync does and doesn\'t protect, with new tours for a save that never reaches the server, live updates dropping and recovering, and a project deleted on another device.',
         ],
     },
 ];

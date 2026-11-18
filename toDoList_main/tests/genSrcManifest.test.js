@@ -697,10 +697,10 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('compiles the thirteen Foundations tours first, in order', () => {
-        expect(tours.tours.slice(0, 13).map((t) => t.id)).toEqual(['app-starts', 'sign-in-code', 'sign-in-refused', 'use-offline', 'sign-out', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'write-fails', 'realtime-recovers', 'project-deleted-elsewhere', 'app-updates']);
-        expect(tours.tours.slice(0, 13).every((t) => t.section === 'foundations')).toBe(true);
-        tours.tours.slice(0, 13).forEach((t) => {
+    it('compiles the fifteen Foundations tours first, in order', () => {
+        expect(tours.tours.slice(0, 15).map((t) => t.id)).toEqual(['app-starts', 'boot-fails', 'opens-offline', 'sign-in-code', 'sign-in-refused', 'use-offline', 'sign-out', 'database-connects', 'first-sign-in', 'data-saved', 'devices-sync', 'write-fails', 'realtime-recovers', 'project-deleted-elsewhere', 'app-updates']);
+        expect(tours.tours.slice(0, 15).every((t) => t.section === 'foundations')).toBe(true);
+        tours.tours.slice(0, 15).forEach((t) => {
             expect(t.recap.length).toBeGreaterThanOrEqual(3);
             expect(t.recap.length).toBeLessThanOrEqual(5);
         });
@@ -740,8 +740,8 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('completes the 51-tour catalog with no empty section', () => {
-        expect(tours.tours.length).toBe(51);
+    it('completes the 53-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(53);
         doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
     });
 

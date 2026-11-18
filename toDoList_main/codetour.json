@@ -42,7 +42,7 @@
         },
         {
           "title": "Local paint, then cloud",
-          "body": "The screen draws from localStorage before Supabase answers, so the app opens instantly."
+          "body": "After a short bounded wait the screen draws from localStorage; the cloud sync comes after."
         },
         {
           "title": "Boot runs once",
@@ -86,11 +86,11 @@
           "symbol": "bootApp",
           "match": [
             "if (booted) return;",
-            "const sampleJustSeeded = restoreFromStorage();",
-            "return bootSyncPipeline(userId, cloudHasData);"
+            "maybeSkipFirstRunForCloudUser(userId),",
+            "const sampleJustSeeded = restoreFromStorage();"
           ],
-          "title": "bootApp paints from localStorage first.",
-          "why": "Your projects appear straight away from this device's copy. The cloud catches up after."
+          "title": "bootApp paints after a short bounded wait.",
+          "why": "The cloud probe (FIRST_RUN_PROBE_TIMEOUT_MS) and target warm-up (BOOT_TARGETS_WAIT_MS) are capped; then this device's copy draws."
         },
         {
           "file": "main.js",
@@ -113,6 +113,202 @@
           ],
           "title": "Then sync: migrate, hydrate, subscribe.",
           "why": "Upload old local data once, pull everything from Supabase, then listen for live changes."
+        }
+      ]
+    },
+    {
+      "id": "boot-fails",
+      "section": "foundations",
+      "title": "When the first paint fails",
+      "recap": [
+        {
+          "title": "The watchdog stands down early",
+          "body": "markAppBooted runs as soon as the shell exists, before any data is drawn."
+        },
+        {
+          "title": "The render step reports its own failure",
+          "body": "A throw in restoreFromStorage calls reportBootFailure and skips the sync pipeline."
+        },
+        {
+          "title": "Only a pre-paint failure escalates",
+          "body": "The terminal catch checks rendered; a failed sync after the paint stays a warning."
+        },
+        {
+          "title": "The page owns the recovery",
+          "body": "Quiet reload, then a full cache bust, then a Reload prompt."
+        }
+      ],
+      "steps": [
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "if (booted) return;",
+            "booted = true;",
+            "markAppBooted();"
+          ],
+          "title": "bootApp latches, then signals the boot.",
+          "why": "Follows a first paint that throws: you see a spinner and a quiet reload, at worst a Reload prompt. The signal goes out first."
+        },
+        {
+          "file": "index.js",
+          "symbol": "markAppBooted",
+          "match": [
+            "try { window.__appBooted = true; }",
+            "sessionStorage.removeItem('todoapp_bootRecoveryAttempt');",
+            "window.__clearBootWatchdog();"
+          ],
+          "title": "markAppBooted stands the watchdog down.",
+          "why": "It sets the success flag, resets the recovery count and clears the overlay, before any data is pulled [src: index.js:81]."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "Promise.all([",
+            "maybeSkipFirstRunForCloudUser(userId),",
+            "userId ? warmTargetsForBoot() : null,"
+          ],
+          "title": "The render waits on two bounded steps.",
+          "why": "The cloud probe and the targets warm-up each resolve by their timeout, so neither can hold the paint for long."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "const sampleJustSeeded = restoreFromStorage();",
+            "reportBootFailure();",
+            "return;"
+          ],
+          "title": "A throw in the render step is caught here.",
+          "why": "The shell is up but empty. It is reported, then returned, so the sync pipeline never runs [src: index.js:160]."
+        },
+        {
+          "file": "index.js",
+          "symbol": "reportBootFailure",
+          "match": [
+            "typeof window.__reportBootFailure === 'function'"
+          ],
+          "title": "reportBootFailure calls the page's hook.",
+          "why": "The watchdog already stood down, so this hands the failure back to its reload ladder [src: index.js:95]."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "rendered = true;",
+            "if (!rendered) reportBootFailure();"
+          ],
+          "title": "Only a failure before the paint escalates.",
+          "why": "A failed sync after the paint stays a warning; escalating it would reload-loop you through an outage [src: index.js:202]."
+        }
+      ]
+    },
+    {
+      "id": "opens-offline",
+      "section": "foundations",
+      "title": "Opening the app with no network",
+      "recap": [
+        {
+          "title": "The shell has three sources",
+          "body": "Network for four seconds, then the cached shell, then the precached one."
+        },
+        {
+          "title": "The build comes from the precache",
+          "body": "Bundles and assets never need the network once installed."
+        },
+        {
+          "title": "The paint needs no network",
+          "body": "bootApp waits out its bounds, then restoreFromStorage draws this device's copy."
+        },
+        {
+          "title": "Sync fails quietly and retries later",
+          "body": "bootSyncPipeline only logs; the online event re-syncs on reconnect."
+        }
+      ],
+      "steps": [
+        {
+          "file": "sw.js",
+          "symbol": "@file",
+          "match": [
+            "const htmlHandler = new NetworkFirst({",
+            "networkTimeoutSeconds: 4,"
+          ],
+          "title": "A page load tries the network first.",
+          "why": "Follows opening the app offline: your projects still appear. The page request gives up on the network after four seconds."
+        },
+        {
+          "file": "sw.js",
+          "symbol": "@file",
+          "match": [
+            "return await htmlHandler.handle(options);",
+            "const precached = await matchPrecache('index.html');",
+            "if (precached) return precached;"
+          ],
+          "title": "Then the cached shell, then the precached one.",
+          "why": "With no shell in the runtime cache yet, the precached index.html still boots the app [src: sw.js:40]."
+        },
+        {
+          "file": "sw.js",
+          "symbol": "@file",
+          "match": [
+            "precacheAndRoute(self.__WB_MANIFEST || []);"
+          ],
+          "title": "The build's files come from the precache.",
+          "why": "Bundles and assets are served from cache, and their URLs change per build, so a hit is always the right one [src: sw.js:27]."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "supabase.auth.getSession().then",
+            "}).catch(function() {",
+            "bootWithoutSession();"
+          ],
+          "title": "A failed session probe goes to bootWithoutSession.",
+          "why": "If the probe itself fails, the sign-in gate renders, or an offline-mode device boots locally [src: index.js:286]."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootApp",
+          "match": [
+            "Promise.all([",
+            "maybeSkipFirstRunForCloudUser(userId),",
+            "userId ? warmTargetsForBoot() : null,"
+          ],
+          "title": "bootApp waits out its bounds.",
+          "why": "Offline, the cloud probe and the targets warm-up end by their timeouts at the latest, then the render step runs."
+        },
+        {
+          "file": "main.js",
+          "symbol": "restoreFromStorage",
+          "match": [
+            "const savedProjects = listLogic.listProjectsArray();",
+            "addToDos_restore(lastItems, targetProject, opts);"
+          ],
+          "title": "restoreFromStorage paints this device's copy.",
+          "why": "Projects and tasks come from localStorage, which needs no network."
+        },
+        {
+          "file": "index.js",
+          "symbol": "bootSyncPipeline",
+          "match": [
+            ".then(function() { return listLogic.hydrateFromSupabase(); })",
+            "console.warn('[bootApp] migrate/hydrate/subscribe failed:', e);"
+          ],
+          "title": "The sync fails and only logs it.",
+          "why": "The cloud pull cannot complete offline; a rejection lands here as a warning and the painted screen stays as it is."
+        },
+        {
+          "file": "index.js",
+          "symbol": "@file",
+          "match": [
+            "window.addEventListener('online', function () {",
+            "rehydrateUnlessEditing();",
+            "wakeRecoverRealtime();"
+          ],
+          "title": "The online event re-syncs on reconnect.",
+          "why": "The cloud copy is pulled again and live updates are re-subscribed [src: index.js:515]."
         }
       ]
     },
