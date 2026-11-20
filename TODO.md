@@ -3410,3 +3410,21 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - Out of scope: any change under `toDoList_main/src/`; the `chat` chapter's body; line-range notes written from the code viewer, the reader's Marks toggle and the shelf's notes section (a later entry).
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 515316d1-15e8-47fc-981f-94d7996ab905 -->
+
+- [ ] **[MEDIUM]** Remove the "Never" auto-lock option so an enabled app lock can always engage
+  - Type: bug
+  - Description: The app lock's "Auto-lock after idle" select offers "Never" (`minutes: 0` in `APP_LOCK_TIMEOUT_OPTIONS`, `toDoList_main/src/appLock.js`). `lockApp` is only called from the idle timer in `rearmAppLockTimer` and the idle check in `enforceAppLockIdle`, and both return early when the timeout is 0, so a lock saved with "Never" can never engage while Settings still shows App lock as ON. Remove the option, and turn the lock off on a device that already stored it. Expected: every lock that reads ON locks after its idle span, and nobody is locked behind a PIN the app has never asked them for.
+  - Behavior:
+    1. The setup modal offers 1 minute, 5 minutes, 15 minutes and 30 minutes, in that order. The default stays 5 minutes.
+    2. A device whose stored timeout is `0` has its lock turned off the next time the app loads: the PIN, the enabled flag, the timeout and the last-activity stamp are all removed, as `clearAppLock` does. The Settings row reads OFF and nothing locks.
+    3. That happens before the boot-time idle check can mount the overlay. `enforceAppLockIdle` runs in `toDoList_main/src/index.js` right after the shell attaches, ahead of `startAppLockWatch`, so a stored `0` must never reach it as the 5-minute default.
+    4. Any other stored value that is not on the list still degrades to 5 minutes, as today.
+  - Implementation notes:
+    - Write the regression tests first in `toDoList_main/tests/appLock.test.js`: with a PIN set, the lock enabled, a stored timeout of `0` and a last-activity stamp a day old, loading the lock leaves the app unlocked, `isAppLockArmed()` false and no PIN stored.
+    - Two existing tests assert the old behaviour and change with it: "defaults the idle timeout and rejects unknown stored values" (it treats `0` as a legitimate stored value) and "never schedules a timer on the Never option". `toDoList_main/tests/pinLockModal.test.js` pins the option labels including "Never".
+    - Update the comments in `appLock.js` that describe 0 as "Never" (above `APP_LOCK_TIMEOUT_OPTIONS`, above `readAppLockTimeoutMinutes`, above `rearmAppLockTimer`).
+    - The `app-lock` tour in `toDoList_main/codetour.json` has a step on `readAppLockTimeoutMinutes` that matches the lines `const known = APP_LOCK_TIMEOUT_OPTIONS.some(` and `return known ? parsed : APP_LOCK_DEFAULT_TIMEOUT_MINUTES;`. Keep those lines, or update the step's `match` in the same PR.
+    - `pinLockModal.js` builds the select from `APP_LOCK_TIMEOUT_OPTIONS` and should need no change.
+  - Out of scope: a manual "Lock now" control; an attempt limit or a forgot-PIN path; the Understanding book's prose.
+  - File: `toDoList_main/src/appLock.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/appLock.test.js`, `toDoList_main/tests/pinLockModal.test.js`, `toDoList_main/codetour.json`
+  <!-- id: 075e70a3-a582-4ae8-b8e0-c4c13fcc0e75 -->
