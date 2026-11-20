@@ -5919,6 +5919,408 @@
       ]
     },
     {
+      "id": "book-marks",
+      "section": "structure",
+      "title": "Bookmarking a paragraph",
+      "recap": [
+        {
+          "title": "One tap, one local write",
+          "body": "The ribbon or the sheet toggles the mark on this device at once."
+        },
+        {
+          "title": "Sync needs a session",
+          "body": "Signed out, the mark stays here; signed in, it is inserted in the background."
+        },
+        {
+          "title": "Unmarks wait for the server",
+          "body": "A synced unmark stays as deleted until its delete lands."
+        },
+        {
+          "title": "Merged on every shelf",
+          "body": "The server row wins, unsynced rows retry, rows deleted elsewhere drop."
+        },
+        {
+          "title": "Anchored to the current book",
+          "body": "Past the last paragraph opens at the top; removed chapters list apart."
+        }
+      ],
+      "steps": [
+        {
+          "file": "understandingView.js",
+          "symbol": "wireParaMark",
+          "match": [
+            "ribbon.addEventListener('click', function (event) {",
+            "toggleParaMark(p, segments, index);",
+            "openParaActions(p, segments, index);"
+          ],
+          "title": "A ribbon, and a long-press for touch.",
+          "why": "This tour follows bookmarking a paragraph: its ribbon fills. On touch, holding 500 ms opens the action sheet instead."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "openParaActions",
+          "match": [
+            "mark.appendChild(document.createTextNode(marked ? 'Remove bookmark' : 'Bookmark'));",
+            "toggleParaMark(p, segments, index);"
+          ],
+          "title": "The sheet's Bookmark does the same toggle.",
+          "why": "The sheet also offers Flag and Note for the same paragraph."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "toggleParaMark",
+          "match": [
+            "const res = toggleBookmark(r.repo, ch.id, index, segments);",
+            "paintParaMark(p, res.marked);"
+          ],
+          "title": "The ribbon repaints from the result.",
+          "why": "Neither the scroll nor the reading position moves."
+        },
+        {
+          "file": "bookBookmarks.js",
+          "symbol": "toggleBookmark",
+          "match": [
+            "writeLocal(repo, chapterId, index, rec);",
+            "return uid ? pushInsert(uid, rec) : undefined;"
+          ],
+          "title": "Written here at once, synced only with a session.",
+          "why": "Signed out there is no user id, so nothing is sent and the mark lives on this device."
+        },
+        {
+          "file": "bookBookmarks.js",
+          "symbol": "pushInsert",
+          "match": [
+            "if (!(await remoteInsert(userId, rec))) return;",
+            "Object.assign({}, now, { synced: true })",
+            "await pushDelete(userId, tomb);"
+          ],
+          "title": "A landed insert sets synced, or is undone.",
+          "why": "If the mark was removed while the insert was in flight, the new row is deleted again."
+        },
+        {
+          "file": "bookBookmarks.js",
+          "symbol": "toggleBookmark",
+          "match": [
+            "const tomb = current.synced ? Object.assign({}, current, { deleted: true }) : null;",
+            "return uid ? pushDelete(uid, tomb) : undefined;"
+          ],
+          "title": "An unmark of a synced row waits as deleted.",
+          "why": "A row the server never got just goes; a synced one stays deleted here until pushDelete lands and clears it."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "renderUnderstandingView",
+          "match": [
+            "return Promise.all([loadProgress(repo), loadBookmarks(repo), loadFlags(repo), loadNotes(repo)]).then(function (res) {",
+            "paintShelf(view, repo, book, merged);"
+          ],
+          "title": "Each shelf render reloads the marks.",
+          "why": "Bookmarks, flags and notes load beside the position; the shelf repaints only when one of them differs."
+        },
+        {
+          "file": "bookBookmarks.js",
+          "symbol": "loadBookmarks",
+          "match": [
+            "if (!userId) return listBookmarks(repo);",
+            "const merged = mergeBookmarks(getBookBookmarks(repo), remote);",
+            "return pushInsert(userId, b);"
+          ],
+          "title": "Signed out or failed: the local list.",
+          "why": "With a session the rows are merged, stored here, and unsynced marks and unmarks are retried."
+        },
+        {
+          "file": "bookBookmarks.js",
+          "symbol": "mergeBookmarks",
+          "match": [
+            "if (r) { list.push(b); remove.push(b); }",
+            "list.push(Object.assign({}, r, { synced: true }));",
+            "} else if (!b.synced) {"
+          ],
+          "title": "The server row wins; unsynced rows retry.",
+          "why": "A synced row missing on the server was deleted on another device, and is dropped."
+        },
+        {
+          "file": "bookBookmarks.js",
+          "symbol": "anchorBookmarks",
+          "match": [
+            "if (!byId.has(b.chapterId)) { removed.push(b); return; }",
+            "const inRange = b.paraIndex < paras;",
+            "paraIndex: inRange ? b.paraIndex : 0"
+          ],
+          "title": "Bookmarks are anchored to the current book.",
+          "why": "One past the chapter's last paragraph opens at the chapter top; one whose chapter is gone is listed apart."
+        }
+      ]
+    },
+    {
+      "id": "book-notes",
+      "section": "structure",
+      "title": "Flagging a paragraph and keeping a note",
+      "recap": [
+        {
+          "title": "Four kinds and a note",
+          "body": "A flag says what went wrong; an open one is edited, not duplicated."
+        },
+        {
+          "title": "Flags capture their paragraph",
+          "body": "The excerpt and refs are kept at flag time."
+        },
+        {
+          "title": "Resolve or delete",
+          "body": "Resolve keeps the record; Delete asks first."
+        },
+        {
+          "title": "Notes announce themselves",
+          "body": "Every save, edit or delete repaints the notes under each paragraph."
+        },
+        {
+          "title": "Sync is queued per record",
+          "body": "One record's syncs run in order; an unsynced edit wins the merge."
+        }
+      ],
+      "steps": [
+        {
+          "file": "understandingView.js",
+          "symbol": "openFlagSheet",
+          "match": [
+            "const existing = openFlagFor(r.repo, ch.id, index);",
+            "const chips = FLAG_KINDS.map(function (k) {",
+            "note.placeholder = 'What did you expect here?';"
+          ],
+          "title": "The flag sheet: four kinds and a note.",
+          "why": "This tour follows flagging and noting a paragraph. The sheet is pre-filled from the paragraph's open flag, if any."
+        },
+        {
+          "file": "bookFlags.js",
+          "symbol": "saveFlag",
+          "match": [
+            "const current = openFlagFor(repo, chapterId, index);",
+            "rec = Object.assign({}, current, { kind: kind, note: note });",
+            "excerpt: flagExcerpt(segments),"
+          ],
+          "title": "Save edits the open flag or creates one.",
+          "why": "A new flag keeps the excerpt and refs, so that it stays readable after a regenerate [src: bookFlags.js:8]."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "openFlagSheet",
+          "match": [
+            "action('Delete', 'is-delete', function () {",
+            "showConfirmModal({",
+            "resolveFlag(r.repo, existing);"
+          ],
+          "title": "Resolve, or Delete behind a confirm.",
+          "why": "Both appear only when the paragraph already has an open flag."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildFlagSection",
+          "match": [
+            "const flags = openFlags(repo);",
+            "copyFlags(flagsMarkdown(book, openFlags(repo), function (i) { return chapterNum(book, i); }));"
+          ],
+          "title": "The shelf lists open flags, with Copy.",
+          "why": "Copy puts the open flags on the clipboard as markdown; each row's ✓ resolves its flag."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "openParaNoteSheet",
+          "match": [
+            "if (existing) updateNote(repo, existing, text);",
+            "else saveNote(repo, { chapterId: ch.id, paraIndex: index, segments: segments }"
+          ],
+          "title": "A note is saved new or updated.",
+          "why": "The pencil on a note's block opens it for editing; the ✎ button opens an empty sheet."
+        },
+        {
+          "file": "bookNotes.js",
+          "symbol": "updateNote",
+          "match": [
+            "if (rec.synced) rec.dirty = true;",
+            "announce(repo);",
+            "return { note: rec, sync: queueSync(repo, key) };"
+          ],
+          "title": "An edit of a synced note is marked dirty.",
+          "why": "dirty holds the edit until the server has seen it."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "onNotesChanged",
+          "match": [
+            "if (!r || !r.column || (repo && repo !== r.repo)) return;",
+            "paintParaNotes(p, paragraphs[i], i);"
+          ],
+          "title": "The open chapter repaints its notes.",
+          "why": "saveNote, updateNote and deleteNote call announce, which fires BOOK_NOTES_EVENT."
+        },
+        {
+          "file": "bookNotes.js",
+          "symbol": "queueSync",
+          "match": [
+            "const prev = chains.get(id) || Promise.resolve();",
+            "return uid ? syncOnce(uid, repo, key) : undefined;"
+          ],
+          "title": "One record's syncs run one at a time.",
+          "why": "Each chains after the last, so that a quick save-then-edit never inserts the row twice [src: bookNotes.js:271]."
+        },
+        {
+          "file": "bookNotes.js",
+          "symbol": "syncOnce",
+          "match": [
+            "if (rec.synced && !(await remoteDelete(userId, rec))) return;",
+            "if (!(await remoteInsert(userId, rec))) return;",
+            "if (!(await remoteUpdate(userId, rec))) return;"
+          ],
+          "title": "Insert, push the edit, or delete.",
+          "why": "It repeats while the record changes underneath; a failed call stops until the next load retries it."
+        },
+        {
+          "file": "bookNotes.js",
+          "symbol": "mergeNotes",
+          "match": [
+            "} else if (r && n.dirty) {",
+            "update.push(n);"
+          ],
+          "title": "An unsynced edit outranks the server row.",
+          "why": "Otherwise the server row wins, a never-synced note is retried and one missing remotely is dropped."
+        }
+      ]
+    },
+    {
+      "id": "book-ask",
+      "section": "structure",
+      "title": "Asking about a chapter",
+      "recap": [
+        {
+          "title": "Built from what is loaded",
+          "body": "The scope is the chapter's prose and refs, ready on the tap."
+        },
+        {
+          "title": "One repo at a time",
+          "body": "Attachments from another repo stop the switch and show a notice."
+        },
+        {
+          "title": "One scope at a time",
+          "body": "A chapter replaces any task or selection scope."
+        },
+        {
+          "title": "Every turn carries it",
+          "body": "The scope rides as book_scope, without the Keep anchor."
+        },
+        {
+          "title": "Keep pins replies",
+          "body": "A kept reply becomes an answer note on the paragraph you asked from."
+        }
+      ],
+      "steps": [
+        {
+          "file": "understandingView.js",
+          "symbol": "openReader",
+          "match": [
+            "askBtn.addEventListener('click', askAboutChapter);",
+            "loadSymbols(repo);"
+          ],
+          "title": "The Ask chip, and the warm-up behind it.",
+          "why": "This tour follows asking about a chapter: the chat opens scoped to it. The reader preloads the manifest and symbols."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "askAboutChapter",
+          "match": [
+            "const scope = buildBookScope(r.repo, r.book, r.index, {",
+            "scope.anchor = { chapterId: ch.id, paraIndex: at,",
+            "openChatWithBookScope(scope);"
+          ],
+          "title": "Build the scope, anchor it, open the chat.",
+          "why": "It reads only what is already loaded, so that the chat opens on the tap [src: understandingView.js:1537]."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildBookScope",
+          "match": [
+            "text += String(ref.label || ref.symbol || ref.file || '');",
+            "if (seen[key]) return;",
+            "scope.index = buildWidenIndex(book, refs, ctx);"
+          ],
+          "title": "Prose flattened, refs collected once.",
+          "why": "With the symbols index loaded, refs gain their referrers and the scope a widen list."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "openChatWithBookScope",
+          "match": [
+            "if (attachedFiles.length && attachedRepo && attachedRepo !== scope.repo) {",
+            "showAttachNotice();",
+            "if (scope.repo !== activeChatRepo) swapChatWorkspace(scope.repo);"
+          ],
+          "title": "Other-repo attachments stop it here.",
+          "why": "Otherwise the chat switches to the chapter's repo, so that attached chips are never dropped silently [src: claudeSheet.js:617]."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "attachBookScopeToChat",
+          "match": [
+            "activeBookScope = scope;",
+            "activeSelectionScope = null;",
+            "renderScopeChip();"
+          ],
+          "title": "The chapter replaces any other scope.",
+          "why": "A task or selection scope is dropped. renderScopeChip draws the chapter chip, whose ✕ calls detachBookScope."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "chatCodeScope",
+          "match": [
+            "if (!activeBookScope.anchor) return activeBookScope;",
+            "delete out.anchor;"
+          ],
+          "title": "Each turn takes the scope without its anchor.",
+          "why": "The anchor only tells Keep where to pin a note."
+        },
+        {
+          "file": "inject.js",
+          "symbol": "chatWithWorker",
+          "match": [
+            "Object.prototype.hasOwnProperty.call(opts, 'bookScope')",
+            "payload.book_scope = opts.bookScope;"
+          ],
+          "title": "It rides as book_scope on every turn.",
+          "why": "requestAssistantReply hands it over on each send, and chatWithWorker lifts it into the payload."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "decorateBookRefs",
+          "match": [
+            "const ref = resolveBookRefSpan(symbols, scope, code.textContent);",
+            "code.parentNode.replaceChild(chip, code);"
+          ],
+          "title": "Code names in a reply become chips.",
+          "why": "A name that does not resolve stays plain code."
+        },
+        {
+          "file": "claudeSheet.js",
+          "symbol": "keepReply",
+          "match": [
+            "const text = selected || replyFirstSentence(turn.content);",
+            "saveNote(repo, anchor, { body: body, source: 'answer', bookSha: anchor.bookSha || '' });"
+          ],
+          "title": "Keep saves the reply as a pinned note.",
+          "why": "The sheet opens pre-filled with the selection or the first sentence; the note pins to the anchor."
+        },
+        {
+          "file": "understandingView.js",
+          "symbol": "buildSelectionScope",
+          "match": [
+            "const scope = {",
+            "prose: [numbered],",
+            "scope.index = buildWidenIndex(c.book || null, scope.refs, c);"
+          ],
+          "title": "Selected lines build the same shape.",
+          "why": "The code viewer's Ask sends the numbered lines as prose and the innermost enclosing definition as the ref."
+        }
+      ]
+    },
+    {
       "id": "book-regenerate",
       "section": "structure",
       "title": "Generating or regenerating the book",
