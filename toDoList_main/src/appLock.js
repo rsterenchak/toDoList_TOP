@@ -29,14 +29,15 @@ export const APP_LOCK_PIN_KEY = 'todoapp_appLockPin';
 export const APP_LOCK_TIMEOUT_KEY = 'todoapp_appLockTimeout';
 export const APP_LOCK_ACTIVITY_KEY = 'todoapp_appLockLastActivity';
 
-// Idle spans offered by the setup modal's <select>. 0 means "Never" — the
-// lock stays armed as a manual concept only and no timer is ever scheduled.
+// Idle spans offered by the setup modal's <select>. There is no "Never":
+// lockApp is only reached through the idle timer and the idle check, so a
+// lock with no idle span would read ON in Settings and never engage. A
+// device that stored the retired 0 is turned off by retireNeverAppLockTimeout.
 export const APP_LOCK_TIMEOUT_OPTIONS = [
     { minutes: 1, label: '1 minute' },
     { minutes: 5, label: '5 minutes' },
     { minutes: 15, label: '15 minutes' },
     { minutes: 30, label: '30 minutes' },
-    { minutes: 0, label: 'Never' },
 ];
 
 export const APP_LOCK_DEFAULT_TIMEOUT_MINUTES = 5;
@@ -152,8 +153,10 @@ export function clearAppLock() {
     } catch (e) { /* ignore quota/private-mode */ }
 }
 
-// Minutes, with 0 meaning "Never". Anything unparseable or off the offered
-// list degrades to the default rather than disabling the lock silently.
+// Minutes, always one of the offered spans. Anything unparseable or off the
+// offered list degrades to the default rather than disabling the lock
+// silently — except the retired 0, which retireNeverAppLockTimeout clears
+// before anything reads it.
 export function readAppLockTimeoutMinutes() {
     let raw;
     try {
@@ -166,6 +169,23 @@ export function readAppLockTimeoutMinutes() {
     if (isNaN(parsed)) return APP_LOCK_DEFAULT_TIMEOUT_MINUTES;
     const known = APP_LOCK_TIMEOUT_OPTIONS.some(function(opt) { return opt.minutes === parsed; });
     return known ? parsed : APP_LOCK_DEFAULT_TIMEOUT_MINUTES;
+}
+
+// A device saved with the retired "Never" option (a stored 0) had a lock
+// that read ON but could never engage, so the user has never been asked for
+// that PIN since setting it. Reading the 0 as the 5-minute default would
+// lock them behind a PIN they may not remember; turn the lock off instead,
+// exactly as clearAppLock does. Returns true when it cleared one.
+export function retireNeverAppLockTimeout() {
+    let raw;
+    try {
+        raw = localStorage.getItem(APP_LOCK_TIMEOUT_KEY);
+    } catch (e) {
+        return false;
+    }
+    if (raw === null || parseInt(raw, 10) !== 0) return false;
+    clearAppLock();
+    return true;
 }
 
 export function writeAppLockTimeoutMinutes(minutes) {
@@ -442,13 +462,11 @@ function clearIdleTimer() {
 
 // Re-arms the single idle timer from the current settings. Called on every
 // activity event, after an unlock, and whenever the settings change. No timer
-// is scheduled when the lock is disarmed, when the timeout is Never, or while
-// the overlay is already up.
+// is scheduled when the lock is disarmed or while the overlay is already up.
 export function rearmAppLockTimer() {
     clearIdleTimer();
     if (!isAppLockArmed() || isAppLocked()) return;
     const minutes = readAppLockTimeoutMinutes();
-    if (!minutes) return;
     idleTimer = setTimeout(function() {
         idleTimer = null;
         if (isAppLockArmed()) lockApp();
@@ -458,11 +476,13 @@ export function rearmAppLockTimer() {
 // Locks straight away when more than the configured idle span has already
 // elapsed since the last recorded activity. Covers the two cases a timer
 // alone misses: a reload after the app sat closed, and a background tab whose
-// timers the browser throttled while it was hidden.
+// timers the browser throttled while it was hidden. It is the first app-lock
+// call on boot, so it retires a stored "Never" before that 0 can be read as
+// the 5-minute default and lock the app.
 export function enforceAppLockIdle() {
+    retireNeverAppLockTimeout();
     if (!isAppLockArmed() || isAppLocked()) return false;
     const minutes = readAppLockTimeoutMinutes();
-    if (!minutes) return false;
     const last = readAppLockLastActivity();
     if (isNaN(last)) return false;
     if (Date.now() - last < minutes * 60000) return false;
