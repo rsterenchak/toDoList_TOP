@@ -24,6 +24,7 @@ import {
     APP_LOCK_PIN_KEY,
     APP_LOCK_TIMEOUT_KEY,
     APP_LOCK_DEFAULT_TIMEOUT_MINUTES,
+    APP_LOCK_TIMEOUT_OPTIONS,
     PIN_LENGTH,
     clearAppLock,
     createPinDigitInputs,
@@ -38,6 +39,7 @@ import {
     readAppLockTimeoutMinutes,
     rearmAppLockTimer,
     resetAppLockWatchForTests,
+    retireNeverAppLockTimeout,
     setAppLockEnabled,
     setAppLockPin,
     startAppLockWatch,
@@ -147,9 +149,9 @@ describe('appLock — enabled flag, timeout, and armed state', () => {
         expect(readAppLockTimeoutMinutes()).toBe(APP_LOCK_DEFAULT_TIMEOUT_MINUTES);
         writeAppLockTimeoutMinutes(15);
         expect(readAppLockTimeoutMinutes()).toBe(15);
-        // 0 is the "Never" option and is a legitimate stored value.
+        // 0 was the retired "Never" option; it is no longer on the list.
         writeAppLockTimeoutMinutes(0);
-        expect(readAppLockTimeoutMinutes()).toBe(0);
+        expect(readAppLockTimeoutMinutes()).toBe(APP_LOCK_DEFAULT_TIMEOUT_MINUTES);
         localStorage.setItem(APP_LOCK_TIMEOUT_KEY, '7');
         expect(readAppLockTimeoutMinutes()).toBe(APP_LOCK_DEFAULT_TIMEOUT_MINUTES);
         localStorage.setItem(APP_LOCK_TIMEOUT_KEY, 'soon');
@@ -336,15 +338,47 @@ describe('appLock — idle watch', () => {
         expect(isAppLocked()).toBe(true);
     });
 
-    it('never schedules a timer on the Never option', () => {
+    it('no longer offers a Never option', () => {
+        expect(APP_LOCK_TIMEOUT_OPTIONS.map((o) => o.minutes)).toEqual([1, 5, 15, 30]);
+        expect(APP_LOCK_TIMEOUT_OPTIONS.some((o) => o.label === 'Never')).toBe(false);
+        expect(APP_LOCK_DEFAULT_TIMEOUT_MINUTES).toBe(5);
+    });
+
+    it('turns off a lock stored with the retired Never timeout instead of locking on boot', () => {
         vi.useFakeTimers();
         armLock('5150', 0);
+        localStorage.setItem(APP_LOCK_ACTIVITY_KEY, String(Date.now() - 24 * 60 * 60000));
+        // The boot-time idle check must not read the stored 0 as the 5-minute default.
+        expect(enforceAppLockIdle()).toBe(false);
+        expect(isAppLocked()).toBe(false);
+        expect(isAppLockArmed()).toBe(false);
+        expect(isAppLockEnabled()).toBe(false);
+        expect(hasAppLockPin()).toBe(false);
+        expect(localStorage.getItem(APP_LOCK_PIN_KEY)).toBeNull();
+        expect(localStorage.getItem(APP_LOCK_ENABLED_KEY)).toBeNull();
+        expect(localStorage.getItem(APP_LOCK_TIMEOUT_KEY)).toBeNull();
+        expect(localStorage.getItem(APP_LOCK_ACTIVITY_KEY)).toBeNull();
         startAppLockWatch();
         vi.advanceTimersByTime(60 * 60000);
         expect(isAppLocked()).toBe(false);
-        // Nor does the boot check lock, however long the app sat idle.
-        localStorage.setItem(APP_LOCK_ACTIVITY_KEY, String(Date.now() - 24 * 60 * 60000));
-        expect(enforceAppLockIdle()).toBe(false);
+    });
+
+    it('retireNeverAppLockTimeout clears only a stored 0', () => {
+        armLock('5150', 0);
+        expect(retireNeverAppLockTimeout()).toBe(true);
+        expect(isAppLockArmed()).toBe(false);
+        expect(hasAppLockPin()).toBe(false);
+
+        armLock('5150', 15);
+        expect(retireNeverAppLockTimeout()).toBe(false);
+        expect(isAppLockArmed()).toBe(true);
+        expect(readAppLockTimeoutMinutes()).toBe(15);
+
+        // Other off-list values still degrade to the default rather than clearing.
+        localStorage.setItem(APP_LOCK_TIMEOUT_KEY, '7');
+        expect(retireNeverAppLockTimeout()).toBe(false);
+        expect(isAppLockArmed()).toBe(true);
+        expect(readAppLockTimeoutMinutes()).toBe(APP_LOCK_DEFAULT_TIMEOUT_MINUTES);
     });
 
     it('leaves a disarmed lock alone entirely', () => {

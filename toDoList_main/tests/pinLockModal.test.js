@@ -56,7 +56,7 @@ describe('pinLockModal — structure and close affordances', () => {
         expect(document.querySelectorAll('#pinLockModal .pinDigitInput')).toHaveLength(4);
         const select = document.getElementById('pinLockTimeoutSelect');
         expect([...select.options].map((o) => o.textContent))
-            .toEqual(['1 minute', '5 minutes', '15 minutes', '30 minutes', 'Never']);
+            .toEqual(['1 minute', '5 minutes', '15 minutes', '30 minutes']);
         expect(document.getElementById('pinLockSave')).toBeTruthy();
         expect(document.getElementById('pinLockCancel')).toBeTruthy();
     });

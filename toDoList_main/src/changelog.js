@@ -9,6 +9,9 @@ export const changelog = [
         added: [
             'The Understanding book\'s chapter on the Understanding tab now covers bookmarks, flags, notes and asking about a chapter, with a tour for each.',
         ],
+        fixed: [
+            'The app lock no longer offers "Never" as an auto-lock time, and a lock saved with it is turned off, so an app lock that reads ON always locks after its idle time.',
+        ],
     },
     {
         version: '1.1',
@@ -17,13 +20,6 @@ export const changelog = [
             'The Understanding book\'s app-start chapter now walks a first paint that fails and opening the app with no network, and says how long the app waits before drawing your projects.',
             'The Understanding book\'s chat chapter now walks a chat turn that fails, a reply that asks you to choose, shipping a drafted entry, iterating on a shipped change, and a conversation kept on two devices.',
             'The Understanding book has a new chapter on the Understanding tab itself, with tours for opening the tab, reading a chapter, generating or regenerating the book, and following a tour.',
-        ],
-    },
-    {
-        version: '1.1',
-        date: '2026-11-17',
-        fixed: [
-            'Renaming a project from the sidebar now keeps it in its place in the list instead of moving it to the bottom after a sync or reload.',
         ],
     },
 ];
