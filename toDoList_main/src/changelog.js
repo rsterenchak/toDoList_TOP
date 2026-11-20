@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-20',
+        added: [
+            'The Understanding book\'s chapter on the Understanding tab now covers bookmarks, flags, notes and asking about a chapter, with a tour for each.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-18',
         added: [
             'The Understanding book\'s app-start chapter now walks a first paint that fails and opening the app with no network, and says how long the app waits before drawing your projects.',
@@ -15,9 +22,6 @@ export const changelog = [
     {
         version: '1.1',
         date: '2026-11-17',
-        added: [
-            'The Understanding book now walks completing a repeating task, swiping a task right, clearing completed tasks, and deleting or renaming a project.',
-        ],
         fixed: [
             'Renaming a project from the sidebar now keeps it in its place in the list instead of moving it to the bottom after a sync or reload.',
         ],

@@ -3391,7 +3391,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 67818405-b0e3-4556-a727-b02dc579ed87 -->
 
-- [ ] **[MEDIUM]** Add bookmark, note and Ask tours to the Understanding book's reader chapter
+- [x] **[MEDIUM]** Add bookmark, note and Ask tours to the Understanding book's reader chapter — Completed: 2026-11-20
   - Type: feature
   - Description: The `understanding` chapter in `toDoList_main/codebook.json` says paragraphs "can also be bookmarked, flagged and annotated, which this chapter leaves aside", and no tour walks `bookBookmarks.js`, `bookFlags.js`, `bookNotes.js` or the reader's Ask chip. None of `toggleBookmark`, `loadBookmarks`, `saveFlag`, `saveNote`, `buildBookScope` or `openChatWithBookScope` appears in the book, so nothing marks a chapter stale when they change. Add three tours that each follow one outcome, and bring the chapter's prose up to cover them. Write every sentence from the code it describes, following `.claude/book.md`. Do not change any source file.
   - Behavior:

@@ -727,7 +727,7 @@ describe('gen-src-manifest real codetour.json', () => {
     it('compiles the Chat, Structure and Settings tours in order, each with a 3–5 card recap', () => {
         const order = {
             chat: ['chat-send', 'chat-fails', 'chat-ask', 'chat-context', 'chat-model', 'chat-draft-ship', 'chat-iterate', 'chat-sync'],
-            structure: ['structure-open', 'code-map', 'code-viewer', 'ui-lens', 'book-open', 'book-read', 'book-regenerate', 'book-tours'],
+            structure: ['structure-open', 'code-map', 'code-viewer', 'ui-lens', 'book-open', 'book-read', 'book-marks', 'book-notes', 'book-ask', 'book-regenerate', 'book-tours'],
             more: ['app-lock', 'export-import', 'onboarding', 'focus', 'ghost'],
         };
         Object.keys(order).forEach((section) => {
@@ -740,8 +740,8 @@ describe('gen-src-manifest real codetour.json', () => {
         });
     });
 
-    it('completes the 62-tour catalog with no empty section', () => {
-        expect(tours.tours.length).toBe(62);
+    it('completes the 65-tour catalog with no empty section', () => {
+        expect(tours.tours.length).toBe(65);
         doc.sections.forEach((s) => expect(tours.tours.some((t) => t.section === s.id)).toBe(true));
     });
 
