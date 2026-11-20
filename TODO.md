@@ -3411,7 +3411,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/codebook.json`, `toDoList_main/codetour.json`, `toDoList_main/tests/genSrcManifest.test.js`
   <!-- id: 515316d1-15e8-47fc-981f-94d7996ab905 -->
 
-- [ ] **[MEDIUM]** Remove the "Never" auto-lock option so an enabled app lock can always engage
+- [x] **[MEDIUM]** Remove the "Never" auto-lock option so an enabled app lock can always engage — Completed: 2026-11-20
   - Type: bug
   - Description: The app lock's "Auto-lock after idle" select offers "Never" (`minutes: 0` in `APP_LOCK_TIMEOUT_OPTIONS`, `toDoList_main/src/appLock.js`). `lockApp` is only called from the idle timer in `rearmAppLockTimer` and the idle check in `enforceAppLockIdle`, and both return early when the timeout is 0, so a lock saved with "Never" can never engage while Settings still shows App lock as ON. Remove the option, and turn the lock off on a device that already stored it. Expected: every lock that reads ON locks after its idle span, and nobody is locked behind a PIN the app has never asked them for.
   - Behavior:
