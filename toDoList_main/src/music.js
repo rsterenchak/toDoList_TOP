@@ -219,14 +219,16 @@ export function getMusicPlayerFrame(doc) {
 // Module-level loader so concurrent `play()` calls don't queue a second
 // `<script>` tag. The promise resolves once `window.onYouTubeIframeAPIReady`
 // fires (or immediately if `window.YT && window.YT.Player` is already there).
-// Returns null when the document / window isn't usable.
+// Returns null when the document / window isn't usable. A failed load is not
+// cached: the script's error clears the promise and removes the dead tag, so
+// the next play injects a fresh one instead of reusing the rejection.
 let _iframeApiPromise = null;
 export function loadIframeApi(doc) {
     if (typeof window === 'undefined' || !doc) return Promise.reject(new Error('no window'));
     if (window.YT && window.YT.Player) return Promise.resolve(window.YT);
     if (_iframeApiPromise) return _iframeApiPromise;
 
-    _iframeApiPromise = new Promise(function(resolve, reject) {
+    const pending = new Promise(function(resolve, reject) {
         const prior = doc.getElementById('youtubeIframeApi');
         const onReady = function() {
             if (window.YT && window.YT.Player) resolve(window.YT);
@@ -248,18 +250,35 @@ export function loadIframeApi(doc) {
             tag.id  = 'youtubeIframeApi';
             tag.src = 'https://www.youtube.com/iframe_api';
             tag.async = true;
-            tag.onerror = function() { reject(new Error('failed to load YT iframe api')); };
+            tag.onerror = function() {
+                if (_iframeApiPromise === pending) resetIframeApiLoader(doc);
+                reject(new Error('failed to load YT iframe api'));
+            };
             (doc.head || doc.body || doc.documentElement).appendChild(tag);
         } catch (e) {
             reject(e);
         }
     });
-    return _iframeApiPromise;
+    _iframeApiPromise = pending;
+    return pending;
+}
+
+// Forgets an in-flight or failed API load and removes its script tag, so the
+// next loadIframeApi call starts over. Used when the script errors and when
+// the buffering watchdog gives up on a load that never finished.
+function resetIframeApiLoader(doc) {
+    _iframeApiPromise = null;
+    const tag = doc && doc.getElementById('youtubeIframeApi');
+    if (tag && tag.parentNode) tag.parentNode.removeChild(tag);
 }
 
 // Test helper — resets the cached promise so subsequent loadIframeApi calls
 // re-attempt the script injection.
 export function _resetIframeApiPromise() { _iframeApiPromise = null; }
+
+// How long a play may sit in BUFFERING before the controller gives up and
+// returns to IDLE, so a load that never starts can't strand the status.
+export const BUFFERING_WATCHDOG_MS = 20000;
 
 
 export function createPomodoroSubscriber(controller, music) {
@@ -287,6 +306,10 @@ export function createMusic(doc) {
     let state = sanitizeRestoredState(readPersistedState());
     let player = null;
     let pendingPlayAfterReady = false;
+    let bufferingWatchdog = null;
+    // Bumped on every play() so a stale load failure from an earlier attempt
+    // can't knock a newer play back to IDLE.
+    let playAttempt = 0;
     const subscribers = [];
 
     function persist() { writePersistedState(state); }
@@ -314,8 +337,30 @@ export function createMusic(doc) {
     function setStatus(next) {
         if (VALID_STATUS.indexOf(next) === -1) return;
         if (state.status === next) return;
+        if (next !== 'BUFFERING') clearBufferingWatchdog();
         state.status = next;
         notify();
+    }
+
+    function clearBufferingWatchdog() {
+        if (bufferingWatchdog !== null) {
+            clearTimeout(bufferingWatchdog);
+            bufferingWatchdog = null;
+        }
+    }
+
+    // Arms the timeout that rescues a play which never reaches PLAYING. When
+    // no player exists yet the API load itself stalled, so it is reset too and
+    // the next play injects the script again.
+    function armBufferingWatchdog() {
+        clearBufferingWatchdog();
+        bufferingWatchdog = setTimeout(function() {
+            bufferingWatchdog = null;
+            if (state.status !== 'BUFFERING') return;
+            pendingPlayAfterReady = false;
+            if (!player) resetIframeApiLoader(doc);
+            setStatus('IDLE');
+        }, BUFFERING_WATCHDOG_MS);
     }
 
     function setVolume(volume) {
@@ -474,7 +519,9 @@ export function createMusic(doc) {
                     },
                     onError: function() {
                         // Hand the user back to IDLE; the popover surfaces the
-                        // status so they know to try a different station.
+                        // status so they know to try a different station. A
+                        // play queued for onReady is dropped with it.
+                        pendingPlayAfterReady = false;
                         setStatus('IDLE');
                     },
                 },
@@ -486,10 +533,13 @@ export function createMusic(doc) {
     function play(targetEl) {
         const station = getStationById(state, state.activeStationId);
         if (!station) return;
+        const attempt = ++playAttempt;
         setStatus('BUFFERING');
+        armBufferingWatchdog();
         if (!player) {
             pendingPlayAfterReady = true;
             ensurePlayer(targetEl).catch(function() {
+                if (attempt !== playAttempt) return;
                 pendingPlayAfterReady = false;
                 setStatus('IDLE');
             });
@@ -544,6 +594,7 @@ export function createMusic(doc) {
     }
 
     function destroy() {
+        clearBufferingWatchdog();
         if (player && typeof player.destroy === 'function') {
             try { player.destroy(); } catch (e) { /* defensive */ }
         }

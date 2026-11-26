@@ -5,6 +5,13 @@
 export const changelog = [
     {
         version: '1.1',
+        date: '2026-11-25',
+        fixed: [
+            'Focus music no longer gets stuck on "buffering": a stream that never starts falls back after a short wait, and tapping play again retries without refreshing the page.',
+        ],
+    },
+    {
+        version: '1.1',
         date: '2026-11-20',
         added: [
             'The Understanding book\'s chapter on the Understanding tab now covers bookmarks, flags, notes and asking about a chapter, with a tour for each.',
@@ -17,7 +24,6 @@ export const changelog = [
         version: '1.1',
         date: '2026-11-18',
         added: [
-            'The Understanding book\'s app-start chapter now walks a first paint that fails and opening the app with no network, and says how long the app waits before drawing your projects.',
             'The Understanding book\'s chat chapter now walks a chat turn that fails, a reply that asks you to choose, shipping a drafted entry, iterating on a shipped change, and a conversation kept on two devices.',
             'The Understanding book has a new chapter on the Understanding tab itself, with tours for opening the tab, reading a chapter, generating or regenerating the book, and following a tour.',
         ],
