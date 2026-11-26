@@ -3429,7 +3429,7 @@ Reading this as: on mobile the API-spend control should be hidden everywhere exc
   - File: `toDoList_main/src/appLock.js`, `toDoList_main/src/index.js`, `toDoList_main/tests/appLock.test.js`, `toDoList_main/tests/pinLockModal.test.js`, `toDoList_main/codetour.json`
   <!-- id: 075e70a3-a582-4ae8-b8e0-c4c13fcc0e75 -->
 
-- [ ] **[MEDIUM]** Fix focus music getting stuck on "buffering" until a full page refresh
+- [x] **[MEDIUM]** Fix focus music getting stuck on "buffering" until a full page refresh — Completed: 2026-11-25
   - Type: bug
   - Description: In `loadIframeApi` (music.js) the module-level `_iframeApiPromise` is cached even when it rejects (script `onerror`), and the failed `<script id="youtubeIframeApi">` tag is left in the DOM so the `if (prior) return` branch never re-injects; every later `play()` therefore reuses the dead promise until a page reload. Separately, `play()` sets BUFFERING optimistically and nothing ever times out: if the API script never fires `onYouTubeIframeAPIReady`, or the player never reaches `onReady`/state 1 (e.g. `pendingPlayAfterReady` stranded, or a stalled load), the status stays BUFFERING forever. Make a failed API load clear `_iframeApiPromise` and remove the failed script tag so the next play retries, add a buffering watchdog in `play()`/`ensurePlayer` that returns to IDLE (and clears `pendingPlayAfterReady`) after a reasonable timeout, and make `onError` also clear `pendingPlayAfterReady`.
   - Behavior: Tapping play after a failed or stalled load retries the API load and player creation without a page refresh; a stream that never starts falls back to IDLE instead of showing "buffering" indefinitely.
