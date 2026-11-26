@@ -1,6 +1,6 @@
 {
-  "generatedAt": "2026-11-20T13:14:12.640Z",
-  "sha": "4096d518aaf14f0a7a9dfb744d548627bbd4885d",
+  "generatedAt": "2026-11-26T06:20:25.833Z",
+  "sha": "6452d45cfd03ba15d77e5ef55ca4c8c3ac1e39a3",
   "files": [
     "aboutVersionCue.js",
     "accessMode.js",
@@ -4937,11 +4937,11 @@
       "selector": "#musicPlayerTarget",
       "label": "Music Player Target",
       "file": "music.js",
-      "line": 807,
+      "line": 858,
       "files": [
         {
           "file": "music.js",
-          "line": 807
+          "line": 858
         },
         {
           "file": "style.css",
@@ -4953,11 +4953,11 @@
       "selector": "#musicPopover",
       "label": "Music Popover",
       "file": "music.js",
-      "line": 756,
+      "line": 807,
       "files": [
         {
           "file": "music.js",
-          "line": 756
+          "line": 807
         },
         {
           "file": "style.css",
@@ -5001,11 +5001,11 @@
       "selector": "#nowPlayingStrip",
       "label": "Now Playing Strip",
       "file": "music.js",
-      "line": 611,
+      "line": 662,
       "files": [
         {
           "file": "music.js",
-          "line": 611
+          "line": 662
         },
         {
           "file": "style.css",
@@ -7409,11 +7409,11 @@
       "selector": "#youtubeIframeApi",
       "label": "Youtube Iframe Api",
       "file": "music.js",
-      "line": 248,
+      "line": 250,
       "files": [
         {
           "file": "music.js",
-          "line": 248
+          "line": 250
         }
       ]
     },
@@ -10177,11 +10177,11 @@
       "selector": ".changelogBullets",
       "label": "Changelog Bullets",
       "file": "changelog.js",
-      "line": 74,
+      "line": 80,
       "files": [
         {
           "file": "changelog.js",
-          "line": 74
+          "line": 80
         },
         {
           "file": "style.css",
@@ -10193,11 +10193,11 @@
       "selector": ".changelogEntry",
       "label": "Changelog Entry",
       "file": "changelog.js",
-      "line": 43,
+      "line": 49,
       "files": [
         {
           "file": "changelog.js",
-          "line": 43
+          "line": 49
         },
         {
           "file": "style.css",
@@ -10209,11 +10209,11 @@
       "selector": ".changelogEntryDate",
       "label": "Changelog Entry Date",
       "file": "changelog.js",
-      "line": 53,
+      "line": 59,
       "files": [
         {
           "file": "changelog.js",
-          "line": 53
+          "line": 59
         },
         {
           "file": "style.css",
@@ -10225,11 +10225,11 @@
       "selector": ".changelogEntryHeading",
       "label": "Changelog Entry Heading",
       "file": "changelog.js",
-      "line": 46,
+      "line": 52,
       "files": [
         {
           "file": "changelog.js",
-          "line": 46
+          "line": 52
         },
         {
           "file": "style.css",
@@ -10241,11 +10241,11 @@
       "selector": ".changelogEntryVersion",
       "label": "Changelog Entry Version",
       "file": "changelog.js",
-      "line": 49,
+      "line": 55,
       "files": [
         {
           "file": "changelog.js",
-          "line": 49
+          "line": 55
         },
         {
           "file": "style.css",
@@ -10257,11 +10257,11 @@
       "selector": ".changelogGroupLabel",
       "label": "Changelog Group Label",
       "file": "changelog.js",
-      "line": 70,
+      "line": 76,
       "files": [
         {
           "file": "changelog.js",
-          "line": 70
+          "line": 76
         },
         {
           "file": "style.css",
@@ -20497,11 +20497,11 @@
       "selector": ".musicControls",
       "label": "Music Controls",
       "file": "music.js",
-      "line": 1005,
+      "line": 1056,
       "files": [
         {
           "file": "music.js",
-          "line": 1005
+          "line": 1056
         },
         {
           "file": "style.css",
@@ -20513,11 +20513,11 @@
       "selector": ".musicHeaderOpenExt",
       "label": "Music Header Open Ext",
       "file": "music.js",
-      "line": 779,
+      "line": 830,
       "files": [
         {
           "file": "music.js",
-          "line": 779
+          "line": 830
         },
         {
           "file": "style.css",
@@ -20529,11 +20529,11 @@
       "selector": ".musicNowPlaying",
       "label": "Music Now Playing",
       "file": "music.js",
-      "line": 812,
+      "line": 863,
       "files": [
         {
           "file": "music.js",
-          "line": 812
+          "line": 863
         },
         {
           "file": "style.css",
@@ -20545,11 +20545,11 @@
       "selector": ".musicPasteBtn",
       "label": "Music Paste Btn",
       "file": "music.js",
-      "line": 846,
+      "line": 897,
       "files": [
         {
           "file": "music.js",
-          "line": 846
+          "line": 897
         },
         {
           "file": "style.css",
@@ -20561,11 +20561,11 @@
       "selector": ".musicPasteError",
       "label": "Music Paste Error",
       "file": "music.js",
-      "line": 865,
+      "line": 916,
       "files": [
         {
           "file": "music.js",
-          "line": 865
+          "line": 916
         },
         {
           "file": "style.css",
@@ -20577,11 +20577,11 @@
       "selector": ".musicPasteForm",
       "label": "Music Paste Form",
       "file": "music.js",
-      "line": 851,
+      "line": 902,
       "files": [
         {
           "file": "music.js",
-          "line": 851
+          "line": 902
         },
         {
           "file": "style.css",
@@ -20593,11 +20593,11 @@
       "selector": ".musicPasteNameInput",
       "label": "Music Paste Name Input",
       "file": "music.js",
-      "line": 856,
+      "line": 907,
       "files": [
         {
           "file": "music.js",
-          "line": 856
+          "line": 907
         },
         {
           "file": "style.css",
@@ -20609,11 +20609,11 @@
       "selector": ".musicPasteRow",
       "label": "Music Paste Row",
       "file": "music.js",
-      "line": 843,
+      "line": 894,
       "files": [
         {
           "file": "music.js",
-          "line": 843
+          "line": 894
         },
         {
           "file": "style.css",
@@ -20625,11 +20625,11 @@
       "selector": ".musicPasteUrlInput",
       "label": "Music Paste Url Input",
       "file": "music.js",
-      "line": 861,
+      "line": 912,
       "files": [
         {
           "file": "music.js",
-          "line": 861
+          "line": 912
         },
         {
           "file": "style.css",
@@ -20641,11 +20641,11 @@
       "selector": ".musicPicker",
       "label": "Music Picker",
       "file": "music.js",
-      "line": 817,
+      "line": 868,
       "files": [
         {
           "file": "music.js",
-          "line": 817
+          "line": 868
         },
         {
           "file": "style.css",
@@ -20657,11 +20657,11 @@
       "selector": ".musicPickerSection",
       "label": "Music Picker Section",
       "file": "music.js",
-      "line": 825,
+      "line": 876,
       "files": [
         {
           "file": "music.js",
-          "line": 825
+          "line": 876
         },
         {
           "file": "style.css",
@@ -20673,11 +20673,11 @@
       "selector": ".musicPlayerWrap",
       "label": "Music Player Wrap",
       "file": "music.js",
-      "line": 805,
+      "line": 856,
       "files": [
         {
           "file": "music.js",
-          "line": 805
+          "line": 856
         },
         {
           "file": "style.css",
@@ -20689,11 +20689,11 @@
       "selector": ".musicPopoverHeader",
       "label": "Music Popover Header",
       "file": "music.js",
-      "line": 761,
+      "line": 812,
       "files": [
         {
           "file": "music.js",
-          "line": 761
+          "line": 812
         },
         {
           "file": "style.css",
@@ -20705,11 +20705,11 @@
       "selector": ".musicPopoverHeaderSpacer",
       "label": "Music Popover Header Spacer",
       "file": "music.js",
-      "line": 766,
+      "line": 817,
       "files": [
         {
           "file": "music.js",
-          "line": 766
+          "line": 817
         },
         {
           "file": "style.css",
@@ -20721,11 +20721,11 @@
       "selector": ".musicPopoverHeaderTitle",
       "label": "Music Popover Header Title",
       "file": "music.js",
-      "line": 770,
+      "line": 821,
       "files": [
         {
           "file": "music.js",
-          "line": 770
+          "line": 821
         },
         {
           "file": "style.css",
@@ -20737,11 +20737,11 @@
       "selector": ".musicPrimaryBtn",
       "label": "Music Primary Btn",
       "file": "music.js",
-      "line": 1009,
+      "line": 1060,
       "files": [
         {
           "file": "music.js",
-          "line": 1009
+          "line": 1060
         },
         {
           "file": "style.css",
@@ -20753,11 +20753,11 @@
       "selector": ".musicStationGenre",
       "label": "Music Station Genre",
       "file": "music.js",
-      "line": 918,
+      "line": 969,
       "files": [
         {
           "file": "music.js",
-          "line": 918
+          "line": 969
         },
         {
           "file": "style.css",
@@ -20769,11 +20769,11 @@
       "selector": ".musicStationName",
       "label": "Music Station Name",
       "file": "music.js",
-      "line": 911,
+      "line": 962,
       "files": [
         {
           "file": "music.js",
-          "line": 911
+          "line": 962
         },
         {
           "file": "style.css",
@@ -20785,11 +20785,11 @@
       "selector": ".musicStationRemove",
       "label": "Music Station Remove",
       "file": "music.js",
-      "line": 927,
+      "line": 978,
       "files": [
         {
           "file": "music.js",
-          "line": 927
+          "line": 978
         },
         {
           "file": "style.css",
@@ -20801,11 +20801,11 @@
       "selector": ".musicStationRow",
       "label": "Music Station Row",
       "file": "music.js",
-      "line": 906,
+      "line": 957,
       "files": [
         {
           "file": "music.js",
-          "line": 906
+          "line": 957
         },
         {
           "file": "style.css",
@@ -20897,11 +20897,11 @@
       "selector": ".musicVizCheckLabel",
       "label": "Music Viz Check Label",
       "file": "music.js",
-      "line": 948,
+      "line": 999,
       "files": [
         {
           "file": "music.js",
-          "line": 948
+          "line": 999
         },
         {
           "file": "style.css",
@@ -20913,11 +20913,11 @@
       "selector": ".musicVizCheckText",
       "label": "Music Viz Check Text",
       "file": "music.js",
-      "line": 954,
+      "line": 1005,
       "files": [
         {
           "file": "music.js",
-          "line": 954
+          "line": 1005
         },
         {
           "file": "style.css",
@@ -20929,11 +20929,11 @@
       "selector": ".musicVizCheckbox",
       "label": "Music Viz Checkbox",
       "file": "music.js",
-      "line": 951,
+      "line": 1002,
       "files": [
         {
           "file": "music.js",
-          "line": 951
+          "line": 1002
         },
         {
           "file": "style.css",
@@ -20993,11 +20993,11 @@
       "selector": ".musicVizRow",
       "label": "Music Viz Row",
       "file": "music.js",
-      "line": 945,
+      "line": 996,
       "files": [
         {
           "file": "music.js",
-          "line": 945
+          "line": 996
         },
         {
           "file": "style.css",
@@ -21025,11 +21025,11 @@
       "selector": ".musicVizStyleLabel",
       "label": "Music Viz Style Label",
       "file": "music.js",
-      "line": 960,
+      "line": 1011,
       "files": [
         {
           "file": "music.js",
-          "line": 960
+          "line": 1011
         },
         {
           "file": "style.css",
@@ -21041,11 +21041,11 @@
       "selector": ".musicVizStyleSelect",
       "label": "Music Viz Style Select",
       "file": "music.js",
-      "line": 965,
+      "line": 1016,
       "files": [
         {
           "file": "music.js",
-          "line": 965
+          "line": 1016
         },
         {
           "file": "style.css",
@@ -21057,11 +21057,11 @@
       "selector": ".musicVizStyleText",
       "label": "Music Viz Style Text",
       "file": "music.js",
-      "line": 962,
+      "line": 1013,
       "files": [
         {
           "file": "music.js",
-          "line": 962
+          "line": 1013
         },
         {
           "file": "style.css",
@@ -21073,11 +21073,11 @@
       "selector": ".musicVolume",
       "label": "Music Volume",
       "file": "music.js",
-      "line": 1026,
+      "line": 1077,
       "files": [
         {
           "file": "music.js",
-          "line": 1026
+          "line": 1077
         },
         {
           "file": "style.css",
@@ -21089,11 +21089,11 @@
       "selector": ".musicVolumeWrap",
       "label": "Music Volume Wrap",
       "file": "music.js",
-      "line": 1021,
+      "line": 1072,
       "files": [
         {
           "file": "music.js",
-          "line": 1021
+          "line": 1072
         },
         {
           "file": "style.css",
@@ -21105,11 +21105,11 @@
       "selector": ".nowPlayingStrip",
       "label": "Now Playing Strip",
       "file": "music.js",
-      "line": 612,
+      "line": 663,
       "files": [
         {
           "file": "music.js",
-          "line": 612
+          "line": 663
         }
       ]
     },
@@ -21117,11 +21117,11 @@
       "selector": ".nowPlayingStripControls",
       "label": "Now Playing Strip Controls",
       "file": "music.js",
-      "line": 636,
+      "line": 687,
       "files": [
         {
           "file": "music.js",
-          "line": 636
+          "line": 687
         },
         {
           "file": "style.css",
@@ -21133,11 +21133,11 @@
       "selector": ".nowPlayingStripDismiss",
       "label": "Now Playing Strip Dismiss",
       "file": "music.js",
-      "line": 647,
+      "line": 698,
       "files": [
         {
           "file": "music.js",
-          "line": 647
+          "line": 698
         },
         {
           "file": "style.css",
@@ -21149,11 +21149,11 @@
       "selector": ".nowPlayingStripIcon",
       "label": "Now Playing Strip Icon",
       "file": "music.js",
-      "line": 617,
+      "line": 668,
       "files": [
         {
           "file": "music.js",
-          "line": 617
+          "line": 668
         },
         {
           "file": "style.css",
@@ -21165,11 +21165,11 @@
       "selector": ".nowPlayingStripName",
       "label": "Now Playing Strip Name",
       "file": "music.js",
-      "line": 625,
+      "line": 676,
       "files": [
         {
           "file": "music.js",
-          "line": 625
+          "line": 676
         },
         {
           "file": "style.css",
@@ -21181,11 +21181,11 @@
       "selector": ".nowPlayingStripPause",
       "label": "Now Playing Strip Pause",
       "file": "music.js",
-      "line": 640,
+      "line": 691,
       "files": [
         {
           "file": "music.js",
-          "line": 640
+          "line": 691
         },
         {
           "file": "style.css",
@@ -21197,11 +21197,11 @@
       "selector": ".nowPlayingStripSep",
       "label": "Now Playing Strip Sep",
       "file": "music.js",
-      "line": 628,
+      "line": 679,
       "files": [
         {
           "file": "music.js",
-          "line": 628
+          "line": 679
         },
         {
           "file": "style.css",
@@ -21213,11 +21213,11 @@
       "selector": ".nowPlayingStripStatus",
       "label": "Now Playing Strip Status",
       "file": "music.js",
-      "line": 633,
+      "line": 684,
       "files": [
         {
           "file": "music.js",
-          "line": 633
+          "line": 684
         },
         {
           "file": "style.css",
@@ -31934,7 +31934,7 @@
     },
     {
       "path": "changelog.js",
-      "lines": 88,
+      "lines": 94,
       "imports": [],
       "purpose": "Hardcoded changelog entries for the footer version modal."
     },
@@ -32426,7 +32426,7 @@
     },
     {
       "path": "music.js",
-      "lines": 1128,
+      "lines": 1179,
       "imports": [
         "musicVisualizer.js",
         "popoverNav.js",
